@@ -1,0 +1,93 @@
+schema_version: 1
+sources:
+  CR: "reference/Oath Combined Rulebook.pdf"
+  NF: "reference/Oath Welcome to New Foundations Booklet.pdf"
+terms:
+  - term: action
+    definition: "A discrete instruction taken mainly during Act; major actions normally cost Supply, minor actions normally cost zero."
+    citations: ["CR:17", "CR:27", "CR:44"]
+  - term: adviser
+    definition: "A denizen or Vision in the Advisers area; normal limit is three total faceup and facedown."
+    citations: ["CR:14", "CR:20", "CR:44"]
+  - term: active_legacy
+    definition: "A faceup legacy whose power applies; a player may have at most three."
+    citations: ["CR:33", "CR:36"]
+  - term: banner
+    definition: "People's Favor or Darkest Secret; an unlimited-held, stealable object with powers and a three-die raid defense."
+    citations: ["CR:15", "CR:26", "CR:32", "NF:12"]
+  - term: bandits
+    definition: "Neutral warbands that rule empty sites; refill after an action to site capacity and do not compete for goals."
+    citations: ["CR:15", "CR:33", "NF:11"]
+  - term: bury
+    definition: "Put a denizen, relic, or edifice on the bottom of its corresponding deck; ignores lock."
+    citations: ["CR:44", "NF:16"]
+  - term: campaign
+    definition: "Major action with mutually exclusive Conquest and Raid types."
+    citations: ["CR:22", "CR:23", "NF:13"]
+  - term: chronicle_phase
+    definition: "Ordered five-task post-game procedure that persists roles, cards, world geography, foundations, and scoring."
+    citations: ["CR:36", "CR:41"]
+  - term: citizen
+    definition: "An Imperial player other than Chancellor, using purple warbands and eligible for Successor victory."
+    citations: ["CR:19", "CR:34", "CR:35"]
+  - term: consent
+    definition: "Explicit permission; some persistent prohibitions are waived for an event if their ruler forgets to enforce them."
+    citations: ["CR:43", "NF:16"]
+  - term: conquest
+    definition: "Campaign against the ruler of the attacker's site, mandatorily targeting that site and optionally other sites of that defender."
+    citations: ["CR:22"]
+  - term: cradleward
+    definition: "Reverse of Hinterward map order."
+    citations: ["CR:45", "NF:16"]
+  - term: dormant_legacy
+    definition: "A facedown legacy whose power does not apply; activation is checked in Chronicle."
+    citations: ["CR:33", "CR:36"]
+  - term: edifice
+    definition: "A special denizen with intact/locked and ruined/unlocked faces."
+    citations: ["CR:30", "NF:16"]
+  - term: enemy
+    definition: "Any non-self player; Imperials may still be enemies for effects and infighting."
+    citations: ["CR:35", "CR:44"]
+  - term: era
+    definition: "Group-defined series of games scored by lineage points; score resets at era end while world state persists."
+    citations: ["CR:5", "CR:37", "NF:7"]
+  - term: force
+    definition: "Attacker's board warbands or defender's warbands on campaign targets."
+    citations: ["CR:22", "CR:45"]
+  - term: foundation
+    definition: "One of six double-sided setup rules; active legacies can alter them and Beacon can restore eligible ones."
+    citations: ["CR:10", "CR:33", "CR:39"]
+  - term: hinterward
+    definition: "Top-to-bottom Cradle, then Provinces, then Hinterland."
+    citations: ["CR:9", "CR:45", "NF:16"]
+  - term: homeland
+    definition: "Suit-linked site that stores a matching edifice and permits discarding a site card before playing a matching-suit card there."
+    citations: ["CR:6", "CR:31"]
+  - term: imperial
+    definition: "Chancellor or Citizen; uses Imperial laws and purple warbands."
+    citations: ["CR:34", "CR:35"]
+  - term: legacy
+    definition: "Persistent lineage card with a goal, power, suit-related scoring bonus, and active/dormant state."
+    citations: ["CR:5", "CR:33", "CR:36"]
+  - term: raid
+    definition: "Campaign against a co-located enemy pawn, optionally targeting its faceup relics and banners."
+    citations: ["CR:22", "CR:23"]
+  - term: recover_difficulty
+    definition: "Site threshold that accumulated defense-die shields must meet for Recover."
+    citations: ["CR:25", "NF:10"]
+  - term: rule
+    definition: "Control of a site/card; a site has exactly one ruler, player or bandits."
+    citations: ["CR:15", "CR:45"]
+  - term: site
+    definition: "Map location with region, capacity, defense, relic slots, starting resources, Recover Difficulty, and power(s)."
+    citations: ["CR:31", "NF:10"]
+  - term: supply
+    definition: "Action economy tracked on a player board, spent by moving right and refreshed during Rest."
+    citations: ["CR:14", "CR:18"]
+  - term: usurper
+    definition: "Exile victory state gained by starting a permitted turn as Oathkeeper and won by retaining it until the next turn start."
+    citations: ["CR:16", "CR:17"]
+  - term: vision
+    definition: "One of four true Exile victory cards; Conspiracy is a fifth false Vision with an action instead."
+    citations: ["CR:16", "CR:30"]
+

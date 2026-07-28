@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "citationConvention": "sourceId:one-based-pdf-page",
+  "sources": {
+    "CR": {
+      "path": "reference/Oath Combined Rulebook.pdf",
+      "title": "Oath: Chronicles of Empire & Exile - Combined Rulebook",
+      "date": "2026-06-01",
+      "pages": 48,
+      "authority": "normative_complete_rules"
+    },
+    "NF": {
+      "path": "reference/Oath Welcome to New Foundations Booklet.pdf",
+      "title": "Welcome to New Foundations",
+      "date": "2026-05-26",
+      "pages": 16,
+      "authority": "migration_and_delta_guide"
+    }
+  },
+  "precedence": [
+    "applicable card/component power",
+    "CR full rule",
+    "NF summary/delta wording",
+    "this derived knowledge layer"
+  ],
+  "topics": [
+    {"id":"components","citations":["CR:2-4","NF:2-6"]},
+    {"id":"game_model_eras","citations":["CR:5","NF:7"]},
+    {"id":"setup_first","citations":["CR:6-7","NF:8"]},
+    {"id":"setup_later","citations":["CR:8-13","NF:9"]},
+    {"id":"core_concepts","citations":["CR:14-16"]},
+    {"id":"turn_flow","citations":["CR:17-18"]},
+    {"id":"round_end_victory","citations":["CR:19"]},
+    {"id":"search","citations":["CR:20"]},
+    {"id":"travel","citations":["CR:21"]},
+    {"id":"campaign","citations":["CR:22-23","NF:13"]},
+    {"id":"muster_trade","citations":["CR:24","NF:13"]},
+    {"id":"forge_recover","citations":["CR:25","NF:14"]},
+    {"id":"challenge","citations":["CR:26","NF:15"]},
+    {"id":"minor_actions","citations":["CR:27","NF:15"]},
+    {"id":"cards_and_powers","citations":["CR:28-30"]},
+    {"id":"sites","citations":["CR:31","NF:10-12"]},
+    {"id":"banners","citations":["CR:32","NF:12"]},
+    {"id":"legacies","citations":["CR:33","NF:9"]},
+    {"id":"empire","citations":["CR:34-35","NF:15-16"]},
+    {"id":"chronicle","citations":["CR:36-41","NF:9"]},
+    {"id":"fine_print","citations":["CR:42-43"]},
+    {"id":"glossary","citations":["CR:44-45"]},
+    {"id":"edge_cases","citations":["CR:46"]},
+    {"id":"index","citations":["CR:48"]}
+  ]
+}
+

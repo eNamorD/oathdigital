@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oathdigital.dev/schemas/new-foundations-component-catalog-1.0.0.schema.json",
+  "title": "Oath Digital component catalog",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "catalogVersion",
+    "ruleset",
+    "identityPolicy",
+    "bannerFamilies",
+    "atlas",
+    "sources",
+    "components",
+    "conflicts",
+    "assumptionContradictions",
+    "reviewQueue"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "catalogVersion": {
+      "type": "string"
+    },
+    "ruleset": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "normativeGeneralRulesSourceId"
+      ]
+    },
+    "identityPolicy": {
+      "type": "object",
+      "required": [
+        "printedCardsAreSingletonDefinitions",
+        "duplicatePhysicalCopiesRequireSourceEvidence",
+        "runtimeCardInstanceIdsAllowed",
+        "componentIdsAreTypedPrintedIds"
+      ]
+    },
+    "bannerFamilies": {
+      "type": "array",
+      "minItems": 2
+    },
+    "atlas": {
+      "type": "object",
+      "required": [
+        "model",
+        "frontEnd",
+        "backEnd",
+        "entryDefinitionIds",
+        "runtimeOrder"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceId",
+          "path",
+          "authority"
+        ]
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "conflictId",
+          "status",
+          "topic",
+          "normativeSource"
+        ]
+      }
+    },
+    "reviewQueue": {
+      "type": "array"
+    }
+  },
+  "$defs": {
+    "provenance": {
+      "type": "object",
+      "required": [
+        "sourceId",
+        "file",
+        "page"
+      ],
+      "properties": {
+        "sourceId": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sheetSlot": {
+          "type": [
+            "string",
+            "integer"
+          ]
+        },
+        "crop": {
+          "type": "object"
+        }
+      }
+    },
+    "printedComponentId": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "-id$"
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "required": [
+        "definitionId",
+        "kind",
+        "name",
+        "printedComponentId",
+        "physicalCopyCount",
+        "copyCountEvidence",
+        "printEvidence",
+        "transcription"
+      ],
+      "properties": {
+        "definitionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "printedComponentId": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/printedComponentId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "physicalCopyCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "copyCountEvidence": {
+          "type": "string"
+        },
+        "printEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "provenance"
+            ],
+            "properties": {
+              "provenance": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "$ref": "#/$defs/provenance"
+                }
+              }
+            }
+          }
+        },
+        "transcription": {
+          "type": "object",
+          "required": [
+            "method",
+            "confidence",
+            "reviewStatus"
+          ]
+        },
+        "handlers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,108 @@
+package oathdigital.model
+
+sealed trait Orientation extends Product with Serializable
+object Orientation {
+  case object FaceUp extends Orientation
+  case object FaceDown extends Orientation
+}
+
+sealed trait EdificeSide extends Product with Serializable
+object EdificeSide {
+  case object Intact extends EdificeSide
+  case object Ruined extends EdificeSide
+}
+
+sealed trait CardState extends Product with Serializable {
+  def id: CardId
+}
+
+sealed trait AdviserState extends CardState
+sealed trait WorldCardState extends AdviserState
+sealed trait SiteDenizenState extends CardState {
+  def tokens: Tokens
+}
+
+final case class DenizenState(
+    id: DenizenId,
+    orientation: Orientation,
+    tokens: Tokens
+) extends WorldCardState
+    with SiteDenizenState
+
+final case class VisionState(
+    id: VisionId,
+    orientation: Orientation
+) extends WorldCardState
+
+/**
+ * Edifices are special denizens. They can occupy a site's denizen slots, but
+ * keep their intact/ruined side instead of an ordinary faceup/facedown flag.
+ */
+final case class EdificeState(
+    id: EdificeId,
+    side: EdificeSide,
+    tokens: Tokens
+) extends SiteDenizenState
+
+final case class RelicState(
+    id: RelicId,
+    orientation: Orientation,
+    tokens: Tokens
+) extends CardState
+
+final case class LegacyState(id: LegacyId, active: Boolean) extends CardState
+
+sealed trait Region extends Product with Serializable {
+  def key: String
+}
+object Region {
+  case object Cradle extends Region {
+    override val key: String = "cradle"
+  }
+  case object Provinces extends Region {
+    override val key: String = "provinces"
+  }
+  case object Hinterland extends Region {
+    override val key: String = "hinterland"
+  }
+
+  val all: Vector[Region] = Vector(Cradle, Provinces, Hinterland)
+}
+
+sealed trait Suit extends Product with Serializable {
+  def key: String
+}
+object Suit {
+  case object Discord extends Suit {
+    override val key: String = "discord"
+  }
+  case object Arcane extends Suit {
+    override val key: String = "arcane"
+  }
+  case object Order extends Suit {
+    override val key: String = "order"
+  }
+  case object Hearth extends Suit {
+    override val key: String = "hearth"
+  }
+  case object Beast extends Suit {
+    override val key: String = "beast"
+  }
+  case object Nomad extends Suit {
+    override val key: String = "nomad"
+  }
+
+  val all: Vector[Suit] =
+    Vector(Discord, Arcane, Order, Hearth, Beast, Nomad)
+}
+
+final case class CardZones(
+    worldDeck: Vector[WorldCardState],
+    relicDeck: Vector[RelicState],
+    edificeDeck: Vector[EdificeState],
+    legacyDeck: Vector[LegacyState],
+    regionalDiscards: Map[Region, Vector[WorldCardState]]
+) {
+  def discard(region: Region): Vector[WorldCardState] =
+    regionalDiscards.getOrElse(region, Vector.empty)
+}

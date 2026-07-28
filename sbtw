@@ -1,0 +1,19 @@
+#!/bin/sh
+set -eu
+
+project_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+tooling="$project_dir/.tooling"
+java_home="$tooling/jdk-17.0.19+10/Contents/Home"
+sbt="$tooling/sbt/bin/sbt"
+cache="$tooling/cache"
+
+exec "$sbt" \
+  -java-home "$java_home" \
+  -J-Xms256m \
+  -J-Xmx2g \
+  -Dsbt.global.base="$cache/sbt-global" \
+  -Dsbt.boot.directory="$cache/sbt-boot" \
+  -Dsbt.ivy.home="$cache/ivy" \
+  -Divy.home="$cache/ivy" \
+  -Dcoursier.cache="$cache/coursier" \
+  "$@"

@@ -1,0 +1,5 @@
+.bsp/
+.metals/
+.tooling/cache/
+project/target/
+target/
