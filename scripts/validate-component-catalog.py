@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 
-root = Path(sys.argv[1] if len(sys.argv) > 1 else "docs/catalog")
+root = Path(sys.argv[1] if len(sys.argv) > 1 else "catalog-build")
 schema = json.loads((root / "new-foundations-component-catalog.schema.json").read_text())
 catalog = json.loads((root / "new-foundations-component-catalog.json").read_text())
 errors = []
@@ -35,6 +35,8 @@ if catalog["corpusClaims"].get("complete195DenizenCorpus") is not False:
     errors.append("catalog must not claim a complete 195-denizen corpus")
 if catalog["identityPolicy"].get("runtimeCardInstanceIdsAllowed") is not False:
     errors.append("runtime CardInstanceIds must be forbidden")
+if catalog["identityPolicy"].get("definitionIdIsIdentityWhenPrintedIdAbsent") is not True:
+    errors.append("definitionId must be the identity fallback when no printed ID exists")
 if catalog["atlas"].get("model") != "single-ordered-sequence":
     errors.append("Atlas must be one ordered sequence")
 if catalog["atlas"].get("frontEnd") != "recent" or catalog["atlas"].get("backEnd") != "forgotten":
@@ -47,6 +49,28 @@ for c in catalog["components"]:
         supply = c.get("supply", {})
         if supply.get("maximum") != 7 or supply.get("remainingValues") != [7,6,5,4,3,2,1,0]:
             errors.append(f"{c['definitionId']}: invalid numeric Supply model")
+    if c["kind"] == "site":
+        stats = c.get("statistics", {})
+        for field in ("defense","capacity","relicSlots","recoverDifficulty","startingResources","forgeRequirements"):
+            if field not in stats:
+                errors.append(f"{c['definitionId']}: missing site statistic {field}")
+        if stats.get("defense") is None or stats.get("capacity") is None or stats.get("relicSlots") is None:
+            errors.append(f"{c['definitionId']}: unresolved required site statistic")
+        if c.get("unresolved"):
+            errors.append(f"{c['definitionId']}: site still has unresolved production fields")
+        if c.get("printedComponentId") is not None:
+            errors.append(f"{c['definitionId']}: source does not show a printed site ID")
+        resources = stats.get("startingResources", [])
+        forge = stats.get("forgeRequirements", [])
+        if [r.get("type") for r in resources] != ["favor","secret"]:
+            errors.append(f"{c['definitionId']}: starting resources must be favor/secret counts")
+        if stats.get("capacity") == 3:
+            if [r.get("type") for r in forge] != ["favor","secret"]:
+                errors.append(f"{c['definitionId']}: three-slot site requires favor/secret Forge requirements")
+        elif forge:
+            errors.append(f"{c['definitionId']}: Forge requirements only print on three-slot sites")
+if len([c for c in catalog["components"] if c["kind"] == "site"]) != 24:
+    errors.append("catalog must contain exactly 24 sites")
 if not any(x["normativeSource"]["sourceId"] == "cr-2026-06" for x in catalog["conflicts"]):
     errors.append("missing normative Combined Rulebook conflict record")
 if errors:

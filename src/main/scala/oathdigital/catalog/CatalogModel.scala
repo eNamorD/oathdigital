@@ -77,9 +77,13 @@ final case class SupplyBoardDefinition(
 final case class SiteDefinition(
     metadata: ComponentMetadata,
     id: SiteId,
+    defense: Int,
     capacity: Int,
-    recoverDifficulty: Int,
-    startingResources: Tokens
+    relicSlots: Int,
+    recoverDifficulty: Option[Int],
+    startingResources: Tokens,
+    forgeRequirements: Option[Tokens],
+    powers: Vector[String]
 )
 
 final case class VisionGoal(kind: String, minimumVisionsDrawn: Int)

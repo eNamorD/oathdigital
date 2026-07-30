@@ -37,7 +37,8 @@
         "printedCardsAreSingletonDefinitions",
         "duplicatePhysicalCopiesRequireSourceEvidence",
         "runtimeCardInstanceIdsAllowed",
-        "componentIdsAreTypedPrintedIds"
+        "typedPrintedIdsArePreservedWhenPresent",
+        "definitionIdIsIdentityWhenPrintedIdAbsent"
       ]
     },
     "bannerFamilies": {

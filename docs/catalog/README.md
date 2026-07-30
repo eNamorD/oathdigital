@@ -34,6 +34,16 @@ warband-bank refresh tables; marker coordinates are not persisted. The Atlas is
 one front-to-back ordered sequence, with Recent at the front and Forgotten at
 the back.
 
+All 24 site faces have crop-verified defense, denizen capacity, relic-slot
+count, Recover Difficulty (null when no difficulty is printed), upper-left
+starting favor/secrets, lower-right Forge requirements on three-slot sites,
+and printed site powers. The supplied site fronts and
+generic backs show no printed site component IDs. This is recorded as source
+evidence contradicting the assumption that every production definition can use
+a source-printed ID. The resolved identity policy uses `definitionId` (for
+example, `site:deep-woods`) as the stable site identity while preserving
+`printedComponentId: null`.
+
 Validate with:
 
 ```sh
@@ -43,27 +53,3 @@ python3 scripts/validate-component-catalog.py
 The validator checks schema/catalog version agreement, unique definition and
 physical-copy identities, source references, edifice face pairings, and the
 required corpus/authority safeguards.
-
-## Scala loader
-
-`oathdigital.catalog.CatalogLoader` is the runtime trust boundary between this
-JSON document and the rules engine. It decodes catalog metadata and selected
-executable projections into typed Scala definitions, checks the schema and
-pinned `CatalogRef`, enforces singleton and source-reference policies, rejects
-duplicate identities, and reports structured path-aware errors.
-
-Executable loading is deliberately selective:
-
-- setup cards require verified step and handler data;
-- player boards currently expose only their verified numeric Supply data and
-  retain the specifically allowlisted non-Supply review note as
-  `excludedReviewItems` (any other unresolved note remains a load error);
-- sites and Visions require typed printed IDs and all fields used by their
-  executable projections; and
-- unresolved fields required by a projection are a load error, never a
-  default value.
-
-The full catalog remains valid inventory even when a requested executable
-projection is not ready. For example, the current setup-card and Supply-board
-projection loads, while the site projection is rejected until its 24 records
-receive crop-level ID and statistics review.

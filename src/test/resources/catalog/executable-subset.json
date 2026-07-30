@@ -10,7 +10,8 @@
     "printedCardsAreSingletonDefinitions": true,
     "duplicatePhysicalCopiesRequireSourceEvidence": true,
     "runtimeCardInstanceIdsAllowed": false,
-    "componentIdsAreTypedPrintedIds": true
+    "typedPrintedIdsArePreservedWhenPresent": true,
+    "definitionIdIsIdentityWhenPrintedIdAbsent": true
   },
   "sources": [
     {
@@ -135,7 +136,9 @@
         "reviewStatus": "verified"
       },
       "statistics": {
+        "defense": 2,
         "capacity": 2,
+        "relicSlots": 1,
         "recoverDifficulty": 1,
         "startingResources": [
           {
@@ -146,8 +149,13 @@
             "type": "secret",
             "count": 2
           }
+        ],
+        "forgeRequirements": [
         ]
       },
+      "powers": [
+        "coast"
+      ],
       "unresolved": []
     },
     {

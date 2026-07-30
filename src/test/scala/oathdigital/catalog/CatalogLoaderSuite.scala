@@ -38,8 +38,10 @@ class CatalogLoaderSuite extends munit.FunSuite {
 
     val catalog = result.toOption.get
     assertEquals(catalog.setupCards.map(_.step), Vector(1))
-    assertEquals(catalog.sites.map(_.id), Vector(SiteId("S1")))
+    assertEquals(catalog.sites.map(_.id), Vector(SiteId("site:S1")))
     assertEquals(catalog.sites.head.startingResources, Tokens(1, 2))
+    assertEquals(catalog.sites.head.forgeRequirements, None)
+    assertEquals(catalog.sites.head.powers, Vector("coast"))
     assertEquals(catalog.visions.map(_.id), Vector(VisionId("V1")))
     assertEquals(catalog.supplyBoards.head.rules.maximum, 7)
     assertEquals(
@@ -68,17 +70,24 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assert(catalog.sites.isEmpty)
   }
 
-  test("production sites are rejected while required fields remain unresolved") {
+  test("production sites load from definition IDs with verified printed data") {
     val result = CatalogLoader.load(
       Paths.get("docs/catalog/new-foundations-component-catalog.json"),
       CatalogLoadRequest(CatalogSelection(sites = true))
     )
 
-    val errors = result.left.toOption.get
-    assertEquals(
-      errors.collect { case _: UnresolvedRequiredFields => 1 }.sum,
-      24
-    )
+    val sites = result.toOption.get.sites
+    assertEquals(sites.size, 24)
+    val deepWoods = sites.find(_.id == SiteId("site:deep-woods")).get
+    assertEquals(deepWoods.startingResources, Tokens(0, 0))
+    assertEquals(deepWoods.forgeRequirements, Some(Tokens(1, 2)))
+    assertEquals(sites.find(_.id == SiteId("site:broken-peaks")).get.startingResources, Tokens(0, 2))
+    assertEquals(sites.find(_.id == SiteId("site:fair-isle")).get.startingResources, Tokens(3, 0))
+    assertEquals(sites.find(_.id == SiteId("site:ancient-city")).get.recoverDifficulty, None)
+    assertEquals(sites.find(_.id == SiteId("site:ancient-city")).get.powers, Vector("enduring", "river"))
+    val headwaters = sites.find(_.id == SiteId("site:headwaters")).get
+    assertEquals(headwaters.capacity, 2)
+    assertEquals(headwaters.relicSlots, 1)
   }
 
   test("a Supply projection rejects review items outside its explicit exclusion") {

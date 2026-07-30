@@ -60,7 +60,8 @@
     "printedCardsAreSingletonDefinitions": true,
     "duplicatePhysicalCopiesRequireSourceEvidence": true,
     "runtimeCardInstanceIdsAllowed": false,
-    "componentIdsAreTypedPrintedIds": true
+    "typedPrintedIdsArePreservedWhenPresent": true,
+    "definitionIdIsIdentityWhenPrintedIdAbsent": true
   },
   "bannerFamilies": [
     {
@@ -98,7 +99,7 @@
       "site:golden-valley",
       "site:dunes",
       "site:great-slum",
-      "site:hair-isle",
+      "site:fair-isle",
       "site:hidden-place",
       "site:green-shore",
       "site:mines",
@@ -140,19 +141,44 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 1
+          },
+          {
+            "type": "secret",
+            "count": 2
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:beast"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:broken-peaks",
@@ -174,19 +200,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 4,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 2
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "mountain"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:desolate-shore",
@@ -208,19 +250,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 5,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "coast"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:ancient-city",
@@ -242,19 +300,45 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 2,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 3
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "enduring",
+        "river"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:golden-valley",
@@ -276,19 +360,44 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 3
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:hearth"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:dunes",
@@ -310,19 +419,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 1,
+        "relicSlots": 1,
+        "recoverDifficulty": 4,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "plains"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:great-slum",
@@ -344,24 +469,49 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 2
+          },
+          {
+            "type": "secret",
+            "count": 1
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:discord"
+      ],
+      "unresolved": []
     },
     {
-      "definitionId": "site:hair-isle",
+      "definitionId": "site:fair-isle",
       "kind": "site",
-      "name": "Hair Isle",
+      "name": "Fair Isle",
       "printedComponentId": null,
       "physicalCopyCount": 1,
       "copyCountEvidence": "assumed-singleton-unless-source-proves-duplicates",
@@ -378,19 +528,36 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 2,
+        "relicSlots": 1,
+        "recoverDifficulty": 3,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 3
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "coast",
+        "island"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:hidden-place",
@@ -412,19 +579,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 2,
+        "relicSlots": 1,
+        "recoverDifficulty": 4,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "mountain"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:green-shore",
@@ -446,19 +629,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 2,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "coast"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:mines",
@@ -480,19 +679,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 5,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 3
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "mountain"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:headwaters",
@@ -514,19 +729,36 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 2,
+        "relicSlots": 1,
+        "recoverDifficulty": 4,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "river",
+        "mountain"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:riverbank",
@@ -548,19 +780,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 2,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "river"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:narrow-pass",
@@ -582,19 +830,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 1,
+        "relicSlots": 1,
+        "recoverDifficulty": 5,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "pass"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:rocky-coast",
@@ -616,19 +880,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 2,
+        "capacity": 1,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "coast"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:painted-towers",
@@ -650,19 +930,44 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 2
+          },
+          {
+            "type": "secret",
+            "count": 1
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:order"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:buried-giant",
@@ -684,19 +989,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 6,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "plains"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:salt-flats",
@@ -718,19 +1039,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 0,
+        "capacity": 2,
+        "relicSlots": 1,
+        "recoverDifficulty": 2,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "plains"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:solitary-pillar",
@@ -752,19 +1089,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 1,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 6,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 2
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "plains"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:shrouded-woods",
@@ -786,19 +1139,35 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 1,
+        "relicSlots": 2,
+        "recoverDifficulty": 5,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 1
+          },
+          {
+            "type": "secret",
+            "count": 1
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "plains"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:sunken-isles",
@@ -820,19 +1189,36 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
-        "recoverDifficulty": null,
-        "startingResources": []
+        "defense": 2,
+        "capacity": 0,
+        "relicSlots": 3,
+        "recoverDifficulty": 6,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "coast",
+        "island"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:standing-stones",
@@ -854,19 +1240,44 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 3
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:arcane"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:tidal-marshes",
@@ -888,19 +1299,36 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 1,
+        "capacity": 2,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": []
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "river",
+        "coast"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "site:steppe",
@@ -922,19 +1350,44 @@
         }
       ],
       "transcription": {
-        "method": "visual-with-ocr-assist",
-        "confidence": "medium",
-        "reviewStatus": "visually-reviewed-name"
+        "method": "crop-level-visual-review",
+        "confidence": "high",
+        "reviewStatus": "visually-verified"
+      },
+      "idEvidence": {
+        "printedIdPresent": false,
+        "note": "No site component ID is visible on the front sheet; site backs are generic."
       },
       "statistics": {
-        "capacity": null,
+        "defense": 0,
+        "capacity": 3,
+        "relicSlots": 0,
         "recoverDifficulty": null,
-        "startingResources": []
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 0
+          }
+        ],
+        "forgeRequirements": [
+          {
+            "type": "favor",
+            "count": 0
+          },
+          {
+            "type": "secret",
+            "count": 3
+          }
+        ]
       },
-      "powers": [],
-      "unresolved": [
-        "capacity/icons and starting-resource icons require crop-level review"
-      ]
+      "powers": [
+        "homeland:nomad"
+      ],
+      "unresolved": []
     },
     {
       "definitionId": "edifice:e11:intact",
@@ -16453,7 +16906,22 @@
       "resolution": "Combined Rulebook is normative."
     }
   ],
-  "assumptionContradictions": [],
+  "assumptionContradictions": [
+    {
+      "assumption": "All production component definitions can use a source-printed typed component ID.",
+      "sourceEvidence": {
+        "sourceId": "nf-rev1",
+        "files": [
+          "sites.pdf",
+          "site-backs-1up.pdf",
+          "site-backs-4up.pdf"
+        ]
+      },
+      "finding": "The 24 site fronts show names and statistics but no visible printed component IDs; the supplied backs are generic.",
+      "status": "resolved",
+      "resolution": "Use definitionId as the stable site identity while printedComponentId remains null."
+    }
+  ],
   "reviewQueue": [
     {
       "queueId": "review:icons",
@@ -16462,7 +16930,7 @@
     },
     {
       "queueId": "review:printed-ids",
-      "scope": "denizens, relics, legacies and sites",
+      "scope": "denizens, relics and legacies",
       "policy": "Crop-level visual transcription required."
     },
     {

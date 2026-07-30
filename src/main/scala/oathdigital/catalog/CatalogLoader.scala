@@ -165,7 +165,8 @@ object CatalogLoader {
       "printedCardsAreSingletonDefinitions" -> true,
       "duplicatePhysicalCopiesRequireSourceEvidence" -> true,
       "runtimeCardInstanceIdsAllowed" -> false,
-      "componentIdsAreTypedPrintedIds" -> true
+      "typedPrintedIdsArePreservedWhenPresent" -> true,
+      "definitionIdIsIdentityWhenPrintedIdAbsent" -> true
     )
 
     collectResults(expectations.map { case (field, expected) =>
@@ -505,8 +506,8 @@ object CatalogLoader {
     val path = componentPath(metadata)
     for {
       _ <- requireResolved(metadata, path)
-      printed <- requirePrintedId(metadata, "site-id", path)
       statistics <- requiredObject(obj, "statistics", path)
+      defense <- requiredInt(statistics, "defense", s"$path.statistics")
       capacity <- requiredInt(statistics, "capacity", s"$path.statistics")
       _ <-
         if (capacity >= 0) Right(())
@@ -519,19 +520,25 @@ object CatalogLoader {
               )
             )
           )
-      recoverDifficulty <- requiredInt(
+      relicSlots <- requiredInt(
+        statistics,
+        "relicSlots",
+        s"$path.statistics"
+      )
+      recoverDifficulty <- optionalInt(
         statistics,
         "recoverDifficulty",
         s"$path.statistics"
       )
       _ <-
-        if (recoverDifficulty >= 0) Right(())
+        if (defense >= 0 && relicSlots >= 0 &&
+            recoverDifficulty.forall(_ >= 0)) Right(())
         else
           Left(
             Vector(
               InvalidValue(
-                s"$path.statistics.recoverDifficulty",
-                "recover difficulty must be non-negative"
+                s"$path.statistics",
+                "defense, relic slots, and recover difficulty must be non-negative"
               )
             )
           )
@@ -544,13 +551,41 @@ object CatalogLoader {
         resources,
         s"$path.statistics.startingResources"
       )
-      id <- construct(s"$path.printedComponentId", SiteId(printed.value))
+      forgeValues <- requiredArray(
+        statistics,
+        "forgeRequirements",
+        s"$path.statistics"
+      )
+      forgeTokens <- decodeStartingResources(
+        forgeValues,
+        s"$path.statistics.forgeRequirements"
+      )
+      _ <-
+        if (capacity == 3 || forgeTokens == Tokens(0, 0)) Right(())
+        else
+          Left(
+            Vector(
+              InvalidValue(
+                s"$path.statistics.forgeRequirements",
+                "Forge requirements are only printed on three-slot sites"
+              )
+            )
+          )
+      powers <- requiredStringArray(obj, "powers", path)
+      id <- construct(
+        s"$path.definitionId",
+        SiteId(metadata.definitionId.value)
+      )
     } yield SiteDefinition(
       metadata,
       id,
+      defense,
       capacity,
+      relicSlots,
       recoverDifficulty,
-      tokens
+      tokens,
+      if (capacity == 3) Some(forgeTokens) else None,
+      powers
     )
   }
 
