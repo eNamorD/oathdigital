@@ -14,12 +14,19 @@ object Main {
     val session = SetupSession.demo()
 
     def render(): Unit = adapter.replace { root =>
-      root.innerHTML =
-        """<div class="eyebrow">N2 · HRF UI reuse feasibility</div>
-          |<h1>Oath Digital setup</h1>
-          |<p class="lede">A minimal Scala.js view over Oath's existing
-          |authoritative-domain-event setup engine. Artwork is deliberately
-          |replaced by semantic cards.</p>""".stripMargin
+      root.appendChild(textElement(
+        "div",
+        "eyebrow",
+        "N2 · HRF UI reuse feasibility"
+      ))
+      root.appendChild(textElement("h1", "", "Oath Digital setup"))
+      root.appendChild(textElement(
+        "p",
+        "lede",
+        "A minimal Scala.js view over Oath's existing authoritative-domain-" +
+          "event setup engine. Artwork is deliberately replaced by " +
+          "semantic cards."
+      ))
 
       root.appendChild(status(session))
       val grid = element("div", "grid")
@@ -37,15 +44,17 @@ object Main {
     val message = session.activePlayer match {
       case Some(player) =>
         s"${player.value}: choose any highlighted site for your pawn."
-      case None => "Setup complete. The replayed state matches the live state."
+      case None => "Setup complete. Displayed state is event-replay derived."
     }
-    node.textContent = message
+    node.textContent = session.error.fold(message)(error =>
+      s"Setup error: ${error.message}"
+    )
     node
   }
 
   private def participantPanel(session: SetupSession): dom.Element = {
     val panel = element("section", "panel")
-    panel.innerHTML = "<h2>Ordered participants</h2>"
+    panel.appendChild(textElement("h2", "", "Ordered participants"))
     val list = element("ol", "participants")
     val placed = placements(session.state).map(_.playerId).toSet
     session.participants.foreach { participant =>
@@ -66,7 +75,7 @@ object Main {
       rerender: () => Unit
   ): dom.Element = {
     val panel = element("section", "panel")
-    panel.innerHTML = "<h2>Eight-site setup layout</h2>"
+    panel.appendChild(textElement("h2", "", "Eight-site setup layout"))
     val grouped = Vector(
       "Cradle" -> session.orderedSites.take(2),
       "Provinces" -> session.orderedSites.slice(2, 5),
@@ -96,11 +105,12 @@ object Main {
     button.disabled = !session.legalPlacements.contains(siteId)
     val definition = DemoCatalog.sites.find(_.id == siteId).get
     val pawns = placements(session.state).filter(_.siteId == siteId)
-    button.innerHTML =
-      s"""<span class="site-name">${definition.metadata.name}</span>""" +
-        pawns
-          .map(p => s"""<span class="pawn">● ${p.playerId.value}</span>""")
-          .mkString
+    button.appendChild(textElement("span", "site-name", definition.name))
+    pawns.foreach { pawn =>
+      button.appendChild(
+        textElement("span", "pawn", s"● ${pawn.playerId.value}")
+      )
+    }
     button.onclick = _ => {
       session.place(siteId)
       rerender()
@@ -110,11 +120,11 @@ object Main {
 
   private def eventPanel(
       events: Vector[RecordedEvent[SetupEvent]],
-      replayed: Either[String, SetupState]
+      replayed: Either[SetupSessionError, SetupState]
   ): dom.Element = {
     val panel = element("section", "panel")
     panel.setAttribute("style", "margin-top: 18px")
-    panel.innerHTML = "<h2>Authoritative event stream</h2>"
+    panel.appendChild(textElement("h2", "", "Authoritative event stream"))
     val list = element("ol", "events")
     events.foreach { record =>
       val item = dom.document.createElement("li")
@@ -124,8 +134,8 @@ object Main {
     panel.appendChild(list)
     val replay = element("p", "replay")
     replay.textContent = replayed.fold(
-      error => s"Replay failed: $error",
-      state => s"Browser-memory replay: ${stateName(state)}"
+      error => s"Replay failed: ${error.message}",
+      state => s"Authoritative browser-memory state: ${stateName(state)}"
     )
     panel.appendChild(replay)
     panel
@@ -157,7 +167,17 @@ object Main {
 
   private def element(tag: String, className: String): dom.Element = {
     val node = dom.document.createElement(tag)
-    node.setAttribute("class", className)
+    if (className.nonEmpty) node.setAttribute("class", className)
+    node
+  }
+
+  private def textElement(
+      tag: String,
+      className: String,
+      text: String
+  ): dom.Element = {
+    val node = element(tag, className)
+    node.textContent = text
     node
   }
 }

@@ -7,17 +7,6 @@ object DemoCatalog {
   val ref: CatalogRef =
     CatalogRef("oath-new-foundations", "ui-spike")
 
-  private def metadata(index: Int, name: String): ComponentMetadata =
-    ComponentMetadata(
-      DefinitionId(s"demo-site-$index"),
-      "site",
-      name,
-      None,
-      Vector.empty,
-      TranscriptionMetadata("ui-spike", "demo", "not-catalog-data"),
-      Vector.empty
-    )
-
   private val names = Vector(
     "The Tribunal",
     "Ancient City",
@@ -32,15 +21,15 @@ object DemoCatalog {
   val sites: Vector[SiteDefinition] =
     names.zipWithIndex.map { case (name, index) =>
       SiteDefinition(
-        metadata(index, name),
         SiteId(s"demo-site-$index"),
+        name,
         defense = 1,
         capacity = 3,
         relicSlots = 1,
         recoverDifficulty = None,
         startingResources = Tokens.empty,
         forgeRequirements = None,
-        powers = Vector.empty
+        handlers = Vector.empty
       )
     }
 
@@ -48,14 +37,10 @@ object DemoCatalog {
     ExecutableCatalog(
       schemaVersion = "ui-spike",
       ref = ref,
-      ruleset = RulesetMetadata(
-        ref.ruleset,
-        ref.version,
-        "bounded-setup-domain"
-      ),
-      setupCards = Vector.empty,
-      supplyBoards = Vector.empty,
-      sites = sites,
-      visions = Vector.empty
+      denizens = Vector.empty,
+      relics = Vector.empty,
+      edifices = Vector.empty,
+      legacies = Vector.empty,
+      sites = sites
     )
 }

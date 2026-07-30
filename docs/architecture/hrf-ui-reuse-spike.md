@@ -11,8 +11,10 @@ The page uses an in-memory demo catalog assembled from code so the spike neither
 loads nor changes catalog data. It starts the bounded setup, shows ordered
 participants and the 2/3/3 eight-site layout, makes every in-play site a legal
 choice for the active participant, applies `SetupRules`, records emitted
-`SetupEvent`s, and reconstructs state with `EventReplayEngine` after every
-render.
+`SetupEvent`s, and accepts/displays only state reconstructed by
+`EventReplayEngine`. A replay failure or disagreement with the rule
+transition is an explicit session error and the proposed event batch is not
+accepted.
 
 ## Dependency inventory
 
@@ -65,6 +67,18 @@ Then open `http://localhost:8000/`. Run focused tests with:
 ```text
 ./sbtw frontend/test
 ```
+
+Scala.js tests require Node.js on `PATH`. The verified environment used Node
+from the Codex workspace runtime:
+
+```text
+env PATH=/Users/roman/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:/usr/bin:/bin:/usr/sbin:/sbin \
+  ./sbtw frontend/test frontend/fastLinkJS
+```
+
+Outside Codex, install a supported Node.js release and confirm `node --version`
+works before running the same sbt tasks. Linking the browser page does not
+replace this prerequisite: the Scala.js test framework launches Node.
 
 ## Known integration risks
 
