@@ -57,11 +57,12 @@ object DomainValidation {
         problems += WrongRegionSize(region, expected, actual)
     }
 
-    map.inPlay.groupBy(identity).foreach {
-      case (site, occurrences) if occurrences.size > 1 =>
-        problems += DuplicateMapSite(site)
-      case _ => ()
-    }
+    map.inPlay
+      .groupBy(identity)
+      .toVector
+      .collect { case (site, occurrences) if occurrences.size > 1 => site }
+      .sortBy(_.value)
+      .foreach(site => problems += DuplicateMapSite(site))
 
     val inPlay = map.inPlay.toSet
     (inPlay -- map.sites.keySet).toVector.sortBy(_.value).foreach { site =>
@@ -74,11 +75,12 @@ object DomainValidation {
     val atlasSites = game.campaign.atlas.entries.collect {
       case stored: AtlasEntry.StoredSite => stored.id
     }
-    atlasSites.groupBy(identity).foreach {
-      case (site, occurrences) if occurrences.size > 1 =>
-        problems += DuplicateAtlasSite(site)
-      case _ => ()
-    }
+    atlasSites
+      .groupBy(identity)
+      .toVector
+      .collect { case (site, occurrences) if occurrences.size > 1 => site }
+      .sortBy(_.value)
+      .foreach(site => problems += DuplicateAtlasSite(site))
     (inPlay intersect atlasSites.toSet).toVector.sortBy(_.value).foreach {
       site =>
         problems += SiteInMapAndAtlas(site)
@@ -89,21 +91,27 @@ object DomainValidation {
         problems += MissingFoundation(number)
     }
 
-    game.campaign.lineages.foreach { case (key, lineage) =>
-      if (key != lineage.id)
-        problems += LineageKeyMismatch(key, lineage.id)
-    }
+    game.campaign.lineages.toVector
+      .sortBy(_._1.value)
+      .foreach { case (key, lineage) =>
+        if (key != lineage.id)
+          problems += LineageKeyMismatch(key, lineage.id)
+      }
 
-    game.current.players.groupBy(_.player).foreach {
-      case (player, occurrences) if occurrences.size > 1 =>
-        problems += DuplicatePlayer(player)
-      case _ => ()
-    }
-    game.current.players.groupBy(_.lineage).foreach {
-      case (lineage, occurrences) if occurrences.size > 1 =>
-        problems += DuplicateLineage(lineage)
-      case _ => ()
-    }
+    game.current.players
+      .groupBy(_.player)
+      .toVector
+      .collect { case (player, occurrences) if occurrences.size > 1 => player }
+      .sortBy(_.value)
+      .foreach(player => problems += DuplicatePlayer(player))
+    game.current.players
+      .groupBy(_.lineage)
+      .toVector
+      .collect {
+        case (lineage, occurrences) if occurrences.size > 1 => lineage
+      }
+      .sortBy(_.value)
+      .foreach(lineage => problems += DuplicateLineage(lineage))
 
     game.current.players.foreach { player =>
       if (!game.campaign.lineages.contains(player.lineage))

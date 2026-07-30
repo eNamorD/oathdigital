@@ -24,7 +24,7 @@ final case class PlayerState(
 )
 
 /**
- * Persistent lineage facts. A starting adviser is populated between games and
+ * Persistent lineage facts. Starting advisers are populated between games and
  * moved into the active player's adviser container during setup.
  */
 final case class LineageState(

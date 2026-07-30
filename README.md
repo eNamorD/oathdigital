@@ -15,6 +15,9 @@ depend on HRF's complete Scala.js framework.
 
 ## Architecture
 
+The durable core-domain decisions and milestone acceptance criteria are
+recorded in [`docs/architecture/core-domain-model.md`](docs/architecture/core-domain-model.md).
+
 The rules engine in `oathdigital.engine` has no UI or asset dependency.
 `oathdigital.presentation` is a small boundary between rules/application code
 and a future terminal, web, or native renderer:

@@ -74,4 +74,32 @@ class DomainValidationSuite extends munit.FunSuite {
     )
     assert(problems.contains(DomainProblem.UnknownTitleHolder(absentPlayer)))
   }
+
+  test("duplicate identity problems have deterministic ID order") {
+    val alpha = player.copy(
+      player = PlayerId("alpha"),
+      advisers = Vector.empty
+    )
+    val zeta = player.copy(
+      player = PlayerId("zeta"),
+      advisers = Vector.empty
+    )
+    val invalid = game.copy(
+      current = game.current.copy(
+        players = Vector(zeta, alpha, zeta, alpha)
+      )
+    )
+
+    val duplicates = DomainValidation
+      .validate(invalid)
+      .collect { case problem: DomainProblem.DuplicatePlayer => problem }
+
+    assertEquals(
+      duplicates,
+      Vector(
+        DomainProblem.DuplicatePlayer(PlayerId("alpha")),
+        DomainProblem.DuplicatePlayer(PlayerId("zeta"))
+      )
+    )
+  }
 }
