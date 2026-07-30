@@ -7,13 +7,37 @@ been reviewed.
 
 ## Now
 
-No implementation task is active. The next task should be selected from
-**Next** after reviewing the completed parallel milestone.
+- [ ] **Batch A — Frontend client boundary and testing polish**
+  - Owner: HRF UI reuse task.
+  - Implement the X1 manual-testing controls, World layout, player naming and
+    accessible color treatment.
+  - Introduce a transport-neutral client boundary while retaining local debug
+    mode; do not make browser-generated events authoritative in production.
+
+- [ ] **Batch B — HSQLDB event-journal adapter and server foundation**
+  - Owner: Event-store application-service task.
+  - Implement the X2 database adapter and server-side command boundary without
+    editing frontend or setup-domain sources.
+
+- [ ] **Batch C — Exile-only complete-setup engine slice**
+  - Owner: Bounded setup task.
+  - Implement X4 as authoritative commands/events/replay without editing
+    frontend, database or server sources.
+
+- [ ] **Batch integration gate**
+  - Connect the completed browser boundary to the server-authoritative API,
+    adapt the UI to the expanded setup state, review all diffs, and run the
+    combined JVM, Scala.js, database-restart and browser test suites.
 
 ## Next
 
 - [ ] **X1 — Integrate and maintain the frontend architecture**
-  - Apply the outcome of N2 without changing the authoritative-event decision.
+  - Use a shared-engine/server-authority boundary. Portable domain, command,
+    event, codec and public-projection code may compile for JVM and Scala.js,
+    but only the JVM server validates commands and appends production events.
+  - The browser submits commands with an expected event position, consumes
+    accepted events or player-scoped projections, and refreshes on conflicts.
+    Local browser authority is limited to explicit debug/manual-test sessions.
   - Include the following minor manual-testing and presentation batch:
     - Add a clearly labeled debug **Restart** control that resets the current
       test session to its designated initial state, normally the start of the
