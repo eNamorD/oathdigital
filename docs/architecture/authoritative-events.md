@@ -32,10 +32,16 @@ format. Readers reject unsupported format versions, unknown event types,
 malformed identities, catalog disagreement, and non-contiguous sequence
 positions rather than guessing or defaulting.
 
-The initial format has no migration machinery. A future format change must
-define an explicit version and migration/dual-reader policy before writers emit
-it. Event payload evolution should prefer compatible additive fields when
-possible, but readers remain strict about required authoritative data.
+The v1 bounded pawn-placement stream remains byte-for-byte stable and retains
+its checked-in golden fixture. Complete exile-only first-game setup uses a
+separate v2 envelope/vocabulary (`setup.first-game-started`,
+`setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
+`setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
+`FirstGameEventWire` is the v2 reader/writer. This explicit dual-codec policy
+avoids silently defaulting new authoritative fields when reading v1 history.
+No automatic v1-to-v2 migration is claimed because a v1 stream did not record
+the denizen, relic, adviser, color, first-player, or supporting-world outcomes
+needed to construct the v2 aggregate.
 
 The catalog reference is pinned in every envelope. For `setup.started`, it is
 also present in the payload because it is domain data; the codec requires the

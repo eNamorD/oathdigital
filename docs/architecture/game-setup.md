@@ -1,6 +1,7 @@
 # Bounded game setup
 
-Status: implemented vertical slice, July 2026.
+Status: bounded pawn placement and exile-only first-game slices implemented,
+July 2026.
 
 This slice proves typed commands, domain events, optimistic event persistence,
 and deterministic replay without constructing a complete `OathGame`.
@@ -35,7 +36,48 @@ The setup events use the versioned durable format described in
 [`authoritative-events.md`](authoritative-events.md). Commands are not part of
 that wire format.
 
-This slice does not initialize player boards or Supply, advisers, legacies,
-edifices, Foundations, the Chronicle, card decks, resources, roles, or a full
-`OathGame`. It does not implement UI, database/network storage, snapshots, or
-gameplay. Those mechanics require their own source-verified rules slices.
+The v1 bounded slice does not initialize player boards or Supply, advisers,
+legacies, edifices, Foundations, the Chronicle, card decks, resources, roles,
+or a full `OathGame`. It does not implement UI, database/network storage,
+snapshots, or gameplay.
+
+## Exile-only complete first-game endpoint
+
+`FirstGameSetupRules` is a separate v2 state machine so the v1 event classes,
+commands, replay behavior, and checked-in golden bytes remain unchanged. It
+starts at `NoGame`, records a complete `FirstGameSetupPlan`, reuses the existing
+typed `SetupCommand.PlacePawn`, records each starting adviser choice, and ends
+at `Ready(ReadyFirstGame)`. The endpoint contains a structurally valid
+`OathGame`; its selected first player is active at `Phase.Wake`, meaning they
+are ready to begin their first turn. Wake behavior is not executed here.
+
+The plan records every external outcome that setup would randomize:
+
+- seating, stable player/color/lineage identities, and first player;
+- the ordered eight selected sites;
+- the 60-denizen pool order and exact final World Deck order;
+- all five fixed first-game Vision identities and their packet positions;
+- the complete ordinary-relic order; and
+- the matching ruined edifice chosen for each selected Homeland.
+
+Replay applies these recorded values and never invokes randomness. The engine
+validates 10 denizens per suit, the two-card regional discard seeds, three-card
+player hands, the 10-denizen/2-Vision and 15-denizen/3-Vision packets, complete
+ordinary-relic conservation, matching Homeland/edifice suits, placement order,
+and adviser ownership.
+
+The built aggregate includes site starting resources, capacity bandits,
+facedown site relics, ruined Homeland edifices, regional discards, advisers,
+the World and relic decks, starting Exile board wealth and full Supply, banners,
+tracks, Oath of Supremacy, an empty Oathkeeper title, fixed favor banks, and
+six normal Foundations with no alteration sources.
+
+This inclusion is sourced to Combined Rulebook pp. 6-7 and the New Foundations
+first-game clarification on p. 8. The implementation deliberately excludes
+Legacy draws/choices/effects, Chancellor/Citizen/Imperial setup, campaign
+restoration, generic Foundation interpretation, Chronicle progression, and all
+Wake/Act/Rest behavior. It also does not claim the contents of the
+Dispossessed or the order of the 16 unselected Atlas sites; neither is needed
+to make the selected world, player state, and active decks structurally valid
+for this endpoint. The Grand Scepter is excluded from the ordinary relic
+shuffle because it is an Imperial component.
