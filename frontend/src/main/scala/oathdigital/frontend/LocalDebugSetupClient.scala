@@ -1,10 +1,12 @@
 package oathdigital.frontend
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.catalog.SiteDefinition
 import oathdigital.model.{LineageId, PlayerId, SiteId}
 import oathdigital.setup._
 import oathdigital.setup.SetupCommand.{BeginSetup, PlacePawn}
 import oathdigital.setup.SetupState.NotStarted
+import scala.concurrent.Future
 
 /**
  * Browser-memory authority for debug/manual testing only.
@@ -17,6 +19,9 @@ final class LocalDebugSetupClient private (
     val rules: SetupRules,
     val participants: Vector[SetupParticipant],
     val orderedSites: Vector[SiteId],
+    playerDisplays: Vector[PlayerDisplay],
+    worldDisplay: WorldDisplay,
+    startupFailure: Option[SetupClientFailure],
     designatedInitialEvents: Vector[SetupEvent],
     designatedInitialState: SetupState
 ) extends SetupClient
@@ -27,30 +32,48 @@ final class LocalDebugSetupClient private (
   private var retired =
     Vector.empty[(DebugStreamId, Vector[RecordedEvent[SetupEvent]])]
 
-  override def projection: SetupProjection = {
+  private def currentProjection: SetupProjection = {
     val active = activePlayer(current)
     SetupProjection(
       activeStreamId,
+      stream.size.toLong,
       current,
-      participants,
-      orderedSites,
+      playerDisplays,
+      worldDisplay,
       active,
       active.fold(Vector.empty[SiteId])(_ => orderedSites),
       stream
     )
   }
 
+  override def load()
+      : Future[Either[SetupClientFailure, SetupProjection]] =
+    Future.successful(startupFailure.toLeft(currentProjection))
+
+  override def refresh()
+      : Future[Either[SetupClientFailure, SetupProjection]] =
+    Future.successful(startupFailure.toLeft(currentProjection))
+
   def retiredStreams
       : Vector[(DebugStreamId, Vector[RecordedEvent[SetupEvent]])] = retired
 
   override def submit(
-      expectedPosition: Long,
+      expectedNextSequence: Long,
+      command: SetupClientCommand
+  ): Future[Either[SetupClientFailure, AcceptedSetupUpdate]] =
+    Future.successful(startupFailure match {
+      case Some(failure) => Left(failure)
+      case None => submitNow(expectedNextSequence, command)
+    })
+
+  private def submitNow(
+      expectedNextSequence: Long,
       command: SetupClientCommand
   ): Either[SetupClientFailure, AcceptedSetupUpdate] =
-    if (expectedPosition != stream.size.toLong)
+    if (expectedNextSequence != stream.size.toLong)
       Left(
         SetupClientFailure.ExpectedPositionConflict(
-          expectedPosition,
+          expectedNextSequence,
           stream.size.toLong
         )
       )
@@ -74,6 +97,13 @@ final class LocalDebugSetupClient private (
       }
 
   override def restartDebug()
+      : Future[Either[SetupClientFailure, DebugRestarted]] =
+    Future.successful(startupFailure match {
+      case Some(failure) => Left(failure)
+      case None => restartNow()
+    })
+
+  private def restartNow()
       : Either[SetupClientFailure, DebugRestarted] = {
     val nextId = DebugStreamId(activeStreamId.value + 1)
     val fresh = LocalDebugSetupClient.record(designatedInitialEvents, 0)
@@ -85,7 +115,7 @@ final class LocalDebugSetupClient private (
         activeStreamId = nextId
         stream = fresh
         current = replayDerived
-        DebugRestarted(previousId, nextId, projection)
+        DebugRestarted(previousId, nextId, currentProjection)
       }
   }
 
@@ -100,7 +130,7 @@ final class LocalDebugSetupClient private (
       .map { replayDerived =>
         stream = candidate
         current = replayDerived
-        AcceptedSetupUpdate(projection, accepted)
+        AcceptedSetupUpdate(currentProjection, accepted)
       }
   }
 
@@ -120,9 +150,30 @@ object LocalDebugSetupClient {
       SetupParticipant(PlayerId("Red Citizen"), LineageId("Red"))
     )
 
+  val defaultPlayers: Vector[PlayerDisplay] =
+    Vector(
+      PlayerDisplay(
+        PlayerId("Chancellor"),
+        "Chancellor",
+        PlayerColorToken.Purple
+      ),
+      PlayerDisplay(
+        PlayerId("Blue Exile"),
+        "Blue Exile",
+        PlayerColorToken.Blue
+      ),
+      PlayerDisplay(
+        PlayerId("Red Citizen"),
+        "Red Citizen",
+        PlayerColorToken.Red
+      )
+    )
+
   def demo(): LocalDebugSetupClient = {
     val rules = new SetupRules(DemoCatalog.catalog)
     val sites = DemoCatalog.sites.map(_.id)
+    val worldResult = buildWorld(sites, DemoCatalog.sites)
+    val world = worldResult.getOrElse(WorldDisplay("The World", Vector.empty))
     val transition = rules
       .handle(
         NotStarted,
@@ -141,9 +192,44 @@ object LocalDebugSetupClient {
       rules,
       defaultParticipants,
       sites,
+      defaultPlayers,
+      world,
+      worldResult.left.toOption,
       transition.events,
       replayed
     )
+  }
+
+  private[frontend] def buildWorld(
+      orderedSites: Vector[SiteId],
+      definitions: Vector[SiteDefinition]
+  ): Either[SetupClientFailure, WorldDisplay] = {
+    val byId = definitions.map(site => site.id -> site).toMap
+    orderedSites
+      .foldLeft[
+        Either[SetupClientFailure, Vector[SiteDisplay]]
+      ](Right(Vector.empty)) { (result, siteId) =>
+        result.flatMap { accumulated =>
+          byId
+            .get(siteId)
+            .map(site =>
+              Right(accumulated :+ SiteDisplay(site.id, site.name))
+            )
+            .getOrElse(Left(
+              SetupClientFailure.MissingSiteDefinition(siteId)
+            ))
+        }
+      }
+      .map { sites =>
+        WorldDisplay(
+          "The World",
+          Vector(
+            RegionDisplay("Cradle", sites.take(2)),
+            RegionDisplay("Provinces", sites.slice(2, 5)),
+            RegionDisplay("Hinterland", sites.slice(5, 8))
+          )
+        )
+      }
   }
 
   private[frontend] def record(

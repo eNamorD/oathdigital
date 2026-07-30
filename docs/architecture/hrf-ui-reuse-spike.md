@@ -82,9 +82,11 @@ replace this prerequisite: the Scala.js test framework launches Node.
 
 ## Frontend client boundary
 
-`SetupClient` is transport-neutral. The browser submits a transient
-`SetupClientCommand` with the projection's `expectedPosition` and receives
-either:
+`SetupClient` is transport-neutral and asynchronous. `load`, `refresh`, and
+`submit` return `Future[Either[SetupClientFailure, ...]]`, allowing a later
+Scala.js HTTP adapter to perform network IO without changing the controller.
+The browser submits a transient `SetupClientCommand` with the projection's
+explicit authoritative `nextSequence` and receives either:
 
 - an `AcceptedSetupUpdate` containing newly accepted events and the resulting
   projection;
@@ -94,6 +96,18 @@ either:
 The contract intentionally does not define HTTP routes or serialized payloads.
 A production adapter is expected to obtain accepted events and player-scoped
 projections from the authoritative JVM application service.
+
+`nextSequence` is supplied independently of `visibleEvents`. A player-scoped
+projection may filter or omit events without changing optimistic-concurrency
+semantics. On an `ExpectedPositionConflict`, the controller calls `refresh` to
+load the newer authoritative projection.
+
+Projections contain display-ready `PlayerDisplay` and `WorldDisplay` values.
+Sites therefore render from projected IDs and labels rather than reaching into
+the debug catalog. Player colors use explicit `PlayerColorToken` values; an
+unknown player safely falls back to the neutral token. Missing site definitions
+while building the local debug projection produce a typed
+`MissingSiteDefinition` failure instead of a render-time exception.
 
 `LocalDebugSetupClient` implements the same boundary for manual browser tests.
 It is explicitly browser-memory authoritative and must not be used as the

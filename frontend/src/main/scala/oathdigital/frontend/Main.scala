@@ -2,8 +2,8 @@ package oathdigital.frontend
 
 import org.scalajs.dom
 import oathdigital.engine.RecordedEvent
-import oathdigital.model.{PlayerId, SiteId}
 import oathdigital.setup.{SetupEvent, SetupState}
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -12,11 +12,10 @@ object Main {
     }
     val adapter = new HrfDomAdapter(mount)
     val client = LocalDebugSetupClient.demo()
+    var currentProjection = Option.empty[SetupProjection]
     var lastFailure = Option.empty[SetupClientFailure]
 
     def render(): Unit = adapter.replace { root =>
-      val projection = client.projection
-      val view = SetupViewModel.from(projection)
       root.appendChild(textElement(
         "div",
         "eyebrow",
@@ -31,21 +30,66 @@ object Main {
           "semantic cards."
       ))
 
-      root.appendChild(debugToolbar(() => {
-        lastFailure = client.restartDebug().left.toOption
-        render()
-      }))
-      root.appendChild(status(projection, lastFailure))
-      root.appendChild(participantPanel(view))
-      root.appendChild(boardPanel(client, projection, view, failure => {
-        lastFailure = failure
-        render()
-      }))
-      root.appendChild(eventPanel(projection.acceptedEvents, projection.state))
+      currentProjection match {
+        case None =>
+          root.appendChild(textElement(
+            "div",
+            "status",
+            lastFailure.fold("Loading projection…")(failure =>
+              s"Client error: ${failure.message}"
+            )
+          ))
+        case Some(projection) =>
+          val view = SetupViewModel.from(projection)
+          root.appendChild(debugToolbar(() => {
+            client.restartDebug().foreach { result =>
+              result match {
+                case Right(restarted) =>
+                  currentProjection = Some(restarted.projection)
+                  lastFailure = None
+                case Left(failure) => lastFailure = Some(failure)
+              }
+              render()
+            }
+          }))
+          root.appendChild(status(projection, lastFailure))
+          root.appendChild(participantPanel(view))
+          root.appendChild(boardPanel(
+            client,
+            projection,
+            view,
+            result => handleSubmit(client, result, (refreshed, failure) => {
+              refreshed.foreach(value => currentProjection = Some(value))
+              lastFailure = failure
+              render()
+            })
+          ))
+          root.appendChild(eventPanel(projection.visibleEvents, projection))
+      }
     }
 
     render()
+    client.load().foreach { loaded =>
+      currentProjection = loaded.toOption
+      lastFailure = loaded.left.toOption
+      render()
+    }
   }
+
+  private def handleSubmit(
+      client: SetupClient,
+      result: Either[SetupClientFailure, AcceptedSetupUpdate],
+      finish: (Option[SetupProjection], Option[SetupClientFailure]) => Unit
+  ): Unit =
+    result match {
+      case Right(update) => finish(Some(update.projection), None)
+      case Left(conflict: SetupClientFailure.ExpectedPositionConflict) =>
+        client.refresh().foreach {
+          case Right(refreshed) => finish(Some(refreshed), Some(conflict))
+          case Left(failure) => finish(None, Some(failure))
+        }
+      case Left(failure) => finish(None, Some(failure))
+    }
 
   private def debugToolbar(restart: () => Unit): dom.Element = {
     val toolbar = element("div", "debug-toolbar")
@@ -78,7 +122,9 @@ object Main {
       case None =>
         projection.activePlayer match {
           case Some(player) =>
-            node.appendChild(playerReference(player))
+            node.appendChild(playerReference(
+              SetupViewModel.player(projection, player)
+            ))
             node.appendChild(dom.document.createTextNode(
               ": choose any highlighted site for your pawn."
             ))
@@ -96,7 +142,11 @@ object Main {
     val list = element("ol", "participants")
     view.players.foreach { player =>
       val item = dom.document.createElement("li")
-      item.appendChild(playerReference(player.id))
+      item.appendChild(playerReference(PlayerDisplay(
+        player.id,
+        player.text,
+        player.color
+      )))
       if (player.placed)
         item.appendChild(dom.document.createTextNode(" · placed"))
       if (player.active) item.classList.add("participant-active")
@@ -110,7 +160,7 @@ object Main {
       client: SetupClient,
       projection: SetupProjection,
       view: SetupViewModel,
-      finish: Option[SetupClientFailure] => Unit
+      finish: Either[SetupClientFailure, AcceptedSetupUpdate] => Unit
   ): dom.Element = {
     val panel = element("section", "panel world")
     val heading = textElement("h2", "", view.worldTitle)
@@ -137,35 +187,37 @@ object Main {
       client: SetupClient,
       projection: SetupProjection,
       view: SetupViewModel,
-      siteId: SiteId,
-      finish: Option[SetupClientFailure] => Unit
+      site: SiteDisplay,
+      finish: Either[SetupClientFailure, AcceptedSetupUpdate] => Unit
   ): dom.html.Button = {
     val button =
       dom.document.createElement("button").asInstanceOf[dom.html.Button]
     button.className = "site"
-    button.disabled = !projection.legalPlacements.contains(siteId)
-    val definition = DemoCatalog.sites.find(_.id == siteId).get
-    val pawns = view.placements.filter(_.siteId == siteId)
-    button.appendChild(textElement("span", "site-name", definition.name))
+    button.disabled = !projection.legalPlacements.contains(site.id)
+    val pawns = view.placements.filter(_.siteId == site.id)
+    button.appendChild(textElement("span", "site-name", site.label))
     pawns.foreach { pawn =>
       val marker = element("span", "pawn")
       marker.appendChild(dom.document.createTextNode("● "))
-      marker.appendChild(playerReference(pawn.playerId))
+      marker.appendChild(playerReference(
+        SetupViewModel.player(projection, pawn.playerId)
+      ))
       button.appendChild(marker)
     }
     button.onclick = _ => {
-      val result = client.submit(
-        projection.expectedPosition,
-        SetupClientCommand.PlacePawn(siteId)
-      )
-      finish(result.left.toOption)
+      client
+        .submit(
+          projection.nextSequence,
+          SetupClientCommand.PlacePawn(site.id)
+        )
+        .foreach(finish)
     }
     button
   }
 
   private def eventPanel(
       events: Vector[RecordedEvent[SetupEvent]],
-      state: SetupState
+      projection: SetupProjection
   ): dom.Element = {
     val panel = element("section", "panel")
     panel.setAttribute("style", "margin-top: 18px")
@@ -178,7 +230,9 @@ object Main {
           item.textContent = "SetupStarted(participants, catalog, 8 sites)"
         case SetupEvent.PawnPlaced(player, site) =>
           item.appendChild(dom.document.createTextNode("PawnPlaced("))
-          item.appendChild(playerReference(player))
+          item.appendChild(playerReference(
+            SetupViewModel.player(projection, player)
+          ))
           item.appendChild(dom.document.createTextNode(s", ${site.value})"))
         case SetupEvent.SetupCompleted =>
           item.textContent = "SetupCompleted"
@@ -187,7 +241,8 @@ object Main {
     }
     panel.appendChild(list)
     val replay = element("p", "replay")
-    replay.textContent = s"Accepted-event projection: ${stateName(state)}"
+    replay.textContent =
+      s"Accepted-event projection: ${stateName(projection.state)}"
     panel.appendChild(replay)
     panel
   }
@@ -201,13 +256,13 @@ object Main {
         s"Completed (${value.pawnPlacements.size} pawns)"
     }
 
-  private def playerReference(playerId: PlayerId): dom.Element = {
+  private def playerReference(player: PlayerDisplay): dom.Element = {
     val node = textElement(
       "span",
-      s"player-ref ${SetupViewModel.colorClass(playerId)}",
-      playerId.value
+      s"player-ref ${player.color.cssClass}",
+      player.label
     )
-    node.setAttribute("data-player-name", playerId.value)
+    node.setAttribute("data-player-id", player.id.value)
     node
   }
 

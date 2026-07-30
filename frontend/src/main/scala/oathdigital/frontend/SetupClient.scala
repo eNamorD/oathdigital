@@ -2,9 +2,38 @@ package oathdigital.frontend
 
 import oathdigital.engine.RecordedEvent
 import oathdigital.model.{PlayerId, SiteId}
-import oathdigital.setup.{SetupEvent, SetupParticipant, SetupState, SetupViolation}
+import oathdigital.setup.{SetupEvent, SetupState, SetupViolation}
+import scala.concurrent.Future
 
 final case class DebugStreamId(value: Long) extends AnyVal
+
+sealed trait PlayerColorToken extends Product with Serializable {
+  def cssClass: String
+}
+object PlayerColorToken {
+  case object Purple extends PlayerColorToken {
+    override val cssClass: String = "player-purple"
+  }
+  case object Blue extends PlayerColorToken {
+    override val cssClass: String = "player-blue"
+  }
+  case object Red extends PlayerColorToken {
+    override val cssClass: String = "player-red"
+  }
+  case object Neutral extends PlayerColorToken {
+    override val cssClass: String = "player-neutral"
+  }
+}
+
+final case class PlayerDisplay(
+    id: PlayerId,
+    label: String,
+    color: PlayerColorToken
+)
+
+final case class SiteDisplay(id: SiteId, label: String)
+final case class RegionDisplay(name: String, sites: Vector[SiteDisplay])
+final case class WorldDisplay(title: String, regions: Vector[RegionDisplay])
 
 sealed trait SetupClientCommand extends Product with Serializable
 object SetupClientCommand {
@@ -13,15 +42,14 @@ object SetupClientCommand {
 
 final case class SetupProjection(
     streamId: DebugStreamId,
+    nextSequence: Long,
     state: SetupState,
-    participants: Vector[SetupParticipant],
-    orderedSites: Vector[SiteId],
+    players: Vector[PlayerDisplay],
+    world: WorldDisplay,
     activePlayer: Option[PlayerId],
     legalPlacements: Vector[SiteId],
-    acceptedEvents: Vector[RecordedEvent[SetupEvent]]
-) {
-  def expectedPosition: Long = acceptedEvents.size.toLong
-}
+    visibleEvents: Vector[RecordedEvent[SetupEvent]]
+)
 
 sealed trait SetupClientFailure extends Product with Serializable {
   def message: String
@@ -51,6 +79,12 @@ object SetupClientFailure {
     override val message: String =
       "command transition diverged from accepted-event replay"
   }
+
+  final case class MissingSiteDefinition(siteId: SiteId)
+      extends SetupClientFailure {
+    override val message: String =
+      s"projection has no display definition for site ${siteId.value}"
+  }
 }
 
 final case class AcceptedSetupUpdate(
@@ -66,11 +100,12 @@ final case class AcceptedSetupUpdate(
  * player-scoped projection. No HTTP wire format is defined here.
  */
 trait SetupClient {
-  def projection: SetupProjection
+  def load(): Future[Either[SetupClientFailure, SetupProjection]]
+  def refresh(): Future[Either[SetupClientFailure, SetupProjection]]
   def submit(
-      expectedPosition: Long,
+      expectedNextSequence: Long,
       command: SetupClientCommand
-  ): Either[SetupClientFailure, AcceptedSetupUpdate]
+  ): Future[Either[SetupClientFailure, AcceptedSetupUpdate]]
 }
 
 final case class DebugRestarted(
@@ -81,5 +116,5 @@ final case class DebugRestarted(
 
 /** Explicit debug-only lifecycle; production clients must not implement it. */
 trait LocalDebugControl {
-  def restartDebug(): Either[SetupClientFailure, DebugRestarted]
+  def restartDebug(): Future[Either[SetupClientFailure, DebugRestarted]]
 }
