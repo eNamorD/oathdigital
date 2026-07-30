@@ -1,6 +1,10 @@
 package oathdigital.engine
 
-/** A command whose result must be durable and replayable. */
+/**
+ * Legacy HRF-inspired action API retained for compatibility and tests.
+ *
+ * Production rules persist resulting domain events, not actions.
+ */
 trait Action extends Product with Serializable
 
 /** What the rules engine expects after applying an action. */
@@ -23,7 +27,7 @@ trait Rules[S] {
 
 final case class RuleViolation(message: String)
 
-/** An action paired with its zero-based position in the authoritative stream. */
+/** An action paired with its zero-based position in a legacy action stream. */
 final case class RecordedAction(index: Long, action: Action)
 
 sealed trait AppendResult
@@ -33,7 +37,7 @@ object AppendResult {
 }
 
 /**
- * Append-only persistence boundary.
+ * Legacy append-only action boundary.
  *
  * `expectedIndex` provides optimistic concurrency for asynchronous turns:
  * only a client that has consumed the complete stream can append to it.
@@ -66,7 +70,7 @@ final class InMemoryJournal extends Journal {
   }
 }
 
-/** Deterministically reconstructs game state from the authoritative action stream. */
+/** Deterministically replays a legacy action stream for compatibility. */
 final class ReplayEngine[S](rules: Rules[S]) {
   def replay(actions: Iterable[RecordedAction]): Either[ReplayFailure, S] = {
     actions.foldLeft[Either[ReplayFailure, S]](Right(rules.initialState)) {

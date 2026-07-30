@@ -31,7 +31,11 @@ catalog projection containing setup cards, Supply boards, and sites.
 
 ## Deliberate deferrals
 
+The setup events use the versioned durable format described in
+[`authoritative-events.md`](authoritative-events.md). Commands are not part of
+that wire format.
+
 This slice does not initialize player boards or Supply, advisers, legacies,
 edifices, Foundations, the Chronicle, card decks, resources, roles, or a full
-`OathGame`. It does not implement UI, persistence codecs, network storage, or
+`OathGame`. It does not implement UI, database/network storage, snapshots, or
 gameplay. Those mechanics require their own source-verified rules slices.
