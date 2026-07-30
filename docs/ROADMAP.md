@@ -7,31 +7,8 @@ been reviewed.
 
 ## Now
 
-- [ ] **N1 — Component catalog refactor**
-  - Owner: Oath Digital - Catalog Loader task
-  - Refine the catalog's runtime projections and source-derived data.
-  - Acceptance: catalog validation and the complete Scala test suite pass.
-
-- [ ] **N2 — HRF UI reuse feasibility spike**
-  - Establish a Scala.js browser module.
-  - Identify the smallest worthwhile set of HRF UI/runtime sources to reuse.
-  - Render the bounded setup state with image-independent fallbacks.
-  - Make legal setup choices interactive and show event/replay results.
-  - Document every reused, adapted, and rejected HRF source area.
-
-- [ ] **N3 — Event-store application service**
-  - Load an authoritative event stream and reconstruct setup state.
-  - Validate a transient command and append emitted events using an expected
-    stream index.
-  - Return typed conflicts and validation failures.
-  - Keep storage abstract and deterministic; do not choose a database yet.
-
-- [ ] **N4 — Rulebook implementation traceability**
-  - Turn the existing source-cited rules ingestion into an implementation
-    matrix.
-  - Track each rule area as unimplemented, partial, implemented, tested, or
-    blocked.
-  - Preserve rulebook/page citations and unresolved New Foundations questions.
+No implementation task is active. The next task should be selected from
+**Next** after reviewing the completed parallel milestone.
 
 ## Next
 
@@ -77,6 +54,17 @@ been reviewed.
 - [x] Implement the bounded setup command/event/replay slice.
 - [x] Choose authoritative domain events and document the decision.
 - [x] Add explicit, versioned setup-event serialization and compatibility tests.
+- [x] Refactor the runtime catalog into five complete component families while
+  retaining ingestion evidence and manual-review data separately.
+- [x] Complete the HRF UI reuse spike and deliver an interactive Scala.js setup
+  page whose displayed state is derived from authoritative-event replay.
+- [x] Add the storage-neutral setup application service, in-memory repository,
+  optimistic-concurrency contract, and typed failure handling.
+- [x] Add source-cited rulebook implementation traceability without treating
+  placeholder domain types as implemented rules.
+
+The combined milestone passes 71 JVM tests, 5 Scala.js tests, the Scala.js
+linker, and runtime-catalog validation.
 
 ## Coordination rules
 
