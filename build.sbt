@@ -16,3 +16,31 @@ lazy val root = (project in file("."))
       "-Xlint"
     )
   )
+
+lazy val frontend = (project in file("frontend"))
+  .enablePlugins(ScalaJSPlugin)
+  .settings(
+    name := "oathdigital-frontend",
+    scalaJSUseMainModuleInitializer := true,
+    Compile / mainClass := Some("oathdigital.frontend.Main"),
+    Compile / unmanagedSources ++= {
+      val shared = (LocalRootProject / baseDirectory).value / "src" / "main" / "scala"
+      Seq(
+        shared / "oathdigital" / "model" / "Identity.scala",
+        shared / "oathdigital" / "model" / "Resources.scala",
+        shared / "oathdigital" / "catalog" / "CatalogModel.scala",
+        shared / "oathdigital" / "engine" / "Engine.scala",
+        shared / "oathdigital" / "setup" / "Setup.scala"
+      )
+    },
+    libraryDependencies ++= Seq(
+      "org.scala-js" %%% "scalajs-dom" % "2.8.0",
+      "org.scalameta" %%% "munit" % "1.0.4" % Test
+    ),
+    scalacOptions ++= Seq(
+      "-deprecation",
+      "-feature",
+      "-unchecked",
+      "-Xlint"
+    )
+  )
