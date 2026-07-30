@@ -1,76 +1,124 @@
 package oathdigital.frontend
 
 import munit.FunSuite
-import oathdigital.engine.RecordedEvent
-import oathdigital.model.PlayerId
-import oathdigital.setup.{SetupEvent, SetupState}
-import oathdigital.setup.SetupEvent.PawnPlaced
+import oathdigital.setup.SetupState
 
-class SetupSessionSuite extends FunSuite {
+class LocalDebugSetupClientSuite extends FunSuite {
   test("demo exposes all eight legal sites to the ordered active participant") {
-    val session = SetupSession.demo()
-
-    assertEquals(session.activePlayer, Some(session.participants.head.playerId))
-    assertEquals(session.legalPlacements, session.orderedSites)
-    assertEquals(session.events.map(_.index), Vector(0L))
-  }
-
-  test("placements emit events and expose the replay-derived state") {
-    val session = SetupSession.demo()
-
-    session.orderedSites.take(3).foreach { site =>
-      assert(session.place(site).isRight)
-    }
-
-    assert(session.state.isInstanceOf[SetupState.Completed])
-    assertEquals(session.activePlayer, None)
-    assertEquals(session.legalPlacements, Vector.empty)
-    assertEquals(session.events.size, 5)
-    assertEquals(session.events.last.event, SetupEvent.SetupCompleted)
-    assertEquals(session.replayedState, Right(session.state))
-  }
-
-  test("event positions remain contiguous when final command emits two events") {
-    val session = SetupSession.demo()
-    session.orderedSites.take(3).foreach(session.place)
+    val client = LocalDebugSetupClient.demo()
+    val projection = client.projection
 
     assertEquals(
-      session.events.map(_.index),
+      projection.activePlayer,
+      Some(projection.participants.head.playerId)
+    )
+    assertEquals(projection.legalPlacements, projection.orderedSites)
+    assertEquals(projection.acceptedEvents.map(_.index), Vector(0L))
+  }
+
+  test("accepted update returns only newly accepted events and projection") {
+    val client = LocalDebugSetupClient.demo()
+
+    val result = client
+      .submit(
+        client.projection.expectedPosition,
+        SetupClientCommand.PlacePawn(client.projection.orderedSites.head)
+      )
+      .toOption
+      .get
+
+    assertEquals(result.acceptedEvents.size, 1)
+    assertEquals(result.projection.expectedPosition, 2L)
+    assertEquals(client.projection, result.projection)
+  }
+
+  test("stale expected position is a typed conflict and changes no history") {
+    val client = LocalDebugSetupClient.demo()
+    val before = client.projection
+
+    val result = client.submit(
+      0L,
+      SetupClientCommand.PlacePawn(before.orderedSites.head)
+    )
+
+    assertEquals(
+      result,
+      Left(SetupClientFailure.ExpectedPositionConflict(0L, 1L))
+    )
+    assertEquals(client.projection, before)
+  }
+
+  test("restart retires history and reconstructs designated initial state") {
+    val client = LocalDebugSetupClient.demo()
+    val designated = client.projection
+    client.submit(
+      designated.expectedPosition,
+      SetupClientCommand.PlacePawn(designated.orderedSites.head)
+    )
+    val completedStream = client.projection
+
+    val restarted = client.restartDebug().toOption.get
+
+    assertEquals(restarted.retiredStream, designated.streamId)
+    assertNotEquals(restarted.newStream, restarted.retiredStream)
+    assertEquals(restarted.projection.expectedPosition, 1L)
+    assertEquals(restarted.projection.state, designated.state)
+    assertEquals(restarted.projection.activePlayer, designated.activePlayer)
+    assertEquals(client.retiredStreams.size, 1)
+    assertEquals(
+      client.retiredStreams.head._2,
+      completedStream.acceptedEvents
+    )
+  }
+
+  test("final placement emits completion and replay-derived completed state") {
+    val client = LocalDebugSetupClient.demo()
+    client.projection.orderedSites.take(3).foreach { site =>
+      val position = client.projection.expectedPosition
+      assert(client.submit(
+        position,
+        SetupClientCommand.PlacePawn(site)
+      ).isRight)
+    }
+
+    assert(client.projection.state.isInstanceOf[SetupState.Completed])
+    assertEquals(client.projection.activePlayer, None)
+    assertEquals(client.projection.legalPlacements, Vector.empty)
+    assertEquals(
+      client.projection.acceptedEvents.map(_.index),
       Vector(0L, 1L, 2L, 3L, 4L)
     )
   }
+}
 
-  test("corrupt authoritative stream produces an explicit replay failure") {
-    val session = SetupSession.demo()
-    val corrupt = session.events :+ RecordedEvent[SetupEvent](
-      1L,
-      PawnPlaced(PlayerId("wrong-player"), session.orderedSites.head)
-    )
+class SetupViewModelSuite extends FunSuite {
+  test("world regions preserve title, left-to-right order, and site counts") {
+    val view = SetupViewModel.from(LocalDebugSetupClient.demo().projection)
 
-    val failure =
-      SetupSession.replay(session.rules, corrupt).left.toOption.get
-
-    assert(failure.isInstanceOf[SetupSessionError.ReplayFailed])
+    assertEquals(view.worldTitle, "The World")
+    assertEquals(view.regions.map(_.name), Vector(
+      "Cradle",
+      "Provinces",
+      "Hinterland"
+    ))
+    assertEquals(view.regions.map(_.sites.size), Vector(2, 3, 3))
     assertEquals(
-      failure.asInstanceOf[SetupSessionError.ReplayFailed].index,
-      1L
+      view.regions.flatMap(_.sites),
+      LocalDebugSetupClient.demo().projection.orderedSites
     )
   }
 
-  test("transition and replay disagreement is rejected as divergence") {
-    val session = SetupSession.demo()
-    val correctPlacement = PawnPlaced(
-      session.participants.head.playerId,
-      session.orderedSites.head
+  test("complete player names carry stable non-color semantics and classes") {
+    val players =
+      SetupViewModel.from(LocalDebugSetupClient.demo().projection).players
+
+    assertEquals(
+      players.map(player => player.text -> player.colorClass),
+      Vector(
+        "Chancellor" -> "player-purple",
+        "Blue Exile" -> "player-blue",
+        "Red Citizen" -> "player-red"
+      )
     )
-    val candidate =
-      session.events :+ RecordedEvent[SetupEvent](1L, correctPlacement)
-
-    val result =
-      SetupSession.verifyReplay(session.rules, candidate, session.state)
-
-    assert(result.left.toOption.exists(
-      _.isInstanceOf[SetupSessionError.ReplayDiverged]
-    ))
   }
 }

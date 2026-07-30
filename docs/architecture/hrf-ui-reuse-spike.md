@@ -80,6 +80,28 @@ Outside Codex, install a supported Node.js release and confirm `node --version`
 works before running the same sbt tasks. Linking the browser page does not
 replace this prerequisite: the Scala.js test framework launches Node.
 
+## Frontend client boundary
+
+`SetupClient` is transport-neutral. The browser submits a transient
+`SetupClientCommand` with the projection's `expectedPosition` and receives
+either:
+
+- an `AcceptedSetupUpdate` containing newly accepted events and the resulting
+  projection;
+- an `ExpectedPositionConflict`; or
+- a typed command/replay failure.
+
+The contract intentionally does not define HTTP routes or serialized payloads.
+A production adapter is expected to obtain accepted events and player-scoped
+projections from the authoritative JVM application service.
+
+`LocalDebugSetupClient` implements the same boundary for manual browser tests.
+It is explicitly browser-memory authoritative and must not be used as the
+production authority. Its Restart control retires the active in-memory stream,
+allocates a new `DebugStreamId`, and reconstructs the designated initial state
+from that new stream's initial event sequence. This models a future persisted
+debug restart as creating a new stream rather than rewriting prior history.
+
 ## Known integration risks
 
 - The source-file allowlist is deliberately narrow. If portable shared code

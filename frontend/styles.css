@@ -34,21 +34,56 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .status { padding: 14px 16px; margin: 22px 0; }
-.grid { display: grid; grid-template-columns: 1fr 2fr; gap: 18px; }
 .panel { padding: 18px; min-width: 0; }
 .participants, .events { margin: 0; padding-left: 22px; }
-.participant-active { color: #ffd477; font-weight: 800; }
+.participant-active { font-weight: 800; }
 
-.region { margin-top: 18px; }
+.debug-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 10px 12px;
+  border: 1px dashed #b98242;
+  border-radius: 9px;
+  background: #302315;
+}
+.debug-label { color: #f1c781; font-weight: 700; }
+.restart {
+  padding: 8px 12px;
+  border: 1px solid #f1c781;
+  border-radius: 7px;
+  background: #17140f;
+  color: #fff2d6;
+  cursor: pointer;
+}
+.restart:focus-visible, .site:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.world { margin-top: 18px; }
+.regions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.region {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #40382c;
+  border-radius: 9px;
+}
 .region-label {
-  margin-bottom: 8px;
+  margin: 0 0 8px;
   color: #a99b82;
   font-size: 0.78rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.sites { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.sites { display: grid; grid-template-columns: 1fr; gap: 9px; }
 .site {
   min-height: 88px;
   padding: 11px;
@@ -62,7 +97,13 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site:enabled:hover { background: #3b3123; transform: translateY(-1px); }
 .site:disabled { opacity: 0.68; }
 .site-name { display: block; font-weight: 800; }
-.pawn { display: inline-block; margin-top: 12px; margin-right: 4px; color: #ffd477; }
+.pawn { display: block; margin-top: 12px; }
+
+.player-ref { font-weight: 800; }
+.player-purple { color: #d9b8ff; }
+.player-blue { color: #8ecbff; }
+.player-red { color: #ffaaa5; }
+.player-neutral { color: #f5ecd7; }
 
 .events {
   max-height: 270px;
@@ -75,6 +116,6 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .replay { color: #9ed59e; }
 
 @media (max-width: 760px) {
-  .grid { grid-template-columns: 1fr; }
-  .sites { grid-template-columns: 1fr 1fr; }
+  .regions { grid-template-columns: 1fr; }
+  .debug-toolbar { align-items: stretch; flex-direction: column; }
 }
