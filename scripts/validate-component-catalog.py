@@ -2,7 +2,7 @@ import json
 import sys
 from pathlib import Path
 
-root = Path(sys.argv[1] if len(sys.argv) > 1 else "catalog-build")
+root = Path(sys.argv[1] if len(sys.argv) > 1 else "docs/catalog")
 schema = json.loads((root / "new-foundations-component-catalog.schema.json").read_text())
 catalog = json.loads((root / "new-foundations-component-catalog.json").read_text())
 errors = []

@@ -17,6 +17,8 @@ depend on HRF's complete Scala.js framework.
 
 The durable core-domain decisions and milestone acceptance criteria are
 recorded in [`docs/architecture/core-domain-model.md`](docs/architecture/core-domain-model.md).
+The bounded setup command/event/replay slice is documented in
+[`docs/architecture/game-setup.md`](docs/architecture/game-setup.md).
 
 The rules engine in `oathdigital.engine` has no UI or asset dependency.
 `oathdigital.catalog` loads selected, source-verified catalog projections into
