@@ -7,6 +7,12 @@ lazy val root = (project in file("."))
     name := "oathdigital-engine",
     libraryDependencies ++= Seq(
       "com.lihaoyi" %% "ujson" % "4.4.3",
+      "com.typesafe.slick" %% "slick" % "3.5.2",
+      "com.typesafe.slick" %% "slick-hikaricp" % "3.5.2",
+      "org.hsqldb" % "hsqldb" % "2.7.4",
+      "com.typesafe.akka" %% "akka-actor-typed" % "2.8.5",
+      "com.typesafe.akka" %% "akka-stream" % "2.8.5",
+      "com.typesafe.akka" %% "akka-http" % "10.5.3",
       "org.scalameta" %% "munit" % "1.0.4" % Test
     ),
     scalacOptions ++= Seq(
