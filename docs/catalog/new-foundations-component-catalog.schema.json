@@ -1,213 +1,325 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oathdigital.dev/schemas/new-foundations-component-catalog-1.0.0.schema.json",
-  "title": "Oath Digital component catalog",
+  "$id": "new-foundations-component-catalog.schema.json",
+  "title": "Oath: New Foundations runtime component catalog",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "schemaVersion",
     "catalogVersion",
-    "ruleset",
-    "identityPolicy",
-    "bannerFamilies",
-    "atlas",
-    "sources",
-    "components",
-    "conflicts",
-    "assumptionContradictions",
-    "reviewQueue"
+    "denizens",
+    "relics",
+    "edifices",
+    "legacies",
+    "sites"
   ],
   "properties": {
     "schemaVersion": {
       "const": "1.0.0"
     },
     "catalogVersion": {
-      "type": "string"
+      "type": "string",
+      "minLength": 1
     },
-    "ruleset": {
-      "type": "object",
-      "required": [
-        "id",
-        "version",
-        "normativeGeneralRulesSourceId"
-      ]
-    },
-    "identityPolicy": {
-      "type": "object",
-      "required": [
-        "printedCardsAreSingletonDefinitions",
-        "duplicatePhysicalCopiesRequireSourceEvidence",
-        "runtimeCardInstanceIdsAllowed",
-        "typedPrintedIdsArePreservedWhenPresent",
-        "definitionIdIsIdentityWhenPrintedIdAbsent"
-      ]
-    },
-    "bannerFamilies": {
-      "type": "array",
-      "minItems": 2
-    },
-    "atlas": {
-      "type": "object",
-      "required": [
-        "model",
-        "frontEnd",
-        "backEnd",
-        "entryDefinitionIds",
-        "runtimeOrder"
-      ]
-    },
-    "sources": {
+    "denizens": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "sourceId",
-          "path",
-          "authority"
-        ]
+        "$ref": "#/$defs/denizen"
       }
     },
-    "components": {
+    "relics": {
       "type": "array",
       "items": {
-        "$ref": "#/$defs/component"
+        "$ref": "#/$defs/relic"
       }
     },
-    "conflicts": {
+    "edifices": {
       "type": "array",
       "items": {
-        "type": "object",
-        "required": [
-          "conflictId",
-          "status",
-          "topic",
-          "normativeSource"
-        ]
+        "$ref": "#/$defs/edifice"
       }
     },
-    "reviewQueue": {
-      "type": "array"
+    "legacies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/legacy"
+      }
+    },
+    "sites": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/site"
+      }
     }
   },
   "$defs": {
-    "provenance": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]+:[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "suit": {
+      "enum": [
+        "arcane",
+        "beast",
+        "discord",
+        "hearth",
+        "nomad",
+        "order"
+      ]
+    },
+    "handlers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z0-9-]+)+$"
+      }
+    },
+    "rulesText": {
+      "type": "string"
+    },
+    "tokens": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
-        "sourceId",
-        "file",
-        "page"
+        "favor",
+        "secrets"
       ],
       "properties": {
-        "sourceId": {
-          "type": "string"
-        },
-        "file": {
-          "type": "string"
-        },
-        "page": {
+        "favor": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 0
         },
-        "sheetSlot": {
-          "type": [
-            "string",
-            "integer"
+        "secrets": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "denizen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "suit",
+        "handlers",
+        "rulesText"
+      ],
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "pattern": "^denizen:"
+            }
           ]
         },
-        "crop": {
-          "type": "object"
-        }
-      }
-    },
-    "printedComponentId": {
-      "type": "object",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "pattern": "-id$"
+        "name": {
+          "$ref": "#/$defs/name"
         },
-        "value": {
-          "type": "string",
-          "minLength": 1
+        "suit": {
+          "$ref": "#/$defs/suit"
+        },
+        "handlers": {
+          "$ref": "#/$defs/handlers",
+          "minItems": 1
+        },
+        "rulesText": {
+          "$ref": "#/$defs/rulesText"
         }
       }
     },
-    "component": {
+    "relic": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
-        "definitionId",
-        "kind",
+        "id",
         "name",
-        "printedComponentId",
-        "physicalCopyCount",
-        "copyCountEvidence",
-        "printEvidence",
-        "transcription"
+        "role",
+        "defense",
+        "handlers",
+        "rulesText"
       ],
       "properties": {
-        "definitionId": {
-          "type": "string",
-          "minLength": 1
-        },
-        "kind": {
-          "type": "string"
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "pattern": "^relic:"
+            }
+          ]
         },
         "name": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/name"
         },
-        "printedComponentId": {
+        "role": {
+          "enum": [
+            "ordinary",
+            "grand-scepter"
+          ]
+        },
+        "defense": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "handlers": {
+          "$ref": "#/$defs/handlers",
+          "minItems": 1
+        },
+        "rulesText": {
+          "$ref": "#/$defs/rulesText"
+        }
+      }
+    },
+    "edificeFace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "handlers",
+        "rulesText"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "handlers": {
+          "$ref": "#/$defs/handlers",
+          "minItems": 1
+        },
+        "rulesText": {
+          "$ref": "#/$defs/rulesText"
+        }
+      }
+    },
+    "edifice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "suit",
+        "intact",
+        "ruined"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^edifice:e(?:0[1-9]|[12][0-9]|30)$"
+        },
+        "suit": {
+          "$ref": "#/$defs/suit"
+        },
+        "intact": {
+          "$ref": "#/$defs/edificeFace"
+        },
+        "ruined": {
+          "$ref": "#/$defs/edificeFace"
+        }
+      }
+    },
+    "legacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "handlers",
+        "rulesText"
+      ],
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "pattern": "^legacy:"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "handlers": {
+          "$ref": "#/$defs/handlers",
+          "minItems": 1
+        },
+        "rulesText": {
+          "$ref": "#/$defs/rulesText"
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "defense",
+        "capacity",
+        "relicSlots",
+        "recoverDifficulty",
+        "startingResources",
+        "forgeRequirements",
+        "handlers"
+      ],
+      "properties": {
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "pattern": "^site:"
+            }
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/name"
+        },
+        "defense": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "relicSlots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "recoverDifficulty": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "startingResources": {
+          "$ref": "#/$defs/tokens"
+        },
+        "forgeRequirements": {
           "oneOf": [
             {
-              "$ref": "#/$defs/printedComponentId"
+              "$ref": "#/$defs/tokens"
             },
             {
               "type": "null"
             }
           ]
         },
-        "physicalCopyCount": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "copyCountEvidence": {
-          "type": "string"
-        },
-        "printEvidence": {
-          "type": "array",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": [
-              "provenance"
-            ],
-            "properties": {
-              "provenance": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/$defs/provenance"
-                }
-              }
-            }
-          }
-        },
-        "transcription": {
-          "type": "object",
-          "required": [
-            "method",
-            "confidence",
-            "reviewStatus"
-          ]
-        },
         "handlers": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "$ref": "#/$defs/handlers"
         }
       }
     }

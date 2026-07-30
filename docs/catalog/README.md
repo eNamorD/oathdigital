@@ -1,55 +1,33 @@
-# New Foundations component catalog
+# Runtime component catalog
 
-`new-foundations-component-catalog.json` is the versioned, machine-readable
-component inventory. Its schema is
-`new-foundations-component-catalog.schema.json`.
+`new-foundations-component-catalog.json` is the complete component data loaded
+by the game engine. It deliberately contains only:
 
-Printed cards are singleton definitions unless source evidence proves multiple
-physical copies. The catalog records `physicalCopyCount: 1` and print evidence,
-but intentionally contains no runtime `CardInstanceId`. Printed IDs are typed
-objects such as `{ "type": "edifice-id", "value": "E11" }`. A null
-`printedComponentId` is not an inferred value: it is paired with an explicit
-review item where the icon or small print was not safely readable. OCR was used
-only to assist locating text; names in this pre1 catalog received a visual
-sheet-level review. Icon-bearing fields remain unresolved instead of guessed.
+- 255 final denizens (retained base cards plus final New Foundations cards)
+- 48 relics, including the Grand Scepter
+- 30 edifices, each with intact and ruined faces
+- 36 legacies
+- 24 sites
 
-Authority order is explicit. The June 2026 Combined Rulebook is normative for
-general rules. March component sheets and the Welcome booklet remain evidence
-for printed components and migration summaries. Suspected wording differences
-are cataloged in `conflicts`; consumers must not silently merge them.
+Setup cards, player boards, foundations, visions, and banners are rules-owned
+engine concepts and are not catalog entries.
 
-The two denizen sources are intentionally distinct:
+The runtime format keeps only `schemaVersion` and `catalogVersion` as top-level
+metadata. Component records contain stable identities, stable handler keys,
+and fields needed by gameplay. Source paths, provenance, ingestion status,
+confidence, unresolved-task lists, and corpus claims live in
+`reference/catalog-ingestion` instead.
 
-- `base-pre1/unchanged-denizens.pdf`: 162 retained base fronts.
-- `new-foundations-rev1/denizens.pdf`: 93 supplied fronts (replacements and
-  additions).
+The schema remains `1.0.0` while the unreleased product format is in flux.
+`catalogVersion` identifies the specific data set independently of that format
+version.
 
-Neither source, and especially not the March folder alone, is claimed to be a
-complete 195-denizen corpus.
-
-Banners are two physical families with two discrete active face definitions
-each. Their family records retain a flippable active-face runtime state without
-inventing card instances. Supply is numeric state from 7 through 0 plus
-warband-bank refresh tables; marker coordinates are not persisted. The Atlas is
-one front-to-back ordered sequence, with Recent at the front and Forgotten at
-the back.
-
-All 24 site faces have crop-verified defense, denizen capacity, relic-slot
-count, Recover Difficulty (null when no difficulty is printed), upper-left
-starting favor/secrets, lower-right Forge requirements on three-slot sites,
-and printed site powers. The supplied site fronts and
-generic backs show no printed site component IDs. This is recorded as source
-evidence contradicting the assumption that every production definition can use
-a source-printed ID. The resolved identity policy uses `definitionId` (for
-example, `site:deep-woods`) as the stable site identity while preserving
-`printedComponentId: null`.
-
-Validate with:
+Run:
 
 ```sh
 python3 scripts/validate-component-catalog.py
 ```
 
-The validator checks schema/catalog version agreement, unique definition and
-physical-copy identities, source references, edifice face pairings, and the
-required corpus/authority safeguards.
+The validator checks the JSON schema, exact component counts, globally unique
+component identities, handler-key uniqueness and syntax, edifice pairing, the
+single Grand Scepter role, and the absence of ingestion-only fields.

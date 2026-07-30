@@ -1,0 +1,274 @@
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-ancestral-lands.jpg
+0.269585	0.800738	0.412442	0.092251	1.000	Great Architect
+0.269585	0.660517	0.433180	0.059041	1.000	IF YOU ARE AN IMPERIAL:
+0.266667	0.566421	0.541667	0.066913	1.000	CHRONICLE (THRONE): You perform
+0.271889	0.501845	0.488479	0.062731	1.000	Build Edifice and may build any
+0.270833	0.439114	0.462500	0.060886	1.000	edifice (not just a matching one).
+0.266667	0.353333	0.362500	0.060000	1.000	Do this even if the Iron
+0.271889	0.280443	0.241935	0.062731	1.000	Hand is in play.
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-arbiter.jpg
+0.239631	0.793358	0.509217	0.099631	1.000	The Bright Beacon
+0.241935	0.653137	0.543779	0.070111	1.000	CHRONICLE (BEACON): If you're
+0.233333	0.573333	0.620833	0.073333	1.000	resolving the Beacon, you may take
+0.239631	0.505535	0.619816	0.066421	1.000	any six cards from the Dispossessed
+0.239631	0.431734	0.571429	0.066421	1.000	(instead of choosing suits and taking
+0.233333	0.353333	0.470833	0.073333	1.000	from their matching dividers).
+0.907834	0.047970	0.032258	0.029520	1.000	L24
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-beloved.jpg
+0.241607	0.772146	0.318629	0.105155	1.000	The Mouth
+0.233333	0.640000	0.529167	0.066667	1.000	Set Foundation VI to Festival.
+0.237500	0.546125	0.541667	0.067208	1.000	AcTIoN: Burn Me to activate a
+0.239631	0.468635	0.527650	0.070111	1.000	dormant legacy if you meet its
+0.239631	0.394834	0.605991	0.070111	1.000	goal. You can even activate legacies in
+0.233333	0.319188	0.529167	0.074145	1.000	the Public Ambitions foundation.
+0.907834	0.029520	0.032258	0.029520	1.000	134
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-chronicler.jpg
+0.241935	0.793358	0.315668	0.081181	1.000	Peacemaker
+0.237500	0.645756	0.454167	0.060910	1.000	AcTIon: Return a banner
+0.239631	0.568266	0.506912	0.070111	1.000	you hold to the shared bank.
+0.241935	0.498155	0.264977	0.062731	1.000	Do not adjust its
+0.237327	0.402214	0.539171	0.070111	1.000	If you do, remove all warbands
+0.239631	0.328413	0.555300	0.070111	1.000	except the last (including bandits)
+0.239631	0.247232	0.564516	0.077491	1.000	from each site and player board,
+0.239631	0.180812	0.198157	0.047970	1.000	even yours.
+0.907834	0.036900	0.032258	0.029520	1.000	L04
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-circle-of-swords.jpg
+0.276120	0.794141	0.235779	0.086995	1.000	Steadfast
+0.271889	0.642066	0.550691	0.066421	1.000	CHRONICLE: Your other legacies
+0.269585	0.579336	0.465438	0.059041	1.000	cannot become dormant-
+0.269585	0.494465	0.394009	0.066421	1.000	they always stay active.
+0.937788	0.036900	0.032258	0.029520	0.500	LO3
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-conspirator.jpg
+0.241537	0.777926	0.376373	0.100974	1.000	Secret Society
+0.239631	0.645756	0.596774	0.066421	1.000	SETUP: Before building the world deck,
+0.237327	0.579336	0.656682	0.059041	1.000	you may secretly choose a Vision except the
+0.239631	0.512915	0.622120	0.062731	1.000	Conspiracy to take as a facedown adviser
+0.237327	0.439114	0.631336	0.070111	1.000	(Discard excess advisers.) If you do, advance
+0.239631	0.380074	0.495392	0.059041	1.000	the Visions Drawn marker once.
+0.905530	0.036900	0.034562	0.029520	1.000	128
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-gatekeeper.jpg
+0.271889	0.793358	0.218894	0.099631	1.000	(ealthy
+0.269585	0.660517	0.359447	0.059041	1.000	Set Foundation II to
+0.269585	0.579336	0.366359	0.066421	1.000	Movers and Shakers.
+0.269585	0.457565	0.564516	0.062731	1.000	SETUP: After placing your pawn, take
+0.269585	0.391144	0.370968	0.062731	1.000	from two players or take
+0.757602	0.395142	0.139173	0.058425	1.000	from the
+0.269585	0.328413	0.200461	0.055351	1.000	shared bank.
+0.937788	0.047970	0.032258	0.029520	1.000	L31
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-golden-key.jpg
+0.241935	0.793358	0.223502	0.095941	1.000	Populist
+0.239631	0.653137	0.596774	0.070111	1.000	SETUP: When setting up the favor
+0.239631	0.575646	0.569124	0.073801	1.000	banks, you may choose to divide
+0.239631	0.505535	0.599078	0.070111	1.000	the favor among the banks evenly.
+0.237327	0.424354	0.527650	0.077491	1.000	If you do, take any remainder.
+0.237500	0.333333	0.483333	0.080000	1.000	For example, dividing 19 favor
+0.233333	0.260000	0.441667	0.080000	1.000	among the banks leaves you
+0.239631	0.195572	0.154378	0.062731	1.000	one favor.
+0.907834	0.047970	0.032258	0.029520	1.000	L16
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-great-architect.jpg
+0.271510	0.797307	0.314123	0.099112	1.000	The Needle
+0.271889	0.645756	0.615207	0.070111	1.000	After you take a banner in any way,
+0.269585	0.575646	0.550691	0.070111	1.000	you may flip it to its other side.
+0.937788	0.044280	0.032258	0.029520	0.500	L05
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-heirloom.jpg
+0.274194	0.797048	0.223502	0.084871	1.000	The Car
+0.269585	0.649446	0.389401	0.062731	1.000	Action: You may peek at
+0.269585	0.583026	0.308756	0.055351	1.000	the relics at any site.
+0.270833	0.492620	0.608333	0.068266	1.000	CHRONICLE (THRONE): In Scatter Relics,
+0.269585	0.431734	0.520737	0.062731	1.000	you examine the relics and choose
+0.269585	0.361624	0.338710	0.062731	1.000	which sites they go to.
+0.937788	0.036900	0.032258	0.029520	1.000	L19
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-high-priest.jpg
+0.244114	0.796612	0.120066	0.089434	1.000	Seer
+0.239631	0.645756	0.578341	0.070111	1.000	SeTUP: When building the world
+0.239631	0.568266	0.649770	0.073801	1.000	deck, peek at the Visions and secretly
+0.241935	0.498155	0.490783	0.070111	1.000	place them in any positions.
+0.907834	0.044280	0.032258	0.025830	1.000	122
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-iron-hand.jpg
+0.239585	0.792926	0.278895	0.078355	1.000	Chronicler
+0.237500	0.640000	0.566667	0.066667	1.000	CHRONICLE (SUN): After Resolve
+0.241935	0.557196	0.576037	0.073801	1.000	Legacies, you may declare that all
+0.241935	0.487085	0.548387	0.070111	1.000	players score their legacies now.
+0.237500	0.392989	0.383333	0.073801	1.000	Each legacy may only be
+0.236739	0.317576	0.340181	0.078167	1.000	scored once per game.
+0.907834	0.036900	0.032258	0.022140	0.500	LOZ
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-keeper-of-order.jpg
+0.237327	0.797048	0.343318	0.099631	1.000	Matchmaker
+0.237500	0.645756	0.550000	0.074244	1.000	Whenever players draw legacies
+0.239631	0.583026	0.576037	0.062731	1.000	from the deck and choose one to
+0.241935	0.498155	0.529954	0.070111	1.000	keep, you draw and choose for
+0.237500	0.433333	0.533333	0.066667	1.000	them instead. The Amber Doors
+0.239631	0.354244	0.423963	0.066421	1.000	edifice does not trigger this.
+0.907834	0.044280	0.032258	0.029520	1.000	L14
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-light-fingers.jpg
+0.241547	0.788891	0.611278	0.101122	1.000	Quest to Distant Lands
+0.239631	0.653137	0.626728	0.059041	1.000	SETUP: You may choose to not place your
+0.239631	0.583026	0.638249	0.066421	1.000	pawn. If you do, you may choose one card
+0.239631	0.520295	0.601382	0.062731	1.000	from the Dispossessed and swap it with
+0.239631	0.450185	0.562212	0.059041	1.000	a starting adviser or card you drew in
+0.237500	0.380000	0.637500	0.066667	1.000	Foundation IV. It is not buried by the Oaths
+0.239631	0.317343	0.239631	0.059041	1.000	of Loyalty legacy.
+0.239631	0.210332	0.555300	0.059041	1.000	WAKE: On your first turn, you must
+0.239631	0.143911	0.417051	0.059041	1.000	place your pawn at any site.
+0.907834	0.044280	0.032258	0.025830	1.000	L30
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-matchmaker.jpg
+0.269585	0.782288	0.435484	0.099631	1.000	Keeper of Order
+0.271889	0.653137	0.430876	0.055351	1.000	IF YOU ARE AN IMPERIAL:
+0.271889	0.549815	0.592166	0.070111	1.000	BATTLE PLAN: If your enemy is an
+0.271560	0.469728	0.219554	0.078994	1.000	Imperial, +2
+0.536866	0.476015	0.354839	0.070111	1.000	and you ignore all a
+0.269585	0.402214	0.423963	0.070111	1.000	you roll when attacking.
+0.811060	0.173432	0.011521	0.025830	1.000	D
+0.937788	0.040590	0.032258	0.025830	1.000	L11
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-oaths-of-loyalty.jpg
+0.241757	0.777001	0.316026	0.095445	1.000	Conspirator
+0.237327	0.627306	0.603687	0.077491	1.000	WAKE: On your first turn, secretly
+0.239319	0.558935	0.604435	0.081372	1.000	write down which round the game
+0.239487	0.490169	0.567164	0.069915	1.000	will end on and who will win. If
+0.238965	0.396554	0.567901	0.088135	1.000	you are correct, you win instead.
+0.241662	0.342879	0.509815	0.067857	1.000	This even beats a Successor win.
+0.905530	0.033210	0.034562	0.025830	1.000	L26
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-pathfinder.jpg
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-peacemaker.jpg
+0.239631	0.804428	0.433180	0.088561	1.000	Ancestral Lands
+0.239631	0.660517	0.433180	0.059041	1.000	IF YOU ARE AN IMPERIAL:
+0.237500	0.560000	0.558333	0.073333	1.000	TRAVEL: Traveling to the Cradle
+0.237500	0.479705	0.412500	0.073801	1.000	costs you only 1 Supply
+0.905530	0.047970	0.034562	0.029520	1.000	L08
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-populist.jpg
+0.268937	0.795203	0.367826	0.097845	1.000	Revolutionary
+0.271889	0.660517	0.596774	0.062731	1.000	CHRONICLE (THRoNE): After Build
+0.271889	0.579336	0.645161	0.070111	1.000	Edifice, you may discard any number
+0.269585	0.505535	0.500000	0.070111	1.000	of denizens at Imperial sites.
+0.937788	0.047970	0.034562	0.029520	1.000	L15
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-quest-to-distant-lands.jpg
+0.269116	0.777403	0.355778	0.102020	1.000	Light Fingers
+0.267281	0.630996	0.566820	0.077491	1.000	WAKE: When you Take Wealth,
+0.267975	0.548990	0.240534	0.090560	1.000	you may take
+0.628971	0.567673	0.246667	0.067606	1.000	from your site
+0.269585	0.494465	0.536866	0.066421	1.000	even if enemy pawns are there.
+0.935484	0.040590	0.034562	0.025830	1.000	L27
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-reformer.jpg
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-revolutionary.jpg
+0.269523	0.789093	0.371092	0.104472	1.000	World Crafter
+0.266667	0.645756	0.529167	0.068266	1.000	SETUP: For the Imperial Maps
+0.269585	0.568266	0.615207	0.077491	1.000	foundation, you fill site slots, using
+0.269585	0.501845	0.573733	0.066421	1.000	any mix of Recent and Forgotten
+0.269585	0.428044	0.605991	0.066421	1.000	Sites (after resolving the Rival legacy).
+0.271889	0.324723	0.626728	0.081181	1.000	For the Wide Horizons foundation,
+0.269585	0.258303	0.599078	0.070111	1.000	when anyone explores, you fill the
+0.269585	0.188192	0.633641	0.066421	1.000	slot with a Recent or Forgotten Site.
+0.937788	0.044280	0.032258	0.029520	1.000	L13
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-rival.jpg
+0.241935	0.782288	0.564516	0.095941	1.000	The Standard Bearer
+0.237500	0.632841	0.637500	0.073825	1.000	SETUP: After placing your pawn, you
+0.237500	0.560000	0.608333	0.073333	1.000	may take a banner from the shared
+0.237500	0.486667	0.445833	0.074219	1.000	bank and place two more
+0.813364	0.498155	0.050691	0.040590	1.000	on
+0.233333	0.420000	0.433333	0.067085	1.000	it from the shared bank.
+0.907834	0.033210	0.032258	0.025830	0.500	L18
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-royal-line.jpg
+0.239191	0.774976	0.321157	0.110564	1.000	Golden Key
+0.239631	0.649446	0.433180	0.059041	1.000	IF YOU ARE AN IMPERIAL:
+0.241935	0.549815	0.656682	0.070111	1.000	You may always peek at the Reliquary.
+0.241935	0.468635	0.251152	0.059041	1.000	AcTIon: Burn
+0.612903	0.468635	0.237327	0.059041	1.000	to take a relic
+0.237500	0.380000	0.345833	0.073875	1.000	from the Reliquary.
+0.907834	0.040590	0.032258	0.025830	1.000	L12
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-ruthless.jpg
+0.271889	0.778598	0.428571	0.092251	1.000	Oaths of Loyalty
+0.266667	0.632841	0.566667	0.073825	1.000	When you would gain a starting
+0.269585	0.557196	0.481567	0.073801	1.000	adviser, bury it, except for-
+0.269585	0.472325	0.566820	0.066421	1.000	CHRONICLE (WORLD): In Gather
+0.271889	0.394834	0.640553	0.070111	1.000	Denizens, keep your faceup advisers.
+0.269585	0.321033	0.479263	0.070111	1.000	They will be your facedown
+0.268445	0.237263	0.331605	0.092113	1.000	starting advisers in
+0.269117	0.176186	0.261543	0.060022	1.000	the next game.
+0.937788	0.033210	0.032258	0.029520	1.000	L25
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-scepter-bearer.jpg
+0.239631	0.774908	0.304147	0.099631	1.000	Royal Line
+0.239258	0.641790	0.387912	0.068263	1.000	IF YOU ARE A CITIZEN:
+0.237500	0.540000	0.612500	0.073333	1.000	CHRONICLE (SUN): You may choose
+0.233333	0.466667	0.629167	0.073924	1.000	which Imperial meets the Successor
+0.237500	0.392989	0.454167	0.073801	1.000	goal. Ignore the printed goal.
+0.241935	0.324723	0.370968	0.066421	1.000	You may choose no one.
+0.907834	0.033210	0.032258	0.029520	1.000	L10
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-secret-society.jpg
+0.241882	0.792943	0.288126	0.096771	1.000	Gatekeeper
+0.239631	0.660517	0.373272	0.059041	1.000	Set Foundation III to
+0.233333	0.573333	0.329167	0.073333	1.000	Public Ambitions.
+0.237500	0.479705	0.575000	0.073801	1.000	CHRONICLE (SUN): Before players
+0.239631	0.409594	0.587558	0.073801	1.000	resolve legacies, you may take one
+0.239631	0.339483	0.527650	0.070111	1.000	active legacy from an enemy if
+0.231985	0.242172	0.310876	0.094434	1.000	you meet its goal.
+0.905530	0.047970	0.034562	0.029520	1.000	L32
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-seer.jpg
+0.267218	0.785493	0.318099	0.107981	1.000	high Priest
+0.269585	0.649446	0.605991	0.066421	1.000	Action: If you have the Darkest Secret,
+0.268919	0.574840	0.464284	0.075256	1.000	you may move any number of
+0.778802	0.597786	0.076037	0.047970	1.000	from
+0.269585	0.516605	0.605991	0.066421	1.000	the Darkest Secret to your player board.
+0.266667	0.439114	0.333333	0.054219	1.000	WHEN NEGOTIATING:
+0.271242	0.369687	0.201512	0.055692	1.000	You may give
+0.940092	0.047970	0.029954	0.022140	1.000	L21
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-steadfast.jpg
+0.241935	0.800738	0.426267	0.088561	1.000	Circle of Swords
+0.237500	0.645756	0.529167	0.068266	1.000	SETUP: You gain eight starting
+0.239631	0.575646	0.605991	0.077491	1.000	warbands (instead of three). If you're
+0.239631	0.501845	0.624424	0.066421	1.000	Imperial and other Imperials would
+0.239631	0.420664	0.624424	0.073801	1.000	gain fewer than three, you gain less.
+0.910138	0.047970	0.029954	0.022140	0.500	LO6
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-the-bright-beacon.jpg
+0.269165	0.798310	0.203605	0.097106	1.000	Arbiter
+0.271889	0.660517	0.550691	0.059041	1.000	END OF ROUND: Before the end
+0.266667	0.573333	0.550000	0.073333	1.000	die is rolled, you may choose to
+0.271889	0.501845	0.483871	0.070111	1.000	modify the roll by - 1 to +3.
+0.937788	0.047970	0.032258	0.029520	1.000	L23
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-the-ear.jpg
+0.237327	0.782288	0.255760	0.099631	1.000	heirloom
+0.241935	0.645756	0.513825	0.062731	1.000	CHRONICLE (THRONE): Before
+0.239631	0.560886	0.592166	0.077491	1.000	Scatter Relics, secretly choose one
+0.239631	0.490775	0.629032	0.070111	1.000	of your relics to keep facedown. You
+0.237327	0.420664	0.550691	0.066421	1.000	will start the next game with it.
+0.905530	0.036900	0.034562	0.029520	1.000	L20
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-the-mouth.jpg
+0.241532	0.782658	0.286521	0.098891	1.000	Pathfinder
+0.237327	0.642066	0.638249	0.066421	1.000	Set Foundation I to Wide Horizons.
+0.237500	0.546125	0.495833	0.073875	1.000	TRAVEL: You may ignore the
+0.241935	0.468635	0.622120	0.073801	1.000	Mountain, Island, and Pass powers.
+0.907834	0.036900	0.032258	0.029520	1.000	136
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-the-needle.jpg
+0.267054	0.780452	0.297689	0.099612	1.000	Iron Hand
+0.269585	0.642066	0.615207	0.066421	1.000	If you are Imperial, discard Iron Hand.
+0.269585	0.538745	0.608295	0.059041	1.000	SETUP: If you were in the previous game,
+0.269585	0.472325	0.626728	0.059041	1.000	you place one warband on all sites coming
+0.262500	0.405904	0.604167	0.068266	1.000	from the Atlas until the Empire divider,
+0.269585	0.339483	0.656682	0.059041	1.000	and players may place their pawn at any site.
+0.269585	0.254613	0.656682	0.062731	1.000	CHRONICLE: Score your legacies in addition
+0.266667	0.186347	0.641667	0.066986	1.000	to the winner, and perform Shape Empire
+0.269585	0.118081	0.582949	0.062731	1.000	and Build Edifice (Throne). Your sites
+0.269585	0.051661	0.615207	0.059041	1.000	are stored in place of the Empire (Stars).
+0.937788	0.033210	0.032258	0.029520	1.000	L01
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-the-standard-bearer.jpg
+0.269585	0.785978	0.142857	0.088561	1.000	Rival
+0.266667	0.640000	0.487500	0.066667	1.000	CHRONICLE (THRONE): In Shape
+0.271889	0.575646	0.571429	0.062731	1.000	Empire, you may prevent any number
+0.269585	0.509225	0.516129	0.062731	1.000	of denizens from being discarded.
+0.269585	0.413284	0.327189	0.055351	1.000	IF YOU ARE AN EXILE:
+0.269585	0.317343	0.672811	0.066421	1.000	SETUP: Before resolving foundations, fill the
+0.269585	0.254613	0.658986	0.062731	1.000	three Cradlemost empty site slots using the
+0.271889	0.184502	0.649770	0.062731	1.000	Empire setup rules, but place one warband
+0.269585	0.118081	0.638249	0.062731	1.000	of yours on each (not an Imperial warband).
+0.269585	0.047970	0.608295	0.059041	1.000	You may place your pawn on these sites.
+0.937788	0.033210	0.032258	0.029520	1.000	L17
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-wealthy.jpg
+0.271732	0.796010	0.226120	0.090636	1.000	Ruthless
+0.266667	0.640000	0.462500	0.074022	1.000	AcTIoN: Burn to bury
+0.271284	0.564907	0.381593	0.079006	1.000	a denizen at your site.
+0.937788	0.044280	0.032258	0.029520	1.000	L29
+FILE	/private/tmp/oath-runtime-catalog/crops/legacy-world-crafter.jpg
+0.271381	0.769642	0.397331	0.113853	1.000	Scepter Bearer
+0.270833	0.645756	0.433333	0.060910	1.000	IF YOU ARE AN IMPERIAL:
+0.266667	0.512915	0.575000	0.067085	1.000	SETUP: You start with the Grand
+0.269585	0.435424	0.571429	0.070111	1.000	Scepter (instead of the Chancellor).
+0.937788	0.033210	0.032258	0.029520	1.000	L09

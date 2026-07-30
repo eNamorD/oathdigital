@@ -1,110 +1,106 @@
 package oathdigital.catalog
 
-import oathdigital.model.{
-  CatalogRef,
-  SiteId,
-  SupplyRules,
-  Tokens,
-  VisionId
-}
+import oathdigital.model.{CatalogRef, SiteId, SupplyRules, Tokens, VisionId}
 
 final case class DefinitionId(value: String) {
   require(value.trim.nonEmpty, "catalog definition ID must not be blank")
 }
 
-final case class PrintedComponentId(kind: String, value: String) {
-  require(kind.trim.nonEmpty, "printed component ID kind must not be blank")
-  require(value.trim.nonEmpty, "printed component ID must not be blank")
+final case class Suit(value: String) {
+  require(Suit.values.contains(value), s"unsupported suit $value")
 }
 
-final case class RulesetMetadata(
-    id: String,
-    version: String,
-    normativeGeneralRulesSourceId: String
-)
+object Suit {
+  val values: Set[String] =
+    Set("arcane", "beast", "discord", "hearth", "nomad", "order")
 
-final case class SourceProvenance(
-    sourceId: String,
-    file: String,
-    page: Int,
-    sheetSlot: Option[String]
-)
+  val Arcane: Suit = Suit("arcane")
+  val Beast: Suit = Suit("beast")
+  val Discord: Suit = Suit("discord")
+  val Hearth: Suit = Suit("hearth")
+  val Nomad: Suit = Suit("nomad")
+  val Order: Suit = Suit("order")
 
-final case class TranscriptionMetadata(
-    method: String,
-    confidence: String,
-    reviewStatus: String
-)
+}
 
-final case class ComponentMetadata(
-    definitionId: DefinitionId,
-    kind: String,
+final case class DenizenDefinition(
+    id: DefinitionId,
     name: String,
-    printedComponentId: Option[PrintedComponentId],
-    provenance: Vector[SourceProvenance],
-    transcription: TranscriptionMetadata,
-    unresolved: Vector[String]
-)
-
-final case class SetupCardDefinition(
-    metadata: ComponentMetadata,
-    step: Int,
+    suit: Suit,
     handlers: Vector[String],
-    physicalRole: String
+    rulesText: String
 )
 
-sealed trait PlayerBoardKind extends Product with Serializable
-object PlayerBoardKind {
-  case object Chancellor extends PlayerBoardKind
-  case object Player extends PlayerBoardKind
+sealed trait RelicRole extends Product with Serializable
+object RelicRole {
+  case object Ordinary extends RelicRole
+  case object GrandScepter extends RelicRole
 }
 
-/**
- * Only the verified Supply portion of a player board.
- *
- * `excludedReviewItems` preserves unresolved notes about other printed board
- * fields so consumers cannot mistake this partial definition for a complete
- * player-board transcription.
- */
-final case class SupplyBoardDefinition(
-    metadata: ComponentMetadata,
-    boardKind: PlayerBoardKind,
-    rules: SupplyRules,
-    remainingValues: Vector[Int],
-    excludedReviewItems: Vector[String]
+final case class RelicDefinition(
+    id: DefinitionId,
+    name: String,
+    role: RelicRole,
+    defense: Int,
+    handlers: Vector[String],
+    rulesText: String
+)
+
+final case class EdificeFaceDefinition(
+    name: String,
+    handlers: Vector[String],
+    rulesText: String
+)
+
+final case class EdificeDefinition(
+    id: DefinitionId,
+    suit: Suit,
+    intact: EdificeFaceDefinition,
+    ruined: EdificeFaceDefinition
+)
+
+final case class LegacyDefinition(
+    id: DefinitionId,
+    name: String,
+    handlers: Vector[String],
+    rulesText: String
 )
 
 final case class SiteDefinition(
-    metadata: ComponentMetadata,
     id: SiteId,
+    name: String,
     defense: Int,
     capacity: Int,
     relicSlots: Int,
     recoverDifficulty: Option[Int],
     startingResources: Tokens,
     forgeRequirements: Option[Tokens],
-    powers: Vector[String]
+    handlers: Vector[String]
 )
 
-final case class VisionGoal(kind: String, minimumVisionsDrawn: Int)
-
-final case class VisionDefinition(
-    metadata: ComponentMetadata,
-    id: VisionId,
-    handlers: Vector[String],
-    goal: Option[VisionGoal]
-)
-
+/**
+ * Complete runtime component catalog.
+ *
+ * The final three vectors remain as empty compatibility projections while
+ * setup cards, player boards, and visions move into rules-owned code.
+ */
 final case class ExecutableCatalog(
     schemaVersion: String,
     ref: CatalogRef,
-    ruleset: RulesetMetadata,
-    setupCards: Vector[SetupCardDefinition],
-    supplyBoards: Vector[SupplyBoardDefinition],
+    denizens: Vector[DenizenDefinition],
+    relics: Vector[RelicDefinition],
+    edifices: Vector[EdificeDefinition],
+    legacies: Vector[LegacyDefinition],
     sites: Vector[SiteDefinition],
-    visions: Vector[VisionDefinition]
+    setupCards: Vector[SetupCardDefinition] = Vector.empty,
+    supplyBoards: Vector[SupplyBoardDefinition] = Vector.empty,
+    visions: Vector[VisionDefinition] = Vector.empty
 )
 
+/**
+ * Compatibility request shape. Runtime catalogs are now loaded atomically,
+ * so selection flags are intentionally ignored by CatalogLoader.
+ */
 final case class CatalogSelection(
     setupCards: Boolean = false,
     supplyBoards: Boolean = false,
@@ -114,15 +110,20 @@ final case class CatalogSelection(
 
 object CatalogSelection {
   val MetadataOnly: CatalogSelection = CatalogSelection()
-
   val SetupFoundation: CatalogSelection =
     CatalogSelection(setupCards = true, supplyBoards = true)
 }
 
 final case class CatalogLoadRequest(
-    selection: CatalogSelection,
+    selection: CatalogSelection = CatalogSelection.MetadataOnly,
     expectedCatalog: Option[CatalogRef] = None
 )
+
+// Temporary source-compatible shells for consumers being migrated to
+// rules-owned setup data. CatalogLoader never constructs these definitions.
+final case class SetupCardDefinition(step: Int)
+final case class SupplyBoardDefinition(rules: SupplyRules)
+final case class VisionDefinition(id: VisionId)
 
 sealed trait CatalogLoadError extends Product with Serializable {
   def path: String
@@ -145,11 +146,8 @@ object CatalogLoadError {
     override val message: String = "required field is missing"
   }
 
-  final case class WrongType(
-      path: String,
-      expected: String,
-      actual: String
-  ) extends CatalogLoadError {
+  final case class WrongType(path: String, expected: String, actual: String)
+      extends CatalogLoadError {
     override val message: String = s"expected $expected, found $actual"
   }
 
@@ -177,44 +175,8 @@ object CatalogLoadError {
         s"found ${actual.ruleset}@${actual.version}"
   }
 
-  final case class DuplicateDefinitionId(
-      path: String,
-      id: DefinitionId
-  ) extends CatalogLoadError {
+  final case class DuplicateDefinitionId(path: String, id: DefinitionId)
+      extends CatalogLoadError {
     override val message: String = s"duplicate definition ID ${id.value}"
-  }
-
-  final case class DuplicatePrintedComponentId(
-      path: String,
-      id: PrintedComponentId
-  ) extends CatalogLoadError {
-    override val message: String =
-      s"duplicate printed component ID ${id.kind}:${id.value}"
-  }
-
-  final case class UnknownSourceReference(path: String, sourceId: String)
-      extends CatalogLoadError {
-    override val message: String = s"unknown source reference $sourceId"
-  }
-
-  final case class IdentityPolicyMismatch(path: String, detail: String)
-      extends CatalogLoadError {
-    override val message: String = detail
-  }
-
-  final case class UnsupportedExecutableKind(path: String, kind: String)
-      extends CatalogLoadError {
-    override val message: String =
-      s"component kind $kind has no executable decoder"
-  }
-
-  final case class UnresolvedRequiredFields(
-      path: String,
-      definitionId: DefinitionId,
-      items: Vector[String]
-  ) extends CatalogLoadError {
-    override val message: String =
-      s"${definitionId.value} has unresolved required fields: " +
-        items.mkString("; ")
   }
 }

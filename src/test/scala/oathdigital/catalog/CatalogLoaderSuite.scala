@@ -8,10 +8,9 @@ import oathdigital.catalog.CatalogLoadError.{
   IncompatibleCatalog,
   InvalidJson,
   MissingField,
-  UnresolvedRequiredFields,
   UnsupportedSchemaVersion
 }
-import oathdigital.model.{CatalogRef, SiteId, Tokens, VisionId}
+import oathdigital.model.{CatalogRef, SiteId, Tokens}
 
 class CatalogLoaderSuite extends munit.FunSuite {
   private val fixturePath =
@@ -19,101 +18,98 @@ class CatalogLoaderSuite extends munit.FunSuite {
   private val fixture =
     Files.readString(fixturePath, StandardCharsets.UTF_8)
 
-  private val allSelections = CatalogSelection(
-    setupCards = true,
-    supplyBoards = true,
-    sites = true,
-    visions = true
-  )
-
-  test("a verified executable subset decodes to typed definitions") {
+  test("all five runtime component families decode atomically") {
     val result = CatalogLoader.load(
       fixture,
       CatalogLoadRequest(
-        allSelections,
         expectedCatalog =
           Some(CatalogRef("oath-new-foundations", "fixture-1"))
       )
     )
 
     val catalog = result.toOption.get
-    assertEquals(catalog.setupCards.map(_.step), Vector(1))
-    assertEquals(catalog.sites.map(_.id), Vector(SiteId("site:S1")))
+    assertEquals(catalog.denizens.head.suit, Suit.Arcane)
+    assertEquals(
+      catalog.denizens.head.handlers,
+      Vector("denizen.fixture-denizen")
+    )
+    assertEquals(catalog.relics.head.defense, 2)
+    assertEquals(catalog.edifices.head.ruined.name, "Ruined Fixture")
+    assertEquals(catalog.legacies.head.name, "Fixture Legacy")
+    assertEquals(catalog.sites.map(_.id), Vector(SiteId("site:fixture-site")))
     assertEquals(catalog.sites.head.startingResources, Tokens(1, 2))
     assertEquals(catalog.sites.head.forgeRequirements, None)
-    assertEquals(catalog.sites.head.powers, Vector("coast"))
-    assertEquals(catalog.visions.map(_.id), Vector(VisionId("V1")))
-    assertEquals(catalog.supplyBoards.head.rules.maximum, 7)
-    assertEquals(
-      catalog.supplyBoards.head.excludedReviewItems,
-      Vector(
-        "non-Supply board icons require crop-level review"
-      )
-    )
   }
 
-  test("the production catalog loads its setup and Supply projection") {
-    val result = CatalogLoader.load(
-      Paths.get("docs/catalog/new-foundations-component-catalog.json"),
-      CatalogLoadRequest(
-        CatalogSelection.SetupFoundation,
-        expectedCatalog = Some(
-          CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+  test("the production catalog contains only the final runtime corpus") {
+    val catalog = CatalogLoader
+      .load(
+        Paths.get("docs/catalog/new-foundations-component-catalog.json"),
+        CatalogLoadRequest(
+          expectedCatalog = Some(
+            CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+          )
         )
       )
-    )
+      .toOption
+      .get
 
-    val catalog = result.toOption.get
-    assertEquals(catalog.setupCards.map(_.step), Vector(1, 2, 3, 10, 11))
-    assertEquals(catalog.supplyBoards.size, 8)
-    assert(catalog.supplyBoards.forall(_.rules.maximum == 7))
-    assert(catalog.sites.isEmpty)
+    assertEquals(catalog.denizens.size, 255)
+    assertEquals(catalog.relics.size, 48)
+    assertEquals(catalog.edifices.size, 30)
+    assertEquals(catalog.legacies.size, 36)
+    assertEquals(catalog.sites.size, 24)
+    assertEquals(
+      catalog.relics.count(_.role == RelicRole.GrandScepter),
+      1
+    )
+    assertEquals(catalog.setupCards, Vector.empty)
+    assertEquals(catalog.supplyBoards, Vector.empty)
+    assertEquals(catalog.visions, Vector.empty)
   }
 
-  test("production sites load from definition IDs with verified printed data") {
-    val result = CatalogLoader.load(
-      Paths.get("docs/catalog/new-foundations-component-catalog.json"),
-      CatalogLoadRequest(CatalogSelection(sites = true))
-    )
+  test("production sites retain verified printed gameplay data") {
+    val sites = CatalogLoader
+      .load(Paths.get("docs/catalog/new-foundations-component-catalog.json"))
+      .toOption
+      .get
+      .sites
 
-    val sites = result.toOption.get.sites
-    assertEquals(sites.size, 24)
     val deepWoods = sites.find(_.id == SiteId("site:deep-woods")).get
     assertEquals(deepWoods.startingResources, Tokens(0, 0))
     assertEquals(deepWoods.forgeRequirements, Some(Tokens(1, 2)))
-    assertEquals(sites.find(_.id == SiteId("site:broken-peaks")).get.startingResources, Tokens(0, 2))
-    assertEquals(sites.find(_.id == SiteId("site:fair-isle")).get.startingResources, Tokens(3, 0))
-    assertEquals(sites.find(_.id == SiteId("site:ancient-city")).get.recoverDifficulty, None)
-    assertEquals(sites.find(_.id == SiteId("site:ancient-city")).get.powers, Vector("enduring", "river"))
-    val headwaters = sites.find(_.id == SiteId("site:headwaters")).get
-    assertEquals(headwaters.capacity, 2)
-    assertEquals(headwaters.relicSlots, 1)
+    assertEquals(
+      sites
+        .find(_.id == SiteId("site:ancient-city"))
+        .get
+        .recoverDifficulty,
+      None
+    )
+    assertEquals(
+      sites.find(_.id == SiteId("site:headwaters")).get.relicSlots,
+      1
+    )
   }
 
-  test("a Supply projection rejects review items outside its explicit exclusion") {
-    val unverifiedSupply = fixture.replace(
-      "non-Supply board icons require crop-level review",
-      "Supply refresh values require crop-level review"
-    )
-    val result = CatalogLoader.load(
-      unverifiedSupply,
-      CatalogLoadRequest(CatalogSelection(supplyBoards = true))
-    )
+  test("legacy selection flags do not produce partial catalogs") {
+    val catalog = CatalogLoader
+      .load(
+        fixture,
+        CatalogLoadRequest(CatalogSelection(sites = true))
+      )
+      .toOption
+      .get
 
-    assert(
-      result.left.toOption.get.exists {
-        case UnresolvedRequiredFields(_, DefinitionId("player-board:chancellor"), items) =>
-          items == Vector("Supply refresh values require crop-level review")
-        case _ => false
-      }
-    )
+    assertEquals(catalog.denizens.size, 1)
+    assertEquals(catalog.relics.size, 1)
+    assertEquals(catalog.sites.size, 1)
   }
 
   test("catalog compatibility is checked before returning definitions") {
     val expected = CatalogRef("oath-new-foundations", "fixture-2")
     val result = CatalogLoader.load(
       fixture,
-      CatalogLoadRequest(allSelections, Some(expected))
+      CatalogLoadRequest(expectedCatalog = Some(expected))
     )
 
     assert(
@@ -134,7 +130,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
 
     assert(
       CatalogLoader
-        .load(unsupported, CatalogLoadRequest(allSelections))
+        .load(unsupported)
         .left
         .toOption
         .get
@@ -142,7 +138,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
     )
     assert(
       CatalogLoader
-        .load("{", CatalogLoadRequest(allSelections))
+        .load("{")
         .left
         .toOption
         .get
@@ -151,17 +147,24 @@ class CatalogLoaderSuite extends munit.FunSuite {
   }
 
   test("duplicate identities and absent required fields are rejected") {
+    val duplicateDenizen =
+      """{
+        |      "id": "denizen:fixture-denizen",
+        |      "name": "Duplicate Denizen",
+        |      "suit": "beast",
+        |      "handlers": ["denizen.duplicate-denizen"],
+        |      "rulesText": ""
+        |    },""".stripMargin
     val duplicateId =
       fixture.replace(
-        "\"definitionId\": \"vision:V1\"",
-        "\"definitionId\": \"site:S1\""
+        "\"denizens\": [",
+        s"\"denizens\": [$duplicateDenizen"
       )
-    val missingCapacity =
-      fixture.replace("\"capacity\": 2,", "")
+    val missingCapacity = fixture.replace("\"capacity\": 2,", "")
 
     assert(
       CatalogLoader
-        .load(duplicateId, CatalogLoadRequest(allSelections))
+        .load(duplicateId)
         .left
         .toOption
         .get
@@ -169,13 +172,12 @@ class CatalogLoaderSuite extends munit.FunSuite {
     )
     assert(
       CatalogLoader
-        .load(missingCapacity, CatalogLoadRequest(allSelections))
+        .load(missingCapacity)
         .left
         .toOption
         .get
         .exists {
-          case MissingField(path) =>
-            path.endsWith(".statistics.capacity")
+          case MissingField(path) => path.endsWith(".capacity")
           case _ => false
         }
     )

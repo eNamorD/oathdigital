@@ -1,0 +1,370 @@
+kind,id,name,fieldsToReview,basis
+denizen,denizen:fire-talkers,Fire Talkers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:spirit-snare,Spirit Snare,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wizard-school,Wizard School,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:dazzle,Dazzle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:acting-troupe,Acting Troupe,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:taming-charm,Taming Charm,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:secret-signal,Secret Signal,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:augury,Augury,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:rusting-ray,Rusting Ray,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:billowing-fog,Billowing Fog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:kindred-warriors,Kindred Warriors,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:terror-spells,Terror Spells,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:blood-pact,Blood Pact,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:revelation,Revelation,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:observatory,Observatory,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:plague-engines,Plague Engines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:gleaming-armor,Gleaming Armor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:jinx,Jinx,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tutor,Tutor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:dream-thief,Dream Thief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:cracking-ground,Cracking Ground,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:sealing-ward,Sealing Ward,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:initiation-rite,Initiation Rite,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:map-library,Map Library,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:witch-s-bargain,Witch's Bargain,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:master-of-disguise,Master of Disguise,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:errand-boy,Errand Boy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wolves,Wolves,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:animal-playmates,Animal Playmates,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:true-names,True Names,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:the-old-oak,The Old Oak,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:forest-paths,Forest Paths,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:rangers,Rangers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:roving-terror,Roving Terror,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:nature-worship,Nature Worship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:birdsong,Birdsong,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:small-friends,Small Friends,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:grasping-vines,Grasping Vines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:threatening-roar,Threatening Roar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:fae-merchant,Fae Merchant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:second-chance,Second Chance,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:pied-piper,Pied Piper,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:mushrooms,Mushrooms,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:insect-swarm,Insect Swarm,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:war-tortoise,War Tortoise,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:new-growth,New Growth,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wild-cry,Wild Cry,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:animal-host,Animal Host,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:memory-of-nature,Memory of Nature,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:marsh-spirit,Marsh Spirit,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-poverty,Vow of Poverty,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:walled-garden,Walled Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-beastkin,Vow of Beastkin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wild-allies,Wild Allies,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:mercenaries,Mercenaries,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:a-small-favor,A Small Favor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:second-wind,Second Wind,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:sleight-of-hand,Sleight of Hand,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:key-to-the-city,Key to the City,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:scryer,Scryer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:naysayers,Naysayers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:charlatan,Charlatan,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:assassin,Assassin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:downtrodden,Downtrodden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:blackmail,Blackmail,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:cracked-sage,Cracked Sage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:dissent,Dissent,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:false-prophet,False Prophet,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:zealots,Zealots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:beast-tamer,Beast Tamer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:silver-tongue,Silver Tongue,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:gambling-hall,Gambling Hall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:enchantress,Enchantress,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:insomnia,Insomnia,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:sneak-attack,Sneak Attack,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:chaos-cult,Chaos Cult,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wayside-inn,Wayside Inn,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:extra-provisions,Extra Provisions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:welcoming-party,Welcoming Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:traveling-doctor,Traveling Doctor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:storyteller,Storyteller,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:armed-mob,Armed Mob,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tavern-songs,Tavern Songs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:homesteaders,Homesteaders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:crop-rotation,Crop Rotation,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:land-garden,Land Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:charming-friend,Charming Friend,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:village-constable,Village Constable,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:family-heirloom,Family Heirloom,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:news-from-alfar,News from Alfar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:levelers,Levelers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:fabled-feast,Fabled Feast,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:the-great-levy,The Great Levy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:hearts-and-minds,Hearts and Minds,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:book-binders,Book Binders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:saddle-makers,Saddle Makers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:herald,Herald,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:rowdy-pub,Rowdy Pub,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-peace,Vow of Peace,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:salad-days,Salad Days,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:marriage,Marriage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:hospital,Hospital,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:awaited-return,Awaited Return,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:rain-boots,Rain Boots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:ancient-binding,Ancient Binding,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:horse-archers,Horse Archers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:warning-signals,Warning Signals,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:elders,Elders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:the-gathering,The Gathering,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:faithful-friend,Faithful Friend,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tents,Tents,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:great-herd,Great Herd,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:convoys,Convoys,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-kinship,Vow of Kinship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wild-mounts,Wild Mounts,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:lancers,Lancers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:mountain-giant,Mountain Giant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:rival-khan,Rival Khan,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:lost-tongue,Lost Tongue,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:special-envoy,Special Envoy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:resettle,Resettle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:oracle,Oracle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:pilgrimage,Pilgrimage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:spell-breaker,Spell Breaker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:mounted-patrol,Mounted Patrol,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:great-crusade,Great Crusade,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:ancient-bloodline,Ancient Bloodline,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:storm-caller,Storm Caller,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:way-station,Way Station,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:twin-brother,Twin Brother,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:hospitality,Hospitality,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:old-fast-steed,Old Fast Steed,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wrestlers,Wrestlers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:battle-honors,Battle Honors,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bear-traps,Bear Traps,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:longbows,Longbows,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:pressgangs,Pressgangs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:garrison,Garrison,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:scouts,Scouts,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:code-of-honor,Code of Honor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:outriders,Outriders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:messenger,Messenger,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:field-promotion,Field Promotion,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:palanquin,Palanquin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:shield-wall,Shield Wall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:military-parade,Military Parade,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tyrant,Tyrant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:forced-labor,Forced Labor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:secret-police,Secret Police,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:specialist,Specialist,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:captains,Captains,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:siege-engines,Siege Engines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:royal-tax,Royal Tax,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:toll-roads,Toll Roads,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:curfew,Curfew,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:knights-errant,Knights Errant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-obedience,Vow of Obedience,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:hunting-party,Hunting Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:council-seat,Council Seat,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:encirclement,Encirclement,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:peace-envoy,Peace Envoy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:relic-hunter,Relic Hunter,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:alchemist,Alchemist,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:magician-s-code,Magician's Code,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:inquisitor,Inquisitor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:quick-exit,Quick Exit,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bewitch,Bewitch,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-silence,Vow of Silence,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:forgotten-vault,Forgotten Vault,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:golem-legions,Golem Legions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:council-arbiter,Council Arbiter,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:catacombs,Catacombs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:ward-of-silence,Ward of Silence,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-wisdom,Vow of Wisdom,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:arcane-brokers,Arcane Brokers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:disciples,Disciples,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:arcane-armor,Arcane Armor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:glamor,Glamor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:wizard-s-conclave,Wizard's Conclave,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:long-lost-heir,Long Lost Heir,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-union,Vow of Union,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:giant-python,Giant Python,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:forest-council,Forest Council,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bracken,Bracken,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:true-oath,True Oath,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bog,Bog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:whispering-leaves,Whispering Leaves,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bed-of-roots,Bed of Roots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:autumn-wind,Autumn Wind,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:shifting-fog,Shifting Fog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:fae-battalion,Fae Battalion,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:hunger,Hunger,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:signal-trees,Signal Trees,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:forest-garden,Forest Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:disgraced-captain,Disgraced Captain,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:book-burning,Book Burning,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-division,Vow of Division,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:royal-ambitions,Royal Ambitions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:salt-the-earth,Salt the Earth,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:riots,Riots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:relic-thief,Relic Thief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:gossip,Gossip,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bandit-chief,Bandit Chief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:defame,Defame,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bandit-paymaster,Bandit Paymaster,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:reliquary-raid,Reliquary Raid,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tracker,Tracker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:banner-breakers,Banner Breakers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:pledge-to-discord,Pledge to Discord,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:friendly-familiar,Friendly Familiar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:unstable-summon,Unstable Summon,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:bandit-prince,Bandit Prince,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:dark-enforcer,Dark Enforcer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:spoiled-supplies,Spoiled Supplies,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tinker-s-fair,Tinker's Fair,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:memory-of-home,Memory of Home,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:a-round-of-ale,A Round of Ale,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:relic-breaker,Relic Breaker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:ballot-box,Ballot Box,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:deed-writer,Deed Writer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:old-songs,Old Songs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:diplomat,Diplomat,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:village-idiot,Village Idiot,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:spinning-bee,Spinning Bee,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:firebrand,Firebrand,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:watchdog,Watchdog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:favored-son,Favored Son,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:town-meeting,Town Meeting,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:league-treaty,League Treaty,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:skilled-merchants,Skilled Merchants,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:ancient-pact,Ancient Pact,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:family-wagon,Family Wagon,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:relic-worship,Relic Worship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:tribute-spoils,Tribute Spoils,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:search-party,Search Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:moving-market,Moving Market,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:traveling-negotiator,Traveling Negotiator,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:pledge-of-defense,Pledge of Defense,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:the-red-seer,The Red Seer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:royal-stables,Royal Stables,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:call-for-help,Call for Help,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:vow-of-wandering,Vow of Wandering,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:mounted-library,Mounted Library,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:keep,Keep,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:martial-culture,Martial Culture,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:master-at-arms,Master at Arms,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:baron,Baron,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:honor-guard,Honor Guard,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:city-wall,City Wall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:fearsome-general,Fearsome General,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:careful-plans,Careful Plans,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:garrison-armory,Garrison Armory,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:battle-axes,Battle Axes,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:great-feast,Great Feast,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+denizen,denizen:quartermaster,Quartermaster,suit;rulesText;icons,sheet-order suit inference;Vision OCR
+relic,relic:sticky-fire,Sticky Fire,defense;rulesText;icons,Vision OCR
+relic,relic:cursed-cauldron,Cursed Cauldron,defense;rulesText;icons,Vision OCR
+relic,relic:truthful-harp,Truthful Harp,defense;rulesText;icons,Vision OCR
+relic,relic:grand-mask,Grand Mask,defense;rulesText;icons,Vision OCR
+relic,relic:cup-of-plenty,Cup of Plenty,defense;rulesText;icons,Vision OCR
+relic,relic:whistle,Whistle,defense;rulesText;icons,Vision OCR
+relic,relic:cracked-horn,Cracked Horn,defense;rulesText;icons,Vision OCR
+relic,relic:bandit-crown,Bandit Crown,defense;rulesText;icons,Vision OCR
+relic,relic:brass-horse,Brass Horse,defense;rulesText;icons,Vision OCR
+relic,relic:horned-mask,Horned Mask,defense;rulesText;icons,Vision OCR
+relic,relic:dowsing-sticks,Dowsing Sticks,defense;rulesText;icons,Vision OCR
+relic,relic:king-of-devotion,King of Devotion,defense;rulesText;icons,Vision OCR
+relic,relic:skeleton-key,Skeleton Key,defense;rulesText;icons,Vision OCR
+relic,relic:oracular-pig,Oracular Pig,defense;rulesText;icons,Vision OCR
+relic,relic:ivory-eye,Ivory Eye,defense;rulesText;icons,Vision OCR
+relic,relic:shifting-map,Shifting Map,defense;rulesText;icons,Vision OCR
+relic,relic:book-of-records,Book of Records,defense;rulesText;icons,Vision OCR
+relic,relic:dragonskin-drum,Dragonskin Drum,defense;rulesText;icons,Vision OCR
+relic,relic:ancient-grit,Ancient Grit,defense;rulesText;icons,Vision OCR
+relic,relic:painted-trumpet,Painted Trumpet,defense;rulesText;icons,Vision OCR
+relic,relic:circlet-of-command,Circlet of Command,defense;rulesText;icons,Vision OCR
+relic,relic:obsidian-cage,Obsidian Cage,defense;rulesText;icons,Vision OCR
+relic,relic:crystal-vial,Crystal Vial,defense;rulesText;icons,Vision OCR
+relic,relic:bone-dice,Bone Dice,defense;rulesText;icons,Vision OCR
+relic,relic:brass-army,Brass Army,defense;rulesText;icons,Vision OCR
+relic,relic:imperial-seal,Imperial Seal,defense;rulesText;icons,Vision OCR
+relic,relic:singing-mask,Singing Mask,defense;rulesText;icons,Vision OCR
+relic,relic:lost-tapestry,Lost Tapestry,defense;rulesText;icons,Vision OCR
+relic,relic:silver-charm,Silver Charm,defense;rulesText;icons,Vision OCR
+relic,relic:amber-flame,Amber Flame,defense;rulesText;icons,Vision OCR
+relic,relic:whispering-stone,Whispering Stone,defense;rulesText;icons,Vision OCR
+relic,relic:black-sword,Black Sword,defense;rulesText;icons,Vision OCR
+relic,relic:fearsome-shield,Fearsome Shield,defense;rulesText;icons,Vision OCR
+relic,relic:bandit-standard,Bandit Standard,defense;rulesText;icons,Vision OCR
+relic,relic:wine-of-welcome,Wine of Welcome,defense;rulesText;icons,Vision OCR
+relic,relic:barbed-net,Barbed Net,defense;rulesText;icons,Vision OCR
+relic,relic:bag-of-siegeworks,Bag of Siegeworks,defense;rulesText;icons,Vision OCR
+relic,relic:secret-testament,Secret Testament,defense;rulesText;icons,Vision OCR
+relic,relic:yew-staff,Yew Staff,defense;rulesText;icons,Vision OCR
+relic,relic:magic-carpet,Magic Carpet,defense;rulesText;icons,Vision OCR
+relic,relic:sigil-of-the-eye,Sigil of the Eye,defense;rulesText;icons,Vision OCR
+relic,relic:spiteful-mirror,Spiteful Mirror,defense;rulesText;icons,Vision OCR
+relic,relic:demon-tail,Demon Tail,defense;rulesText;icons,Vision OCR
+relic,relic:clay-rattle,Clay Rattle,defense;rulesText;icons,Vision OCR
+relic,relic:keeping-banner,Keeping Banner,defense;rulesText;icons,Vision OCR
+relic,relic:sigil-of-the-heart,Sigil of the Heart,defense;rulesText;icons,Vision OCR
+relic,relic:magic-waterskin,Magic Waterskin,defense;rulesText;icons,Vision OCR
+relic,relic:the-grand-scepter,The Grand Scepter,defense;rulesText;icons,Vision OCR
+edifice,edifice:e01,Hall of Debate / Hall of Mockery,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e02,Great Market / Bandit Market,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e03,Grand Canal / Lost Lagoon,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e04,Stone Baths / Ruined Baths,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e05,Amber Doors / Lost Doors,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e06,Great Forge / Broken Forge,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e07,Wild Pastures / Blasted Pastures,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e08,Sacred Ground / Desecrated Ground,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e09,Giant's Path / Giant's Rampage,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e10,Temple of Ancestors / Ruined Temple,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e11,Great Spire / Fallen Spire,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e12,Great Clock / Broken Clock,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e13,Underground Library / Drowned Library,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e14,Stone Portal / Shattered Portal,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e15,Marble Fountains / Murky Fountain,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e16,Hall of Ministers / Hall of Bandits,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e17,Relic Patrols / Bandit Patrols,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e18,Tome Guardians / Lost Guardians,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e19,The Tribunal / Bandit Tribunal,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e20,Towering Rampart / Cracked Rampart,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e21,Festival District / Squalid District,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e22,Proving Grounds / Empty Grounds,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e23,Spiral Castle / Spiral Dungeons,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e24,Boiling Lake / Still Boiling Lake,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e25,Hidden Passages / Sinking Passages,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e26,Hallowed Spring / Hiding Place,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e27,School of Vines / Ruined School,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e28,Oaken Fortress / Rotting Fortress,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e29,Forbidden Forest / Bandit Forest,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+edifice,edifice:e30,Forest Horn / Broken Horn,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
+legacy,legacy:iron-hand,Iron Hand,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:chronicler,Chronicler,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:steadfast,Steadfast,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:peacemaker,Peacemaker,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:the-needle,The Needle,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:circle-of-swords,Circle of Swords,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:great-architect,Great Architect,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:ancestral-lands,Ancestral Lands,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:scepter-bearer,Scepter Bearer,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:royal-line,Royal Line,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:keeper-of-order,Keeper of Order,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:golden-key,Golden Key,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:world-crafter,World Crafter,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:matchmaker,Matchmaker,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:revolutionary,Revolutionary,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:populist,Populist,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:rival,Rival,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:the-ear,The Ear,rulesText;icons,Vision OCR; title-match=0.83
+legacy,legacy:high-priest,High Priest,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:arbiter,Arbiter,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:the-standard-bearer,The Standard Bearer,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:heirloom,Heirloom,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:seer,Seer,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:the-bright-beacon,The Bright Beacon,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:oaths-of-loyalty,Oaths of Loyalty,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:conspirator,Conspirator,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:light-fingers,Light Fingers,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:secret-society,Secret Society,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:ruthless,Ruthless,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:quest-to-distant-lands,Quest to Distant Lands,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:wealthy,Wealthy,rulesText;icons,Vision OCR; title-match=0.92
+legacy,legacy:gatekeeper,Gatekeeper,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:beloved,Beloved,rulesText;icons,Vision OCR; title-match=0.12
+legacy,legacy:the-mouth,The Mouth,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:reformer,Reformer,rulesText;icons,Vision OCR; title-match=1.00
+legacy,legacy:pathfinder,Pathfinder,rulesText;icons,Vision OCR; title-match=1.00

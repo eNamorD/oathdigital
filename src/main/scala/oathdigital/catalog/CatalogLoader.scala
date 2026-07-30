@@ -6,37 +6,24 @@ import java.nio.file.{Files, Path}
 import scala.util.control.NonFatal
 
 import oathdigital.catalog.CatalogLoadError._
-import oathdigital.model.{
-  CatalogRef,
-  InclusiveIntRange,
-  SiteId,
-  SupplyRefreshBand,
-  SupplyRules,
-  Tokens,
-  VisionId
-}
-import ujson.{Arr, Bool, Null, Num, Obj, Str, Value}
+import oathdigital.model.{CatalogRef, SiteId, Tokens}
+import ujson.{Arr, Null, Obj, Str, Value}
 
 object CatalogLoader {
   val SupportedSchemaVersion: String = "1.0.0"
-  private val SupplyBoardExcludedReviewItems: Set[String] =
-    Set("non-Supply board icons require crop-level review")
+  val RulesetId: String = "oath-new-foundations"
 
   private type Result[A] = Either[Vector[CatalogLoadError], A]
 
-  private final case class DecodedDocument(
-      schemaVersion: String,
-      ref: CatalogRef,
-      ruleset: RulesetMetadata,
-      sourceIds: Set[String],
-      components: Vector[(ComponentMetadata, Obj)]
-  )
+  def load(path: Path): Result[ExecutableCatalog] =
+    load(path, CatalogLoadRequest())
 
-  def load(path: Path, request: CatalogLoadRequest): Result[ExecutableCatalog] =
-    try {
-      val json = Files.readString(path, StandardCharsets.UTF_8)
-      load(json, request)
-    } catch {
+  def load(
+      path: Path,
+      request: CatalogLoadRequest
+  ): Result[ExecutableCatalog] =
+    try load(Files.readString(path, StandardCharsets.UTF_8), request)
+    catch {
       case NonFatal(error) =>
         Left(
           Vector(
@@ -48,49 +35,14 @@ object CatalogLoader {
         )
     }
 
-  def load(json: String, request: CatalogLoadRequest): Result[ExecutableCatalog] =
-    parse(json).flatMap(decodeDocument).flatMap { document =>
-      val compatibilityErrors = request.expectedCatalog.toVector.collect {
-        case expected if expected != document.ref =>
-          IncompatibleCatalog("$.catalogVersion", expected, document.ref)
-      }
+  def load(json: String): Result[ExecutableCatalog] =
+    load(json, CatalogLoadRequest())
 
-      val normativeSourceErrors =
-        if (
-          document.sourceIds.contains(
-            document.ruleset.normativeGeneralRulesSourceId
-          )
-        ) Vector.empty
-        else
-          Vector(
-            UnknownSourceReference(
-              "$.ruleset.normativeGeneralRulesSourceId",
-              document.ruleset.normativeGeneralRulesSourceId
-            )
-          )
-      val componentSourceErrors =
-        document.components.flatMap { case (metadata, _) =>
-          metadata.provenance.collect {
-            case provenance
-                if !document.sourceIds.contains(provenance.sourceId) =>
-              UnknownSourceReference(
-                s"$$.components[${metadata.definitionId.value}].printEvidence",
-                provenance.sourceId
-              )
-          }
-        }
-      val sourceErrors = normativeSourceErrors ++ componentSourceErrors
-
-      val identityErrors =
-        duplicateDefinitionErrors(document.components) ++
-          duplicatePrintedIdErrors(document.components)
-
-      val preflightErrors =
-        compatibilityErrors ++ sourceErrors ++ identityErrors
-
-      if (preflightErrors.nonEmpty) Left(preflightErrors)
-      else decodeSelection(document, request.selection)
-    }
+  def load(
+      json: String,
+      request: CatalogLoadRequest
+  ): Result[ExecutableCatalog] =
+    parse(json).flatMap(decode(_, request))
 
   private def parse(json: String): Result[Value] =
     try Right(ujson.read(json))
@@ -105,7 +57,10 @@ object CatalogLoader {
         )
     }
 
-  private def decodeDocument(value: Value): Result[DecodedDocument] =
+  private def decode(
+      value: Value,
+      request: CatalogLoadRequest
+  ): Result[ExecutableCatalog] =
     for {
       root <- asObject(value, "$")
       schemaVersion <- requiredString(root, "schemaVersion", "$")
@@ -122,684 +77,318 @@ object CatalogLoader {
             )
           )
       catalogVersion <- requiredString(root, "catalogVersion", "$")
-      rulesetObject <- requiredObject(root, "ruleset", "$")
-      ruleset <- decodeRuleset(rulesetObject)
       ref <- construct(
         "$.catalogVersion",
-        CatalogRef(ruleset.id, catalogVersion)
+        CatalogRef(RulesetId, catalogVersion)
       )
-      identityPolicy <- requiredObject(root, "identityPolicy", "$")
-      _ <- validateIdentityPolicy(identityPolicy)
-      sourceValues <- requiredArray(root, "sources", "$")
-      sourceIds <- decodeSourceIds(sourceValues)
-      componentValues <- requiredArray(root, "components", "$")
-      components <- collectResults(
-        componentValues.value.zipWithIndex.map { case (component, index) =>
-          for {
-            obj <- asObject(component, s"$$.components[$index]")
-            metadata <- decodeMetadata(obj, index)
-          } yield metadata -> obj
-        }.toVector
+      _ <- checkCompatibility(request.expectedCatalog, ref)
+      denizens <- decodeArray(root, "denizens")(decodeDenizen)
+      relics <- decodeArray(root, "relics")(decodeRelic)
+      edifices <- decodeArray(root, "edifices")(decodeEdifice)
+      legacies <- decodeArray(root, "legacies")(decodeLegacy)
+      sites <- decodeArray(root, "sites")(decodeSite)
+      _ <- validateUniqueIds(
+        denizens.map(_.id) ++
+          relics.map(_.id) ++
+          edifices.map(_.id) ++
+          legacies.map(_.id) ++
+          sites.map(site => DefinitionId(site.id.value))
       )
-    } yield DecodedDocument(
+    } yield ExecutableCatalog(
       schemaVersion,
       ref,
-      ruleset,
-      sourceIds,
-      components
+      denizens.sortBy(_.id.value),
+      relics.sortBy(_.id.value),
+      edifices.sortBy(_.id.value),
+      legacies.sortBy(_.id.value),
+      sites.sortBy(_.id.value)
     )
 
-  private def decodeRuleset(obj: Obj): Result[RulesetMetadata] =
-    for {
-      id <- requiredString(obj, "id", "$.ruleset")
-      version <- requiredString(obj, "version", "$.ruleset")
-      source <- requiredString(
-        obj,
-        "normativeGeneralRulesSourceId",
-        "$.ruleset"
-      )
-    } yield RulesetMetadata(id, version, source)
-
-  private def validateIdentityPolicy(obj: Obj): Result[Unit] = {
-    val expectations = Vector(
-      "printedCardsAreSingletonDefinitions" -> true,
-      "duplicatePhysicalCopiesRequireSourceEvidence" -> true,
-      "runtimeCardInstanceIdsAllowed" -> false,
-      "typedPrintedIdsArePreservedWhenPresent" -> true,
-      "definitionIdIsIdentityWhenPrintedIdAbsent" -> true
-    )
-
-    collectResults(expectations.map { case (field, expected) =>
-      requiredBoolean(obj, field, "$.identityPolicy").flatMap { actual =>
-        if (actual == expected) Right(())
-        else
-          Left(
-            Vector(
-              IdentityPolicyMismatch(
-                s"$$.identityPolicy.$field",
-                s"expected $expected, found $actual"
-              )
-            )
-          )
-      }
-    }).map(_ => ())
-  }
-
-  private def decodeSourceIds(values: Arr): Result[Set[String]] =
-    collectResults(
-      values.value.zipWithIndex.map { case (value, index) =>
-        for {
-          obj <- asObject(value, s"$$.sources[$index]")
-          id <- requiredString(obj, "sourceId", s"$$.sources[$index]")
-        } yield id
-      }.toVector
-    ).flatMap { ids =>
-      val duplicates = ids.groupBy(identity).collect {
-        case (id, occurrences) if occurrences.size > 1 => id
-      }.toVector.sorted
-      if (duplicates.isEmpty) Right(ids.toSet)
-      else
-        Left(
-          duplicates.map { id =>
-            InvalidValue("$.sources", s"duplicate source ID $id")
-          }
-        )
+  private def checkCompatibility(
+      expected: Option[CatalogRef],
+      actual: CatalogRef
+  ): Result[Unit] =
+    expected match {
+      case Some(value) if value != actual =>
+        Left(Vector(IncompatibleCatalog("$.catalogVersion", value, actual)))
+      case _ => Right(())
     }
 
-  private def decodeMetadata(obj: Obj, index: Int): Result[ComponentMetadata] = {
-    val path = s"$$.components[$index]"
+  private def decodeDenizen(obj: Obj, path: String): Result[DenizenDefinition] =
     for {
-      definitionIdValue <- requiredString(obj, "definitionId", path)
-      definitionId <- construct(
-        s"$path.definitionId",
-        DefinitionId(definitionIdValue)
-      )
-      kind <- requiredString(obj, "kind", path)
+      id <- decodeDefinitionId(obj, path)
+      _ <- requirePrefix(id, "denizen:", s"$path.id")
       name <- requiredString(obj, "name", path)
-      physicalCopyCount <- requiredInt(obj, "physicalCopyCount", path)
-      _ <-
-        if (physicalCopyCount == 1) Right(())
-        else
-          Left(
-            Vector(
-              IdentityPolicyMismatch(
-                s"$path.physicalCopyCount",
-                s"singleton catalog requires 1, found $physicalCopyCount"
-              )
-            )
-          )
-      printedId <- optionalPrintedId(obj, path)
-      evidence <- requiredArray(obj, "printEvidence", path)
-      provenance <- decodeEvidence(evidence, s"$path.printEvidence")
-      transcriptionObject <- requiredObject(obj, "transcription", path)
-      transcription <- decodeTranscription(
-        transcriptionObject,
-        s"$path.transcription"
-      )
-      unresolved <- optionalStringArray(obj, "unresolved", path)
-    } yield ComponentMetadata(
-      definitionId,
-      kind,
-      name,
-      printedId,
-      provenance,
-      transcription,
-      unresolved
-    )
-  }
+      suit <- decodeSuit(obj, path)
+      handlers <- decodeHandlers(obj, path)
+      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
+    } yield DenizenDefinition(id, name, suit, handlers, rulesText)
 
-  private def optionalPrintedId(
-      obj: Obj,
-      path: String
-  ): Result[Option[PrintedComponentId]] =
-    obj.value.get("printedComponentId") match {
-      case None => Left(Vector(MissingField(s"$path.printedComponentId")))
-      case Some(Null) => Right(None)
-      case Some(value) =>
-        for {
-          idObject <- asObject(value, s"$path.printedComponentId")
-          kind <- requiredString(
-            idObject,
-            "type",
-            s"$path.printedComponentId"
-          )
-          id <- requiredString(
-            idObject,
-            "value",
-            s"$path.printedComponentId"
-          )
-          printed <- construct(
-            s"$path.printedComponentId",
-            PrintedComponentId(kind, id)
-          )
-        } yield Some(printed)
-    }
-
-  private def decodeEvidence(values: Arr, path: String): Result[Vector[SourceProvenance]] =
-    if (values.value.isEmpty)
-      Left(Vector(InvalidValue(path, "print evidence must not be empty")))
-    else
-      collectResults(
-        values.value.zipWithIndex.map { case (value, evidenceIndex) =>
-          for {
-            evidence <- asObject(value, s"$path[$evidenceIndex]")
-            provenance <- requiredArray(
-              evidence,
-              "provenance",
-              s"$path[$evidenceIndex]"
-            )
-            _ <-
-              if (provenance.value.nonEmpty) Right(())
-              else
-                Left(
-                  Vector(
-                    InvalidValue(
-                      s"$path[$evidenceIndex].provenance",
-                      "provenance must not be empty"
-                    )
-                  )
-                )
-            decoded <- collectResults(
-              provenance.value.zipWithIndex.map {
-                case (provenanceValue, provenanceIndex) =>
-                  decodeProvenance(
-                    provenanceValue,
-                    s"$path[$evidenceIndex].provenance[$provenanceIndex]"
-                  )
-              }.toVector
-            )
-          } yield decoded
-        }.toVector
-      ).map(_.flatten)
-
-  private def decodeProvenance(
-      value: Value,
-      path: String
-  ): Result[SourceProvenance] =
+  private def decodeRelic(obj: Obj, path: String): Result[RelicDefinition] =
     for {
-      obj <- asObject(value, path)
-      sourceId <- requiredString(obj, "sourceId", path)
-      file <- requiredString(obj, "file", path)
-      page <- requiredInt(obj, "page", path)
-      _ <-
-        if (page >= 1) Right(())
-        else Left(Vector(InvalidValue(s"$path.page", "page must be positive")))
-      sheetSlot <- optionalScalarString(obj, "sheetSlot", path)
-    } yield SourceProvenance(sourceId, file, page, sheetSlot)
-
-  private def decodeTranscription(
-      obj: Obj,
-      path: String
-  ): Result[TranscriptionMetadata] =
-    for {
-      method <- requiredString(obj, "method", path)
-      confidence <- requiredString(obj, "confidence", path)
-      reviewStatus <- requiredString(obj, "reviewStatus", path)
-    } yield TranscriptionMetadata(method, confidence, reviewStatus)
-
-  private def decodeSelection(
-      document: DecodedDocument,
-      selection: CatalogSelection
-  ): Result[ExecutableCatalog] = {
-    val setupCards =
-      if (selection.setupCards)
-        decodeKind(document.components, "setup-card")(decodeSetupCard)
-      else Right(Vector.empty)
-    val supplyBoards =
-      if (selection.supplyBoards)
-        decodeKind(document.components, "player-board")(decodeSupplyBoard)
-      else Right(Vector.empty)
-    val sites =
-      if (selection.sites)
-        decodeKind(document.components, "site")(decodeSite)
-      else Right(Vector.empty)
-    val visions =
-      if (selection.visions)
-        decodeKind(document.components, "vision")(decodeVision)
-      else Right(Vector.empty)
-
-    for {
-      decodedSetupCards <- setupCards
-      decodedSupplyBoards <- supplyBoards
-      decodedSites <- sites
-      decodedVisions <- visions
-      _ <- validateUniqueSetupSteps(decodedSetupCards)
-    } yield ExecutableCatalog(
-      document.schemaVersion,
-      document.ref,
-      document.ruleset,
-      decodedSetupCards.sortBy(_.step),
-      decodedSupplyBoards.sortBy(_.metadata.definitionId.value),
-      decodedSites.sortBy(_.metadata.definitionId.value),
-      decodedVisions.sortBy(_.metadata.definitionId.value)
-    )
-  }
-
-  private def decodeKind[A](
-      components: Vector[(ComponentMetadata, Obj)],
-      kind: String
-  )(
-      decoder: (ComponentMetadata, Obj) => Result[A]
-  ): Result[Vector[A]] =
-    collectResults(
-      components.collect {
-        case (metadata, obj) if metadata.kind == kind =>
-          decoder(metadata, obj)
-      }
-    )
-
-  private def decodeSetupCard(
-      metadata: ComponentMetadata,
-      obj: Obj
-  ): Result[SetupCardDefinition] = {
-    val path = componentPath(metadata)
-    for {
-      _ <- requireResolved(metadata, path)
-      step <- requiredInt(obj, "step", path)
-      _ <-
-        if (step > 0) Right(())
-        else Left(Vector(InvalidValue(s"$path.step", "step must be positive")))
-      handlers <- requiredStringArray(obj, "handlers", path)
-      _ <-
-        if (handlers.nonEmpty) Right(())
-        else
-          Left(
-            Vector(
-              InvalidValue(s"$path.handlers", "handlers must not be empty")
-            )
-          )
-      physicalRole <- requiredString(obj, "physicalRole", path)
-    } yield SetupCardDefinition(metadata, step, handlers, physicalRole)
-  }
-
-  private def decodeSupplyBoard(
-      metadata: ComponentMetadata,
-      obj: Obj
-  ): Result[SupplyBoardDefinition] = {
-    val path = componentPath(metadata)
-    for {
-      _ <- requireOnlyExcludedReviewItems(
-        metadata,
-        SupplyBoardExcludedReviewItems,
-        path
-      )
-      boardKindValue <- requiredString(obj, "boardKind", path)
-      boardKind <- boardKindValue match {
-        case "chancellor" => Right(PlayerBoardKind.Chancellor)
-        case "player" => Right(PlayerBoardKind.Player)
+      id <- decodeDefinitionId(obj, path)
+      _ <- requirePrefix(id, "relic:", s"$path.id")
+      name <- requiredString(obj, "name", path)
+      roleValue <- requiredString(obj, "role", path)
+      role <- roleValue match {
+        case "ordinary" => Right(RelicRole.Ordinary)
+        case "grand-scepter" => Right(RelicRole.GrandScepter)
         case other =>
-          Left(
-            Vector(
-              InvalidValue(
-                s"$path.boardKind",
-                s"unsupported board kind $other"
-              )
-            )
-          )
+          Left(Vector(InvalidValue(s"$path.role", s"unsupported role $other")))
       }
-      supply <- requiredObject(obj, "supply", path)
-      maximum <- requiredInt(supply, "maximum", s"$path.supply")
-      remainingValues <- requiredIntArray(
-        supply,
-        "remainingValues",
-        s"$path.supply"
-      )
-      refreshValues <- requiredArray(
-        supply,
-        "refreshByWarbandsInBank",
-        s"$path.supply"
-      )
-      bands <- collectResults(
-        refreshValues.value.zipWithIndex.map { case (value, index) =>
-          decodeSupplyBand(value, s"$path.supply.refreshByWarbandsInBank[$index]")
-        }.toVector
-      )
-      rules <- construct(
-        s"$path.supply",
-        SupplyRules(maximum, bands)
-      )
-      expectedRemaining = (maximum to 0 by -1).toVector
-      _ <-
-        if (remainingValues == expectedRemaining) Right(())
-        else
-          Left(
-            Vector(
-              InvalidValue(
-                s"$path.supply.remainingValues",
-                s"expected ${expectedRemaining.mkString("[", ",", "]")}"
-              )
-            )
-          )
-    } yield SupplyBoardDefinition(
-      metadata,
-      boardKind,
-      rules,
-      remainingValues,
-      metadata.unresolved
-    )
-  }
+      defense <- requiredInt(obj, "defense", path)
+      _ <- nonNegative(defense, s"$path.defense")
+      handlers <- decodeHandlers(obj, path)
+      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
+    } yield RelicDefinition(id, name, role, defense, handlers, rulesText)
 
-  private def decodeSupplyBand(
-      value: Value,
+  private def decodeEdifice(obj: Obj, path: String): Result[EdificeDefinition] =
+    for {
+      id <- decodeDefinitionId(obj, path)
+      _ <- requirePrefix(id, "edifice:", s"$path.id")
+      suit <- decodeSuit(obj, path)
+      intactObject <- requiredObject(obj, "intact", path)
+      intact <- decodeEdificeFace(intactObject, s"$path.intact")
+      ruinedObject <- requiredObject(obj, "ruined", path)
+      ruined <- decodeEdificeFace(ruinedObject, s"$path.ruined")
+    } yield EdificeDefinition(id, suit, intact, ruined)
+
+  private def decodeEdificeFace(
+      obj: Obj,
       path: String
-  ): Result[SupplyRefreshBand] =
+  ): Result[EdificeFaceDefinition] =
     for {
-      obj <- asObject(value, path)
-      warbands <- requiredObject(obj, "warbandsInBank", path)
-      minimum <- requiredInt(warbands, "min", s"$path.warbandsInBank")
-      maximum <- optionalInt(warbands, "max", s"$path.warbandsInBank")
-      refreshTo <- requiredInt(obj, "refreshTo", path)
-      range <- construct(
-        s"$path.warbandsInBank",
-        InclusiveIntRange(minimum, maximum.getOrElse(Int.MaxValue))
-      )
-      band <- construct(
-        path,
-        SupplyRefreshBand(range, refreshTo)
-      )
-    } yield band
+      name <- requiredString(obj, "name", path)
+      handlers <- decodeHandlers(obj, path)
+      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
+    } yield EdificeFaceDefinition(name, handlers, rulesText)
 
-  private def decodeSite(
-      metadata: ComponentMetadata,
-      obj: Obj
-  ): Result[SiteDefinition] = {
-    val path = componentPath(metadata)
+  private def decodeLegacy(obj: Obj, path: String): Result[LegacyDefinition] =
     for {
-      _ <- requireResolved(metadata, path)
-      statistics <- requiredObject(obj, "statistics", path)
-      defense <- requiredInt(statistics, "defense", s"$path.statistics")
-      capacity <- requiredInt(statistics, "capacity", s"$path.statistics")
+      id <- decodeDefinitionId(obj, path)
+      _ <- requirePrefix(id, "legacy:", s"$path.id")
+      name <- requiredString(obj, "name", path)
+      handlers <- decodeHandlers(obj, path)
+      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
+    } yield LegacyDefinition(id, name, handlers, rulesText)
+
+  private def decodeSite(obj: Obj, path: String): Result[SiteDefinition] =
+    for {
+      idValue <- requiredString(obj, "id", path)
       _ <-
-        if (capacity >= 0) Right(())
+        if (idValue.startsWith("site:")) Right(())
+        else Left(Vector(InvalidValue(s"$path.id", "expected site: prefix")))
+      id <- construct(s"$path.id", SiteId(idValue))
+      name <- requiredString(obj, "name", path)
+      defense <- requiredInt(obj, "defense", path)
+      capacity <- requiredInt(obj, "capacity", path)
+      relicSlots <- requiredInt(obj, "relicSlots", path)
+      recoverDifficulty <- optionalInt(obj, "recoverDifficulty", path)
+      _ <- collectResults(
+        Vector(
+          nonNegative(defense, s"$path.defense"),
+          nonNegative(capacity, s"$path.capacity"),
+          nonNegative(relicSlots, s"$path.relicSlots")
+        ) ++ recoverDifficulty.toVector.map(value =>
+          nonNegative(value, s"$path.recoverDifficulty")
+        )
+      ).map(_ => ())
+      resources <- requiredObject(obj, "startingResources", path)
+      startingResources <- decodeTokens(resources, s"$path.startingResources")
+      forgeRequirements <- optionalTokens(obj, "forgeRequirements", path)
+      _ <-
+        if (capacity == 3 == forgeRequirements.nonEmpty) Right(())
         else
           Left(
             Vector(
               InvalidValue(
-                s"$path.statistics.capacity",
-                "capacity must be non-negative"
+                s"$path.forgeRequirements",
+                "Forge requirements are required only on three-slot sites"
               )
             )
           )
-      relicSlots <- requiredInt(
-        statistics,
-        "relicSlots",
-        s"$path.statistics"
-      )
-      recoverDifficulty <- optionalInt(
-        statistics,
-        "recoverDifficulty",
-        s"$path.statistics"
-      )
-      _ <-
-        if (defense >= 0 && relicSlots >= 0 &&
-            recoverDifficulty.forall(_ >= 0)) Right(())
-        else
-          Left(
-            Vector(
-              InvalidValue(
-                s"$path.statistics",
-                "defense, relic slots, and recover difficulty must be non-negative"
-              )
-            )
-          )
-      resources <- requiredArray(
-        statistics,
-        "startingResources",
-        s"$path.statistics"
-      )
-      tokens <- decodeStartingResources(
-        resources,
-        s"$path.statistics.startingResources"
-      )
-      forgeValues <- requiredArray(
-        statistics,
-        "forgeRequirements",
-        s"$path.statistics"
-      )
-      forgeTokens <- decodeStartingResources(
-        forgeValues,
-        s"$path.statistics.forgeRequirements"
-      )
-      _ <-
-        if (capacity == 3 || forgeTokens == Tokens(0, 0)) Right(())
-        else
-          Left(
-            Vector(
-              InvalidValue(
-                s"$path.statistics.forgeRequirements",
-                "Forge requirements are only printed on three-slot sites"
-              )
-            )
-          )
-      powers <- requiredStringArray(obj, "powers", path)
-      id <- construct(
-        s"$path.definitionId",
-        SiteId(metadata.definitionId.value)
-      )
+      handlers <- decodeHandlers(obj, path, allowEmpty = true)
     } yield SiteDefinition(
-      metadata,
       id,
+      name,
       defense,
       capacity,
       relicSlots,
       recoverDifficulty,
-      tokens,
-      if (capacity == 3) Some(forgeTokens) else None,
-      powers
+      startingResources,
+      forgeRequirements,
+      handlers
     )
-  }
 
-  private def decodeStartingResources(values: Arr, path: String): Result[Tokens] =
-    collectResults(
-      values.value.zipWithIndex.map { case (value, index) =>
-        for {
-          obj <- asObject(value, s"$path[$index]")
-          kind <- requiredString(obj, "type", s"$path[$index]")
-          count <- requiredInt(obj, "count", s"$path[$index]")
-          _ <-
-            if (count >= 0) Right(())
-            else
-              Left(
-                Vector(
-                  InvalidValue(
-                    s"$path[$index].count",
-                    "resource count must be non-negative"
-                  )
-                )
-              )
-        } yield kind -> count
-      }.toVector
-    ).flatMap { resources =>
-      val duplicates = resources.groupBy(_._1).collect {
-        case (kind, occurrences) if occurrences.size > 1 => kind
-      }.toVector.sorted
-      val unsupported = resources.collect {
-        case (kind, _) if kind != "favor" && kind != "secret" => kind
-      }.distinct.sorted
-      if (duplicates.nonEmpty)
+  private def decodeDefinitionId(obj: Obj, path: String): Result[DefinitionId] =
+    requiredString(obj, "id", path).flatMap(value =>
+      construct(s"$path.id", DefinitionId(value))
+    )
+
+  private def decodeSuit(obj: Obj, path: String): Result[Suit] =
+    requiredString(obj, "suit", path).flatMap(value =>
+      construct(s"$path.suit", Suit(value))
+    )
+
+  private def decodeHandlers(
+      obj: Obj,
+      path: String,
+      allowEmpty: Boolean = false
+  ): Result[Vector[String]] =
+    requiredStringArray(obj, "handlers", path).flatMap { handlers =>
+      val invalid = handlers.filterNot(
+        _.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+")
+      )
+      if (invalid.nonEmpty)
         Left(
-          duplicates.map(kind =>
-            InvalidValue(path, s"duplicate starting resource $kind")
+          invalid.map(value =>
+            InvalidValue(s"$path.handlers", s"invalid handler key $value")
           )
         )
-      else if (unsupported.nonEmpty)
-        Left(
-          unsupported.map(kind =>
-            InvalidValue(path, s"unsupported starting resource $kind")
-          )
-        )
-      else {
-        val byKind = resources.toMap
-        construct(
-          path,
-          Tokens(
-            favor = byKind.getOrElse("favor", 0),
-            secrets = byKind.getOrElse("secret", 0)
-          )
-        )
-      }
+      else if (!allowEmpty && handlers.isEmpty)
+        Left(Vector(InvalidValue(s"$path.handlers", "must not be empty")))
+      else Right(handlers)
     }
 
-  private def decodeVision(
-      metadata: ComponentMetadata,
-      obj: Obj
-  ): Result[VisionDefinition] = {
-    val path = componentPath(metadata)
+  private def decodeTokens(obj: Obj, path: String): Result[Tokens] =
     for {
-      _ <- requireResolved(metadata, path)
-      printed <- requirePrintedId(metadata, "vision-id", path)
-      handlers <- requiredStringArray(obj, "handlers", path)
-      goal <- optionalVisionGoal(obj, path)
-      id <- construct(s"$path.printedComponentId", VisionId(printed.value))
-    } yield VisionDefinition(metadata, id, handlers, goal)
-  }
+      favor <- requiredInt(obj, "favor", path)
+      secrets <- requiredInt(obj, "secrets", path)
+      tokens <- construct(path, Tokens(favor, secrets))
+    } yield tokens
 
-  private def optionalVisionGoal(
+  private def optionalTokens(
       obj: Obj,
+      field: String,
       path: String
-  ): Result[Option[VisionGoal]] =
-    obj.value.get("goal") match {
-      case None => Left(Vector(MissingField(s"$path.goal")))
+  ): Result[Option[Tokens]] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
       case Some(Null) => Right(None)
       case Some(value) =>
-        for {
-          goal <- asObject(value, s"$path.goal")
-          kind <- requiredString(goal, "type", s"$path.goal")
-          minimum <- requiredInt(
-            goal,
-            "minimumVisionsDrawn",
-            s"$path.goal"
-          )
-          _ <-
-            if (minimum >= 0) Right(())
-            else
-              Left(
-                Vector(
-                  InvalidValue(
-                    s"$path.goal.minimumVisionsDrawn",
-                    "minimum Visions Drawn must be non-negative"
-                  )
-                )
-              )
-        } yield Some(VisionGoal(kind, minimum))
+        asObject(value, s"$path.$field")
+          .flatMap(decodeTokens(_, s"$path.$field"))
+          .map(Some(_))
     }
 
-  private def requirePrintedId(
-      metadata: ComponentMetadata,
-      expectedKind: String,
-      path: String
-  ): Result[PrintedComponentId] =
-    metadata.printedComponentId match {
-      case None => Left(Vector(MissingField(s"$path.printedComponentId")))
-      case Some(id) if id.kind != expectedKind =>
-        Left(
-          Vector(
-            InvalidValue(
-              s"$path.printedComponentId.type",
-              s"expected $expectedKind, found ${id.kind}"
-            )
-          )
-        )
-      case Some(id) => Right(id)
+  private def decodeArray[A](
+      root: Obj,
+      field: String
+  )(decoder: (Obj, String) => Result[A]): Result[Vector[A]] =
+    requiredArray(root, field, "$").flatMap { values =>
+      collectResults(
+        values.value.zipWithIndex.map { case (value, index) =>
+          val path = s"$$.$field[$index]"
+          asObject(value, path).flatMap(decoder(_, path))
+        }.toVector
+      )
     }
 
-  private def requireResolved(
-      metadata: ComponentMetadata,
-      path: String
-  ): Result[Unit] =
-    if (metadata.unresolved.isEmpty) Right(())
-    else
-      Left(
-        Vector(
-          UnresolvedRequiredFields(
-            s"$path.unresolved",
-            metadata.definitionId,
-            metadata.unresolved
-          )
-        )
-      )
-
-  private def requireOnlyExcludedReviewItems(
-      metadata: ComponentMetadata,
-      allowed: Set[String],
-      path: String
-  ): Result[Unit] = {
-    val requiredItems = metadata.unresolved.filterNot(allowed.contains)
-    if (requiredItems.isEmpty) Right(())
-    else
-      Left(
-        Vector(
-          UnresolvedRequiredFields(
-            s"$path.unresolved",
-            metadata.definitionId,
-            requiredItems
-          )
-        )
-      )
-  }
-
-  private def validateUniqueSetupSteps(
-      cards: Vector[SetupCardDefinition]
-  ): Result[Unit] = {
-    val duplicates = cards.groupBy(_.step).collect {
-      case (step, occurrences) if occurrences.size > 1 => step
-    }.toVector.sorted
+  private def validateUniqueIds(ids: Vector[DefinitionId]): Result[Unit] = {
+    val duplicates = ids.groupBy(_.value).collect {
+      case (_, values) if values.size > 1 => values.head
+    }.toVector.sortBy(_.value)
     if (duplicates.isEmpty) Right(())
     else
       Left(
-        duplicates.map { step =>
-          InvalidValue("$.components", s"duplicate setup step $step")
-        }
+        duplicates.map(id => DuplicateDefinitionId("$.components", id))
       )
   }
 
-  private def duplicateDefinitionErrors(
-      components: Vector[(ComponentMetadata, Obj)]
-  ): Vector[CatalogLoadError] =
-    components
-      .groupBy(_._1.definitionId)
-      .collect {
-        case (id, occurrences) if occurrences.size > 1 =>
-          DuplicateDefinitionId("$.components", id)
-      }
-      .toVector
-      .sortBy {
-        case error: DuplicateDefinitionId => error.id.value
-        case _ => ""
-      }
+  private def requirePrefix(
+      id: DefinitionId,
+      prefix: String,
+      path: String
+  ): Result[Unit] =
+    if (id.value.startsWith(prefix)) Right(())
+    else Left(Vector(InvalidValue(path, s"expected $prefix prefix")))
 
-  private def duplicatePrintedIdErrors(
-      components: Vector[(ComponentMetadata, Obj)]
-  ): Vector[CatalogLoadError] =
-    components
-      .flatMap { case (metadata, _) =>
-        metadata.printedComponentId.map(_ -> metadata)
-      }
-      .groupBy(_._1)
-      .collect {
-        case (id, occurrences)
-            if occurrences.size > 1 &&
-              !isEdificeFacePair(occurrences.map(_._2)) =>
-          DuplicatePrintedComponentId("$.components", id)
-      }
-      .toVector
-      .sortBy {
-        case error: DuplicatePrintedComponentId =>
-          (error.id.kind, error.id.value)
-        case _ => ("", "")
-      }
+  private def nonNegative(value: Int, path: String): Result[Unit] =
+    if (value >= 0) Right(())
+    else Left(Vector(InvalidValue(path, "must be non-negative")))
 
-  private def isEdificeFacePair(
-      metadata: Vector[ComponentMetadata]
-  ): Boolean = {
-    val suffixes = metadata.map(_.definitionId.value.split(":").last).toSet
-    metadata.size == 2 &&
-    metadata.forall(_.kind == "edifice-face") &&
-    suffixes == Set("intact", "ruined")
-  }
+  private def requiredObject(
+      obj: Obj,
+      field: String,
+      path: String
+  ): Result[Obj] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
+      case Some(value) => asObject(value, s"$path.$field")
+    }
 
-  private def componentPath(metadata: ComponentMetadata): String =
-    s"$$.components[${metadata.definitionId.value}]"
+  private def requiredArray(
+      obj: Obj,
+      field: String,
+      path: String
+  ): Result[Arr] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
+      case Some(value: Arr) => Right(value)
+      case Some(value) =>
+        Left(Vector(WrongType(s"$path.$field", "array", typeName(value))))
+    }
+
+  private def requiredString(
+      obj: Obj,
+      field: String,
+      path: String,
+      allowBlank: Boolean = false
+  ): Result[String] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
+      case Some(Str(value)) if allowBlank || value.trim.nonEmpty => Right(value)
+      case Some(Str(_)) =>
+        Left(Vector(InvalidValue(s"$path.$field", "must not be blank")))
+      case Some(value) =>
+        Left(Vector(WrongType(s"$path.$field", "string", typeName(value))))
+    }
+
+  private def requiredStringArray(
+      obj: Obj,
+      field: String,
+      path: String
+  ): Result[Vector[String]] =
+    requiredArray(obj, field, path).flatMap { values =>
+      collectResults(
+        values.value.zipWithIndex.map {
+          case (Str(value), _) if value.trim.nonEmpty => Right(value)
+          case (Str(_), index) =>
+            Left(
+              Vector(
+                InvalidValue(s"$path.$field[$index]", "must not be blank")
+              )
+            )
+          case (value, index) =>
+            Left(
+              Vector(
+                WrongType(s"$path.$field[$index]", "string", typeName(value))
+              )
+            )
+        }.toVector
+      )
+    }
+
+  private def requiredInt(
+      obj: Obj,
+      field: String,
+      path: String
+  ): Result[Int] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
+      case Some(value) => asInt(value, s"$path.$field")
+    }
+
+  private def optionalInt(
+      obj: Obj,
+      field: String,
+      path: String
+  ): Result[Option[Int]] =
+    obj.value.get(field) match {
+      case None => Left(Vector(MissingField(s"$path.$field")))
+      case Some(Null) => Right(None)
+      case Some(value) => asInt(value, s"$path.$field").map(Some(_))
+    }
 
   private def asObject(value: Value, path: String): Result[Obj] =
     value match {
@@ -807,174 +396,35 @@ object CatalogLoader {
       case other => Left(Vector(WrongType(path, "object", typeName(other))))
     }
 
-  private def requiredObject(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Obj] =
-    requiredValue(obj, key, path).flatMap(asObject(_, s"$path.$key"))
-
-  private def requiredArray(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Arr] =
-    requiredValue(obj, key, path).flatMap {
-      case array: Arr => Right(array)
-      case other =>
-        Left(Vector(WrongType(s"$path.$key", "array", typeName(other))))
-    }
-
-  private def requiredString(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[String] =
-    requiredValue(obj, key, path).flatMap {
-      case Str(value) if value.trim.nonEmpty => Right(value)
-      case Str(_) =>
-        Left(Vector(InvalidValue(s"$path.$key", "must not be blank")))
-      case other =>
-        Left(Vector(WrongType(s"$path.$key", "string", typeName(other))))
-    }
-
-  private def requiredBoolean(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Boolean] =
-    requiredValue(obj, key, path).flatMap {
-      case Bool(value) => Right(value)
-      case other =>
-        Left(Vector(WrongType(s"$path.$key", "boolean", typeName(other))))
-    }
-
-  private def requiredInt(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Int] =
-    requiredValue(obj, key, path).flatMap(value =>
-      asInt(value, s"$path.$key")
-    )
-
-  private def optionalInt(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Option[Int]] =
-    obj.value.get(key) match {
-      case None | Some(Null) => Right(None)
-      case Some(value) => asInt(value, s"$path.$key").map(Some(_))
-    }
-
   private def asInt(value: Value, path: String): Result[Int] =
     value match {
-      case Num(number)
-          if number.isWhole &&
-            number >= Int.MinValue &&
-            number <= Int.MaxValue =>
+      case ujson.Num(number)
+          if number.isWhole && number >= Int.MinValue && number <= Int.MaxValue =>
         Right(number.toInt)
-      case Num(number) =>
-        Left(Vector(InvalidValue(path, s"$number is not a 32-bit integer")))
+      case ujson.Num(_) =>
+        Left(Vector(InvalidValue(path, "must be a 32-bit integer")))
       case other => Left(Vector(WrongType(path, "integer", typeName(other))))
     }
 
-  private def requiredStringArray(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Vector[String]] =
-    requiredArray(obj, key, path).flatMap { array =>
-      collectResults(
-        array.value.zipWithIndex.map { case (value, index) =>
-          value match {
-            case Str(text) if text.trim.nonEmpty => Right(text)
-            case Str(_) =>
-              Left(
-                Vector(
-                  InvalidValue(
-                    s"$path.$key[$index]",
-                    "must not be blank"
-                  )
-                )
-              )
-            case other =>
-              Left(
-                Vector(
-                  WrongType(
-                    s"$path.$key[$index]",
-                    "string",
-                    typeName(other)
-                  )
-                )
-              )
-          }
-        }.toVector
-      )
-    }
-
-  private def optionalStringArray(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Vector[String]] =
-    obj.value.get(key) match {
-      case None => Right(Vector.empty)
-      case Some(_: Arr) => requiredStringArray(obj, key, path)
-      case Some(other) =>
-        Left(Vector(WrongType(s"$path.$key", "array", typeName(other))))
-    }
-
-  private def requiredIntArray(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Vector[Int]] =
-    requiredArray(obj, key, path).flatMap { array =>
-      collectResults(
-        array.value.zipWithIndex.map { case (value, index) =>
-          asInt(value, s"$path.$key[$index]")
-        }.toVector
-      )
-    }
-
-  private def optionalScalarString(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Option[String]] =
-    obj.value.get(key) match {
-      case None | Some(Null) => Right(None)
-      case Some(Str(value)) => Right(Some(value))
-      case Some(Num(value)) if value.isWhole => Right(Some(value.toLong.toString))
-      case Some(other) =>
-        Left(
-          Vector(
-            WrongType(s"$path.$key", "string or integer", typeName(other))
-          )
-        )
-    }
-
-  private def requiredValue(
-      obj: Obj,
-      key: String,
-      path: String
-  ): Result[Value] =
-    obj.value.get(key) match {
-      case Some(value) => Right(value)
-      case None => Left(Vector(MissingField(s"$path.$key")))
+  private def typeName(value: Value): String =
+    value match {
+      case _: Obj => "object"
+      case _: Arr => "array"
+      case _: Str => "string"
+      case _: ujson.Num => "number"
+      case _: ujson.Bool => "boolean"
+      case Null => "null"
     }
 
   private def construct[A](path: String, value: => A): Result[A] =
     try Right(value)
     catch {
-      case error: IllegalArgumentException =>
+      case NonFatal(error) =>
         Left(
           Vector(
             InvalidValue(
               path,
-              Option(error.getMessage).getOrElse("invalid value")
+              Option(error.getMessage).getOrElse(error.getClass.getName)
             )
           )
         )
@@ -983,18 +433,8 @@ object CatalogLoader {
   private def collectResults[A](
       results: Vector[Result[A]]
   ): Result[Vector[A]] = {
-    val errors = results.collect { case Left(values) => values }.flatten
+    val errors = results.flatMap(_.left.toOption.toVector.flatten)
     if (errors.nonEmpty) Left(errors)
-    else Right(results.collect { case Right(value) => value })
+    else Right(results.flatMap(_.toOption))
   }
-
-  private def typeName(value: Value): String =
-    value match {
-      case _: Obj => "object"
-      case _: Arr => "array"
-      case _: Str => "string"
-      case _: Num => "number"
-      case _: Bool => "boolean"
-      case Null => "null"
-    }
 }
