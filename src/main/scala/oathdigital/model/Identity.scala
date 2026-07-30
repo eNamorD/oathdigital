@@ -32,13 +32,14 @@ sealed trait ComponentId extends Product with Serializable {
 }
 
 sealed trait CardId extends ComponentId
+sealed trait WorldCardId extends CardId
 
-final case class DenizenId(value: String) extends CardId {
+final case class DenizenId(value: String) extends WorldCardId {
   IdentityValidation.nonBlank("denizen ID", value)
   override val kind: String = "denizen"
 }
 
-final case class VisionId(value: String) extends CardId {
+final case class VisionId(value: String) extends WorldCardId {
   IdentityValidation.nonBlank("Vision ID", value)
   override val kind: String = "vision"
 }

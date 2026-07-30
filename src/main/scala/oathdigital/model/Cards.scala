@@ -17,7 +17,6 @@ sealed trait CardState extends Product with Serializable {
 }
 
 sealed trait AdviserState extends CardState
-sealed trait WorldCardState extends AdviserState
 sealed trait SiteDenizenState extends CardState {
   def tokens: Tokens
 }
@@ -26,13 +25,13 @@ final case class DenizenState(
     id: DenizenId,
     orientation: Orientation,
     tokens: Tokens
-) extends WorldCardState
+) extends AdviserState
     with SiteDenizenState
 
 final case class VisionState(
     id: VisionId,
     orientation: Orientation
-) extends WorldCardState
+) extends AdviserState
 
 /**
  * Edifices are special denizens. They can occupy a site's denizen slots, but
@@ -97,12 +96,12 @@ object Suit {
 }
 
 final case class CardZones(
-    worldDeck: Vector[WorldCardState],
-    relicDeck: Vector[RelicState],
-    edificeDeck: Vector[EdificeState],
-    legacyDeck: Vector[LegacyState],
-    regionalDiscards: Map[Region, Vector[WorldCardState]]
+    worldDeck: Vector[WorldCardId],
+    relicDeck: Vector[RelicId],
+    edificeDeck: Vector[EdificeId],
+    legacyDeck: Vector[LegacyId],
+    regionalDiscards: Map[Region, Vector[WorldCardId]]
 ) {
-  def discard(region: Region): Vector[WorldCardState] =
+  def discard(region: Region): Vector[WorldCardId] =
     regionalDiscards.getOrElse(region, Vector.empty)
 }

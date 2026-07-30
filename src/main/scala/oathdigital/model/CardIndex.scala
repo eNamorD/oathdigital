@@ -24,7 +24,7 @@ object PlayerCardArea {
 sealed trait LineageCardArea extends Product with Serializable
 object LineageCardArea {
   case object Legacies extends LineageCardArea
-  case object StartingAdviser extends LineageCardArea
+  case object StartingAdvisers extends LineageCardArea
 }
 
 sealed trait CardContainer extends Product with Serializable
@@ -51,7 +51,11 @@ final case class CardLocation(container: CardContainer, position: Int) {
   require(position >= 0, "card position must be non-negative")
 }
 
-final case class LocatedCard(state: CardState, location: CardLocation)
+final case class LocatedCard(
+    id: CardId,
+    state: Option[CardState],
+    location: CardLocation
+)
 
 sealed trait CardIndexProblem extends Product with Serializable
 object CardIndexProblem {
@@ -71,7 +75,7 @@ object CardIndexProblem {
 final case class CardIndex private (byId: Map[CardId, LocatedCard]) {
   def get(id: CardId): Option[LocatedCard] = byId.get(id)
   def locationOf(id: CardId): Option[CardLocation] = get(id).map(_.location)
-  def stateOf(id: CardId): Option[CardState] = get(id).map(_.state)
+  def stateOf(id: CardId): Option[CardState] = get(id).flatMap(_.state)
   def ids: Set[CardId] = byId.keySet
 }
 
@@ -82,45 +86,68 @@ object CardIndex {
   ): Either[Vector[CardIndexProblem], CardIndex] = {
     val located = Vector.newBuilder[LocatedCard]
 
-    def add(
+    def addId(
+        id: CardId,
+        container: CardContainer,
+        position: Int
+    ): Unit =
+      located += LocatedCard(
+        id,
+        state = None,
+        CardLocation(container, position)
+      )
+
+    def addState(
         state: CardState,
         container: CardContainer,
         position: Int
     ): Unit =
-      located += LocatedCard(state, CardLocation(container, position))
+      located += LocatedCard(
+        state.id,
+        state = Some(state),
+        CardLocation(container, position)
+      )
 
-    def addAll(
+    def addIds(
+        ids: Iterable[CardId],
+        container: CardContainer
+    ): Unit =
+      ids.iterator.zipWithIndex.foreach { case (id, position) =>
+        addId(id, container, position)
+      }
+
+    def addStates(
         states: Iterable[CardState],
         container: CardContainer
     ): Unit =
       states.iterator.zipWithIndex.foreach { case (state, position) =>
-        add(state, container, position)
+        addState(state, container, position)
       }
 
     val common = game.current.commonCards
-    addAll(common.worldDeck, CardContainer.Deck(DeckKind.World))
-    addAll(common.relicDeck, CardContainer.Deck(DeckKind.Relic))
-    addAll(common.edificeDeck, CardContainer.Deck(DeckKind.Edifice))
-    addAll(common.legacyDeck, CardContainer.Deck(DeckKind.Legacy))
+    addIds(common.worldDeck, CardContainer.Deck(DeckKind.World))
+    addIds(common.relicDeck, CardContainer.Deck(DeckKind.Relic))
+    addIds(common.edificeDeck, CardContainer.Deck(DeckKind.Edifice))
+    addIds(common.legacyDeck, CardContainer.Deck(DeckKind.Legacy))
 
     Region.all.foreach { region =>
-      addAll(
+      addIds(
         common.discard(region),
         CardContainer.RegionalDiscard(region)
       )
     }
 
     game.current.players.foreach { player =>
-      addAll(
+      addStates(
         player.advisers,
         CardContainer.Player(player.player, PlayerCardArea.Advisers)
       )
-      addAll(
+      addStates(
         player.relics,
         CardContainer.Player(player.player, PlayerCardArea.Relics)
       )
       player.revealedVision.foreach { vision =>
-        add(
+        addState(
           vision,
           CardContainer.Player(
             player.player,
@@ -134,11 +161,11 @@ object CardIndex {
     game.current.map.sites.toVector
       .sortBy(_._1.value)
       .foreach { case (siteId, site) =>
-        addAll(
+        addStates(
           site.denizens,
           CardContainer.Site(siteId, SiteCardArea.Denizens)
         )
-        addAll(
+        addStates(
           site.relics,
           CardContainer.Site(siteId, SiteCardArea.Relics)
         )
@@ -147,27 +174,24 @@ object CardIndex {
     game.campaign.lineages.toVector
       .sortBy(_._1.value)
       .foreach { case (lineageId, lineage) =>
-        addAll(
+        addStates(
           lineage.legacies,
           CardContainer.Lineage(lineageId, LineageCardArea.Legacies)
         )
-        lineage.startingAdviser.foreach { adviser =>
-          add(
-            adviser,
-            CardContainer.Lineage(
-              lineageId,
-              LineageCardArea.StartingAdviser
-            ),
-            0
+        addStates(
+          lineage.startingAdvisers,
+          CardContainer.Lineage(
+            lineageId,
+            LineageCardArea.StartingAdvisers
           )
-        }
+        )
       }
 
-    addAll(game.campaign.reliquary, CardContainer.Reliquary)
-    addAll(game.campaign.dispossessed, CardContainer.Dispossessed)
+    addIds(game.campaign.reliquary, CardContainer.Reliquary)
+    addIds(game.campaign.dispossessed, CardContainer.Dispossessed)
 
     Suit.all.foreach { suit =>
-      addAll(
+      addIds(
         game.campaign.suitedReserves.getOrElse(suit, Vector.empty),
         CardContainer.SuitedReserve(suit)
       )
@@ -175,7 +199,7 @@ object CardIndex {
 
     game.campaign.atlas.entries.zipWithIndex.foreach {
       case (stored: AtlasEntry.StoredSite, atlasPosition) =>
-        addAll(
+        addStates(
           stored.denizens,
           CardContainer.AtlasSite(
             atlasPosition,
@@ -183,7 +207,7 @@ object CardIndex {
             SiteCardArea.Denizens
           )
         )
-        addAll(
+        addStates(
           stored.relics,
           CardContainer.AtlasSite(
             atlasPosition,
@@ -195,7 +219,7 @@ object CardIndex {
     }
 
     val allLocated = located.result()
-    val grouped = allLocated.groupBy(_.state.id)
+    val grouped = allLocated.groupBy(_.id)
     val duplicateProblems = grouped.toVector
       .collect {
         case (id, occurrences) if occurrences.size > 1 =>

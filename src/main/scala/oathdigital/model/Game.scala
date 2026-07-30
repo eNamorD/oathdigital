@@ -5,7 +5,7 @@ final case class PlayerBoardState(
     faceUpSecrets: Int,
     faceDownSecrets: Int,
     warbands: Int,
-    supply: Supply
+    supply: SupplyTrack
 ) {
   require(favor >= 0, "player favor must be non-negative")
   require(faceUpSecrets >= 0, "faceup secrets must be non-negative")
@@ -16,7 +16,7 @@ final case class PlayerBoardState(
 final case class PlayerState(
     player: PlayerId,
     lineage: LineageId,
-    pawnSite: SiteId,
+    pawnSite: Option[SiteId],
     board: PlayerBoardState,
     advisers: Vector[AdviserState],
     relics: Vector[RelicState],
@@ -29,10 +29,10 @@ final case class PlayerState(
  */
 final case class LineageState(
     id: LineageId,
-    controller: Option[PlayerId],
+    previousPlayer: Option[PlayerId],
     role: Role,
     legacies: Vector[LegacyState],
-    startingAdviser: Option[AdviserState]
+    startingAdvisers: Vector[AdviserState]
 )
 
 final case class EraState(
@@ -50,9 +50,9 @@ final case class CampaignState(
     atlas: AtlasState,
     foundations: Map[FoundationNumber, FoundationState],
     lineages: Map[LineageId, LineageState],
-    reliquary: Vector[RelicState],
-    dispossessed: Vector[DenizenState],
-    suitedReserves: Map[Suit, Vector[DenizenState]],
+    reliquary: Vector[RelicId],
+    dispossessed: Vector[DenizenId],
+    suitedReserves: Map[Suit, Vector[DenizenId]],
     oathkeeperGoal: OathkeeperGoal,
     era: EraState
 )
@@ -76,6 +76,7 @@ final case class GameTracks(
     usurperLimited: Boolean
 ) {
   require(round >= 1, "round must be positive")
+  require(round <= 8, "round must be eight or less")
   require(visionsDrawn >= 0, "Visions Drawn must be non-negative")
 }
 

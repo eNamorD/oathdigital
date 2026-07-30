@@ -71,15 +71,65 @@ object AtlasEntry {
  * One ordered Atlas sequence. `entries.head` is the Recent end and
  * `entries.last` is the Forgotten end.
  */
+final case class AtlasRemoval(
+    removed: Vector[AtlasEntry],
+    remaining: AtlasState
+)
+
 final case class AtlasState(entries: Vector[AtlasEntry]) {
   def addRecent(entry: AtlasEntry): AtlasState =
     copy(entries = entry +: entries)
 
-  def addForgotten(entry: AtlasEntry): AtlasState =
-    copy(entries = entries :+ entry)
+  /** Prepends entries while preserving their supplied front-to-back order. */
+  def addRecent(additions: Vector[AtlasEntry]): AtlasState =
+    copy(entries = additions ++ entries)
+
+  /**
+   * Removes up to `numSites` stored sites from the Recent end.
+   *
+   * Any Empire divider encountered before the requested number of sites is
+   * reached is removed and included in the result.
+   */
+  def removeRecent(numSites: Int): AtlasRemoval = {
+    val (removed, remaining) = takeSites(entries, numSites)
+    AtlasRemoval(removed, AtlasState(remaining))
+  }
+
+  /**
+   * Removes up to `numSites` stored sites from the Forgotten end.
+   *
+   * Removed entries are returned in removal order, from back to front.
+   * Any Empire divider encountered is included in the result.
+   */
+  def removeForgotten(numSites: Int): AtlasRemoval = {
+    val (removedReversed, remainingReversed) =
+      takeSites(entries.reverse, numSites)
+    AtlasRemoval(
+      removedReversed,
+      AtlasState(remainingReversed.reverse)
+    )
+  }
 
   def mostRecent: Option[AtlasEntry] = entries.headOption
   def mostForgotten: Option[AtlasEntry] = entries.lastOption
+
+  private def takeSites(
+      source: Vector[AtlasEntry],
+      numSites: Int
+  ): (Vector[AtlasEntry], Vector[AtlasEntry]) = {
+    require(numSites >= 0, "number of Atlas sites must be non-negative")
+
+    var removedSites = 0
+    var position = 0
+    while (position < source.size && removedSites < numSites) {
+      source(position) match {
+        case _: AtlasEntry.StoredSite => removedSites += 1
+        case AtlasEntry.EmpireDivider => ()
+      }
+      position += 1
+    }
+    source.splitAt(position)
+  }
 }
 
 sealed trait PeoplesFavorFace extends Product with Serializable

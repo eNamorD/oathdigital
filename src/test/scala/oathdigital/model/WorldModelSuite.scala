@@ -14,13 +14,120 @@ class WorldModelSuite extends munit.FunSuite {
       Vector.empty
     )
 
-    val atlas = AtlasState(Vector(middle))
+    val atlas = AtlasState(Vector(middle, forgotten))
       .addRecent(recent)
-      .addForgotten(forgotten)
 
     assertEquals(atlas.entries, Vector(recent, middle, forgotten))
     assertEquals(atlas.mostRecent, Some(recent))
     assertEquals(atlas.mostForgotten, Some(forgotten))
+  }
+
+  test("bulk Recent additions preserve supplied front-to-back order") {
+    val first = AtlasEntry.StoredSite(
+      SiteId("first"),
+      Vector.empty,
+      Vector.empty
+    )
+    val second = AtlasEntry.StoredSite(
+      SiteId("second"),
+      Vector.empty,
+      Vector.empty
+    )
+    val atlas = AtlasState(Vector(AtlasEntry.EmpireDivider))
+      .addRecent(Vector(first, second))
+
+    assertEquals(
+      atlas.entries,
+      Vector(first, second, AtlasEntry.EmpireDivider)
+    )
+  }
+
+  test("Recent removal counts sites and includes an encountered divider") {
+    val first = AtlasEntry.StoredSite(
+      SiteId("first"),
+      Vector.empty,
+      Vector.empty
+    )
+    val second = AtlasEntry.StoredSite(
+      SiteId("second"),
+      Vector.empty,
+      Vector.empty
+    )
+    val third = AtlasEntry.StoredSite(
+      SiteId("third"),
+      Vector.empty,
+      Vector.empty
+    )
+    val atlas = AtlasState(
+      Vector(first, AtlasEntry.EmpireDivider, second, third)
+    )
+
+    val removal = atlas.removeRecent(2)
+
+    assertEquals(
+      removal.removed,
+      Vector(first, AtlasEntry.EmpireDivider, second)
+    )
+    assertEquals(
+      removal.remaining.entries,
+      Vector(third)
+    )
+    assertEquals(atlas.entries.size, 4)
+  }
+
+  test("Forgotten removal returns entries in back-to-front removal order") {
+    val first = AtlasEntry.StoredSite(
+      SiteId("first"),
+      Vector.empty,
+      Vector.empty
+    )
+    val second = AtlasEntry.StoredSite(
+      SiteId("second"),
+      Vector.empty,
+      Vector.empty
+    )
+    val third = AtlasEntry.StoredSite(
+      SiteId("third"),
+      Vector.empty,
+      Vector.empty
+    )
+    val atlas = AtlasState(
+      Vector(first, second, AtlasEntry.EmpireDivider, third)
+    )
+
+    val removal = atlas.removeForgotten(2)
+
+    assertEquals(
+      removal.removed,
+      Vector(third, AtlasEntry.EmpireDivider, second)
+    )
+    assertEquals(
+      removal.remaining.entries,
+      Vector(first)
+    )
+  }
+
+  test("Atlas removal handles zero, insufficient sites, and invalid counts") {
+    val site = AtlasEntry.StoredSite(
+      SiteId("only-site"),
+      Vector.empty,
+      Vector.empty
+    )
+    val atlas = AtlasState(Vector(AtlasEntry.EmpireDivider, site))
+
+    assertEquals(
+      atlas.removeRecent(0),
+      AtlasRemoval(Vector.empty, atlas)
+    )
+    assertEquals(
+      atlas.removeForgotten(3),
+      AtlasRemoval(
+        Vector(site, AtlasEntry.EmpireDivider),
+        AtlasState(Vector.empty)
+      )
+    )
+    intercept[IllegalArgumentException](atlas.removeRecent(-1))
+    intercept[IllegalArgumentException](atlas.removeForgotten(-1))
   }
 
   test("banner faces change without changing physical banner families") {

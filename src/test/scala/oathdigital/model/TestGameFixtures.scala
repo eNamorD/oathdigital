@@ -7,22 +7,18 @@ object TestGameFixtures {
   val sites: Vector[SiteId] =
     (1 to 8).toVector.map(index => SiteId(s"S$index"))
 
-  val worldDenizen: DenizenState =
-    DenizenState(DenizenId("D1"), Orientation.FaceDown, Tokens.empty)
+  val worldDenizen: DenizenId = DenizenId("D1")
   val siteDenizen: DenizenState =
     DenizenState(DenizenId("D2"), Orientation.FaceUp, Tokens(1, 0))
   val adviser: VisionState =
     VisionState(VisionId("V1"), Orientation.FaceDown)
   val siteRelic: RelicState =
     RelicState(RelicId("R1"), Orientation.FaceDown, Tokens.empty)
-  val reliquaryRelic: RelicState =
-    RelicState(RelicId("R2"), Orientation.FaceDown, Tokens.empty)
+  val reliquaryRelic: RelicId = RelicId("R2")
   val legacy: LegacyState =
     LegacyState(LegacyId("L1"), active = false)
-  val dispossessed: DenizenState =
-    DenizenState(DenizenId("D3"), Orientation.FaceDown, Tokens.empty)
-  val reserved: DenizenState =
-    DenizenState(DenizenId("D4"), Orientation.FaceDown, Tokens.empty)
+  val dispossessed: DenizenId = DenizenId("D3")
+  val reserved: DenizenId = DenizenId("D4")
   val storedEdifice: EdificeState =
     EdificeState(EdificeId("E1"), EdificeSide.Intact, Tokens.empty)
 
@@ -52,13 +48,13 @@ object TestGameFixtures {
   val player: PlayerState = PlayerState(
     player = playerId,
     lineage = lineageId,
-    pawnSite = sites.head,
+    pawnSite = Some(sites.head),
     board = PlayerBoardState(
       favor = 1,
       faceUpSecrets = 1,
       faceDownSecrets = 0,
       warbands = 3,
-      supply = Supply.full
+      supply = SupplyTrack.full
     ),
     advisers = Vector(adviser),
     relics = Vector.empty,
@@ -67,10 +63,10 @@ object TestGameFixtures {
 
   val lineage: LineageState = LineageState(
     id = lineageId,
-    controller = Some(playerId),
+    previousPlayer = Some(playerId),
     role = Role.Exile,
     legacies = Vector(legacy),
-    startingAdviser = None
+    startingAdvisers = Vector.empty
   )
 
   val campaign: CampaignState = CampaignState(

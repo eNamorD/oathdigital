@@ -13,18 +13,26 @@ object DomainProblem {
   final case class ExtraSiteState(site: SiteId) extends DomainProblem
   final case class DuplicatePlayer(player: PlayerId) extends DomainProblem
   final case class DuplicateLineage(lineage: LineageId) extends DomainProblem
+  final case class LineageKeyMismatch(key: LineageId, stateId: LineageId)
+      extends DomainProblem
+  final case class MissingFoundation(number: FoundationNumber)
+      extends DomainProblem
+  final case class DuplicateAtlasSite(site: SiteId) extends DomainProblem
+  final case class SiteInMapAndAtlas(site: SiteId) extends DomainProblem
   final case class UnknownPlayerLineage(
       player: PlayerId,
       lineage: LineageId
   ) extends DomainProblem
-  final case class LineageControllerMismatch(
-      player: PlayerId,
-      lineage: LineageId,
-      controller: Option[PlayerId]
-  ) extends DomainProblem
   final case class PawnOutsideMap(player: PlayerId, site: SiteId)
       extends DomainProblem
+  final case class UnknownForceLineage(site: SiteId, lineage: LineageId)
+      extends DomainProblem
   final case class UnknownActivePlayer(player: PlayerId) extends DomainProblem
+  final case class UnknownPeoplesFavorHolder(player: PlayerId)
+      extends DomainProblem
+  final case class UnknownDarkestSecretHolder(player: PlayerId)
+      extends DomainProblem
+  final case class UnknownTitleHolder(player: PlayerId) extends DomainProblem
   final case class MultipleChancellors(lineages: Vector[LineageId])
       extends DomainProblem
   final case class CardProblem(problem: CardIndexProblem) extends DomainProblem
@@ -63,6 +71,29 @@ object DomainValidation {
       problems += ExtraSiteState(site)
     }
 
+    val atlasSites = game.campaign.atlas.entries.collect {
+      case stored: AtlasEntry.StoredSite => stored.id
+    }
+    atlasSites.groupBy(identity).foreach {
+      case (site, occurrences) if occurrences.size > 1 =>
+        problems += DuplicateAtlasSite(site)
+      case _ => ()
+    }
+    (inPlay intersect atlasSites.toSet).toVector.sortBy(_.value).foreach {
+      site =>
+        problems += SiteInMapAndAtlas(site)
+    }
+
+    FoundationNumber.all.foreach { number =>
+      if (!game.campaign.foundations.contains(number))
+        problems += MissingFoundation(number)
+    }
+
+    game.campaign.lineages.foreach { case (key, lineage) =>
+      if (key != lineage.id)
+        problems += LineageKeyMismatch(key, lineage.id)
+    }
+
     game.current.players.groupBy(_.player).foreach {
       case (player, occurrences) if occurrences.size > 1 =>
         problems += DuplicatePlayer(player)
@@ -75,24 +106,37 @@ object DomainValidation {
     }
 
     game.current.players.foreach { player =>
-      game.campaign.lineages.get(player.lineage) match {
-        case None =>
-          problems += UnknownPlayerLineage(player.player, player.lineage)
-        case Some(lineage) if lineage.controller != Some(player.player) =>
-          problems += LineageControllerMismatch(
-            player.player,
-            player.lineage,
-            lineage.controller
-          )
-        case Some(_) => ()
+      if (!game.campaign.lineages.contains(player.lineage))
+        problems += UnknownPlayerLineage(player.player, player.lineage)
+      player.pawnSite.foreach { site =>
+        if (!inPlay.contains(site))
+          problems += PawnOutsideMap(player.player, site)
       }
-      if (!inPlay.contains(player.pawnSite))
-        problems += PawnOutsideMap(player.player, player.pawnSite)
     }
 
     val playerIds = game.current.players.iterator.map(_.player).toSet
     if (!playerIds.contains(game.current.turn.activePlayer))
       problems += UnknownActivePlayer(game.current.turn.activePlayer)
+
+    map.sites.toVector.sortBy(_._1.value).foreach {
+      case (site, SiteState(SiteForces.Occupied(ForceKind.Exile(lineage), _), _, _, _))
+          if !game.campaign.lineages.contains(lineage) =>
+        problems += UnknownForceLineage(site, lineage)
+      case _ => ()
+    }
+
+    game.current.banners.peoplesFavor.holder.foreach { holder =>
+      if (!playerIds.contains(holder))
+        problems += UnknownPeoplesFavorHolder(holder)
+    }
+    game.current.banners.darkestSecret.holder.foreach { holder =>
+      if (!playerIds.contains(holder))
+        problems += UnknownDarkestSecretHolder(holder)
+    }
+    game.current.title.holder.foreach { holder =>
+      if (!playerIds.contains(holder))
+        problems += UnknownTitleHolder(holder)
+    }
 
     val chancellors = game.campaign.lineages.valuesIterator
       .filter(_.role == Role.Chancellor)

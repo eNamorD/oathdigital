@@ -7,9 +7,10 @@ class CardIndexSuite extends munit.FunSuite {
     val index = CardIndex.from(game).toOption.get
 
     assertEquals(
-      index.locationOf(worldDenizen.id),
+      index.locationOf(worldDenizen),
       Some(CardLocation(CardContainer.Deck(DeckKind.World), 0))
     )
+    assertEquals(index.stateOf(worldDenizen), None)
     assertEquals(
       index.locationOf(siteDenizen.id),
       Some(
@@ -36,7 +37,9 @@ class CardIndexSuite extends munit.FunSuite {
 
   test("the derived index rejects a card present in two containers") {
     val duplicatedSite = game.current.map.sites(sites(2)).copy(
-      denizens = Vector(worldDenizen)
+      denizens = Vector(
+        DenizenState(worldDenizen, Orientation.FaceUp, Tokens.empty)
+      )
     )
     val duplicatedGame = game.copy(
       current = game.current.copy(
@@ -51,7 +54,7 @@ class CardIndexSuite extends munit.FunSuite {
     assert(
       result.left.toOption.get.exists {
         case CardIndexProblem.DuplicateCard(id, locations) =>
-          id == worldDenizen.id && locations.size == 2
+          id == worldDenizen && locations.size == 2
         case _ => false
       }
     )
