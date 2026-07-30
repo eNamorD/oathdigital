@@ -47,6 +47,8 @@ object SetupApplicationError {
       extends SetupApplicationError
   final case class SequenceConflict(expected: Long, actual: Long)
       extends SetupApplicationError
+  final case class StaleClientPosition(expected: Long, actual: Long)
+      extends SetupApplicationError
   final case class AppendFirstSequenceMismatch(
       expected: Long,
       actual: Long
@@ -78,17 +80,48 @@ final class SetupApplicationService(
       gameId: String,
       command: SetupCommand
   ): Either[SetupApplicationError, SetupCommandAccepted] =
+    handleInternal(gameId, None, command)
+
+  /**
+   * Handles a client command only if it was based on the current event
+   * position. This check precedes domain validation, so a stale but otherwise
+   * still-legal command is rejected.
+   */
+  def handleAtExpectedPosition(
+      gameId: String,
+      expectedNextSequence: Long,
+      command: SetupCommand
+  ): Either[SetupApplicationError, SetupCommandAccepted] =
+    handleInternal(gameId, Some(expectedNextSequence), command)
+
+  private def handleInternal(
+      gameId: String,
+      clientExpected: Option[Long],
+      command: SetupCommand
+  ): Either[SetupApplicationError, SetupCommandAccepted] =
     repository.load(gameId).left.map(storageError).flatMap {
       case None =>
-        command match {
-          case _: BeginSetup =>
-            handleAgainst(gameId, rules.initialState, command, MustNotExist, 0L)
-          case _ => Left(SetupApplicationError.StreamNotFound(gameId))
+        validateClientPosition(clientExpected, 0L).flatMap { _ =>
+          command match {
+            case _: BeginSetup =>
+              handleAgainst(
+                gameId,
+                rules.initialState,
+                command,
+                MustNotExist,
+                0L
+              )
+            case _ => Left(SetupApplicationError.StreamNotFound(gameId))
+          }
         }
       case Some(_) if command.isInstanceOf[BeginSetup] =>
         Left(DuplicateGame(gameId))
       case Some(stream) =>
         for {
+          _ <- validateClientPosition(
+            clientExpected,
+            stream.nextSequence
+          )
           _ <-
             if (stream.gameId == gameId) Right(())
             else
@@ -106,6 +139,16 @@ final class SetupApplicationService(
             stream.nextSequence
           )
         } yield accepted
+    }
+
+  private def validateClientPosition(
+      expected: Option[Long],
+      actual: Long
+  ): Either[SetupApplicationError, Unit] =
+    expected match {
+      case Some(value) if value != actual =>
+        Left(StaleClientPosition(value, actual))
+      case _ => Right(())
     }
 
   private def handleAgainst(
@@ -200,6 +243,8 @@ final class SetupApplicationService(
   ): SetupApplicationError =
     failure match {
       case RepositoryFailure.StorageFailure(message) =>
+        StorageFailure(message)
+      case RepositoryFailure.InvalidConfiguration(message) =>
         StorageFailure(message)
     }
 

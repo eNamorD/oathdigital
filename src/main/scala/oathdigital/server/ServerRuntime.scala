@@ -26,9 +26,14 @@ final class ServerCommandGateway private[server] (
 ) {
   def handleSetup(
       gameId: String,
+      expectedNextSequence: Long,
       command: SetupCommand
   ): Either[SetupApplicationError, SetupCommandAccepted] =
-    service.handle(gameId, command)
+    service.handleAtExpectedPosition(
+      gameId,
+      expectedNextSequence,
+      command
+    )
 }
 
 final class ServerRuntime private (
@@ -45,6 +50,10 @@ object ServerRuntime {
   ): Either[String, ServerRuntime] =
     HsqldbEventStreamRepository.open(databasePath).left.map {
       case oathdigital.application.RepositoryFailure.StorageFailure(message) =>
+        message
+      case oathdigital.application.RepositoryFailure.InvalidConfiguration(
+            message
+          ) =>
         message
     }.flatMap { repository =>
       CatalogLoader

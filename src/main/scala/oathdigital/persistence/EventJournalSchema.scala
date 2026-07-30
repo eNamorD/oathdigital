@@ -12,7 +12,9 @@ private[persistence] final class EventJournalSchema {
     SimpleDBIO[Unit] { context =>
       val connection = context.connection
       createVersionLedger(connection)
-      val current = readVersion(connection)
+      val installed = readVersions(connection)
+      validateInstalled(installed)
+      val current = installed.lastOption.getOrElse(0)
       migrations
         .filter(_._1 > current)
         .sortBy(_._1)
@@ -20,10 +22,12 @@ private[persistence] final class EventJournalSchema {
           migrate(connection)
           recordVersion(connection, version)
         }
+      validateExactTarget(readVersions(connection))
     }.transactionally
 
   val currentVersion: DBIO[Int] =
-    SimpleDBIO[Int](context => readVersion(context.connection))
+    SimpleDBIO[Int](context =>
+      readVersions(context.connection).lastOption.getOrElse(0))
 
   private val migrations: Vector[(Int, Connection => Unit)] =
     Vector(1 -> createEventJournal _)
@@ -39,15 +43,39 @@ private[persistence] final class EventJournalSchema {
     finally statement.close()
   }
 
-  private def readVersion(connection: Connection): Int = {
+  private def readVersions(connection: Connection): Vector[Int] = {
     val statement = connection.createStatement()
     try {
       val rows = statement.executeQuery(
-        "SELECT COALESCE(MAX(version), 0) FROM schema_versions"
+        "SELECT version FROM schema_versions ORDER BY version ASC"
       )
-      rows.next()
-      rows.getInt(1)
+      val versions = Vector.newBuilder[Int]
+      while (rows.next()) versions += rows.getInt(1)
+      versions.result()
     } finally statement.close()
+  }
+
+  private def validateInstalled(versions: Vector[Int]): Unit = {
+    versions.lastOption.foreach { newest =>
+      if (newest > TargetVersion)
+        throw new IllegalStateException(
+          s"schema version $newest is newer than supported version $TargetVersion"
+        )
+    }
+    val expected = (1 to versions.size).toVector
+    if (versions != expected)
+      throw new IllegalStateException(
+        s"schema version ledger must be contiguous from 1; found ${versions.mkString(",")}"
+      )
+  }
+
+  private def validateExactTarget(versions: Vector[Int]): Unit = {
+    val expected = (1 to TargetVersion).toVector
+    if (versions != expected)
+      throw new IllegalStateException(
+        s"schema version ledger mismatch; expected ${expected.mkString(",")} " +
+          s"but found ${versions.mkString(",")}"
+      )
   }
 
   private def recordVersion(connection: Connection, version: Int): Unit = {

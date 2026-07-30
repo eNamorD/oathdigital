@@ -1,6 +1,11 @@
 package oathdigital.persistence
 
 import java.nio.file.{Files, Path}
+import java.sql.DriverManager
+import java.util.concurrent.CountDownLatch
+
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 import oathdigital.application.{
   ExpectedStream,
@@ -14,6 +19,9 @@ import oathdigital.serialization.WireError.MalformedJson
 import oathdigital.setup.SetupCommand.PlacePawn
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
+  implicit private val executionContext: ExecutionContext =
+    ExecutionContext.global
+
   private def databasePath(label: String): Path =
     Files.createTempDirectory(s"oathdigital-$label-").resolve("journal")
 
@@ -33,6 +41,38 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     visions = Vector.empty
   )
 
+  private def seedSchemaVersions(
+      path: Path,
+      versions: Vector[Int]
+  ): Unit = {
+    val connection =
+      DriverManager.getConnection(s"jdbc:hsqldb:file:${path.toAbsolutePath}",
+        "SA", "")
+    try {
+      val create = connection.createStatement()
+      try create.execute(
+        """CREATE TABLE schema_versions (
+          |version INTEGER PRIMARY KEY,
+          |applied_at_epoch_millis BIGINT NOT NULL
+          |)""".stripMargin
+      )
+      finally create.close()
+      versions.foreach { version =>
+        val insert = connection.prepareStatement(
+          """INSERT INTO schema_versions
+            |(version, applied_at_epoch_millis) VALUES (?, 0)""".stripMargin
+        )
+        try {
+          insert.setInt(1, version)
+          insert.executeUpdate()
+        } finally insert.close()
+      }
+      val shutdown = connection.createStatement()
+      try shutdown.execute("SHUTDOWN")
+      finally shutdown.close()
+    } finally connection.close()
+  }
+
   test("schema upgrades from version zero and initialization is idempotent") {
     val repository = open(databasePath("schema"))
     try {
@@ -41,6 +81,41 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
       assertEquals(repository.initializeSchema(), Right(()))
       assertEquals(repository.schemaVersion, Right(1))
     } finally repository.close()
+  }
+
+  test("rejects newer and non-contiguous schema ledgers and releases files") {
+    Vector(
+      "newer" -> Vector(2),
+      "gapped" -> Vector(0, 1)
+    ).foreach { case (label, versions) =>
+      val path = databasePath(label)
+      seedSchemaVersions(path, versions)
+      val result = HsqldbEventStreamRepository.open(path)
+      assert(result.left.toOption.nonEmpty)
+
+      val reopened = DriverManager.getConnection(
+        s"jdbc:hsqldb:file:${path.toAbsolutePath}",
+        "SA",
+        ""
+      )
+      try {
+        val shutdown = reopened.createStatement()
+        try shutdown.execute("SHUTDOWN")
+        finally shutdown.close()
+      } finally reopened.close()
+    }
+  }
+
+  test("rejects HSQLDB URL property delimiters in configured paths") {
+    val unsafe = databasePath("unsafe").resolveSibling(
+      "journal;shutdown=true"
+    )
+    assertEquals(
+      HsqldbEventStreamRepository.open(unsafe),
+      Left(oathdigital.application.RepositoryFailure.InvalidConfiguration(
+        "database path contains an unsafe HSQLDB URL delimiter"
+      ))
+    )
   }
 
   test("creates a stream and loads exact records in sequence order") {
@@ -122,6 +197,75 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
       assertEquals(
         repository.load("game-conflict").toOption.flatten.get.records,
         Vector("zero")
+      )
+    } finally repository.close()
+  }
+
+  test("concurrent creation race has one winner and no partial stream") {
+    val repository = open(databasePath("create-race"))
+    try {
+      val start = new CountDownLatch(1)
+      val attempts = Vector("left", "right").map { record =>
+        Future {
+          start.await()
+          repository.append(
+            "game-create-race",
+            ExpectedStream.MustNotExist,
+            Vector(record)
+          )
+        }
+      }
+      start.countDown()
+      val results = Await.result(Future.sequence(attempts), 20.seconds)
+
+      assertEquals(results.count(_.exists(
+        _.isInstanceOf[RepositoryAppendResult.Appended])), 1)
+      assertEquals(
+        results.count(_ == Right(
+          RepositoryAppendResult.StreamAlreadyExists)),
+        1
+      )
+      assertEquals(
+        repository.load("game-create-race")
+          .toOption.flatten.get.records.size,
+        1
+      )
+    } finally repository.close()
+  }
+
+  test("concurrent same-position appends have one winner and one conflict") {
+    val repository = open(databasePath("append-race"))
+    try {
+      repository.append(
+        "game-append-race",
+        ExpectedStream.MustNotExist,
+        Vector("zero")
+      )
+      val start = new CountDownLatch(1)
+      val attempts = Vector("left", "right").map { record =>
+        Future {
+          start.await()
+          repository.append(
+            "game-append-race",
+            ExpectedStream.AtNextSequence(1L),
+            Vector(record)
+          )
+        }
+      }
+      start.countDown()
+      val results = Await.result(Future.sequence(attempts), 20.seconds)
+
+      assertEquals(results.count(_.exists(
+        _.isInstanceOf[RepositoryAppendResult.Appended])), 1)
+      assertEquals(
+        results.count(_ == Right(
+          RepositoryAppendResult.SequenceConflict(1L, 2L))),
+        1
+      )
+      assertEquals(
+        repository.load("game-append-race")
+          .toOption.flatten.get.records.size,
+        2
       )
     } finally repository.close()
   }

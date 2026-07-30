@@ -13,6 +13,7 @@ lazy val root = (project in file("."))
       "com.typesafe.akka" %% "akka-actor-typed" % "2.8.5",
       "com.typesafe.akka" %% "akka-stream" % "2.8.5",
       "com.typesafe.akka" %% "akka-http" % "10.5.3",
+      "ch.qos.logback" % "logback-classic" % "1.5.18",
       "org.scalameta" %% "munit" % "1.0.4" % Test
     ),
     scalacOptions ++= Seq(

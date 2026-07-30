@@ -4,10 +4,11 @@ import java.nio.file.Paths
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.util.control.NonFatal
 
 import akka.Done
 import akka.actor.CoordinatedShutdown
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorSystem, DispatcherSelector}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
@@ -28,6 +29,9 @@ object OathServer {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
     implicit val executionContext = system.executionContext
+    val blockingExecutionContext = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
+    )
 
     ServerRuntime.open(databasePath, catalogPath) match {
       case Left(error) =>
@@ -43,7 +47,7 @@ object OathServer {
           Future {
             runtime.close()
             Done
-          }
+          }(blockingExecutionContext)
         }
 
         val route =
@@ -54,7 +58,18 @@ object OathServer {
           }
 
         val binding =
-          Await.result(Http().newServerAt(host, port).bind(route), 30.seconds)
+          try
+            Await.result(
+              Http().newServerAt(host, port).bind(route),
+              30.seconds
+            )
+          catch {
+            case NonFatal(error) =>
+              runtime.close()
+              system.terminate()
+              Await.result(system.whenTerminated, 30.seconds)
+              throw error
+          }
         system.log.info(
           "Oath Digital server listening at http://{}:{}/",
           host,

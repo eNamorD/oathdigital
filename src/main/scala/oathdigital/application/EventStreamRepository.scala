@@ -16,6 +16,8 @@ object ExpectedStream {
 sealed trait RepositoryFailure extends Product with Serializable
 object RepositoryFailure {
   final case class StorageFailure(message: String) extends RepositoryFailure
+  final case class InvalidConfiguration(message: String)
+      extends RepositoryFailure
 }
 
 sealed trait RepositoryAppendResult extends Product with Serializable
