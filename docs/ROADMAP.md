@@ -14,6 +14,25 @@ No implementation task is active. The next task should be selected from
 
 - [ ] **X1 — Integrate and maintain the frontend architecture**
   - Apply the outcome of N2 without changing the authoritative-event decision.
+  - Include the following minor manual-testing and presentation batch:
+    - Add a clearly labeled debug **Restart** control that resets the current
+      test session to its designated initial state, normally the start of the
+      game. Until server persistence is connected, it resets the browser-memory
+      event stream and reconstructs the initial state. A future persisted
+      implementation must start a new debug session rather than rewrite
+      authoritative history.
+    - Title the board **The World** and display its regions as columns ordered
+      left-to-right: **Cradle**, **Provinces**, **Hinterland**. Preserve the
+      required 2/3/3 site counts.
+    - Display the Imperial role simply as **Chancellor**, never
+      “Chancellor / Purple.” Display other players as color plus role, such as
+      **Blue Exile** or **Red Citizen**.
+    - Color written player references consistently with their player color,
+      including Chancellor references in purple. Keep the complete textual
+      player name and sufficient contrast so meaning never depends on color
+      alone.
+    - Add focused tests for restart behavior, authoritative-history handling,
+      region order, board title, player naming, and player-color CSS classes.
 
 - [ ] **X2 — Durable event journal**
   - Select and implement database-backed event storage, optimistic concurrency,
