@@ -25,10 +25,19 @@ No implementation task is active. The next task should be selected from
     reconnect behavior.
   - Depends on X1 and X2.
 
-- [ ] **X4 — Complete Oath setup**
-  - Expand the bounded pawn-placement slice into the full source-cited setup
-    procedure.
-  - Depends on N1 and N4.
+- [ ] **X4 — Exile-only first-game setup**
+  - Create a source-cited first-game setup with players, the 2/3/3 site map,
+    denizens, and relics available for play.
+  - Every player is an Exile. Imperial players, Citizenship, and the Chancellor
+    are outside this slice.
+  - Skip the Legacy system and all Legacy-driven setup changes.
+  - Use only the fixed, unaltered Foundations required by the first-game
+    procedure; Foundation alteration and progression are outside this slice.
+  - Record every randomized or selected setup outcome as authoritative events
+    so replay performs no randomness.
+  - Present the completed setup through the browser UI with permanent
+    image-independent fallbacks.
+  - The runtime catalog and rulebook traceability prerequisites are complete.
 
 - [ ] **X5 — Replay and concurrency hardening**
   - Add compatibility, malformed-input, invalid-command, concurrent-append,
