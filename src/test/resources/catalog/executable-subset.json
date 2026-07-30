@@ -1,0 +1,190 @@
+{
+  "schemaVersion": "1.0.0",
+  "catalogVersion": "fixture-1",
+  "ruleset": {
+    "id": "oath-new-foundations",
+    "version": "fixture-rules",
+    "normativeGeneralRulesSourceId": "fixture"
+  },
+  "identityPolicy": {
+    "printedCardsAreSingletonDefinitions": true,
+    "duplicatePhysicalCopiesRequireSourceEvidence": true,
+    "runtimeCardInstanceIdsAllowed": false,
+    "componentIdsAreTypedPrintedIds": true
+  },
+  "sources": [
+    {
+      "sourceId": "fixture",
+      "path": "fixture.pdf",
+      "authority": "test"
+    }
+  ],
+  "components": [
+    {
+      "definitionId": "setup:1",
+      "kind": "setup-card",
+      "name": "Table",
+      "printedComponentId": null,
+      "physicalCopyCount": 1,
+      "copyCountEvidence": "verified fixture",
+      "printEvidence": [
+        {
+          "provenance": [
+            {
+              "sourceId": "fixture",
+              "file": "fixture.pdf",
+              "page": 1,
+              "sheetSlot": "setup-1"
+            }
+          ]
+        }
+      ],
+      "transcription": {
+        "method": "manual-fixture",
+        "confidence": "verified",
+        "reviewStatus": "verified"
+      },
+      "step": 1,
+      "handlers": [
+        "setup.step_1"
+      ],
+      "physicalRole": "setup-step-1"
+    },
+    {
+      "definitionId": "player-board:chancellor",
+      "kind": "player-board",
+      "name": "Chancellor",
+      "printedComponentId": null,
+      "physicalCopyCount": 1,
+      "copyCountEvidence": "verified fixture",
+      "printEvidence": [
+        {
+          "provenance": [
+            {
+              "sourceId": "fixture",
+              "file": "fixture.pdf",
+              "page": 2
+            }
+          ]
+        }
+      ],
+      "transcription": {
+        "method": "manual-fixture",
+        "confidence": "verified",
+        "reviewStatus": "verified"
+      },
+      "boardKind": "chancellor",
+      "supply": {
+        "maximum": 7,
+        "remainingValues": [
+          7,
+          6,
+          5,
+          4,
+          3,
+          2,
+          1,
+          0
+        ],
+        "refreshByWarbandsInBank": [
+          {
+            "warbandsInBank": {
+              "min": 4,
+              "max": null
+            },
+            "refreshTo": 6
+          },
+          {
+            "warbandsInBank": {
+              "min": 0,
+              "max": 3
+            },
+            "refreshTo": 4
+          }
+        ]
+      },
+      "unresolved": [
+        "non-Supply board icons require crop-level review"
+      ]
+    },
+    {
+      "definitionId": "site:S1",
+      "kind": "site",
+      "name": "Fixture Site",
+      "printedComponentId": {
+        "type": "site-id",
+        "value": "S1"
+      },
+      "physicalCopyCount": 1,
+      "copyCountEvidence": "verified fixture",
+      "printEvidence": [
+        {
+          "provenance": [
+            {
+              "sourceId": "fixture",
+              "file": "fixture.pdf",
+              "page": 3,
+              "sheetSlot": 1
+            }
+          ]
+        }
+      ],
+      "transcription": {
+        "method": "manual-fixture",
+        "confidence": "verified",
+        "reviewStatus": "verified"
+      },
+      "statistics": {
+        "capacity": 2,
+        "recoverDifficulty": 1,
+        "startingResources": [
+          {
+            "type": "favor",
+            "count": 1
+          },
+          {
+            "type": "secret",
+            "count": 2
+          }
+        ]
+      },
+      "unresolved": []
+    },
+    {
+      "definitionId": "vision:V1",
+      "kind": "vision",
+      "name": "Fixture Vision",
+      "printedComponentId": {
+        "type": "vision-id",
+        "value": "V1"
+      },
+      "physicalCopyCount": 1,
+      "copyCountEvidence": "verified fixture",
+      "printEvidence": [
+        {
+          "provenance": [
+            {
+              "sourceId": "fixture",
+              "file": "fixture.pdf",
+              "page": 4,
+              "sheetSlot": 1
+            }
+          ]
+        }
+      ],
+      "transcription": {
+        "method": "manual-fixture",
+        "confidence": "verified",
+        "reviewStatus": "verified"
+      },
+      "handlers": [
+        "vision.drawn.increment"
+      ],
+      "goal": {
+        "type": "most-sites",
+        "minimumVisionsDrawn": 3
+      },
+      "unresolved": []
+    }
+  ]
+}
