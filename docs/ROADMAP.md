@@ -35,8 +35,16 @@ No implementation task is active. The next task should be selected from
       region order, board title, player naming, and player-color CSS classes.
 
 - [ ] **X2 — Durable event journal**
-  - Select and implement database-backed event storage, optimistic concurrency,
-    stream creation/loading, and migrations.
+  - Use HRF's current local-server storage stack: file-backed HSQLDB 2.7.4,
+    Slick 3.5.2 with HikariCP, and Akka HTTP.
+  - Adapt HRF's users/journals/entries/access-rights pattern, but store Oath's
+    explicit versioned domain-event envelopes rather than serialized HRF
+    actions.
+  - Enforce optimistic concurrency with a composite game/sequence primary key
+    and append each emitted event batch in one database transaction.
+  - Implement stream creation/loading, schema creation and repeatable schema
+    upgrades while retaining the storage-neutral repository interface so the
+    database can be replaced later.
   - Depends on N3.
 
 - [ ] **X3 — Client synchronization and reconnect**
@@ -45,17 +53,35 @@ No implementation task is active. The next task should be selected from
   - Depends on X1 and X2.
 
 - [ ] **X4 — Exile-only first-game setup**
-  - Create a source-cited first-game setup with players, the 2/3/3 site map,
-    denizens, and relics available for play.
+  - “Complete” means complete for this bounded milestone: construct a valid,
+    replayable game state and stop with the first Exile ready to begin their
+    first turn. Wake and gameplay actions are separate slices.
+  - Pin the runtime catalog and ruleset; record the configured player order,
+    colors and lineages; initialize every player as an Exile with the required
+    starting board resources, warbands and Supply.
+  - Construct **The World** as the 2/3/3 Cradle, Provinces and Hinterland map;
+    record the exact selected sites and populate the required starting site
+    pieces, resources and facedown relic slots.
+  - Construct the first-game denizen pool, regional discards, player starting
+    card choices and world deck. Adviser selection is part of setup; Legacy
+    selection is omitted.
+  - Record the shuffled relic order, relics assigned to sites and the remaining
+    relic deck without replaying randomness.
   - Every player is an Exile. Imperial players, Citizenship, and the Chancellor
     are outside this slice.
   - Skip the Legacy system and all Legacy-driven setup changes.
-  - Use only the fixed, unaltered Foundations required by the first-game
-    procedure; Foundation alteration and progression are outside this slice.
+  - Represent the required Foundations as one fixed, unaltered first-game
+    profile. Do not build a general Foundation interpreter, alteration system
+    or campaign progression.
   - Record every randomized or selected setup outcome as authoritative events
     so replay performs no randomness.
   - Present the completed setup through the browser UI with permanent
     image-independent fallbacks.
+  - Exclude later-game restoration, Chronicle behavior, Imperial setup,
+    Legacies, Foundation mutation, and all Wake/Act/Rest behavior.
+  - Acceptance requires command-produced and serialized-event-replayed game
+    states to be exactly equal, with malformed or incomplete setup rejected by
+    typed errors.
   - The runtime catalog and rulebook traceability prerequisites are complete.
 
 - [ ] **X5 — Replay and concurrency hardening**
