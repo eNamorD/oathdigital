@@ -9,11 +9,16 @@ import oathdigital.catalog.{
   ExecutableCatalog
 }
 import oathdigital.model.{CatalogRef, LineageId, PlayerId}
+import oathdigital.serialization.{
+  SetupEventEnvelope,
+  SetupEventWire
+}
 import oathdigital.serialization.WireError.MalformedJson
 import oathdigital.setup.SetupCommand.{BeginSetup, PlacePawn}
-import oathdigital.setup.SetupEvent.{PawnPlaced, SetupCompleted}
-import oathdigital.setup.SetupParticipant
+import oathdigital.setup.SetupEvent.{PawnPlaced, SetupCompleted, SetupStarted}
+import oathdigital.setup.{SetupEvent, SetupParticipant}
 import oathdigital.setup.SetupState.{Completed, InProgress}
+import oathdigital.setup.SetupViolation.WrongPlayer
 
 class SetupApplicationServiceSuite extends munit.FunSuite {
   private val catalogRef =
@@ -40,6 +45,31 @@ class SetupApplicationServiceSuite extends munit.FunSuite {
     SetupParticipant(PlayerId("p3"), LineageId("l3"))
   )
   private val begin = BeginSetup(participants, catalogRef, sites)
+
+  private def encode(
+      gameId: String,
+      sequence: Long,
+      event: SetupEvent
+  ): String = {
+    val eventType = event match {
+      case _: SetupStarted => SetupEventWire.SetupStartedType
+      case _: PawnPlaced => SetupEventWire.PawnPlacedType
+      case SetupCompleted => SetupEventWire.SetupCompletedType
+    }
+    ujson.write(
+      SetupEventWire
+        .encode(SetupEventEnvelope(
+          SetupEventWire.FormatVersion,
+          gameId,
+          sequence,
+          catalogRef,
+          eventType,
+          event
+        ))
+        .toOption
+        .get
+    )
+  }
 
   test("creates a stream and handles a later command from replayed state") {
     val repository = new InMemoryEventStreamRepository
@@ -161,6 +191,150 @@ class SetupApplicationServiceSuite extends munit.FunSuite {
     assertEquals(
       repository.load("game-malformed").toOption.flatten.get.records,
       Vector("{")
+    )
+  }
+
+  test("repository stream identity mismatch fails without append") {
+    var appendCalls = 0
+    val repository = new EventStreamRepository {
+      override def load(gameId: String) =
+        Right(Some(StoredEventStream(
+          "game-b",
+          Vector(encode("game-b", 0, SetupStarted(
+            participants,
+            catalogRef,
+            sites
+          )))
+        )))
+
+      override def append(
+          gameId: String,
+          expected: ExpectedStream,
+          records: Vector[String]
+      ) = {
+        appendCalls += 1
+        Right(RepositoryAppendResult.Appended(1, records.size))
+      }
+    }
+
+    assertEquals(
+      new SetupApplicationService(catalog, repository)
+        .handle("game-a", PlacePawn(PlayerId("p1"), sites.head)),
+      Left(SetupApplicationError.RepositoryStreamIdentityMismatch(
+        "game-a",
+        "game-b"
+      ))
+    )
+    assertEquals(appendCalls, 0)
+  }
+
+  test("decoded envelope identity mismatch fails without append") {
+    var appendCalls = 0
+    val repository = new EventStreamRepository {
+      override def load(gameId: String) =
+        Right(Some(StoredEventStream(
+          gameId,
+          Vector(encode("game-b", 0, SetupStarted(
+            participants,
+            catalogRef,
+            sites
+          )))
+        )))
+
+      override def append(
+          gameId: String,
+          expected: ExpectedStream,
+          records: Vector[String]
+      ) = {
+        appendCalls += 1
+        Right(RepositoryAppendResult.Appended(1, records.size))
+      }
+    }
+
+    assertEquals(
+      new SetupApplicationService(catalog, repository)
+        .handle("game-a", PlacePawn(PlayerId("p1"), sites.head)),
+      Left(SetupApplicationError.EventStreamIdentityMismatch(
+        "game-a",
+        "game-b"
+      ))
+    )
+    assertEquals(appendCalls, 0)
+  }
+
+  test("append acknowledgment reports a count mismatch distinctly") {
+    val repository = new EventStreamRepository {
+      override def load(gameId: String) = Right(None)
+
+      override def append(
+          gameId: String,
+          expected: ExpectedStream,
+          records: Vector[String]
+      ) = Right(RepositoryAppendResult.Appended(0L, 2))
+    }
+
+    assertEquals(
+      new SetupApplicationService(catalog, repository)
+        .handle("game-count", begin),
+      Left(SetupApplicationError.AppendCountMismatch(1, 2))
+    )
+  }
+
+  test("load and append storage failures remain typed") {
+    val loadFailure = new EventStreamRepository {
+      override def load(gameId: String) =
+        Left(RepositoryFailure.StorageFailure("load unavailable"))
+      override def append(
+          gameId: String,
+          expected: ExpectedStream,
+          records: Vector[String]
+      ) = fail("append must not be called after load failure")
+    }
+    assertEquals(
+      new SetupApplicationService(catalog, loadFailure)
+        .handle("game-storage", begin),
+      Left(SetupApplicationError.StorageFailure("load unavailable"))
+    )
+
+    val appendFailure = new EventStreamRepository {
+      override def load(gameId: String) = Right(None)
+      override def append(
+          gameId: String,
+          expected: ExpectedStream,
+          records: Vector[String]
+      ) = Left(RepositoryFailure.StorageFailure("append unavailable"))
+    }
+    assertEquals(
+      new SetupApplicationService(catalog, appendFailure)
+        .handle("game-storage", begin),
+      Left(SetupApplicationError.StorageFailure("append unavailable"))
+    )
+  }
+
+  test("semantically invalid stored events fail replay without append") {
+    val repository = new InMemoryEventStreamRepository
+    val started = encode(
+      "game-corrupt",
+      0,
+      SetupStarted(participants, catalogRef, sites)
+    )
+    val wrongPawn =
+      encode("game-corrupt", 1, PawnPlaced(PlayerId("p2"), sites.head))
+    repository.seed("game-corrupt", Vector(started, wrongPawn))
+    val before =
+      repository.load("game-corrupt").toOption.flatten.get.records
+
+    assertEquals(
+      new SetupApplicationService(catalog, repository)
+        .handle("game-corrupt", PlacePawn(PlayerId("p1"), sites.head)),
+      Left(SetupApplicationError.ReplayFailure(
+        1L,
+        WrongPlayer(PlayerId("p1"), PlayerId("p2"))
+      ))
+    )
+    assertEquals(
+      repository.load("game-corrupt").toOption.flatten.get.records,
+      before
     )
   }
 

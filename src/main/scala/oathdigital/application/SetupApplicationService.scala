@@ -29,6 +29,14 @@ object SetupApplicationError {
       extends SetupApplicationError
   final case class DuplicateGame(gameId: String)
       extends SetupApplicationError
+  final case class RepositoryStreamIdentityMismatch(
+      expected: String,
+      actual: String
+  ) extends SetupApplicationError
+  final case class EventStreamIdentityMismatch(
+      expected: String,
+      actual: String
+  ) extends SetupApplicationError
   final case class DecodeFailure(error: WireError)
       extends SetupApplicationError
   final case class EncodeFailure(error: WireError)
@@ -38,6 +46,12 @@ object SetupApplicationError {
   final case class CommandRejected(violation: SetupViolation)
       extends SetupApplicationError
   final case class SequenceConflict(expected: Long, actual: Long)
+      extends SetupApplicationError
+  final case class AppendFirstSequenceMismatch(
+      expected: Long,
+      actual: Long
+  ) extends SetupApplicationError
+  final case class AppendCountMismatch(expected: Int, actual: Int)
       extends SetupApplicationError
   final case class StorageFailure(message: String)
       extends SetupApplicationError
@@ -75,7 +89,11 @@ final class SetupApplicationService(
         Left(DuplicateGame(gameId))
       case Some(stream) =>
         for {
-          events <- decode(stream.records)
+          _ <-
+            if (stream.gameId == gameId) Right(())
+            else
+              Left(RepositoryStreamIdentityMismatch(gameId, stream.gameId))
+          events <- decode(gameId, stream.records)
           state <- replay
             .replay(events)
             .left
@@ -121,14 +139,16 @@ final class SetupApplicationService(
           Left(SetupApplicationError.StreamNotFound(gameId))
         case RepositoryAppendResult.SequenceConflict(wanted, actual) =>
           Left(SetupApplicationError.SequenceConflict(wanted, actual))
-        case Appended(firstSequence, _) =>
-          Left(StorageFailure(
-            s"repository returned first sequence $firstSequence; expected $nextSequence"
-          ))
+        case Appended(firstSequence, _)
+            if firstSequence != nextSequence =>
+          Left(AppendFirstSequenceMismatch(nextSequence, firstSequence))
+        case Appended(_, count) =>
+          Left(AppendCountMismatch(transition.events.size, count))
       }
     } yield accepted
 
   private def decode(
+      gameId: String,
       records: Vector[String]
   ): Either[SetupApplicationError, Vector[RecordedEvent[SetupEvent]]] = {
     val json = records.mkString("[", ",", "]")
@@ -136,7 +156,15 @@ final class SetupApplicationService(
       .decodeStream(json)
       .left
       .map(DecodeFailure)
-      .map(_.map(envelope => RecordedEvent(envelope.sequence, envelope.event)))
+      .flatMap { envelopes =>
+        envelopes.find(_.gameId != gameId) match {
+          case Some(envelope) =>
+            Left(EventStreamIdentityMismatch(gameId, envelope.gameId))
+          case None =>
+            Right(envelopes.map(envelope =>
+              RecordedEvent(envelope.sequence, envelope.event)))
+        }
+      }
   }
 
   private def encode(
