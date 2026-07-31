@@ -1,0 +1,1549 @@
+[
+  {
+    "id": "1",
+    "name": "Wrestlers",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "+ [defense-die] if you sacrifice one warband in your force."
+  },
+  {
+    "id": "2",
+    "name": "Battle Honors",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "If you're victorious, gain [favor] [favor] from the [suit-order] bank."
+  },
+  {
+    "id": "3",
+    "name": "Bear Traps",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "- [attack-die] Kill one warband on the attacker's board."
+  },
+  {
+    "id": "4",
+    "name": "Longbows",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "\u00b1 [attack-die]"
+  },
+  {
+    "id": "5",
+    "name": "Keep",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "+2 [defense-die] if this site is targeted."
+  },
+  {
+    "id": "6",
+    "name": "Pressgangs",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "You can muster on cards that have [favor] or [secret] on them."
+  },
+  {
+    "id": "7",
+    "name": "Garrison",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** gain one warband per site you rule, and put one warband from your board on each site you rule."
+  },
+  {
+    "id": "8",
+    "name": "Scouts",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Gain 1 Supply."
+  },
+  {
+    "id": "9",
+    "name": "Alchemist",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]",
+      "[secret-burnt]"
+    ],
+    "rulesText": "**ACTION:** Gain [favor] [favor] [favor] [favor] from any favor bank or banks."
+  },
+  {
+    "id": "10",
+    "name": "Martial Culture",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "If you're an Exile and defeat another Exile, you may become a Citizen- take no relic, end your Act Phase, and refresh supply to full _(leftmost)_."
+  },
+  {
+    "id": "11",
+    "name": "Errand Boy",
+    "suit": "beast",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "You may draw from a discard pile in a different region instead of yours."
+  },
+  {
+    "id": "12",
+    "name": "Mercenaries",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "\u00b13 [attack-die] If you're defeated while using this power, discard Mercenaries."
+  },
+  {
+    "id": "13",
+    "name": "Tinker's Fair",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** Negotiate a binding exchange of [favor], [secret], and relics with any player."
+  },
+  {
+    "id": "14",
+    "name": "Rain Boots",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Ignore all your enemy's rolls of single shields [shield]. At end, discard Rain Boots."
+  },
+  {
+    "id": "15",
+    "name": "A Small Favor",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** Gain four warbands."
+  },
+  {
+    "id": "16",
+    "name": "Second Wind",
+    "suit": "discord",
+    "costSymbols": [
+      "[secret]",
+      "[favor-burnt]"
+    ],
+    "rulesText": "After you're victorious, you may travel and then may campaign, spending no Supply for either."
+  },
+  {
+    "id": "17",
+    "name": "Sleight of Hand",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Take [secret] from a player whose pawn is at your site. You cannot take their last [secret]."
+  },
+  {
+    "id": "18",
+    "name": "Key to the City",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if the ruler's pawn is not at this site, kill any warbands at this site, then gain a warband and place it here."
+  },
+  {
+    "id": "19",
+    "name": "Scryer",
+    "suit": "discord",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Peek at any one discard pile."
+  },
+  {
+    "id": "20",
+    "name": "Disgraced Captain",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]",
+      "[favor-burnt]"
+    ],
+    "rulesText": "+4 [attack-die] if targeting a site that has an [suit-order] card."
+  },
+  {
+    "id": "21",
+    "name": "Naysayers",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**REST:** If any Exile is the Oathkeeper or Usurper, take [favor] from the Chancellor."
+  },
+  {
+    "id": "22",
+    "name": "Book Burning",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "If you're victorious and targeted the defender's pawn, they also burn all of the [secret] on their board except their last."
+  },
+  {
+    "id": "23",
+    "name": "Ancient Binding",
+    "suit": "nomad",
+    "costSymbols": [
+      "[secret]",
+      "[secret-burnt]"
+    ],
+    "rulesText": "**ACTION:** Each player burns all their [secret] except their last. _(The only [secret] you keep is the one here.)_"
+  },
+  {
+    "id": "24",
+    "name": "Horse Archers",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "\u00b13 [attack-die] At end, discard Horse Archers."
+  },
+  {
+    "id": "25",
+    "name": "Warning Signals",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Move any warbands to and from your board and any sites you rule _(except the last warband from a site)_. At end, discard Warning Signals."
+  },
+  {
+    "id": "26",
+    "name": "Elders",
+    "suit": "nomad",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Gain [favor]."
+  },
+  {
+    "id": "27",
+    "name": "The Gathering",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** any players in turn order may put their pawn on this site. Then, players with pawns here may negotiate binding exchanges of [favor], [secret], relics, and advisers."
+  },
+  {
+    "id": "28",
+    "name": "Faithful Friend",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** gain 4 Supply."
+  },
+  {
+    "id": "29",
+    "name": "Tents",
+    "suit": "nomad",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "Spend no Supply if you're traveling to a site in your region."
+  },
+  {
+    "id": "30",
+    "name": "Great Herd",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** you may swap Great Herd with a [suit-nomad] card at any site."
+  },
+  {
+    "id": "31",
+    "name": "Fire Talkers",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "\u00b13 [attack-die] if you hold the Darkest Secret."
+  },
+  {
+    "id": "32",
+    "name": "Magician's Code",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "If recovering the Darkest Secret, gain [secret] [secret] and add them to any other [secret] you're paying to recover it _(even none)_."
+  },
+  {
+    "id": "33",
+    "name": "Spirit Snare",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Take [favor] from any one favor bank."
+  },
+  {
+    "id": "34",
+    "name": "Wizard School",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Gain [secret], then end your Act Phase."
+  },
+  {
+    "id": "35",
+    "name": "Dazzle",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** discard all [suit-hearth] and [suit-order] cards at sites in your region."
+  },
+  {
+    "id": "36",
+    "name": "Acting Troupe",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "Act as if the Acting Troupe is a [suit-beast] or [suit-order] card instead."
+  },
+  {
+    "id": "37",
+    "name": "Taming Charm",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Discard a [suit-beast] or [suit-nomad] card at your site to gain [favor] [favor] from the matching favor bank."
+  },
+  {
+    "id": "38",
+    "name": "Inquisitor",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Peek at an adviser of a player whose pawn is at your site. If it is the Conspiracy, you play it or discard it. If it is not, give them the [favor] here."
+  },
+  {
+    "id": "39",
+    "name": "Wolves",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Kill one warband _(even yours)_ on any one board."
+  },
+  {
+    "id": "40",
+    "name": "Animal Playmates",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Spend no Supply if you're mustering on a [suit-beast] card."
+  },
+  {
+    "id": "41",
+    "name": "True Names",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Your enemy **cannot** use battle plans that match any of your advisers against you."
+  },
+  {
+    "id": "42",
+    "name": "The Old Oak",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "If trading with The Old Oak for [secret], gain one more [secret] if you have any [suit-beast] advisers."
+  },
+  {
+    "id": "43",
+    "name": "Forest Paths",
+    "suit": "beast",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "Spend no Supply and ignore the powers of sites if you're traveling to a site with a [suit-beast] card."
+  },
+  {
+    "id": "44",
+    "name": "Long-Lost Heir",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if you're an Exile, you may become a Citizen- take no relic, end your Act Phase, and refresh Supply to full _(leftmost)_."
+  },
+  {
+    "id": "45",
+    "name": "Rangers",
+    "suit": "beast",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "Ignore all skulls [skull] you roll. +2 [attack-die] if the defense pool has 4+ [defense-die]."
+  },
+  {
+    "id": "46",
+    "name": "Roving Terror",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Discard a denizen card at any other site and move this card there."
+  },
+  {
+    "id": "47",
+    "name": "Wayside Inn",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Gain 2 Supply."
+  },
+  {
+    "id": "48",
+    "name": "Extra Provisions",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "+2 [defense-die]"
+  },
+  {
+    "id": "49",
+    "name": "Memory of Home",
+    "suit": "hearth",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Move all [favor] from any one favor bank to the [suit-hearth] bank."
+  },
+  {
+    "id": "50",
+    "name": "Welcoming Party",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "If you play a denizen card that was not a facedown adviser, gain [favor] from the [suit-hearth] bank."
+  },
+  {
+    "id": "51",
+    "name": "Traveling Doctor",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "If you're defeated, kill no warbands in your force and discard Traveling Doctor. **Ignore** powers that kill all of your force."
+  },
+  {
+    "id": "52",
+    "name": "Storyteller",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Place [secret] from the shared bank on the Darkest Secret."
+  },
+  {
+    "id": "53",
+    "name": "Armed Mob",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Discard a faceup adviser from a player who holds the Darkest Secret but not the People's Favor."
+  },
+  {
+    "id": "54",
+    "name": "Tavern Songs",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** Peek at the top three cards of your region's discard pile."
+  },
+  {
+    "id": "55",
+    "name": "Secret Signal",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "If you gain only one [favor], gain one more [favor]."
+  },
+  {
+    "id": "56",
+    "name": "Augury",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "Draw one more card. _(Stop after a Vision as normal.)_"
+  },
+  {
+    "id": "57",
+    "name": "Rusting Ray",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "If you hold the Darkest Secret, **ignore** all your enemy's rolls of hollow swords [hollow-sword]."
+  },
+  {
+    "id": "58",
+    "name": "Portal",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "Spend no Supply and **ignore** the powers of sites if you're traveling to or from this site."
+  },
+  {
+    "id": "59",
+    "name": "Billowing Fog",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "If you're defeated, kill no warbands in your force. **Ignore** powers that kill all of your force."
+  },
+  {
+    "id": "60",
+    "name": "Kindred Warriors",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "Ignore all skulls [skull] you roll. \u00b1X [attack-die] up to the number of other suits you rule."
+  },
+  {
+    "id": "61",
+    "name": "Terror Spells",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Kill any two warbands in your region _(at sites or on boards, even yours)_ if you hold the Darkest Secret."
+  },
+  {
+    "id": "62",
+    "name": "Blood Pact",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Sacrifice an even number of warbands on your board. For every two you sacrifice, gain [secret]."
+  },
+  {
+    "id": "63",
+    "name": "Revelation",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** each player, following turn order, may burn any number of [favor] to gain an equal number of [secret]."
+  },
+  {
+    "id": "64",
+    "name": "Observatory",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "While your pawn is here, you may draw from any one discard pile."
+  },
+  {
+    "id": "65",
+    "name": "Plague Engines",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]",
+      "[secret-burnt]"
+    ],
+    "rulesText": "**ACTION:** Each player _(even you)_ places one [favor] per site they rule into the [suit-arcane] bank."
+  },
+  {
+    "id": "66",
+    "name": "Gleaming Armor",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "Your enemy's battle plans have an added cost of [secret]."
+  },
+  {
+    "id": "67",
+    "name": "Bewitch",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if you're an Exile and have more [secret] _(even on cards)_ than the Chancellor, you may become a Citizen- take no relic, end your Act Phase, and refresh Supply to full."
+  },
+  {
+    "id": "68",
+    "name": "Jinx",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "If you rule Jinx, after you roll [attack-die] or [defense-die] for any reason, you may use this power to reroll all those dice once. _(This is not a battle plan!)_"
+  },
+  {
+    "id": "69",
+    "name": "Tutor",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]",
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Gain [secret]"
+  },
+  {
+    "id": "70",
+    "name": "Dream Thief",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Swap any two facedown advisers."
+  },
+  {
+    "id": "71",
+    "name": "Cracking Ground",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "\u00b1 [attack-die] per site targeted."
+  },
+  {
+    "id": "72",
+    "name": "Sealing Ward",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "Your relics add one more [defense-die] when targeted."
+  },
+  {
+    "id": "73",
+    "name": "Initiation Rite",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "To muster, you **must** place [secret] instead of [favor]."
+  },
+  {
+    "id": "74",
+    "name": "Vow of Silence",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "You **cannot** recover the Darkest Secret or give anyone [secret]. Whenever a player recovers it, you gain X [secret] equal to the number of [secret] they placed."
+  },
+  {
+    "id": "75",
+    "name": "Forgotten Vault",
+    "suit": "arcane",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Place [secret] from the shared bank on the Darkest Secret, or burn [secret] from the Darkest Secret _(not last [secret])_."
+  },
+  {
+    "id": "76",
+    "name": "Map Library",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "While your pawn is at this site, you may trade with a card at any site in your region."
+  },
+  {
+    "id": "77",
+    "name": "Witch's Bargain",
+    "suit": "arcane",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Give [secret] to a player whose pawn is at your site to take [favor] [favor] from them, or give [favor] [favor] for [secret], any number of times."
+  },
+  {
+    "id": "78",
+    "name": "Master of Disguise",
+    "suit": "arcane",
+    "costSymbols": [],
+    "rulesText": "Act as if you had another player's advisers instead. _(You can't use your other advisers.)_"
+  },
+  {
+    "id": "79",
+    "name": "Charlatan",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** burn all [secret] but one from the Darkest Secret."
+  },
+  {
+    "id": "80",
+    "name": "Assassin",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "You can only have two advisers. **ACTION:** Discard a faceup adviser of a player whose pawn is at your site."
+  },
+  {
+    "id": "81",
+    "name": "Downtrodden",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "Gain two more warbands if mustering on a card whose favor bank has the least [favor] _(not tied)_."
+  },
+  {
+    "id": "82",
+    "name": "Blackmail",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** choose a relic held by a player whose pawn is at your site. You take the relic unless they give you [favor] [favor] [favor]."
+  },
+  {
+    "id": "83",
+    "name": "Cracked Sage",
+    "suit": "discord",
+    "costSymbols": [
+      "[secret]",
+      "[favor-burnt]"
+    ],
+    "rulesText": "\u00b14 [attack-die] if your enemy has an [suit-arcane] adviser."
+  },
+  {
+    "id": "84",
+    "name": "Dissent",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** each player, except the holder of the People's Favor, places one [favor] on this card for each suit of card they rule."
+  },
+  {
+    "id": "85",
+    "name": "False Prophet",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if you're an Exile, gain one warband and put it on any revealed Vision. You now also have it revealed. If it is ever discarded, kill the warband and play or discard the Vision as if you had searched."
+  },
+  {
+    "id": "86",
+    "name": "Vow of Renewal",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "You **cannot** recover the People's Favor. Whenever any player burns [favor], you take the [favor] instead."
+  },
+  {
+    "id": "87",
+    "name": "Zealots",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "If the defending force is larger than your force, each warband you sacrifice will add three _(not one)_ to your attack."
+  },
+  {
+    "id": "88",
+    "name": "Royal Ambitions",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if you're an Exile and rule more sites than the Chancellor, you may become a Citizen- take any one Reliquary relic without peeking, end your Act Phase, and refresh Supply to full."
+  },
+  {
+    "id": "89",
+    "name": "Salt the Earth",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "You **cannot** play Salt the Earth to a site with any locked cards. **WHEN PLAYED:** ignore this site's capacity. Discard all other denizens at this site. This site's capacity is now 1."
+  },
+  {
+    "id": "90",
+    "name": "Beast Tamer",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "Enemies cannot use [suit-beast] or [suit-nomad] battle plans against you."
+  },
+  {
+    "id": "91",
+    "name": "Riots",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** if the People's Favor is on the Mob side, discard all other cards of the most common suit on the map. If there is a tie, you choose among the tied suits."
+  },
+  {
+    "id": "92",
+    "name": "Silver Tongue",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "You can only have two advisers. **REST:** Take [favor] from a favor bank matching a card at your site."
+  },
+  {
+    "id": "93",
+    "name": "Gambling Hall",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Roll 4 [defense-die] and take X [favor] equal to the total [shield] result from any one favor bank."
+  },
+  {
+    "id": "94",
+    "name": "Boiling Lake",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "If you travel to this site and do not rule this card, you **must** kill two warbands on your board if able."
+  },
+  {
+    "id": "95",
+    "name": "Relic Thief",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "After a player takes any relics and their pawn is in your region, you may use this power to roll one [defense-die] per relic taken. If you roll no [shield] / [shield] [shield], take the relics."
+  },
+  {
+    "id": "96",
+    "name": "Enchantress",
+    "suit": "discord",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Swap this card with any faceup adviser."
+  },
+  {
+    "id": "97",
+    "name": "Insomnia",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "You can only have two advisers. **REST:** Gain [secret]."
+  },
+  {
+    "id": "98",
+    "name": "Sneak Attack",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "After another player's campaign, you may campaign, spending no Supply, if you declare them as the defender."
+  },
+  {
+    "id": "99",
+    "name": "Gossip",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "Enemies of Gossip's ruler **cannot** play cards as facedown advisers."
+  },
+  {
+    "id": "100",
+    "name": "Bandit Chief",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** kill one warband at each site. While Bandit Chief is faceup, each site has two more bandits."
+  },
+  {
+    "id": "101",
+    "name": "Chaos Cult",
+    "suit": "discord",
+    "costSymbols": [],
+    "rulesText": "After another player takes the Oathkeeper title, you take [favor] from them."
+  },
+  {
+    "id": "102",
+    "name": "Slander",
+    "suit": "discord",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "If you're victorious and targeted the defender's pawn, they burn all of the [favor] on their board _(not half)_."
+  },
+  {
+    "id": "103",
+    "name": "Code of Honor",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "\u00b12 [attack-die] but you **cannot** use other battle plans."
+  },
+  {
+    "id": "104",
+    "name": "Outriders",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Ignore all skulls [skull] you roll."
+  },
+  {
+    "id": "105",
+    "name": "Messenger",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Move any warbands to and from your board and any sites you rule _(except the last warband from a site)_."
+  },
+  {
+    "id": "106",
+    "name": "Field Promotion",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "If you're victorious, gain three warbands."
+  },
+  {
+    "id": "107",
+    "name": "Palanquin",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Choose a player whose pawn is at your site. Put your pawn on a site that they can travel to. Make them travel to that site, spending no Supply."
+  },
+  {
+    "id": "108",
+    "name": "Shield Wall",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "+2 [defense-die] If you're defeated, **kill** all of your force."
+  },
+  {
+    "id": "109",
+    "name": "Military Parade",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "If you're victorious, gain [favor] from the favor banks matching each adviser of your enemy _(including Imperial Allies)_."
+  },
+  {
+    "id": "110",
+    "name": "Tome Guardians",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Enemies of Tome Guardians' ruler **cannot** target or take the Darkest Secret in any way."
+  },
+  {
+    "id": "111",
+    "name": "Tyrant",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "You **must** kill a warband _(even your own)_ at the site you travel to, if able."
+  },
+  {
+    "id": "112",
+    "name": "Forced Labor",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Enemies **cannot** search if their pawn is at any site ruled by Forced Labor's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+  },
+  {
+    "id": "113",
+    "name": "Secret Police",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Enemies **cannot** play Visions faceup while their pawn is at any site ruled by Secret Police's ruler."
+  },
+  {
+    "id": "114",
+    "name": "Specialist",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "The defender **cannot** use battle plans."
+  },
+  {
+    "id": "115",
+    "name": "Captains",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Campaign at any site you rule. Act as if your pawn is there. Spend no Supply and add your warbands there to your force."
+  },
+  {
+    "id": "116",
+    "name": "Siege Engines",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Kill two warbands _(even yours)_ at any one site in your region."
+  },
+  {
+    "id": "117",
+    "name": "Royal Tax",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:**: take [favor] [favor] from each player whose pawn is at a site you rule in your pawn's region."
+  },
+  {
+    "id": "118",
+    "name": "Toll Roads",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Enemies **cannot** travel to sites ruled by Toll Roads' ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+  },
+  {
+    "id": "119",
+    "name": "Curfew",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "Enemies **cannot** trade with cards ruled by Curfew's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+  },
+  {
+    "id": "120",
+    "name": "Knights Errant",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "After mustering, you may campaign, spending no Supply."
+  },
+  {
+    "id": "121",
+    "name": "Vow of Obedience",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "You **cannot** play Visions faceup. **REST:** Take [favor] from any one favor bank."
+  },
+  {
+    "id": "122",
+    "name": "Hunting Party",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "After searching the world deck, you may campaign, spending no Supply."
+  },
+  {
+    "id": "123",
+    "name": "Council Seat",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "If you're a Citizen, you **cannot** be exiled, even by yourself."
+  },
+  {
+    "id": "124",
+    "name": "Encirclement",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "\u00b12 [attack-die] if your force is larger than your enemy's."
+  },
+  {
+    "id": "125",
+    "name": "Peace Envoy",
+    "suit": "order",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "You **cannot** use other battle plans. If your enemy's pawn is at your site, give them one [favor] per [defense-die] in the pool. You're victorious now. **Ignore** killing warbands."
+  },
+  {
+    "id": "126",
+    "name": "Relic Hunter",
+    "suit": "order",
+    "costSymbols": [],
+    "rulesText": "You may target facedown relics at targeted sites, adding 1 [defense-die] per relic. You may put any relics you take on the bottom of the relic deck."
+  },
+  {
+    "id": "127",
+    "name": "Homesteaders",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** Move one of your faceup advisers to your site."
+  },
+  {
+    "id": "128",
+    "name": "Crop Rotation",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "If playing to a site, you may discard a denizen there first."
+  },
+  {
+    "id": "129",
+    "name": "A Round of Ale",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Return all [favor] and [secret], and flip your [secret], as in the Rest Phase, except for the [favor] here."
+  },
+  {
+    "id": "130",
+    "name": "Land Warden",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "You may play two cards you draw _(instead of one)_ if you play at least one card to a site."
+  },
+  {
+    "id": "131",
+    "name": "Charming Friend",
+    "suit": "hearth",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Take [favor] from a player whose pawn is at your site."
+  },
+  {
+    "id": "132",
+    "name": "Village Constable",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "\u00b12 [attack-die] unless your enemy has the People's Favor."
+  },
+  {
+    "id": "133",
+    "name": "Family Heirloom",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** draw a relic. Take it or put it on the bottom of the relic deck."
+  },
+  {
+    "id": "134",
+    "name": "News from Afar",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "Spend no Supply."
+  },
+  {
+    "id": "135",
+    "name": "Levelers",
+    "suit": "hearth",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Move [favor] [favor] from the favor bank from the most [favor] to that with the least [favor]. You decide ties."
+  },
+  {
+    "id": "136",
+    "name": "Fabled Feast",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** take X [favor] equal to the number of [suit-hearth] cards you rule _(including Fabled Feast)_ from any one favor bank."
+  },
+  {
+    "id": "137",
+    "name": "The Great Levy",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "\u00b13 [attack-die] and **ignore** all skulls [skull] you roll, unless your enemy has the People's Favor."
+  },
+  {
+    "id": "138",
+    "name": "Hearts and Minds",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]",
+      "[favor]",
+      "[favor]"
+    ],
+    "rulesText": "As defender, you're victorious now. At end, discard Hearts and Minds unless you hold the People's Favor."
+  },
+  {
+    "id": "139",
+    "name": "Relic Breaker",
+    "suit": "hearth",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Put a facedown relic at your site on the bottom of the relic deck to gain three warbands."
+  },
+  {
+    "id": "140",
+    "name": "Book Binders",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "After another player plays a Vision faceup, you gain [favor] [favor] from any one favor bank."
+  },
+  {
+    "id": "141",
+    "name": "Ballot Box",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** If you're an Exile and have the People's Favor, become a Citizen- take no relic, end your Act Phase, and refresh Supply to full."
+  },
+  {
+    "id": "142",
+    "name": "Saddle Makers",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "After another player plays a [suit-nomad] or [suit-order] card, you gain [favor] [favor] from the matching favor bank."
+  },
+  {
+    "id": "143",
+    "name": "Herald",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "After another player campaigns against a player _(not bandits)_, you gain [favor] from any favor bank."
+  },
+  {
+    "id": "144",
+    "name": "Rowdy Pub",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "Gain one more warband if mustering from Rowdy Pub."
+  },
+  {
+    "id": "145",
+    "name": "Vow of Peace",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "You **cannot** campaign. Attackers **cannot** sacrifice warbands to increase their attack against you."
+  },
+  {
+    "id": "146",
+    "name": "Deed Writer",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** Negotiate a binding exchange of [favor], [secret], and ruled sites with any player. Old ruler moves warbands to board, and new ruler moves warbands from board."
+  },
+  {
+    "id": "147",
+    "name": "Salad Days",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** gain [favor] [favor] [favor]- one each from three different favor banks."
+  },
+  {
+    "id": "148",
+    "name": "Marriage",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "Marriage counts as two [suit-hearth] advisers, but only counts as one toward your adviser limit."
+  },
+  {
+    "id": "149",
+    "name": "Hospital",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "If any of your warbands would be killed, place them on Hospital's site instead if you still rule it."
+  },
+  {
+    "id": "150",
+    "name": "Awaited Return",
+    "suit": "hearth",
+    "costSymbols": [],
+    "rulesText": "Spend no Supply if you sacrifice one warband from your board."
+  },
+  {
+    "id": "151",
+    "name": "Convoys",
+    "suit": "nomad",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**ACTION:** Take another region's discard pile and put it on top of your region's discard pile _(even if empty)_."
+  },
+  {
+    "id": "152",
+    "name": "Vow of Kinship",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Move all of your [favor] to the [suit-nomad] bank. Any [favor] you gain or take is put in the [suit-nomad] bank. You can use [favor] in the [suit-nomad] bank as if it is on your board."
+  },
+  {
+    "id": "153",
+    "name": "Wild Mounts",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "If you would discard any number of [suit-nomad] battle plans, you may instead discard any one [suit-beast] you rule."
+  },
+  {
+    "id": "154",
+    "name": "Lancers",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Double your total attack roll. At end, discard Lancers."
+  },
+  {
+    "id": "155",
+    "name": "Mountain Giant",
+    "suit": "nomad",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "\u00b11 [attack-die] or \u00b13. At end, discard."
+  },
+  {
+    "id": "156",
+    "name": "Rival Khan",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "\u00b14 [attack-die] if your enemy has a [suit-nomad] adviser. At end, discard Rival Khan."
+  },
+  {
+    "id": "157",
+    "name": "Lost Tongue",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Other players **cannot** target or take your relics or banners in any way unless they rule a [suit-nomad] card."
+  },
+  {
+    "id": "158",
+    "name": "Special Envoy",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Spend no Supply. After traveling, end your Act Phase."
+  },
+  {
+    "id": "159",
+    "name": "Resettle",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**ACTION:** Move a faceup [suit-nomad] card from any player's advisers to any site."
+  },
+  {
+    "id": "160",
+    "name": "Oracle",
+    "suit": "nomad",
+    "costSymbols": [
+      "[secret]",
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Draw the Vision closest to the top of the world deck. Play or discard it as if you searched."
+  },
+  {
+    "id": "161",
+    "name": "Pilgrimage",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** move all denizens at your site to the Dispossessed. Shuffle and draw denizens from the Dispossessed equal to the number you moved. Peek at them and put them on your region's discard pile."
+  },
+  {
+    "id": "162",
+    "name": "Spell Breaker",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Enemies of Spell Breaker's ruler **cannot** use powers that cost any [secret] or [secret-burnt]."
+  },
+  {
+    "id": "163",
+    "name": "Mounted Patrol",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "The attacker rolls only half the [attack-die] in their attack pool, rounded down. At end, discard Mounted Patrol."
+  },
+  {
+    "id": "164",
+    "name": "Great Crusade",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "\u00b1 [attack-die] per [suit-nomad] card you rule. At end, discard Great Crusade."
+  },
+  {
+    "id": "165",
+    "name": "Ancient Bloodline",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Your enemies act as if denizens and relics at sites you rule are **locked**."
+  },
+  {
+    "id": "166",
+    "name": "Ancient Pact",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** you may give the Chancellor the Darkest Secret to become a Citizen- take any one Reliquary relic without peeking, end your Act Phase, and refresh Supply to full."
+  },
+  {
+    "id": "167",
+    "name": "Storm Caller",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "+2 [defense-die] At end, discard Storm Caller."
+  },
+  {
+    "id": "168",
+    "name": "Family Wagon",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "You can only have one adviser that is not a [suit-nomad]. You can have any number of [suit-nomad] advisers- they **ignore** your adviser limit."
+  },
+  {
+    "id": "169",
+    "name": "Way Station",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Spend no Supply if you're traveling to this site and either rule Way Station or choose to give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+  },
+  {
+    "id": "170",
+    "name": "Twin Brother",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** you may swap this card with a faceup [suit-nomad] adviser of another player."
+  },
+  {
+    "id": "171",
+    "name": "Hospitality",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "After traveling, gain [favor] from one favor bank that matches both a card at your site and one of your advisers."
+  },
+  {
+    "id": "172",
+    "name": "A Fast Steed",
+    "suit": "nomad",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "Spend no Supply if you have three or fewer warbands on your board."
+  },
+  {
+    "id": "173",
+    "name": "Relic Worship",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "After you recover a relic, gain 3 Supply."
+  },
+  {
+    "id": "174",
+    "name": "Sacred Ground",
+    "suit": "nomad",
+    "costSymbols": [],
+    "rulesText": "Players **cannot** play Visions, except the Conspiracy, faceup, unless their pawn is at this site."
+  },
+  {
+    "id": "175",
+    "name": "Nature Worship",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "\u00b1 [attack-die] per [suit-beast] adviser you have."
+  },
+  {
+    "id": "176",
+    "name": "Birdsong",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Spend no Supply if you're trading with a [suit-beast] or [suit-nomad] card."
+  },
+  {
+    "id": "177",
+    "name": "Small Friends",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Act as if your pawn is at any site with a [suit-beast] card. _(You may use Trade modifiers there.)_"
+  },
+  {
+    "id": "178",
+    "name": "Grasping Vines",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Enemies traveling from any site ruled by Grasping Vines' ruler **must** kill one warband on their board if able."
+  },
+  {
+    "id": "179",
+    "name": "Threatening Roar",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** discard all [suit-nomad] and [suit-beast] cards at sites in your region."
+  },
+  {
+    "id": "180",
+    "name": "Fae Merchant",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Draw a relic and take it. Put any relic you hold except the Grand Scepter on the bottom of the relic deck."
+  },
+  {
+    "id": "181",
+    "name": "Second Chance",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Kill one warband on the board of a player who has an [suit-order] or [suit-discord] adviser to gain one warband."
+  },
+  {
+    "id": "182",
+    "name": "Pied Piper",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "This card ignores the adviser limit. **ACTION:** Move this card to any other player's advisers. Take [favor] [favor] from them."
+  },
+  {
+    "id": "183",
+    "name": "Mushrooms",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "Spend no Supply, but draw only one card _(not three)_ from the bottom of your region's discard pile."
+  },
+  {
+    "id": "184",
+    "name": "Insect Swarm",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Your enemy's battle plans each have an added cost of [favor-burnt]."
+  },
+  {
+    "id": "185",
+    "name": "Vow of Union",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "In campaigns, warbands at sites you rule add to your attacking force. You **cannot** travel from a site you rule if any warbands are on your board."
+  },
+  {
+    "id": "186",
+    "name": "Giant Python",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Whenever a player attacks you, they **must** declare targets that add an even total _(2, 4, etc)_ of [defense-die] to your defense pool."
+  },
+  {
+    "id": "187",
+    "name": "War Tortoise",
+    "suit": "beast",
+    "costSymbols": [
+      "[favor]"
+    ],
+    "rulesText": "**Ignore** all attack or defense added by your enemy's rolls of [sword] [sword] [skull] or [shield] [shield]. _(Any [skull] they roll still kill their warbands.)_"
+  },
+  {
+    "id": "188",
+    "name": "New Growth",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "You may play [suit-beast] and [suit-hearth] cards to any site _(that has space)_."
+  },
+  {
+    "id": "189",
+    "name": "Wild Cry",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "If you play a [suit-beast] card, gain 1 Supply and 2 warbands."
+  },
+  {
+    "id": "190",
+    "name": "Animal Host",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "**WHEN PLAYED:** gain warbands equal to the total number of [suit-beast] cards _(including Animal Host)_ at any sites _(regardless of rule)_."
+  },
+  {
+    "id": "191",
+    "name": "Memory of Nature",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Move a total of X [favor] from any favor banks to the [suit-beast] bank. X is the number of [suit-beast] cards on the map."
+  },
+  {
+    "id": "192",
+    "name": "Marsh Spirit",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Players who target this site **cannot** use battle plans."
+  },
+  {
+    "id": "193",
+    "name": "Vow of Poverty",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "You **cannot** gain [favor] from Trade. **REST:** If you have no [favor], take [favor] [favor] from any one favor bank."
+  },
+  {
+    "id": "194",
+    "name": "Forest Council",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "Enemies of Forest Council's rule **cannot** trade with or must from [suit-beast] cards."
+  },
+  {
+    "id": "195",
+    "name": "Walled Garden",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "\u00b1 [defense-die] per [suit-beast] at any sites if this site is targeted."
+  },
+  {
+    "id": "196",
+    "name": "Vow of Beastkin",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "You **must** muster on a card that matching any of your advisers, but you gain one more warband."
+  },
+  {
+    "id": "197",
+    "name": "Bracken",
+    "suit": "beast",
+    "costSymbols": [],
+    "rulesText": "You may put all the cards you discard on the top or bottom of any one discard pile _(even your region's)_."
+  },
+  {
+    "id": "198",
+    "name": "Wild Allies",
+    "suit": "beast",
+    "costSymbols": [
+      "[secret]"
+    ],
+    "rulesText": "**ACTION:** Campaign at any site with a [suit-beast] card. Act as if your pawn is there. Spend no Supply and add your warbands there to your force."
+  }
+]

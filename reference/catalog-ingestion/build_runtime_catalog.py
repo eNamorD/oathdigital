@@ -5,7 +5,6 @@ application reads only docs/catalog/new-foundations-component-catalog.json.
 """
 
 import csv
-import difflib
 import json
 import re
 import sys
@@ -19,42 +18,26 @@ ARCHIVE = (
 )
 MANIFEST = Path("/private/tmp/oath-runtime-catalog/crops/manifest.json")
 OCR = ROOT / "reference/catalog-ingestion/component-ocr.tsv"
-LEGACY_OCR = ROOT / "reference/catalog-ingestion/legacy-component-ocr.tsv"
+BASE_DENIZENS = (
+    ROOT / "reference/catalog-ingestion/base-denizen-transcriptions.json"
+)
+NEW_FOUNDATIONS_DENIZENS = (
+    ROOT
+    / "reference/catalog-ingestion/new-foundations-denizen-transcriptions.json"
+)
+RELIC_TRANSCRIPTIONS = (
+    ROOT / "reference/catalog-ingestion/relic-transcriptions.json"
+)
+LEGACY_TRANSCRIPTIONS = (
+    ROOT / "reference/catalog-ingestion/legacy-transcriptions.json"
+)
+EDIFICE_RULE_OVERRIDES = (
+    ROOT / "reference/catalog-ingestion/edifice-rule-overrides.json"
+)
 OUTPUT = ROOT / "docs/catalog/new-foundations-component-catalog.json"
 REVIEW = ROOT / "reference/catalog-ingestion/runtime-catalog-review.csv"
 
 SUITS = ("arcane", "beast", "discord", "hearth", "nomad", "order")
-
-RULE_OVERRIDES = {
-    "denizen:extra-provisions": "+1 defense die.",
-    "denizen:longbows": "+1 attack die.",
-    "relic:black-sword": "Pay 2 Supply: +5 attack dice.",
-    "relic:fearsome-shield": "Pay 2 Supply: +2 defense dice.",
-    "relic:the-grand-scepter": (
-        "This relic cannot be removed from play or added to a lineage. "
-        "If you are Imperial and victorious against a Citizen, you may pay "
-        "1 Favor to exile them. ACTION: You may become a Citizen if an Exile. "
-        "IN NEGOTIATION: May offer Citizenship."
-    ),
-    "legacy:beloved": (
-        "Set Foundation IV to Teeming World. WHEN TRADING: You may trade with "
-        "advisers held by other players whose pawns are at your site."
-    ),
-    "legacy:the-mouth": (
-        "Set Foundation VI to Festival. ACTION: Burn 1 Favor to activate a "
-        "dormant legacy if you meet its goal. You can even activate legacies "
-        "in the Public Ambitions foundation."
-    ),
-    "legacy:reformer": (
-        "Set Foundation V to Grand Council. CHRONICLE (START OF THRONE): If "
-        "you won, you may move and swap denizens at sites you rule, ignoring "
-        "the locked restriction."
-    ),
-    "legacy:pathfinder": (
-        "Set Foundation I to Wide Horizons. TRAVEL: You may ignore the "
-        "Mountain, Island, and Pass powers."
-    ),
-}
 
 
 def slug(value):
@@ -123,44 +106,79 @@ def denizen_suit(index, component):
 
 
 def handler(kind, identifier, face=None):
-    base = f"{kind}.{identifier.split(':', 1)[-1]}"
+    base = f"{kind}.{identifier}"
     return f"{base}.{face}" if face else base
 
 
-def match_legacy_blocks(components, manifest, ocr):
-    legacy_items = [item for item in manifest if item["kind"] == "legacy"]
-    choices = []
-    for item in legacy_items:
-        filename = item["crop"]
-        lines = ocr[filename]
-        title = lines[0]["text"] if lines else item["name"]
-        choices.append((filename, title))
+def indexed_by_name(records):
+    return {normalized(record["name"]): record for record in records}
 
-    scored = []
-    for component in components:
-        for filename, title in choices:
-            score = difflib.SequenceMatcher(
-                None, normalized(component["name"]), normalized(title)
-            ).ratio()
-            scored.append((score, component["definitionId"], filename))
 
-    matches = {}
-    used_components = set()
-    used_files = set()
-    for score, definition_id, filename in sorted(scored, reverse=True):
-        if definition_id in used_components or filename in used_files:
-            continue
-        matches[definition_id] = (filename, score)
-        used_components.add(definition_id)
-        used_files.add(filename)
-    return matches
+def combined_rules_text(record):
+    return " ".join(
+        part
+        for part in [*record.get("costSymbols", []), record["rulesText"]]
+        if part
+    ).strip()
+
+
+def normalized_markdown(text):
+    text = re.sub(r"\s+(?:[EL][O0]?\d{1,2})$", "", text)
+    headings = (
+        "ACTION",
+        "BATTLE PLAN",
+        "CHRONICLE",
+        "END OF ROUND",
+        "SETUP",
+        "TRAVEL",
+        "WAKE",
+        "WHEN EXPLORED",
+        "WHEN NEGOTIATING",
+        "WHEN PLAYED",
+    )
+    for heading in headings:
+        text = re.sub(
+            rf"\b{re.escape(heading)}\b:",
+            f"**{heading}:**",
+            text,
+            flags=re.IGNORECASE,
+        )
+    text = re.sub(r"\b(cannot|must)\b", r"**\1**", text, flags=re.IGNORECASE)
+    return text
 
 
 def main():
     archived = json.loads(ARCHIVE.read_text())
+    base_denizens = indexed_by_name(json.loads(BASE_DENIZENS.read_text()))
+    base_denizens[normalized("News from Alfar")] = base_denizens[
+        normalized("News from Afar")
+    ]
+    base_denizens[normalized("Old Fast Steed")] = base_denizens[
+        normalized("A Fast Steed")
+    ]
+    base_denizens[normalized("Land Garden")] = base_denizens[
+        normalized("Land Warden")
+    ]
+    nf_denizens = indexed_by_name(
+        json.loads(NEW_FOUNDATIONS_DENIZENS.read_text())
+    )
+    relic_transcriptions = indexed_by_name(
+        json.loads(RELIC_TRANSCRIPTIONS.read_text())
+    )
+    legacy_transcriptions = indexed_by_name(
+        json.loads(LEGACY_TRANSCRIPTIONS.read_text())
+    )
+    edifice_rule_overrides = json.loads(EDIFICE_RULE_OVERRIDES.read_text())
+    for archived_name, printed_name in (
+        ("Ancient Grit", "Ancient Writ"),
+        ("Keeping Banner", "Weeping Banner"),
+        ("King of Devotion", "Ring of Devotion"),
+    ):
+        relic_transcriptions[normalized(archived_name)] = relic_transcriptions[
+            normalized(printed_name)
+        ]
     manifest = json.loads(MANIFEST.read_text())
     ocr = parse_ocr(OCR)
-    ocr.update(parse_ocr(LEGACY_OCR))
     crop_by_definition = {
         item["definitionId"]: item["crop"] for item in manifest
     }
@@ -170,26 +188,27 @@ def main():
         component for component in components if component["kind"] == "denizen"
     ]
     denizens = []
-    base_index = 0
     for component in denizen_sources:
-        is_base = (
-            component["printEvidence"][0]["provenance"][0]["file"]
-            == "unchanged-denizens.pdf"
-        )
-        suit_index = base_index if is_base else 0
-        if is_base:
-            base_index += 1
-        identifier = f"denizen:{slug(component['name'])}"
-        lines = ocr.get(crop_by_definition[component["definitionId"]], [])
+        key = normalized(component["name"])
+        transcription = nf_denizens.get(key) or base_denizens.get(key)
+        if transcription is None:
+            raise ValueError(
+                f"no reviewed denizen transcription for {component['name']}"
+            )
+        printed_id = int(transcription["id"])
+        if printed_id >= 199:
+            suit = SUITS[(printed_id - 199) // 10]
+        elif key in nf_denizens:
+            suit = denizen_suit(0, component)
+        else:
+            suit = base_denizens[key]["suit"]
         denizens.append(
             {
-                "id": identifier,
-                "name": component["name"],
-                "suit": denizen_suit(suit_index, component),
-                "handlers": [handler("denizen", identifier)],
-                "rulesText": RULE_OVERRIDES.get(
-                    identifier, rules_text(lines, "denizen")
-                ),
+                "id": transcription["id"],
+                "name": transcription["name"],
+                "suit": suit,
+                "handlers": [handler("denizen", slug(component["name"]))],
+                "rulesText": combined_rules_text(transcription),
             }
         )
 
@@ -197,33 +216,21 @@ def main():
     for component in (
         item for item in components if item["kind"] == "relic"
     ):
-        identifier = f"relic:{slug(component['name'])}"
-        lines = ocr.get(crop_by_definition[component["definitionId"]], [])
-        defense_candidates = [
-            int(line["text"])
-            for line in lines
-            if re.fullmatch(r"[0-4]", line["text"])
-            and line["y"] > 0.65
-            and line["x"] > 0.65
-        ]
+        transcription = relic_transcriptions.get(normalized(component["name"]))
+        if transcription is None:
+            raise ValueError(
+                f"no reviewed relic transcription for {component['name']}"
+            )
+        is_grand_scepter = transcription["id"] == "grand-scepter"
         relics.append(
             {
-                "id": identifier,
-                "name": component["name"],
-                "role": (
-                    "grand-scepter"
-                    if component["name"] in {"Grand Scepter", "The Grand Scepter"}
-                    else "ordinary"
-                ),
-                "defense": (
-                    3
-                    if identifier == "relic:the-grand-scepter"
-                    else defense_candidates[0] if defense_candidates else 0
-                ),
-                "handlers": [handler("relic", identifier)],
-                "rulesText": RULE_OVERRIDES.get(
-                    identifier, rules_text(lines, "relic")
-                ),
+                "id": transcription["id"],
+                "name": transcription["name"],
+                "role": "grand-scepter" if is_grand_scepter else "ordinary",
+                "value": transcription["value"],
+                "defense": transcription["defense"],
+                "handlers": [handler("relic", slug(component["name"]))],
+                "rulesText": transcription["rulesText"],
             }
         )
 
@@ -231,13 +238,16 @@ def main():
     for component in (
         item for item in components if item["kind"] == "edifice-face"
     ):
-        printed_id = component["printedComponentId"]["value"].lower()
+        printed_id = component["printedComponentId"]["value"]
         face = component["face"]["state"]
         lines = ocr.get(crop_by_definition[component["definitionId"]], [])
         faces_by_id.setdefault(printed_id, {})[face] = {
             "name": component["name"],
-            "handlers": [handler("edifice", printed_id, face)],
-            "rulesText": rules_text(lines, "edifice-face"),
+            "handlers": [handler("edifice", printed_id.lower(), face)],
+            "rulesText": edifice_rule_overrides.get(
+                component["name"],
+                normalized_markdown(rules_text(lines, "edifice-face")),
+            ),
         }
 
     edifices = []
@@ -255,7 +265,7 @@ def main():
         )
         edifices.append(
             {
-                "id": f"edifice:{printed_id}",
+                "id": printed_id,
                 "suit": suit,
                 "intact": faces["intact"],
                 "ruined": faces["ruined"],
@@ -265,21 +275,16 @@ def main():
     legacy_components = [
         item for item in components if item["kind"] == "legacy"
     ]
-    legacy_matches = match_legacy_blocks(legacy_components, manifest, ocr)
     legacies = []
-    legacy_scores = {}
     for component in legacy_components:
-        identifier = f"legacy:{slug(component['name'])}"
-        filename, score = legacy_matches[component["definitionId"]]
-        legacy_scores[identifier] = score
+        transcription = legacy_transcriptions[normalized(component["name"])]
+        identifier = transcription["id"]
         legacies.append(
             {
                 "id": identifier,
-                "name": component["name"],
-                "handlers": [handler("legacy", identifier)],
-                "rulesText": RULE_OVERRIDES.get(
-                    identifier, rules_text(ocr[filename], "legacy")
-                ),
+                "name": transcription["name"],
+                "handlers": [handler("legacy", slug(component["name"]))],
+                "rulesText": transcription["rulesText"],
             }
         )
 
@@ -338,8 +343,8 @@ def main():
                     "denizen",
                     component["id"],
                     component["name"],
-                    "suit;rulesText;icons",
-                    "sheet-order suit inference;Vision OCR",
+                    "rulesText",
+                    "official base data or visual review of print card",
                 )
             )
         for component in relics:
@@ -348,8 +353,8 @@ def main():
                     "relic",
                     component["id"],
                     component["name"],
-                    "defense;rulesText;icons",
-                    "Vision OCR",
+                    "value;defense;rulesText",
+                    "visual review of print card",
                 )
             )
         for component in edifices:
@@ -358,8 +363,8 @@ def main():
                     "edifice",
                     component["id"],
                     f"{component['intact']['name']} / {component['ruined']['name']}",
-                    "suit;intact.rulesText;ruined.rulesText;icons",
-                    "printed ID range;Vision OCR",
+                    "rulesText",
+                    "visual overrides plus normalized OCR",
                 )
             )
         for component in legacies:
@@ -368,8 +373,8 @@ def main():
                     "legacy",
                     component["id"],
                     component["name"],
-                    "rulesText;icons",
-                    f"Vision OCR; title-match={legacy_scores[component['id']]:.2f}",
+                    "rulesText",
+                    "visual review of print card",
                 )
             )
 

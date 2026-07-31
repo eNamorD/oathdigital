@@ -34,6 +34,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
       Vector("denizen.fixture-denizen")
     )
     assertEquals(catalog.relics.head.defense, 2)
+    assertEquals(catalog.relics.head.value, 42)
     assertEquals(catalog.edifices.head.ruined.name, "Ruined Fixture")
     assertEquals(catalog.legacies.head.name, "Fixture Legacy")
     assertEquals(catalog.sites.map(_.id), Vector(SiteId("site:fixture-site")))
@@ -63,9 +64,61 @@ class CatalogLoaderSuite extends munit.FunSuite {
       catalog.relics.count(_.role == RelicRole.GrandScepter),
       1
     )
+    assertEquals(catalog.denizens.map(_.id.value).toSet.size, 255)
+    assert(catalog.denizens.forall(_.id.value.forall(_.isDigit)))
+    assertEquals(
+      catalog.relics.filter(_.role == RelicRole.Ordinary).map(_.id.value).toSet,
+      (1 to 47).map(number => f"R$number%02d").toSet
+    )
+    assertEquals(
+      catalog.edifices.map(_.id.value).toSet,
+      (1 to 30).map(number => f"E$number%02d").toSet
+    )
+    assertEquals(
+      catalog.legacies.map(_.id.value).toSet,
+      (1 to 36).map(number => f"L$number%02d").toSet
+    )
     assertEquals(catalog.setupCards, Vector.empty)
     assertEquals(catalog.supplyBoards, Vector.empty)
     assertEquals(catalog.visions, Vector.empty)
+  }
+
+  test("printed relic values and reviewed symbol transcription are loaded") {
+    val catalog = CatalogLoader
+      .load(Paths.get("docs/catalog/new-foundations-component-catalog.json"))
+      .toOption
+      .get
+
+    val stickyFire = catalog.relics.find(_.id.value == "R01").get
+    assertEquals(stickyFire.value, 3)
+    assertEquals(stickyFire.defense, 3)
+    assert(stickyFire.rulesText.contains("[favor]"))
+
+    val alchemist = catalog.denizens.find(_.id.value == "9").get
+    assert(alchemist.rulesText.startsWith("[secret] [secret-burnt]"))
+    assert(alchemist.rulesText.contains("**ACTION:**"))
+
+    assertEquals(
+      catalog.legacies.find(_.id.value == "L17").map(_.name),
+      Some("Rival")
+    )
+    assertEquals(
+      catalog.legacies.find(_.id.value == "L18").map(_.name),
+      Some("The Standard Bearer")
+    )
+    assert(
+      catalog.edifices
+        .find(_.id.value == "E01")
+        .get
+        .ruined
+        .rulesText
+        .contains("[favor-burnt]")
+    )
+
+    val grandScepter =
+      catalog.relics.find(_.role == RelicRole.GrandScepter).get
+    assertEquals(grandScepter.id.value, "grand-scepter")
+    assertEquals(grandScepter.value, 0)
   }
 
   test("production sites retain verified printed gameplay data") {
@@ -149,7 +202,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
   test("duplicate identities and absent required fields are rejected") {
     val duplicateDenizen =
       """{
-        |      "id": "denizen:fixture-denizen",
+        |      "id": "1",
         |      "name": "Duplicate Denizen",
         |      "suit": "beast",
         |      "handlers": ["denizen.duplicate-denizen"],

@@ -117,7 +117,12 @@ object CatalogLoader {
   private def decodeDenizen(obj: Obj, path: String): Result[DenizenDefinition] =
     for {
       id <- decodeDefinitionId(obj, path)
-      _ <- requirePrefix(id, "denizen:", s"$path.id")
+      _ <- requirePattern(
+        id,
+        "(?:[1-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-8])",
+        "printed denizen ID from 1 through 258",
+        s"$path.id"
+      )
       name <- requiredString(obj, "name", path)
       suit <- decodeSuit(obj, path)
       handlers <- decodeHandlers(obj, path)
@@ -127,7 +132,12 @@ object CatalogLoader {
   private def decodeRelic(obj: Obj, path: String): Result[RelicDefinition] =
     for {
       id <- decodeDefinitionId(obj, path)
-      _ <- requirePrefix(id, "relic:", s"$path.id")
+      _ <- requirePattern(
+        id,
+        "(?:R(?:0[1-9]|[1-3][0-9]|4[0-7])|grand-scepter)",
+        "printed relic ID R01 through R47 or grand-scepter",
+        s"$path.id"
+      )
       name <- requiredString(obj, "name", path)
       roleValue <- requiredString(obj, "role", path)
       role <- roleValue match {
@@ -136,16 +146,27 @@ object CatalogLoader {
         case other =>
           Left(Vector(InvalidValue(s"$path.role", s"unsupported role $other")))
       }
+      value <- requiredInt(obj, "value", path)
       defense <- requiredInt(obj, "defense", path)
-      _ <- nonNegative(defense, s"$path.defense")
+      _ <- collectResults(
+        Vector(
+          nonNegative(value, s"$path.value"),
+          nonNegative(defense, s"$path.defense")
+        )
+      ).map(_ => ())
       handlers <- decodeHandlers(obj, path)
       rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
-    } yield RelicDefinition(id, name, role, defense, handlers, rulesText)
+    } yield RelicDefinition(id, name, role, value, defense, handlers, rulesText)
 
   private def decodeEdifice(obj: Obj, path: String): Result[EdificeDefinition] =
     for {
       id <- decodeDefinitionId(obj, path)
-      _ <- requirePrefix(id, "edifice:", s"$path.id")
+      _ <- requirePattern(
+        id,
+        "E(?:0[1-9]|[12][0-9]|30)",
+        "printed edifice ID E01 through E30",
+        s"$path.id"
+      )
       suit <- decodeSuit(obj, path)
       intactObject <- requiredObject(obj, "intact", path)
       intact <- decodeEdificeFace(intactObject, s"$path.intact")
@@ -166,7 +187,12 @@ object CatalogLoader {
   private def decodeLegacy(obj: Obj, path: String): Result[LegacyDefinition] =
     for {
       id <- decodeDefinitionId(obj, path)
-      _ <- requirePrefix(id, "legacy:", s"$path.id")
+      _ <- requirePattern(
+        id,
+        "L(?:0[1-9]|[12][0-9]|3[0-6])",
+        "printed legacy ID L01 through L36",
+        s"$path.id"
+      )
       name <- requiredString(obj, "name", path)
       handlers <- decodeHandlers(obj, path)
       rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
@@ -295,13 +321,14 @@ object CatalogLoader {
       )
   }
 
-  private def requirePrefix(
+  private def requirePattern(
       id: DefinitionId,
-      prefix: String,
+      pattern: String,
+      expected: String,
       path: String
   ): Result[Unit] =
-    if (id.value.startsWith(prefix)) Right(())
-    else Left(Vector(InvalidValue(path, s"expected $prefix prefix")))
+    if (id.value.matches(pattern)) Right(())
+    else Left(Vector(InvalidValue(path, s"expected $expected")))
 
   private def nonNegative(value: Int, path: String): Result[Unit] =
     if (value >= 0) Right(())

@@ -41,6 +41,7 @@ final case class RelicDefinition(
     id: DefinitionId,
     name: String,
     role: RelicRole,
+    value: Int,
     defense: Int,
     handlers: Vector[String],
     rulesText: String

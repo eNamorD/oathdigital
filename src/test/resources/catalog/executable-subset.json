@@ -3,7 +3,7 @@
   "catalogVersion": "fixture-1",
   "denizens": [
     {
-      "id": "denizen:fixture-denizen",
+      "id": "1",
       "name": "Fixture Denizen",
       "suit": "arcane",
       "handlers": [
@@ -14,9 +14,10 @@
   ],
   "relics": [
     {
-      "id": "relic:fixture-relic",
+      "id": "R01",
       "name": "Fixture Relic",
       "role": "ordinary",
+      "value": 42,
       "defense": 2,
       "handlers": [
         "relic.fixture-relic"
@@ -26,7 +27,7 @@
   ],
   "edifices": [
     {
-      "id": "edifice:e01",
+      "id": "E01",
       "suit": "discord",
       "intact": {
         "name": "Fixture Edifice",
@@ -46,7 +47,7 @@
   ],
   "legacies": [
     {
-      "id": "legacy:fixture-legacy",
+      "id": "L01",
       "name": "Fixture Legacy",
       "handlers": [
         "legacy.fixture-legacy"

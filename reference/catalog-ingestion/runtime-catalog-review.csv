@@ -1,370 +1,370 @@
 kind,id,name,fieldsToReview,basis
-denizen,denizen:fire-talkers,Fire Talkers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:spirit-snare,Spirit Snare,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wizard-school,Wizard School,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:dazzle,Dazzle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:acting-troupe,Acting Troupe,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:taming-charm,Taming Charm,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:secret-signal,Secret Signal,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:augury,Augury,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:rusting-ray,Rusting Ray,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:billowing-fog,Billowing Fog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:kindred-warriors,Kindred Warriors,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:terror-spells,Terror Spells,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:blood-pact,Blood Pact,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:revelation,Revelation,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:observatory,Observatory,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:plague-engines,Plague Engines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:gleaming-armor,Gleaming Armor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:jinx,Jinx,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tutor,Tutor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:dream-thief,Dream Thief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:cracking-ground,Cracking Ground,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:sealing-ward,Sealing Ward,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:initiation-rite,Initiation Rite,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:map-library,Map Library,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:witch-s-bargain,Witch's Bargain,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:master-of-disguise,Master of Disguise,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:errand-boy,Errand Boy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wolves,Wolves,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:animal-playmates,Animal Playmates,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:true-names,True Names,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:the-old-oak,The Old Oak,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:forest-paths,Forest Paths,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:rangers,Rangers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:roving-terror,Roving Terror,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:nature-worship,Nature Worship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:birdsong,Birdsong,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:small-friends,Small Friends,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:grasping-vines,Grasping Vines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:threatening-roar,Threatening Roar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:fae-merchant,Fae Merchant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:second-chance,Second Chance,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:pied-piper,Pied Piper,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:mushrooms,Mushrooms,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:insect-swarm,Insect Swarm,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:war-tortoise,War Tortoise,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:new-growth,New Growth,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wild-cry,Wild Cry,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:animal-host,Animal Host,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:memory-of-nature,Memory of Nature,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:marsh-spirit,Marsh Spirit,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-poverty,Vow of Poverty,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:walled-garden,Walled Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-beastkin,Vow of Beastkin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wild-allies,Wild Allies,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:mercenaries,Mercenaries,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:a-small-favor,A Small Favor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:second-wind,Second Wind,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:sleight-of-hand,Sleight of Hand,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:key-to-the-city,Key to the City,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:scryer,Scryer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:naysayers,Naysayers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:charlatan,Charlatan,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:assassin,Assassin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:downtrodden,Downtrodden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:blackmail,Blackmail,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:cracked-sage,Cracked Sage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:dissent,Dissent,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:false-prophet,False Prophet,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:zealots,Zealots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:beast-tamer,Beast Tamer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:silver-tongue,Silver Tongue,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:gambling-hall,Gambling Hall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:enchantress,Enchantress,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:insomnia,Insomnia,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:sneak-attack,Sneak Attack,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:chaos-cult,Chaos Cult,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wayside-inn,Wayside Inn,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:extra-provisions,Extra Provisions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:welcoming-party,Welcoming Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:traveling-doctor,Traveling Doctor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:storyteller,Storyteller,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:armed-mob,Armed Mob,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tavern-songs,Tavern Songs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:homesteaders,Homesteaders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:crop-rotation,Crop Rotation,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:land-garden,Land Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:charming-friend,Charming Friend,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:village-constable,Village Constable,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:family-heirloom,Family Heirloom,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:news-from-alfar,News from Alfar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:levelers,Levelers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:fabled-feast,Fabled Feast,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:the-great-levy,The Great Levy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:hearts-and-minds,Hearts and Minds,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:book-binders,Book Binders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:saddle-makers,Saddle Makers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:herald,Herald,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:rowdy-pub,Rowdy Pub,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-peace,Vow of Peace,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:salad-days,Salad Days,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:marriage,Marriage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:hospital,Hospital,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:awaited-return,Awaited Return,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:rain-boots,Rain Boots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:ancient-binding,Ancient Binding,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:horse-archers,Horse Archers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:warning-signals,Warning Signals,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:elders,Elders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:the-gathering,The Gathering,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:faithful-friend,Faithful Friend,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tents,Tents,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:great-herd,Great Herd,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:convoys,Convoys,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-kinship,Vow of Kinship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wild-mounts,Wild Mounts,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:lancers,Lancers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:mountain-giant,Mountain Giant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:rival-khan,Rival Khan,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:lost-tongue,Lost Tongue,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:special-envoy,Special Envoy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:resettle,Resettle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:oracle,Oracle,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:pilgrimage,Pilgrimage,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:spell-breaker,Spell Breaker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:mounted-patrol,Mounted Patrol,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:great-crusade,Great Crusade,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:ancient-bloodline,Ancient Bloodline,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:storm-caller,Storm Caller,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:way-station,Way Station,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:twin-brother,Twin Brother,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:hospitality,Hospitality,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:old-fast-steed,Old Fast Steed,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wrestlers,Wrestlers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:battle-honors,Battle Honors,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bear-traps,Bear Traps,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:longbows,Longbows,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:pressgangs,Pressgangs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:garrison,Garrison,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:scouts,Scouts,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:code-of-honor,Code of Honor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:outriders,Outriders,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:messenger,Messenger,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:field-promotion,Field Promotion,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:palanquin,Palanquin,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:shield-wall,Shield Wall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:military-parade,Military Parade,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tyrant,Tyrant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:forced-labor,Forced Labor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:secret-police,Secret Police,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:specialist,Specialist,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:captains,Captains,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:siege-engines,Siege Engines,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:royal-tax,Royal Tax,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:toll-roads,Toll Roads,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:curfew,Curfew,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:knights-errant,Knights Errant,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-obedience,Vow of Obedience,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:hunting-party,Hunting Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:council-seat,Council Seat,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:encirclement,Encirclement,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:peace-envoy,Peace Envoy,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:relic-hunter,Relic Hunter,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:alchemist,Alchemist,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:magician-s-code,Magician's Code,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:inquisitor,Inquisitor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:quick-exit,Quick Exit,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bewitch,Bewitch,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-silence,Vow of Silence,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:forgotten-vault,Forgotten Vault,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:golem-legions,Golem Legions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:council-arbiter,Council Arbiter,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:catacombs,Catacombs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:ward-of-silence,Ward of Silence,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-wisdom,Vow of Wisdom,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:arcane-brokers,Arcane Brokers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:disciples,Disciples,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:arcane-armor,Arcane Armor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:glamor,Glamor,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:wizard-s-conclave,Wizard's Conclave,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:long-lost-heir,Long Lost Heir,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-union,Vow of Union,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:giant-python,Giant Python,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:forest-council,Forest Council,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bracken,Bracken,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:true-oath,True Oath,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bog,Bog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:whispering-leaves,Whispering Leaves,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bed-of-roots,Bed of Roots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:autumn-wind,Autumn Wind,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:shifting-fog,Shifting Fog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:fae-battalion,Fae Battalion,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:hunger,Hunger,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:signal-trees,Signal Trees,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:forest-garden,Forest Garden,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:disgraced-captain,Disgraced Captain,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:book-burning,Book Burning,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-division,Vow of Division,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:royal-ambitions,Royal Ambitions,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:salt-the-earth,Salt the Earth,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:riots,Riots,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:relic-thief,Relic Thief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:gossip,Gossip,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bandit-chief,Bandit Chief,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:defame,Defame,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bandit-paymaster,Bandit Paymaster,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:reliquary-raid,Reliquary Raid,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tracker,Tracker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:banner-breakers,Banner Breakers,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:pledge-to-discord,Pledge to Discord,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:friendly-familiar,Friendly Familiar,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:unstable-summon,Unstable Summon,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:bandit-prince,Bandit Prince,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:dark-enforcer,Dark Enforcer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:spoiled-supplies,Spoiled Supplies,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tinker-s-fair,Tinker's Fair,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:memory-of-home,Memory of Home,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:a-round-of-ale,A Round of Ale,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:relic-breaker,Relic Breaker,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:ballot-box,Ballot Box,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:deed-writer,Deed Writer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:old-songs,Old Songs,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:diplomat,Diplomat,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:village-idiot,Village Idiot,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:spinning-bee,Spinning Bee,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:firebrand,Firebrand,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:watchdog,Watchdog,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:favored-son,Favored Son,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:town-meeting,Town Meeting,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:league-treaty,League Treaty,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:skilled-merchants,Skilled Merchants,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:ancient-pact,Ancient Pact,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:family-wagon,Family Wagon,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:relic-worship,Relic Worship,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:tribute-spoils,Tribute Spoils,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:search-party,Search Party,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:moving-market,Moving Market,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:traveling-negotiator,Traveling Negotiator,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:pledge-of-defense,Pledge of Defense,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:the-red-seer,The Red Seer,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:royal-stables,Royal Stables,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:call-for-help,Call for Help,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:vow-of-wandering,Vow of Wandering,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:mounted-library,Mounted Library,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:keep,Keep,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:martial-culture,Martial Culture,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:master-at-arms,Master at Arms,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:baron,Baron,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:honor-guard,Honor Guard,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:city-wall,City Wall,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:fearsome-general,Fearsome General,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:careful-plans,Careful Plans,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:garrison-armory,Garrison Armory,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:battle-axes,Battle Axes,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:great-feast,Great Feast,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-denizen,denizen:quartermaster,Quartermaster,suit;rulesText;icons,sheet-order suit inference;Vision OCR
-relic,relic:sticky-fire,Sticky Fire,defense;rulesText;icons,Vision OCR
-relic,relic:cursed-cauldron,Cursed Cauldron,defense;rulesText;icons,Vision OCR
-relic,relic:truthful-harp,Truthful Harp,defense;rulesText;icons,Vision OCR
-relic,relic:grand-mask,Grand Mask,defense;rulesText;icons,Vision OCR
-relic,relic:cup-of-plenty,Cup of Plenty,defense;rulesText;icons,Vision OCR
-relic,relic:whistle,Whistle,defense;rulesText;icons,Vision OCR
-relic,relic:cracked-horn,Cracked Horn,defense;rulesText;icons,Vision OCR
-relic,relic:bandit-crown,Bandit Crown,defense;rulesText;icons,Vision OCR
-relic,relic:brass-horse,Brass Horse,defense;rulesText;icons,Vision OCR
-relic,relic:horned-mask,Horned Mask,defense;rulesText;icons,Vision OCR
-relic,relic:dowsing-sticks,Dowsing Sticks,defense;rulesText;icons,Vision OCR
-relic,relic:king-of-devotion,King of Devotion,defense;rulesText;icons,Vision OCR
-relic,relic:skeleton-key,Skeleton Key,defense;rulesText;icons,Vision OCR
-relic,relic:oracular-pig,Oracular Pig,defense;rulesText;icons,Vision OCR
-relic,relic:ivory-eye,Ivory Eye,defense;rulesText;icons,Vision OCR
-relic,relic:shifting-map,Shifting Map,defense;rulesText;icons,Vision OCR
-relic,relic:book-of-records,Book of Records,defense;rulesText;icons,Vision OCR
-relic,relic:dragonskin-drum,Dragonskin Drum,defense;rulesText;icons,Vision OCR
-relic,relic:ancient-grit,Ancient Grit,defense;rulesText;icons,Vision OCR
-relic,relic:painted-trumpet,Painted Trumpet,defense;rulesText;icons,Vision OCR
-relic,relic:circlet-of-command,Circlet of Command,defense;rulesText;icons,Vision OCR
-relic,relic:obsidian-cage,Obsidian Cage,defense;rulesText;icons,Vision OCR
-relic,relic:crystal-vial,Crystal Vial,defense;rulesText;icons,Vision OCR
-relic,relic:bone-dice,Bone Dice,defense;rulesText;icons,Vision OCR
-relic,relic:brass-army,Brass Army,defense;rulesText;icons,Vision OCR
-relic,relic:imperial-seal,Imperial Seal,defense;rulesText;icons,Vision OCR
-relic,relic:singing-mask,Singing Mask,defense;rulesText;icons,Vision OCR
-relic,relic:lost-tapestry,Lost Tapestry,defense;rulesText;icons,Vision OCR
-relic,relic:silver-charm,Silver Charm,defense;rulesText;icons,Vision OCR
-relic,relic:amber-flame,Amber Flame,defense;rulesText;icons,Vision OCR
-relic,relic:whispering-stone,Whispering Stone,defense;rulesText;icons,Vision OCR
-relic,relic:black-sword,Black Sword,defense;rulesText;icons,Vision OCR
-relic,relic:fearsome-shield,Fearsome Shield,defense;rulesText;icons,Vision OCR
-relic,relic:bandit-standard,Bandit Standard,defense;rulesText;icons,Vision OCR
-relic,relic:wine-of-welcome,Wine of Welcome,defense;rulesText;icons,Vision OCR
-relic,relic:barbed-net,Barbed Net,defense;rulesText;icons,Vision OCR
-relic,relic:bag-of-siegeworks,Bag of Siegeworks,defense;rulesText;icons,Vision OCR
-relic,relic:secret-testament,Secret Testament,defense;rulesText;icons,Vision OCR
-relic,relic:yew-staff,Yew Staff,defense;rulesText;icons,Vision OCR
-relic,relic:magic-carpet,Magic Carpet,defense;rulesText;icons,Vision OCR
-relic,relic:sigil-of-the-eye,Sigil of the Eye,defense;rulesText;icons,Vision OCR
-relic,relic:spiteful-mirror,Spiteful Mirror,defense;rulesText;icons,Vision OCR
-relic,relic:demon-tail,Demon Tail,defense;rulesText;icons,Vision OCR
-relic,relic:clay-rattle,Clay Rattle,defense;rulesText;icons,Vision OCR
-relic,relic:keeping-banner,Keeping Banner,defense;rulesText;icons,Vision OCR
-relic,relic:sigil-of-the-heart,Sigil of the Heart,defense;rulesText;icons,Vision OCR
-relic,relic:magic-waterskin,Magic Waterskin,defense;rulesText;icons,Vision OCR
-relic,relic:the-grand-scepter,The Grand Scepter,defense;rulesText;icons,Vision OCR
-edifice,edifice:e01,Hall of Debate / Hall of Mockery,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e02,Great Market / Bandit Market,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e03,Grand Canal / Lost Lagoon,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e04,Stone Baths / Ruined Baths,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e05,Amber Doors / Lost Doors,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e06,Great Forge / Broken Forge,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e07,Wild Pastures / Blasted Pastures,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e08,Sacred Ground / Desecrated Ground,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e09,Giant's Path / Giant's Rampage,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e10,Temple of Ancestors / Ruined Temple,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e11,Great Spire / Fallen Spire,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e12,Great Clock / Broken Clock,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e13,Underground Library / Drowned Library,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e14,Stone Portal / Shattered Portal,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e15,Marble Fountains / Murky Fountain,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e16,Hall of Ministers / Hall of Bandits,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e17,Relic Patrols / Bandit Patrols,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e18,Tome Guardians / Lost Guardians,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e19,The Tribunal / Bandit Tribunal,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e20,Towering Rampart / Cracked Rampart,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e21,Festival District / Squalid District,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e22,Proving Grounds / Empty Grounds,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e23,Spiral Castle / Spiral Dungeons,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e24,Boiling Lake / Still Boiling Lake,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e25,Hidden Passages / Sinking Passages,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e26,Hallowed Spring / Hiding Place,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e27,School of Vines / Ruined School,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e28,Oaken Fortress / Rotting Fortress,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e29,Forbidden Forest / Bandit Forest,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-edifice,edifice:e30,Forest Horn / Broken Horn,suit;intact.rulesText;ruined.rulesText;icons,printed ID range;Vision OCR
-legacy,legacy:iron-hand,Iron Hand,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:chronicler,Chronicler,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:steadfast,Steadfast,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:peacemaker,Peacemaker,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:the-needle,The Needle,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:circle-of-swords,Circle of Swords,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:great-architect,Great Architect,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:ancestral-lands,Ancestral Lands,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:scepter-bearer,Scepter Bearer,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:royal-line,Royal Line,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:keeper-of-order,Keeper of Order,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:golden-key,Golden Key,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:world-crafter,World Crafter,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:matchmaker,Matchmaker,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:revolutionary,Revolutionary,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:populist,Populist,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:rival,Rival,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:the-ear,The Ear,rulesText;icons,Vision OCR; title-match=0.83
-legacy,legacy:high-priest,High Priest,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:arbiter,Arbiter,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:the-standard-bearer,The Standard Bearer,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:heirloom,Heirloom,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:seer,Seer,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:the-bright-beacon,The Bright Beacon,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:oaths-of-loyalty,Oaths of Loyalty,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:conspirator,Conspirator,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:light-fingers,Light Fingers,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:secret-society,Secret Society,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:ruthless,Ruthless,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:quest-to-distant-lands,Quest to Distant Lands,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:wealthy,Wealthy,rulesText;icons,Vision OCR; title-match=0.92
-legacy,legacy:gatekeeper,Gatekeeper,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:beloved,Beloved,rulesText;icons,Vision OCR; title-match=0.12
-legacy,legacy:the-mouth,The Mouth,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:reformer,Reformer,rulesText;icons,Vision OCR; title-match=1.00
-legacy,legacy:pathfinder,Pathfinder,rulesText;icons,Vision OCR; title-match=1.00
+denizen,31,Fire Talkers,rulesText,official base data or visual review of print card
+denizen,33,Spirit Snare,rulesText,official base data or visual review of print card
+denizen,34,Wizard School,rulesText,official base data or visual review of print card
+denizen,35,Dazzle,rulesText,official base data or visual review of print card
+denizen,36,Acting Troupe,rulesText,official base data or visual review of print card
+denizen,37,Taming Charm,rulesText,official base data or visual review of print card
+denizen,55,Secret Signal,rulesText,official base data or visual review of print card
+denizen,56,Augury,rulesText,official base data or visual review of print card
+denizen,57,Rusting Ray,rulesText,official base data or visual review of print card
+denizen,59,Billowing Fog,rulesText,official base data or visual review of print card
+denizen,60,Kindred Warriors,rulesText,official base data or visual review of print card
+denizen,61,Terror Spells,rulesText,official base data or visual review of print card
+denizen,62,Blood Pact,rulesText,official base data or visual review of print card
+denizen,63,Revelation,rulesText,official base data or visual review of print card
+denizen,64,Observatory,rulesText,official base data or visual review of print card
+denizen,65,Plague Engines,rulesText,official base data or visual review of print card
+denizen,66,Gleaming Armor,rulesText,official base data or visual review of print card
+denizen,68,Jinx,rulesText,official base data or visual review of print card
+denizen,69,Tutor,rulesText,official base data or visual review of print card
+denizen,70,Dream Thief,rulesText,official base data or visual review of print card
+denizen,71,Cracking Ground,rulesText,official base data or visual review of print card
+denizen,72,Sealing Ward,rulesText,official base data or visual review of print card
+denizen,73,Initiation Rite,rulesText,official base data or visual review of print card
+denizen,76,Map Library,rulesText,official base data or visual review of print card
+denizen,77,Witch's Bargain,rulesText,official base data or visual review of print card
+denizen,78,Master of Disguise,rulesText,official base data or visual review of print card
+denizen,11,Errand Boy,rulesText,official base data or visual review of print card
+denizen,39,Wolves,rulesText,official base data or visual review of print card
+denizen,40,Animal Playmates,rulesText,official base data or visual review of print card
+denizen,41,True Names,rulesText,official base data or visual review of print card
+denizen,42,The Old Oak,rulesText,official base data or visual review of print card
+denizen,43,Forest Paths,rulesText,official base data or visual review of print card
+denizen,45,Rangers,rulesText,official base data or visual review of print card
+denizen,46,Roving Terror,rulesText,official base data or visual review of print card
+denizen,175,Nature Worship,rulesText,official base data or visual review of print card
+denizen,176,Birdsong,rulesText,official base data or visual review of print card
+denizen,177,Small Friends,rulesText,official base data or visual review of print card
+denizen,178,Grasping Vines,rulesText,official base data or visual review of print card
+denizen,179,Threatening Roar,rulesText,official base data or visual review of print card
+denizen,180,Fae Merchant,rulesText,official base data or visual review of print card
+denizen,181,Second Chance,rulesText,official base data or visual review of print card
+denizen,182,Pied Piper,rulesText,official base data or visual review of print card
+denizen,183,Mushrooms,rulesText,official base data or visual review of print card
+denizen,184,Insect Swarm,rulesText,official base data or visual review of print card
+denizen,187,War Tortoise,rulesText,official base data or visual review of print card
+denizen,188,New Growth,rulesText,official base data or visual review of print card
+denizen,189,Wild Cry,rulesText,official base data or visual review of print card
+denizen,190,Animal Host,rulesText,official base data or visual review of print card
+denizen,191,Memory of Nature,rulesText,official base data or visual review of print card
+denizen,192,Marsh Spirit,rulesText,official base data or visual review of print card
+denizen,193,Vow of Poverty,rulesText,official base data or visual review of print card
+denizen,195,Walled Garden,rulesText,official base data or visual review of print card
+denizen,196,Vow of Beastkin,rulesText,official base data or visual review of print card
+denizen,198,Wild Allies,rulesText,official base data or visual review of print card
+denizen,12,Mercenaries,rulesText,official base data or visual review of print card
+denizen,15,A Small Favor,rulesText,official base data or visual review of print card
+denizen,16,Second Wind,rulesText,official base data or visual review of print card
+denizen,17,Sleight of Hand,rulesText,official base data or visual review of print card
+denizen,18,Key to the City,rulesText,official base data or visual review of print card
+denizen,19,Scryer,rulesText,official base data or visual review of print card
+denizen,21,Naysayers,rulesText,official base data or visual review of print card
+denizen,79,Charlatan,rulesText,official base data or visual review of print card
+denizen,80,Assassin,rulesText,official base data or visual review of print card
+denizen,81,Downtrodden,rulesText,official base data or visual review of print card
+denizen,82,Blackmail,rulesText,official base data or visual review of print card
+denizen,83,Cracked Sage,rulesText,official base data or visual review of print card
+denizen,84,Dissent,rulesText,official base data or visual review of print card
+denizen,85,False Prophet,rulesText,official base data or visual review of print card
+denizen,87,Zealots,rulesText,official base data or visual review of print card
+denizen,90,Beast Tamer,rulesText,official base data or visual review of print card
+denizen,92,Silver Tongue,rulesText,official base data or visual review of print card
+denizen,93,Gambling Hall,rulesText,official base data or visual review of print card
+denizen,96,Enchantress,rulesText,official base data or visual review of print card
+denizen,97,Insomnia,rulesText,official base data or visual review of print card
+denizen,98,Sneak Attack,rulesText,official base data or visual review of print card
+denizen,101,Chaos Cult,rulesText,official base data or visual review of print card
+denizen,47,Wayside Inn,rulesText,official base data or visual review of print card
+denizen,48,Extra Provisions,rulesText,official base data or visual review of print card
+denizen,50,Welcoming Party,rulesText,official base data or visual review of print card
+denizen,51,Traveling Doctor,rulesText,official base data or visual review of print card
+denizen,52,Storyteller,rulesText,official base data or visual review of print card
+denizen,53,Armed Mob,rulesText,official base data or visual review of print card
+denizen,54,Tavern Songs,rulesText,official base data or visual review of print card
+denizen,127,Homesteaders,rulesText,official base data or visual review of print card
+denizen,128,Crop Rotation,rulesText,official base data or visual review of print card
+denizen,130,Land Warden,rulesText,official base data or visual review of print card
+denizen,131,Charming Friend,rulesText,official base data or visual review of print card
+denizen,132,Village Constable,rulesText,official base data or visual review of print card
+denizen,133,Family Heirloom,rulesText,official base data or visual review of print card
+denizen,134,News from Afar,rulesText,official base data or visual review of print card
+denizen,135,Levelers,rulesText,official base data or visual review of print card
+denizen,136,Fabled Feast,rulesText,official base data or visual review of print card
+denizen,137,The Great Levy,rulesText,official base data or visual review of print card
+denizen,138,Hearts and Minds,rulesText,official base data or visual review of print card
+denizen,140,Book Binders,rulesText,official base data or visual review of print card
+denizen,142,Saddle Makers,rulesText,official base data or visual review of print card
+denizen,143,Herald,rulesText,official base data or visual review of print card
+denizen,144,Rowdy Pub,rulesText,official base data or visual review of print card
+denizen,145,Vow of Peace,rulesText,official base data or visual review of print card
+denizen,147,Salad Days,rulesText,official base data or visual review of print card
+denizen,148,Marriage,rulesText,official base data or visual review of print card
+denizen,149,Hospital,rulesText,official base data or visual review of print card
+denizen,150,Awaited Return,rulesText,official base data or visual review of print card
+denizen,14,Rain Boots,rulesText,official base data or visual review of print card
+denizen,23,Ancient Binding,rulesText,official base data or visual review of print card
+denizen,24,Horse Archers,rulesText,official base data or visual review of print card
+denizen,25,Warning Signals,rulesText,official base data or visual review of print card
+denizen,26,Elders,rulesText,official base data or visual review of print card
+denizen,27,The Gathering,rulesText,official base data or visual review of print card
+denizen,28,Faithful Friend,rulesText,official base data or visual review of print card
+denizen,29,Tents,rulesText,official base data or visual review of print card
+denizen,30,Great Herd,rulesText,official base data or visual review of print card
+denizen,151,Convoys,rulesText,official base data or visual review of print card
+denizen,152,Vow of Kinship,rulesText,official base data or visual review of print card
+denizen,153,Wild Mounts,rulesText,official base data or visual review of print card
+denizen,154,Lancers,rulesText,official base data or visual review of print card
+denizen,155,Mountain Giant,rulesText,official base data or visual review of print card
+denizen,156,Rival Khan,rulesText,official base data or visual review of print card
+denizen,157,Lost Tongue,rulesText,official base data or visual review of print card
+denizen,158,Special Envoy,rulesText,official base data or visual review of print card
+denizen,159,Resettle,rulesText,official base data or visual review of print card
+denizen,160,Oracle,rulesText,official base data or visual review of print card
+denizen,161,Pilgrimage,rulesText,official base data or visual review of print card
+denizen,162,Spell Breaker,rulesText,official base data or visual review of print card
+denizen,163,Mounted Patrol,rulesText,official base data or visual review of print card
+denizen,164,Great Crusade,rulesText,official base data or visual review of print card
+denizen,165,Ancient Bloodline,rulesText,official base data or visual review of print card
+denizen,167,Storm Caller,rulesText,official base data or visual review of print card
+denizen,169,Way Station,rulesText,official base data or visual review of print card
+denizen,170,Twin Brother,rulesText,official base data or visual review of print card
+denizen,171,Hospitality,rulesText,official base data or visual review of print card
+denizen,172,A Fast Steed,rulesText,official base data or visual review of print card
+denizen,1,Wrestlers,rulesText,official base data or visual review of print card
+denizen,2,Battle Honors,rulesText,official base data or visual review of print card
+denizen,3,Bear Traps,rulesText,official base data or visual review of print card
+denizen,4,Longbows,rulesText,official base data or visual review of print card
+denizen,6,Pressgangs,rulesText,official base data or visual review of print card
+denizen,7,Garrison,rulesText,official base data or visual review of print card
+denizen,8,Scouts,rulesText,official base data or visual review of print card
+denizen,103,Code of Honor,rulesText,official base data or visual review of print card
+denizen,104,Outriders,rulesText,official base data or visual review of print card
+denizen,105,Messenger,rulesText,official base data or visual review of print card
+denizen,106,Field Promotion,rulesText,official base data or visual review of print card
+denizen,107,Palanquin,rulesText,official base data or visual review of print card
+denizen,108,Shield Wall,rulesText,official base data or visual review of print card
+denizen,109,Military Parade,rulesText,official base data or visual review of print card
+denizen,111,Tyrant,rulesText,official base data or visual review of print card
+denizen,112,Forced Labor,rulesText,official base data or visual review of print card
+denizen,113,Secret Police,rulesText,official base data or visual review of print card
+denizen,114,Specialist,rulesText,official base data or visual review of print card
+denizen,115,Captains,rulesText,official base data or visual review of print card
+denizen,116,Siege Engines,rulesText,official base data or visual review of print card
+denizen,117,Royal Tax,rulesText,official base data or visual review of print card
+denizen,118,Toll Roads,rulesText,official base data or visual review of print card
+denizen,119,Curfew,rulesText,official base data or visual review of print card
+denizen,120,Knights Errant,rulesText,official base data or visual review of print card
+denizen,121,Vow of Obedience,rulesText,official base data or visual review of print card
+denizen,122,Hunting Party,rulesText,official base data or visual review of print card
+denizen,123,Council Seat,rulesText,official base data or visual review of print card
+denizen,124,Encirclement,rulesText,official base data or visual review of print card
+denizen,125,Peace Envoy,rulesText,official base data or visual review of print card
+denizen,126,Relic Hunter,rulesText,official base data or visual review of print card
+denizen,9,Alchemist,rulesText,official base data or visual review of print card
+denizen,32,Magician's Code,rulesText,official base data or visual review of print card
+denizen,38,Inquisitor,rulesText,official base data or visual review of print card
+denizen,58,Quick Exit,rulesText,official base data or visual review of print card
+denizen,67,Bewitch,rulesText,official base data or visual review of print card
+denizen,74,Vow of Silence,rulesText,official base data or visual review of print card
+denizen,75,Forgotten Vault,rulesText,official base data or visual review of print card
+denizen,199,Golem Legions,rulesText,official base data or visual review of print card
+denizen,200,Council Arbiter,rulesText,official base data or visual review of print card
+denizen,201,Catacombs,rulesText,official base data or visual review of print card
+denizen,202,Ward of Silence,rulesText,official base data or visual review of print card
+denizen,203,Vow of Wisdom,rulesText,official base data or visual review of print card
+denizen,204,Arcane Brokers,rulesText,official base data or visual review of print card
+denizen,205,Disciples,rulesText,official base data or visual review of print card
+denizen,206,Arcane Armor,rulesText,official base data or visual review of print card
+denizen,207,Glamor,rulesText,official base data or visual review of print card
+denizen,208,Wizard's Conclave,rulesText,official base data or visual review of print card
+denizen,44,Long-Lost Heir,rulesText,official base data or visual review of print card
+denizen,185,Vow of Union,rulesText,official base data or visual review of print card
+denizen,186,Giant Python,rulesText,official base data or visual review of print card
+denizen,194,Forest Council,rulesText,official base data or visual review of print card
+denizen,197,Bracken,rulesText,official base data or visual review of print card
+denizen,209,True Oath,rulesText,official base data or visual review of print card
+denizen,210,Bog,rulesText,official base data or visual review of print card
+denizen,211,Whispering Leaves,rulesText,official base data or visual review of print card
+denizen,212,Bed of Roots,rulesText,official base data or visual review of print card
+denizen,213,Autumn Wind,rulesText,official base data or visual review of print card
+denizen,214,Shifting Fog,rulesText,official base data or visual review of print card
+denizen,215,Fae Battalion,rulesText,official base data or visual review of print card
+denizen,216,Hunger,rulesText,official base data or visual review of print card
+denizen,217,Signal Trees,rulesText,official base data or visual review of print card
+denizen,218,Forest Garden,rulesText,official base data or visual review of print card
+denizen,20,Disgraced Captain,rulesText,official base data or visual review of print card
+denizen,22,Book Burning,rulesText,official base data or visual review of print card
+denizen,86,Vow of Division,rulesText,official base data or visual review of print card
+denizen,88,Royal Ambitions,rulesText,official base data or visual review of print card
+denizen,89,Salt the Earth,rulesText,official base data or visual review of print card
+denizen,91,Riots,rulesText,official base data or visual review of print card
+denizen,95,Relic Thief,rulesText,official base data or visual review of print card
+denizen,99,Gossip,rulesText,official base data or visual review of print card
+denizen,100,Bandit Chief,rulesText,official base data or visual review of print card
+denizen,102,Defame,rulesText,official base data or visual review of print card
+denizen,219,Bandit Paymaster,rulesText,official base data or visual review of print card
+denizen,220,Reliquary Raid,rulesText,official base data or visual review of print card
+denizen,221,Tracker,rulesText,official base data or visual review of print card
+denizen,222,Banner Breakers,rulesText,official base data or visual review of print card
+denizen,223,Pledge to Discord,rulesText,official base data or visual review of print card
+denizen,224,Friendly Familiar,rulesText,official base data or visual review of print card
+denizen,225,Unstable Summon,rulesText,official base data or visual review of print card
+denizen,226,Bandit Prince,rulesText,official base data or visual review of print card
+denizen,227,Dark Enforcer,rulesText,official base data or visual review of print card
+denizen,228,Spoiled Supplies,rulesText,official base data or visual review of print card
+denizen,13,Tinker's Fair,rulesText,official base data or visual review of print card
+denizen,49,Memory of Home,rulesText,official base data or visual review of print card
+denizen,129,A Round of Ale,rulesText,official base data or visual review of print card
+denizen,139,Relic Breaker,rulesText,official base data or visual review of print card
+denizen,141,Ballot Box,rulesText,official base data or visual review of print card
+denizen,146,Deed Writer,rulesText,official base data or visual review of print card
+denizen,229,Old Songs,rulesText,official base data or visual review of print card
+denizen,230,Diplomat,rulesText,official base data or visual review of print card
+denizen,231,Village Idiot,rulesText,official base data or visual review of print card
+denizen,232,Spinning Bee,rulesText,official base data or visual review of print card
+denizen,233,Firebrand,rulesText,official base data or visual review of print card
+denizen,234,Watchdog,rulesText,official base data or visual review of print card
+denizen,235,Favored Son,rulesText,official base data or visual review of print card
+denizen,236,Town Meeting,rulesText,official base data or visual review of print card
+denizen,237,League Treaty,rulesText,official base data or visual review of print card
+denizen,238,Skilled Merchants,rulesText,official base data or visual review of print card
+denizen,166,Ancient Pact,rulesText,official base data or visual review of print card
+denizen,168,Family Wagon,rulesText,official base data or visual review of print card
+denizen,173,Relic Worship,rulesText,official base data or visual review of print card
+denizen,239,Tribute Spoils,rulesText,official base data or visual review of print card
+denizen,240,Search Party,rulesText,official base data or visual review of print card
+denizen,241,Moving Market,rulesText,official base data or visual review of print card
+denizen,242,Traveling Negotiator,rulesText,official base data or visual review of print card
+denizen,243,Pledge of Defense,rulesText,official base data or visual review of print card
+denizen,244,The Red Seer,rulesText,official base data or visual review of print card
+denizen,245,Royal Stables,rulesText,official base data or visual review of print card
+denizen,246,Call for Help,rulesText,official base data or visual review of print card
+denizen,247,Vow of Wandering,rulesText,official base data or visual review of print card
+denizen,248,Mounted Library,rulesText,official base data or visual review of print card
+denizen,5,Keep,rulesText,official base data or visual review of print card
+denizen,10,Martial Culture,rulesText,official base data or visual review of print card
+denizen,249,Master at Arms,rulesText,official base data or visual review of print card
+denizen,250,Baron,rulesText,official base data or visual review of print card
+denizen,251,Honor Guard,rulesText,official base data or visual review of print card
+denizen,252,City Wall,rulesText,official base data or visual review of print card
+denizen,253,Fearsome General,rulesText,official base data or visual review of print card
+denizen,254,Careful Plans,rulesText,official base data or visual review of print card
+denizen,255,Garrison Armory,rulesText,official base data or visual review of print card
+denizen,256,Battle Axes,rulesText,official base data or visual review of print card
+denizen,257,Great Feast,rulesText,official base data or visual review of print card
+denizen,258,Quartermaster,rulesText,official base data or visual review of print card
+relic,R01,Sticky Fire,value;defense;rulesText,visual review of print card
+relic,R02,Cursed Cauldron,value;defense;rulesText,visual review of print card
+relic,R04,Truthful Harp,value;defense;rulesText,visual review of print card
+relic,R05,Grand Mask,value;defense;rulesText,visual review of print card
+relic,R07,Cup of Plenty,value;defense;rulesText,visual review of print card
+relic,R08,Whistle,value;defense;rulesText,visual review of print card
+relic,R10,Cracked Horn,value;defense;rulesText,visual review of print card
+relic,R11,Bandit Crown,value;defense;rulesText,visual review of print card
+relic,R03,Brass Horse,value;defense;rulesText,visual review of print card
+relic,R06,Horned Mask,value;defense;rulesText,visual review of print card
+relic,R09,Dowsing Sticks,value;defense;rulesText,visual review of print card
+relic,R12,Ring of Devotion,value;defense;rulesText,visual review of print card
+relic,R13,Skeleton Key,value;defense;rulesText,visual review of print card
+relic,R14,Oracular Pig,value;defense;rulesText,visual review of print card
+relic,R16,Ivory Eye,value;defense;rulesText,visual review of print card
+relic,R17,Shifting Map,value;defense;rulesText,visual review of print card
+relic,R19,Book of Records,value;defense;rulesText,visual review of print card
+relic,R20,Dragonskin Drum,value;defense;rulesText,visual review of print card
+relic,R22,Ancient Writ,value;defense;rulesText,visual review of print card
+relic,R23,Painted Trumpet,value;defense;rulesText,visual review of print card
+relic,R15,Circlet of Command,value;defense;rulesText,visual review of print card
+relic,R18,Obsidian Cage,value;defense;rulesText,visual review of print card
+relic,R21,Crystal Vial,value;defense;rulesText,visual review of print card
+relic,R24,Bone Dice,value;defense;rulesText,visual review of print card
+relic,R25,Brass Army,value;defense;rulesText,visual review of print card
+relic,R26,Imperial Seal,value;defense;rulesText,visual review of print card
+relic,R28,Singing Mask,value;defense;rulesText,visual review of print card
+relic,R29,Lost Tapestry,value;defense;rulesText,visual review of print card
+relic,R31,Silver Charm,value;defense;rulesText,visual review of print card
+relic,R32,Amber Flame,value;defense;rulesText,visual review of print card
+relic,R34,Whispering Stone,value;defense;rulesText,visual review of print card
+relic,R35,Black Sword,value;defense;rulesText,visual review of print card
+relic,R27,Fearsome Shield,value;defense;rulesText,visual review of print card
+relic,R30,Bandit Standard,value;defense;rulesText,visual review of print card
+relic,R33,Wine of Welcome,value;defense;rulesText,visual review of print card
+relic,R36,Barbed Net,value;defense;rulesText,visual review of print card
+relic,R37,Bag of Siegeworks,value;defense;rulesText,visual review of print card
+relic,R38,Secret Testament,value;defense;rulesText,visual review of print card
+relic,R40,Yew Staff,value;defense;rulesText,visual review of print card
+relic,R39,Magic Carpet,value;defense;rulesText,visual review of print card
+relic,R43,Sigil of the Eye,value;defense;rulesText,visual review of print card
+relic,R41,Spiteful Mirror,value;defense;rulesText,visual review of print card
+relic,R46,Demon Tail,value;defense;rulesText,visual review of print card
+relic,R47,Clay Rattle,value;defense;rulesText,visual review of print card
+relic,R42,Weeping Banner,value;defense;rulesText,visual review of print card
+relic,R44,Sigil of the Heart,value;defense;rulesText,visual review of print card
+relic,R45,Magic Waterskin,value;defense;rulesText,visual review of print card
+relic,grand-scepter,The Grand Scepter,value;defense;rulesText,visual review of print card
+edifice,E01,Hall of Debate / Hall of Mockery,rulesText,visual overrides plus normalized OCR
+edifice,E02,Great Market / Bandit Market,rulesText,visual overrides plus normalized OCR
+edifice,E03,Grand Canal / Lost Lagoon,rulesText,visual overrides plus normalized OCR
+edifice,E04,Stone Baths / Ruined Baths,rulesText,visual overrides plus normalized OCR
+edifice,E05,Amber Doors / Lost Doors,rulesText,visual overrides plus normalized OCR
+edifice,E06,Great Forge / Broken Forge,rulesText,visual overrides plus normalized OCR
+edifice,E07,Wild Pastures / Blasted Pastures,rulesText,visual overrides plus normalized OCR
+edifice,E08,Sacred Ground / Desecrated Ground,rulesText,visual overrides plus normalized OCR
+edifice,E09,Giant's Path / Giant's Rampage,rulesText,visual overrides plus normalized OCR
+edifice,E10,Temple of Ancestors / Ruined Temple,rulesText,visual overrides plus normalized OCR
+edifice,E11,Great Spire / Fallen Spire,rulesText,visual overrides plus normalized OCR
+edifice,E12,Great Clock / Broken Clock,rulesText,visual overrides plus normalized OCR
+edifice,E13,Underground Library / Drowned Library,rulesText,visual overrides plus normalized OCR
+edifice,E14,Stone Portal / Shattered Portal,rulesText,visual overrides plus normalized OCR
+edifice,E15,Marble Fountains / Murky Fountain,rulesText,visual overrides plus normalized OCR
+edifice,E16,Hall of Ministers / Hall of Bandits,rulesText,visual overrides plus normalized OCR
+edifice,E17,Relic Patrols / Bandit Patrols,rulesText,visual overrides plus normalized OCR
+edifice,E18,Tome Guardians / Lost Guardians,rulesText,visual overrides plus normalized OCR
+edifice,E19,The Tribunal / Bandit Tribunal,rulesText,visual overrides plus normalized OCR
+edifice,E20,Towering Rampart / Cracked Rampart,rulesText,visual overrides plus normalized OCR
+edifice,E21,Festival District / Squalid District,rulesText,visual overrides plus normalized OCR
+edifice,E22,Proving Grounds / Empty Grounds,rulesText,visual overrides plus normalized OCR
+edifice,E23,Spiral Castle / Spiral Dungeons,rulesText,visual overrides plus normalized OCR
+edifice,E24,Boiling Lake / Still Boiling Lake,rulesText,visual overrides plus normalized OCR
+edifice,E25,Hidden Passages / Sinking Passages,rulesText,visual overrides plus normalized OCR
+edifice,E26,Hallowed Spring / Hiding Place,rulesText,visual overrides plus normalized OCR
+edifice,E27,School of Vines / Ruined School,rulesText,visual overrides plus normalized OCR
+edifice,E28,Oaken Fortress / Rotting Fortress,rulesText,visual overrides plus normalized OCR
+edifice,E29,Forbidden Forest / Bandit Forest,rulesText,visual overrides plus normalized OCR
+edifice,E30,Forest Horn / Broken Horn,rulesText,visual overrides plus normalized OCR
+legacy,L01,Iron Hand,rulesText,visual review of print card
+legacy,L02,Chronicler,rulesText,visual review of print card
+legacy,L03,Steadfast,rulesText,visual review of print card
+legacy,L04,Peacemaker,rulesText,visual review of print card
+legacy,L05,The Needle,rulesText,visual review of print card
+legacy,L06,Circle of Swords,rulesText,visual review of print card
+legacy,L07,Great Architect,rulesText,visual review of print card
+legacy,L08,Ancestral Lands,rulesText,visual review of print card
+legacy,L09,Scepter Bearer,rulesText,visual review of print card
+legacy,L10,Royal Line,rulesText,visual review of print card
+legacy,L11,Keeper of Order,rulesText,visual review of print card
+legacy,L12,Golden Key,rulesText,visual review of print card
+legacy,L13,World Crafter,rulesText,visual review of print card
+legacy,L14,Matchmaker,rulesText,visual review of print card
+legacy,L15,Revolutionary,rulesText,visual review of print card
+legacy,L16,Populist,rulesText,visual review of print card
+legacy,L17,Rival,rulesText,visual review of print card
+legacy,L19,The Ear,rulesText,visual review of print card
+legacy,L21,High Priest,rulesText,visual review of print card
+legacy,L23,Arbiter,rulesText,visual review of print card
+legacy,L18,The Standard Bearer,rulesText,visual review of print card
+legacy,L20,Heirloom,rulesText,visual review of print card
+legacy,L22,Seer,rulesText,visual review of print card
+legacy,L24,The Bright Beacon,rulesText,visual review of print card
+legacy,L25,Oaths of Loyalty,rulesText,visual review of print card
+legacy,L26,Conspirator,rulesText,visual review of print card
+legacy,L27,Light Fingers,rulesText,visual review of print card
+legacy,L28,Secret Society,rulesText,visual review of print card
+legacy,L29,Ruthless,rulesText,visual review of print card
+legacy,L30,Quest to Distant Lands,rulesText,visual review of print card
+legacy,L31,Wealthy,rulesText,visual review of print card
+legacy,L32,Gatekeeper,rulesText,visual review of print card
+legacy,L33,Beloved,rulesText,visual review of print card
+legacy,L34,The Mouth,rulesText,visual review of print card
+legacy,L35,Reformer,rulesText,visual review of print card
+legacy,L36,Pathfinder,rulesText,visual review of print card

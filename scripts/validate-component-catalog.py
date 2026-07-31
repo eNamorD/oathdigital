@@ -37,6 +37,36 @@ ingestion_fields = {
     "confidence",
 }
 handler_pattern = re.compile(r"^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)+$")
+expected_denizen_ids = {
+    str(number)
+    for number in range(1, 259)
+    if number not in {94, 110, 174}
+}
+expected_relic_ids = {
+    *(f"R{number:02d}" for number in range(1, 48)),
+    "grand-scepter",
+}
+expected_edifice_ids = {f"E{number:02d}" for number in range(1, 31)}
+expected_legacy_ids = {f"L{number:02d}" for number in range(1, 37)}
+allowed_symbols = {
+    "attack-die",
+    "defense-die",
+    "favor",
+    "favor-burnt",
+    "hollow-sword",
+    "round-die",
+    "secret",
+    "secret-burnt",
+    "shield",
+    "skull",
+    "suit-arcane",
+    "suit-beast",
+    "suit-discord",
+    "suit-hearth",
+    "suit-nomad",
+    "suit-order",
+    "sword",
+}
 
 if set(catalog) != runtime_top_level:
     errors.append(
@@ -100,8 +130,8 @@ for family in families:
                 handlers[handler] = path
 
 for index, component in enumerate(catalog.get("denizens", [])):
-    if not component.get("id", "").startswith("denizen:"):
-        errors.append(f"denizens[{index}]: id must start with denizen:")
+    if component.get("id") not in expected_denizen_ids:
+        errors.append(f"denizens[{index}]: invalid printed denizen id")
     if component.get("suit") not in {
         "arcane", "beast", "discord", "hearth", "nomad", "order"
     }:
@@ -117,8 +147,16 @@ if len(grand_scepters) != 1 or grand_scepters[0].get("name") not in {
     "Grand Scepter", "The Grand Scepter"
 }:
     errors.append("relics must contain exactly one Grand Scepter role")
+if {item.get("id") for item in catalog.get("relics", [])} != expected_relic_ids:
+    errors.append("relics must contain exactly R01 through R47 and grand-scepter")
+for index, relic in enumerate(catalog.get("relics", [])):
+    for field in ("value", "defense"):
+        value = relic.get(field)
+        if not isinstance(value, int) or value < 0:
+            errors.append(
+                f"relics[{index}]: {field} must be a non-negative integer"
+            )
 
-expected_edifice_ids = {f"edifice:e{number:02d}" for number in range(1, 31)}
 actual_edifice_ids = {
     component.get("id") for component in catalog.get("edifices", [])
 }
@@ -133,6 +171,31 @@ for index, component in enumerate(catalog.get("edifices", [])):
             errors.append(
                 f"edifices[{index}].{face}: expected one stable handler key"
             )
+
+if {item.get("id") for item in catalog.get("legacies", [])} != expected_legacy_ids:
+    errors.append("legacies must contain exactly L01 through L36")
+
+
+def validate_rules_text(text, path):
+    if not isinstance(text, str):
+        errors.append(f"{path}: rulesText must be a string")
+        return
+    for symbol in re.findall(r"\[([^\]]+)\]", text):
+        if symbol not in allowed_symbols:
+            errors.append(f"{path}: unsupported symbol [{symbol}]")
+    if re.search(r"[©®�]", text):
+        errors.append(f"{path}: contains an unreviewed OCR glyph")
+
+
+for family in ("denizens", "relics", "legacies"):
+    for index, component in enumerate(catalog.get(family, [])):
+        validate_rules_text(component.get("rulesText"), f"{family}[{index}]")
+for index, component in enumerate(catalog.get("edifices", [])):
+    for face in ("intact", "ruined"):
+        validate_rules_text(
+            component.get(face, {}).get("rulesText"),
+            f"edifices[{index}].{face}",
+        )
 
 for index, site in enumerate(catalog.get("sites", [])):
     path = f"sites[{index}]"
