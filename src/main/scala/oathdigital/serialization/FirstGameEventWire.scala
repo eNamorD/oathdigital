@@ -26,41 +26,77 @@ object FirstGameEventWire {
   import WireError._
 
   val FormatVersion: Int = 2
+  val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
   val AdviserChosenType = "setup.starting-adviser-chosen"
   val FirstGameCompletedType = "setup.first-game-completed"
 
+  /** Encodes one event at its absolute position in the game stream. */
+  def encodeEvent(
+      gameId: String,
+      catalog: CatalogRef,
+      sequence: Long,
+      event: FirstGameSetupEvent
+  ): Either[WireError, ujson.Value] =
+    encode(
+      FirstGameEventEnvelope(
+        FormatVersion,
+        gameId,
+        sequence,
+        catalog,
+        discriminator(event),
+        event
+      )
+    )
+
+  def encode(
+      envelope: FirstGameEventEnvelope
+  ): Either[WireError, ujson.Value] =
+    validateEnvelope(envelope).map { _ =>
+      ujson.Obj(
+        "formatVersion" -> envelope.formatVersion,
+        "gameId" -> envelope.gameId,
+        "sequence" -> ujson.Num(envelope.sequence.toDouble),
+        "catalog" -> encodeCatalog(envelope.catalog),
+        "eventType" -> envelope.eventType,
+        "payload" -> encodePayload(envelope.event)
+      )
+    }
+
   def encodeStream(
       gameId: String,
       catalog: CatalogRef,
       events: Vector[RecordedEvent[FirstGameSetupEvent]]
+  ): Either[WireError, String] = {
+    val startSequence = events.headOption.map(_.index).getOrElse(0L)
+    encodeStream(gameId, catalog, startSequence, events)
+  }
+
+  def encodeStream(
+      gameId: String,
+      catalog: CatalogRef,
+      startSequence: Long,
+      events: Vector[RecordedEvent[FirstGameSetupEvent]]
   ): Either[WireError, String] =
-    if (gameId.trim.isEmpty)
-      Left(InvalidValue("$[*].gameId", "gameId must not be blank"))
-    else
+    validateSequence(startSequence, "$[*].sequence").flatMap { _ =>
       traverse(events.zipWithIndex) { case (record, position) =>
-        if (record.index != position.toLong)
+        val expected =
+          if (startSequence > MaxSafeSequence - position.toLong)
+            None
+          else Some(startSequence + position.toLong)
+        if (!expected.contains(record.index))
           Left(
             InvalidSequence(
               s"$$[$position].sequence",
-              position.toLong,
+              expected.getOrElse(MaxSafeSequence),
               record.index
             )
           )
         else
-          validateEventCatalog(record.event, catalog, s"$$[$position]")
-            .map { _ =>
-              ujson.Obj(
-                "formatVersion" -> FormatVersion,
-                "gameId" -> gameId,
-                "sequence" -> ujson.Num(record.index.toDouble),
-                "catalog" -> encodeCatalog(catalog),
-                "eventType" -> discriminator(record.event),
-                "payload" -> encodePayload(record.event)
-              )
-            }
+          encodeEvent(gameId, catalog, record.index, record.event)
       }.map(values => ujson.write(ujson.Arr.from(values), indent = 2))
+    }
 
   def decodeStream(
       json: String
@@ -69,7 +105,7 @@ object FirstGameEventWire {
       ujson.read(json) match {
         case array: ujson.Arr =>
           traverse(array.value.zipWithIndex.toVector) {
-            case (value, position) => decodeEnvelope(value, position)
+            case (value, position) => decode(value, s"$$[$position]")
           }.flatMap(validateStream)
         case _ => Left(WrongType("$", "expected an array"))
       }
@@ -83,44 +119,36 @@ object FirstGameEventWire {
         )
     }
 
-  private def decodeEnvelope(
+  def decode(
       value: ujson.Value,
-      position: Int
+      path: String = "$"
   ): Either[WireError, FirstGameEventEnvelope] = {
-    val path = s"$$[$position]"
-    try {
-      val obj = value.obj
-      val version = obj("formatVersion").num.toInt
-      if (version != FormatVersion)
-        Left(
-          UnsupportedFormatVersion(
-            s"$path.formatVersion",
-            version,
-            FormatVersion
-          )
-        )
-      else {
-        val gameId = obj("gameId").str
-        val sequence = obj("sequence").num.toLong
-        val catalog = decodeCatalog(obj("catalog"), s"$path.catalog")
-        val eventType = obj("eventType").str
+    value match {
+      case obj: ujson.Obj =>
         for {
-          ref <- catalog
+          version <- formatVersionField(obj, path)
+          _ <-
+            if (version == FormatVersion) Right(())
+            else
+              Left(
+                UnsupportedFormatVersion(
+                  s"$path.formatVersion",
+                  version,
+                  FormatVersion
+                )
+              )
+          gameId <- stringField(obj, "gameId", path)
           _ <-
             if (gameId.trim.nonEmpty) Right(())
             else Left(InvalidValue(s"$path.gameId", "gameId must not be blank"))
-          _ <-
-            if (sequence == position.toLong) Right(())
-            else Left(
-              InvalidSequence(
-                s"$path.sequence",
-                position.toLong,
-                sequence
-              )
-            )
+          sequence <- safeIntegerField(obj, "sequence", path)
+          refValue <- requiredField(obj, "catalog", path)
+          ref <- decodeCatalog(refValue, s"$path.catalog")
+          eventType <- stringField(obj, "eventType", path)
+          payload <- requiredField(obj, "payload", path)
           event <- decodePayload(
             eventType,
-            obj("payload"),
+            payload,
             s"$path.payload",
             ref
           )
@@ -132,15 +160,7 @@ object FirstGameEventWire {
           eventType,
           event
         )
-      }
-    } catch {
-      case NonFatal(error) =>
-        Left(
-          InvalidValue(
-            path,
-            Option(error.getMessage).getOrElse("invalid event envelope")
-          )
-        )
+      case _ => Left(WrongType(path, "expected an object"))
     }
   }
 
@@ -151,6 +171,14 @@ object FirstGameEventWire {
       case None => Right(envelopes)
       case Some(first) =>
         envelopes.zipWithIndex.collectFirst {
+          case (envelope, index)
+              if first.sequence > MaxSafeSequence - index.toLong ||
+                envelope.sequence != first.sequence + index.toLong =>
+            InvalidSequence(
+              s"$$[$index].sequence",
+              first.sequence + index.toLong,
+              envelope.sequence
+            )
           case (envelope, index) if envelope.gameId != first.gameId =>
             InvalidValue(
               s"$$[$index].gameId",
@@ -164,6 +192,36 @@ object FirstGameEventWire {
             )
         }.toLeft(envelopes)
     }
+
+  private def validateEnvelope(
+      envelope: FirstGameEventEnvelope
+  ): Either[WireError, Unit] =
+    for {
+      _ <-
+        if (envelope.formatVersion == FormatVersion) Right(())
+        else
+          Left(
+            UnsupportedFormatVersion(
+              "$.formatVersion",
+              envelope.formatVersion,
+              FormatVersion
+            )
+          )
+      _ <-
+        if (envelope.gameId.trim.nonEmpty) Right(())
+        else Left(InvalidValue("$.gameId", "gameId must not be blank"))
+      _ <- validateSequence(envelope.sequence, "$.sequence")
+      _ <-
+        if (envelope.eventType == discriminator(envelope.event)) Right(())
+        else
+          Left(
+            InvalidValue(
+              "$.eventType",
+              s"must be '${discriminator(envelope.event)}' for this event"
+            )
+          )
+      _ <- validateEventCatalog(envelope.event, envelope.catalog, "$")
+    } yield ()
 
   private def discriminator(event: FirstGameSetupEvent): String =
     event match {
@@ -353,6 +411,88 @@ object FirstGameEventWire {
           )
         )
     }
+
+  private def requiredField(
+      obj: ujson.Obj,
+      name: String,
+      path: String
+  ): Either[WireError, ujson.Value] =
+    obj.value.get(name).toRight(
+      MissingField(s"$path.$name", "field is required")
+    )
+
+  private def stringField(
+      obj: ujson.Obj,
+      name: String,
+      path: String
+  ): Either[WireError, String] =
+    requiredField(obj, name, path).flatMap {
+      case ujson.Str(value) => Right(value)
+      case _ => Left(WrongType(s"$path.$name", "expected a string"))
+    }
+
+  private def formatVersionField(
+      obj: ujson.Obj,
+      path: String
+  ): Either[WireError, Int] =
+    requiredField(obj, "formatVersion", path)
+      .flatMap(value => safeInteger(value, s"$path.formatVersion"))
+      .flatMap { value =>
+        if (value <= Int.MaxValue.toLong) Right(value.toInt)
+        else
+          Left(
+            InvalidValue(
+              s"$path.formatVersion",
+              s"must be between 0 and ${Int.MaxValue} inclusive"
+            )
+          )
+      }
+
+  private def safeIntegerField(
+      obj: ujson.Obj,
+      name: String,
+      path: String
+  ): Either[WireError, Long] =
+    requiredField(obj, name, path)
+      .flatMap(value => safeInteger(value, s"$path.$name"))
+
+  private def safeInteger(
+      value: ujson.Value,
+      path: String
+  ): Either[WireError, Long] =
+    value match {
+      case ujson.Num(number)
+          if !number.isNaN &&
+            !number.isInfinity &&
+            number == math.rint(number) &&
+            number >= 0 &&
+            number <= MaxSafeSequence.toDouble =>
+        Right(number.toLong)
+      case ujson.Num(number)
+          if !number.isNaN &&
+            !number.isInfinity &&
+            number == math.rint(number) =>
+        Left(
+          InvalidValue(
+            path,
+            s"must be between 0 and $MaxSafeSequence inclusive"
+          )
+        )
+      case _ => Left(WrongType(path, "expected an integer"))
+    }
+
+  private def validateSequence(
+      sequence: Long,
+      path: String
+  ): Either[WireError, Unit] =
+    if (sequence >= 0 && sequence <= MaxSafeSequence) Right(())
+    else
+      Left(
+        InvalidValue(
+          path,
+          s"must be between 0 and $MaxSafeSequence inclusive"
+        )
+      )
 
   private def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))

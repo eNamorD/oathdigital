@@ -43,6 +43,13 @@ No automatic v1-to-v2 migration is claimed because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes
 needed to construct the v2 aggregate.
 
+V2 writers accept an absolute non-negative sequence for each envelope, so a
+command's event batch can begin at the repository's current nonzero stream
+position. Batch helpers require contiguous absolute positions relative to the
+batch's declared or first position. Both version and sequence fields are
+decoded as exact integers; fractional, negative, non-finite, overflowing, and
+non-JSON-safe values are rejected rather than truncated.
+
 The catalog reference is pinned in every envelope. For `setup.started`, it is
 also present in the payload because it is domain data; the codec requires the
 two references to agree.
