@@ -97,3 +97,89 @@ in `application.conf`; they must not run on Akka's default dispatcher. The
 current health route performs no database work. Coordinated database shutdown
 also uses the blocking dispatcher. Logback supplies the SLF4J backend so
 startup, bind, and shutdown messages are not silently discarded.
+
+## Development first-game setup API
+
+The exile-only v2 setup API is intentionally separate from the v1 bounded setup
+service. V1 envelopes remain format version 1; v2 streams require format
+version 2 and are rejected rather than reinterpreted or migrated when read by
+the wrong service.
+
+All endpoints are development-only:
+
+- `GET /health`
+- `POST /api/dev/first-games/{gameId}/commands?playerId={playerId}`
+- `GET /api/dev/first-games/{gameId}?playerId={playerId}`
+
+`playerId` is a development selector for projection redaction, not
+authentication or authorization.
+
+The POST body is:
+
+```json
+{
+  "expectedNextSequence": 2,
+  "command": {
+    "type": "chooseAdviser",
+    "playerId": "p2",
+    "adviserId": "denizen:example"
+  }
+}
+```
+
+Command discriminators are `begin`, `placePawn`, and `chooseAdviser`. A begin
+command contains a `plan` using the explicit v2 plan fields: `catalog`,
+`participants`, `firstPlayer`, `orderedSites`, `denizenOrder`,
+`worldDeckOrder`, `relicOrder`, and `homelandEdifices`. No Scala class names or
+reflection are part of the protocol. Missing/wrong fields report JSON paths,
+and expected positions must be non-negative JSON-safe integers.
+
+Successful POST and GET responses share the player-scoped projection:
+
+```json
+{
+  "gameId": "game-1",
+  "nextSequence": 3,
+  "phase": "awaiting-pawn",
+  "activeParticipantId": "p3",
+  "players": [
+    {
+      "playerId": "p2",
+      "displayName": "P2",
+      "role": "exile",
+      "colorToken": "blue"
+    }
+  ],
+  "world": [
+    {
+      "regionId": "cradle",
+      "sites": [{"siteId": "site:a", "label": "A"}]
+    }
+  ],
+  "pawnLocations": [{"playerId": "p2", "siteId": "site:a"}],
+  "legalControls": [],
+  "ready": false,
+  "completed": false,
+  "privateAdviserChoices": []
+}
+```
+
+The projection never contains the authoritative event stream, relic shuffle
+order, world-deck order, or another player's adviser alternatives. The private
+adviser list is populated only when the selected player is the active adviser
+chooser. This is privacy shaping for development, not a security boundary.
+
+Malformed JSON is `400`, missing streams are `404`, stale client/repository
+position conflicts and duplicate creation are `409`, and domain command
+rejection is `422`. Corrupt stored streams and storage failures are `500`.
+
+For same-origin local development, build the frontend and start the server:
+
+```sh
+./sbtw frontend/fastLinkJS
+./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
+```
+
+Open `http://127.0.0.1:8080/`. The server serves `frontend/index.html`, styles,
+and the generated Scala.js files from `frontend/`, so no development CORS
+permission is required.

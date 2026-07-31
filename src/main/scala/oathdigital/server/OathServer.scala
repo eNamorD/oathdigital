@@ -11,7 +11,6 @@ import akka.actor.CoordinatedShutdown
 import akka.actor.typed.{ActorSystem, DispatcherSelector}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.server.Directives._
 
 object OathServer {
   def main(arguments: Array[String]): Unit = {
@@ -50,12 +49,10 @@ object OathServer {
           }(blockingExecutionContext)
         }
 
-        val route =
-          path("health") {
-            get {
-              complete("ok")
-            }
-          }
+        val route = DevelopmentRoutes.route(
+          runtime.firstGame,
+          blockingExecutionContext
+        )
 
         val binding =
           try

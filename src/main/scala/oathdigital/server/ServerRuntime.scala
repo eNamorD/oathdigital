@@ -38,6 +38,7 @@ final class ServerCommandGateway private[server] (
 
 final class ServerRuntime private (
     val commands: ServerCommandGateway,
+    val firstGame: FirstGameServerGateway,
     private val repository: HsqldbEventStreamRepository
 ) extends AutoCloseable {
   override def close(): Unit = repository.close()
@@ -72,7 +73,18 @@ object ServerRuntime {
           ))
         .map { catalog =>
           val service = new SetupApplicationService(catalog, repository)
-          new ServerRuntime(new ServerCommandGateway(service), repository)
+          val firstGameService =
+            new oathdigital.application.FirstGameApplicationService(
+              catalog,
+              repository
+            )
+          val projector =
+            new oathdigital.application.FirstGameProjector(catalog)
+          new ServerRuntime(
+            new ServerCommandGateway(service),
+            new FirstGameServerGateway(firstGameService, projector),
+            repository
+          )
         }
         .left
         .map { error =>
