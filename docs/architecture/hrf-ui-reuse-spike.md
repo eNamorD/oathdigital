@@ -116,6 +116,33 @@ allocates a new `DebugStreamId`, and reconstructs the designated initial state
 from that new stream's initial event sequence. This models a future persisted
 debug restart as creating a new stream rather than rewriting prior history.
 
+## Development server mode
+
+The compiled page selects its client mode explicitly from the serving port:
+
+- `http://127.0.0.1:8080/` uses `HttpFirstGameClient` and the same-origin
+  development first-game API;
+- a standalone server on port `8000` retains `LocalDebugSetupClient`.
+
+Server mode creates a fresh opaque `manual-...` game ID and calls the
+development bootstrap route. The URL is updated to `/?gameId=...`; reopening
+that URL or entering the ID in **Load existing game** reloads the persisted
+stream. **New persisted test game** always allocates and bootstraps another
+game ID. It never deletes, overwrites, or restarts an existing stream.
+
+The development controller automatically selects the active participant as the
+`playerId` projection selector after each accepted command. This is prominently
+labeled development-only and is not authentication. It allows one browser to
+exercise each pawn and private adviser decision while preserving the API's
+player-scoped redaction.
+
+On HTTP `409`, the client displays a stale-position explanation and performs a
+GET refresh. It does not retry the command. HTTP status failures, network
+failures, malformed projections, and server error payloads remain typed and
+visible. The projection decoder consumes only the documented public fields;
+it neither expects nor decodes authoritative event envelopes, hidden plan
+orders, or another player's adviser alternatives.
+
 ## Known integration risks
 
 - The source-file allowlist is deliberately narrow. If portable shared code

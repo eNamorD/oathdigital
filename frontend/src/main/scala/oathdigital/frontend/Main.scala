@@ -10,6 +10,10 @@ object Main {
     val mount = Option(dom.document.getElementById("app")).getOrElse {
       throw new IllegalStateException("missing #app mount point")
     }
+    if (dom.window.location.port != "8000") {
+      ServerModeUi.start(mount)
+      return
+    }
     val adapter = new HrfDomAdapter(mount)
     val client = LocalDebugSetupClient.demo()
     var currentProjection = Option.empty[SetupProjection]

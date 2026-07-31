@@ -20,6 +20,9 @@ object PlayerColorToken {
   case object Red extends PlayerColorToken {
     override val cssClass: String = "player-red"
   }
+  case object Yellow extends PlayerColorToken {
+    override val cssClass: String = "player-yellow"
+  }
   case object Neutral extends PlayerColorToken {
     override val cssClass: String = "player-neutral"
   }

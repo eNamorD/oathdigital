@@ -103,7 +103,28 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .player-purple { color: #d9b8ff; }
 .player-blue { color: #8ecbff; }
 .player-red { color: #ffaaa5; }
+.player-yellow { color: #ffe08a; }
 .player-neutral { color: #f5ecd7; }
+
+.debug-toolbar input {
+  min-width: 220px;
+  padding: 8px;
+  border: 1px solid #88775d;
+  border-radius: 6px;
+  background: #17140f;
+  color: #fff;
+}
+.load-game, .adviser {
+  padding: 8px 12px;
+  border: 1px solid #bca780;
+  border-radius: 7px;
+  background: #282117;
+  color: #fff;
+  cursor: pointer;
+}
+.adviser { margin: 0 8px 8px 0; }
+.adviser-panel { margin-top: 18px; }
+.error { border-color: #e27f79; color: #ffd0cd; }
 
 .events {
   max-height: 270px;
