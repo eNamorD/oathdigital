@@ -3,7 +3,9 @@ package oathdigital.server
 import scala.util.control.NonFatal
 
 import oathdigital.application.{
+  BootstrapParticipant,
   FirstGameCommand,
+  FirstGameBootstrapConfig,
   FirstGameProjection
 }
 import oathdigital.model._
@@ -18,10 +20,54 @@ final case class FirstGameCommandRequest(
     expectedNextSequence: Long,
     command: FirstGameCommand
 )
+final case class FirstGameBootstrapRequest(
+    expectedNextSequence: Long,
+    config: FirstGameBootstrapConfig
+)
 
 final case class HttpInputError(path: String, message: String)
 
 object FirstGameHttpWire {
+  def decodeBootstrap(
+      json: String
+  ): Either[HttpInputError, FirstGameBootstrapRequest] =
+    try {
+      for {
+        root <- objectValue(ujson.read(json), "$")
+        expectedValue <- field(root, "expectedNextSequence", "$")
+        expected <- safeSequence(expectedValue, "$.expectedNextSequence")
+        participantsValue <- field(root, "participants", "$")
+        participantValues <- arrayValue(
+          participantsValue,
+          "$.participants"
+        )
+        participants <- traverse(participantValues.zipWithIndex) {
+          case (value, index) =>
+            val path = s"$$.participants[$index]"
+            for {
+              obj <- objectValue(value, path)
+              player <- stringField(obj, "playerId", path)
+              lineage <- stringField(obj, "lineageId", path)
+              color <- stringField(obj, "color", path)
+            } yield BootstrapParticipant(
+              PlayerId(player),
+              LineageId(lineage),
+              PlayerColor(color)
+            )
+        }
+        firstPlayer <- stringField(root, "firstPlayer", "$")
+      } yield FirstGameBootstrapRequest(
+        expected,
+        FirstGameBootstrapConfig(participants, PlayerId(firstPlayer))
+      )
+    } catch {
+      case NonFatal(error) =>
+        Left(HttpInputError(
+          "$",
+          Option(error.getMessage).getOrElse("malformed JSON")
+        ))
+    }
+
   def decodeCommand(json: String): Either[HttpInputError,
     FirstGameCommandRequest] =
     try {

@@ -54,6 +54,8 @@ object FirstGameApplicationError {
   ) extends FirstGameApplicationError
   final case class CommandRejected(violation: FirstGameSetupViolation)
       extends FirstGameApplicationError
+  final case class BootstrapFailure(message: String)
+      extends FirstGameApplicationError
   final case class SequenceConflict(expected: Long, actual: Long)
       extends FirstGameApplicationError
   final case class AppendAcknowledgementMismatch(message: String)

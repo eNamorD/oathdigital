@@ -117,9 +117,26 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(privateIds.size, 3)
     assertEquals(other.privateAdviserChoices, Vector.empty)
     privateIds.foreach(id => assert(!otherJson.contains(id)))
-    plan.relicOrder.foreach(id => assert(!otherJson.contains(id.value)))
-    plan.worldDeckOrder.foreach(id => assert(!otherJson.contains(id.value)))
+    val exposedValues = jsonStrings(ujson.read(otherJson))
+    assertEquals(
+      exposedValues.intersect(plan.relicOrder.map(_.value).toSet),
+      Set.empty[String]
+    )
+    assertEquals(
+      exposedValues.intersect(plan.worldDeckOrder.map(_.value).toSet),
+      Set.empty[String]
+    )
   }
+
+  private def jsonStrings(value: ujson.Value): Set[String] =
+    value match {
+      case ujson.Str(text) => Set(text)
+      case obj: ujson.Obj =>
+        obj.value.valuesIterator.flatMap(jsonStrings).toSet
+      case array: ujson.Arr =>
+        array.value.iterator.flatMap(jsonStrings).toSet
+      case _ => Set.empty
+    }
 
   test("HSQL close and reopen preserves v2 replay equality") {
     val path =

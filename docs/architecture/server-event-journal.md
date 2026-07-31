@@ -108,11 +108,36 @@ the wrong service.
 All endpoints are development-only:
 
 - `GET /health`
+- `POST /api/dev/first-games/{gameId}/bootstrap?playerId={playerId}`
 - `POST /api/dev/first-games/{gameId}/commands?playerId={playerId}`
 - `GET /api/dev/first-games/{gameId}?playerId={playerId}`
 
 `playerId` is a development selector for projection redaction, not
 authentication or authorization.
+
+The development bootstrap route avoids copying the complete executable catalog
+and hidden plan into the browser. Its small body is:
+
+```json
+{
+  "expectedNextSequence": 0,
+  "participants": [
+    {"playerId": "p1", "lineageId": "l1", "color": "red"},
+    {"playerId": "p2", "lineageId": "l2", "color": "blue"},
+    {"playerId": "p3", "lineageId": "l3", "color": "yellow"}
+  ],
+  "firstPlayer": "p2"
+}
+```
+
+`DevelopmentFirstGamePlanFactory` deterministically selects eight catalog
+sites; ten printed denizen IDs per suit; the valid starting-hand, regional,
+and Vision packet order; every ordinary relic ordered by its catalog numeric
+`value` and printed ID; and a matching ruined edifice for each selected
+Homeland. This is reproducible local fixture construction, not production
+randomness. The derived plan is submitted through the same v2 `Begin`
+application command, so it is fully recorded in the authoritative first event.
+Neither the plan nor its hidden orders are returned by the route.
 
 The POST body is:
 

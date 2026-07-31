@@ -44,6 +44,30 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
       .isInstanceOf[FirstGameCommand.ChooseAdviser])
   }
 
+  test("development bootstrap decodes only participant configuration") {
+    val json = ujson.write(ujson.Obj(
+      "expectedNextSequence" -> 0,
+      "participants" -> ujson.Arr.from(participants.map { participant =>
+        ujson.Obj(
+          "playerId" -> participant.playerId.value,
+          "lineageId" -> participant.lineageId.value,
+          "color" -> participant.color.value
+        )
+      }),
+      "firstPlayer" -> "p2"
+    ))
+    val request = FirstGameHttpWire.decodeBootstrap(json).toOption.get
+
+    assertEquals(request.expectedNextSequence, 0L)
+    assertEquals(
+      request.config.participants.map(_.playerId),
+      participants.map(_.playerId)
+    )
+    assertEquals(request.config.firstPlayer.value, "p2")
+    assert(!json.contains("relicOrder"))
+    assert(!json.contains("worldDeckOrder"))
+  }
+
   test("malformed fields report stable paths and unsafe sequences fail") {
     assertEquals(
       FirstGameHttpWire.decodeCommand(

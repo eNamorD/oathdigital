@@ -21,8 +21,25 @@ import oathdigital.model.PlayerId
 
 final class FirstGameServerGateway(
     service: oathdigital.application.FirstGameApplicationService,
-    projector: oathdigital.application.FirstGameProjector
+    projector: oathdigital.application.FirstGameProjector,
+    planFactory: oathdigital.application.DevelopmentFirstGamePlanFactory
 ) {
+  def bootstrap(
+      gameId: String,
+      requestingPlayer: PlayerId,
+      request: FirstGameBootstrapRequest
+  ): Either[FirstGameApplicationError, FirstGameProjection] =
+    planFactory.build(request.config)
+      .left.map(failure =>
+        FirstGameApplicationError.BootstrapFailure(failure.message))
+      .flatMap(plan =>
+        submit(
+          gameId,
+          requestingPlayer,
+          request.expectedNextSequence,
+          FirstGameCommand.Begin(plan)
+        ))
+
   def submit(
       gameId: String,
       requestingPlayer: PlayerId,
@@ -91,6 +108,26 @@ final class FirstGameRoutes(
                   }
                 }
               }
+            } ~
+            path("bootstrap") {
+              post {
+                entity(as[String]) { body =>
+                  FirstGameHttpWire.decodeBootstrap(body) match {
+                    case Left(error) =>
+                      complete(jsonResponse(
+                        StatusCodes.BadRequest,
+                        "malformed-request",
+                        s"${error.path}: ${error.message}"
+                      ))
+                    case Right(request) =>
+                      completeAsync(gateway.bootstrap(
+                        gameId,
+                        PlayerId(playerId),
+                        request
+                      ))
+                  }
+                }
+              }
             }
       }
     }
@@ -132,6 +169,8 @@ final class FirstGameRoutes(
         StatusCodes.Conflict -> "duplicate-game"
       case _: FirstGameApplicationError.CommandRejected =>
         StatusCodes.UnprocessableContent -> "command-rejected"
+      case _: FirstGameApplicationError.BootstrapFailure =>
+        StatusCodes.UnprocessableContent -> "bootstrap-failed"
       case _ =>
         StatusCodes.InternalServerError -> "stream-failure"
     }

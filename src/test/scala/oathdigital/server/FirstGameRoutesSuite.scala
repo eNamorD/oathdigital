@@ -15,12 +15,11 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 
 import oathdigital.application.{
+  DevelopmentFirstGamePlanFactory,
   FirstGameApplicationService,
   FirstGameProjector,
   InMemoryEventStreamRepository
 }
-import oathdigital.serialization.FirstGameEventWire
-import oathdigital.setup.FirstGameSetupEvent.FirstGameStarted
 import oathdigital.setup.FirstGameSetupFixture._
 
 class FirstGameRoutesSuite extends munit.FunSuite {
@@ -34,7 +33,8 @@ class FirstGameRoutesSuite extends munit.FunSuite {
     val service = new FirstGameApplicationService(catalog, repository)
     val gateway = new FirstGameServerGateway(
       service,
-      new FirstGameProjector(catalog)
+      new FirstGameProjector(catalog),
+      new DevelopmentFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
@@ -57,8 +57,8 @@ class FirstGameRoutesSuite extends munit.FunSuite {
 
       val started = post(
         client,
-        s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        beginBody()
+        s"$base/api/dev/first-games/route-game/bootstrap?playerId=p2",
+        bootstrapBody()
       )
       assertEquals(started.statusCode(), 200)
       assertEquals(ujson.read(started.body())("nextSequence").num.toLong, 1L)
@@ -112,19 +112,17 @@ class FirstGameRoutesSuite extends munit.FunSuite {
     }
   }
 
-  private def beginBody(): String = {
-    val event = FirstGameEventWire.encodeEvent(
-      "route-game",
-      catalogRef,
-      0L,
-      FirstGameStarted(plan)
-    ).toOption.get
+  private def bootstrapBody(): String = {
     ujson.write(ujson.Obj(
       "expectedNextSequence" -> 0,
-      "command" -> ujson.Obj(
-        "type" -> "begin",
-        "plan" -> event("payload")
-      )
+      "participants" -> ujson.Arr.from(participants.map { participant =>
+        ujson.Obj(
+          "playerId" -> participant.playerId.value,
+          "lineageId" -> participant.lineageId.value,
+          "color" -> participant.color.value
+        )
+      }),
+      "firstPlayer" -> "p2"
     ))
   }
 
