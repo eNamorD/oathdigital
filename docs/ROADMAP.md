@@ -7,115 +7,31 @@ been reviewed.
 
 ## Now
 
-- [ ] **Batch A — Frontend client boundary and testing polish**
-  - Owner: HRF UI reuse task.
-  - Implement the X1 manual-testing controls, World layout, player naming and
-    accessible color treatment.
-  - Introduce a transport-neutral client boundary while retaining local debug
-    mode; do not make browser-generated events authoritative in production.
+- [ ] **X3 — Client synchronization and reconnect**
+  - Extend the working command/refresh boundary with event catch-up and
+    reconnect behavior for asynchronous play.
+  - Preserve server authority, optimistic concurrency, private
+    player projections, and explicit browser-memory debug mode.
 
-- [ ] **Batch B — HSQLDB event-journal adapter and server foundation**
-  - Owner: Event-store application-service task.
-  - Implement the X2 database adapter and server-side command boundary without
-    editing frontend or setup-domain sources.
+- [ ] **X5 — Replay and concurrency hardening**
+  - Continue compatibility, malformed-input, invalid-command,
+    concurrent-append, and reconstruction coverage as gameplay slices are
+    added.
 
-- [ ] **Batch C — Exile-only complete-setup engine slice**
-  - Owner: Bounded setup task.
-  - Implement X4 as authoritative commands/events/replay without editing
-    frontend, database or server sources.
-
-- [ ] **Batch integration gate**
-  - Connect the completed browser boundary to the server-authoritative API,
-    adapt the UI to the expanded setup state, review all diffs, and run the
-    combined JVM, Scala.js, database-restart and browser test suites.
+- [ ] **X6 — Production identity and authorization boundary**
+  - Replace the development-only caller-selected player identity with
+    authenticated game membership before permitting a non-loopback deployment.
+  - Keep the current unauthenticated API bound to loopback and labeled for
+    development/manual testing only.
 
 ## Next
 
-- [ ] **X1 — Integrate and maintain the frontend architecture**
-  - Use a shared-engine/server-authority boundary. Portable domain, command,
-    event, codec and public-projection code may compile for JVM and Scala.js,
-    but only the JVM server validates commands and appends production events.
-  - The browser submits commands with an expected event position, consumes
-    accepted events or player-scoped projections, and refreshes on conflicts.
-    Local browser authority is limited to explicit debug/manual-test sessions.
-  - Include the following minor manual-testing and presentation batch:
-    - Add a clearly labeled debug **Restart** control that resets the current
-      test session to its designated initial state, normally the start of the
-      game. Until server persistence is connected, it resets the browser-memory
-      event stream and reconstructs the initial state. A future persisted
-      implementation must start a new debug session rather than rewrite
-      authoritative history.
-    - Title the board **The World** and display its regions as columns ordered
-      left-to-right: **Cradle**, **Provinces**, **Hinterland**. Preserve the
-      required 2/3/3 site counts.
-    - Display the Imperial role simply as **Chancellor**, never
-      “Chancellor / Purple.” Display other players as color plus role, such as
-      **Blue Exile** or **Red Citizen**.
-    - Color written player references consistently with their player color,
-      including Chancellor references in purple. Keep the complete textual
-      player name and sufficient contrast so meaning never depends on color
-      alone.
-    - Add focused tests for restart behavior, authoritative-history handling,
-      region order, board title, player naming, and player-color CSS classes.
-
-- [ ] **X2 — Durable event journal**
-  - Use HRF's current local-server storage stack: file-backed HSQLDB 2.7.4,
-    Slick 3.5.2 with HikariCP, and Akka HTTP.
-  - Adapt HRF's users/journals/entries/access-rights pattern, but store Oath's
-    explicit versioned domain-event envelopes rather than serialized HRF
-    actions.
-  - Enforce optimistic concurrency with a composite game/sequence primary key
-    and append each emitted event batch in one database transaction.
-  - Implement stream creation/loading, schema creation and repeatable schema
-    upgrades while retaining the storage-neutral repository interface so the
-    database can be replaced later.
-  - Depends on N3.
-
-- [ ] **X3 — Client synchronization and reconnect**
-  - Add command submission, event catch-up, stale-command recovery, and
-    reconnect behavior.
-  - Depends on X1 and X2.
-
-- [ ] **X4 — Exile-only first-game setup**
-  - “Complete” means complete for this bounded milestone: construct a valid,
-    replayable game state and stop with the first Exile ready to begin their
-    first turn. Wake and gameplay actions are separate slices.
-  - Pin the runtime catalog and ruleset; record the configured player order,
-    colors and lineages; initialize every player as an Exile with the required
-    starting board resources, warbands and Supply.
-  - Construct **The World** as the 2/3/3 Cradle, Provinces and Hinterland map;
-    record the exact selected sites and populate the required starting site
-    pieces, resources and facedown relic slots.
-  - Construct the first-game denizen pool, regional discards, player starting
-    card choices and world deck. Adviser selection is part of setup; Legacy
-    selection is omitted.
-  - Record the shuffled relic order, relics assigned to sites and the remaining
-    relic deck without replaying randomness.
-  - Every player is an Exile. Imperial players, Citizenship, and the Chancellor
-    are outside this slice.
-  - Skip the Legacy system and all Legacy-driven setup changes.
-  - Represent the required Foundations as one fixed, unaltered first-game
-    profile. Do not build a general Foundation interpreter, alteration system
-    or campaign progression.
-  - Record every randomized or selected setup outcome as authoritative events
-    so replay performs no randomness.
-  - Present the completed setup through the browser UI with permanent
-    image-independent fallbacks.
-  - Exclude later-game restoration, Chronicle behavior, Imperial setup,
-    Legacies, Foundation mutation, and all Wake/Act/Rest behavior.
-  - Acceptance requires command-produced and serialized-event-replayed game
-    states to be exactly equal, with malformed or incomplete setup rejected by
-    typed errors.
-  - The runtime catalog and rulebook traceability prerequisites are complete.
-
-- [ ] **X5 — Replay and concurrency hardening**
-  - Add compatibility, malformed-input, invalid-command, concurrent-append,
-    and reconstruction tests around the application and storage layers.
-  - Begins with N3 and continues through X2.
+- [ ] **L1 — First post-setup gameplay vertical slice**
+  - Define the smallest Wake-to-action command/event/replay milestone after
+    setup, with UI controls and server-authoritative persistence.
 
 ## Later
 
-- [ ] **L1 — First post-setup gameplay vertical slice**
 - [ ] **L2 — Board layout and asset-loading pipeline**
 - [ ] **L3 — Licensed game assets with permanent visual fallbacks**
 - [ ] **L4 — Saved-game browser and replay navigation**
@@ -140,9 +56,22 @@ been reviewed.
   optimistic-concurrency contract, and typed failure handling.
 - [x] Add source-cited rulebook implementation traceability without treating
   placeholder domain types as implemented rules.
+- [x] Integrate the frontend with a server-authoritative bootstrap and command
+  API while retaining an explicit browser-memory debug mode.
+- [x] Add the file-backed HSQLDB event journal, schema upgrades, atomic event
+  batches, optimistic concurrency, and close/reopen reconstruction.
+- [x] Complete and present the exile-only first-game setup through Ready, with
+  The World, player naming/color treatment, restart controls, and permanent
+  image-independent fallbacks.
+- [x] Integrate the reviewed printed-ID catalog and typed denizen placement
+  restrictions as catalog `2026.08.03-pre3` / schema `1.1.0`.
+- [x] Complete the batch integration gate, including independent diff review,
+  catalog validation, clean JVM/Scala.js builds, database restart, persisted
+  browser reload, and distinct-stream restart testing.
 
-The combined milestone passes 71 JVM tests, 5 Scala.js tests, the Scala.js
-linker, and runtime-catalog validation.
+The combined milestone passes 115 JVM tests, 21 Scala.js tests, the Scala.js
+linker, runtime-catalog validation, and a persisted three-player browser smoke
+test through **Ready to begin first turn** and reload reconstruction.
 
 ## Coordination rules
 
