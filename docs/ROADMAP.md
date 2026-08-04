@@ -8,8 +8,13 @@ been reviewed.
 ## Now
 
 - [ ] **X3 — Client synchronization and reconnect**
-  - Extend the working command/refresh boundary with event catch-up and
-    reconnect behavior for asynchronous play.
+  - [x] Preserve persisted game/player URL state and provide a user-controlled
+    reconnect path that fetches the authoritative player-scoped snapshot and
+    sequence after transient transport failures.
+  - [x] Keep stale-command handling refresh-only, prevent mutation retries, and
+    discard callbacks from superseded game/player/reconnect generations.
+  - [ ] Add automatic asynchronous catch-up through a bounded polling or push
+    design, including cursor/delta semantics, backoff, and recovery tests.
   - Preserve server authority, optimistic concurrency, private
     player projections, and explicit browser-memory debug mode.
 
@@ -69,7 +74,7 @@ been reviewed.
   catalog validation, clean JVM/Scala.js builds, database restart, persisted
   browser reload, and distinct-stream restart testing.
 
-The combined milestone passes 115 JVM tests, 21 Scala.js tests, the Scala.js
+The combined milestone passes 115 JVM tests, 25 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
