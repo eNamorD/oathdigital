@@ -12,8 +12,8 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     Files.createTempDirectory(s"oathdigital-identity-$label-")
       .resolve("database")
 
-  private def open(path: Path): HsqldbIdentityRepository =
-    HsqldbIdentityRepository.open(path).toOption.get
+  private def open(path: Path): OwnedHsqldbIdentityRepository =
+    OwnedHsqldbIdentityRepository.open(path).toOption.get
 
   private val owner = UserId("user-owner")
   private val player = UserId("user-player")

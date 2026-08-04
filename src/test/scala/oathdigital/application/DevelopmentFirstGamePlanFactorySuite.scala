@@ -4,7 +4,7 @@ import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
 import oathdigital.model.{PlayerId, RelicId}
-import oathdigital.persistence.HsqldbEventStreamRepository
+import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.server.{
   FirstGameBootstrapRequest,
   FirstGameHttpWire,
@@ -68,7 +68,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
   test("bootstrap persists normal v2 history and returns redacted projection") {
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
       .resolve("journal")
-    val repository = HsqldbEventStreamRepository.open(path).toOption.get
+    val repository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     val service = new FirstGameApplicationService(catalog, repository)
     val gateway = new FirstGameServerGateway(
       service,
@@ -92,7 +92,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     catalog.relics.filter(_.role == RelicRole.Ordinary)
       .foreach(relic => assert(!json.contains(relic.id.value)))
 
-    val reopened = HsqldbEventStreamRepository.open(path).toOption.get
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {
       val loaded = new FirstGameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get

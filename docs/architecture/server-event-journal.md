@@ -110,9 +110,17 @@ The default bind address is `127.0.0.1:8080`; override it with JVM properties
 the supplied path prefix. Use a durable local directory in production.
 
 Akka Coordinated Shutdown first unbinds HTTP and then closes the application
-runtime, issues HSQLDB `SHUTDOWN`, and closes Slick/Hikari resources. SIGTERM
+runtime. `HsqldbDatabaseOwner` owns one Hikari datasource and Slick database,
+initializes the shared schema ledger once, supplies non-owning event-stream and
+identity adapters, issues exactly one HSQLDB `SHUTDOWN`, and then closes its
+resources. Adapters cannot independently close or disrupt the database. SIGTERM
 and normal JVM shutdown use that path. Bind failure explicitly closes the
 runtime and terminates the actor system.
+
+Focused tests and standalone tools may use the explicitly owning
+`OwnedHsqldbEventStreamRepository` or `OwnedHsqldbIdentityRepository` handles;
+their `close` delegates to their visible owner. Production code opens only
+`HsqldbDatabaseOwner`, preventing two silent owners for one database path.
 
 All synchronous journal/application calls made by future command routes must
 run on `oathdigital.blocking-dispatcher`, a dedicated fixed thread pool defined

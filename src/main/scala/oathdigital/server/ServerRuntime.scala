@@ -12,7 +12,7 @@ import oathdigital.catalog.{
   CatalogLoader,
   CatalogSelection
 }
-import oathdigital.persistence.HsqldbEventStreamRepository
+import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.setup.SetupCommand
 
 /**
@@ -39,9 +39,9 @@ final class ServerCommandGateway private[server] (
 final class ServerRuntime private (
     val commands: ServerCommandGateway,
     val firstGame: FirstGameServerGateway,
-    private val repository: HsqldbEventStreamRepository
+    private val database: HsqldbDatabaseOwner
 ) extends AutoCloseable {
-  override def close(): Unit = repository.close()
+  override def close(): Unit = database.close()
 }
 
 object ServerRuntime {
@@ -49,14 +49,15 @@ object ServerRuntime {
       databasePath: Path,
       catalogPath: Path
   ): Either[String, ServerRuntime] =
-    HsqldbEventStreamRepository.open(databasePath).left.map {
+    HsqldbDatabaseOwner.open(databasePath).left.map {
       case oathdigital.application.RepositoryFailure.StorageFailure(message) =>
         message
       case oathdigital.application.RepositoryFailure.InvalidConfiguration(
             message
           ) =>
         message
-    }.flatMap { repository =>
+    }.flatMap { database =>
+      val repository = database.eventStreams
       CatalogLoader
         .load(
           catalogPath,
@@ -91,12 +92,12 @@ object ServerRuntime {
               projector,
               planFactory
             ),
-            repository
+            database
           )
         }
         .left
         .map { error =>
-          repository.close()
+          database.close()
           error
         }
     }

@@ -25,8 +25,8 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   private def databasePath(label: String): Path =
     Files.createTempDirectory(s"oathdigital-$label-").resolve("journal")
 
-  private def open(path: Path): HsqldbEventStreamRepository =
-    HsqldbEventStreamRepository.open(path).toOption.get
+  private def open(path: Path): OwnedHsqldbEventStreamRepository =
+    OwnedHsqldbEventStreamRepository.open(path).toOption.get
 
   private val catalog = ExecutableCatalog(
     schemaVersion = "test",
@@ -90,7 +90,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     ).foreach { case (label, versions) =>
       val path = databasePath(label)
       seedSchemaVersions(path, versions)
-      val result = HsqldbEventStreamRepository.open(path)
+      val result = HsqldbDatabaseOwner.open(path)
       assert(result.left.toOption.nonEmpty)
 
       val reopened = DriverManager.getConnection(
@@ -111,7 +111,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
       "journal;shutdown=true"
     )
     assertEquals(
-      HsqldbEventStreamRepository.open(unsafe),
+      HsqldbDatabaseOwner.open(unsafe),
       Left(oathdigital.application.RepositoryFailure.InvalidConfiguration(
         "database path contains an unsafe HSQLDB URL delimiter"
       ))

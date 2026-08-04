@@ -1,15 +1,12 @@
 package oathdigital.persistence
 
-import java.nio.file.Path
 import java.sql.{Connection, SQLException}
-import java.util.concurrent.TimeUnit
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 import scala.util.control.NoStackTrace
 
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.HsqldbProfile.api._
 
@@ -19,43 +16,6 @@ object HsqldbIdentityRepository {
   private final case class ExpectedFailureControl(failure: IdentityFailure)
       extends RuntimeException with NoStackTrace
 
-  def open(path: Path): Either[IdentityFailure, HsqldbIdentityRepository] = {
-    val normalized = path.toAbsolutePath.normalize
-    if (normalized.toString.exists(character =>
-      character == ';' || character == '\n' || character == '\r' ||
-        character == '\u0000'))
-      Left(IdentityFailure.StorageFailure("unsafe HSQLDB database path"))
-    else {
-      val config = new HikariConfig()
-      config.setJdbcUrl(s"jdbc:hsqldb:file:$normalized")
-      config.setDriverClassName("org.hsqldb.jdbc.JDBCDriver")
-      config.setUsername("SA")
-      config.setPassword("")
-      config.setMaximumPoolSize(4)
-      config.setMinimumIdle(1)
-      config.setConnectionTimeout(TimeUnit.SECONDS.toMillis(10))
-      config.setPoolName("oathdigital-identity")
-      var source: HikariDataSource = null
-      try {
-        source = new HikariDataSource(config)
-        val repository = new HsqldbIdentityRepository(
-          Database.forDataSource(source, Some(4)),
-          source
-        )
-        repository.initializeSchema() match {
-          case Right(_) => Right(repository)
-          case Left(error) =>
-            repository.close()
-            Left(error)
-        }
-      } catch {
-        case NonFatal(error) =>
-          if (source != null) source.close()
-          Left(storage("open identity database", error))
-      }
-    }
-  }
-
   private def storage(operation: String, error: Throwable) =
     IdentityFailure.StorageFailure(
       s"$operation failed: ${Option(error.getMessage).getOrElse(
@@ -63,21 +23,12 @@ object HsqldbIdentityRepository {
     )
 }
 
-final class HsqldbIdentityRepository private (
-    database: Database,
-    source: HikariDataSource
-) extends IdentityRepository with AutoCloseable {
+final class HsqldbIdentityRepository private[persistence] (
+    database: Database
+) extends IdentityRepository {
   import IdentityFailure._
   import MembershipRole._
   import HsqldbIdentityRepository.ExpectedFailureControl
-
-  private val schema = new EventJournalSchema
-
-  def initializeSchema(): Either[IdentityFailure, Unit] =
-    run("initialize identity schema")(schema.initialize)
-
-  def schemaVersion: Either[IdentityFailure, Int] =
-    run("read schema version")(schema.currentVersion)
 
   override def createUser(
       userId: UserId,
@@ -538,18 +489,4 @@ final class HsqldbIdentityRepository private (
     }
   }
 
-  private def run[A](operation: String)(action: DBIO[A]): Either[IdentityFailure, A] =
-    try Right(Await.result(database.run(action), Duration.Inf))
-    catch { case NonFatal(error) => Left(HsqldbIdentityRepository.storage(operation, error)) }
-
-  override def close(): Unit = {
-    try Await.result(database.run(SimpleDBIO { context =>
-      val statement = context.connection.createStatement()
-      try statement.execute("SHUTDOWN") finally statement.close()
-    }), Duration.Inf)
-    finally {
-      database.close()
-      source.close()
-    }
-  }
 }

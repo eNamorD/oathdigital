@@ -1,15 +1,11 @@
 package oathdigital.persistence
 
-import java.nio.file.Path
 import java.sql.{Connection, SQLException}
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.util.control.NonFatal
 
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.HsqldbProfile.api._
 
@@ -22,57 +18,6 @@ import oathdigital.application.{
 }
 
 object HsqldbEventStreamRepository {
-  def open(
-      databasePath: Path
-  ): Either[RepositoryFailure, HsqldbEventStreamRepository] =
-    validatePath(databasePath).flatMap(openValidated)
-
-  private def validatePath(
-      databasePath: Path
-  ): Either[RepositoryFailure, Path] = {
-    val normalized = databasePath.toAbsolutePath.normalize
-    val value = normalized.toString
-    if (value.exists(character =>
-      character == ';' || character == '\n' ||
-        character == '\r' || character == '\u0000'))
-      Left(RepositoryFailure.InvalidConfiguration(
-        "database path contains an unsafe HSQLDB URL delimiter"
-      ))
-    else Right(normalized)
-  }
-
-  private def openValidated(
-      normalized: Path
-  ): Either[RepositoryFailure, HsqldbEventStreamRepository] = {
-    val config = new HikariConfig()
-    config.setJdbcUrl(s"jdbc:hsqldb:file:$normalized")
-    config.setDriverClassName("org.hsqldb.jdbc.JDBCDriver")
-    config.setUsername("SA")
-    config.setPassword("")
-    config.setMaximumPoolSize(4)
-    config.setMinimumIdle(1)
-    config.setPoolName("oathdigital-event-journal")
-    config.setConnectionTimeout(TimeUnit.SECONDS.toMillis(10))
-
-    var dataSource: HikariDataSource = null
-    try {
-      dataSource = new HikariDataSource(config)
-      val database = Database.forDataSource(dataSource, Some(4))
-      val repository =
-        new HsqldbEventStreamRepository(database, dataSource)
-      repository.initializeSchema() match {
-        case Right(_) => Right(repository)
-        case Left(failure) =>
-          repository.close()
-          Left(failure)
-      }
-    } catch {
-      case NonFatal(error) =>
-        if (dataSource != null) dataSource.close()
-        Left(storageFailure("open database", error))
-    }
-  }
-
   private[persistence] def storageFailure(
       operation: String,
       error: Throwable
@@ -91,22 +36,11 @@ object HsqldbEventStreamRepository {
  * application boundary is synchronous. Slick still owns JDBC execution and
  * transaction scheduling underneath this adapter.
  */
-final class HsqldbEventStreamRepository private (
-    database: Database,
-    dataSource: HikariDataSource
-) extends EventStreamRepository
-    with AutoCloseable {
+final class HsqldbEventStreamRepository private[persistence] (
+    database: Database
+) extends EventStreamRepository {
   import HsqldbEventStreamRepository._
   import RepositoryAppendResult._
-
-  private val schema = new EventJournalSchema
-  private val closed = new AtomicBoolean(false)
-
-  def initializeSchema(): Either[RepositoryFailure, Unit] =
-    run("initialize schema")(schema.initialize)
-
-  def schemaVersion: Either[RepositoryFailure, Int] =
-    run("read schema version")(schema.currentVersion)
 
   override def load(
       gameId: String
@@ -268,23 +202,4 @@ final class HsqldbEventStreamRepository private (
       case NonFatal(error) => Left(storageFailure(operation, error))
     }
 
-  override def close(): Unit = {
-    if (closed.compareAndSet(false, true)) {
-      try Await.result(database.run(
-        SimpleDBIO[Unit] { context =>
-          val statement = context.connection.createStatement()
-          try {
-            statement.execute("SHUTDOWN")
-            ()
-          } finally statement.close()
-        }
-      ), Duration.Inf)
-      catch {
-        case NonFatal(_) => ()
-      } finally {
-        database.close()
-        dataSource.close()
-      }
-    }
-  }
 }

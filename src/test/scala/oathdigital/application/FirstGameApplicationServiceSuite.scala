@@ -3,7 +3,7 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.model.{CatalogRef, PlayerId}
-import oathdigital.persistence.HsqldbEventStreamRepository
+import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.setup.FirstGameSetupFixture._
@@ -273,7 +273,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     val path =
       Files.createTempDirectory("oathdigital-v2-reopen-").resolve("journal")
     val firstRepository =
-      HsqldbEventStreamRepository.open(path).toOption.get
+      OwnedHsqldbEventStreamRepository.open(path).toOption.get
     val accepted =
       try execute(
         new FirstGameApplicationService(catalog, firstRepository),
@@ -281,7 +281,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       )
       finally firstRepository.close()
 
-    val reopened = HsqldbEventStreamRepository.open(path).toOption.get
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {
       val loaded = new FirstGameApplicationService(catalog, reopened)
         .load("game-hsql-v2").toOption.flatten.get
