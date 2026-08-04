@@ -7,11 +7,6 @@ been reviewed.
 
 ## Now
 
-- [ ] **X5 — Replay and concurrency hardening**
-  - Continue compatibility, malformed-input, invalid-command,
-    concurrent-append, and reconstruction coverage as gameplay slices are
-    added.
-
 - [ ] **X6 — Production identity and authorization boundary**
   - Replace the development-only caller-selected player identity with
     authenticated game membership before permitting a non-loopback deployment.
@@ -70,8 +65,12 @@ been reviewed.
   URLs, explicit recovery from transport failures, stale-response generation
   guards, refresh-only conflict handling, and visibility-aware player-scoped
   snapshot polling keyed by authoritative `nextSequence`.
+- [x] Complete X5 replay and concurrency hardening across v1/v2 compatibility,
+  malformed and misidentified streams, exact replay-failure indexes, sequence
+  integrity, concurrent creation/appends, atomic rollback, restart durability,
+  and stale HTTP command handling.
 
-The combined milestone passes 115 JVM tests, 31 Scala.js tests, the Scala.js
+The combined milestone passes 121 JVM tests, 31 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
