@@ -163,6 +163,16 @@ server's current `nextSequence` and normal controls. It never bootstraps,
 rewrites history, or automatically retries a failed command. This is snapshot
 reconnect, not asynchronous event catch-up.
 
+While connected, server mode performs one player-scoped snapshot GET every five
+seconds. `nextSequence` is the change cursor: equal or older snapshots are
+acknowledged without replacing the projection or rendering, while a greater
+sequence updates state and legal controls. Only one poll may be in flight for
+the current game/player generation. Hidden documents use a thirty-second
+interval; becoming visible triggers an immediate catch-up. Game/player changes
+and reconnects invalidate old timers and callbacks. A transient poll failure
+stops polling and retains the explicit **Reconnect** policy—there is no automatic
+retry or exponential backoff in this development/manual-testing slice.
+
 ## Known integration risks
 
 - The source-file allowlist is deliberately narrow. If portable shared code

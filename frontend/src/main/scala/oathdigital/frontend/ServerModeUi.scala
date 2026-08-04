@@ -21,6 +21,7 @@ object ServerModeUi {
     var selectedPlayer = queryParameter("playerId").getOrElse("red-exile")
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
+    var polling = Option.empty[SnapshotPollingCoordinator]
 
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
@@ -68,11 +69,13 @@ object ServerModeUi {
           projection = Some(displayed)
           failure = retainedNotice
           render()
+          polling.foreach(_.resume(coordinator.capture))
         case ProjectionRoute.ReloadForActivePlayer(
               displayed,
               nextRequest,
               retainedNotice
             ) =>
+          polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
           selectedPlayer = nextRequest.playerId
@@ -92,11 +95,14 @@ object ServerModeUi {
         case Right(value) => store(request, value, notice)
         case Left(error) =>
           coordinator.recordFailure(request, error)
+          if (FirstGameClientFailure.isTransient(error))
+            polling.foreach(_.stop())
           failure = Some(error)
           render()
       }
 
     def loadExisting(id: String, playerId: String): Unit = {
+      polling.foreach(_.stop())
       gameId = id.trim
       projection = None
       failure = None
@@ -111,6 +117,7 @@ object ServerModeUi {
     }
 
     def newGame(): Unit = {
+      polling.foreach(_.stop())
       gameId = freshGameId()
       selectedPlayer = bootstrap.firstPlayer
       projection = None
@@ -123,12 +130,42 @@ object ServerModeUi {
     }
 
     def reconnect(): Unit = {
+      polling.foreach(_.stop())
       failure = None
       val request = coordinator.reconnect()
       updateUrl(gameId, selectedPlayer)
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
+
+    def poll(request: ServerRequestIdentity): Unit =
+      client.load(request.gameId, request.playerId).foreach {
+        case Right(snapshot) =>
+          val advances = projection.forall(current =>
+            coordinator.snapshotAdvances(
+              request,
+              current.nextSequence,
+              snapshot.nextSequence
+            )
+          )
+          if (advances) {
+            val accepted = polling.exists(
+              _.complete(request, continuePolling = false)
+            )
+            if (accepted) accept(request, Right(snapshot))
+          } else {
+            val accepted = polling.exists(
+              _.complete(request, continuePolling = true)
+            )
+            if (accepted) coordinator.recordSnapshotSuccess(request)
+          }
+        case Left(error) =>
+          val transient = FirstGameClientFailure.isTransient(error)
+          val accepted = polling.exists(
+            _.complete(request, continuePolling = !transient)
+          )
+          if (accepted) accept(request, Left(error))
+      }
 
     def submit(command: FirstGameCommand): Unit =
       projection.foreach { current =>
@@ -283,6 +320,17 @@ object ServerModeUi {
         }
       panel
     }
+
+    polling = Some(new SnapshotPollingCoordinator(
+      new BrowserPollClock,
+      poll
+    ))
+    dom.document.addEventListener(
+      "visibilitychange",
+      (_: dom.Event) =>
+        polling.foreach(_.visibilityChanged(dom.document.hidden))
+    )
+    polling.foreach(_.visibilityChanged(dom.document.hidden))
 
     render()
     queryParameter("gameId") match {

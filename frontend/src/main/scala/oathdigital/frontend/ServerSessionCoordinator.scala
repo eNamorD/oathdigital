@@ -52,6 +52,20 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
 
   def connectionState: ServerConnectionState = connection
 
+  def snapshotAdvances(
+      request: ServerRequestIdentity,
+      displayedNextSequence: Long,
+      incomingNextSequence: Long
+  ): Boolean =
+    accepts(request) && incomingNextSequence > displayedNextSequence
+
+  def recordSnapshotSuccess(request: ServerRequestIdentity): Boolean =
+    if (!accepts(request)) false
+    else {
+      connection = ServerConnectionState.Connected
+      true
+    }
+
   def recordFailure(
       request: ServerRequestIdentity,
       failure: FirstGameClientFailure
