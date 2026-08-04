@@ -7,17 +7,6 @@ been reviewed.
 
 ## Now
 
-- [ ] **X3 — Client synchronization and reconnect**
-  - [x] Preserve persisted game/player URL state and provide a user-controlled
-    reconnect path that fetches the authoritative player-scoped snapshot and
-    sequence after transient transport failures.
-  - [x] Keep stale-command handling refresh-only, prevent mutation retries, and
-    discard callbacks from superseded game/player/reconnect generations.
-  - [ ] Add automatic asynchronous catch-up through a bounded polling or push
-    design, including cursor/delta semantics, backoff, and recovery tests.
-  - Preserve server authority, optimistic concurrency, private
-    player projections, and explicit browser-memory debug mode.
-
 - [ ] **X5 — Replay and concurrency hardening**
   - Continue compatibility, malformed-input, invalid-command,
     concurrent-append, and reconstruction coverage as gameplay slices are
@@ -42,6 +31,10 @@ been reviewed.
 - [ ] **L4 — Saved-game browser and replay navigation**
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
 - [ ] **L6 — Incremental implementation of remaining phases and rules**
+- [ ] **L7 — Incremental synchronization transport**
+  - Replace complete-snapshot polling with conditional responses, projection
+    deltas, long polling, SSE, or another push transport when scale or latency
+    justifies the added server lifecycle complexity.
 
 ## Done
 
@@ -73,8 +66,12 @@ been reviewed.
 - [x] Complete the batch integration gate, including independent diff review,
   catalog validation, clean JVM/Scala.js builds, database restart, persisted
   browser reload, and distinct-stream restart testing.
+- [x] Complete X3 client synchronization and reconnect: persisted game/player
+  URLs, explicit recovery from transport failures, stale-response generation
+  guards, refresh-only conflict handling, and visibility-aware player-scoped
+  snapshot polling keyed by authoritative `nextSequence`.
 
-The combined milestone passes 115 JVM tests, 25 Scala.js tests, the Scala.js
+The combined milestone passes 115 JVM tests, 31 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
