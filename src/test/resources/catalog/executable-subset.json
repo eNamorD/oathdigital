@@ -1,11 +1,12 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "catalogVersion": "fixture-1",
   "denizens": [
     {
       "id": "1",
       "name": "Fixture Denizen",
       "suit": "arcane",
+      "restrictions": null,
       "handlers": [
         "denizen.fixture-denizen"
       ],
@@ -29,6 +30,7 @@
     {
       "id": "E01",
       "suit": "discord",
+      "restrictions": null,
       "intact": {
         "name": "Fixture Edifice",
         "handlers": [

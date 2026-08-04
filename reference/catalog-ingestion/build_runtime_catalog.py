@@ -1,10 +1,10 @@
-"""Build the runtime component catalog from the archived ingestion inventory.
+"""Build or verify the runtime catalog from reviewed reference inputs.
 
-This one-way migration tool is kept with the reference material. The Scala
-application reads only docs/catalog/new-foundations-component-catalog.json.
+The no-argument mode only verifies equality, so it cannot overwrite reviewed
+runtime data. The Scala application reads only the catalog under docs/catalog.
 """
 
-import csv
+import argparse
 import json
 import re
 import sys
@@ -18,12 +18,9 @@ ARCHIVE = (
 )
 MANIFEST = Path("/private/tmp/oath-runtime-catalog/crops/manifest.json")
 OCR = ROOT / "reference/catalog-ingestion/component-ocr.tsv"
-BASE_DENIZENS = (
-    ROOT / "reference/catalog-ingestion/base-denizen-transcriptions.json"
-)
-NEW_FOUNDATIONS_DENIZENS = (
+RUNTIME_DENIZENS = (
     ROOT
-    / "reference/catalog-ingestion/new-foundations-denizen-transcriptions.json"
+    / "reference/catalog-ingestion/runtime-denizen-definitions.json"
 )
 RELIC_TRANSCRIPTIONS = (
     ROOT / "reference/catalog-ingestion/relic-transcriptions.json"
@@ -35,10 +32,6 @@ EDIFICE_RULE_OVERRIDES = (
     ROOT / "reference/catalog-ingestion/edifice-rule-overrides.json"
 )
 OUTPUT = ROOT / "docs/catalog/new-foundations-component-catalog.json"
-REVIEW = ROOT / "reference/catalog-ingestion/runtime-catalog-review.csv"
-
-SUITS = ("arcane", "beast", "discord", "hearth", "nomad", "order")
-
 
 def slug(value):
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
@@ -97,14 +90,6 @@ def rules_text(lines, kind):
     return " ".join(fragments).strip()
 
 
-def denizen_suit(index, component):
-    source = component["printEvidence"][0]["provenance"][0]["file"]
-    if source == "unchanged-denizens.pdf":
-        return SUITS[index // 27]
-    page = component["printEvidence"][0]["provenance"][0]["page"]
-    return SUITS[min((page - 1) // 2, 5)]
-
-
 def handler(kind, identifier, face=None):
     base = f"{kind}.{identifier}"
     return f"{base}.{face}" if face else base
@@ -112,14 +97,6 @@ def handler(kind, identifier, face=None):
 
 def indexed_by_name(records):
     return {normalized(record["name"]): record for record in records}
-
-
-def combined_rules_text(record):
-    return " ".join(
-        part
-        for part in [*record.get("costSymbols", []), record["rulesText"]]
-        if part
-    ).strip()
 
 
 def normalized_markdown(text):
@@ -147,21 +124,22 @@ def normalized_markdown(text):
     return text
 
 
-def main():
-    archived = json.loads(ARCHIVE.read_text())
-    base_denizens = indexed_by_name(json.loads(BASE_DENIZENS.read_text()))
-    base_denizens[normalized("News from Alfar")] = base_denizens[
-        normalized("News from Afar")
-    ]
-    base_denizens[normalized("Old Fast Steed")] = base_denizens[
-        normalized("A Fast Steed")
-    ]
-    base_denizens[normalized("Land Garden")] = base_denizens[
-        normalized("Land Warden")
-    ]
-    nf_denizens = indexed_by_name(
-        json.loads(NEW_FOUNDATIONS_DENIZENS.read_text())
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Build or verify the deterministic runtime catalog"
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="write generated JSON to this path instead of checking runtime equality",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    archived = json.loads(ARCHIVE.read_text())
+    denizens = json.loads(RUNTIME_DENIZENS.read_text())
     relic_transcriptions = indexed_by_name(
         json.loads(RELIC_TRANSCRIPTIONS.read_text())
     )
@@ -183,34 +161,6 @@ def main():
         item["definitionId"]: item["crop"] for item in manifest
     }
     components = archived["components"]
-
-    denizen_sources = [
-        component for component in components if component["kind"] == "denizen"
-    ]
-    denizens = []
-    for component in denizen_sources:
-        key = normalized(component["name"])
-        transcription = nf_denizens.get(key) or base_denizens.get(key)
-        if transcription is None:
-            raise ValueError(
-                f"no reviewed denizen transcription for {component['name']}"
-            )
-        printed_id = int(transcription["id"])
-        if printed_id >= 199:
-            suit = SUITS[(printed_id - 199) // 10]
-        elif key in nf_denizens:
-            suit = denizen_suit(0, component)
-        else:
-            suit = base_denizens[key]["suit"]
-        denizens.append(
-            {
-                "id": transcription["id"],
-                "name": transcription["name"],
-                "suit": suit,
-                "handlers": [handler("denizen", slug(component["name"]))],
-                "rulesText": combined_rules_text(transcription),
-            }
-        )
 
     relics = []
     for component in (
@@ -267,6 +217,7 @@ def main():
             {
                 "id": printed_id,
                 "suit": suit,
+                "restrictions": None,
                 "intact": faces["intact"],
                 "ruined": faces["ruined"],
             }
@@ -324,59 +275,25 @@ def main():
         )
 
     catalog = {
-        "schemaVersion": "1.0.0",
-        "catalogVersion": archived["catalogVersion"],
+        "schemaVersion": "1.1.0",
+        "catalogVersion": "2026.08.03-pre3",
         "denizens": denizens,
         "relics": relics,
         "edifices": edifices,
         "legacies": legacies,
         "sites": sites,
     }
-    OUTPUT.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n")
-
-    with REVIEW.open("w", newline="") as output:
-        writer = csv.writer(output, lineterminator="\n")
-        writer.writerow(("kind", "id", "name", "fieldsToReview", "basis"))
-        for component in denizens:
-            writer.writerow(
-                (
-                    "denizen",
-                    component["id"],
-                    component["name"],
-                    "rulesText",
-                    "official base data or visual review of print card",
-                )
+    if args.output is None:
+        runtime = json.loads(OUTPUT.read_text())
+        if catalog != runtime:
+            raise ValueError(
+                "generated catalog differs from runtime catalog; inspect by "
+                "passing --output to a temporary path"
             )
-        for component in relics:
-            writer.writerow(
-                (
-                    "relic",
-                    component["id"],
-                    component["name"],
-                    "value;defense;rulesText",
-                    "visual review of print card",
-                )
-            )
-        for component in edifices:
-            writer.writerow(
-                (
-                    "edifice",
-                    component["id"],
-                    f"{component['intact']['name']} / {component['ruined']['name']}",
-                    "rulesText",
-                    "visual overrides plus normalized OCR",
-                )
-            )
-        for component in legacies:
-            writer.writerow(
-                (
-                    "legacy",
-                    component["id"],
-                    component["name"],
-                    "rulesText",
-                    "visual review of print card",
-                )
-            )
+    else:
+        args.output.write_text(
+            json.dumps(catalog, indent=2, ensure_ascii=False) + "\n"
+        )
 
     print(
         "built "

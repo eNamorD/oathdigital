@@ -10,7 +10,7 @@ import oathdigital.model.{CatalogRef, SiteId, Tokens}
 import ujson.{Arr, Null, Obj, Str, Value}
 
 object CatalogLoader {
-  val SupportedSchemaVersion: String = "1.0.0"
+  val SupportedSchemaVersion: String = "1.1.0"
   val RulesetId: String = "oath-new-foundations"
 
   private type Result[A] = Either[Vector[CatalogLoadError], A]
@@ -125,9 +125,71 @@ object CatalogLoader {
       )
       name <- requiredString(obj, "name", path)
       suit <- decodeSuit(obj, path)
+      restrictions <- decodeDenizenRestrictions(obj, path)
       handlers <- decodeHandlers(obj, path)
       rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
-    } yield DenizenDefinition(id, name, suit, handlers, rulesText)
+    } yield DenizenDefinition(
+      id,
+      name,
+      suit,
+      restrictions,
+      handlers,
+      rulesText
+    )
+
+  private def decodeDenizenRestrictions(
+      obj: Obj,
+      path: String
+  ): Result[CardRestrictions] = {
+    val fieldPath = s"$path.restrictions"
+    obj.value.get("restrictions") match {
+      case None => Left(Vector(MissingField(fieldPath)))
+      case Some(Null) => Right(CardRestrictions.Unrestricted)
+      case Some(values: Arr) =>
+        val tokens = values.value.zipWithIndex.map {
+          case (Str(value), _) => Right(value)
+          case (value, index) =>
+            Left(
+              Vector(
+                WrongType(s"$fieldPath[$index]", "string", typeName(value))
+              )
+            )
+        }.toVector
+        collectResults(tokens).flatMap {
+          case Vector("site-only") => Right(CardRestrictions.SiteOnly)
+          case Vector("adviser-only") => Right(CardRestrictions.AdviserOnly)
+          case Vector("adviser-only", "locked") =>
+            Right(CardRestrictions.LockedAdviserOnly)
+          case values =>
+            val allowed = Set("site-only", "adviser-only", "locked")
+            values.zipWithIndex.find { case (value, _) =>
+              !allowed.contains(value)
+            } match {
+              case Some((value, index)) =>
+                Left(
+                  Vector(
+                    InvalidValue(
+                      s"$fieldPath[$index]",
+                      s"unsupported restriction $value"
+                    )
+                  )
+                )
+              case None =>
+                Left(
+                  Vector(
+                    InvalidValue(
+                      fieldPath,
+                      "expected null, [site-only], [adviser-only], or " +
+                        "[adviser-only, locked]"
+                    )
+                  )
+                )
+            }
+        }
+      case Some(value) =>
+        Left(Vector(WrongType(fieldPath, "null or array", typeName(value))))
+    }
+  }
 
   private def decodeRelic(obj: Obj, path: String): Result[RelicDefinition] =
     for {
@@ -168,11 +230,32 @@ object CatalogLoader {
         s"$path.id"
       )
       suit <- decodeSuit(obj, path)
+      restrictions <- decodeUnrestrictedEdifice(obj, path)
       intactObject <- requiredObject(obj, "intact", path)
       intact <- decodeEdificeFace(intactObject, s"$path.intact")
       ruinedObject <- requiredObject(obj, "ruined", path)
       ruined <- decodeEdificeFace(ruinedObject, s"$path.ruined")
-    } yield EdificeDefinition(id, suit, intact, ruined)
+    } yield EdificeDefinition(id, suit, restrictions, intact, ruined)
+
+  private def decodeUnrestrictedEdifice(
+      obj: Obj,
+      path: String
+  ): Result[CardRestrictions] = {
+    val fieldPath = s"$path.restrictions"
+    obj.value.get("restrictions") match {
+      case None => Left(Vector(MissingField(fieldPath)))
+      case Some(Null) => Right(CardRestrictions.Unrestricted)
+      case Some(value) =>
+        Left(
+          Vector(
+            InvalidValue(
+              fieldPath,
+              s"edifice restrictions must be null, found ${typeName(value)}"
+            )
+          )
+        )
+    }
+  }
 
   private def decodeEdificeFace(
       obj: Obj,

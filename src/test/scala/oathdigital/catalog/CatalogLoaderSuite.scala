@@ -7,8 +7,10 @@ import oathdigital.catalog.CatalogLoadError.{
   DuplicateDefinitionId,
   IncompatibleCatalog,
   InvalidJson,
+  InvalidValue,
   MissingField,
-  UnsupportedSchemaVersion
+  UnsupportedSchemaVersion,
+  WrongType
 }
 import oathdigital.model.{CatalogRef, SiteId, Tokens}
 
@@ -30,6 +32,10 @@ class CatalogLoaderSuite extends munit.FunSuite {
     val catalog = result.toOption.get
     assertEquals(catalog.denizens.head.suit, Suit.Arcane)
     assertEquals(
+      catalog.denizens.head.restrictions,
+      CardRestrictions.Unrestricted
+    )
+    assertEquals(
       catalog.denizens.head.handlers,
       Vector("denizen.fixture-denizen")
     )
@@ -48,7 +54,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
         Paths.get("docs/catalog/new-foundations-component-catalog.json"),
         CatalogLoadRequest(
           expectedCatalog = Some(
-            CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+            CatalogRef("oath-new-foundations", "2026.08.03-pre3")
           )
         )
       )
@@ -81,6 +87,16 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assertEquals(catalog.setupCards, Vector.empty)
     assertEquals(catalog.supplyBoards, Vector.empty)
     assertEquals(catalog.visions, Vector.empty)
+
+    assertEquals(
+      catalog.denizens.groupBy(_.restrictions).view.mapValues(_.size).toMap,
+      Map(
+        CardRestrictions.Unrestricted -> 152,
+        CardRestrictions.SiteOnly -> 41,
+        CardRestrictions.AdviserOnly -> 34,
+        CardRestrictions.LockedAdviserOnly -> 28
+      )
+    )
   }
 
   test("printed relic values and reviewed symbol transcription are loaded") {
@@ -97,6 +113,13 @@ class CatalogLoaderSuite extends munit.FunSuite {
     val alchemist = catalog.denizens.find(_.id.value == "9").get
     assert(alchemist.rulesText.startsWith("[secret] [secret-burnt]"))
     assert(alchemist.rulesText.contains("**ACTION:**"))
+    assertEquals(alchemist.restrictions, CardRestrictions.SiteOnly)
+
+    val witchsBargain = catalog.denizens.find(_.id.value == "77").get
+    assertEquals(witchsBargain.handlers, Vector("denizen.witchs-bargain"))
+
+    val bedOfRoots = catalog.denizens.find(_.id.value == "212").get
+    assert(bedOfRoots.rulesText.startsWith("[favor-burnt] [favor-burnt]"))
 
     assertEquals(
       catalog.legacies.find(_.id.value == "L17").map(_.name),
@@ -174,10 +197,103 @@ class CatalogLoaderSuite extends munit.FunSuite {
     )
   }
 
+  test("the printed-ID catalog rejects the incompatible pre2 reference") {
+    val expected = CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+    val result = CatalogLoader.load(
+      Paths.get("docs/catalog/new-foundations-component-catalog.json"),
+      CatalogLoadRequest(expectedCatalog = Some(expected))
+    )
+
+    assert(
+      result.left.toOption.get.exists {
+        case IncompatibleCatalog(_, `expected`, actual) =>
+          actual == CatalogRef("oath-new-foundations", "2026.08.03-pre3")
+        case _ => false
+      }
+    )
+  }
+
+  test("denizen restrictions decode to typed placement semantics") {
+    val unrestrictedDenizen =
+      "\"suit\": \"arcane\",\n      \"restrictions\": null"
+    val siteOnly = fixture.replace(
+      unrestrictedDenizen,
+      "\"suit\": \"arcane\",\n      \"restrictions\": [\"site-only\"]"
+    )
+    val adviserOnly = fixture.replace(
+      unrestrictedDenizen,
+      "\"suit\": \"arcane\",\n      \"restrictions\": [\"adviser-only\"]"
+    )
+    val locked = fixture.replace(
+      unrestrictedDenizen,
+      "\"suit\": \"arcane\",\n      \"restrictions\": [\"adviser-only\", \"locked\"]"
+    )
+
+    assertEquals(
+      CatalogLoader.load(siteOnly).toOption.get.denizens.head.restrictions,
+      CardRestrictions.SiteOnly
+    )
+    assertEquals(
+      CatalogLoader.load(adviserOnly).toOption.get.denizens.head.restrictions,
+      CardRestrictions.AdviserOnly
+    )
+    assertEquals(
+      CatalogLoader.load(locked).toOption.get.denizens.head.restrictions,
+      CardRestrictions.LockedAdviserOnly
+    )
+  }
+
+  test("invalid denizen restrictions report their exact catalog paths") {
+    val unrestrictedDenizen =
+      "\"suit\": \"arcane\",\n      \"restrictions\": null"
+    def restricted(value: String): String =
+      fixture.replace(
+        unrestrictedDenizen,
+        s"\"suit\": \"arcane\",\n      \"restrictions\": $value"
+      )
+    val empty = restricted("[]")
+    val missing = fixture.replace(
+      "      \"restrictions\": null,\n      \"handlers\": [",
+      "      \"handlers\": ["
+    )
+    val lockedAlone = fixture.replace(
+      unrestrictedDenizen,
+      "\"suit\": \"arcane\",\n      \"restrictions\": [\"locked\"]"
+    )
+    val unknown = restricted("[\"elsewhere\"]")
+    val wrongType = restricted("[1]")
+
+    for (json <- Vector(empty, lockedAlone))
+      assert(
+        CatalogLoader.load(json).left.toOption.get.exists {
+          case InvalidValue(path, _) => path == "$.denizens[0].restrictions"
+          case _ => false
+        }
+      )
+    assert(
+      CatalogLoader.load(unknown).left.toOption.get.exists {
+        case InvalidValue(path, _) => path == "$.denizens[0].restrictions[0]"
+        case _ => false
+      }
+    )
+    assert(
+      CatalogLoader.load(wrongType).left.toOption.get.exists {
+        case WrongType(path, _, _) => path == "$.denizens[0].restrictions[0]"
+        case _ => false
+      }
+    )
+    assert(
+      CatalogLoader.load(missing).left.toOption.get.exists {
+        case MissingField(path) => path == "$.denizens[0].restrictions"
+        case _ => false
+      }
+    )
+  }
+
   test("schema versions and malformed JSON have explicit errors") {
     val unsupported =
       fixture.replace(
-        "\"schemaVersion\": \"1.0.0\"",
+        "\"schemaVersion\": \"1.1.0\"",
         "\"schemaVersion\": \"2.0.0\""
       )
 
@@ -205,6 +321,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
         |      "id": "1",
         |      "name": "Duplicate Denizen",
         |      "suit": "beast",
+        |      "restrictions": null,
         |      "handlers": ["denizen.duplicate-denizen"],
         |      "rulesText": ""
         |    },""".stripMargin

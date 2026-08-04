@@ -48,6 +48,12 @@ expected_relic_ids = {
 }
 expected_edifice_ids = {f"E{number:02d}" for number in range(1, 31)}
 expected_legacy_ids = {f"L{number:02d}" for number in range(1, 37)}
+allowed_denizen_restrictions = {
+    None,
+    ("site-only",),
+    ("adviser-only",),
+    ("adviser-only", "locked"),
+}
 allowed_symbols = {
     "attack-die",
     "defense-die",
@@ -138,6 +144,22 @@ for index, component in enumerate(catalog.get("denizens", [])):
         errors.append(f"denizens[{index}]: invalid suit")
     if len(component.get("handlers", [])) != 1:
         errors.append(f"denizens[{index}]: expected one stable handler key")
+    restrictions = component.get("restrictions", "__missing__")
+    if restrictions == "__missing__":
+        errors.append(f"denizens[{index}]: restrictions is required")
+    elif restrictions is not None and not isinstance(restrictions, list):
+        errors.append(
+            f"denizens[{index}]: restrictions must be null or an array"
+        )
+    else:
+        restriction_key = (
+            None if restrictions is None else tuple(restrictions)
+        )
+        if restriction_key not in allowed_denizen_restrictions:
+            errors.append(
+                f"denizens[{index}]: invalid restriction combination "
+                f"{restrictions!r}"
+            )
 
 grand_scepters = [
     relic for relic in catalog.get("relics", [])
@@ -163,6 +185,10 @@ actual_edifice_ids = {
 if actual_edifice_ids != expected_edifice_ids:
     errors.append("edifices must contain exactly E01 through E30")
 for index, component in enumerate(catalog.get("edifices", [])):
+    if "restrictions" not in component:
+        errors.append(f"edifices[{index}]: restrictions is required")
+    elif component["restrictions"] is not None:
+        errors.append(f"edifices[{index}]: restrictions must be null")
     for face in ("intact", "ruined"):
         definition = component.get(face)
         if not isinstance(definition, dict):

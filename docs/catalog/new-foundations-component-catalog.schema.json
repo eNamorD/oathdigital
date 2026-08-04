@@ -15,7 +15,7 @@
   ],
   "properties": {
     "schemaVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "catalogVersion": {
       "type": "string",
@@ -103,6 +103,7 @@
         "id",
         "name",
         "suit",
+        "restrictions",
         "handlers",
         "rulesText"
       ],
@@ -116,6 +117,43 @@
         },
         "suit": {
           "$ref": "#/$defs/suit"
+        },
+        "restrictions": {
+          "description": "Placement and locking restrictions; null explicitly means unrestricted.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "enum": [
+                  "site-only",
+                  "adviser-only",
+                  "locked"
+                ]
+              },
+              "oneOf": [
+                {
+                  "const": [
+                    "site-only"
+                  ]
+                },
+                {
+                  "const": [
+                    "adviser-only"
+                  ]
+                },
+                {
+                  "const": [
+                    "adviser-only",
+                    "locked"
+                  ]
+                }
+              ]
+            }
+          ]
         },
         "handlers": {
           "$ref": "#/$defs/handlers",
@@ -196,6 +234,7 @@
       "required": [
         "id",
         "suit",
+        "restrictions",
         "intact",
         "ruined"
       ],
@@ -206,6 +245,10 @@
         },
         "suit": {
           "$ref": "#/$defs/suit"
+        },
+        "restrictions": {
+          "description": "Edifices are explicitly unrestricted metadata records.",
+          "type": "null"
         },
         "intact": {
           "$ref": "#/$defs/edificeFace"

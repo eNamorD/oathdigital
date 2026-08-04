@@ -36,9 +36,20 @@ symbols use the same bracket convention, including `[attack-die]`,
 `[skull]`, and `[suit-arcane]` through `[suit-order]`. Bold and italic
 printing is preserved with standard Markdown.
 
-The schema remains `1.0.0` while the unreleased product format is in flux.
-`catalogVersion` identifies the specific data set independently of that format
-version.
+Every denizen has a required `restrictions` field. JSON `null` is the canonical
+explicit representation of an unrestricted denizen; an empty array is not
+accepted. The only restricted forms are `["site-only"]`,
+`["adviser-only"]`, and `["adviser-only", "locked"]`. A locked card is always
+adviser-only, so `locked` is invalid by itself or in any other combination.
+Edifices also preserve an explicit `restrictions: null` field, but restricted
+values are invalid for them.
+
+Schema `1.1.0` adds this required field and its constrained values. Catalog
+`2026.08.03-pre3` also records the incompatible move from development-only
+slug IDs to printed component IDs. Pre2 catalog references are deliberately
+rejected: no automatic migration is provided because no production data uses
+that prerelease format. Bumping the catalog reference prevents old streams
+from being treated as falsely compatible.
 
 Run:
 
@@ -46,7 +57,20 @@ Run:
 python3 scripts/validate-component-catalog.py
 ```
 
+The reviewed runtime denizen records are mirrored in
+`reference/catalog-ingestion/runtime-denizen-definitions.json`. Running the
+reference generator with no arguments is a non-writing equality check:
+
+```sh
+python3 reference/catalog-ingestion/build_runtime_catalog.py
+```
+
+To inspect regenerated output, pass `--output` with a temporary path. This
+deliberately avoids overwriting the runtime catalog before equality has been
+established.
+
 The validator checks the JSON schema, exact component counts, globally unique
 component identities, handler-key uniqueness and syntax, exact printed ID
-ranges, relic values, symbol vocabulary, edifice pairing, the single Grand
-Scepter role, and the absence of ingestion-only fields.
+ranges, denizen restriction combinations, relic values, symbol vocabulary,
+edifice pairing, the single Grand Scepter role, and the absence of
+ingestion-only fields.
