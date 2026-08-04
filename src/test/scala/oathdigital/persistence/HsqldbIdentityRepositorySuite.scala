@@ -115,6 +115,35 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     } finally repository.close()
   }
 
+  test("typed create-game failure rolls back resource and owner membership") {
+    val repository = open(databasePath("create-rollback"))
+    try {
+      repository.createUser(owner, "Owner", 0L)
+      repository.createUser(player, "Player", 0L)
+      val failed = repository.createGameWithBeforeOwnerMembership(
+        "game-rollback",
+        owner,
+        1L
+      )(_ => Left(InvalidMembership("injected second-write failure")))
+      assertEquals(
+        failed,
+        Left(InvalidMembership("injected second-write failure"))
+      )
+      assertEquals(
+        repository.findMembership("game-rollback", owner),
+        Right(None)
+      )
+      assertEquals(
+        repository.addMembership(
+          GameMembership("game-rollback", player, Player, Some("p1")),
+          2L
+        ),
+        Left(GameNotFound("game-rollback"))
+      )
+      assertEquals(repository.createGame("game-rollback", owner, 3L), Right(()))
+    } finally repository.close()
+  }
+
   test("sessions resolve only fixed digests and distinguish expiry and revocation") {
     val repository = open(databasePath("sessions"))
     val digest = SessionTokenDigest.fromBytes(Vector.fill(32)(1.toByte))
@@ -130,6 +159,8 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       assertEquals(repository.touchSession(digest, 150L, 250L), Right(()))
       assertEquals(repository.resolveSession(digest, 225L).toOption.get
         .lastSeenAtMillis, 150L)
+      assert(repository.touchSession(digest, 125L, 290L).left.toOption.get
+        .isInstanceOf[InvalidSession])
       assertEquals(repository.resolveSession(digest, 250L), Left(SessionExpired))
       assertEquals(repository.resolveSession(second, 100L), Left(SessionNotFound))
 
@@ -143,6 +174,23 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
           .left.toOption.get,
         "session token digest must contain exactly 32 bytes"
       )
+    } finally repository.close()
+  }
+
+  test("session creation rejects inconsistent expiry and revocation times") {
+    val repository = open(databasePath("session-times"))
+    val digest = SessionTokenDigest.fromBytes(Vector.fill(32)(3.toByte))
+      .toOption.get
+    try {
+      repository.createUser(owner, "Owner", 0L)
+      val base = StoredSession(digest, owner, 100L, 100L, 200L, 300L, None)
+      assert(repository.createSession(
+        base.copy(idleExpiresAtMillis = 301L)
+      ).left.toOption.get.isInstanceOf[InvalidSession])
+      assert(repository.createSession(
+        base.copy(revokedAtMillis = Some(99L))
+      ).left.toOption.get.isInstanceOf[InvalidSession])
+      assertEquals(repository.resolveSession(digest, 100L), Left(SessionNotFound))
     } finally repository.close()
   }
 

@@ -67,6 +67,9 @@ domain stream. Authenticated production gateways must require this resource
 and membership before invoking bootstrap. Existing development or historical
 streams are not reinterpreted as identity records. Raw bearer tokens are not
 accepted by the storage-neutral repository API and are never stored.
+Typed identity-operation failures abort their enclosing database transaction;
+in particular, game-resource and initial-owner creation cannot partially
+commit.
 
 ## Transaction and conflict semantics
 

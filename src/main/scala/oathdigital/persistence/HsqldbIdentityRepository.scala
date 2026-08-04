@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
+import scala.util.control.NoStackTrace
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import slick.jdbc.JdbcBackend.Database
@@ -15,6 +16,9 @@ import slick.jdbc.HsqldbProfile.api._
 import oathdigital.application._
 
 object HsqldbIdentityRepository {
+  private final case class ExpectedFailureControl(failure: IdentityFailure)
+      extends RuntimeException with NoStackTrace
+
   def open(path: Path): Either[IdentityFailure, HsqldbIdentityRepository] = {
     val normalized = path.toAbsolutePath.normalize
     if (normalized.toString.exists(character =>
@@ -65,6 +69,7 @@ final class HsqldbIdentityRepository private (
 ) extends IdentityRepository with AutoCloseable {
   import IdentityFailure._
   import MembershipRole._
+  import HsqldbIdentityRepository.ExpectedFailureControl
 
   private val schema = new EventJournalSchema
 
@@ -149,6 +154,16 @@ final class HsqldbIdentityRepository private (
       owner: UserId,
       nowMillis: Long
   ): Either[IdentityFailure, Unit] =
+    createGameWithBeforeOwnerMembership(gameId, owner, nowMillis)(
+      _ => Right(())
+    )
+
+  private[persistence] def createGameWithBeforeOwnerMembership(
+      gameId: String,
+      owner: UserId,
+      nowMillis: Long
+  )(beforeOwnerMembership: Connection => Either[IdentityFailure, Unit])
+      : Either[IdentityFailure, Unit] =
     runExpected("create game resource") { connection =>
       if (!exists(connection, "users", "user_id", owner.value))
         Left(UserNotFound(owner))
@@ -157,12 +172,13 @@ final class HsqldbIdentityRepository private (
       else {
         try {
           insertGame(connection, gameId, nowMillis)
-          insertMembership(
-            connection,
-            GameMembership(gameId, owner, Owner, None),
-            nowMillis
-          )
-          Right(())
+          beforeOwnerMembership(connection).map { _ =>
+            insertMembership(
+              connection,
+              GameMembership(gameId, owner, Owner, None),
+              nowMillis
+            )
+          }
         } catch {
           case error: SQLException if constraintViolation(error) =>
             Left(DuplicateGame(gameId))
@@ -311,6 +327,8 @@ final class HsqldbIdentityRepository private (
         case None => Left(SessionNotFound)
         case Some(session) if session.revokedAtMillis.nonEmpty =>
           Left(SessionRevoked)
+        case Some(session) if lastSeenAtMillis < session.lastSeenAtMillis =>
+          Left(InvalidSession("last seen time cannot move backwards"))
         case Some(session)
             if lastSeenAtMillis >= session.idleExpiresAtMillis ||
               lastSeenAtMillis >= session.absoluteExpiresAtMillis =>
@@ -364,8 +382,12 @@ final class HsqldbIdentityRepository private (
       Left(InvalidSession("last seen time precedes creation"))
     else if (session.lastSeenAtMillis > session.idleExpiresAtMillis)
       Left(InvalidSession("idle expiry precedes last seen time"))
+    else if (session.idleExpiresAtMillis > session.absoluteExpiresAtMillis)
+      Left(InvalidSession("idle expiry exceeds absolute expiry"))
     else if (session.createdAtMillis > session.absoluteExpiresAtMillis)
       Left(InvalidSession("absolute expiry precedes creation"))
+    else if (session.revokedAtMillis.exists(_ < session.createdAtMillis))
+      Left(InvalidSession("revocation precedes creation"))
     else Right(())
 
   private def insertGame(connection: Connection, gameId: String, now: Long): Unit = {
@@ -501,9 +523,20 @@ final class HsqldbIdentityRepository private (
 
   private def runExpected[A](operation: String)(
       action: Connection => Either[IdentityFailure, A]
-  ): Either[IdentityFailure, A] =
-    run(operation)(SimpleDBIO(context => action(context.connection)).transactionally)
-      .flatMap(identity)
+  ): Either[IdentityFailure, A] = {
+    val transactional = SimpleDBIO[A] { context =>
+      action(context.connection) match {
+        case Right(value) => value
+        case Left(failure) => throw ExpectedFailureControl(failure)
+      }
+    }.transactionally
+    try Right(Await.result(database.run(transactional), Duration.Inf))
+    catch {
+      case ExpectedFailureControl(failure) => Left(failure)
+      case NonFatal(error) =>
+        Left(HsqldbIdentityRepository.storage(operation, error))
+    }
+  }
 
   private def run[A](operation: String)(action: DBIO[A]): Either[IdentityFailure, A] =
     try Right(Await.result(database.run(action), Duration.Inf))

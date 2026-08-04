@@ -181,7 +181,10 @@ private[persistence] final class EventJournalSchema {
           |  CONSTRAINT sessions_time_order CHECK (
           |    created_at_millis <= last_seen_at_millis AND
           |    last_seen_at_millis <= idle_expires_at_millis AND
-          |    created_at_millis <= absolute_expires_at_millis
+          |    idle_expires_at_millis <= absolute_expires_at_millis AND
+          |    created_at_millis <= absolute_expires_at_millis AND
+          |    (revoked_at_millis IS NULL OR
+          |      created_at_millis <= revoked_at_millis)
           |  )
           |)""".stripMargin
       )
