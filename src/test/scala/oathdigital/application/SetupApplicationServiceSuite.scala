@@ -22,7 +22,7 @@ import oathdigital.setup.SetupViolation.WrongPlayer
 
 class SetupApplicationServiceSuite extends munit.FunSuite {
   private val catalogRef =
-    CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+    CatalogRef("oath-new-foundations", "2026.08.03-pre3")
   private val catalog: ExecutableCatalog =
     CatalogLoader
       .load(

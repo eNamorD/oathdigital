@@ -19,6 +19,8 @@ import oathdigital.setup.{SetupParticipant, SetupRules, SetupState}
 
 class SetupEventWireSuite extends munit.FunSuite {
   private val catalogRef =
+    CatalogRef("oath-new-foundations", "2026.08.03-pre3")
+  private val historicalCatalogRef =
     CatalogRef("oath-new-foundations", "2026.07.27-pre2")
   private val catalog: ExecutableCatalog =
     CatalogLoader
@@ -71,18 +73,42 @@ class SetupEventWireSuite extends munit.FunSuite {
     assertEquals(started.orderedSites, sites)
   }
 
-  test("version one encoding exactly matches the checked-in golden JSON") {
+  test("historical version one bytes decode but reject the current catalog") {
+    val historicalEvents = events.updated(
+      0,
+      SetupStarted(participants, historicalCatalogRef, sites)
+    )
+    val historicalRecorded = historicalEvents.zipWithIndex.map {
+      case (event, index) => RecordedEvent(index.toLong, event)
+    }
     val encoded = SetupEventWire
-      .encodeStream("game-golden-001", catalogRef, recorded)
+      .encodeStream(
+        "game-golden-001",
+        historicalCatalogRef,
+        historicalRecorded
+      )
       .toOption
       .get
     val golden =
       Files.readString(fixturePath, StandardCharsets.UTF_8).stripTrailing
 
     assertEquals(encoded, golden)
+    val decoded = SetupEventWire.decodeStream(golden).toOption.get
+    assertEquals(decoded.map(_.event), historicalEvents)
+    assertEquals(decoded.map(_.catalog).distinct, Vector(historicalCatalogRef))
+
+    val replayRecords = decoded.map { envelope =>
+      RecordedEvent(envelope.sequence, envelope.event)
+    }
+    val failure =
+      new EventReplayEngine(rules).replay(replayRecords).left.toOption.get
+    assertEquals(failure.index, 0L)
     assertEquals(
-      SetupEventWire.decodeStream(golden).toOption.get.map(_.event),
-      events
+      failure.violation,
+      oathdigital.setup.SetupViolation.IncompatibleCatalog(
+        catalogRef,
+        historicalCatalogRef
+      )
     )
   }
 

@@ -14,7 +14,7 @@ import oathdigital.setup.SetupCommand.PlacePawn
 
 object FirstGameSetupFixture {
   val catalogRef =
-    CatalogRef("oath-new-foundations", "2026.07.27-pre2")
+    CatalogRef("oath-new-foundations", "2026.08.03-pre3")
   val catalog: ExecutableCatalog =
     CatalogLoader
       .load(
