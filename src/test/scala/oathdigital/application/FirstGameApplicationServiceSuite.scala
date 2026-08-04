@@ -2,11 +2,16 @@ package oathdigital.application
 
 import java.nio.file.Files
 
-import oathdigital.model.PlayerId
+import oathdigital.model.{CatalogRef, PlayerId}
 import oathdigital.persistence.HsqldbEventStreamRepository
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.setup.FirstGameSetupFixture._
+import oathdigital.setup.FirstGameSetupEvent.{
+  FirstGamePawnPlaced,
+  FirstGameStarted
+}
+import oathdigital.setup.FirstGameSetupViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.setup.FirstGameSetupState.Ready
 
 class FirstGameApplicationServiceSuite extends munit.FunSuite {
@@ -95,6 +100,132 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
           ) => true
       case _ => false
     })
+  }
+
+  test("pre2 history is rejected by pre3 rules at its exact replay index") {
+    val repository = new InMemoryEventStreamRepository
+    val historical = CatalogRef(catalogRef.ruleset, "2026.07.27-pre2")
+    val record = FirstGameEventWire.encodeEvent(
+      "game-pre2",
+      historical,
+      0L,
+      FirstGameStarted(plan.copy(catalog = historical))
+    ).toOption.get
+    repository.seed("game-pre2", Vector(ujson.write(record)))
+
+    assertEquals(
+      new FirstGameApplicationService(catalog, repository).load("game-pre2"),
+      Left(FirstGameApplicationError.ReplayFailure(
+        0L,
+        CatalogMismatch(catalogRef, historical)
+      ))
+    )
+  }
+
+  test("v2 replay violations report the exact index and append nothing") {
+    val repository = new InMemoryEventStreamRepository
+    val records = Vector(
+      FirstGameEventWire.encodeEvent(
+        "game-replay-corrupt",
+        catalogRef,
+        0L,
+        FirstGameStarted(plan)
+      ).toOption.get,
+      FirstGameEventWire.encodeEvent(
+        "game-replay-corrupt",
+        catalogRef,
+        1L,
+        FirstGamePawnPlaced(PlayerId("p1"), sites.head)
+      ).toOption.get
+    ).map(ujson.write(_))
+    repository.seed("game-replay-corrupt", records)
+
+    assertEquals(
+      new FirstGameApplicationService(catalog, repository).handle(
+        "game-replay-corrupt",
+        2L,
+        FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+      ),
+      Left(FirstGameApplicationError.ReplayFailure(
+        1L,
+        WrongPlayer(PlayerId("p2"), PlayerId("p1"))
+      ))
+    )
+    assertEquals(
+      repository.load("game-replay-corrupt").toOption.flatten.get.records,
+      records
+    )
+  }
+
+  test("repository and envelope game identity mismatches append nothing") {
+    def repositoryFor(
+        storedGameId: String,
+        envelopeGameId: String
+    ): (EventStreamRepository, () => Int) = {
+      var appendCalls = 0
+      val record = FirstGameEventWire.encodeEvent(
+        envelopeGameId,
+        catalogRef,
+        0L,
+        FirstGameStarted(plan)
+      ).toOption.get
+      val repository = new EventStreamRepository {
+        override def load(gameId: String) = Right(Some(StoredEventStream(
+          storedGameId,
+          Vector(ujson.write(record))
+        )))
+        override def append(
+            gameId: String,
+            expected: ExpectedStream,
+            records: Vector[String]
+        ) = {
+          appendCalls += 1
+          Right(RepositoryAppendResult.Appended(1L, records.size))
+        }
+      }
+      repository -> (() => appendCalls)
+    }
+
+    Vector(
+      repositoryFor("game-b", "game-b"),
+      repositoryFor("game-a", "game-b")
+    ).foreach { case (repository, appendCalls) =>
+      assertEquals(
+        new FirstGameApplicationService(catalog, repository).handle(
+          "game-a",
+          1L,
+          FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+        ),
+        Left(FirstGameApplicationError.StreamIdentityMismatch(
+          "game-a",
+          "game-b"
+        ))
+      )
+      assertEquals(appendCalls(), 0)
+    }
+  }
+
+  test("authoritative v2 history cannot omit sequence zero") {
+    val repository = new InMemoryEventStreamRepository
+    val record = FirstGameEventWire.encodeEvent(
+      "game-missing-zero",
+      catalogRef,
+      1L,
+      FirstGameStarted(plan)
+    ).toOption.get
+    repository.seed("game-missing-zero", Vector(ujson.write(record)))
+
+    assertEquals(
+      new FirstGameApplicationService(catalog, repository)
+        .load("game-missing-zero"),
+      Left(FirstGameApplicationError.CodecFailure(
+        oathdigital.serialization.WireError.InvalidSequence(
+          "$[0].sequence",
+          0L,
+          1L
+        )
+      ))
+    )
   }
 
   test("player projection redacts other adviser hands and hidden orders") {

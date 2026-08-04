@@ -73,6 +73,46 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     )
   }
 
+  test("decoded v2 streams reject duplicate missing and out-of-order positions") {
+    Vector(
+      Vector(0L, 0L) -> WireError.InvalidSequence("$[1].sequence", 1L, 0L),
+      Vector(0L, 2L) -> WireError.InvalidSequence("$[1].sequence", 1L, 2L),
+      Vector(1L, 0L) -> WireError.InvalidSequence("$[1].sequence", 2L, 0L)
+    ).foreach { case (positions, expected) =>
+      val values = positions.map { sequence =>
+        val value = completedValue()
+        value("sequence") = ujson.Num(sequence.toDouble)
+        value
+      }
+      assertEquals(
+        FirstGameEventWire.decodeStream(ujson.write(ujson.Arr.from(values))),
+        Left(expected)
+      )
+    }
+  }
+
+  test("malformed unsupported and unknown v2 envelopes fail explicitly") {
+    assert(FirstGameEventWire.decodeStream("{").left.toOption.get
+      .isInstanceOf[WireError.MalformedJson])
+
+    val unsupported = completedValue()
+    unsupported("formatVersion") = 1
+    assertEquals(
+      FirstGameEventWire.decode(unsupported),
+      Left(WireError.UnsupportedFormatVersion("$.formatVersion", 1, 2))
+    )
+
+    val unknown = completedValue()
+    unknown("eventType") = "scala.internal.Event"
+    assertEquals(
+      FirstGameEventWire.decode(unknown),
+      Left(WireError.UnknownEventType(
+        "$.payload.eventType",
+        "scala.internal.Event"
+      ))
+    )
+  }
+
   test("single-event and batch writers preserve nonzero absolute sequences") {
     val single = FirstGameEventWire
       .encodeEvent("game", catalogRef, 41L, FirstGameCompleted)
