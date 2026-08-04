@@ -113,7 +113,10 @@ All endpoints are development-only:
 - `GET /api/dev/first-games/{gameId}?playerId={playerId}`
 
 `playerId` is a development selector for projection redaction, not
-authentication or authorization.
+authentication or authorization. It must match the actor in `placePawn` and
+`chooseAdviser` requests. Both route identifiers are limited to 128 characters
+and the conservative character set `A-Z`, `a-z`, `0-9`, `.`, `_`, `:`, and
+`-`.
 
 The development bootstrap route avoids copying the complete executable catalog
 and hidden plan into the browser. Its small body is:
@@ -147,17 +150,17 @@ The POST body is:
   "command": {
     "type": "chooseAdviser",
     "playerId": "p2",
-    "adviserId": "denizen:example"
+    "adviserId": "9"
   }
 }
 ```
 
-Command discriminators are `begin`, `placePawn`, and `chooseAdviser`. A begin
-command contains a `plan` using the explicit v2 plan fields: `catalog`,
-`participants`, `firstPlayer`, `orderedSites`, `denizenOrder`,
-`worldDeckOrder`, `relicOrder`, and `homelandEdifices`. No Scala class names or
-reflection are part of the protocol. Missing/wrong fields report JSON paths,
-and expected positions must be non-negative JSON-safe integers.
+The generic command route accepts only `placePawn` and `chooseAdviser`.
+Transport-level `begin` is rejected: bootstrap is the only HTTP creation path,
+and the full plan never comes from the browser. `Begin` remains an internal
+application command used by the server-derived bootstrap. No Scala class names
+or reflection are part of the protocol. Missing/wrong fields report JSON
+paths, and expected positions must be non-negative JSON-safe integers.
 
 Successful POST and GET responses share the player-scoped projection:
 
@@ -196,7 +199,9 @@ chooser. This is privacy shaping for development, not a security boundary.
 
 Malformed JSON is `400`, missing streams are `404`, stale client/repository
 position conflicts and duplicate creation are `409`, and domain command
-rejection is `422`. Corrupt stored streams and storage failures are `500`.
+rejection is `422`. Corrupt stored streams and storage failures are `500` with
+a stable generic response; internal exception and storage detail is logged but
+never returned to the client.
 
 For same-origin local development, build the frontend and start the server:
 
@@ -208,3 +213,9 @@ For same-origin local development, build the frontend and start the server:
 Open `http://127.0.0.1:8080/`. The server serves `frontend/index.html`, styles,
 and the generated Scala.js files from `frontend/`, so no development CORS
 permission is required.
+
+Because these routes are unauthenticated, `OathServer` refuses to install them
+on anything except `127.0.0.1`, `localhost`, or `::1`; wildcard and non-loopback
+host overrides fail startup. Real authentication, authorization, game
+membership checks, and a production transport must be implemented before any
+part of `/api/dev` can be promoted beyond loopback development.

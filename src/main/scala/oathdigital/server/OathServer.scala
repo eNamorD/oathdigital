@@ -21,7 +21,11 @@ object OathServer {
         "docs/catalog/new-foundations-component-catalog.json"
       )
     )
-    val host = sys.props.getOrElse("oathdigital.host", "127.0.0.1")
+    val configuredHost =
+      sys.props.getOrElse("oathdigital.host", "127.0.0.1")
+    val host = DevelopmentTrustBoundary
+      .validateLoopbackHost(configuredHost)
+      .fold(message => throw new IllegalArgumentException(message), identity)
     val port =
       sys.props.get("oathdigital.port").fold(8080)(_.toInt)
 

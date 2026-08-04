@@ -8,13 +8,9 @@ import oathdigital.application.{
   FirstGameBootstrapConfig,
   FirstGameProjection
 }
-import oathdigital.model._
+import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
 import oathdigital.serialization.FirstGameEventWire
-import oathdigital.setup.{
-  FirstGameParticipant,
-  FirstGameSetupPlan,
-  PlayerColor
-}
+import oathdigital.setup.PlayerColor
 
 final case class FirstGameCommandRequest(
     expectedNextSequence: Long,
@@ -147,9 +143,10 @@ object FirstGameHttpWire {
   ): Either[HttpInputError, FirstGameCommand] =
     stringField(obj, "type", path).flatMap {
       case "begin" =>
-        field(obj, "plan", path)
-          .flatMap(decodePlan(_, s"$path.plan"))
-          .map(FirstGameCommand.Begin)
+        Left(HttpInputError(
+          s"$path.type",
+          "begin is not accepted here; use the development bootstrap endpoint"
+        ))
       case "placePawn" =>
         for {
           player <- stringField(obj, "playerId", path)
@@ -170,86 +167,6 @@ object FirstGameHttpWire {
         ))
     }
 
-  private def decodePlan(
-      value: ujson.Value,
-      path: String
-  ): Either[HttpInputError, FirstGameSetupPlan] =
-    for {
-      obj <- objectValue(value, path)
-      catalogValue <- field(obj, "catalog", path)
-      catalogObject <- objectValue(catalogValue, s"$path.catalog")
-      ruleset <- stringField(catalogObject, "ruleset", s"$path.catalog")
-      version <- stringField(catalogObject, "version", s"$path.catalog")
-      participantsValue <- field(obj, "participants", path)
-      participantValues <- arrayValue(
-        participantsValue,
-        s"$path.participants"
-      )
-      participants <- traverse(participantValues.zipWithIndex) {
-        case (participant, index) =>
-          val itemPath = s"$path.participants[$index]"
-          for {
-            item <- objectValue(participant, itemPath)
-            player <- stringField(item, "playerId", itemPath)
-            lineage <- stringField(item, "lineageId", itemPath)
-            color <- stringField(item, "color", itemPath)
-          } yield FirstGameParticipant(
-            PlayerId(player),
-            LineageId(lineage),
-            PlayerColor(color)
-          )
-      }
-      firstPlayer <- stringField(obj, "firstPlayer", path)
-      orderedSites <- stringArray(obj, "orderedSites", path)
-      denizens <- stringArray(obj, "denizenOrder", path)
-      worldValue <- field(obj, "worldDeckOrder", path)
-      worldValues <- arrayValue(worldValue, s"$path.worldDeckOrder")
-      world <- traverse(worldValues.zipWithIndex) {
-        case (card, index) =>
-          val itemPath = s"$path.worldDeckOrder[$index]"
-          for {
-            item <- objectValue(card, itemPath)
-            kind <- stringField(item, "kind", itemPath)
-            id <- stringField(item, "id", itemPath)
-            result <- kind match {
-              case "denizen" =>
-                Right(DenizenId(id): WorldCardId)
-              case "vision" =>
-                Right(VisionId(id): WorldCardId)
-              case other =>
-                Left(HttpInputError(
-                  s"$itemPath.kind",
-                  s"unknown card kind '$other'"
-                ))
-            }
-          } yield result
-      }
-      relics <- stringArray(obj, "relicOrder", path)
-      homelandsValue <- field(obj, "homelandEdifices", path)
-      homelandValues <- arrayValue(
-        homelandsValue,
-        s"$path.homelandEdifices"
-      )
-      homelands <- traverse(homelandValues.zipWithIndex) {
-        case (entry, index) =>
-          val itemPath = s"$path.homelandEdifices[$index]"
-          for {
-            item <- objectValue(entry, itemPath)
-            site <- stringField(item, "siteId", itemPath)
-            edifice <- stringField(item, "edificeId", itemPath)
-          } yield SiteId(site) -> EdificeId(edifice)
-      }
-    } yield FirstGameSetupPlan(
-      CatalogRef(ruleset, version),
-      participants,
-      PlayerId(firstPlayer),
-      orderedSites.map(SiteId),
-      denizens.map(DenizenId),
-      world,
-      relics.map(RelicId),
-      homelands
-    )
-
   private def safeSequence(
       value: ujson.Value,
       path: String
@@ -268,20 +185,6 @@ object FirstGameHttpWire {
         ))
       case _ => Left(HttpInputError(path, "expected a number"))
     }
-
-  private def stringArray(
-      obj: ujson.Obj,
-      name: String,
-      path: String
-  ): Either[HttpInputError, Vector[String]] =
-    for {
-      value <- field(obj, name, path)
-      values <- arrayValue(value, s"$path.$name")
-      strings <- traverse(values.zipWithIndex) {
-        case (item, index) =>
-          stringValue(item, s"$path.$name[$index]")
-      }
-    } yield strings
 
   private def stringField(
       obj: ujson.Obj,

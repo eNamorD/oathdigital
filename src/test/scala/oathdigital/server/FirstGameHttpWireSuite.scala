@@ -4,30 +4,26 @@ import oathdigital.application.FirstGameCommand
 import oathdigital.serialization.{
   FirstGameEventWire
 }
-import oathdigital.setup.FirstGameSetupEvent.FirstGameStarted
-import oathdigital.setup.FirstGameSetupFixture._
 
 class FirstGameHttpWireSuite extends munit.FunSuite {
   private def beginRequest(expected: ujson.Value): String = {
-    val event = FirstGameEventWire
-      .encodeEvent("game", catalogRef, 0L, FirstGameStarted(plan))
-      .toOption.get
     ujson.write(ujson.Obj(
       "expectedNextSequence" -> expected,
       "command" -> ujson.Obj(
         "type" -> "begin",
-        "plan" -> event("payload")
+        "plan" -> ujson.Obj(
+          "relicOrder" -> ujson.Arr("hidden")
+        )
       )
     ))
   }
 
-  test("begin command decodes every structured plan field") {
-    val request =
-      FirstGameHttpWire.decodeCommand(beginRequest(ujson.Num(0)))
-        .toOption.get
+  test("generic command transport rejects begin and hidden plan input") {
+    val error = FirstGameHttpWire
+      .decodeCommand(beginRequest(ujson.Num(0))).left.toOption.get
 
-    assertEquals(request.expectedNextSequence, 0L)
-    assertEquals(request.command, FirstGameCommand.Begin(plan))
+    assertEquals(error.path, "$.command.type")
+    assert(error.message.contains("bootstrap"))
   }
 
   test("pawn and adviser commands use explicit discriminators") {
@@ -36,7 +32,7 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
         |"playerId":"p2","siteId":"site:a"}}""".stripMargin
     val adviser =
       """{"expectedNextSequence":2,"command":{"type":"chooseAdviser",
-        |"playerId":"p2","adviserId":"denizen:a"}}""".stripMargin
+        |"playerId":"p2","adviserId":"9"}}""".stripMargin
 
     assert(FirstGameHttpWire.decodeCommand(pawn).toOption.get.command
       .isInstanceOf[FirstGameCommand.PlacePawn])
@@ -47,23 +43,23 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
   test("development bootstrap decodes only participant configuration") {
     val json = ujson.write(ujson.Obj(
       "expectedNextSequence" -> 0,
-      "participants" -> ujson.Arr.from(participants.map { participant =>
+      "participants" -> ujson.Arr.from(Vector(
         ujson.Obj(
-          "playerId" -> participant.playerId.value,
-          "lineageId" -> participant.lineageId.value,
-          "color" -> participant.color.value
+          "playerId" -> "p1",
+          "lineageId" -> "l1",
+          "color" -> "red"
         )
-      }),
-      "firstPlayer" -> "p2"
+      )),
+      "firstPlayer" -> "p1"
     ))
     val request = FirstGameHttpWire.decodeBootstrap(json).toOption.get
 
     assertEquals(request.expectedNextSequence, 0L)
     assertEquals(
       request.config.participants.map(_.playerId),
-      participants.map(_.playerId)
+      Vector(oathdigital.model.PlayerId("p1"))
     )
-    assertEquals(request.config.firstPlayer.value, "p2")
+    assertEquals(request.config.firstPlayer.value, "p1")
     assert(!json.contains("relicOrder"))
     assert(!json.contains("worldDeckOrder"))
   }

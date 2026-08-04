@@ -11,6 +11,7 @@ import akka.http.scaladsl.model.{
   StatusCodes
 }
 import akka.http.scaladsl.server.{Directives, Route}
+import org.slf4j.LoggerFactory
 
 import oathdigital.application.{
   FirstGameApplicationError,
@@ -73,19 +74,21 @@ final class FirstGameRoutes(
     gateway: FirstGameServerGateway,
     blockingExecutionContext: ExecutionContext
 ) extends Directives {
+  private val logger = LoggerFactory.getLogger(classOf[FirstGameRoutes])
+
   val route: Route =
     pathPrefix("api" / "dev" / "first-games" / Segment) { gameId =>
       parameter("playerId") { playerId =>
-        if (playerId.trim.isEmpty)
-          complete(jsonResponse(
-            StatusCodes.BadRequest,
-            "malformed-request",
-            "$.playerId: must not be blank"
-          ))
-        else
+        validateIdentifiers(gameId, playerId) match {
+          case Left(error) =>
+            complete(inputError(error))
+          case Right((validGameId, validPlayerId)) =>
           pathEndOrSingleSlash {
             get {
-              completeAsync(gateway.load(gameId, PlayerId(playerId)))
+              completeAsync(gateway.load(
+                validGameId,
+                PlayerId(validPlayerId)
+              ))
             }
           } ~
             path("commands") {
@@ -99,12 +102,21 @@ final class FirstGameRoutes(
                         s"${error.path}: ${error.message}"
                       ))
                     case Right(request) =>
-                      completeAsync(gateway.submit(
-                        gameId,
-                        PlayerId(playerId),
-                        request.expectedNextSequence,
-                        request.command
-                      ))
+                      validateActor(validPlayerId, request.command) match {
+                        case Left(error) =>
+                          complete(jsonResponse(
+                            StatusCodes.BadRequest,
+                            "actor-selector-mismatch",
+                            s"${error.path}: ${error.message}"
+                          ))
+                        case Right(_) =>
+                          completeAsync(gateway.submit(
+                            validGameId,
+                            PlayerId(validPlayerId),
+                            request.expectedNextSequence,
+                            request.command
+                          ))
+                      }
                   }
                 }
               }
@@ -121,14 +133,15 @@ final class FirstGameRoutes(
                       ))
                     case Right(request) =>
                       completeAsync(gateway.bootstrap(
-                        gameId,
-                        PlayerId(playerId),
+                        validGameId,
+                        PlayerId(validPlayerId),
                         request
                       ))
                   }
                 }
               }
             }
+        }
       }
     }
 
@@ -145,35 +158,83 @@ final class FirstGameRoutes(
           )
         ))
       case Success(Left(error)) =>
-        val (status, code) = statusFor(error)
-        complete(jsonResponse(status, code, error.toString))
+        val (status, code, message, internal) = publicError(error)
+        if (internal)
+          logger.error("Internal first-game application failure: {}", error)
+        complete(jsonResponse(status, code, message))
       case Failure(error) =>
+        logger.error("Unhandled first-game route failure", error)
         complete(jsonResponse(
           StatusCodes.InternalServerError,
           "internal-error",
-          Option(error.getMessage).getOrElse("unexpected server failure")
+          "the server could not complete the request"
         ))
     }
 
-  private def statusFor(
+  private def publicError(
       error: FirstGameApplicationError
-  ): (StatusCode, String) =
+  ): (StatusCode, String, String, Boolean) =
     error match {
       case _: FirstGameApplicationError.StreamNotFound =>
-        StatusCodes.NotFound -> "stream-not-found"
+        (StatusCodes.NotFound, "stream-not-found",
+          "the requested game does not exist", false)
       case _: FirstGameApplicationError.StaleClientPosition =>
-        StatusCodes.Conflict -> "stale-client-position"
+        (StatusCodes.Conflict, "stale-client-position",
+          "the client position is stale; refresh and retry", false)
       case _: FirstGameApplicationError.SequenceConflict =>
-        StatusCodes.Conflict -> "sequence-conflict"
+        (StatusCodes.Conflict, "sequence-conflict",
+          "the game changed while the command was handled", false)
       case _: FirstGameApplicationError.DuplicateGame =>
-        StatusCodes.Conflict -> "duplicate-game"
+        (StatusCodes.Conflict, "duplicate-game",
+          "the game already exists", false)
       case _: FirstGameApplicationError.CommandRejected =>
-        StatusCodes.UnprocessableContent -> "command-rejected"
+        (StatusCodes.UnprocessableContent, "command-rejected",
+          "the setup rules rejected the command", false)
       case _: FirstGameApplicationError.BootstrapFailure =>
-        StatusCodes.UnprocessableContent -> "bootstrap-failed"
+        (StatusCodes.UnprocessableContent, "bootstrap-failed",
+          "the development setup configuration is invalid", false)
       case _ =>
-        StatusCodes.InternalServerError -> "stream-failure"
+        (StatusCodes.InternalServerError, "internal-error",
+          "the server could not complete the request", true)
     }
+
+  private def validateIdentifiers(
+      gameId: String,
+      playerId: String
+  ): Either[HttpInputError, (String, String)] =
+    for {
+      game <- DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId")
+      player <- DevelopmentTrustBoundary.validateIdentifier(
+        playerId,
+        "$.playerId"
+      )
+    } yield game -> player
+
+  private def validateActor(
+      selector: String,
+      command: FirstGameCommand
+  ): Either[HttpInputError, Unit] = {
+    val actor = command match {
+      case FirstGameCommand.PlacePawn(playerId, _) => Some(playerId.value)
+      case FirstGameCommand.ChooseAdviser(playerId, _) => Some(playerId.value)
+      case FirstGameCommand.Begin(_) => None
+    }
+    actor match {
+      case Some(value) if value != selector =>
+        Left(HttpInputError(
+          "$.command.playerId",
+          "must match the development playerId selector"
+        ))
+      case _ => Right(())
+    }
+  }
+
+  private def inputError(error: HttpInputError): HttpResponse =
+    jsonResponse(
+      StatusCodes.BadRequest,
+      "malformed-request",
+      s"${error.path}: ${error.message}"
+    )
 
   private def jsonResponse(
       status: StatusCode,
