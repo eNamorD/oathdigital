@@ -21,7 +21,7 @@ been reviewed.
   - [x] Add schema-v2 provider-neutral users, OIDC identity links,
     pre-bootstrap game resources, constrained memberships, and digest-only
     revocable sessions with transactional repositories.
-  - [ ] Unify event-journal and identity adapters under one coordinated HSQLDB
+  - [x] Unify event-journal and identity adapters under one coordinated HSQLDB
     pool and shutdown lifecycle before integrating them into the server.
   - [ ] Add the authenticated-principal boundary and loopback-only development
     identity shim.
@@ -87,7 +87,7 @@ been reviewed.
   integrity, concurrent creation/appends, atomic rollback, restart durability,
   and stale HTTP command handling.
 
-The combined milestone passes 121 JVM tests, 31 Scala.js tests, the Scala.js
+The combined milestone passes 131 JVM tests, 31 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
