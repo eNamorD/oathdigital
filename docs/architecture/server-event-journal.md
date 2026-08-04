@@ -50,6 +50,24 @@ delimiter or control delimiters are rejected before a JDBC URL is constructed.
 `envelope_json` is stored opaquely and exactly as supplied. The application
 wire decoder remains responsible for format versions and semantic validation.
 
+Schema version 2 adds provider-neutral operational identity state:
+
+- `users` and `external_identities`, with external identity uniqueness on
+  `(provider, subject)`;
+- `game_resources`, which may be created before an authoritative event stream;
+- `game_memberships`, uniquely keyed by `(game_id, user_id)`, with roles
+  `owner`, `player`, and `spectator`, plus a unique occupied player seat per
+  game; and
+- `sessions`, keyed by an exact 32-byte cryptographic token digest and storing
+  creation, last-seen, idle-expiry, absolute-expiry, and revocation times.
+
+Memberships reference `game_resources`, not `event_streams`. This deliberately
+allows an owner and player seats to be provisioned before bootstrap creates the
+domain stream. Authenticated production gateways must require this resource
+and membership before invoking bootstrap. Existing development or historical
+streams are not reinterpreted as identity records. Raw bearer tokens are not
+accepted by the storage-neutral repository API and are never stored.
+
 ## Transaction and conflict semantics
 
 An append locks the stream row, reads its next sequence, compares
@@ -69,10 +87,12 @@ failures are not an idempotency protocol and must not be blindly replayed.
 ## HRF concepts
 
 Retained from HRF are durable journal/entry separation, stable journal
-identity, ordered entry positions, and server-owned access to persistence.
-Oath stores explicit domain-event envelopes rather than serialized actions.
-Users, invitations, journal sharing, and access-right tables are deferred until
-authentication and multiplayer ownership requirements are defined.
+identity, ordered entry positions, internal user identity, explicit relational
+resource access, and server-owned persistence. Oath uses typed membership roles
+instead of HRF's stringly `full/read/append` rights and stores explicit domain
+event envelopes rather than serialized actions. HRF's raw reusable secrets,
+URL credentials, and client-supplied identity are not copied. OIDC transport,
+cookie issuance, invitations, and notifications remain later X6 work.
 
 ## Run and shutdown
 

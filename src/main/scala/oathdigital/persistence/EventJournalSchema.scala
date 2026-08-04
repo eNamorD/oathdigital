@@ -6,7 +6,7 @@ import slick.dbio.DBIO
 import slick.jdbc.HsqldbProfile.api._
 
 private[persistence] final class EventJournalSchema {
-  val TargetVersion: Int = 1
+  val TargetVersion: Int = 2
 
   val initialize: DBIO[Unit] =
     SimpleDBIO[Unit] { context =>
@@ -30,7 +30,10 @@ private[persistence] final class EventJournalSchema {
       readVersions(context.connection).lastOption.getOrElse(0))
 
   private val migrations: Vector[(Int, Connection => Unit)] =
-    Vector(1 -> createEventJournal _)
+    Vector(
+      1 -> createEventJournal _,
+      2 -> createIdentityFoundation _
+    )
 
   private def createVersionLedger(connection: Connection): Unit = {
     val statement = connection.createStatement()
@@ -111,6 +114,75 @@ private[persistence] final class EventJournalSchema {
           |  CONSTRAINT event_entries_pk PRIMARY KEY (game_id, sequence),
           |  CONSTRAINT event_entries_stream_fk FOREIGN KEY (game_id)
           |    REFERENCES event_streams(game_id) ON DELETE CASCADE
+          |)""".stripMargin
+      )
+    } finally statement.close()
+  }
+
+  private def createIdentityFoundation(connection: Connection): Unit = {
+    val statement = connection.createStatement()
+    try {
+      statement.execute(
+        """CREATE TABLE users (
+          |  user_id VARCHAR(128) PRIMARY KEY,
+          |  display_name VARCHAR(128) NOT NULL,
+          |  created_at_millis BIGINT NOT NULL
+          |)""".stripMargin
+      )
+      statement.execute(
+        """CREATE TABLE external_identities (
+          |  provider VARCHAR(128) NOT NULL,
+          |  subject VARCHAR(255) NOT NULL,
+          |  user_id VARCHAR(128) NOT NULL,
+          |  CONSTRAINT external_identities_pk PRIMARY KEY (provider, subject),
+          |  CONSTRAINT external_identities_user_fk FOREIGN KEY (user_id)
+          |    REFERENCES users(user_id)
+          |)""".stripMargin
+      )
+      statement.execute(
+        """CREATE TABLE game_resources (
+          |  game_id VARCHAR(255) PRIMARY KEY,
+          |  created_at_millis BIGINT NOT NULL
+          |)""".stripMargin
+      )
+      statement.execute(
+        """CREATE TABLE game_memberships (
+          |  game_id VARCHAR(255) NOT NULL,
+          |  user_id VARCHAR(128) NOT NULL,
+          |  membership_role VARCHAR(16) NOT NULL,
+          |  player_id VARCHAR(128),
+          |  created_at_millis BIGINT NOT NULL,
+          |  CONSTRAINT game_memberships_pk PRIMARY KEY (game_id, user_id),
+          |  CONSTRAINT game_memberships_seat_unique UNIQUE (game_id, player_id),
+          |  CONSTRAINT game_memberships_game_fk FOREIGN KEY (game_id)
+          |    REFERENCES game_resources(game_id) ON DELETE CASCADE,
+          |  CONSTRAINT game_memberships_user_fk FOREIGN KEY (user_id)
+          |    REFERENCES users(user_id),
+          |  CONSTRAINT game_memberships_role CHECK (
+          |    membership_role IN ('owner', 'player', 'spectator')
+          |  ),
+          |  CONSTRAINT game_memberships_role_seat CHECK (
+          |    (membership_role = 'player' AND player_id IS NOT NULL) OR
+          |    (membership_role <> 'player' AND player_id IS NULL)
+          |  )
+          |)""".stripMargin
+      )
+      statement.execute(
+        """CREATE TABLE sessions (
+          |  token_digest BINARY(32) PRIMARY KEY,
+          |  user_id VARCHAR(128) NOT NULL,
+          |  created_at_millis BIGINT NOT NULL,
+          |  last_seen_at_millis BIGINT NOT NULL,
+          |  idle_expires_at_millis BIGINT NOT NULL,
+          |  absolute_expires_at_millis BIGINT NOT NULL,
+          |  revoked_at_millis BIGINT,
+          |  CONSTRAINT sessions_user_fk FOREIGN KEY (user_id)
+          |    REFERENCES users(user_id),
+          |  CONSTRAINT sessions_time_order CHECK (
+          |    created_at_millis <= last_seen_at_millis AND
+          |    last_seen_at_millis <= idle_expires_at_millis AND
+          |    created_at_millis <= absolute_expires_at_millis
+          |  )
           |)""".stripMargin
       )
     } finally statement.close()
