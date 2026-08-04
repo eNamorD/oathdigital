@@ -77,6 +77,9 @@ trait IdentityRepository {
   ): Either[IdentityFailure, Unit]
   def findMembership(gameId: String, userId: UserId)
       : Either[IdentityFailure, Option[GameMembership]]
+  /** Owner, players by player ID, then spectators; ties use user ID. */
+  def listMemberships(gameId: String)
+      : Either[IdentityFailure, Vector[GameMembership]]
   def createSession(session: StoredSession): Either[IdentityFailure, Unit]
   def resolveSession(
       digest: SessionTokenDigest,

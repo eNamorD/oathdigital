@@ -14,4 +14,31 @@ class AuthenticatedFirstGameHttpWireSuite extends munit.FunSuite {
       "$.intent.playerId"
     )
   }
+
+  test("authenticated bootstrap accepts only visible seat configuration") {
+    val valid =
+      """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""
+    val decoded = AuthenticatedFirstGameHttpWire.decodeBootstrap(valid)
+      .toOption.get
+    assertEquals(decoded.config.participants.map(_.playerId.value), Vector("p1"))
+
+    Vector("userId", "actor", "worldDeckOrder", "denizenOrder", "relicOrder")
+      .foreach { field =>
+        val json = ujson.read(valid).obj
+        json(field) = ujson.Str("not-accepted")
+        assertEquals(
+          AuthenticatedFirstGameHttpWire.decodeBootstrap(ujson.write(json))
+            .left.toOption.get.path,
+          s"$$.$field"
+        )
+      }
+
+    val withIdentity = ujson.read(valid).obj
+    withIdentity("participants").arr.head.obj("userId") = ujson.Str("user-1")
+    assertEquals(
+      AuthenticatedFirstGameHttpWire.decodeBootstrap(ujson.write(withIdentity))
+        .left.toOption.get.path,
+      "$.participants[0].userId"
+    )
+  }
 }

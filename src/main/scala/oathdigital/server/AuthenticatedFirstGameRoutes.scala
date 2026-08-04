@@ -22,12 +22,18 @@ object AuthenticatedGameFailure {
       extends AuthenticatedGameFailure
   final case class Application(error: FirstGameApplicationError)
       extends AuthenticatedGameFailure
+  final case class Identity(error: IdentityFailure)
+      extends AuthenticatedGameFailure
+  final case class BootstrapConfiguration(message: String)
+      extends AuthenticatedGameFailure
 }
 
 final class AuthenticatedFirstGameGateway(
     service: FirstGameApplicationService,
     projector: FirstGameProjector,
-    authorization: MembershipAuthorizationService
+    authorization: MembershipAuthorizationService,
+    identities: IdentityRepository,
+    planFactory: FirstGamePlanFactory
 ) {
   import AuthenticatedGameFailure._
 
@@ -72,6 +78,55 @@ final class AuthenticatedFirstGameGateway(
             actor.access.playerId
           ))
       }
+
+  def bootstrap(
+      gameId: String,
+      principal: AuthenticatedPrincipal,
+      request: AuthenticatedBootstrapRequest
+  ): Either[AuthenticatedGameFailure, FirstGameProjection] =
+    authorization.authorizeBootstrap(gameId, principal)
+      .left.map(Authorization)
+      .flatMap { _ =>
+        identities.listMemberships(gameId).left.map(Identity).flatMap {
+          memberships =>
+            validateSeats(memberships, request.config).flatMap { _ =>
+              planFactory.build(request.config)
+                .left.map(failure => BootstrapConfiguration(failure.message))
+                .flatMap(plan => service.handle(
+                  gameId,
+                  request.expectedNextSequence,
+                  FirstGameCommand.Begin(plan)
+                ).left.map(Application))
+                .map(accepted => projector.projectPublic(
+                  gameId,
+                  LoadedFirstGame(accepted.state, accepted.nextSequence)
+                ))
+            }
+        }
+      }
+
+  private def validateSeats(
+      memberships: Vector[GameMembership],
+      config: FirstGameBootstrapConfig
+  ): Either[AuthenticatedGameFailure, Unit] = {
+    val playerMemberships = memberships.filter(_.role == MembershipRole.Player)
+    val provisionedSeats = playerMemberships.flatMap(_.playerId)
+    val requestedSeats = config.participants.map(_.playerId.value)
+    if (provisionedSeats.size != playerMemberships.size ||
+        provisionedSeats.distinct.size != provisionedSeats.size)
+      Left(BootstrapConfiguration("provisioned player memberships are invalid"))
+    else if (requestedSeats.distinct.size != requestedSeats.size)
+      Left(BootstrapConfiguration("participant player IDs must be unique"))
+    else if (requestedSeats.toSet != provisionedSeats.toSet)
+      Left(BootstrapConfiguration(
+        "participants must exactly match provisioned player memberships"
+      ))
+    else if (!provisionedSeats.contains(config.firstPlayer.value))
+      Left(BootstrapConfiguration(
+        "first player must be a provisioned player membership"
+      ))
+    else Right(())
+  }
 }
 
 final class AuthenticatedFirstGameRoutes(
@@ -129,6 +184,21 @@ final class AuthenticatedFirstGameRoutes(
                         }
                       }
                     }
+                  } ~ path("bootstrap") {
+                    post {
+                      entity(as[String]) { body =>
+                        AuthenticatedFirstGameHttpWire.decodeBootstrap(body) match {
+                          case Left(error) => complete(response(
+                            StatusCodes.BadRequest,
+                            "malformed-request",
+                            s"${error.path}: ${error.message}"
+                          ))
+                          case Right(request) => completeAsync(
+                            gateway.bootstrap(validGameId, principal, request)
+                          )
+                        }
+                      }
+                    }
                   }
               }
             }
@@ -172,6 +242,16 @@ final class AuthenticatedFirstGameRoutes(
     case AuthenticatedGameFailure.Authorization(_) =>
       (StatusCodes.InternalServerError, "internal-error",
         "the server could not complete the request", true)
+    case AuthenticatedGameFailure.Identity(
+          IdentityFailure.GameNotFound(_)) =>
+      (StatusCodes.NotFound, "game-not-found",
+        "the requested game resource does not exist", false)
+    case AuthenticatedGameFailure.Identity(_) =>
+      (StatusCodes.InternalServerError, "internal-error",
+        "the server could not complete the request", true)
+    case _: AuthenticatedGameFailure.BootstrapConfiguration =>
+      (StatusCodes.UnprocessableContent, "membership-configuration-mismatch",
+        "participants must exactly match the provisioned player seats", false)
     case AuthenticatedGameFailure.Application(error) => error match {
       case _: FirstGameApplicationError.StreamNotFound =>
         (StatusCodes.NotFound, "stream-not-found",
@@ -185,6 +265,9 @@ final class AuthenticatedFirstGameRoutes(
       case _: FirstGameApplicationError.CommandRejected =>
         (StatusCodes.UnprocessableContent, "command-rejected",
           "the setup rules rejected the command", false)
+      case _: FirstGameApplicationError.DuplicateGame =>
+        (StatusCodes.Conflict, "duplicate-game",
+          "the game event stream already exists", false)
       case _ =>
         (StatusCodes.InternalServerError, "internal-error",
           "the server could not complete the request", true)

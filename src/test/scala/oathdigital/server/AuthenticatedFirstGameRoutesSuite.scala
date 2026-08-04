@@ -56,7 +56,9 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
     val gateway = new AuthenticatedFirstGameGateway(
       service,
       new FirstGameProjector(catalog),
-      new MembershipAuthorizationService(identities)
+      new MembershipAuthorizationService(identities),
+      identities,
+      new DevelopmentFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(

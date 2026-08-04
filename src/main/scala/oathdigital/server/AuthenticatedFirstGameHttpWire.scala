@@ -2,8 +2,13 @@ package oathdigital.server
 
 import scala.util.control.NonFatal
 
-import oathdigital.model.{DenizenId, SiteId}
+import oathdigital.application.{
+  BootstrapParticipant,
+  FirstGameBootstrapConfig
+}
+import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
 import oathdigital.serialization.FirstGameEventWire
+import oathdigital.setup.PlayerColor
 
 sealed trait FirstGameIntent extends Product with Serializable
 object FirstGameIntent {
@@ -16,7 +21,58 @@ final case class AuthenticatedCommandRequest(
     intent: FirstGameIntent
 )
 
+final case class AuthenticatedBootstrapRequest(
+    expectedNextSequence: Long,
+    config: FirstGameBootstrapConfig
+)
+
 object AuthenticatedFirstGameHttpWire {
+  def decodeBootstrap(
+      json: String
+  ): Either[HttpInputError, AuthenticatedBootstrapRequest] =
+    try {
+      for {
+        root <- objectValue(ujson.read(json), "$")
+        _ <- exactFields(
+          root,
+          Set("expectedNextSequence", "participants", "firstPlayer"),
+          "$"
+        )
+        expectedValue <- field(root, "expectedNextSequence", "$")
+        expected <- safeSequence(expectedValue, "$.expectedNextSequence")
+        participantsValue <- field(root, "participants", "$")
+        participantValues <- arrayValue(participantsValue, "$.participants")
+        participants <- traverse(participantValues.zipWithIndex) {
+          case (value, index) =>
+            val path = s"$$.participants[$index]"
+            for {
+              obj <- objectValue(value, path)
+              _ <- exactFields(
+                obj,
+                Set("playerId", "lineageId", "color"),
+                path
+              )
+              playerId <- stringField(obj, "playerId", path)
+              lineageId <- stringField(obj, "lineageId", path)
+              color <- stringField(obj, "color", path)
+            } yield BootstrapParticipant(
+              PlayerId(playerId),
+              LineageId(lineageId),
+              PlayerColor(color)
+            )
+        }
+        firstPlayer <- stringField(root, "firstPlayer", "$")
+      } yield AuthenticatedBootstrapRequest(
+        expected,
+        FirstGameBootstrapConfig(participants, PlayerId(firstPlayer))
+      )
+    } catch {
+      case NonFatal(error) => Left(HttpInputError(
+        "$",
+        Option(error.getMessage).getOrElse("malformed JSON")
+      ))
+    }
+
   def decodeCommand(
       json: String
   ): Either[HttpInputError, AuthenticatedCommandRequest] =
@@ -85,6 +141,20 @@ object AuthenticatedFirstGameHttpWire {
 
   private def field(obj: ujson.Obj, name: String, path: String) =
     obj.value.get(name).toRight(HttpInputError(s"$path.$name", "field is required"))
+
+  private def arrayValue(value: ujson.Value, path: String) = value match {
+    case array: ujson.Arr => Right(array.value.toVector)
+    case _ => Left(HttpInputError(path, "expected an array"))
+  }
+
+  private def traverse[A, B](values: Vector[A])(
+      decode: A => Either[HttpInputError, B]
+  ): Either[HttpInputError, Vector[B]] =
+    values.foldLeft[Either[HttpInputError, Vector[B]]](Right(Vector.empty)) {
+      case (Right(accumulated), value) =>
+        decode(value).map(accumulated :+ _)
+      case (failure @ Left(_), _) => failure
+    }
 
   private def objectValue(value: ujson.Value, path: String) = value match {
     case obj: ujson.Obj => Right(obj)

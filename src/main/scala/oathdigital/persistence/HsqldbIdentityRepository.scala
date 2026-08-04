@@ -203,6 +203,36 @@ final class HsqldbIdentityRepository private[persistence] (
       } finally statement.close()
     }
 
+  override def listMemberships(
+      gameId: String
+  ): Either[IdentityFailure, Vector[GameMembership]] =
+    runExpected("list game memberships") { connection =>
+      if (!exists(connection, "game_resources", "game_id", gameId))
+        Left(GameNotFound(gameId))
+      else {
+        val statement = connection.prepareStatement(
+          """SELECT user_id, membership_role, player_id
+            |FROM game_memberships WHERE game_id = ?""".stripMargin
+        )
+        try {
+          statement.setString(1, gameId)
+          val rows = statement.executeQuery()
+          val result = Vector.newBuilder[GameMembership]
+          while (rows.next()) result += GameMembership(
+            gameId,
+            UserId(rows.getString(1)),
+            parseRole(rows.getString(2)),
+            Option(rows.getString(3))
+          )
+          Right(result.result().sortBy(membership => (
+            roleOrder(membership.role),
+            membership.playerId.getOrElse(""),
+            membership.userId.value
+          )))
+        } finally statement.close()
+      }
+    }
+
   override def createSession(
       session: StoredSession
   ): Either[IdentityFailure, Unit] =
@@ -460,6 +490,12 @@ final class HsqldbIdentityRepository private[persistence] (
     case Owner => "owner"
     case Player => "player"
     case Spectator => "spectator"
+  }
+
+  private def roleOrder(role: MembershipRole): Int = role match {
+    case Owner => 0
+    case Player => 1
+    case Spectator => 2
   }
 
   private def constraintViolation(error: SQLException): Boolean =

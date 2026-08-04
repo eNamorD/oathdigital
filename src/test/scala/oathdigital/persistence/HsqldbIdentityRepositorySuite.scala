@@ -94,6 +94,13 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       )
       assertEquals(
         repository.addMembership(
+          GameMembership("game-1", UserId("user-other"), Player, Some("p0")),
+          2L
+        ),
+        Right(())
+      )
+      assertEquals(
+        repository.addMembership(
           GameMembership("game-1", player, Spectator, None),
           2L
         ),
@@ -111,6 +118,20 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
           2L
         ),
         Right(())
+      )
+      assertEquals(
+        repository.listMemberships("game-1"),
+        Right(Vector(
+          GameMembership("game-1", owner, Owner, None),
+          GameMembership(
+            "game-1", UserId("user-other"), Player, Some("p0")),
+          GameMembership("game-1", player, Player, Some("p1")),
+          GameMembership("game-1", spectator, Spectator, None)
+        ))
+      )
+      assertEquals(
+        repository.listMemberships("missing"),
+        Left(GameNotFound("missing"))
       )
     } finally repository.close()
   }
@@ -198,6 +219,8 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     val repository = open(databasePath("storage-failure"))
     repository.close()
     assert(repository.createUser(owner, "Owner", 0L).left.toOption.get
+      .isInstanceOf[StorageFailure])
+    assert(repository.listMemberships("game-1").left.toOption.get
       .isInstanceOf[StorageFailure])
   }
 

@@ -147,6 +147,8 @@ final class OwnedHsqldbIdentityRepository private (
     adapter.addMembership(membership, now)
   override def findMembership(gameId: String, userId: UserId) =
     adapter.findMembership(gameId, userId)
+  override def listMemberships(gameId: String) =
+    adapter.listMemberships(gameId)
   override def createSession(session: StoredSession) =
     adapter.createSession(session)
   override def resolveSession(digest: SessionTokenDigest, now: Long) =

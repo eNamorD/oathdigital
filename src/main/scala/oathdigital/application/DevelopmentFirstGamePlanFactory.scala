@@ -26,13 +26,20 @@ final case class FirstGameBootstrapConfig(
 
 final case class BootstrapPlanFailure(message: String)
 
+trait FirstGamePlanFactory {
+  def build(
+      config: FirstGameBootstrapConfig
+  ): Either[BootstrapPlanFailure, FirstGameSetupPlan]
+}
+
 /**
  * Development-only deterministic plan derivation.
  *
  * This is reproducible fixture construction, not production randomness.
  */
-final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog) {
-  def build(
+final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
+    extends FirstGamePlanFactory {
+  override def build(
       config: FirstGameBootstrapConfig
   ): Either[BootstrapPlanFailure, FirstGameSetupPlan] =
     for {

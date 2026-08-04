@@ -157,6 +157,7 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
     override def findUser(identity: ExternalIdentity) = unused
     override def createGame(gameId: String, owner: UserId, now: Long) = unused
     override def addMembership(membership: GameMembership, now: Long) = unused
+    override def listMemberships(gameId: String) = unused
     override def createSession(session: StoredSession) = unused
     override def resolveSession(digest: SessionTokenDigest, now: Long) = unused
     override def revokeSession(digest: SessionTokenDigest, now: Long) = unused

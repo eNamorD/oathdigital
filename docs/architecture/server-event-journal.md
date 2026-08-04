@@ -129,7 +129,8 @@ redirect/callback handling remain later slices.
 The separately mountable authenticated game transport is:
 
 - `GET /api/authenticated/first-games/{gameId}`; and
-- `POST /api/authenticated/first-games/{gameId}/commands`.
+- `POST /api/authenticated/first-games/{gameId}/commands`; and
+- `POST /api/authenticated/first-games/{gameId}/bootstrap`.
 
 It is not yet mounted by `OathServer`. Both operations authenticate an injected
 request boundary before membership lookup and reject query parameters. GET has
@@ -137,7 +138,14 @@ no player selector. POST accepts `expectedNextSequence` plus an actor-free
 `intent`: `placePawn` contains only `siteId`, and `chooseAdviser` contains only
 `adviserId`. Unknown fields, including `playerId`, are rejected. Membership
 constructs the domain actor, and mutations are attempted once without retry.
-The existing `/api/dev` API and bootstrap creation remain unchanged.
+Authenticated bootstrap requires the owner membership and a pre-provisioned
+game resource. Its participant list must exactly match every provisioned
+`player` membership; owner and spectator memberships are never setup seats.
+The request selects only participant order, lineage, color, and first player.
+The server derives every hidden site, deck, denizen, and relic ordering from the
+executable catalog and creates the event stream once. The current membership
+model deliberately does not let the owner also occupy a player seat. The
+existing `/api/dev` API and bootstrap creation remain unchanged.
 
 ## Run and shutdown
 
