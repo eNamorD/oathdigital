@@ -201,7 +201,7 @@ class FirstGameSetupRulesSuite extends munit.FunSuite {
     assertEquals(allDenizens.distinct.size, allDenizens.size)
     assertEquals(allRelics.toSet, relics.toSet)
     assertEquals(allRelics.distinct.size, relics.size)
-    assert(!allRelics.contains(RelicId("relic:the-grand-scepter")))
+    assert(!allRelics.contains(RelicId("grand-scepter")))
   }
 
   test("placement order and adviser ownership are enforced") {
