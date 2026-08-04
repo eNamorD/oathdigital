@@ -18,6 +18,17 @@ been reviewed.
     outside this milestone.
   - Initially allow each authenticated user to occupy at most one player seat
     per game.
+  - [x] Add schema-v2 provider-neutral users, OIDC identity links,
+    pre-bootstrap game resources, constrained memberships, and digest-only
+    revocable sessions with transactional repositories.
+  - [ ] Unify event-journal and identity adapters under one coordinated HSQLDB
+    pool and shutdown lifecycle before integrating them into the server.
+  - [ ] Add the authenticated-principal boundary and loopback-only development
+    identity shim.
+  - [ ] Authorize projections, polling, commands, and bootstrap from durable
+    membership without accepting caller-selected production identity.
+  - [ ] Add OIDC Authorization Code + PKCE, secure cookie lifecycle, CSRF and
+    origin validation, and the non-loopback deployment gate.
 
 ## Next
 
