@@ -126,6 +126,19 @@ transport, apply membership-derived projection and command authorization, and
 keep the current development API isolated. Cookie issuance, CSRF, and OIDC
 redirect/callback handling remain later slices.
 
+The separately mountable authenticated game transport is:
+
+- `GET /api/authenticated/first-games/{gameId}`; and
+- `POST /api/authenticated/first-games/{gameId}/commands`.
+
+It is not yet mounted by `OathServer`. Both operations authenticate an injected
+request boundary before membership lookup and reject query parameters. GET has
+no player selector. POST accepts `expectedNextSequence` plus an actor-free
+`intent`: `placePawn` contains only `siteId`, and `chooseAdviser` contains only
+`adviserId`. Unknown fields, including `playerId`, are rejected. Membership
+constructs the domain actor, and mutations are attempted once without retry.
+The existing `/api/dev` API and bootstrap creation remain unchanged.
+
 ## Run and shutdown
 
 Start the server with a database path and optional catalog path:

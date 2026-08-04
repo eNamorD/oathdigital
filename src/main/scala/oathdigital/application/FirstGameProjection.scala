@@ -43,6 +43,17 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
       gameId: String,
       loaded: LoadedFirstGame,
       requestingPlayer: PlayerId
+  ): FirstGameProjection = projectFor(gameId, loaded, Some(requestingPlayer))
+
+  def projectPublic(
+      gameId: String,
+      loaded: LoadedFirstGame
+  ): FirstGameProjection = projectFor(gameId, loaded, None)
+
+  private def projectFor(
+      gameId: String,
+      loaded: LoadedFirstGame,
+      requestingPlayer: Option[PlayerId]
   ): FirstGameProjection =
     loaded.state match {
       case NoGame =>
@@ -71,13 +82,14 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
         val phase =
           if (awaitingAdviser) "awaiting-adviser" else "awaiting-pawn"
         val controls =
-          if (active != requestingPlayer) Vector.empty
+          if (!requestingPlayer.contains(active)) Vector.empty
           else if (awaitingAdviser) Vector("chooseAdviser")
           else Vector("placePawn")
         val privateChoices =
-          if (active == requestingPlayer && awaitingAdviser) {
+          if (requestingPlayer.contains(active) && awaitingAdviser) {
             val participantIndex = progress.plan.participants
-              .indexWhere(_.playerId == requestingPlayer)
+              .indexWhere(participant =>
+                requestingPlayer.contains(participant.playerId))
             progress.plan.denizenOrder
               .slice(6 + participantIndex * 3, 9 + participantIndex * 3)
               .map(id => PrivateAdviserChoice(
