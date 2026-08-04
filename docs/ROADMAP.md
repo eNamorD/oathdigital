@@ -25,8 +25,11 @@ been reviewed.
     pool and shutdown lifecycle before integrating them into the server.
   - [x] Add the authenticated-principal boundary and loopback-only development
     identity shim.
-  - [ ] Authorize projections, polling, commands, and bootstrap from durable
-    membership without accepting caller-selected production identity.
+  - [x] Authorize existing-game projections, polling, and actor-free commands
+    from durable membership without accepting caller-selected production
+    identity.
+  - [ ] Authorize bootstrap from the owner and the complete pre-provisioned
+    player-membership set; keep hidden setup generation server-owned.
   - [ ] Add OIDC Authorization Code + PKCE, secure cookie lifecycle, CSRF and
     origin validation, and the non-loopback deployment gate.
 
@@ -87,7 +90,7 @@ been reviewed.
   integrity, concurrent creation/appends, atomic rollback, restart durability,
   and stale HTTP command handling.
 
-The combined milestone passes 138 JVM tests, 31 Scala.js tests, the Scala.js
+The combined milestone passes 140 JVM tests, 31 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
