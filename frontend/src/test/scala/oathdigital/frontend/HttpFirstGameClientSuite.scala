@@ -110,6 +110,90 @@ class HttpFirstGameClientSuite extends FunSuite {
       }
   }
 
+  test("existing game reload uses selected identity without creating history") {
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(200, projectionJson(sequence = 6)))
+    ))
+    val client = new HttpFirstGameClient(transport)
+
+    client.load("persisted-game", "blue-exile").map { loaded =>
+      assertEquals(loaded.toOption.get.nextSequence, 6L)
+      assertEquals(transport.requests.toVector, Vector((
+        "GET",
+        "/api/dev/first-games/persisted-game?playerId=blue-exile",
+        None
+      )))
+    }
+  }
+
+  test("transient disconnect reconnects by GET at authoritative sequence") {
+    val transport = new StubTransport(Vector(
+      Left(FirstGameClientFailure.NetworkFailure("offline")),
+      Right(TransportResponse(200, projectionJson(sequence = 9)))
+    ))
+    val client = new HttpFirstGameClient(transport)
+    val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
+    val initial = coordinator.switchSession("game-1", "red-exile")
+
+    client.load("game-1", "red-exile").flatMap {
+      case Left(error) =>
+        assert(coordinator.recordFailure(initial, error))
+        assert(coordinator.connectionState.isInstanceOf[
+          ServerConnectionState.Disconnected
+        ])
+        val reconnect = coordinator.reconnect()
+        client.load(reconnect.gameId, reconnect.playerId).map {
+          case Right(authoritative) =>
+            assertEquals(authoritative.nextSequence, 9L)
+            assert(coordinator.route(reconnect, authoritative, None).nonEmpty)
+            assertEquals(
+              coordinator.connectionState,
+              ServerConnectionState.Connected
+            )
+          case Left(failure) => fail(failure.message)
+        }
+      case Right(_) => fail("expected initial disconnect")
+    }.map { _ =>
+      assertEquals(transport.requests.map(_._1).toVector, Vector("GET", "GET"))
+      assert(!transport.requests.exists(_._1 == "POST"))
+    }
+  }
+
+  test("reconnect generation rejects late load and command callbacks") {
+    val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
+    val oldLoad = coordinator.switchSession("game-1", "red-exile")
+    val offline = FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000)
+    assert(coordinator.recordFailure(oldLoad, offline))
+
+    val reconnect = coordinator.reconnect()
+    assert(!coordinator.accepts(oldLoad))
+    assert(!coordinator.recordFailure(
+      oldLoad,
+      FirstGameClientFailure.NetworkFailure("late command failure")
+    ))
+    assertEquals(coordinator.route(
+      oldLoad,
+      projection(activePlayer = "blue-exile"),
+      None
+    ), None)
+    assert(coordinator.accepts(reconnect))
+  }
+
+  test("only transport failures produce disconnected state") {
+    val transient = Vector[FirstGameClientFailure](
+      FirstGameClientFailure.NetworkFailure("offline"),
+      FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000),
+      FirstGameClientFailure.RequestAborted("GET", "/api")
+    )
+    transient.foreach(error => assert(FirstGameClientFailure.isTransient(error)))
+    assert(!FirstGameClientFailure.isTransient(
+      FirstGameClientFailure.StalePosition("conflict")
+    ))
+    assert(!FirstGameClientFailure.isTransient(
+      FirstGameClientFailure.DecodeFailure("$", "bad projection")
+    ))
+  }
+
   test("malformed projection is a typed decode failure") {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, """{"gameId":"game-1"}"""))

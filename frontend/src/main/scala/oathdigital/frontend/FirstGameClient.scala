@@ -115,6 +115,11 @@ object FirstGameClientFailure {
     override val message: String =
       s"Stale position; refreshed without retrying. $detail"
   }
+
+  def isTransient(failure: FirstGameClientFailure): Boolean = failure match {
+    case _: NetworkFailure | _: RequestTimedOut | _: RequestAborted => true
+    case _ => false
+  }
 }
 
 final case class BootstrapPlayer(

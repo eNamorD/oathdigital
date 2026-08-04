@@ -18,7 +18,7 @@ object ServerModeUi {
     val client = new HttpFirstGameClient(new SameOriginJsonTransport)
     var projection = Option.empty[FirstGameProjection]
     var failure = Option.empty[FirstGameClientFailure]
-    var selectedPlayer = "red-exile"
+    var selectedPlayer = queryParameter("playerId").getOrElse("red-exile")
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
 
@@ -28,6 +28,22 @@ object ServerModeUi {
         "Server mode · JVM-authoritative persisted stream"))
       mount.appendChild(text("h1", "", "Oath Digital first-game setup"))
       mount.appendChild(controls())
+      coordinator.connectionState match {
+        case ServerConnectionState.Disconnected(_) =>
+          mount.appendChild(text(
+            "div",
+            "status error disconnected",
+            "Disconnected. Reconnect to fetch the authoritative current " +
+              "state before issuing another command."
+          ))
+        case ServerConnectionState.Connecting if projection.nonEmpty =>
+          mount.appendChild(text(
+            "div",
+            "status",
+            "Reconnecting to authoritative state…"
+          ))
+        case _ => ()
+      }
       failure.foreach(error =>
         mount.appendChild(text("div", "status error", error.message)))
       projection match {
@@ -60,6 +76,7 @@ object ServerModeUi {
           projection = Some(displayed)
           failure = retainedNotice
           selectedPlayer = nextRequest.playerId
+          updateUrl(gameId, selectedPlayer)
           render()
           client.load(gameId, selectedPlayer).foreach { result =>
             accept(nextRequest, result, retainedNotice)
@@ -74,17 +91,21 @@ object ServerModeUi {
       if (coordinator.accepts(request)) result match {
         case Right(value) => store(request, value, notice)
         case Left(error) =>
+          coordinator.recordFailure(request, error)
           failure = Some(error)
           render()
       }
 
-    def loadExisting(id: String): Unit = {
+    def loadExisting(id: String, playerId: String): Unit = {
       gameId = id.trim
       projection = None
       failure = None
-      selectedPlayer = "red-exile"
+      selectedPlayer = playerId.trim match {
+        case "" => "red-exile"
+        case value => value
+      }
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId)
+      updateUrl(gameId, selectedPlayer)
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
@@ -95,10 +116,18 @@ object ServerModeUi {
       projection = None
       failure = None
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId)
+      updateUrl(gameId, selectedPlayer)
       render()
       client.bootstrap(gameId, selectedPlayer, bootstrap)
         .foreach(accept(request, _))
+    }
+
+    def reconnect(): Unit = {
+      failure = None
+      val request = coordinator.reconnect()
+      updateUrl(gameId, selectedPlayer)
+      render()
+      client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
 
     def submit(command: FirstGameCommand): Unit =
@@ -129,9 +158,25 @@ object ServerModeUi {
       input.value = gameId
       input.setAttribute("aria-label", "Existing game ID")
       bar.appendChild(input)
+      val playerInput =
+        dom.document.createElement("input").asInstanceOf[dom.html.Input]
+      playerInput.value = selectedPlayer
+      playerInput.setAttribute("aria-label", "Selected player ID")
+      bar.appendChild(playerInput)
       val load = button("Load existing game", "load-game")
-      load.onclick = _ => loadExisting(input.value)
+      load.onclick = _ => loadExisting(input.value, playerInput.value)
       bar.appendChild(load)
+      coordinator.connectionState match {
+        case ServerConnectionState.Disconnected(_) =>
+          val retry = button("Reconnect", "reconnect")
+          retry.setAttribute(
+            "aria-label",
+            "Reconnect and fetch authoritative current state"
+          )
+          retry.onclick = _ => reconnect()
+          bar.appendChild(retry)
+        case _ => ()
+      }
       val fresh = button("New persisted test game", "restart")
       fresh.setAttribute(
         "aria-label",
@@ -194,7 +239,8 @@ object ServerModeUi {
         val sites = element("div", "sites")
         region.sites.foreach { site =>
           val control = button(site.label, "site")
-          control.disabled = !value.legalControls.contains("placePawn")
+          control.disabled = !controlsAvailable ||
+            !value.legalControls.contains("placePawn")
           control.onclick = _ => submit(
             FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
           )
@@ -225,7 +271,8 @@ object ServerModeUi {
         value.privateAdviserChoices.foreach { choice =>
           val control = button(choice.label, "adviser")
           control.setAttribute("data-adviser-id", choice.adviserId)
-          control.disabled = !value.legalControls.contains("chooseAdviser")
+          control.disabled = !controlsAvailable ||
+            !value.legalControls.contains("chooseAdviser")
           control.onclick = _ => submit(
             FirstGameCommand.ChooseAdviser(
               selectedPlayer,
@@ -239,9 +286,12 @@ object ServerModeUi {
 
     render()
     queryParameter("gameId") match {
-      case Some(existing) => loadExisting(existing)
+      case Some(existing) => loadExisting(existing, selectedPlayer)
       case None => newGame()
     }
+
+    def controlsAvailable: Boolean =
+      coordinator.connectionState == ServerConnectionState.Connected
   }
 
   private def siteLabel(value: FirstGameProjection, siteId: String): String =
@@ -268,11 +318,12 @@ object ServerModeUi {
   private def queryParameter(name: String): Option[String] =
     FrontendMode.queryParameter(dom.window.location.search, name)
 
-  private def updateUrl(gameId: String): Unit =
+  private def updateUrl(gameId: String, playerId: String): Unit =
     dom.window.history.replaceState(
       null,
       "",
-      s"/?mode=server&gameId=${js.URIUtils.encodeURIComponent(gameId)}"
+      s"/?mode=server&gameId=${js.URIUtils.encodeURIComponent(gameId)}" +
+        s"&playerId=${js.URIUtils.encodeURIComponent(playerId)}"
     )
 
   private def button(label: String, className: String): dom.html.Button = {

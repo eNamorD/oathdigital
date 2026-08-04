@@ -130,9 +130,10 @@ never from the serving port:
 
 Server mode creates a fresh opaque `manual-...` game ID and calls the
 development bootstrap route. The URL is updated to
-`/?mode=server&gameId=...`; reopening
+`/?mode=server&gameId=...&playerId=...`; reopening
 that URL or entering the ID in **Load existing game** reloads the persisted
-stream. **New persisted test game** always allocates and bootstraps another
+stream for the selected development player without creating or replacing
+history. **New persisted test game** always allocates and bootstraps another
 game ID. It never deletes, overwrites, or restarts an existing stream.
 
 The development controller automatically selects the active participant as the
@@ -153,6 +154,14 @@ object-shaped public fields and JSON-safe non-negative sequence numbers. It
 consumes only the documented public fields;
 it neither expects nor decodes authoritative event envelopes, hidden plan
 orders, or another player's adviser alternatives.
+
+Network errors, request timeouts, and aborts put server mode into a visible
+disconnected state and disable mutation controls. **Reconnect** is deliberately
+user-controlled: it advances the local session generation and performs only a
+GET for the current game/player projection. A successful response restores the
+server's current `nextSequence` and normal controls. It never bootstraps,
+rewrites history, or automatically retries a failed command. This is snapshot
+reconnect, not asynchronous event catch-up.
 
 ## Known integration risks
 
