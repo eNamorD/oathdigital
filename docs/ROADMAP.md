@@ -12,6 +12,12 @@ been reviewed.
     authenticated game membership before permitting a non-loopback deployment.
   - Keep the current unauthenticated API bound to loopback and labeled for
     development/manual testing only.
+  - Use provider-neutral internal users with external **OIDC** identities and
+    opaque server-side sessions; do not add local password custody initially.
+  - Limit spectators to explicit game memberships; public game visibility is
+    outside this milestone.
+  - Initially allow each authenticated user to occupy at most one player seat
+    per game.
 
 ## Next
 
