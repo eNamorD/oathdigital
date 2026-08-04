@@ -20,6 +20,7 @@ object ServerModeUi {
     var failure = Option.empty[FirstGameClientFailure]
     var selectedPlayer = "red-exile"
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
+    val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
 
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
@@ -41,21 +42,37 @@ object ServerModeUi {
       }
     }
 
-    def store(value: FirstGameProjection): Unit = {
-      projection = Some(value)
-      failure = None
-      value.activeParticipantId match {
-        case Some(active) if active != selectedPlayer && !value.ready =>
-          selectedPlayer = active
-          client.load(gameId, selectedPlayer).foreach(accept)
-        case _ => render()
+    def store(
+        request: ServerRequestIdentity,
+        value: FirstGameProjection,
+        notice: Option[FirstGameClientFailure]
+    ): Unit =
+      coordinator.route(request, value, notice).foreach {
+        case ProjectionRoute.Display(displayed, retainedNotice) =>
+          projection = Some(displayed)
+          failure = retainedNotice
+          render()
+        case ProjectionRoute.ReloadForActivePlayer(
+              displayed,
+              nextRequest,
+              retainedNotice
+            ) =>
+          projection = Some(displayed)
+          failure = retainedNotice
+          selectedPlayer = nextRequest.playerId
+          render()
+          client.load(gameId, selectedPlayer).foreach { result =>
+            accept(nextRequest, result, retainedNotice)
+          }
       }
-    }
 
-    def accept(result: Either[FirstGameClientFailure, FirstGameProjection])
-        : Unit =
-      result match {
-        case Right(value) => store(value)
+    def accept(
+        request: ServerRequestIdentity,
+        result: Either[FirstGameClientFailure, FirstGameProjection],
+        notice: Option[FirstGameClientFailure] = None
+    ): Unit =
+      if (coordinator.accepts(request)) result match {
+        case Right(value) => store(request, value, notice)
         case Left(error) =>
           failure = Some(error)
           render()
@@ -66,9 +83,10 @@ object ServerModeUi {
       projection = None
       failure = None
       selectedPlayer = "red-exile"
+      val request = coordinator.switchSession(gameId, selectedPlayer)
       updateUrl(gameId)
       render()
-      client.load(gameId, selectedPlayer).foreach(accept)
+      client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
 
     def newGame(): Unit = {
@@ -76,27 +94,26 @@ object ServerModeUi {
       selectedPlayer = bootstrap.firstPlayer
       projection = None
       failure = None
+      val request = coordinator.switchSession(gameId, selectedPlayer)
       updateUrl(gameId)
       render()
-      client.bootstrap(gameId, selectedPlayer, bootstrap).foreach(accept)
+      client.bootstrap(gameId, selectedPlayer, bootstrap)
+        .foreach(accept(request, _))
     }
 
     def submit(command: FirstGameCommand): Unit =
       projection.foreach { current =>
+        val request = coordinator.capture
         client
           .submit(gameId, selectedPlayer, current.nextSequence, command)
           .foreach {
-            case Left(stale: FirstGameClientFailure.StalePosition) =>
+            case Left(stale: FirstGameClientFailure.StalePosition)
+                if coordinator.accepts(request) =>
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
-                case Right(refreshed) =>
-                  projection = Some(refreshed)
-                  render()
-                case Left(loadFailure) =>
-                  failure = Some(loadFailure)
-                  render()
+                refreshed => accept(request, refreshed, Some(stale))
               }
-            case other => accept(other)
+            case other => accept(request, other)
           }
       }
 
@@ -126,13 +143,18 @@ object ServerModeUi {
     }
 
     def status(value: FirstGameProjection): dom.Element = {
-      val message =
-        if (value.ready)
-          "Ready to begin first turn."
-        else
-          s"${value.phase}; active participant: " +
-            value.activeParticipantId.getOrElse("none")
-      text("div", "status", message)
+      val node = element("div", "status")
+      if (value.ready) node.textContent = "Ready to begin first turn."
+      else {
+        node.appendChild(dom.document.createTextNode(
+          s"${value.phase}; active participant: "
+        ))
+        value.activeParticipantId match {
+          case Some(playerId) => node.appendChild(playerReference(value, playerId))
+          case None => node.appendChild(dom.document.createTextNode("none"))
+        }
+      }
+      node
     }
 
     def players(value: FirstGameProjection): dom.Element = {
@@ -141,17 +163,14 @@ object ServerModeUi {
       val list = element("ul", "participants")
       value.players.foreach { player =>
         val item = dom.document.createElement("li")
-        val reference = text(
-          "span",
-          s"player-ref ${player.color.cssClass}",
-          s"${player.displayName} · role: ${player.role}"
-        )
+        val reference = playerReference(value, player.playerId)
         item.appendChild(reference)
+        item.appendChild(dom.document.createTextNode(s" · role: ${player.role}"))
         value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
           item.appendChild(dom.document.createTextNode(
             s" · pawn at ${siteLabel(value, pawn.siteId)}"
           )))
-        panel.appendChild(item)
+        list.appendChild(item)
       }
       panel.appendChild(list)
       panel
@@ -180,10 +199,8 @@ object ServerModeUi {
             FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
           )
           value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
-            val player = value.players.find(_.playerId == pawn.playerId)
-            control.appendChild(dom.document.createTextNode(
-              s" · ● ${player.fold(pawn.playerId)(_.displayName)}"
-            ))
+            control.appendChild(dom.document.createTextNode(" · ● "))
+            control.appendChild(playerReference(value, pawn.playerId))
           }
           sites.appendChild(control)
         }
@@ -196,11 +213,12 @@ object ServerModeUi {
 
     def advisers(value: FirstGameProjection): dom.Element = {
       val panel = element("section", "panel adviser-panel")
-      panel.appendChild(text(
-        "h2",
-        "",
-        s"Private adviser choices for $selectedPlayer"
+      val heading = element("h2", "")
+      heading.appendChild(dom.document.createTextNode(
+        "Private adviser choices for "
       ))
+      heading.appendChild(playerReference(value, selectedPlayer))
+      panel.appendChild(heading)
       if (value.privateAdviserChoices.isEmpty)
         panel.appendChild(text("p", "", "No private adviser choice is available."))
       else
@@ -230,24 +248,31 @@ object ServerModeUi {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
+  private[frontend] def playerReference(
+      value: FirstGameProjection,
+      playerId: String
+  ): dom.Element = {
+    val player = value.players.find(_.playerId == playerId)
+    val node = text(
+      "span",
+      s"player-ref ${player.fold[PlayerColorToken](PlayerColorToken.Neutral)(_.color).cssClass}",
+      player.fold(playerId)(_.displayName)
+    )
+    node.setAttribute("data-player-id", playerId)
+    node
+  }
+
   private def freshGameId(): String =
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
 
   private def queryParameter(name: String): Option[String] =
-    dom.window.location.search.stripPrefix("?").split("&").toVector
-      .flatMap { pair =>
-        pair.split("=", 2).toVector match {
-          case Vector(key, value) if key == name =>
-            Some(js.URIUtils.decodeURIComponent(value))
-          case _ => None
-        }
-      }.headOption.filter(_.nonEmpty)
+    FrontendMode.queryParameter(dom.window.location.search, name)
 
   private def updateUrl(gameId: String): Unit =
     dom.window.history.replaceState(
       null,
       "",
-      s"/?gameId=${js.URIUtils.encodeURIComponent(gameId)}"
+      s"/?mode=server&gameId=${js.URIUtils.encodeURIComponent(gameId)}"
     )
 
   private def button(label: String, className: String): dom.html.Button = {

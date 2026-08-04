@@ -14,7 +14,10 @@ trait JsonTransport {
   ): Future[Either[FirstGameClientFailure, TransportResponse]]
 }
 
-final class SameOriginJsonTransport extends JsonTransport {
+final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
+    extends JsonTransport {
+  require(timeoutMillis > 0, "timeoutMillis must be positive")
+
   override def request(
       method: String,
       url: String,
@@ -23,12 +26,27 @@ final class SameOriginJsonTransport extends JsonTransport {
     val promise = Promise[Either[FirstGameClientFailure, TransportResponse]]()
     val xhr = new dom.XMLHttpRequest()
     xhr.open(method, url)
+    xhr.timeout = timeoutMillis.toDouble
     body.foreach(_ => xhr.setRequestHeader("Content-Type", "application/json"))
     xhr.onload = _ =>
-      promise.success(Right(TransportResponse(xhr.status.toInt, xhr.responseText)))
+      promise.trySuccess(Right(TransportResponse(
+        xhr.status.toInt,
+        xhr.responseText
+      )))
     xhr.onerror = _ =>
-      promise.success(Left(FirstGameClientFailure.NetworkFailure(
+      promise.trySuccess(Left(FirstGameClientFailure.NetworkFailure(
         s"$method $url failed"
+      )))
+    xhr.ontimeout = _ =>
+      promise.trySuccess(Left(FirstGameClientFailure.RequestTimedOut(
+        method,
+        url,
+        timeoutMillis
+      )))
+    xhr.onabort = _ =>
+      promise.trySuccess(Left(FirstGameClientFailure.RequestAborted(
+        method,
+        url
       )))
     body match {
       case Some(json) => xhr.send(json)
@@ -75,6 +93,15 @@ sealed trait FirstGameClientFailure {
 }
 object FirstGameClientFailure {
   final case class NetworkFailure(message: String) extends FirstGameClientFailure
+  final case class RequestTimedOut(method: String, url: String, millis: Int)
+      extends FirstGameClientFailure {
+    override val message: String =
+      s"$method $url timed out after $millis ms"
+  }
+  final case class RequestAborted(method: String, url: String)
+      extends FirstGameClientFailure {
+    override val message: String = s"$method $url was aborted"
+  }
   final case class DecodeFailure(path: String, detail: String)
       extends FirstGameClientFailure {
     override val message: String = s"$path: $detail"
@@ -181,6 +208,8 @@ final class HttpFirstGameClient(transport: JsonTransport)
 }
 
 object FirstGameJson {
+  private val MaxJsonSafeInteger = 9007199254740991d
+
   def encodeBootstrap(config: FirstGameBootstrap): String =
     js.JSON.stringify(js.Dynamic.literal(
       expectedNextSequence = 0,
@@ -216,8 +245,8 @@ object FirstGameJson {
 
   def decodeProjection(
       json: String
-  ): Either[FirstGameClientFailure, FirstGameProjection] =
-    parse(json).flatMap { root =>
+  ): Either[FirstGameClientFailure, FirstGameProjection] = safely {
+    parseObject(json).flatMap { root =>
       for {
         game <- string(root, "gameId", "$")
         sequence <- long(root, "nextSequence", "$")
@@ -276,15 +305,16 @@ object FirstGameJson {
         choices
       )
     }
+  }
 
   def decodeError(
       json: String
   ): Either[FirstGameClientFailure, (String, String)] =
-    parse(json).flatMap(root =>
+    safely(parseObject(json).flatMap(root =>
       for {
         code <- string(root, "error", "$")
         message <- string(root, "message", "$")
-      } yield code -> message)
+      } yield code -> message))
 
   private def colorToken(value: String): PlayerColorToken =
     value match {
@@ -295,8 +325,20 @@ object FirstGameJson {
       case _ => PlayerColorToken.Neutral
     }
 
-  private def parse(json: String): Either[FirstGameClientFailure, js.Dynamic] =
-    try Right(js.JSON.parse(json))
+  private def safely[A](decode: => Either[FirstGameClientFailure, A]) =
+    try decode
+    catch {
+      case NonFatal(error) =>
+        Left(FirstGameClientFailure.DecodeFailure(
+          "$",
+          Option(error.getMessage).getOrElse("malformed projection")
+        ))
+    }
+
+  private def parseObject(
+      json: String
+  ): Either[FirstGameClientFailure, js.Dynamic] =
+    try objectValue(js.JSON.parse(json), "$")
     catch {
       case NonFatal(error) =>
         Left(FirstGameClientFailure.DecodeFailure(
@@ -305,19 +347,31 @@ object FirstGameJson {
         ))
     }
 
+  private def objectValue(
+      value: js.Dynamic,
+      path: String
+  ): Either[FirstGameClientFailure, js.Dynamic] =
+    if (
+      value != null &&
+      js.typeOf(value) == "object" &&
+      !js.Array.isArray(value)
+    ) Right(value)
+    else Left(FirstGameClientFailure.DecodeFailure(path, "expected object"))
+
   private def field(
       value: js.Dynamic,
       name: String,
       path: String
-  ): Either[FirstGameClientFailure, js.Dynamic] = {
-    val result = value.selectDynamic(name)
-    if (js.isUndefined(result))
-      Left(FirstGameClientFailure.DecodeFailure(
-        s"$path.$name",
-        "missing field"
-      ))
-    else Right(result)
-  }
+  ): Either[FirstGameClientFailure, js.Dynamic] =
+    objectValue(value, path).flatMap { objectValue =>
+      val result = objectValue.selectDynamic(name)
+      if (js.isUndefined(result))
+        Left(FirstGameClientFailure.DecodeFailure(
+          s"$path.$name",
+          "missing field"
+        ))
+      else Right(result)
+    }
 
   private def string(value: js.Dynamic, name: String, path: String) =
     field(value, name, path).flatMap { result =>
@@ -345,11 +399,12 @@ object FirstGameJson {
       if (
         js.typeOf(result) == "number" &&
         result.asInstanceOf[Double] >= 0 &&
+        result.asInstanceOf[Double] <= MaxJsonSafeInteger &&
         result.asInstanceOf[Double].isWhole
       ) Right(result.asInstanceOf[Double].toLong)
       else Left(FirstGameClientFailure.DecodeFailure(
         s"$path.$name",
-        "expected non-negative integer"
+        "expected non-negative JSON-safe integer"
       ))
     }
 

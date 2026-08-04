@@ -118,14 +118,19 @@ debug restart as creating a new stream rather than rewriting prior history.
 
 ## Development server mode
 
-The compiled page selects its client mode explicitly from the serving port:
+The compiled page selects its authority mode from an explicit query marker,
+never from the serving port:
 
-- `http://127.0.0.1:8080/` uses `HttpFirstGameClient` and the same-origin
-  development first-game API;
-- a standalone server on port `8000` retains `LocalDebugSetupClient`.
+- server mode is the default, so `http://127.0.0.1:8080/` (or
+  `?mode=server`) uses `HttpFirstGameClient` and the same-origin development
+  first-game API;
+- `http://127.0.0.1:8000/?mode=local` explicitly selects
+  `LocalDebugSetupClient` for standalone browser-memory testing. The same
+  marker works on any host or port.
 
 Server mode creates a fresh opaque `manual-...` game ID and calls the
-development bootstrap route. The URL is updated to `/?gameId=...`; reopening
+development bootstrap route. The URL is updated to
+`/?mode=server&gameId=...`; reopening
 that URL or entering the ID in **Load existing game** reloads the persisted
 stream. **New persisted test game** always allocates and bootstraps another
 game ID. It never deletes, overwrites, or restarts an existing stream.
@@ -138,8 +143,14 @@ player-scoped redaction.
 
 On HTTP `409`, the client displays a stale-position explanation and performs a
 GET refresh. It does not retry the command. HTTP status failures, network
-failures, malformed projections, and server error payloads remain typed and
-visible. The projection decoder consumes only the documented public fields;
+failures, ten-second XHR timeouts/aborts, malformed projections, and server
+error payloads remain typed and visible. Every asynchronous response carries a
+game/player generation identity; responses from a superseded New, Load, or
+development player-view selection are discarded. A successful conflict refresh
+passes through the same active-player selection flow as every other projection,
+while retaining the stale-position notice. The projection decoder accepts only
+object-shaped public fields and JSON-safe non-negative sequence numbers. It
+consumes only the documented public fields;
 it neither expects nor decodes authoritative event envelopes, hidden plan
 orders, or another player's adviser alternatives.
 

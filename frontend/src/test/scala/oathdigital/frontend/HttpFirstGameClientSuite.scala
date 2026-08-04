@@ -123,6 +123,109 @@ class HttpFirstGameClientSuite extends FunSuite {
         )))
   }
 
+  test("null, scalar, and malformed nested projections are decode failures") {
+    val malformed = Vector(
+      "null",
+      "7",
+      "[]",
+      projectionJson(sequence = 1).replace(
+        "\"players\":[",
+        "\"players\":[null,"
+      ),
+      projectionJson(sequence = 1).replace(
+        "\"sites\":[{",
+        "\"sites\":[7,{"
+      )
+    )
+
+    malformed.foreach { json =>
+      val result = FirstGameJson.decodeProjection(json)
+      assert(result.left.toOption.exists(
+        _.isInstanceOf[FirstGameClientFailure.DecodeFailure]
+      ), json)
+    }
+  }
+
+  test("nextSequence is bounded to the largest JSON-safe integer") {
+    val maximum = FirstGameJson.decodeProjection(
+      projectionJson(sequence = 1).replace(
+        "\"nextSequence\":1",
+        "\"nextSequence\":9007199254740991"
+      )
+    )
+    assertEquals(maximum.toOption.get.nextSequence, 9007199254740991L)
+
+    val unsafe = FirstGameJson.decodeProjection(
+      projectionJson(sequence = 1).replace(
+        "\"nextSequence\":1",
+        "\"nextSequence\":9007199254740992"
+      )
+    )
+    assert(unsafe.left.toOption.exists(
+      _.isInstanceOf[FirstGameClientFailure.DecodeFailure]
+    ))
+  }
+
+  test("mode selection is explicit and independent of serving port") {
+    assertEquals(FrontendMode.fromSearch(""), FrontendMode.Server)
+    assertEquals(
+      FrontendMode.fromSearch("?gameId=manual-1"),
+      FrontendMode.Server
+    )
+    assertEquals(
+      FrontendMode.fromSearch("?mode=server&gameId=manual-1"),
+      FrontendMode.Server
+    )
+    assertEquals(
+      FrontendMode.fromSearch("?mode=local"),
+      FrontendMode.LocalDebug
+    )
+  }
+
+  test("stale refresh routes through active-player selection with notice") {
+    val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
+    val request = coordinator.switchSession("game-1", "red-exile")
+    val stale = FirstGameClientFailure.StalePosition("position changed")
+    val refreshed = projection(activePlayer = "blue-exile")
+
+    coordinator.route(request, refreshed, Some(stale)) match {
+      case Some(ProjectionRoute.ReloadForActivePlayer(
+            value,
+            nextRequest,
+            notice
+          )) =>
+        assertEquals(value.activeParticipantId, Some("blue-exile"))
+        assertEquals(nextRequest.playerId, "blue-exile")
+        assertEquals(notice, Some(stale))
+      case other => fail(s"unexpected route: $other")
+    }
+  }
+
+  test("late callbacks from an old game or player selection are discarded") {
+    val coordinator = new ServerSessionCoordinator("game-a", "red-exile")
+    val oldGame = coordinator.switchSession("game-a", "red-exile")
+    val newGame = coordinator.switchSession("game-b", "red-exile")
+
+    assert(!coordinator.accepts(oldGame))
+    assertEquals(coordinator.route(
+      oldGame,
+      projection(gameId = "game-a"),
+      None
+    ), None)
+    assert(coordinator.accepts(newGame))
+
+    val blueView = coordinator.switchSession("game-b", "blue-exile")
+    assert(!coordinator.accepts(newGame))
+    assert(coordinator.accepts(blueView))
+  }
+
+  test("transport timeout and abort are typed failures") {
+    val timeout = FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000)
+    val aborted = FirstGameClientFailure.RequestAborted("POST", "/api")
+    assert(timeout.message.contains("10000 ms"))
+    assert(aborted.message.contains("aborted"))
+  }
+
   test("new persisted test uses a distinct bootstrap route, never mutation") {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(sequence = 1))),
@@ -201,6 +304,20 @@ class HttpFirstGameClientSuite extends FunSuite {
        |"privateAdviserChoices":$privateChoices
        |}""".stripMargin
   }
+
+  private def projection(
+      gameId: String = "game-1",
+      activePlayer: String = "red-exile"
+  ): FirstGameProjection =
+    FirstGameJson.decodeProjection(
+      projectionJson(sequence = 2).replace(
+        "\"gameId\":\"game-1\"",
+        s"\"gameId\":\"$gameId\""
+      ).replace(
+        "\"activeParticipantId\":\"red-exile\"",
+        s"\"activeParticipantId\":\"$activePlayer\""
+      )
+    ).toOption.get
 
   private final class StubTransport(
       responses: Vector[Either[FirstGameClientFailure, TransportResponse]]

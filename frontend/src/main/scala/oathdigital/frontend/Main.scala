@@ -10,9 +10,11 @@ object Main {
     val mount = Option(dom.document.getElementById("app")).getOrElse {
       throw new IllegalStateException("missing #app mount point")
     }
-    if (dom.window.location.port != "8000") {
-      ServerModeUi.start(mount)
-      return
+    FrontendMode.fromSearch(dom.window.location.search) match {
+      case FrontendMode.Server =>
+        ServerModeUi.start(mount)
+        return
+      case FrontendMode.LocalDebug => ()
     }
     val adapter = new HrfDomAdapter(mount)
     val client = LocalDebugSetupClient.demo()
