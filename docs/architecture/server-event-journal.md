@@ -97,6 +97,35 @@ event envelopes rather than serialized actions. HRF's raw reusable secrets,
 URL credentials, and client-supplied identity are not copied. OIDC transport,
 cookie issuance, invitations, and notifications remain later X6 work.
 
+## Authentication and membership boundary
+
+`AuthenticatedPrincipal` is the provider-neutral identity presented to server
+application code by a pluggable `Authenticator`. It contains only Oath's
+internal `UserId`; raw OIDC claims, development headers, and caller-selected
+player IDs do not cross this boundary.
+
+`MembershipAuthorizationService` resolves a principal and game through
+`IdentityRepository` into one of three access contexts. Owners may bootstrap
+but have public-only projection scope and cannot submit player commands.
+Players receive private projection scope for their single membership-derived
+`PlayerId`; `AuthorizedPlayer` constructs commands with that actor. Explicit
+spectators receive public-only projections and cannot bootstrap or command.
+Non-members, global administrators, and public spectators are denied. Storage
+failure and nonmembership remain distinct internal outcomes.
+
+The optional `DevelopmentIdentityShim` is a separately named test/manual
+authenticator for the `X-Oath-Dev-User` header. Configuration returns no shim
+unless explicitly enabled, and enabling it revalidates that the already
+validated bind host is `127.0.0.1`, `localhost`, or `::1`. It is not an OIDC or
+production session path. Existing `/api/dev` routes are not changed in this
+slice.
+
+The next X6 route-integration slice will authenticate a principal before game
+route handling, remove caller-selected player identity from the new production
+transport, apply membership-derived projection and command authorization, and
+keep the current development API isolated. Cookie issuance, CSRF, and OIDC
+redirect/callback handling remain later slices.
+
 ## Run and shutdown
 
 Start the server with a database path and optional catalog path:

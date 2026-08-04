@@ -5,7 +5,8 @@ import java.nio.file.Path
 import oathdigital.application.{
   SetupApplicationError,
   SetupApplicationService,
-  SetupCommandAccepted
+  SetupCommandAccepted,
+  MembershipAuthorizationService
 }
 import oathdigital.catalog.{
   CatalogLoadRequest,
@@ -39,6 +40,7 @@ final class ServerCommandGateway private[server] (
 final class ServerRuntime private (
     val commands: ServerCommandGateway,
     val firstGame: FirstGameServerGateway,
+    val authorization: MembershipAuthorizationService,
     private val database: HsqldbDatabaseOwner
 ) extends AutoCloseable {
   override def close(): Unit = database.close()
@@ -92,6 +94,7 @@ object ServerRuntime {
               projector,
               planFactory
             ),
+            new MembershipAuthorizationService(database.identities),
             database
           )
         }
