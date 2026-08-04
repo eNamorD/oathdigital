@@ -38,7 +38,9 @@ Garden` → `Land Warden`, `King of Devotion` → `Ring of Devotion`, and
 
 Run `python3 reference/catalog-ingestion/build_runtime_catalog.py` from the
 repository root to verify structural equality without writing. Pass
-`--output` with a temporary path to inspect regenerated JSON.
+`--output` with a temporary path to inspect regenerated JSON. The generator
+derives archived OCR crop names deterministically from definition IDs and does
+not depend on temporary extraction artifacts.
 
 Reference URLs:
 

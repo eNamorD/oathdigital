@@ -16,7 +16,6 @@ ARCHIVE = (
     ROOT
     / "reference/catalog-ingestion/archive/ingestion-component-catalog.json"
 )
-MANIFEST = Path("/private/tmp/oath-runtime-catalog/crops/manifest.json")
 OCR = ROOT / "reference/catalog-ingestion/component-ocr.tsv"
 RUNTIME_DENIZENS = (
     ROOT
@@ -155,11 +154,7 @@ def main():
         relic_transcriptions[normalized(archived_name)] = relic_transcriptions[
             normalized(printed_name)
         ]
-    manifest = json.loads(MANIFEST.read_text())
     ocr = parse_ocr(OCR)
-    crop_by_definition = {
-        item["definitionId"]: item["crop"] for item in manifest
-    }
     components = archived["components"]
 
     relics = []
@@ -190,7 +185,8 @@ def main():
     ):
         printed_id = component["printedComponentId"]["value"]
         face = component["face"]["state"]
-        lines = ocr.get(crop_by_definition[component["definitionId"]], [])
+        crop = f"{slug(component['definitionId'])}.jpg"
+        lines = ocr.get(crop, [])
         faces_by_id.setdefault(printed_id, {})[face] = {
             "name": component["name"],
             "handlers": [handler("edifice", printed_id.lower(), face)],

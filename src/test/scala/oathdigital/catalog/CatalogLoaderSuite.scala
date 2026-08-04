@@ -91,10 +91,10 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assertEquals(
       catalog.denizens.groupBy(_.restrictions).view.mapValues(_.size).toMap,
       Map(
-        CardRestrictions.Unrestricted -> 152,
-        CardRestrictions.SiteOnly -> 41,
-        CardRestrictions.AdviserOnly -> 34,
-        CardRestrictions.LockedAdviserOnly -> 28
+        CardRestrictions.Unrestricted -> 133,
+        CardRestrictions.SiteOnly -> 51,
+        CardRestrictions.AdviserOnly -> 40,
+        CardRestrictions.LockedAdviserOnly -> 31
       )
     )
   }
@@ -120,6 +120,17 @@ class CatalogLoaderSuite extends munit.FunSuite {
 
     val bedOfRoots = catalog.denizens.find(_.id.value == "212").get
     assert(bedOfRoots.rulesText.startsWith("[favor-burnt] [favor-burnt]"))
+
+    val pressgangs = catalog.denizens.find(_.id.value == "6").get
+    assert(pressgangs.rulesText.contains("already have"))
+    assertEquals(
+      catalog.denizens.find(_.id.value == "7").get.restrictions,
+      CardRestrictions.SiteOnly
+    )
+    assertEquals(
+      catalog.denizens.find(_.id.value == "111").get.restrictions,
+      CardRestrictions.LockedAdviserOnly
+    )
 
     assertEquals(
       catalog.legacies.find(_.id.value == "L17").map(_.name),
