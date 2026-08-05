@@ -74,6 +74,18 @@ object FirstGameSetupEvent {
       adviserId: DenizenId
   ) extends FirstGameSetupEvent
   case object FirstGameCompleted extends FirstGameSetupEvent
+  final case class WealthTaken(
+      playerId: PlayerId,
+      siteId: SiteId,
+      resource: WakeResource
+  ) extends FirstGameSetupEvent
+  final case class WakeEnded(playerId: PlayerId) extends FirstGameSetupEvent
+}
+
+sealed trait WakeResource extends Product with Serializable
+object WakeResource {
+  case object Favor extends WakeResource
+  case object Secret extends WakeResource
 }
 
 sealed trait FirstGameContinue extends Product with Serializable
@@ -82,6 +94,10 @@ object FirstGameContinue {
   final case class AwaitingAdviser(playerId: PlayerId)
       extends FirstGameContinue
   final case class ReadyForFirstTurn(playerId: PlayerId)
+      extends FirstGameContinue
+  final case class AwaitingWakeAction(playerId: PlayerId)
+      extends FirstGameContinue
+  final case class ActActionSelection(playerId: PlayerId)
       extends FirstGameContinue
 }
 
@@ -97,6 +113,21 @@ object FirstGameSetupViolation {
   case object GameNotStarted extends FirstGameSetupViolation
   case object GameAlreadyReady extends FirstGameSetupViolation
   final case class CatalogMismatch(expected: CatalogRef, actual: CatalogRef)
+      extends FirstGameSetupViolation
+  case object GameEnded extends FirstGameSetupViolation
+  final case class WrongPhase(expected: Phase, actual: Phase)
+      extends FirstGameSetupViolation
+  final case class UnsupportedWakeVictoryState(reason: String)
+      extends FirstGameSetupViolation
+  final case class PawnSiteMissing(playerId: PlayerId)
+      extends FirstGameSetupViolation
+  final case class ResourceUnavailable(siteId: SiteId, resource: WakeResource)
+      extends FirstGameSetupViolation
+  final case class EnemyPawnBlocksTakeWealth(
+      siteId: SiteId,
+      enemies: Vector[PlayerId]
+  ) extends FirstGameSetupViolation
+  final case class PowerAlreadyUsed(power: PowerUseRef)
       extends FirstGameSetupViolation
   case object ParticipantsEmpty extends FirstGameSetupViolation
   final case class DuplicatePlayer(id: PlayerId)
@@ -314,6 +345,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
+      case _: WealthTaken | _: WakeEnded =>
+        Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
     }
 
   private def validatePlan(

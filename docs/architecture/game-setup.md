@@ -81,3 +81,31 @@ Dispossessed or the order of the 16 unselected Atlas sites; neither is needed
 to make the selected world, player state, and active decks structurally valid
 for this endpoint. The Grand Scepter is excluded from the ordinary relic
 shuffle because it is an Imperial component.
+
+## First-turn Wake endpoint
+
+The first post-setup slice retains `Ready(ReadyFirstGame)` as the aggregate and
+implements only the built-in Take Wealth power and the explicit choice to end
+Wake. CR p. 17 orders the mandatory Oathkeeper/Usurper and Vision checks before
+optional Wake powers, permits Wake powers once each, and defines Take Wealth.
+The general power rules on CR pp. 28 and 31 motivate identifying a use by
+timing, source, and stable power identity rather than by a display label.
+
+`TakeWealth(playerId, Favor|Secret)` derives the pawn's current site. Its
+`gameplay.take-wealth` event transfers exactly one loose token to the player's
+board, records that site's Take Wealth power instance as used, and remains in
+Wake. A future Wake movement effect can therefore expose a distinct Take
+Wealth instance at a different site without permitting repetition at the old
+site. `EndWake(playerId)` is independent: `gameplay.wake-ended` enters Act and
+opens an informational normal-action selection boundary.
+
+The slice validates the active player, Wake timing, game/result state, current
+in-play pawn site, loose resource, enemy-pawn exclusion, and per-instance use.
+Any other Exile pawn at the site is an enemy in this all-Exile milestone.
+Oathkeeper/Usurper ownership or a revealed Vision is a typed unsupported
+victory state so mandatory checks cannot be bypassed. Other Wake powers are
+optional and do not block End Wake.
+
+River movement, generic card/relic/edifice/Foundation power interpretation,
+victory resolution, Act actions and costs, later turns, Rest and Supply
+refresh, and production authentication are deliberately excluded.

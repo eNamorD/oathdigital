@@ -50,6 +50,18 @@ batch's declared or first position. Both version and sequence fields are
 decoded as exact integers; fractional, negative, non-finite, overflowing, and
 non-JSON-safe values are rejected rather than truncated.
 
+First-turn gameplay extends the same contiguous game stream with format v3.
+Setup discriminators remain v2-only; `gameplay.take-wealth` and
+`gameplay.wake-ended` are v3-only. A reader validates one pinned game ID,
+catalog reference, and absolute safe sequence across the mixed v2/v3 stream.
+Existing setup-only streams and their bytes are unchanged. Older readers may
+reject v3 explicitly; no event is silently reinterpreted under another format.
+
+`gameplay.take-wealth` records the actor, the pawn site derived when the
+command was accepted, and the chosen loose resource. `gameplay.wake-ended`
+records the actor and advances Wake to Act. Both replay deterministically;
+neither replay nor command handling makes a random or hidden choice.
+
 The catalog reference is pinned in every envelope. For `setup.started`, it is
 also present in the payload because it is domain data; the codec requires the
 two references to agree.

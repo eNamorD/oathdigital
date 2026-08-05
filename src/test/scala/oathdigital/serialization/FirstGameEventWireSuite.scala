@@ -2,7 +2,9 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupEvent.FirstGameCompleted
+import oathdigital.model.PlayerId
+import oathdigital.setup.FirstGameSetupEvent.{FirstGameCompleted, WakeEnded,
+  WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class FirstGameEventWireSuite extends munit.FunSuite {
@@ -135,6 +137,32 @@ class FirstGameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.sequence), Vector(41L, 42L))
     assertEquals(decoded.map(_.event), events)
+  }
+
+  test("mixed contiguous v2 setup and v3 gameplay records round trip") {
+    val setupEvents = execute(rules)._2
+    val gameplay = Vector(
+      WealthTaken(PlayerId("p2"), sites.head, WakeResource.Favor),
+      WakeEnded(PlayerId("p2"))
+    )
+    val events = setupEvents ++ gameplay
+    val records = events.zipWithIndex.map { case (event, index) =>
+      RecordedEvent(index.toLong, event)
+    }
+    val decoded = FirstGameEventWire.decodeStream(
+      FirstGameEventWire.encodeStream("mixed", catalogRef, records)
+        .toOption.get).toOption.get
+
+    assertEquals(decoded.map(_.formatVersion),
+      Vector.fill(setupEvents.size)(2) ++ Vector(3, 3))
+    assertEquals(decoded.map(_.eventType).takeRight(2),
+      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+    assertEquals(decoded.map(_.event), events)
+
+    val wrongVersion = FirstGameEventWire.encodeEvent(
+      "mixed", catalogRef, 8L, gameplay.head).toOption.get
+    wrongVersion("formatVersion") = 2
+    assert(FirstGameEventWire.decode(wrongVersion).isLeft)
   }
 
   test("format version and sequence reject fractional and nonfinite numbers") {

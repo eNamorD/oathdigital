@@ -68,6 +68,9 @@ final class AuthenticatedFirstGameGateway(
           case FirstGameIntent.PlacePawn(siteId) => actor.placePawn(siteId)
           case FirstGameIntent.ChooseAdviser(adviserId) =>
             actor.chooseAdviser(adviserId)
+          case FirstGameIntent.TakeWealth(resource) =>
+            actor.takeWealth(resource)
+          case FirstGameIntent.EndWake => actor.endWake
         }
         service.handle(gameId, request.expectedNextSequence, command)
           .left.map(Application)

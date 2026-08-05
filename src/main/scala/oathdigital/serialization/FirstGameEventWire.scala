@@ -17,7 +17,7 @@ final case class FirstGameEventEnvelope(
 )
 
 /**
- * Explicit v2 vocabulary for the exile-only complete first-game setup.
+ * Explicit mixed vocabulary: v2 setup followed by v3 gameplay events.
  *
  * V1 remains owned by `SetupEventWire`; this dual reader/writer boundary keeps
  * its checked-in bytes unchanged instead of reinterpreting old payloads.
@@ -26,11 +26,14 @@ object FirstGameEventWire {
   import WireError._
 
   val FormatVersion: Int = 2
+  val GameplayFormatVersion: Int = 3
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
   val AdviserChosenType = "setup.starting-adviser-chosen"
   val FirstGameCompletedType = "setup.first-game-completed"
+  val TakeWealthType = "gameplay.take-wealth"
+  val WakeEndedType = "gameplay.wake-ended"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -41,7 +44,7 @@ object FirstGameEventWire {
   ): Either[WireError, ujson.Value] =
     encode(
       FirstGameEventEnvelope(
-        FormatVersion,
+        formatVersion(event),
         gameId,
         sequence,
         catalog,
@@ -128,7 +131,8 @@ object FirstGameEventWire {
         for {
           version <- formatVersionField(obj, path)
           _ <-
-            if (version == FormatVersion) Right(())
+            if (version == FormatVersion || version == GameplayFormatVersion)
+              Right(())
             else
               Left(
                 UnsupportedFormatVersion(
@@ -152,6 +156,7 @@ object FirstGameEventWire {
             s"$path.payload",
             ref
           )
+          _ <- validateEventVersion(version, eventType, path)
         } yield FirstGameEventEnvelope(
           version,
           gameId,
@@ -198,13 +203,13 @@ object FirstGameEventWire {
   ): Either[WireError, Unit] =
     for {
       _ <-
-        if (envelope.formatVersion == FormatVersion) Right(())
+        if (envelope.formatVersion == formatVersion(envelope.event)) Right(())
         else
           Left(
             UnsupportedFormatVersion(
               "$.formatVersion",
               envelope.formatVersion,
-              FormatVersion
+              formatVersion(envelope.event)
             )
           )
       _ <-
@@ -229,7 +234,14 @@ object FirstGameEventWire {
       case _: FirstGamePawnPlaced => PawnPlacedType
       case _: StartingAdviserChosen => AdviserChosenType
       case FirstGameCompleted => FirstGameCompletedType
+      case _: WealthTaken => TakeWealthType
+      case _: WakeEnded => WakeEndedType
     }
+
+  private def formatVersion(event: FirstGameSetupEvent): Int = event match {
+    case _: WealthTaken | _: WakeEnded => GameplayFormatVersion
+    case _ => FormatVersion
+  }
 
   private def encodePayload(event: FirstGameSetupEvent): ujson.Value =
     event match {
@@ -245,6 +257,17 @@ object FirstGameEventWire {
           "adviserId" -> adviserId.value
         )
       case FirstGameCompleted => ujson.Obj()
+      case WealthTaken(playerId, siteId, resource) =>
+        ujson.Obj(
+          "playerId" -> playerId.value,
+          "siteId" -> siteId.value,
+          "resource" -> (resource match {
+            case WakeResource.Favor => "favor"
+            case WakeResource.Secret => "secret"
+          })
+        )
+      case WakeEnded(playerId) =>
+        ujson.Obj("playerId" -> playerId.value)
     }
 
   private def decodePayload(
@@ -283,6 +306,22 @@ object FirstGameEventWire {
             )
           )
         case FirstGameCompletedType => Right(FirstGameCompleted)
+        case TakeWealthType =>
+          val resource = payload("resource").str match {
+            case "favor" => Right(WakeResource.Favor)
+            case "secret" => Right(WakeResource.Secret)
+            case other => Left(InvalidValue(
+              s"$path.resource",
+              s"unknown wealth resource '$other'"
+            ))
+          }
+          resource.map(WealthTaken(
+            PlayerId(payload("playerId").str),
+            SiteId(payload("siteId").str),
+            _
+          ))
+        case WakeEndedType =>
+          Right(WakeEnded(PlayerId(payload("playerId").str)))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -294,6 +333,22 @@ object FirstGameEventWire {
           )
         )
     }
+
+  private def validateEventVersion(
+      version: Int,
+      eventType: String,
+      path: String
+  ): Either[WireError, Unit] = {
+    val expected =
+      if (eventType == TakeWealthType || eventType == WakeEndedType)
+        GameplayFormatVersion
+      else FormatVersion
+    if (version == expected) Right(())
+    else Left(InvalidValue(
+      s"$path.formatVersion",
+      s"event type '$eventType' requires format version $expected"
+    ))
+  }
 
   private def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(

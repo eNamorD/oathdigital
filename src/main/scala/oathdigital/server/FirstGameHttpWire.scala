@@ -10,7 +10,7 @@ import oathdigital.application.{
 }
 import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
 import oathdigital.serialization.FirstGameEventWire
-import oathdigital.setup.PlayerColor
+import oathdigital.setup.{PlayerColor, WakeResource}
 
 final case class FirstGameCommandRequest(
     expectedNextSequence: Long,
@@ -130,7 +130,23 @@ object FirstGameHttpWire {
               "label" -> choice.label
             )
           }
-        )
+        ),
+        "activePlayerResources" -> projection.activePlayerResources.fold[
+          ujson.Value](ujson.Null)(resources => ujson.Obj(
+            "favor" -> resources.favor,
+            "faceUpSecrets" -> resources.faceUpSecrets,
+            "faceDownSecrets" -> resources.faceDownSecrets,
+            "supply" -> resources.supply
+          )),
+        "currentSiteResources" -> projection.currentSiteResources.fold[
+          ujson.Value](ujson.Null)(resources => ujson.Obj(
+            "siteId" -> resources.siteId,
+            "favor" -> resources.favor,
+            "secrets" -> resources.secrets
+          )),
+        "actionSelectionOpen" -> projection.actionSelectionOpen,
+        "actionFamilies" -> ujson.Arr.from(
+          projection.actionFamilies.map(ujson.Str(_)))
       )
     )
 
@@ -160,6 +176,22 @@ object FirstGameHttpWire {
           PlayerId(player),
           DenizenId(adviser)
         )
+      case "takeWealth" =>
+        for {
+          player <- stringField(obj, "playerId", path)
+          resourceName <- stringField(obj, "resource", path)
+          resource <- resourceName match {
+            case "favor" => Right(WakeResource.Favor)
+            case "secret" => Right(WakeResource.Secret)
+            case other => Left(HttpInputError(
+              s"$path.resource",
+              s"unknown wealth resource '$other'"
+            ))
+          }
+        } yield FirstGameCommand.TakeWealth(PlayerId(player), resource)
+      case "endWake" =>
+        stringField(obj, "playerId", path).map(player =>
+          FirstGameCommand.EndWake(PlayerId(player)))
       case other =>
         Left(HttpInputError(
           s"$path.type",

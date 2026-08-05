@@ -56,6 +56,7 @@ object ServerModeUi {
           mount.appendChild(players(value))
           mount.appendChild(world(value))
           mount.appendChild(advisers(value))
+          mount.appendChild(wakeActions(value))
       }
     }
 
@@ -226,7 +227,15 @@ object ServerModeUi {
 
     def status(value: FirstGameProjection): dom.Element = {
       val node = element("div", "status")
-      if (value.ready) node.textContent = "Ready to begin first turn."
+      if (value.phase == "act-action-selection")
+        node.textContent = "Act phase — choose your first normal action."
+      else if (value.ready) {
+        node.appendChild(dom.document.createTextNode(
+          s"${value.phase}; active participant: "
+        ))
+        value.activeParticipantId.foreach(playerId =>
+          node.appendChild(playerReference(value, playerId)))
+      }
       else {
         node.appendChild(dom.document.createTextNode(
           s"${value.phase}; active participant: "
@@ -237,6 +246,61 @@ object ServerModeUi {
         }
       }
       node
+    }
+
+    def wakeActions(value: FirstGameProjection): dom.Element = {
+      val panel = element("section", "panel wake-actions")
+      panel.appendChild(text("h2", "", "Wake actions"))
+      value.activePlayerResources.foreach { resources =>
+        panel.appendChild(text(
+          "p",
+          "resources",
+          s"Favor ${resources.favor} · Secrets ${resources.faceUpSecrets} " +
+            s"face up / ${resources.faceDownSecrets} face down · " +
+            s"Supply ${resources.supply}"
+        ))
+      }
+      value.currentSiteResources.foreach { resources =>
+        panel.appendChild(text(
+          "p",
+          "site-resources",
+          s"${siteLabel(value, resources.siteId)} loose wealth: " +
+            s"${resources.favor} favor · ${resources.secrets} secrets"
+        ))
+      }
+      if (value.phase == "wake") {
+        val favor = button("Take 1 favor", "wake-action")
+        favor.disabled = !controlsAvailable ||
+          !value.legalControls.contains("takeFavor")
+        favor.onclick = _ => submit(
+          FirstGameCommand.TakeWealth(selectedPlayer, "favor"))
+        panel.appendChild(favor)
+
+        val secret = button("Take 1 secret", "wake-action")
+        secret.disabled = !controlsAvailable ||
+          !value.legalControls.contains("takeSecret")
+        secret.onclick = _ => submit(
+          FirstGameCommand.TakeWealth(selectedPlayer, "secret"))
+        panel.appendChild(secret)
+
+        val end = button("End Wake", "wake-action")
+        end.disabled = !controlsAvailable ||
+          !value.legalControls.contains("endWake")
+        end.onclick = _ => submit(FirstGameCommand.EndWake(selectedPlayer))
+        panel.appendChild(end)
+      }
+      if (value.actionSelectionOpen) {
+        panel.appendChild(text(
+          "p",
+          "informational",
+          "Normal action families (not yet implemented):"
+        ))
+        val list = element("ul", "action-families")
+        value.actionFamilies.foreach(action =>
+          list.appendChild(text("li", "", action)))
+        panel.appendChild(list)
+      }
+      panel
     }
 
     def players(value: FirstGameProjection): dom.Element = {

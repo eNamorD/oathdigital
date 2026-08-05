@@ -8,12 +8,14 @@ import oathdigital.application.{
 }
 import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
 import oathdigital.serialization.FirstGameEventWire
-import oathdigital.setup.PlayerColor
+import oathdigital.setup.{PlayerColor, WakeResource}
 
 sealed trait FirstGameIntent extends Product with Serializable
 object FirstGameIntent {
   final case class PlacePawn(siteId: SiteId) extends FirstGameIntent
   final case class ChooseAdviser(adviserId: DenizenId) extends FirstGameIntent
+  final case class TakeWealth(resource: WakeResource) extends FirstGameIntent
+  case object EndWake extends FirstGameIntent
 }
 
 final case class AuthenticatedCommandRequest(
@@ -105,6 +107,20 @@ object AuthenticatedFirstGameHttpWire {
         exactFields(obj, Set("type", "adviserId"), "$.intent")
           .flatMap(_ => stringField(obj, "adviserId", "$.intent"))
           .map(value => FirstGameIntent.ChooseAdviser(DenizenId(value)))
+      case "takeWealth" =>
+        exactFields(obj, Set("type", "resource"), "$.intent")
+          .flatMap(_ => stringField(obj, "resource", "$.intent"))
+          .flatMap {
+            case "favor" => Right(FirstGameIntent.TakeWealth(WakeResource.Favor))
+            case "secret" => Right(FirstGameIntent.TakeWealth(WakeResource.Secret))
+            case other => Left(HttpInputError(
+              "$.intent.resource",
+              s"unknown wealth resource '$other'"
+            ))
+          }
+      case "endWake" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ =>
+          FirstGameIntent.EndWake)
       case other => Left(HttpInputError(
         "$.intent.type",
         s"unknown intent type '$other'"

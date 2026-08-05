@@ -78,6 +78,42 @@ class HttpFirstGameClientSuite extends FunSuite {
       }
   }
 
+  test("Wake commands and action-selection projection are deterministic") {
+    val wealth = FirstGameJson.encodeCommand(
+      8L,
+      FirstGameCommand.TakeWealth("red-exile", "favor")
+    )
+    val end = FirstGameJson.encodeCommand(
+      9L,
+      FirstGameCommand.EndWake("red-exile")
+    )
+    assert(wealth.contains("\"type\":\"takeWealth\""))
+    assert(wealth.contains("\"resource\":\"favor\""))
+    assert(end.contains("\"type\":\"endWake\""))
+
+    val json = projectionJson(
+      sequence = 10,
+      phase = "act-action-selection",
+      ready = true,
+      completed = true,
+      choices = false
+    ).replace(
+      "\"privateAdviserChoices\":[]",
+      "\"privateAdviserChoices\":[]," +
+        "\"activePlayerResources\":{" +
+        "\"favor\":2,\"faceUpSecrets\":1," +
+        "\"faceDownSecrets\":0,\"supply\":7}," +
+        "\"currentSiteResources\":{" +
+        "\"siteId\":\"site:001\",\"favor\":0,\"secrets\":1}," +
+        "\"actionSelectionOpen\":true," +
+        "\"actionFamilies\":[\"Search\",\"Travel\"]"
+    )
+    val projection = FirstGameJson.decodeProjection(json).toOption.get
+    assert(projection.actionSelectionOpen)
+    assertEquals(projection.actionFamilies, Vector("Search", "Travel"))
+    assertEquals(projection.activePlayerResources.map(_.supply), Some(7))
+  }
+
   test("409 is surfaced and caller refreshes without command retry") {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(

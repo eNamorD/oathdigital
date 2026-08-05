@@ -6,6 +6,12 @@ import oathdigital.serialization.{
 }
 
 class FirstGameHttpWireSuite extends munit.FunSuite {
+  private def commandRequest(command: ujson.Obj): String =
+    ujson.write(ujson.Obj(
+      "expectedNextSequence" -> 8,
+      "command" -> command
+    ))
+
   private def beginRequest(expected: ujson.Value): String = {
     ujson.write(ujson.Obj(
       "expectedNextSequence" -> expected,
@@ -38,6 +44,25 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
       .isInstanceOf[FirstGameCommand.PlacePawn])
     assert(FirstGameHttpWire.decodeCommand(adviser).toOption.get.command
       .isInstanceOf[FirstGameCommand.ChooseAdviser])
+  }
+
+  test("Wake commands decode explicit actor and wealth choice") {
+    val wealth = commandRequest(
+      ujson.Obj("type" -> "takeWealth", "playerId" -> "p2",
+        "resource" -> "favor"))
+    val end = commandRequest(
+      ujson.Obj("type" -> "endWake", "playerId" -> "p2"))
+    assertEquals(
+      FirstGameHttpWire.decodeCommand(wealth).toOption.get.command,
+      FirstGameCommand.TakeWealth(
+        oathdigital.model.PlayerId("p2"),
+        oathdigital.setup.WakeResource.Favor
+      )
+    )
+    assertEquals(
+      FirstGameHttpWire.decodeCommand(end).toOption.get.command,
+      FirstGameCommand.EndWake(oathdigital.model.PlayerId("p2"))
+    )
   }
 
   test("development bootstrap decodes only participant configuration") {

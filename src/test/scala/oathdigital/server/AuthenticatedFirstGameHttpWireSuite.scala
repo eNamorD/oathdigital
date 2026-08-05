@@ -15,6 +15,24 @@ class AuthenticatedFirstGameHttpWireSuite extends munit.FunSuite {
     )
   }
 
+  test("authenticated Wake intents derive their actor server-side") {
+    val wealth =
+      """{"expectedNextSequence":8,"intent":{"type":"takeWealth","resource":"secret"}}"""
+    val end =
+      """{"expectedNextSequence":9,"intent":{"type":"endWake"}}"""
+    assertEquals(
+      AuthenticatedFirstGameHttpWire.decodeCommand(wealth).toOption.get.intent,
+      FirstGameIntent.TakeWealth(oathdigital.setup.WakeResource.Secret)
+    )
+    assertEquals(
+      AuthenticatedFirstGameHttpWire.decodeCommand(end).toOption.get.intent,
+      FirstGameIntent.EndWake
+    )
+    val impersonation =
+      """{"expectedNextSequence":8,"intent":{"type":"endWake","playerId":"p2"}}"""
+    assert(AuthenticatedFirstGameHttpWire.decodeCommand(impersonation).isLeft)
+  }
+
   test("authenticated bootstrap accepts only visible seat configuration") {
     val valid =
       """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""

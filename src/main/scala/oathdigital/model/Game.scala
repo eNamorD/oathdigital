@@ -67,7 +67,26 @@ object Phase {
 final case class TurnState(
     activePlayer: PlayerId,
     phase: Phase,
-    usedPowers: Set[PowerId]
+    usedPowers: Set[PowerUseRef]
+)
+
+sealed trait PowerTiming extends Product with Serializable
+object PowerTiming {
+  case object Wake extends PowerTiming
+  case object Act extends PowerTiming
+  case object Rest extends PowerTiming
+}
+
+sealed trait PowerSourceRef extends Product with Serializable
+object PowerSourceRef {
+  final case class Site(id: SiteId) extends PowerSourceRef
+}
+
+/** A stable identity for one use-limited power instance this turn. */
+final case class PowerUseRef(
+    timing: PowerTiming,
+    source: PowerSourceRef,
+    powerId: PowerId
 )
 
 final case class GameTracks(

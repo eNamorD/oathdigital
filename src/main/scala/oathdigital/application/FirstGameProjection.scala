@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.{DenizenId, PlayerId, SiteId}
+import oathdigital.model._
 import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
 
@@ -18,6 +18,17 @@ final case class SetupRegionProjection(
 )
 final case class PawnLocationProjection(playerId: String, siteId: String)
 final case class PrivateAdviserChoice(adviserId: String, label: String)
+final case class ActivePlayerResourcesProjection(
+    favor: Int,
+    faceUpSecrets: Int,
+    faceDownSecrets: Int,
+    supply: Int
+)
+final case class CurrentSiteResourcesProjection(
+    siteId: String,
+    favor: Int,
+    secrets: Int
+)
 
 final case class FirstGameProjection(
     gameId: String,
@@ -30,7 +41,11 @@ final case class FirstGameProjection(
     legalControls: Vector[String],
     ready: Boolean,
     completed: Boolean,
-    privateAdviserChoices: Vector[PrivateAdviserChoice]
+    privateAdviserChoices: Vector[PrivateAdviserChoice],
+    activePlayerResources: Option[ActivePlayerResourcesProjection] = None,
+    currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
+    actionSelectionOpen: Boolean = false,
+    actionFamilies: Vector[String] = Vector.empty
 )
 
 final class FirstGameProjector(catalog: ExecutableCatalog) {
@@ -115,6 +130,32 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
           privateChoices
         )
       case Ready(value) =>
+        val current = value.game.current
+        val active = current.players.find(
+          _.player == current.turn.activePlayer).get
+        val site = active.pawnSite.flatMap(current.map.sites.get)
+        val enemiesAtSite = active.pawnSite.exists(siteId =>
+          current.players.exists(other =>
+            other.player != active.player && other.pawnSite.contains(siteId)))
+        val takeUsed = active.pawnSite.exists(siteId =>
+          current.turn.usedPowers.contains(PowerUseRef(
+            PowerTiming.Wake,
+            PowerSourceRef.Site(siteId),
+            PowerId("take-wealth")
+          )))
+        val controls =
+          if (!requestingPlayer.contains(active.player) ||
+              current.turn.phase != Phase.Wake) Vector.empty
+          else {
+            val takeControls = site.toVector.flatMap { state =>
+              if (enemiesAtSite || takeUsed) Vector.empty
+              else Vector(
+                Option.when(state.tokens.favor > 0)("takeFavor"),
+                Option.when(state.tokens.secrets > 0)("takeSecret")
+              ).flatten
+            }
+            takeControls :+ "endWake"
+          }
         val setupPlayers = value.game.current.players.map { player =>
           SetupPlayerProjection(
             player.player.value,
@@ -126,7 +167,11 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
         FirstGameProjection(
           gameId,
           loaded.nextSequence,
-          "ready",
+          current.turn.phase match {
+            case Phase.Wake => "wake"
+            case Phase.Act => "act-action-selection"
+            case Phase.Rest => "rest"
+          },
           Some(value.game.current.turn.activePlayer.value),
           setupPlayers,
           Vector(
@@ -137,10 +182,28 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
               PawnLocationProjection(player.player.value, site.value))),
-          Vector.empty,
+          controls,
           ready = true,
           completed = true,
-          Vector.empty
+          Vector.empty,
+          Some(ActivePlayerResourcesProjection(
+            active.board.favor,
+            active.board.faceUpSecrets,
+            active.board.faceDownSecrets,
+            active.board.supply.supply
+          )),
+          active.pawnSite.flatMap(siteId => site.map(state =>
+            CurrentSiteResourcesProjection(
+              siteId.value,
+              state.tokens.favor,
+              state.tokens.secrets
+            ))),
+          actionSelectionOpen = current.turn.phase == Phase.Act,
+          actionFamilies =
+            if (current.turn.phase == Phase.Act)
+              Vector("Search", "Travel", "Campaign", "Muster", "Trade",
+                "Forge", "Recover", "Challenge")
+            else Vector.empty
         )
     }
 

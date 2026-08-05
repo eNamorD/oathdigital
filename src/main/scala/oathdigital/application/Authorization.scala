@@ -58,6 +58,12 @@ final case class AuthorizedPlayer private (
 
   def chooseAdviser(adviserId: DenizenId): FirstGameCommand =
     FirstGameCommand.ChooseAdviser(access.playerId, adviserId)
+
+  def takeWealth(resource: oathdigital.setup.WakeResource): FirstGameCommand =
+    FirstGameCommand.TakeWealth(access.playerId, resource)
+
+  def endWake: FirstGameCommand =
+    FirstGameCommand.EndWake(access.playerId)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

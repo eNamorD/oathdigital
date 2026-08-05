@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.gameplay.{FirstGameRules, WakeCommand}
 import oathdigital.model.{DenizenId, PlayerId, SiteId}
 import oathdigital.serialization.{FirstGameEventWire, WireError}
 import oathdigital.setup.{
@@ -12,7 +13,8 @@ import oathdigital.setup.{
   FirstGameSetupRules,
   FirstGameSetupState,
   FirstGameSetupViolation,
-  SetupCommand
+  SetupCommand,
+  WakeResource
 }
 
 sealed trait FirstGameCommand extends Product with Serializable
@@ -22,6 +24,9 @@ object FirstGameCommand {
       extends FirstGameCommand
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
       extends FirstGameCommand
+  final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
+      extends FirstGameCommand
+  final case class EndWake(playerId: PlayerId) extends FirstGameCommand
 }
 
 final case class FirstGameAccepted(
@@ -65,10 +70,10 @@ object FirstGameApplicationError {
 }
 
 /**
- * Event-sourced application service for v2 first-game setup streams.
+ * Event-sourced application service for v2 setup plus v3 gameplay streams.
  *
- * V1 envelopes are rejected by `FirstGameEventWire`; no implicit migration or
- * mixed-version replay is attempted.
+ * V1 envelopes are rejected by `FirstGameEventWire`; no implicit migration is
+ * attempted. Strict contiguous v2/v3 replay shares one reconstruction path.
  */
 final class FirstGameApplicationService(
     catalog: ExecutableCatalog,
@@ -77,7 +82,8 @@ final class FirstGameApplicationService(
   import FirstGameApplicationError._
   import RepositoryAppendResult._
 
-  private val rules = new FirstGameSetupRules(catalog)
+  private val setupRules = new FirstGameSetupRules(catalog)
+  private val rules = new FirstGameRules(catalog)
   private val replay = new EventReplayEngine(rules)
 
   def load(
@@ -203,14 +209,18 @@ final class FirstGameApplicationService(
   ) =
     command match {
       case FirstGameCommand.Begin(plan) =>
-        rules.handle(state, FirstGameSetupCommand.Begin(plan))
+        setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case FirstGameCommand.PlacePawn(playerId, siteId) =>
-        rules.handle(state, SetupCommand.PlacePawn(playerId, siteId))
+        setupRules.handle(state, SetupCommand.PlacePawn(playerId, siteId))
       case FirstGameCommand.ChooseAdviser(playerId, adviserId) =>
-        rules.handle(
+        setupRules.handle(
           state,
           FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
         )
+      case FirstGameCommand.TakeWealth(playerId, resource) =>
+        rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
+      case FirstGameCommand.EndWake(playerId) =>
+        rules.handle(state, WakeCommand.EndWake(playerId))
     }
 
   private def encode(

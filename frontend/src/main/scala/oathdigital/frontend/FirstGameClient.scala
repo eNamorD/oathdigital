@@ -66,6 +66,17 @@ final case class FirstGameSite(siteId: String, label: String)
 final case class FirstGameRegion(regionId: String, sites: Vector[FirstGameSite])
 final case class FirstGamePawn(playerId: String, siteId: String)
 final case class AdviserChoice(adviserId: String, label: String)
+final case class ActivePlayerResources(
+    favor: Int,
+    faceUpSecrets: Int,
+    faceDownSecrets: Int,
+    supply: Int
+)
+final case class CurrentSiteResources(
+    siteId: String,
+    favor: Int,
+    secrets: Int
+)
 final case class FirstGameProjection(
     gameId: String,
     nextSequence: Long,
@@ -77,7 +88,11 @@ final case class FirstGameProjection(
     legalControls: Set[String],
     ready: Boolean,
     completed: Boolean,
-    privateAdviserChoices: Vector[AdviserChoice]
+    privateAdviserChoices: Vector[AdviserChoice],
+    activePlayerResources: Option[ActivePlayerResources] = None,
+    currentSiteResources: Option[CurrentSiteResources] = None,
+    actionSelectionOpen: Boolean = false,
+    actionFamilies: Vector[String] = Vector.empty
 )
 
 sealed trait FirstGameCommand
@@ -86,6 +101,9 @@ object FirstGameCommand {
       extends FirstGameCommand
   final case class ChooseAdviser(playerId: String, adviserId: String)
       extends FirstGameCommand
+  final case class TakeWealth(playerId: String, resource: String)
+      extends FirstGameCommand
+  final case class EndWake(playerId: String) extends FirstGameCommand
 }
 
 sealed trait FirstGameClientFailure {
@@ -241,6 +259,14 @@ object FirstGameJson {
           playerId = player,
           adviserId = adviser
         )
+      case FirstGameCommand.TakeWealth(player, resource) =>
+        js.Dynamic.literal(
+          `type` = "takeWealth",
+          playerId = player,
+          resource = resource
+        )
+      case FirstGameCommand.EndWake(player) =>
+        js.Dynamic.literal(`type` = "endWake", playerId = player)
     }
     js.JSON.stringify(js.Dynamic.literal(
       expectedNextSequence = sequence.toDouble,
@@ -296,6 +322,38 @@ object FirstGameJson {
               label <- string(item, "label", path)
             } yield AdviserChoice(id, label)
           })
+        resources <- optionalField(root, "activePlayerResources").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => for {
+            obj <- objectValue(value, "$.activePlayerResources")
+            favor <- int(obj, "favor", "$.activePlayerResources")
+            up <- int(obj, "faceUpSecrets", "$.activePlayerResources")
+            down <- int(obj, "faceDownSecrets", "$.activePlayerResources")
+            supply <- int(obj, "supply", "$.activePlayerResources")
+          } yield Some(ActivePlayerResources(favor, up, down, supply))
+        }
+        siteResources <- optionalField(root, "currentSiteResources").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => for {
+            obj <- objectValue(value, "$.currentSiteResources")
+            site <- string(obj, "siteId", "$.currentSiteResources")
+            favor <- int(obj, "favor", "$.currentSiteResources")
+            secrets <- int(obj, "secrets", "$.currentSiteResources")
+          } yield Some(CurrentSiteResources(site, favor, secrets))
+        }
+        actionOpen <- optionalField(root, "actionSelectionOpen").flatMap {
+          case None => Right(false)
+          case Some(value) if js.typeOf(value) == "boolean" =>
+            Right(value.asInstanceOf[Boolean])
+          case _ => Left(FirstGameClientFailure.DecodeFailure(
+            "$.actionSelectionOpen", "expected boolean"))
+        }
+        actions <- optionalField(root, "actionFamilies").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => stringArray(root, "actionFamilies", "$")
+        }
       } yield FirstGameProjection(
         game,
         sequence,
@@ -307,7 +365,11 @@ object FirstGameJson {
         controls.toSet,
         ready,
         completed,
-        choices
+        choices,
+        resources,
+        siteResources,
+        actionOpen,
+        actions
       )
     }
   }
@@ -411,6 +473,26 @@ object FirstGameJson {
         s"$path.$name",
         "expected non-negative JSON-safe integer"
       ))
+    }
+
+  private def int(value: js.Dynamic, name: String, path: String) =
+    field(value, name, path).flatMap { result =>
+      if (js.typeOf(result) == "number" &&
+          result.asInstanceOf[Double].isWhole &&
+          result.asInstanceOf[Double] >= 0 &&
+          result.asInstanceOf[Double] <= Int.MaxValue)
+        Right(result.asInstanceOf[Double].toInt)
+      else Left(FirstGameClientFailure.DecodeFailure(
+        s"$path.$name", "expected non-negative integer"))
+    }
+
+  private def optionalField(
+      value: js.Dynamic,
+      name: String
+  ): Either[FirstGameClientFailure, Option[js.Dynamic]] =
+    objectValue(value, "$").map { obj =>
+      val result = obj.selectDynamic(name)
+      if (js.isUndefined(result)) None else Some(result)
     }
 
   private def bool(value: js.Dynamic, name: String, path: String) =

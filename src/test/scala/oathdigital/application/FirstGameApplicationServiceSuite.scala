@@ -2,7 +2,7 @@ package oathdigital.application
 
 import java.nio.file.Files
 
-import oathdigital.model.{CatalogRef, PlayerId}
+import oathdigital.model.{CatalogRef, Phase, PlayerId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
@@ -13,11 +13,13 @@ import oathdigital.setup.FirstGameSetupEvent.{
 }
 import oathdigital.setup.FirstGameSetupViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.setup.FirstGameSetupState.Ready
+import oathdigital.setup.WakeResource
 
 class FirstGameApplicationServiceSuite extends munit.FunSuite {
   private def execute(
       service: FirstGameApplicationService,
-      gameId: String
+      gameId: String,
+      placementSites: Vector[oathdigital.model.SiteId] = sites
   ): FirstGameAccepted = {
     var accepted =
       service.handle(gameId, 0L, FirstGameCommand.Begin(plan))
@@ -27,7 +29,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       accepted = service.handle(
         gameId,
         accepted.nextSequence,
-        FirstGameCommand.PlacePawn(playerId, sites(index))
+        FirstGameCommand.PlacePawn(playerId, placementSites(index))
       ).toOption.get
       val participantIndex =
         plan.participants.indexWhere(_.playerId == playerId)
@@ -58,6 +60,89 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         FirstGameEventWire.FormatVersion))
+  }
+
+  test("gameplay appends v3 at the absolute position and reloads equally") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new FirstGameApplicationService(catalog, repository)
+    val wealthSite = catalog.sites.find(site =>
+      sites.contains(site.id) && !site.startingResources.isEmpty).get.id
+    val otherSites = sites.filterNot(_ == wealthSite).take(2)
+    val setup = execute(
+      service,
+      "game-wake",
+      wealthSite +: otherSites
+    )
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val siteId = ready.game.current.players.find(_.player == active)
+      .flatMap(_.pawnSite).get
+    val site = ready.game.current.map.sites(siteId)
+    val resource =
+      if (site.tokens.favor > 0) WakeResource.Favor else WakeResource.Secret
+
+    val wealth = service.handle(
+      "game-wake",
+      setup.nextSequence,
+      FirstGameCommand.TakeWealth(active, resource)
+    ).toOption.get
+    assertEquals(wealth.nextSequence, 9L)
+    assertEquals(
+      service.handle("game-wake", 8L, FirstGameCommand.EndWake(active)),
+      Left(FirstGameApplicationError.StaleClientPosition(8L, 9L))
+    )
+    val ended = service.handle(
+      "game-wake",
+      wealth.nextSequence,
+      FirstGameCommand.EndWake(active)
+    ).toOption.get
+    val reloaded = new FirstGameApplicationService(catalog, repository)
+      .load("game-wake").toOption.flatten.get
+    val Ready(after) = reloaded.state: @unchecked
+
+    assertEquals(reloaded.state, ended.state)
+    assertEquals(after.game.current.turn.phase, Phase.Act)
+    val records = repository.load("game-wake").toOption.flatten.get.records
+    assertEquals(records.take(8).map(record =>
+      ujson.read(record)("formatVersion").num.toInt).distinct, Vector(2))
+    assertEquals(records.drop(8).map(record =>
+      ujson.read(record)("formatVersion").num.toInt), Vector(3, 3))
+    assertEquals(records.drop(8).map(record =>
+      ujson.read(record)("eventType").str),
+      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+  }
+
+  test("Wake projection is actor-private and Act boundary is informational") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new FirstGameApplicationService(catalog, repository)
+    val setup = execute(service, "game-projection-wake")
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val projector = new FirstGameProjector(catalog)
+    val loaded = LoadedFirstGame(setup.state, setup.nextSequence)
+
+    val own = projector.project("game-projection-wake", loaded, active)
+    val public = projector.projectPublic("game-projection-wake", loaded)
+    assertEquals(own.phase, "wake")
+    assert(own.legalControls.contains("endWake"))
+    assertEquals(public.legalControls, Vector.empty)
+    assert(own.activePlayerResources.nonEmpty)
+    assert(own.currentSiteResources.nonEmpty)
+
+    val ended = service.handle(
+      "game-projection-wake",
+      setup.nextSequence,
+      FirstGameCommand.EndWake(active)
+    ).toOption.get
+    val act = projector.project(
+      "game-projection-wake",
+      LoadedFirstGame(ended.state, ended.nextSequence),
+      active
+    )
+    assertEquals(act.phase, "act-action-selection")
+    assert(act.actionSelectionOpen)
+    assertEquals(act.legalControls, Vector.empty)
+    assertEquals(act.actionFamilies.size, 8)
   }
 
   test("stale expected position rejects a command legal on current state") {
