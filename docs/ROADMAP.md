@@ -7,16 +7,13 @@ been reviewed.
 
 ## Now
 
-- [ ] **L1 — First post-setup gameplay vertical slice**
-  - Define and implement the smallest rule-correct Wake-to-action milestone
-    after setup, with command/event/replay, server transport, projection, and UI
-    controls.
-  - Preserve the loopback development path for manual play while production
-    account work remains deferred.
+- [ ] **L2 — Board layout and asset-loading pipeline**
 
 ## Next
 
-- [ ] **L2 — Board layout and asset-loading pipeline**
+- [ ] **L6a — First normal Act action vertical slice**
+  - Select one bounded normal action and carry it through authoritative rules,
+    events, replay, server transport, projection, and UI.
 
 ## Later
 
@@ -79,10 +76,14 @@ been reviewed.
 - [x] Establish the deferred X6 security foundation through schema-v3
   digest-only sessions, membership-derived authorization, authenticated game
   routes, exact-origin CSRF protection, and deterministic HSQL close/reopen.
+- [x] Complete L1 first-turn Wake through separate Take Wealth and End Wake
+  commands, mixed v2/v3 authoritative replay, server and authenticated command
+  boundaries, player-scoped UI controls, and the Act action-selection boundary.
 
-The combined milestone passes 148 JVM tests, 31 Scala.js tests, the Scala.js
+The combined milestone passes 160 JVM tests, 32 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
-test through **Ready to begin first turn** and reload reconstruction.
+test through Take Wealth, End Wake, Act selection, reload reconstruction, and
+disconnect/reconnect recovery.
 
 ## Coordination rules
 
