@@ -17,8 +17,12 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     Files.createTempDirectory(s"oathdigital-owner-$label-")
       .resolve("database")
 
+  private def open(databasePath: Path): HsqldbDatabaseOwner =
+    HsqldbDatabaseOwner.open(databasePath)
+      .fold(error => fail(s"database open failed: $error"), identity)
+
   test("one owner serves identity and journal adapters concurrently") {
-    val owner = HsqldbDatabaseOwner.open(path("concurrent")).toOption.get
+    val owner = open(path("concurrent"))
     val identity = owner.identities
     val journal = owner.eventStreams
     try {
@@ -63,7 +67,7 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
 
   test("coordinated close is idempotent and one reopen reconstructs both stores") {
     val databasePath = path("reopen")
-    val first = HsqldbDatabaseOwner.open(databasePath).toOption.get
+    val first = open(databasePath)
     first.identities.createUser(UserId("owner"), "Owner", 0L)
     first.identities.createGame("game-reopen", UserId("owner"), 1L)
     first.eventStreams.append(
@@ -75,7 +79,7 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
     first.close()
     assertEquals(first.shutdownCount, 1)
 
-    val reopened = HsqldbDatabaseOwner.open(databasePath).toOption.get
+    val reopened = open(databasePath)
     try {
       assertEquals(
         reopened.eventStreams.load("game-reopen")
@@ -92,5 +96,66 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
         )))
       )
     } finally reopened.close()
+  }
+
+  test("reopen retry is limited to the exact lock-heartbeat failure") {
+    val exactChain = Vector(
+      "java.sql.SQLException" -> "Database lock acquisition failure",
+      "org.hsqldb.persist.LockFile$LockHeldExternallyException" ->
+        "lockFile: database.lck method: checkHeartbeat"
+    )
+    assert(HsqldbDatabaseOwner.isTransientLockHeartbeatChain(exactChain))
+    assert(!HsqldbDatabaseOwner.isTransientLockHeartbeatChain(
+      exactChain.updated(1, "java.io.IOException" -> exactChain(1)._2)))
+    assert(!HsqldbDatabaseOwner.isTransientLockHeartbeatChain(
+      exactChain.updated(1, exactChain(1)._1 -> "database is corrupt")))
+
+    var attempts = 0
+    var sleeps = 0
+    val failure = HsqldbDatabaseOwner.ConnectionFailure(
+      new RuntimeException("transient"))
+    val result = HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        Left(failure)
+      },
+      maxAttempts = 2,
+      deadlineNanos = 100L,
+      nanoTime = () => 0L,
+      sleep = _ => sleeps += 1,
+      retryable = _ => true
+    )
+    assertEquals(result, Left(failure))
+    assertEquals(attempts, 2)
+    assertEquals(sleeps, 1)
+
+    attempts = 0
+    HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        Left(HsqldbDatabaseOwner.InitializationFailure(
+          RepositoryFailure.StorageFailure("schema failure")))
+      },
+      maxAttempts = 2,
+      deadlineNanos = 100L,
+      nanoTime = () => 0L,
+      sleep = _ => (),
+      retryable = _ => true
+    )
+    assertEquals(attempts, 1)
+
+    attempts = 0
+    HsqldbDatabaseOwner.retryTransientLock[Int](
+      () => {
+        attempts += 1
+        Left(failure)
+      },
+      maxAttempts = 2,
+      deadlineNanos = 0L,
+      nanoTime = () => 0L,
+      sleep = _ => (),
+      retryable = _ => true
+    )
+    assertEquals(attempts, 1)
   }
 }

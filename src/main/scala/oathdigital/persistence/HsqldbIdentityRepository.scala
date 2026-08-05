@@ -338,6 +338,18 @@ final class HsqldbIdentityRepository private[persistence] (
       }
     }
 
+  private[persistence] def sessionColumnNames
+      : Either[IdentityFailure, Vector[String]] =
+    runExpected("inspect session schema") { connection =>
+      val columns = connection.getMetaData
+        .getColumns(null, null, "SESSIONS", null)
+      try {
+        val names = Vector.newBuilder[String]
+        while (columns.next()) names += columns.getString("COLUMN_NAME")
+        Right(names.result().map(_.toLowerCase))
+      } finally columns.close()
+    }
+
   private def updateSession(
       operation: String,
       digest: SessionTokenDigest,

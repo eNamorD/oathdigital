@@ -47,6 +47,15 @@ exactly `1..TargetVersion`. Failed initialization closes Slick and Hikari
 before returning. Database paths containing HSQLDB's `;` URL property
 delimiter or control delimiters are rejected before a JDBC URL is constructed.
 
+HSQLDB can briefly retain a file-lock heartbeat after a coordinated
+`SHUTDOWN`, causing an immediate reopen to report
+`LockHeldExternallyException` even though the prior owner has closed. Database
+open retries at most once, after a 50 ms backoff and within a 25-second retry
+deadline, only when the exception chain contains that exact HSQLDB lock class
+and `checkHeartbeat` diagnostic. Each failed Hikari datasource is closed before
+retry. Unsafe paths, schema incompatibility, corruption, and all other open
+failures are returned immediately without retry.
+
 `envelope_json` is stored opaquely and exactly as supplied. The application
 wire decoder remains responsible for format versions and semantic validation.
 

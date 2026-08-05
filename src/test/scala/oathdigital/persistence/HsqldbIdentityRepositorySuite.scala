@@ -258,21 +258,11 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
   test("session schema contains only the digest and never a raw token column") {
     val path = databasePath("digest-only")
     val repository = open(path)
-    repository.close()
-    val connection = DriverManager.getConnection(
-      s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", ""
-    )
     try {
-      val columns = connection.getMetaData
-        .getColumns(null, null, "SESSIONS", null)
-      val names = Vector.newBuilder[String]
-      while (columns.next()) names += columns.getString("COLUMN_NAME")
-      val result = names.result().map(_.toLowerCase)
+      val result = repository.sessionColumnNames.toOption.get
       assert(result.contains("token_digest"))
       assert(!result.exists(name => name == "token" || name.contains("bearer")))
-      val shutdown = connection.createStatement()
-      try shutdown.execute("SHUTDOWN") finally shutdown.close()
-    } finally connection.close()
+    } finally repository.close()
   }
 
   private def csrfDigest(value: Byte): CsrfTokenDigest =

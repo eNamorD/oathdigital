@@ -8,7 +8,7 @@ import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import com.zaxxer.hikari.HikariDataSource
 import slick.jdbc.JdbcBackend.Database
 import slick.jdbc.HsqldbProfile.api._
 
@@ -63,8 +63,33 @@ final class HsqldbDatabaseOwner private (
 }
 
 object HsqldbDatabaseOwner {
+  private val ReopenAttempts = 2
+  private val ReopenBackoffMillis = 50L
+  private val ReopenDeadlineNanos = TimeUnit.SECONDS.toNanos(25L)
+
+  private[persistence] sealed trait OpenAttemptFailure
+  private[persistence] final case class ConnectionFailure(error: Throwable)
+      extends OpenAttemptFailure
+  private[persistence] final case class InitializationFailure(
+      error: RepositoryFailure
+  ) extends OpenAttemptFailure
+
   def open(path: Path): Either[RepositoryFailure, HsqldbDatabaseOwner] =
-    validatePath(path).flatMap(openValidated)
+    validatePath(path).flatMap { validated =>
+      val deadline = System.nanoTime() + ReopenDeadlineNanos
+      retryTransientLock(
+        () => openAttempt(validated),
+        ReopenAttempts,
+        deadline,
+        System.nanoTime _,
+        millis => Thread.sleep(millis),
+        isTransientLockHeartbeat
+      ).left.map {
+        case ConnectionFailure(error) =>
+          HsqldbEventStreamRepository.storageFailure("open database", error)
+        case InitializationFailure(error) => error
+      }
+    }
 
   private def validatePath(path: Path): Either[RepositoryFailure, Path] = {
     val normalized = path.toAbsolutePath.normalize
@@ -77,21 +102,21 @@ object HsqldbDatabaseOwner {
     else Right(normalized)
   }
 
-  private def openValidated(
+  private def openAttempt(
       path: Path
-  ): Either[RepositoryFailure, HsqldbDatabaseOwner] = {
-    val config = new HikariConfig()
-    config.setJdbcUrl(s"jdbc:hsqldb:file:$path")
-    config.setDriverClassName("org.hsqldb.jdbc.JDBCDriver")
-    config.setUsername("SA")
-    config.setPassword("")
-    config.setMaximumPoolSize(4)
-    config.setMinimumIdle(1)
-    config.setConnectionTimeout(TimeUnit.SECONDS.toMillis(10))
-    config.setPoolName("oathdigital-database")
-    var source: HikariDataSource = null
+  ): Either[OpenAttemptFailure, HsqldbDatabaseOwner] = {
+    val source = new HikariDataSource()
     try {
-      source = new HikariDataSource(config)
+      source.setJdbcUrl(s"jdbc:hsqldb:file:$path")
+      source.setDriverClassName("org.hsqldb.jdbc.JDBCDriver")
+      source.setUsername("SA")
+      source.setPassword("")
+      source.setMaximumPoolSize(4)
+      source.setMinimumIdle(1)
+      source.setConnectionTimeout(TimeUnit.SECONDS.toMillis(10))
+      source.setPoolName("oathdigital-database")
+      val probe = source.getConnection
+      probe.close()
       val owner = new HsqldbDatabaseOwner(
         Database.forDataSource(source, Some(4)),
         source
@@ -100,17 +125,55 @@ object HsqldbDatabaseOwner {
         case Right(_) => Right(owner)
         case Left(error) =>
           owner.close()
-          Left(error)
+          Left(InitializationFailure(error))
       }
     } catch {
       case NonFatal(error) =>
-        if (source != null) source.close()
-        Left(HsqldbEventStreamRepository.storageFailure(
-          "open database",
-          error
-        ))
+        try source.close()
+        catch { case NonFatal(_) => () }
+        Left(ConnectionFailure(error))
     }
   }
+
+  private[persistence] def retryTransientLock[A](
+      attempt: () => Either[OpenAttemptFailure, A],
+      maxAttempts: Int,
+      deadlineNanos: Long,
+      nanoTime: () => Long,
+      sleep: Long => Unit,
+      retryable: Throwable => Boolean
+  ): Either[OpenAttemptFailure, A] = {
+    var attempts = 0
+    var result: Either[OpenAttemptFailure, A] = null
+    do {
+      attempts += 1
+      result = attempt()
+      result match {
+        case Left(ConnectionFailure(error))
+            if attempts < maxAttempts && nanoTime() < deadlineNanos &&
+              retryable(error) =>
+          sleep(ReopenBackoffMillis)
+        case _ => return result
+      }
+    } while (attempts < maxAttempts && nanoTime() < deadlineNanos)
+    result
+  }
+
+  private[persistence] def isTransientLockHeartbeat(error: Throwable): Boolean = {
+    val chain = Iterator.iterate(Option(error))(_.flatMap(value =>
+      Option(value.getCause))).takeWhile(_.nonEmpty).flatten.toVector
+    isTransientLockHeartbeatChain(chain.map(value =>
+      value.getClass.getName -> Option(value.getMessage).getOrElse("")))
+  }
+
+  private[persistence] def isTransientLockHeartbeatChain(
+      chain: Vector[(String, String)]
+  ): Boolean =
+    chain.exists(_._1 ==
+      "org.hsqldb.persist.LockFile$LockHeldExternallyException") &&
+      chain.exists { case (_, message) =>
+        message.contains("lockFile:") && message.contains("checkHeartbeat")
+      }
 }
 
 /** Explicit standalone owner used by focused journal tests and tools. */
@@ -163,6 +226,7 @@ final class OwnedHsqldbIdentityRepository private (
       now: Long
   )(before: java.sql.Connection => Either[IdentityFailure, Unit]) =
     adapter.createGameWithBeforeOwnerMembership(gameId, ownerId, now)(before)
+  private[persistence] def sessionColumnNames = adapter.sessionColumnNames
   def initializeSchema(): Either[IdentityFailure, Unit] =
     owner.initializeSchema().left.map(failure =>
       IdentityFailure.StorageFailure(failure.toString))
