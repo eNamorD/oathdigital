@@ -7,41 +7,28 @@ been reviewed.
 
 ## Now
 
-- [ ] **X6 — Production identity and authorization boundary**
-  - Replace the development-only caller-selected player identity with
-    authenticated game membership before permitting a non-loopback deployment.
-  - Keep the current unauthenticated API bound to loopback and labeled for
-    development/manual testing only.
-  - Use provider-neutral internal users with external **OIDC** identities and
-    opaque server-side sessions; do not add local password custody initially.
-  - Limit spectators to explicit game memberships; public game visibility is
-    outside this milestone.
-  - Initially allow each authenticated user to occupy at most one player seat
-    per game.
-  - [x] Add schema-v2 provider-neutral users, OIDC identity links,
-    pre-bootstrap game resources, constrained memberships, and digest-only
-    revocable sessions with transactional repositories.
-  - [x] Unify event-journal and identity adapters under one coordinated HSQLDB
-    pool and shutdown lifecycle before integrating them into the server.
-  - [x] Add the authenticated-principal boundary and loopback-only development
-    identity shim.
-  - [x] Authorize existing-game projections, polling, and actor-free commands
-    from durable membership without accepting caller-selected production
-    identity.
-  - [x] Authorize bootstrap from the owner and the complete pre-provisioned
-    player-membership set; keep hidden setup generation server-owned.
-  - [ ] Add OIDC Authorization Code + PKCE, secure cookie lifecycle, CSRF and
-    origin validation, and the non-loopback deployment gate.
+- [ ] **L1 — First post-setup gameplay vertical slice**
+  - Define and implement the smallest rule-correct Wake-to-action milestone
+    after setup, with command/event/replay, server transport, projection, and UI
+    controls.
+  - Preserve the loopback development path for manual play while production
+    account work remains deferred.
 
 ## Next
 
-- [ ] **L1 — First post-setup gameplay vertical slice**
-  - Define the smallest Wake-to-action command/event/replay milestone after
-    setup, with UI controls and server-authoritative persistence.
+- [ ] **L2 — Board layout and asset-loading pipeline**
 
 ## Later
 
-- [ ] **L2 — Board layout and asset-loading pipeline**
+- [ ] **X6 — Complete production authentication and deployment**
+  - [x] Provider-neutral users, OIDC identity links, memberships, digest-only
+    sessions, shared HSQL lifecycle, membership authorization, authenticated
+    projections/commands/bootstrap, and session-cookie/CSRF validation.
+  - [ ] Add OIDC Authorization Code + PKCE, session issuance/rotation/logout,
+    secure cookie-setting responses, and frontend login/session-expiry UX.
+  - [ ] Add membership-management UX, rate limiting, audit logging, and the
+    final non-loopback deployment gate. Until then, keep development routes
+    loopback-only.
 - [ ] **L3 — Licensed game assets with permanent visual fallbacks**
 - [ ] **L4 — Saved-game browser and replay navigation**
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
@@ -89,8 +76,11 @@ been reviewed.
   malformed and misidentified streams, exact replay-failure indexes, sequence
   integrity, concurrent creation/appends, atomic rollback, restart durability,
   and stale HTTP command handling.
+- [x] Establish the deferred X6 security foundation through schema-v3
+  digest-only sessions, membership-derived authorization, authenticated game
+  routes, exact-origin CSRF protection, and deterministic HSQL close/reopen.
 
-The combined milestone passes 142 JVM tests, 31 Scala.js tests, the Scala.js
+The combined milestone passes 148 JVM tests, 31 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through **Ready to begin first turn** and reload reconstruction.
 
