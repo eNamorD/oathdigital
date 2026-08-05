@@ -246,8 +246,9 @@ final class HsqldbIdentityRepository private[persistence] (
           val statement = connection.prepareStatement(
             """INSERT INTO sessions (
               |token_digest, user_id, created_at_millis, last_seen_at_millis,
-              |idle_expires_at_millis, absolute_expires_at_millis, revoked_at_millis)
-              |VALUES (?, ?, ?, ?, ?, ?, ?)""".stripMargin
+              |idle_expires_at_millis, absolute_expires_at_millis,
+              |revoked_at_millis, csrf_token_digest)
+              |VALUES (?, ?, ?, ?, ?, ?, ?, ?)""".stripMargin
           )
           try {
             statement.setBytes(1, session.digest.bytes.toArray)
@@ -258,6 +259,9 @@ final class HsqldbIdentityRepository private[persistence] (
             statement.setLong(6, session.absoluteExpiresAtMillis)
             session.revokedAtMillis.fold(statement.setNull(7, java.sql.Types.BIGINT))(
               statement.setLong(7, _))
+            session.csrfTokenDigest.fold(
+              statement.setNull(8, java.sql.Types.BINARY)
+            )(digest => statement.setBytes(8, digest.bytes.toArray))
             try {
               statement.executeUpdate()
               Right(())
@@ -278,6 +282,8 @@ final class HsqldbIdentityRepository private[persistence] (
       selectSession(connection, digest) match {
         case None => Left(SessionNotFound)
         case Some(session) if session.revokedAtMillis.nonEmpty =>
+          Left(SessionRevoked)
+        case Some(session) if session.csrfTokenDigest.isEmpty =>
           Left(SessionRevoked)
         case Some(session)
             if nowMillis >= session.idleExpiresAtMillis ||
@@ -369,6 +375,8 @@ final class HsqldbIdentityRepository private[persistence] (
       Left(InvalidSession("absolute expiry precedes creation"))
     else if (session.revokedAtMillis.exists(_ < session.createdAtMillis))
       Left(InvalidSession("revocation precedes creation"))
+    else if (session.csrfTokenDigest.isEmpty)
+      Left(InvalidSession("CSRF token digest is required"))
     else Right(())
 
   private def insertGame(connection: Connection, gameId: String, now: Long): Unit = {
@@ -409,7 +417,8 @@ final class HsqldbIdentityRepository private[persistence] (
   ): Option[StoredSession] = {
     val statement = connection.prepareStatement(
       """SELECT user_id, created_at_millis, last_seen_at_millis,
-        |idle_expires_at_millis, absolute_expires_at_millis, revoked_at_millis
+        |idle_expires_at_millis, absolute_expires_at_millis, revoked_at_millis,
+        |csrf_token_digest
         |FROM sessions WHERE token_digest = ?""".stripMargin
     )
     try {
@@ -419,6 +428,8 @@ final class HsqldbIdentityRepository private[persistence] (
       else {
         val revokedValue = row.getLong(6)
         val revoked = if (row.wasNull()) None else Some(revokedValue)
+        val csrf = Option(row.getBytes(7)).flatMap(bytes =>
+          CsrfTokenDigest.fromBytes(bytes.toVector).toOption)
         Some(StoredSession(
           digest,
           UserId(row.getString(1)),
@@ -426,7 +437,8 @@ final class HsqldbIdentityRepository private[persistence] (
           row.getLong(3),
           row.getLong(4),
           row.getLong(5),
-          revoked
+          revoked,
+          csrf
         ))
       }
     } finally statement.close()

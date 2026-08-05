@@ -4,7 +4,7 @@ import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
 import java.nio.file.Files
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 import akka.actor.typed.{ActorSystem, DispatcherSelector}
@@ -56,16 +56,26 @@ class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
       identities,
       new DevelopmentFirstGamePlanFactory(catalog)
     )
-    val authenticator = new Authenticator[AkkaRequest] {
+    val csrfToken = "c" * 43
+    val csrfDigest = CsrfTokenDigest.fromBytes(
+      SensitiveTokenDigest.sha256(csrfToken)
+    ).toOption.get
+    val authenticator = new HttpSessionAuthenticator {
       override def authenticate(request: AkkaRequest) =
-        request.headers.find(_.name == "X-Test-User") match {
-          case Some(header) => Right(AuthenticatedUser(UserId(header.value)))
+        Future.successful(request.headers.find(_.name == "X-Test-User") match {
+          case Some(header) => Right(AuthenticatedHttpSession(
+            AuthenticatedUser(UserId(header.value)), csrfDigest))
           case None => Left(AuthenticationFailure.MissingCredential)
-        }
+        })
     }
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
-        new AuthenticatedFirstGameRoutes(authenticator, gateway, blocking).route
+        new AuthenticatedFirstGameRoutes(
+          authenticator,
+          new SameOriginCsrfProtection("http://127.0.0.1"),
+          gateway,
+          blocking
+        ).route
       ),
       10.seconds
     )
@@ -98,6 +108,22 @@ class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
         )
       }
       assertEquals(service.load("bootstrap-game"), Right(None))
+      assertEquals(events.appendCalls, 0)
+
+      Vector(
+        None -> Some("c" * 43),
+        Some("http://evil.example") -> Some("c" * 43),
+        Some("http://127.0.0.1") -> None,
+        Some("http://127.0.0.1") -> Some("w" * 43)
+      ).foreach { case (origin, csrf) =>
+        val denied = postWithSecurity(
+          client, base, Some(owner.value), valid, origin, csrf)
+        assertEquals(denied.statusCode(), 403)
+        assertEquals(
+          ujson.read(denied.body())("error").str,
+          "csrf-validation-failed"
+        )
+      }
       assertEquals(events.appendCalls, 0)
 
       val hiddenInput = ujson.read(valid).obj
@@ -183,10 +209,28 @@ class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
       url: String,
       user: Option[String],
       body: String
+  ) = postWithSecurity(
+    client,
+    url,
+    user,
+    body,
+    Some("http://127.0.0.1"),
+    Some("c" * 43)
+  )
+
+  private def postWithSecurity(
+      client: HttpClient,
+      url: String,
+      user: Option[String],
+      body: String,
+      origin: Option[String],
+      csrf: Option[String]
   ) = {
     val builder = HttpRequest.newBuilder(URI.create(url))
       .header("Content-Type", "application/json")
     user.foreach(value => builder.header("X-Test-User", value))
+    origin.foreach(value => builder.header("Origin", value))
+    csrf.foreach(value => builder.header("X-CSRF-Token", value))
     client.send(
       builder.POST(HttpRequest.BodyPublishers.ofString(body)).build(),
       JavaResponse.BodyHandlers.ofString()

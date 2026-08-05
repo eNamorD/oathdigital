@@ -71,6 +71,12 @@ Typed identity-operation failures abort their enclosing database transaction;
 in particular, game-resource and initial-owner creation cannot partially
 commit.
 
+Schema version 3 adds a nullable, exact 32-byte CSRF-token digest to sessions.
+New sessions are rejected unless that digest is supplied. Migration cannot
+safely manufacture a synchronizer token, so every pre-v3 session is revoked
+and retains a null digest. V1 and v2 ledgers upgrade through the same contiguous
+migration path; initialization and close/reopen remain idempotent.
+
 ## Transaction and conflict semantics
 
 An append locks the stream row, reads its next sequence, compares
@@ -120,21 +126,32 @@ validated bind host is `127.0.0.1`, `localhost`, or `::1`. It is not an OIDC or
 production session path. Existing `/api/dev` routes are not changed in this
 slice.
 
-The next X6 route-integration slice will authenticate a principal before game
-route handling, remove caller-selected player identity from the new production
-transport, apply membership-derived projection and command authorization, and
-keep the current development API isolated. Cookie issuance, CSRF, and OIDC
-redirect/callback handling remain later slices.
-
 The separately mountable authenticated game transport is:
 
 - `GET /api/authenticated/first-games/{gameId}`; and
 - `POST /api/authenticated/first-games/{gameId}/commands`; and
 - `POST /api/authenticated/first-games/{gameId}/bootstrap`.
 
-It is not yet mounted by `OathServer`. Both operations authenticate an injected
-request boundary before membership lookup and reject query parameters. GET has
-no player selector. POST accepts `expectedNextSequence` plus an actor-free
+`OathServer` mounts this transport only when both
+`oathdigital.sessionCookieName` and `oathdigital.publicOrigin` are explicitly
+configured. Without both, only the existing development transport is mounted;
+partial configuration fails startup. The server remains loopback-only in this
+slice even when authenticated routes are mounted.
+
+Every operation authenticates before membership lookup. The HTTP authenticator
+accepts only a 43-128 character base64url-shaped raw session cookie, hashes it
+with SHA-256 at the edge, and sends only the fixed digest to
+`IdentityRepository`. Resolution runs on `oathdigital.blocking-dispatcher`, not
+Akka's request dispatcher. Missing, malformed, unknown, expired, and revoked
+sessions share one stable `401` response. Raw session and CSRF tokens never
+enter repositories, logs, projections, or errors.
+
+GET/poll requires a session but is CSRF-exempt. Every authenticated POST
+requires exactly the configured `Origin` and one `X-CSRF-Token` header. The
+header is hashed and compared to the stored digest with a constant-time digest
+comparison before request-body or domain handling; failure is a stable `403`
+and performs no append. GET has no player selector. POST accepts
+`expectedNextSequence` plus an actor-free
 `intent`: `placePawn` contains only `siteId`, and `chooseAdviser` contains only
 `adviserId`. Unknown fields, including `playerId`, are rejected. Membership
 constructs the domain actor, and mutations are attempted once without retry.
@@ -147,6 +164,10 @@ executable catalog and creates the event stream once. The current membership
 model deliberately does not let the owner also occupy a player seat. The
 existing `/api/dev` API and bootstrap creation remain unchanged.
 
+This slice deliberately has no login, logout, session issuance, cookie-setting,
+OIDC redirect/callback, or refresh endpoint. Tests provision digests directly.
+Cookie flags and lifecycle belong to the later issuance boundary.
+
 ## Run and shutdown
 
 Start the server with a database path and optional catalog path:
@@ -158,6 +179,11 @@ Start the server with a database path and optional catalog path:
 The default bind address is `127.0.0.1:8080`; override it with JVM properties
 `oathdigital.host` and `oathdigital.port`. HSQLDB creates several files using
 the supplied path prefix. Use a durable local directory in production.
+
+For seeded-session testing, configure both
+`oathdigital.sessionCookieName=oath_session` and an exact origin such as
+`oathdigital.publicOrigin=http://127.0.0.1:8080`. This does not issue a session
+or relax the loopback binding gate.
 
 Akka Coordinated Shutdown first unbinds HTTP and then closes the application
 runtime. `HsqldbDatabaseOwner` owns one Hikari datasource and Slick database,

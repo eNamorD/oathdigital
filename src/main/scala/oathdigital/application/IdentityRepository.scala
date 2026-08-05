@@ -12,6 +12,15 @@ object SessionTokenDigest {
     else Left(s"session token digest must contain exactly $Length bytes")
 }
 
+final case class CsrfTokenDigest private (bytes: Vector[Byte])
+object CsrfTokenDigest {
+  val Length: Int = 32
+
+  def fromBytes(bytes: Vector[Byte]): Either[String, CsrfTokenDigest] =
+    if (bytes.size == Length) Right(new CsrfTokenDigest(bytes))
+    else Left(s"CSRF token digest must contain exactly $Length bytes")
+}
+
 final case class StoredSession(
     digest: SessionTokenDigest,
     userId: UserId,
@@ -19,7 +28,8 @@ final case class StoredSession(
     lastSeenAtMillis: Long,
     idleExpiresAtMillis: Long,
     absoluteExpiresAtMillis: Long,
-    revokedAtMillis: Option[Long]
+    revokedAtMillis: Option[Long],
+    csrfTokenDigest: Option[CsrfTokenDigest]
 )
 
 sealed trait MembershipRole extends Product with Serializable

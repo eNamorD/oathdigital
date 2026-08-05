@@ -6,6 +6,7 @@ import oathdigital.application.{
   SetupApplicationError,
   SetupApplicationService,
   SetupCommandAccepted,
+  IdentityRepository,
   MembershipAuthorizationService
 }
 import oathdigital.catalog.{
@@ -40,7 +41,9 @@ final class ServerCommandGateway private[server] (
 final class ServerRuntime private (
     val commands: ServerCommandGateway,
     val firstGame: FirstGameServerGateway,
+    val authenticatedFirstGame: AuthenticatedFirstGameGateway,
     val authorization: MembershipAuthorizationService,
+    val identities: IdentityRepository,
     private val database: HsqldbDatabaseOwner
 ) extends AutoCloseable {
   override def close(): Unit = database.close()
@@ -87,6 +90,8 @@ object ServerRuntime {
             new oathdigital.application.DevelopmentFirstGamePlanFactory(
               catalog
             )
+          val authorization =
+            new MembershipAuthorizationService(database.identities)
           new ServerRuntime(
             new ServerCommandGateway(service),
             new FirstGameServerGateway(
@@ -94,7 +99,15 @@ object ServerRuntime {
               projector,
               planFactory
             ),
-            new MembershipAuthorizationService(database.identities),
+            new AuthenticatedFirstGameGateway(
+              firstGameService,
+              projector,
+              authorization,
+              database.identities,
+              planFactory
+            ),
+            authorization,
+            database.identities,
             database
           )
         }

@@ -6,7 +6,7 @@ import slick.dbio.DBIO
 import slick.jdbc.HsqldbProfile.api._
 
 private[persistence] final class EventJournalSchema {
-  val TargetVersion: Int = 2
+  val TargetVersion: Int = 3
 
   val initialize: DBIO[Unit] =
     SimpleDBIO[Unit] { context =>
@@ -32,7 +32,8 @@ private[persistence] final class EventJournalSchema {
   private val migrations: Vector[(Int, Connection => Unit)] =
     Vector(
       1 -> createEventJournal _,
-      2 -> createIdentityFoundation _
+      2 -> createIdentityFoundation _,
+      3 -> addSessionCsrfDigest _
     )
 
   private def createVersionLedger(connection: Connection): Unit = {
@@ -187,6 +188,19 @@ private[persistence] final class EventJournalSchema {
           |      created_at_millis <= revoked_at_millis)
           |  )
           |)""".stripMargin
+      )
+    } finally statement.close()
+  }
+
+  private def addSessionCsrfDigest(connection: Connection): Unit = {
+    val statement = connection.createStatement()
+    try {
+      statement.execute(
+        "ALTER TABLE sessions ADD COLUMN csrf_token_digest BINARY(32)"
+      )
+      statement.execute(
+        """UPDATE sessions SET revoked_at_millis = created_at_millis
+          |WHERE revoked_at_millis IS NULL""".stripMargin
       )
     } finally statement.close()
   }

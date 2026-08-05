@@ -4,7 +4,7 @@ import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse => JavaResponse}
 import java.nio.file.Files
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 
 import akka.actor.typed.{ActorSystem, DispatcherSelector}
@@ -46,12 +46,17 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
     val events = new InMemoryEventStreamRepository
     val service = new FirstGameApplicationService(catalog, events)
     service.handle("auth-game", 0L, FirstGameCommand.Begin(plan))
-    val authenticator = new Authenticator[AkkaRequest] {
+    val csrfToken = "c" * 43
+    val csrfDigest = CsrfTokenDigest.fromBytes(
+      SensitiveTokenDigest.sha256(csrfToken)
+    ).toOption.get
+    val authenticator = new HttpSessionAuthenticator {
       override def authenticate(request: AkkaRequest) =
-        request.headers.find(_.name == "X-Test-User") match {
-          case Some(header) => Right(AuthenticatedUser(UserId(header.value)))
+        Future.successful(request.headers.find(_.name == "X-Test-User") match {
+          case Some(header) => Right(AuthenticatedHttpSession(
+            AuthenticatedUser(UserId(header.value)), csrfDigest))
           case None => Left(AuthenticationFailure.MissingCredential)
-        }
+        })
     }
     val gateway = new AuthenticatedFirstGameGateway(
       service,
@@ -62,7 +67,12 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
-        new AuthenticatedFirstGameRoutes(authenticator, gateway, blocking).route
+        new AuthenticatedFirstGameRoutes(
+          authenticator,
+          new SameOriginCsrfProtection("http://127.0.0.1"),
+          gateway,
+          blocking
+        ).route
       ),
       10.seconds
     )
@@ -158,6 +168,8 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
   private def post(client: HttpClient, url: String, user: String, body: String) =
     client.send(HttpRequest.newBuilder(URI.create(url))
       .header("X-Test-User", user)
+      .header("Origin", "http://127.0.0.1")
+      .header("X-CSRF-Token", "c" * 43)
       .header("Content-Type", "application/json")
       .POST(HttpRequest.BodyPublishers.ofString(body)).build(),
       JavaResponse.BodyHandlers.ofString())

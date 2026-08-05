@@ -28,6 +28,10 @@ object OathServer {
       .fold(message => throw new IllegalArgumentException(message), identity)
     val port =
       sys.props.get("oathdigital.port").fold(8080)(_.toInt)
+    val authenticatedMount = AuthenticatedRouteMountConfiguration.fromOptions(
+      sys.props.get("oathdigital.sessionCookieName"),
+      sys.props.get("oathdigital.publicOrigin")
+    ).fold(message => throw new IllegalArgumentException(message), identity)
 
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
@@ -53,9 +57,10 @@ object OathServer {
           }(blockingExecutionContext)
         }
 
-        val route = DevelopmentRoutes.route(
-          runtime.firstGame,
-          blockingExecutionContext
+        val route = ServerRoutes.route(
+          runtime,
+          blockingExecutionContext,
+          authenticatedMount
         )
 
         val binding =

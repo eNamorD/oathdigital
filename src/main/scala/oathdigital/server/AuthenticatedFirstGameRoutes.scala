@@ -6,7 +6,6 @@ import scala.util.{Failure, Success}
 import akka.http.scaladsl.model.{
   ContentTypes,
   HttpEntity,
-  HttpRequest,
   HttpResponse,
   StatusCode,
   StatusCodes
@@ -130,7 +129,8 @@ final class AuthenticatedFirstGameGateway(
 }
 
 final class AuthenticatedFirstGameRoutes(
-    authenticator: Authenticator[HttpRequest],
+    authenticator: HttpSessionAuthenticator,
+    csrfProtection: SameOriginCsrfProtection,
     gateway: AuthenticatedFirstGameGateway,
     blockingExecutionContext: ExecutionContext
 ) extends Directives {
@@ -141,13 +141,28 @@ final class AuthenticatedFirstGameRoutes(
   val route: Route =
     pathPrefix("api" / "authenticated" / "first-games" / Segment) { gameId =>
       extractRequest { request =>
-        authenticator.authenticate(request) match {
-          case Left(_) => complete(response(
+        onComplete(authenticator.authenticate(request)) {
+          case Success(Left(AuthenticationFailure.StorageFailure(message))) =>
+            logger.error("Session authentication storage failure: {}", message)
+            complete(response(
+              StatusCodes.InternalServerError,
+              "internal-error",
+              "the server could not complete the request"
+            ))
+          case Success(Left(_)) => complete(response(
             StatusCodes.Unauthorized,
             "authentication-required",
             "valid authentication is required"
           ))
-          case Right(principal) =>
+          case Failure(error) =>
+            logger.error("Unhandled session authentication failure", error)
+            complete(response(
+              StatusCodes.InternalServerError,
+              "internal-error",
+              "the server could not complete the request"
+            ))
+          case Success(Right(session)) =>
+            val principal = session.principal
             parameterMap { query =>
               if (query.nonEmpty)
                 complete(response(
@@ -171,7 +186,9 @@ final class AuthenticatedFirstGameRoutes(
                     }
                   } ~ path("commands") {
                     post {
-                      entity(as[String]) { body =>
+                      if (!csrfProtection.validate(request, session))
+                        complete(csrfFailure)
+                      else entity(as[String]) { body =>
                         AuthenticatedFirstGameHttpWire.decodeCommand(body) match {
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
@@ -186,15 +203,17 @@ final class AuthenticatedFirstGameRoutes(
                     }
                   } ~ path("bootstrap") {
                     post {
-                      entity(as[String]) { body =>
+                      if (!csrfProtection.validate(request, session))
+                        complete(csrfFailure)
+                      else entity(as[String]) { body =>
                         AuthenticatedFirstGameHttpWire.decodeBootstrap(body) match {
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
                             "malformed-request",
                             s"${error.path}: ${error.message}"
                           ))
-                          case Right(request) => completeAsync(
-                            gateway.bootstrap(validGameId, principal, request)
+                          case Right(bootstrap) => completeAsync(
+                            gateway.bootstrap(validGameId, principal, bootstrap)
                           )
                         }
                       }
@@ -205,6 +224,12 @@ final class AuthenticatedFirstGameRoutes(
         }
       }
     }
+
+  private def csrfFailure: HttpResponse = response(
+    StatusCodes.Forbidden,
+    "csrf-validation-failed",
+    "request origin or CSRF token is invalid"
+  )
 
   private def completeAsync(
       operation: => Either[AuthenticatedGameFailure, FirstGameProjection]

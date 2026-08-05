@@ -13,7 +13,8 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       .resolve("database")
 
   private def open(path: Path): OwnedHsqldbIdentityRepository =
-    OwnedHsqldbIdentityRepository.open(path).toOption.get
+    OwnedHsqldbIdentityRepository.open(path)
+      .fold(error => fail(s"database open failed: $error"), identity)
 
   private val owner = UserId("user-owner")
   private val player = UserId("user-player")
@@ -22,7 +23,7 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
   test("identity migration is idempotent and survives close and reopen") {
     val path = databasePath("migration")
     val first = open(path)
-    assertEquals(first.schemaVersion, Right(2))
+    assertEquals(first.schemaVersion, Right(3))
     assertEquals(first.initializeSchema(), Right(()))
     assertEquals(first.createUser(owner, "Owner", 10L), Right(()))
     assertEquals(first.createGame("game-1", owner, 11L), Right(()))
@@ -30,13 +31,36 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
 
     val reopened = open(path)
     try {
-      assertEquals(reopened.schemaVersion, Right(2))
+      assertEquals(reopened.schemaVersion, Right(3))
       assertEquals(
         reopened.findMembership("game-1", owner),
         Right(Some(GameMembership("game-1", owner, Owner, None)))
       )
       assertEquals(reopened.initializeSchema(), Right(()))
     } finally reopened.close()
+  }
+
+  test("schema upgrades contiguously from v1 and v2 and revokes old sessions") {
+    val v1Path = databasePath("upgrade-v1")
+    seedVersionLedger(v1Path, 1)
+    val upgradedV1 = open(v1Path)
+    assertEquals(upgradedV1.schemaVersion, Right(3))
+    upgradedV1.close()
+
+    val v2Path = databasePath("upgrade-v2")
+    val oldDigest = SessionTokenDigest.fromBytes(Vector.fill(32)(9.toByte))
+      .toOption.get
+    seedVersion2(v2Path, oldDigest)
+    val upgradedV2 = open(v2Path)
+    try {
+      assertEquals(upgradedV2.schemaVersion, Right(3))
+      assertEquals(
+        upgradedV2.resolveSession(oldDigest, 150L),
+        Left(SessionRevoked)
+      )
+      assertEquals(upgradedV2.initializeSchema(), Right(()))
+    } finally upgradedV2.close()
+
   }
 
   test("external identities are provider-subject unique and reference users") {
@@ -173,7 +197,9 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       .toOption.get
     try {
       repository.createUser(owner, "Owner", 0L)
-      val session = StoredSession(digest, owner, 100L, 100L, 200L, 300L, None)
+      val session = StoredSession(
+        digest, owner, 100L, 100L, 200L, 300L, None, Some(csrfDigest(1))
+      )
       assertEquals(repository.createSession(session), Right(()))
       assertEquals(repository.createSession(session), Left(DuplicateSession))
       assertEquals(repository.resolveSession(digest, 199L), Right(session))
@@ -204,12 +230,17 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       .toOption.get
     try {
       repository.createUser(owner, "Owner", 0L)
-      val base = StoredSession(digest, owner, 100L, 100L, 200L, 300L, None)
+      val base = StoredSession(
+        digest, owner, 100L, 100L, 200L, 300L, None, Some(csrfDigest(2))
+      )
       assert(repository.createSession(
         base.copy(idleExpiresAtMillis = 301L)
       ).left.toOption.get.isInstanceOf[InvalidSession])
       assert(repository.createSession(
         base.copy(revokedAtMillis = Some(99L))
+      ).left.toOption.get.isInstanceOf[InvalidSession])
+      assert(repository.createSession(
+        base.copy(csrfTokenDigest = None)
       ).left.toOption.get.isInstanceOf[InvalidSession])
       assertEquals(repository.resolveSession(digest, 100L), Left(SessionNotFound))
     } finally repository.close()
@@ -239,6 +270,63 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
       val result = names.result().map(_.toLowerCase)
       assert(result.contains("token_digest"))
       assert(!result.exists(name => name == "token" || name.contains("bearer")))
+      val shutdown = connection.createStatement()
+      try shutdown.execute("SHUTDOWN") finally shutdown.close()
+    } finally connection.close()
+  }
+
+  private def csrfDigest(value: Byte): CsrfTokenDigest =
+    CsrfTokenDigest.fromBytes(Vector.fill(32)(value)).toOption.get
+
+  private def seedVersionLedger(path: Path, version: Int): Unit = {
+    val connection = DriverManager.getConnection(
+      s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", "")
+    try {
+      val statement = connection.createStatement()
+      try {
+        statement.execute(
+          """CREATE TABLE schema_versions (
+            |version INTEGER PRIMARY KEY,
+            |applied_at_epoch_millis BIGINT NOT NULL)""".stripMargin)
+        (1 to version).foreach(installed => statement.execute(
+          s"INSERT INTO schema_versions VALUES ($installed, 0)"))
+        statement.execute("SHUTDOWN")
+      } finally statement.close()
+    } finally connection.close()
+  }
+
+  private def seedVersion2(
+      path: Path,
+      digest: SessionTokenDigest
+  ): Unit = {
+    seedVersionLedger(path, 2)
+    val connection = DriverManager.getConnection(
+      s"jdbc:hsqldb:file:${path.toAbsolutePath}", "SA", "")
+    try {
+      val statement = connection.createStatement()
+      try {
+        statement.execute(
+          """CREATE TABLE users (
+            |user_id VARCHAR(128) PRIMARY KEY,
+            |display_name VARCHAR(128) NOT NULL,
+            |created_at_millis BIGINT NOT NULL)""".stripMargin)
+        statement.execute(
+          """CREATE TABLE sessions (
+            |token_digest BINARY(32) PRIMARY KEY,
+            |user_id VARCHAR(128) NOT NULL,
+            |created_at_millis BIGINT NOT NULL,
+            |last_seen_at_millis BIGINT NOT NULL,
+            |idle_expires_at_millis BIGINT NOT NULL,
+            |absolute_expires_at_millis BIGINT NOT NULL,
+            |revoked_at_millis BIGINT)""".stripMargin)
+        statement.execute("INSERT INTO users VALUES ('old-user', 'Old', 0)")
+      } finally statement.close()
+      val insert = connection.prepareStatement(
+        "INSERT INTO sessions VALUES (?, 'old-user', 100, 100, 200, 300, NULL)")
+      try {
+        insert.setBytes(1, digest.bytes.toArray)
+        insert.executeUpdate()
+      } finally insert.close()
       val shutdown = connection.createStatement()
       try shutdown.execute("SHUTDOWN") finally shutdown.close()
     } finally connection.close()
