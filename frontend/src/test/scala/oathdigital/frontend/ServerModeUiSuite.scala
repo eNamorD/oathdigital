@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import munit.FunSuite
+import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
   test("Take Wealth actions use the active-player labels and commands") {
@@ -123,10 +124,14 @@ class ServerModeUiSuite extends FunSuite {
       ),
       relics = FirstGameSiteRelics(2)
     )
-    val details = ServerModeUi.siteDetailsPresentation(site)
+    val details = SiteCardPresentation.from(site)
 
-    assert(details.properties.contains("Loose favor: 2"))
-    assert(details.properties.contains("Denizen slots: 3"))
+    assertEquals(details.metrics, Vector(
+      SiteMetric("Favor", 2),
+      SiteMetric("Secrets", 1),
+      SiteMetric("Denizen slots", 3),
+      SiteMetric("Relic slots", 2)
+    ))
     assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
     assertEquals(site.denizens.map(_.denizenId),
       Vector("denizen:fox", "denizen:owl"))
@@ -134,7 +139,7 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("empty site details have image-independent empty states") {
-    val details = ServerModeUi.siteDetailsPresentation(FirstGameSite(
+    val details = SiteCardPresentation.from(FirstGameSite(
       "site:empty",
       "Empty",
       0,
@@ -145,9 +150,46 @@ class ServerModeUiSuite extends FunSuite {
       FirstGameSiteRelics(0)
     ))
 
-    assert(details.properties.contains("Loose favor: 0"))
+    assertEquals(details.metrics.map(_.value), Vector(0, 0, 0, 0))
     assertEquals(details.denizenEmpty, "None")
     assertEquals(details.relicSummary, "None")
+  }
+
+  test("site and denizen visuals deterministically fall back without assets") {
+    val details = SiteCardPresentation.from(FirstGameSite(
+      "woods",
+      "Woods",
+      0,
+      0,
+      1,
+      0,
+      Vector(FirstGameSiteCard("fox", "Fox")),
+      FirstGameSiteRelics(0)
+    ))
+
+    assertEquals(details.siteVisual, VisualInstruction.Placeholder(
+      "W", "Woods", AccessibleLabel("Woods")
+    ))
+    assertEquals(details.denizenVisuals.head._2,
+      VisualInstruction.Placeholder("F", "Fox", AccessibleLabel("Fox")))
+  }
+
+  test("failed and stale assets share the same accessible fallback") {
+    val expected = ImageRef("sites/woods.webp")
+    val site = SiteView(
+      ViewId("site:woods"),
+      AccessibleLabel("Woods"),
+      Some(expected),
+      FallbackVisual("W", "Woods")
+    )
+    val fallback = VisualInstruction.Placeholder(
+      "W", "Woods", AccessibleLabel("Woods")
+    )
+
+    assertEquals(SiteCardPresentation.resolve(
+      site, ImageLoadResult.Failed(expected)), fallback)
+    assertEquals(SiteCardPresentation.resolve(
+      site, ImageLoadResult.Loaded(ImageRef("sites/mine.webp"))), fallback)
   }
 
   private def projection(

@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
+import oathdigital.presentation.VisualInstruction
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
@@ -339,22 +340,39 @@ object ServerModeUi {
         section.appendChild(text("h3", "region-label", name))
         val sites = element("div", "sites")
         region.sites.foreach { site =>
-          val control =
+          val control: dom.Element =
             if (presentation.showGameplayControls) {
-              val buttonControl = button(site.label, "site")
+              val buttonControl = button("", "site")
               buttonControl.disabled = !controlsAvailable ||
                 !value.legalControls.contains("placePawn")
+              buttonControl.setAttribute(
+                "aria-label",
+                s"${site.label}: place pawn"
+              )
               buttonControl.onclick = _ => submit(
                 FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
               )
               buttonControl
-            } else element("div", "site site-readonly")
-          if (!presentation.showGameplayControls)
-            control.appendChild(dom.document.createTextNode(site.label))
+            } else {
+              val readonly = element("article", "site site-readonly")
+              readonly.setAttribute("aria-label", site.label)
+              readonly
+            }
+          val heading = element("div", "site-heading")
+          heading.appendChild(visualFallback(
+            SiteCardPresentation.from(site).siteVisual,
+            "site-visual"
+          ))
+          heading.appendChild(text("span", "site-name", site.label))
+          control.appendChild(heading)
+          val pawns = element("div", "site-pawns")
           value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
-            control.appendChild(dom.document.createTextNode(" · ● "))
-            control.appendChild(playerReference(value, pawn.playerId))
+            val marker = element("span", "pawn")
+            marker.appendChild(dom.document.createTextNode("● "))
+            marker.appendChild(playerReference(value, pawn.playerId))
+            pawns.appendChild(marker)
           }
+          if (pawns.childNodes.length > 0) control.appendChild(pawns)
           control.appendChild(siteDetails(site))
           sites.appendChild(control)
         }
@@ -418,22 +436,24 @@ object ServerModeUi {
       .fold(siteId)(_.label)
 
   private[frontend] def siteDetails(site: FirstGameSite): dom.Element = {
-    val presentation = siteDetailsPresentation(site)
+    val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
-    details.appendChild(text(
-      "p",
-      "site-properties",
-      presentation.properties
-    ))
+    val properties = element("dl", "site-properties")
+    presentation.metrics.foreach { metric =>
+      val item = element("div", "site-property")
+      item.appendChild(text("dt", "", metric.label))
+      item.appendChild(text("dd", "", metric.value.toString))
+      properties.appendChild(item)
+    }
+    details.appendChild(properties)
 
     val denizens = element("div", "site-denizens")
     denizens.appendChild(text("strong", "", "Denizens: "))
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
-    else site.denizens.zipWithIndex.foreach { case (denizen, index) =>
-      if (index > 0) denizens.appendChild(dom.document.createTextNode(", "))
-      val card = text("span", "site-card", denizen.label)
-      card.setAttribute("data-denizen-id", denizen.denizenId)
+    else presentation.denizenVisuals.foreach { case (denizenId, visual) =>
+      val card = visualFallback(visual, "site-card")
+      card.setAttribute("data-denizen-id", denizenId)
       denizens.appendChild(card)
     }
     details.appendChild(denizens)
@@ -447,24 +467,25 @@ object ServerModeUi {
     details
   }
 
-  private[frontend] final case class SiteDetailsPresentation(
-      properties: String,
-      denizenEmpty: String,
-      relicSummary: String
-  )
-
-  private[frontend] def siteDetailsPresentation(
-      site: FirstGameSite
-  ): SiteDetailsPresentation =
-    SiteDetailsPresentation(
-      s"Loose favor: ${site.looseFavor} · Loose secrets: " +
-        s"${site.looseSecrets} · Denizen slots: ${site.denizenCapacity} · " +
-        s"Relic slots: ${site.relicCapacity}",
-      "None",
-      if (site.relics.facedownCount == 0) "None"
-      else if (site.relics.facedownCount == 1) "1 facedown relic"
-      else s"${site.relics.facedownCount} facedown relics"
-    )
+  private def visualFallback(
+      instruction: VisualInstruction,
+      className: String
+  ): dom.Element = instruction match {
+    case VisualInstruction.Placeholder(symbol, label, accessibleLabel) =>
+      val node = element("span", s"$className visual-fallback")
+      node.setAttribute("role", "img")
+      node.setAttribute("aria-label", accessibleLabel.value)
+      node.setAttribute("data-fallback-text", label)
+      node.textContent = symbol
+      node
+    case VisualInstruction.Image(reference, accessibleLabel) =>
+      val image = dom.document.createElement("img")
+        .asInstanceOf[dom.html.Image]
+      image.className = className
+      image.src = reference.value
+      image.alt = accessibleLabel.value
+      image
+  }
 
   private[frontend] final case class TakeWealthAction(
       label: String,
