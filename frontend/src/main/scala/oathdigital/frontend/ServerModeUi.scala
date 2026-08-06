@@ -269,19 +269,12 @@ object ServerModeUi {
         ))
       }
       if (value.phase == "wake") {
-        val favor = button("Take 1 favor", "wake-action")
-        favor.disabled = !controlsAvailable ||
-          !value.legalControls.contains("takeFavor")
-        favor.onclick = _ => submit(
-          FirstGameCommand.TakeWealth(selectedPlayer, "favor"))
-        panel.appendChild(favor)
-
-        val secret = button("Take 1 secret", "wake-action")
-        secret.disabled = !controlsAvailable ||
-          !value.legalControls.contains("takeSecret")
-        secret.onclick = _ => submit(
-          FirstGameCommand.TakeWealth(selectedPlayer, "secret"))
-        panel.appendChild(secret)
+        takeWealthActions(value, selectedPlayer).foreach { action =>
+          val control = button(action.label, "wake-action")
+          control.disabled = !controlsAvailable
+          control.onclick = _ => submit(action.command)
+          panel.appendChild(control)
+        }
 
         val end = button("End Wake", "wake-action")
         end.disabled = !controlsAvailable ||
@@ -409,6 +402,30 @@ object ServerModeUi {
   private def siteLabel(value: FirstGameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
+
+  private[frontend] final case class TakeWealthAction(
+      label: String,
+      command: FirstGameCommand.TakeWealth
+  )
+
+  private[frontend] def takeWealthActions(
+      value: FirstGameProjection,
+      playerId: String
+  ): Vector[TakeWealthAction] =
+    if (value.phase != "wake") Vector.empty
+    else Vector(
+      "takeFavor" -> TakeWealthAction(
+        "Take Wealth: 1 favor",
+        FirstGameCommand.TakeWealth(playerId, "favor")
+      ),
+      "takeSecret" -> TakeWealthAction(
+        "Take Wealth: 1 secret",
+        FirstGameCommand.TakeWealth(playerId, "secret")
+      )
+    ).collect {
+      case (legalControl, action)
+          if value.legalControls.contains(legalControl) => action
+    }
 
   private[frontend] def playerReference(
       value: FirstGameProjection,
