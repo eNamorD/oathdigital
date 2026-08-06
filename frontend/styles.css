@@ -96,6 +96,7 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site:enabled { cursor: pointer; border-color: #d2a85e; }
 .site:enabled:hover { background: #3b3123; transform: translateY(-1px); }
 .site:disabled { opacity: 0.68; }
+.site-readonly { cursor: default; }
 .site-name { display: block; font-weight: 800; }
 .pawn { display: block; margin-top: 12px; }
 

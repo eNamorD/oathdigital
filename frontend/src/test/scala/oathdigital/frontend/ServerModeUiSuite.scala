@@ -51,21 +51,95 @@ class ServerModeUiSuite extends FunSuite {
     )
   }
 
+  test("inactive Wake viewer waits and receives no gameplay controls") {
+    val value = projection(
+      Set("takeFavor", "takeSecret", "endWake"),
+      activeParticipantId = "red-exile"
+    )
+    val presentation = ServerModeUi.viewerPresentation(value, "blue-exile")
+
+    assertEquals(presentation.showGameplayControls, false)
+    assertEquals(presentation.waitingForPlayerId, Some("red-exile"))
+    assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
+    assertEquals(
+      ServerModeUi.takeWealthActions(value, "blue-exile"),
+      Vector.empty
+    )
+  }
+
+  test("inactive setup viewer waits without pawn or private adviser controls") {
+    val value = projection(
+      Set("placePawn", "chooseAdviser"),
+      phase = "awaiting-adviser",
+      activeParticipantId = "red-exile",
+      ready = false,
+      privateAdviserChoices = Vector(
+        AdviserChoice("adviser-1", "Adviser One")
+      )
+    )
+
+    val presentation = ServerModeUi.viewerPresentation(value, "blue-exile")
+
+    assertEquals(presentation.showGameplayControls, false)
+    assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
+  }
+
+  test("active viewer retains Wake and setup gameplay controls") {
+    val wake = projection(Set("takeFavor", "endWake"))
+    assert(ServerModeUi.viewerPresentation(
+      wake,
+      "red-exile"
+    ).showGameplayControls)
+    assertEquals(
+      ServerModeUi.takeWealthActions(wake, "red-exile").map(_.label),
+      Vector("Take Wealth: 1 favor")
+    )
+
+    val setup = projection(
+      Set("chooseAdviser"),
+      phase = "awaiting-adviser",
+      ready = false,
+      privateAdviserChoices = Vector(
+        AdviserChoice("adviser-1", "Adviser One")
+      )
+    )
+    assert(ServerModeUi.viewerPresentation(
+      setup,
+      "red-exile"
+    ).showGameplayControls)
+  }
+
   private def projection(
       legalControls: Set[String],
-      phase: String = "wake"
+      phase: String = "wake",
+      activeParticipantId: String = "red-exile",
+      ready: Boolean = true,
+      privateAdviserChoices: Vector[AdviserChoice] = Vector.empty
   ): FirstGameProjection =
     FirstGameProjection(
       gameId = "game-1",
       nextSequence = 8L,
       phase = phase,
-      activeParticipantId = Some("red-exile"),
-      players = Vector.empty,
+      activeParticipantId = Some(activeParticipantId),
+      players = Vector(
+        FirstGamePlayer(
+          "red-exile",
+          "Red Exile",
+          "exile",
+          PlayerColorToken.Red
+        ),
+        FirstGamePlayer(
+          "blue-exile",
+          "Blue Exile",
+          "exile",
+          PlayerColorToken.Blue
+        )
+      ),
       world = Vector.empty,
       pawnLocations = Vector.empty,
       legalControls = legalControls,
-      ready = true,
+      ready = ready,
       completed = false,
-      privateAdviserChoices = Vector.empty
+      privateAdviserChoices = privateAdviserChoices
     )
 }

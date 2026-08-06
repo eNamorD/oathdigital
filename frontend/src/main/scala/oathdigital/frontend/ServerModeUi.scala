@@ -52,11 +52,13 @@ object ServerModeUi {
           mount.appendChild(text("div", "status", "Loading server projection…"))
         case None => ()
         case Some(value) =>
+          val presentation = viewerPresentation(value, selectedPlayer)
           mount.appendChild(status(value))
           mount.appendChild(players(value))
-          mount.appendChild(world(value))
-          mount.appendChild(advisers(value))
-          mount.appendChild(wakeActions(value))
+          mount.appendChild(world(value, presentation))
+          if (presentation.showGameplayControls)
+            mount.appendChild(advisers(value))
+          mount.appendChild(wakeActions(value, presentation))
       }
     }
 
@@ -227,28 +229,30 @@ object ServerModeUi {
 
     def status(value: FirstGameProjection): dom.Element = {
       val node = element("div", "status")
-      if (value.phase == "act-action-selection")
-        node.textContent = "Act phase — choose your first normal action."
-      else if (value.ready) {
-        node.appendChild(dom.document.createTextNode(
-          s"${value.phase}; active participant: "
-        ))
-        value.activeParticipantId.foreach(playerId =>
-          node.appendChild(playerReference(value, playerId)))
-      }
-      else {
-        node.appendChild(dom.document.createTextNode(
-          s"${value.phase}; active participant: "
-        ))
-        value.activeParticipantId match {
-          case Some(playerId) => node.appendChild(playerReference(value, playerId))
-          case None => node.appendChild(dom.document.createTextNode("none"))
+      val presentation = viewerPresentation(value, selectedPlayer)
+      presentation.waitingForPlayerId match {
+        case Some(playerId) =>
+          node.appendChild(dom.document.createTextNode("Waiting for "))
+          node.appendChild(playerReference(value, playerId))
+        case None if value.phase == "act-action-selection" =>
+          node.textContent = "Act phase — choose your first normal action."
+        case None =>
+          node.appendChild(dom.document.createTextNode(
+            s"${value.phase}; active participant: "
+          ))
+          value.activeParticipantId match {
+            case Some(playerId) =>
+              node.appendChild(playerReference(value, playerId))
+            case None => node.appendChild(dom.document.createTextNode("none"))
+          }
         }
-      }
       node
     }
 
-    def wakeActions(value: FirstGameProjection): dom.Element = {
+    def wakeActions(
+        value: FirstGameProjection,
+        presentation: ViewerPresentation
+    ): dom.Element = {
       val panel = element("section", "panel wake-actions")
       panel.appendChild(text("h2", "", "Wake actions"))
       value.activePlayerResources.foreach { resources =>
@@ -268,7 +272,7 @@ object ServerModeUi {
             s"${resources.favor} favor · ${resources.secrets} secrets"
         ))
       }
-      if (value.phase == "wake") {
+      if (value.phase == "wake" && presentation.showGameplayControls) {
         takeWealthActions(value, selectedPlayer).foreach { action =>
           val control = button(action.label, "wake-action")
           control.disabled = !controlsAvailable
@@ -315,7 +319,10 @@ object ServerModeUi {
       panel
     }
 
-    def world(value: FirstGameProjection): dom.Element = {
+    def world(
+        value: FirstGameProjection,
+        presentation: ViewerPresentation
+    ): dom.Element = {
       val panel = element("section", "panel world")
       panel.setAttribute("aria-label", "The World")
       panel.appendChild(text("h2", "", "The World"))
@@ -332,12 +339,18 @@ object ServerModeUi {
         section.appendChild(text("h3", "region-label", name))
         val sites = element("div", "sites")
         region.sites.foreach { site =>
-          val control = button(site.label, "site")
-          control.disabled = !controlsAvailable ||
-            !value.legalControls.contains("placePawn")
-          control.onclick = _ => submit(
-            FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
-          )
+          val control =
+            if (presentation.showGameplayControls) {
+              val buttonControl = button(site.label, "site")
+              buttonControl.disabled = !controlsAvailable ||
+                !value.legalControls.contains("placePawn")
+              buttonControl.onclick = _ => submit(
+                FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
+              )
+              buttonControl
+            } else element("div", "site site-readonly")
+          if (!presentation.showGameplayControls)
+            control.appendChild(dom.document.createTextNode(site.label))
           value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
             control.appendChild(dom.document.createTextNode(" · ● "))
             control.appendChild(playerReference(value, pawn.playerId))
@@ -408,11 +421,36 @@ object ServerModeUi {
       command: FirstGameCommand.TakeWealth
   )
 
+  private[frontend] final case class ViewerPresentation(
+      showGameplayControls: Boolean,
+      waitingForPlayerId: Option[String],
+      waitingForDisplayName: Option[String]
+  )
+
+  private[frontend] def viewerPresentation(
+      value: FirstGameProjection,
+      playerId: String
+  ): ViewerPresentation =
+    value.activeParticipantId match {
+      case Some(activePlayerId) if activePlayerId != playerId =>
+        ViewerPresentation(
+          showGameplayControls = false,
+          waitingForPlayerId = Some(activePlayerId),
+          waitingForDisplayName = Some(playerDisplayName(value, activePlayerId))
+        )
+      case _ => ViewerPresentation(
+        showGameplayControls = true,
+        waitingForPlayerId = None,
+        waitingForDisplayName = None
+      )
+    }
+
   private[frontend] def takeWealthActions(
       value: FirstGameProjection,
       playerId: String
   ): Vector[TakeWealthAction] =
-    if (value.phase != "wake") Vector.empty
+    if (value.phase != "wake" ||
+        !viewerPresentation(value, playerId).showGameplayControls) Vector.empty
     else Vector(
       "takeFavor" -> TakeWealthAction(
         "Take Wealth: 1 favor",
@@ -440,6 +478,13 @@ object ServerModeUi {
     node.setAttribute("data-player-id", playerId)
     node
   }
+
+  private def playerDisplayName(
+      value: FirstGameProjection,
+      playerId: String
+  ): String =
+    value.players.find(_.playerId == playerId)
+      .fold(playerId)(_.displayName)
 
   private def freshGameId(): String =
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
