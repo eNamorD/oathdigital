@@ -2,7 +2,7 @@ package oathdigital.application
 
 import java.nio.file.Files
 
-import oathdigital.model.{CatalogRef, Phase, PlayerId}
+import oathdigital.model._
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
@@ -143,6 +143,77 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     assert(act.actionSelectionOpen)
     assertEquals(act.legalControls, Vector.empty)
     assertEquals(act.actionFamilies.size, 8)
+  }
+
+  test("site projection exposes ordered public properties without relic identity") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new FirstGameApplicationService(catalog, repository)
+    val setup = execute(service, "game-site-details")
+    val Ready(ready) = setup.state: @unchecked
+    val siteId = ready.game.current.map.cradle.head
+    val emptySiteId = ready.game.current.map.cradle(1)
+    val definition = catalog.sites.find(_.id == siteId).get
+    val denizenDefinitions = catalog.denizens.take(2)
+    val relicDefinitions = catalog.relics.take(2)
+    val populated = ready.game.current.map.sites(siteId).copy(
+      denizens = denizenDefinitions.reverse.map(definition =>
+        DenizenState(
+          DenizenId(definition.id.value),
+          Orientation.FaceUp,
+          Tokens.empty
+        )),
+      relics = relicDefinitions.map(definition =>
+        RelicState(
+          RelicId(definition.id.value),
+          Orientation.FaceDown,
+          Tokens.empty
+        )),
+      tokens = Tokens(2, 1)
+    )
+    val current = ready.game.current.copy(
+      map = ready.game.current.map.copy(
+        sites = ready.game.current.map.sites
+          .updated(siteId, populated)
+          .updated(
+            emptySiteId,
+            ready.game.current.map.sites(emptySiteId).copy(
+              denizens = Vector.empty,
+              relics = Vector.empty,
+              tokens = Tokens.empty
+            )
+          )
+      )
+    )
+    val loaded = LoadedFirstGame(
+      Ready(ready.copy(game = ready.game.copy(current = current))),
+      setup.nextSequence
+    )
+    val projector = new FirstGameProjector(catalog)
+    val own = projector.project("game-site-details", loaded,
+      current.turn.activePlayer)
+    val public = projector.projectPublic("game-site-details", loaded)
+    val site = own.world.flatMap(_.sites).find(_.siteId == siteId.value).get
+    val empty = own.world.flatMap(_.sites)
+      .find(_.siteId == emptySiteId.value).get
+
+    assertEquals(site.looseFavor, 2)
+    assertEquals(site.looseSecrets, 1)
+    assertEquals(site.denizenCapacity, definition.capacity)
+    assertEquals(site.relicCapacity, definition.relicSlots)
+    assertEquals(
+      site.denizens.map(card => card.cardId -> card.label),
+      denizenDefinitions.reverse.map(definition =>
+        definition.id.value -> definition.name)
+    )
+    assertEquals(site.relics.facedownCount, 2)
+    assertEquals(empty.denizens, Vector.empty)
+    assertEquals(empty.relics.facedownCount, 0)
+    assertEquals(public.world, own.world)
+
+    val json = oathdigital.server.FirstGameHttpWire.encodeProjection(public)
+    assert(json.contains("\"looseFavor\":2"))
+    assert(json.contains("\"facedownCount\":2"))
+    relicDefinitions.foreach(relic => assert(!json.contains(relic.id.value)))
   }
 
   test("stale expected position rejects a command legal on current state") {

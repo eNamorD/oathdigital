@@ -114,6 +114,29 @@ class HttpFirstGameClientSuite extends FunSuite {
     assertEquals(projection.activePlayerResources.map(_.supply), Some(7))
   }
 
+  test("site detail decoder preserves populated and empty site projections") {
+    val projection = FirstGameJson.decodeProjection(
+      projectionJson(sequence = 2)
+    ).toOption.get
+    val populated = projection.world.head.sites.head
+    val empty = projection.world.head.sites(1)
+
+    assertEquals(populated.looseFavor, 2)
+    assertEquals(populated.looseSecrets, 1)
+    assertEquals(populated.denizenCapacity, 3)
+    assertEquals(populated.relicCapacity, 2)
+    assertEquals(
+      populated.denizens,
+      Vector(
+        FirstGameSiteCard("denizen:z", "Zed"),
+        FirstGameSiteCard("denizen:a", "Able")
+      )
+    )
+    assertEquals(populated.relics, FirstGameSiteRelics(2))
+    assertEquals(empty.denizens, Vector.empty)
+    assertEquals(empty.relics.facedownCount, 0)
+  }
+
   test("409 is surfaced and caller refreshes without command retry") {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(
@@ -413,9 +436,9 @@ class HttpFirstGameClientSuite extends FunSuite {
        |{"playerId":"yellow-exile","displayName":"Yellow Exile","role":"exile","colorToken":"yellow"}
        |],
        |"world":[
-       |{"regionId":"cradle","sites":[{"siteId":"$siteId","label":"Printed Site"},{"siteId":"site:002","label":"Second"}]},
-       |{"regionId":"provinces","sites":[{"siteId":"site:003","label":"Third"},{"siteId":"site:004","label":"Fourth"},{"siteId":"site:005","label":"Fifth"}]},
-       |{"regionId":"hinterland","sites":[{"siteId":"site:006","label":"Sixth"},{"siteId":"site:007","label":"Seventh"},{"siteId":"site:008","label":"Eighth"}]}
+       |{"regionId":"cradle","sites":[${siteJson(siteId, "Printed Site", populated = true)},${siteJson("site:002", "Second")}]},
+       |{"regionId":"provinces","sites":[${siteJson("site:003", "Third")},${siteJson("site:004", "Fourth")},${siteJson("site:005", "Fifth")}]},
+       |{"regionId":"hinterland","sites":[${siteJson("site:006", "Sixth")},${siteJson("site:007", "Seventh")},${siteJson("site:008", "Eighth")}]}
        |],
        |"pawnLocations":[],
        |"legalControls":["placePawn","chooseAdviser"],
@@ -424,6 +447,16 @@ class HttpFirstGameClientSuite extends FunSuite {
        |"privateAdviserChoices":$privateChoices
        |}""".stripMargin
   }
+
+  private def siteJson(
+      siteId: String,
+      label: String,
+      populated: Boolean = false
+  ): String =
+    if (populated)
+      s"""{"siteId":"$siteId","label":"$label","looseFavor":2,"looseSecrets":1,"denizenCapacity":3,"relicCapacity":2,"denizens":[{"denizenId":"denizen:z","label":"Zed"},{"denizenId":"denizen:a","label":"Able"}],"relics":{"facedownCount":2}}"""
+    else
+      s"""{"siteId":"$siteId","label":"$label","looseFavor":0,"looseSecrets":0,"denizenCapacity":0,"relicCapacity":0,"denizens":[],"relics":{"facedownCount":0}}"""
 
   private def projection(
       gameId: String = "game-1",

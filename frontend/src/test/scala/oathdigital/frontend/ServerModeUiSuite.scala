@@ -109,6 +109,47 @@ class ServerModeUiSuite extends FunSuite {
     ).showGameplayControls)
   }
 
+  test("populated site details render properties, stable IDs, and hidden relics") {
+    val site = FirstGameSite(
+      "site:woods",
+      "Woods",
+      looseFavor = 2,
+      looseSecrets = 1,
+      denizenCapacity = 3,
+      relicCapacity = 2,
+      denizens = Vector(
+        FirstGameSiteCard("denizen:fox", "Fox"),
+        FirstGameSiteCard("denizen:owl", "Owl")
+      ),
+      relics = FirstGameSiteRelics(2)
+    )
+    val details = ServerModeUi.siteDetailsPresentation(site)
+
+    assert(details.properties.contains("Loose favor: 2"))
+    assert(details.properties.contains("Denizen slots: 3"))
+    assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
+    assertEquals(site.denizens.map(_.denizenId),
+      Vector("denizen:fox", "denizen:owl"))
+    assertEquals(details.relicSummary, "2 facedown relics")
+  }
+
+  test("empty site details have image-independent empty states") {
+    val details = ServerModeUi.siteDetailsPresentation(FirstGameSite(
+      "site:empty",
+      "Empty",
+      0,
+      0,
+      0,
+      0,
+      Vector.empty,
+      FirstGameSiteRelics(0)
+    ))
+
+    assert(details.properties.contains("Loose favor: 0"))
+    assertEquals(details.denizenEmpty, "None")
+    assertEquals(details.relicSummary, "None")
+  }
+
   private def projection(
       legalControls: Set[String],
       phase: String = "wake",

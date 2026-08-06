@@ -355,6 +355,7 @@ object ServerModeUi {
             control.appendChild(dom.document.createTextNode(" · ● "))
             control.appendChild(playerReference(value, pawn.playerId))
           }
+          control.appendChild(siteDetails(site))
           sites.appendChild(control)
         }
         section.appendChild(sites)
@@ -415,6 +416,55 @@ object ServerModeUi {
   private def siteLabel(value: FirstGameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
+
+  private[frontend] def siteDetails(site: FirstGameSite): dom.Element = {
+    val presentation = siteDetailsPresentation(site)
+    val details = element("div", "site-details")
+    details.appendChild(text(
+      "p",
+      "site-properties",
+      presentation.properties
+    ))
+
+    val denizens = element("div", "site-denizens")
+    denizens.appendChild(text("strong", "", "Denizens: "))
+    if (site.denizens.isEmpty)
+      denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
+    else site.denizens.zipWithIndex.foreach { case (denizen, index) =>
+      if (index > 0) denizens.appendChild(dom.document.createTextNode(", "))
+      val card = text("span", "site-card", denizen.label)
+      card.setAttribute("data-denizen-id", denizen.denizenId)
+      denizens.appendChild(card)
+    }
+    details.appendChild(denizens)
+
+    val relics = element("div", "site-relics")
+    relics.appendChild(text("strong", "", "Relics: "))
+    relics.appendChild(dom.document.createTextNode(
+      presentation.relicSummary
+    ))
+    details.appendChild(relics)
+    details
+  }
+
+  private[frontend] final case class SiteDetailsPresentation(
+      properties: String,
+      denizenEmpty: String,
+      relicSummary: String
+  )
+
+  private[frontend] def siteDetailsPresentation(
+      site: FirstGameSite
+  ): SiteDetailsPresentation =
+    SiteDetailsPresentation(
+      s"Loose favor: ${site.looseFavor} · Loose secrets: " +
+        s"${site.looseSecrets} · Denizen slots: ${site.denizenCapacity} · " +
+        s"Relic slots: ${site.relicCapacity}",
+      "None",
+      if (site.relics.facedownCount == 0) "None"
+      else if (site.relics.facedownCount == 1) "1 facedown relic"
+      else s"${site.relics.facedownCount} facedown relics"
+    )
 
   private[frontend] final case class TakeWealthAction(
       label: String,

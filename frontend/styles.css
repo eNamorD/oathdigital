@@ -98,6 +98,15 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site:disabled { opacity: 0.68; }
 .site-readonly { cursor: default; }
 .site-name { display: block; font-weight: 800; }
+.site-details {
+  margin-top: 10px;
+  color: #d9cdb5;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.site-properties { margin: 0 0 6px; }
+.site-denizens, .site-relics { margin-top: 3px; }
+.site-card { color: #f5ecd7; }
 .pawn { display: block; margin-top: 12px; }
 
 .player-ref { font-weight: 800; }

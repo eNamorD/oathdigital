@@ -62,7 +62,18 @@ final case class FirstGamePlayer(
     role: String,
     color: PlayerColorToken
 )
-final case class FirstGameSite(siteId: String, label: String)
+final case class FirstGameSiteCard(denizenId: String, label: String)
+final case class FirstGameSiteRelics(facedownCount: Int)
+final case class FirstGameSite(
+    siteId: String,
+    label: String,
+    looseFavor: Int,
+    looseSecrets: Int,
+    denizenCapacity: Int,
+    relicCapacity: Int,
+    denizens: Vector[FirstGameSiteCard],
+    relics: FirstGameSiteRelics
+)
 final case class FirstGameRegion(regionId: String, sites: Vector[FirstGameSite])
 final case class FirstGamePawn(playerId: String, siteId: String)
 final case class AdviserChoice(adviserId: String, label: String)
@@ -301,7 +312,37 @@ object FirstGameJson {
                   for {
                     siteId <- string(site, "siteId", sitePath)
                     label <- string(site, "label", sitePath)
-                  } yield FirstGameSite(siteId, label)
+                    looseFavor <- int(site, "looseFavor", sitePath)
+                    looseSecrets <- int(site, "looseSecrets", sitePath)
+                    denizenCapacity <- int(site, "denizenCapacity", sitePath)
+                    relicCapacity <- int(site, "relicCapacity", sitePath)
+                    denizens <- array(site, "denizens", sitePath).flatMap(
+                      traverse(_, "denizens") { (denizen, denizenPath) =>
+                        for {
+                          id <- string(denizen, "denizenId", denizenPath)
+                          name <- string(denizen, "label", denizenPath)
+                        } yield FirstGameSiteCard(id, name)
+                      })
+                    relicsValue <- field(site, "relics", sitePath)
+                    relicsObject <- objectValue(
+                      relicsValue,
+                      s"$sitePath.relics"
+                    )
+                    facedownCount <- int(
+                      relicsObject,
+                      "facedownCount",
+                      s"$sitePath.relics"
+                    )
+                  } yield FirstGameSite(
+                    siteId,
+                    label,
+                    looseFavor,
+                    looseSecrets,
+                    denizenCapacity,
+                    relicCapacity,
+                    denizens,
+                    FirstGameSiteRelics(facedownCount)
+                  )
               })
             } yield FirstGameRegion(id, sites)
         })

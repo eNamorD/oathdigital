@@ -105,7 +105,20 @@ object FirstGameHttpWire {
             "sites" -> ujson.Arr.from(region.sites.map { site =>
               ujson.Obj(
                 "siteId" -> site.siteId,
-                "label" -> site.label
+                "label" -> site.label,
+                "looseFavor" -> site.looseFavor,
+                "looseSecrets" -> site.looseSecrets,
+                "denizenCapacity" -> site.denizenCapacity,
+                "relicCapacity" -> site.relicCapacity,
+                "denizens" -> ujson.Arr.from(site.denizens.map { denizen =>
+                  ujson.Obj(
+                    "denizenId" -> denizen.cardId,
+                    "label" -> denizen.label
+                  )
+                }),
+                "relics" -> ujson.Obj(
+                  "facedownCount" -> site.relics.facedownCount
+                )
               )
             })
           )

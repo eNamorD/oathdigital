@@ -11,7 +11,18 @@ final case class SetupPlayerProjection(
     role: String,
     colorToken: String
 )
-final case class SetupSiteProjection(siteId: String, label: String)
+final case class SiteCardProjection(cardId: String, label: String)
+final case class SiteRelicsProjection(facedownCount: Int)
+final case class SetupSiteProjection(
+    siteId: String,
+    label: String,
+    looseFavor: Int,
+    looseSecrets: Int,
+    denizenCapacity: Int,
+    relicCapacity: Int,
+    denizens: Vector[SiteCardProjection],
+    relics: SiteRelicsProjection
+)
 final case class SetupRegionProjection(
     regionId: String,
     sites: Vector[SetupSiteProjection]
@@ -53,6 +64,11 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
     catalog.sites.map(site => site.id -> site.name).toMap
   private val denizenNames =
     catalog.denizens.map(d => DenizenId(d.id.value) -> d.name).toMap
+  private val edificeNames = catalog.edifices.map { edifice =>
+    EdificeId(edifice.id.value) ->
+      (edifice.intact.name -> edifice.ruined.name)
+  }.toMap
+  private val siteDefinitions = catalog.sites.map(site => site.id -> site).toMap
 
   def project(
       gameId: String,
@@ -175,9 +191,12 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
           Some(value.game.current.turn.activePlayer.value),
           setupPlayers,
           Vector(
-            region("cradle", value.game.current.map.cradle),
-            region("provinces", value.game.current.map.provinces),
-            region("hinterland", value.game.current.map.hinterland)
+            region("cradle", value.game.current.map.cradle,
+              value.game.current.map.sites),
+            region("provinces", value.game.current.map.provinces,
+              value.game.current.map.sites),
+            region("hinterland", value.game.current.map.hinterland,
+              value.game.current.map.sites)
           ),
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
@@ -228,16 +247,47 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
 
   private def region(
       id: String,
-      sites: Vector[SiteId]
+      sites: Vector[SiteId],
+      states: Map[SiteId, SiteState] = Map.empty
   ): SetupRegionProjection =
     SetupRegionProjection(
       id,
       sites.map(site =>
-        SetupSiteProjection(
-          site.value,
-          siteNames.getOrElse(site, safeLabel(site.value))
-        ))
+        siteProjection(site, states.get(site)))
     )
+
+  private def siteProjection(
+      siteId: SiteId,
+      state: Option[SiteState]
+  ): SetupSiteProjection = {
+    val definition = siteDefinitions.get(siteId)
+    SetupSiteProjection(
+      siteId.value,
+      siteNames.getOrElse(siteId, safeLabel(siteId.value)),
+      state.fold(0)(_.tokens.favor),
+      state.fold(0)(_.tokens.secrets),
+      definition.fold(0)(_.capacity),
+      definition.fold(0)(_.relicSlots),
+      state.toVector.flatMap(_.denizens).map { denizen =>
+        val label = denizen match {
+          case value: DenizenState =>
+            denizenNames.getOrElse(value.id, safeLabel(value.id.value))
+          case value: EdificeState =>
+            edificeNames.get(value.id).fold(safeLabel(value.id.value)) {
+              case (intact, ruined) => value.side match {
+                case EdificeSide.Intact => intact
+                case EdificeSide.Ruined => ruined
+              }
+            }
+        }
+        SiteCardProjection(denizen.id.value, label)
+      },
+      // Site relics are facedown (CR pp. 6, 25; NF p. 14). Public and
+      // player projections expose only their count; recovery's peek does not
+      // yet have an authorized private projection boundary.
+      SiteRelicsProjection(state.fold(0)(_.relics.size))
+    )
+  }
 
   private def turnOrder(
       participants: Vector[FirstGameParticipant],
