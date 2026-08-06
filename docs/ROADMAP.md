@@ -7,13 +7,15 @@ been reviewed.
 
 ## Now
 
-- [ ] **L2 — Board layout and asset-loading pipeline**
+- [ ] **L6a — Bounded first normal Travel action**
+  - Implement ordinary first-turn Travel through authoritative rules, v3 event
+    replay, server-derived actor, projection, and destination-selection UI.
+  - Enforce the base region costs and mandatory Coast, Island, Mountain, and
+    Pass behavior while deferring River movement and generic power modifiers.
 
 ## Next
 
-- [ ] **L6a — First normal Act action vertical slice**
-  - Select one bounded normal action and carry it through authoritative rules,
-    events, replay, server transport, projection, and UI.
+- [ ] **L6b — Bounded Search action vertical slice**
 
 ## Later
 
@@ -79,11 +81,14 @@ been reviewed.
 - [x] Complete L1 first-turn Wake through separate Take Wealth and End Wake
   commands, mixed v2/v3 authoritative replay, server and authenticated command
   boundaries, player-scoped UI controls, and the Act action-selection boundary.
+- [x] Complete L2 board and fallback polish: detailed responsive site cards,
+  HRF-style inactive-player waiting, valid-only Wake controls, semantic site
+  interactions, and deterministic accessible visual fallbacks with no artwork.
 
-The combined milestone passes 160 JVM tests, 32 Scala.js tests, the Scala.js
+The combined milestone passes 161 JVM tests, 46 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
-test through Take Wealth, End Wake, Act selection, reload reconstruction, and
-disconnect/reconnect recovery.
+test through Take Wealth, End Wake, Act selection, responsive site rendering,
+reload reconstruction, and disconnect/reconnect recovery.
 
 ## Coordination rules
 
