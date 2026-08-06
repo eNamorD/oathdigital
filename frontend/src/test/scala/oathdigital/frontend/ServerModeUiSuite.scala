@@ -110,6 +110,33 @@ class ServerModeUiSuite extends FunSuite {
     ).showGameplayControls)
   }
 
+  test("active Wake sites are read-only while legal setup sites are buttons") {
+    val wake = projection(Set("takeFavor", "endWake"))
+    assertEquals(ServerModeUi.siteCardsActionable(
+      wake,
+      ServerModeUi.viewerPresentation(wake, "red-exile")
+    ), false)
+
+    val setup = projection(
+      Set("placePawn"),
+      phase = "awaiting-pawn",
+      ready = false
+    )
+    assertEquals(ServerModeUi.siteCardsActionable(
+      setup,
+      ServerModeUi.viewerPresentation(setup, "red-exile")
+    ), true)
+    assertEquals(ServerModeUi.siteCardsActionable(
+      setup,
+      ServerModeUi.viewerPresentation(setup, "red-exile"),
+      controlsAvailable = false
+    ), false)
+    assertEquals(ServerModeUi.siteCardsActionable(
+      setup,
+      ServerModeUi.viewerPresentation(setup, "blue-exile")
+    ), false)
+  }
+
   test("populated site details render properties, stable IDs, and hidden relics") {
     val site = FirstGameSite(
       "site:woods",
@@ -167,10 +194,11 @@ class ServerModeUiSuite extends FunSuite {
       FirstGameSiteRelics(0)
     ))
 
-    assertEquals(details.siteVisual, VisualInstruction.Placeholder(
-      "W", "Woods", AccessibleLabel("Woods")
-    ))
-    assertEquals(details.denizenVisuals.head._2,
+    assertEquals(details.siteVisual.instruction,
+      VisualInstruction.Placeholder(
+        "W", "Woods", AccessibleLabel("Woods")
+      ))
+    assertEquals(details.denizenVisuals.head._2.instruction,
       VisualInstruction.Placeholder("F", "Fox", AccessibleLabel("Fox")))
   }
 
@@ -186,10 +214,32 @@ class ServerModeUiSuite extends FunSuite {
       "W", "Woods", AccessibleLabel("Woods")
     )
 
-    assertEquals(SiteCardPresentation.resolve(
-      site, ImageLoadResult.Failed(expected)), fallback)
-    assertEquals(SiteCardPresentation.resolve(
-      site, ImageLoadResult.Loaded(ImageRef("sites/mine.webp"))), fallback)
+    assertEquals(VisualRenderPlan.from(
+      site, ImageLoadResult.Failed(expected)).instruction, fallback)
+    assertEquals(VisualRenderPlan.from(
+      site,
+      ImageLoadResult.Loaded(ImageRef("sites/mine.webp"))
+    ).instruction, fallback)
+  }
+
+  test("an image load error deterministically selects the labelled fallback") {
+    val expected = ImageRef("sites/woods.webp")
+    val site = SiteView(
+      ViewId("site:woods"),
+      AccessibleLabel("Woods"),
+      Some(expected),
+      FallbackVisual("W", "Woods")
+    )
+    val plan = VisualRenderPlan.from(
+      site,
+      ImageLoadResult.Loaded(expected)
+    )
+
+    assertEquals(plan.instruction,
+      VisualInstruction.Image(expected, AccessibleLabel("Woods")))
+    assertEquals(plan.afterFailure, VisualInstruction.Placeholder(
+      "W", "Woods", AccessibleLabel("Woods")
+    ))
   }
 
   private def projection(

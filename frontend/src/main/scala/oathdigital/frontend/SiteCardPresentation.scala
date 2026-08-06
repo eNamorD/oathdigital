@@ -4,10 +4,29 @@ import oathdigital.presentation._
 
 private[frontend] final case class SiteMetric(label: String, value: Int)
 
+private[frontend] final case class VisualRenderPlan(
+    instruction: VisualInstruction,
+    fallback: VisualInstruction.Placeholder
+) {
+  def afterFailure: VisualInstruction.Placeholder = fallback
+}
+
+private[frontend] object VisualRenderPlan {
+  def from(
+      entity: PresentedEntity,
+      result: ImageLoadResult
+  ): VisualRenderPlan = {
+    val fallback = VisualResolver
+      .resolve(entity, ImageLoadResult.NotRequested)
+      .asInstanceOf[VisualInstruction.Placeholder]
+    VisualRenderPlan(VisualResolver.resolve(entity, result), fallback)
+  }
+}
+
 private[frontend] final case class SiteCardPresentation(
-    siteVisual: VisualInstruction,
+    siteVisual: VisualRenderPlan,
     metrics: Vector[SiteMetric],
-    denizenVisuals: Vector[(String, VisualInstruction)],
+    denizenVisuals: Vector[(String, VisualRenderPlan)],
     denizenEmpty: String,
     relicSummary: String
 )
@@ -28,11 +47,17 @@ private[frontend] object SiteCardPresentation {
         fallback = FallbackVisual(initial(denizen.label), denizen.label),
         rulesText = ""
       )
-      denizen.denizenId -> resolve(entity, ImageLoadResult.NotRequested)
+      denizen.denizenId -> VisualRenderPlan.from(
+        entity,
+        ImageLoadResult.NotRequested
+      )
     }
 
     SiteCardPresentation(
-      siteVisual = resolve(siteEntity, ImageLoadResult.NotRequested),
+      siteVisual = VisualRenderPlan.from(
+        siteEntity,
+        ImageLoadResult.NotRequested
+      ),
       metrics = Vector(
         SiteMetric("Favor", site.looseFavor),
         SiteMetric("Secrets", site.looseSecrets),
@@ -47,12 +72,6 @@ private[frontend] object SiteCardPresentation {
         else s"${site.relics.facedownCount} facedown relics"
     )
   }
-
-  /** Stable boundary for a future platform image loader. */
-  def resolve(
-      entity: PresentedEntity,
-      result: ImageLoadResult
-  ): VisualInstruction = VisualResolver.resolve(entity, result)
 
   private def initial(label: String): String =
     label.trim.headOption.fold("?")(_.toUpper.toString)

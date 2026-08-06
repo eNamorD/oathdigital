@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.presentation.VisualInstruction
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
@@ -341,10 +340,12 @@ object ServerModeUi {
         val sites = element("div", "sites")
         region.sites.foreach { site =>
           val control: dom.Element =
-            if (presentation.showGameplayControls) {
+            if (siteCardsActionable(
+              value,
+              presentation,
+              controlsAvailable
+            )) {
               val buttonControl = button("", "site")
-              buttonControl.disabled = !controlsAvailable ||
-                !value.legalControls.contains("placePawn")
               buttonControl.setAttribute(
                 "aria-label",
                 s"${site.label}: place pawn"
@@ -359,7 +360,7 @@ object ServerModeUi {
               readonly
             }
           val heading = element("div", "site-heading")
-          heading.appendChild(visualFallback(
+          heading.appendChild(VisualDomRenderer.render(
             SiteCardPresentation.from(site).siteVisual,
             "site-visual"
           ))
@@ -452,7 +453,7 @@ object ServerModeUi {
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
     else presentation.denizenVisuals.foreach { case (denizenId, visual) =>
-      val card = visualFallback(visual, "site-card")
+      val card = VisualDomRenderer.render(visual, "site-card")
       card.setAttribute("data-denizen-id", denizenId)
       denizens.appendChild(card)
     }
@@ -465,26 +466,6 @@ object ServerModeUi {
     ))
     details.appendChild(relics)
     details
-  }
-
-  private def visualFallback(
-      instruction: VisualInstruction,
-      className: String
-  ): dom.Element = instruction match {
-    case VisualInstruction.Placeholder(symbol, label, accessibleLabel) =>
-      val node = element("span", s"$className visual-fallback")
-      node.setAttribute("role", "img")
-      node.setAttribute("aria-label", accessibleLabel.value)
-      node.setAttribute("data-fallback-text", label)
-      node.textContent = symbol
-      node
-    case VisualInstruction.Image(reference, accessibleLabel) =>
-      val image = dom.document.createElement("img")
-        .asInstanceOf[dom.html.Image]
-      image.className = className
-      image.src = reference.value
-      image.alt = accessibleLabel.value
-      image
   }
 
   private[frontend] final case class TakeWealthAction(
@@ -515,6 +496,14 @@ object ServerModeUi {
         waitingForDisplayName = None
       )
     }
+
+  private[frontend] def siteCardsActionable(
+      value: FirstGameProjection,
+      presentation: ViewerPresentation,
+      controlsAvailable: Boolean = true
+  ): Boolean =
+    controlsAvailable && presentation.showGameplayControls &&
+      value.legalControls.contains("placePawn")
 
   private[frontend] def takeWealthActions(
       value: FirstGameProjection,

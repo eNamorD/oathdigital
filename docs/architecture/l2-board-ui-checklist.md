@@ -23,6 +23,12 @@ For both the active and an inactive player URL, confirm focus indicators,
 logical tab order, readable accessible names, and 44 x 44 CSS-pixel practical
 touch targets for enabled commands. Confirm the inactive view says who it is
 waiting for and exposes no pawn, adviser, or Wake controls. In Wake, confirm
-only server-projected Take Wealth controls appear. Confirm relics show only a
-facedown count, reconnect/polling still advances the board, and missing or
-failed site/card assets leave the deterministic labelled fallback visible.
+only server-projected Take Wealth controls appear and every site is a read-only
+article. During active pawn placement, confirm sites are buttons; during all
+other current phases, confirm they are read-only articles. Confirm relics show
+only a facedown count and reconnect/polling still advances the board.
+
+The current server projection intentionally exposes no site/card image
+references, so deployed boards always use deterministic labelled fallbacks.
+The frontend image branch is reserved for future projected references; when
+exercised, a failed image must replace itself once with that same fallback.
