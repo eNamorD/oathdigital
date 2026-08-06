@@ -88,6 +88,7 @@ final case class CurrentSiteResources(
     favor: Int,
     secrets: Int
 )
+final case class LegalTravelDestination(siteId: String, supplyCost: Int)
 final case class FirstGameProjection(
     gameId: String,
     nextSequence: Long,
@@ -103,7 +104,8 @@ final case class FirstGameProjection(
     activePlayerResources: Option[ActivePlayerResources] = None,
     currentSiteResources: Option[CurrentSiteResources] = None,
     actionSelectionOpen: Boolean = false,
-    actionFamilies: Vector[String] = Vector.empty
+    actionFamilies: Vector[String] = Vector.empty,
+    legalTravelDestinations: Vector[LegalTravelDestination] = Vector.empty
 )
 
 sealed trait FirstGameCommand
@@ -115,6 +117,8 @@ object FirstGameCommand {
   final case class TakeWealth(playerId: String, resource: String)
       extends FirstGameCommand
   final case class EndWake(playerId: String) extends FirstGameCommand
+  final case class Travel(playerId: String, destinationSiteId: String)
+      extends FirstGameCommand
 }
 
 sealed trait FirstGameClientFailure {
@@ -278,6 +282,12 @@ object FirstGameJson {
         )
       case FirstGameCommand.EndWake(player) =>
         js.Dynamic.literal(`type` = "endWake", playerId = player)
+      case FirstGameCommand.Travel(player, destination) =>
+        js.Dynamic.literal(
+          `type` = "travel",
+          playerId = player,
+          destinationSiteId = destination
+        )
     }
     js.JSON.stringify(js.Dynamic.literal(
       expectedNextSequence = sequence.toDouble,
@@ -395,6 +405,16 @@ object FirstGameJson {
           case None => Right(Vector.empty)
           case Some(_) => stringArray(root, "actionFamilies", "$")
         }
+        destinations <- optionalField(root, "legalTravelDestinations").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "legalTravelDestinations", "$.").flatMap(
+            traverse(_, "legalTravelDestinations") { (item, path) =>
+              for {
+                site <- string(item, "siteId", path)
+                cost <- int(item, "supplyCost", path)
+              } yield LegalTravelDestination(site, cost)
+            })
+        }
       } yield FirstGameProjection(
         game,
         sequence,
@@ -410,7 +430,8 @@ object FirstGameJson {
         resources,
         siteResources,
         actionOpen,
-        actions
+        actions,
+        destinations
       )
     }
   }

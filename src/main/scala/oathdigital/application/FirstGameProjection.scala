@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
+import oathdigital.gameplay.TravelRules
 
 final case class SetupPlayerProjection(
     playerId: String,
@@ -40,6 +41,7 @@ final case class CurrentSiteResourcesProjection(
     favor: Int,
     secrets: Int
 )
+final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
 
 final case class FirstGameProjection(
     gameId: String,
@@ -56,7 +58,9 @@ final case class FirstGameProjection(
     activePlayerResources: Option[ActivePlayerResourcesProjection] = None,
     currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
     actionSelectionOpen: Boolean = false,
-    actionFamilies: Vector[String] = Vector.empty
+    actionFamilies: Vector[String] = Vector.empty,
+    legalTravelDestinations: Vector[LegalTravelDestinationProjection] =
+      Vector.empty
 )
 
 final class FirstGameProjector(catalog: ExecutableCatalog) {
@@ -222,6 +226,14 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
             if (current.turn.phase == Phase.Act)
               Vector("Search", "Travel", "Campaign", "Muster", "Trade",
                 "Forge", "Recover", "Challenge")
+            else Vector.empty,
+          legalTravelDestinations =
+            if (requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty)
+              TravelRules.legalDestinations(catalog, value, active).map {
+                case (siteId, cost) =>
+                  LegalTravelDestinationProjection(siteId.value, cost)
+              }
             else Vector.empty
         )
     }

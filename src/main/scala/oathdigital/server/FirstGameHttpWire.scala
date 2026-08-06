@@ -159,7 +159,14 @@ object FirstGameHttpWire {
           )),
         "actionSelectionOpen" -> projection.actionSelectionOpen,
         "actionFamilies" -> ujson.Arr.from(
-          projection.actionFamilies.map(ujson.Str(_)))
+          projection.actionFamilies.map(ujson.Str(_))),
+        "legalTravelDestinations" -> ujson.Arr.from(
+          projection.legalTravelDestinations.map { destination =>
+            ujson.Obj(
+              "siteId" -> destination.siteId,
+              "supplyCost" -> destination.supplyCost
+            )
+          })
       )
     )
 
@@ -205,6 +212,12 @@ object FirstGameHttpWire {
       case "endWake" =>
         stringField(obj, "playerId", path).map(player =>
           FirstGameCommand.EndWake(PlayerId(player)))
+      case "travel" =>
+        for {
+          player <- stringField(obj, "playerId", path)
+          destination <- stringField(obj, "destinationSiteId", path)
+        } yield FirstGameCommand.Travel(
+          PlayerId(player), SiteId(destination))
       case other =>
         Left(HttpInputError(
           s"$path.type",

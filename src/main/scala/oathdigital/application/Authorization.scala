@@ -64,6 +64,9 @@ final case class AuthorizedPlayer private (
 
   def endWake: FirstGameCommand =
     FirstGameCommand.EndWake(access.playerId)
+
+  def travel(destination: SiteId): FirstGameCommand =
+    FirstGameCommand.Travel(access.playerId, destination)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

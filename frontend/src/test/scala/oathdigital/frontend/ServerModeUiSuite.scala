@@ -137,6 +137,20 @@ class ServerModeUiSuite extends FunSuite {
     ), false)
   }
 
+  test("Travel selection makes only projected L2 site cards actionable") {
+    val value = projection(Set.empty, phase = "act-action-selection").copy(
+      actionSelectionOpen = true,
+      legalTravelDestinations = Vector(
+        LegalTravelDestination("site:legal", 2)))
+    val viewer = ServerModeUi.viewerPresentation(value, "red-exile")
+    assert(ServerModeUi.siteCardsActionable(
+      value, viewer, travelSelectionOpen = true, siteId = "site:legal"))
+    assert(!ServerModeUi.siteCardsActionable(
+      value, viewer, travelSelectionOpen = true, siteId = "site:blocked"))
+    assertEquals(ServerModeUi.travelCost(value, "site:legal"), Some(2))
+    assertEquals(ServerModeUi.travelCost(value, "site:blocked"), None)
+  }
+
   test("populated site details render properties, stable IDs, and hidden relics") {
     val site = FirstGameSite(
       "site:woods",

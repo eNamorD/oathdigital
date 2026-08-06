@@ -114,6 +114,21 @@ class HttpFirstGameClientSuite extends FunSuite {
     assertEquals(projection.activePlayerResources.map(_.supply), Some(7))
   }
 
+  test("Travel encodes destination and decodes authoritative legal costs") {
+    val command = FirstGameJson.encodeCommand(10L,
+      FirstGameCommand.Travel("red-exile", "site:b"))
+    assert(command.contains("\"type\":\"travel\""))
+    assert(command.contains("\"destinationSiteId\":\"site:b\""))
+    val json = projectionJson(sequence = 10, choices = false).replace(
+      "\"privateAdviserChoices\":[]",
+      "\"privateAdviserChoices\":[],\"legalTravelDestinations\":[" +
+        "{\"siteId\":\"site:b\",\"supplyCost\":2}]"
+    )
+    assertEquals(FirstGameJson.decodeProjection(json).toOption.get
+      .legalTravelDestinations,
+      Vector(LegalTravelDestination("site:b", 2)))
+  }
+
   test("site detail decoder preserves populated and empty site projections") {
     val projection = FirstGameJson.decodeProjection(
       projectionJson(sequence = 2)

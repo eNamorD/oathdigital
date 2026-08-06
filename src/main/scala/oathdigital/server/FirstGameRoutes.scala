@@ -219,6 +219,7 @@ final class FirstGameRoutes(
       case FirstGameCommand.ChooseAdviser(playerId, _) => Some(playerId.value)
       case FirstGameCommand.TakeWealth(playerId, _) => Some(playerId.value)
       case FirstGameCommand.EndWake(playerId) => Some(playerId.value)
+      case FirstGameCommand.Travel(playerId, _) => Some(playerId.value)
       case FirstGameCommand.Begin(_) => None
     }
     actor match {

@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.{FirstGameRules, WakeCommand}
+import oathdigital.gameplay.{FirstGameRules, TravelCommand, WakeCommand}
 import oathdigital.model.{DenizenId, PlayerId, SiteId}
 import oathdigital.serialization.{FirstGameEventWire, WireError}
 import oathdigital.setup.{
@@ -27,6 +27,8 @@ object FirstGameCommand {
   final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
       extends FirstGameCommand
   final case class EndWake(playerId: PlayerId) extends FirstGameCommand
+  final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
+      extends FirstGameCommand
 }
 
 final case class FirstGameAccepted(
@@ -221,6 +223,8 @@ final class FirstGameApplicationService(
         rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
       case FirstGameCommand.EndWake(playerId) =>
         rules.handle(state, WakeCommand.EndWake(playerId))
+      case FirstGameCommand.Travel(playerId, destination) =>
+        rules.handle(state, TravelCommand.Travel(playerId, destination))
     }
 
   private def encode(

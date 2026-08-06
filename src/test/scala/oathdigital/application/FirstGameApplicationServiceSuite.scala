@@ -112,6 +112,37 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       Vector("gameplay.take-wealth", "gameplay.wake-ended"))
   }
 
+  test("Travel appends one v3 event and reloads pawn Supply and Act") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new FirstGameApplicationService(catalog, repository)
+    val setup = execute(service, "game-travel")
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val ended = service.handle("game-travel", setup.nextSequence,
+      FirstGameCommand.EndWake(active)).toOption.get
+    val Ready(inAct) = ended.state: @unchecked
+    val before = inAct.game.current.players.find(_.player == active).get
+    val destination = inAct.game.current.map.cradle.find(
+      !before.pawnSite.contains(_)).getOrElse(
+        inAct.game.current.map.provinces.head)
+    val traveled = service.handle("game-travel", ended.nextSequence,
+      FirstGameCommand.Travel(active, destination)).toOption.get
+    val loaded = new FirstGameApplicationService(catalog, repository)
+      .load("game-travel").toOption.flatten.get
+    val Ready(after) = loaded.state: @unchecked
+    val moved = after.game.current.players.find(_.player == active).get
+
+    assertEquals(loaded.state, traveled.state)
+    assertEquals(loaded.nextSequence, ended.nextSequence + 1)
+    assertEquals(moved.pawnSite, Some(destination))
+    assert(moved.board.supply.supply < before.board.supply.supply)
+    assertEquals(after.game.current.turn.phase, Phase.Act)
+    val last = ujson.read(repository.load("game-travel").toOption.flatten.get
+      .records.last)
+    assertEquals(last("formatVersion").num.toInt, 3)
+    assertEquals(last("eventType").str, "gameplay.traveled")
+  }
+
   test("Wake projection is actor-private and Act boundary is informational") {
     val repository = new InMemoryEventStreamRepository
     val service = new FirstGameApplicationService(catalog, repository)

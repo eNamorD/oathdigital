@@ -22,6 +22,7 @@ object ServerModeUi {
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
+    var travelSelectionOpen = false
 
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
@@ -69,6 +70,7 @@ object ServerModeUi {
     ): Unit =
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
+          travelSelectionOpen = false
           projection = Some(displayed)
           failure = retainedNotice
           render()
@@ -78,6 +80,7 @@ object ServerModeUi {
               nextRequest,
               retainedNotice
             ) =>
+          travelSelectionOpen = false
           polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
@@ -108,6 +111,7 @@ object ServerModeUi {
       polling.foreach(_.stop())
       gameId = id.trim
       projection = None
+      travelSelectionOpen = false
       failure = None
       selectedPlayer = playerId.trim match {
         case "" => "red-exile"
@@ -124,6 +128,7 @@ object ServerModeUi {
       gameId = freshGameId()
       selectedPlayer = bootstrap.firstPlayer
       projection = None
+      travelSelectionOpen = false
       failure = None
       val request = coordinator.switchSession(gameId, selectedPlayer)
       updateUrl(gameId, selectedPlayer)
@@ -287,15 +292,28 @@ object ServerModeUi {
         panel.appendChild(end)
       }
       if (value.actionSelectionOpen) {
-        panel.appendChild(text(
-          "p",
-          "informational",
-          "Normal action families (not yet implemented):"
-        ))
-        val list = element("ul", "action-families")
-        value.actionFamilies.foreach(action =>
-          list.appendChild(text("li", "", action)))
-        panel.appendChild(list)
+        if (travelSelectionOpen) {
+          panel.appendChild(text("p", "informational",
+            "Choose a Travel destination in the World."))
+          val cancel = button("Cancel Travel", "cancel-travel")
+          cancel.onclick = _ => {
+            travelSelectionOpen = false
+            render()
+          }
+          panel.appendChild(cancel)
+        } else {
+          val travel = button("Travel", "act-action travel-action")
+          travel.disabled = !controlsAvailable ||
+            value.legalTravelDestinations.isEmpty ||
+            !presentation.showGameplayControls
+          travel.onclick = _ => {
+            travelSelectionOpen = true
+            render()
+          }
+          panel.appendChild(travel)
+          panel.appendChild(text("p", "informational",
+            "Other normal action families are not yet implemented."))
+        }
       }
       panel
     }
@@ -343,16 +361,25 @@ object ServerModeUi {
             if (siteCardsActionable(
               value,
               presentation,
-              controlsAvailable
+              controlsAvailable,
+              travelSelectionOpen,
+              site.siteId
             )) {
               val buttonControl = button("", "site")
-              buttonControl.setAttribute(
-                "aria-label",
-                s"${site.label}: place pawn"
-              )
-              buttonControl.onclick = _ => submit(
-                FirstGameCommand.PlacePawn(selectedPlayer, site.siteId)
-              )
+              travelCost(value, site.siteId) match {
+                case Some(cost) if travelSelectionOpen =>
+                  buttonControl.setAttribute("aria-label",
+                    s"${site.label}: Travel for $cost Supply")
+                  buttonControl.appendChild(text(
+                    "span", "travel-cost", s"$cost Supply"))
+                  buttonControl.onclick = _ => submit(
+                    FirstGameCommand.Travel(selectedPlayer, site.siteId))
+                case _ =>
+                  buttonControl.setAttribute("aria-label",
+                    s"${site.label}: place pawn")
+                  buttonControl.onclick = _ => submit(
+                    FirstGameCommand.PlacePawn(selectedPlayer, site.siteId))
+              }
               buttonControl
             } else {
               val readonly = element("article", "site site-readonly")
@@ -500,10 +527,19 @@ object ServerModeUi {
   private[frontend] def siteCardsActionable(
       value: FirstGameProjection,
       presentation: ViewerPresentation,
-      controlsAvailable: Boolean = true
+      controlsAvailable: Boolean = true,
+      travelSelectionOpen: Boolean = false,
+      siteId: String = ""
   ): Boolean =
     controlsAvailable && presentation.showGameplayControls &&
-      value.legalControls.contains("placePawn")
+      (value.legalControls.contains("placePawn") ||
+        (travelSelectionOpen && travelCost(value, siteId).nonEmpty))
+
+  private[frontend] def travelCost(
+      value: FirstGameProjection,
+      siteId: String
+  ): Option[Int] = value.legalTravelDestinations
+    .find(_.siteId == siteId).map(_.supplyCost)
 
   private[frontend] def takeWealthActions(
       value: FirstGameProjection,

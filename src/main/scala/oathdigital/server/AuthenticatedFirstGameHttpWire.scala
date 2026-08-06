@@ -16,6 +16,7 @@ object FirstGameIntent {
   final case class ChooseAdviser(adviserId: DenizenId) extends FirstGameIntent
   final case class TakeWealth(resource: WakeResource) extends FirstGameIntent
   case object EndWake extends FirstGameIntent
+  final case class Travel(destinationSiteId: SiteId) extends FirstGameIntent
 }
 
 final case class AuthenticatedCommandRequest(
@@ -121,6 +122,10 @@ object AuthenticatedFirstGameHttpWire {
       case "endWake" =>
         exactFields(obj, Set("type"), "$.intent").map(_ =>
           FirstGameIntent.EndWake)
+      case "travel" =>
+        exactFields(obj, Set("type", "destinationSiteId"), "$.intent")
+          .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))
+          .map(value => FirstGameIntent.Travel(SiteId(value)))
       case other => Left(HttpInputError(
         "$.intent.type",
         s"unknown intent type '$other'"

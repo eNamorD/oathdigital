@@ -34,6 +34,7 @@ object FirstGameEventWire {
   val FirstGameCompletedType = "setup.first-game-completed"
   val TakeWealthType = "gameplay.take-wealth"
   val WakeEndedType = "gameplay.wake-ended"
+  val TraveledType = "gameplay.traveled"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -236,10 +237,11 @@ object FirstGameEventWire {
       case FirstGameCompleted => FirstGameCompletedType
       case _: WealthTaken => TakeWealthType
       case _: WakeEnded => WakeEndedType
+      case _: Traveled => TraveledType
     }
 
   private def formatVersion(event: FirstGameSetupEvent): Int = event match {
-    case _: WealthTaken | _: WakeEnded => GameplayFormatVersion
+    case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
     case _ => FormatVersion
   }
 
@@ -268,6 +270,13 @@ object FirstGameEventWire {
         )
       case WakeEnded(playerId) =>
         ujson.Obj("playerId" -> playerId.value)
+      case Traveled(playerId, source, destination, supplySpent) =>
+        ujson.Obj(
+          "playerId" -> playerId.value,
+          "sourceSiteId" -> source.value,
+          "destinationSiteId" -> destination.value,
+          "supplySpent" -> supplySpent
+        )
     }
 
   private def decodePayload(
@@ -322,6 +331,18 @@ object FirstGameEventWire {
           ))
         case WakeEndedType =>
           Right(WakeEnded(PlayerId(payload("playerId").str)))
+        case TraveledType =>
+          val spent = payload("supplySpent").num
+          if (!spent.isFinite || spent != Math.rint(spent) || spent < 0 ||
+              spent > Int.MaxValue)
+            Left(InvalidValue(s"$path.supplySpent",
+              "must be a non-negative integer"))
+          else Right(Traveled(
+            PlayerId(payload("playerId").str),
+            SiteId(payload("sourceSiteId").str),
+            SiteId(payload("destinationSiteId").str),
+            spent.toInt
+          ))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -340,7 +361,8 @@ object FirstGameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == TakeWealthType || eventType == WakeEndedType)
+      if (eventType == TakeWealthType || eventType == WakeEndedType ||
+          eventType == TraveledType)
         GameplayFormatVersion
       else FormatVersion
     if (version == expected) Right(())

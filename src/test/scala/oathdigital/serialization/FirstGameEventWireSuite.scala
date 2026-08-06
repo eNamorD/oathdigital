@@ -2,9 +2,9 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
-import oathdigital.model.PlayerId
+import oathdigital.model.{PlayerId, SiteId}
 import oathdigital.setup.FirstGameSetupEvent.{FirstGameCompleted, WakeEnded,
-  WealthTaken}
+  Traveled, WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class FirstGameEventWireSuite extends munit.FunSuite {
@@ -163,6 +163,34 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       "mixed", catalogRef, 8L, gameplay.head).toOption.get
     wrongVersion("formatVersion") = 2
     assert(FirstGameEventWire.decode(wrongVersion).isLeft)
+  }
+
+  test("v3 traveled has exact discriminator payload and mixed compatibility") {
+    val event = Traveled(
+      PlayerId("p2"), SiteId("source"), SiteId("destination"), 3)
+    val encoded = FirstGameEventWire.encodeEvent(
+      "travel", catalogRef, 10L, event).toOption.get
+    assertEquals(encoded("formatVersion").num.toInt, 3)
+    assertEquals(encoded("eventType").str, "gameplay.traveled")
+    assertEquals(encoded("payload")("sourceSiteId").str, "source")
+    assertEquals(encoded("payload")("destinationSiteId").str, "destination")
+    assertEquals(encoded("payload")("supplySpent").num.toInt, 3)
+    assertEquals(FirstGameEventWire.decode(encoded).toOption.get.event, event)
+
+    val events = execute(rules)._2 ++ Vector(
+      WakeEnded(PlayerId("p2")), event)
+    val records = events.zipWithIndex.map { case (value, index) =>
+      RecordedEvent(index.toLong, value)
+    }
+    val decoded = FirstGameEventWire.decodeStream(
+      FirstGameEventWire.encodeStream("travel", catalogRef, records)
+        .toOption.get).toOption.get
+    assertEquals(decoded.map(_.formatVersion).takeRight(2), Vector(3, 3))
+    assertEquals(decoded.map(_.eventType).takeRight(2),
+      Vector("gameplay.wake-ended", "gameplay.traveled"))
+
+    encoded("payload")("supplySpent") = -1
+    assert(FirstGameEventWire.decode(encoded).isLeft)
   }
 
   test("format version and sequence reject fractional and nonfinite numbers") {

@@ -109,3 +109,36 @@ optional and do not block End Wake.
 River movement, generic card/relic/edifice/Foundation power interpretation,
 victory resolution, Act actions and costs, later turns, Rest and Supply
 refresh, and production authentication are deliberately excluded.
+
+## First-turn normal Travel endpoint
+
+The first Act slice implements normal Travel for the supported unaltered,
+exile-only first game. `Travel(playerId, destinationSiteId)` derives the pawn's
+source and the exact Supply cost from the authoritative state. The region
+matrix and mandatory Coast, Island, Mountain, and Pass site powers follow
+Combined Rulebook pp. 21 and 31 and the New Foundations site-power summary on
+p. 11. Coast's one-Supply route overrides the other Travel modifiers. Direct
+travel to a Pass is legal; an actor-ruled Pass permits entry to its region's
+other sites; a bandit-ruled Pass blocks it. Another player's Pass is omitted
+from legal destinations and returns typed unsupported-consent because the
+consent timing described on CR p. 43 is not yet modeled.
+
+`gameplay.traveled` is a v3 gameplay event containing actor, derived source,
+destination, and Supply spent. Evolution recomputes source, legality, and cost,
+then atomically moves the pawn and debits Supply. The phase remains Act and the
+continuation reopens normal action selection, so repeated affordable Travel is
+allowed. `usedPowers` is unchanged: moving to a new site does not reopen Wake or
+permit Take Wealth in the same turn.
+
+The player-private projection owns the payable destination/cost pairs. The L2
+World remains semantic read-only site articles during ordinary Act selection;
+local Travel selection turns only projected destinations into buttons, labels
+their Supply costs, and supports a no-command Cancel. An accepted command,
+polling advance, reload, or stale-position refresh closes local selection and
+renders the authoritative snapshot.
+
+River movement, a Pass consent workflow, generic card/relic/edifice/legacy or
+altered-Foundation modifiers, Campaign, Rest, later turns, and production
+authentication remain excluded. Face-up advisers, held relics, intact
+edifices, active legacies, altered Foundations, or non-Exile roles trigger a
+typed unsupported Travel state rather than silently bypassing possible powers.

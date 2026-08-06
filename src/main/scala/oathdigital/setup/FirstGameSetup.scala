@@ -80,6 +80,12 @@ object FirstGameSetupEvent {
       resource: WakeResource
   ) extends FirstGameSetupEvent
   final case class WakeEnded(playerId: PlayerId) extends FirstGameSetupEvent
+  final case class Traveled(
+      playerId: PlayerId,
+      sourceSiteId: SiteId,
+      destinationSiteId: SiteId,
+      supplySpent: Int
+  ) extends FirstGameSetupEvent
 }
 
 sealed trait WakeResource extends Product with Serializable
@@ -128,6 +134,22 @@ object FirstGameSetupViolation {
       enemies: Vector[PlayerId]
   ) extends FirstGameSetupViolation
   final case class PowerAlreadyUsed(power: PowerUseRef)
+      extends FirstGameSetupViolation
+  final case class PendingProcedureBlocksAction(decision: DecisionId)
+      extends FirstGameSetupViolation
+  final case class SameTravelSite(siteId: SiteId)
+      extends FirstGameSetupViolation
+  final case class TravelPassBlocked(passSiteId: SiteId, destination: SiteId)
+      extends FirstGameSetupViolation
+  final case class TravelConsentUnsupported(passSiteId: SiteId, ruler: PlayerId)
+      extends FirstGameSetupViolation
+  final case class InsufficientSupply(required: Int, available: Int)
+      extends FirstGameSetupViolation
+  final case class TravelSourceMismatch(expected: SiteId, actual: SiteId)
+      extends FirstGameSetupViolation
+  final case class TravelCostMismatch(expected: Int, actual: Int)
+      extends FirstGameSetupViolation
+  final case class UnsupportedTravelState(reason: String)
       extends FirstGameSetupViolation
   case object ParticipantsEmpty extends FirstGameSetupViolation
   final case class DuplicatePlayer(id: PlayerId)
@@ -345,6 +367,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
+      case _: Traveled =>
+        Left(InvalidEventOrder("Travel requires the gameplay evolution"))
       case _: WealthTaken | _: WakeEnded =>
         Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
     }

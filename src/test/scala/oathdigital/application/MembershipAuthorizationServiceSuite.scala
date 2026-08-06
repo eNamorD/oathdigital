@@ -92,6 +92,10 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         FirstGameCommand.ChooseAdviser(PlayerId("p1"), DenizenId("9"))
       )
       assertEquals(
+        actor.travel(SiteId("site-2")),
+        FirstGameCommand.Travel(PlayerId("p1"), SiteId("site-2"))
+      )
+      assertEquals(
         service.authorizeCommand("game-1", AuthenticatedUser(ownerUser)),
         Left(Forbidden("command"))
       )

@@ -65,6 +65,18 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
     )
   }
 
+  test("development Travel command retains explicit selector actor") {
+    val travel = commandRequest(ujson.Obj(
+      "type" -> "travel",
+      "playerId" -> "p2",
+      "destinationSiteId" -> "site:b"
+    ))
+    assertEquals(FirstGameHttpWire.decodeCommand(travel).toOption.get.command,
+      FirstGameCommand.Travel(
+        oathdigital.model.PlayerId("p2"),
+        oathdigital.model.SiteId("site:b")))
+  }
+
   test("development bootstrap decodes only participant configuration") {
     val json = ujson.write(ujson.Obj(
       "expectedNextSequence" -> 0,

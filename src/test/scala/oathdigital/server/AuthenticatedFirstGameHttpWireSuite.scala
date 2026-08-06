@@ -33,6 +33,18 @@ class AuthenticatedFirstGameHttpWireSuite extends munit.FunSuite {
     assert(AuthenticatedFirstGameHttpWire.decodeCommand(impersonation).isLeft)
   }
 
+  test("authenticated Travel intent is actor-free and exact") {
+    val valid =
+      """{"expectedNextSequence":10,"intent":{"type":"travel","destinationSiteId":"site:b"}}"""
+    assertEquals(
+      AuthenticatedFirstGameHttpWire.decodeCommand(valid).toOption.get.intent,
+      FirstGameIntent.Travel(oathdigital.model.SiteId("site:b")))
+    val impersonation =
+      """{"expectedNextSequence":10,"intent":{"type":"travel","destinationSiteId":"site:b","playerId":"p2"}}"""
+    assertEquals(AuthenticatedFirstGameHttpWire.decodeCommand(impersonation)
+      .left.toOption.get.path, "$.intent.playerId")
+  }
+
   test("authenticated bootstrap accepts only visible seat configuration") {
     val valid =
       """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""

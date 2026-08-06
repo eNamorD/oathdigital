@@ -83,6 +83,15 @@ class FirstGameTrustBoundaryRoutesSuite extends munit.FunSuite {
         ujson.read(mismatch.body())("error").str,
         "actor-selector-mismatch"
       )
+      val travelMismatch = post(
+        client,
+        s"$base/api/dev/first-games/game/commands?playerId=p1",
+        """{"expectedNextSequence":0,"command":{"type":"travel",
+          |"playerId":"p2","destinationSiteId":"S2"}}""".stripMargin
+      )
+      assertEquals(travelMismatch.statusCode(), 400)
+      assertEquals(ujson.read(travelMismatch.body())("error").str,
+        "actor-selector-mismatch")
 
       val internal = get(
         client,
