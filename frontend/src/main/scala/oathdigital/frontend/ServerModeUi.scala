@@ -42,7 +42,7 @@ object ServerModeUi {
           mount.appendChild(text(
             "div",
             "status",
-            "Reconnecting to authoritative state…"
+            "Reconnecting to server…"
           ))
         case _ => ()
       }
@@ -294,7 +294,7 @@ object ServerModeUi {
       if (value.actionSelectionOpen) {
         if (travelSelectionOpen) {
           panel.appendChild(text("p", "informational",
-            "Choose a Travel destination in the World."))
+            "Choose a destination site."))
           val cancel = button("Cancel Travel", "cancel-travel")
           cancel.onclick = _ => {
             travelSelectionOpen = false
