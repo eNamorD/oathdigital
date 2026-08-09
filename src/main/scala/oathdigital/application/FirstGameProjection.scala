@@ -4,7 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
-import oathdigital.gameplay.TravelRules
+import oathdigital.setup.WakeResource
+import oathdigital.gameplay.{TakeWealthRules, TravelRules}
 
 final case class SetupPlayerProjection(
     playerId: String,
@@ -154,24 +155,16 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
         val active = current.players.find(
           _.player == current.turn.activePlayer).get
         val site = active.pawnSite.flatMap(current.map.sites.get)
-        val enemiesAtSite = active.pawnSite.exists(siteId =>
-          current.players.exists(other =>
-            other.player != active.player && other.pawnSite.contains(siteId)))
-        val takeUsed = active.pawnSite.exists(siteId =>
-          current.turn.usedPowers.contains(PowerUseRef(
-            PowerTiming.Wake,
-            PowerSourceRef.Site(siteId),
-            PowerId("take-wealth")
-          )))
         val controls =
           if (!requestingPlayer.contains(active.player) ||
               current.turn.phase != Phase.Wake) Vector.empty
           else {
-            val takeControls = site.toVector.flatMap { state =>
-              if (enemiesAtSite || takeUsed) Vector.empty
-              else Vector(
-                Option.when(state.tokens.favor > 0)("takeFavor"),
-                Option.when(state.tokens.secrets > 0)("takeSecret")
+            val takeControls = active.pawnSite.toVector.flatMap { siteId =>
+              Vector(
+                Option.when(TakeWealthRules.validate(value, active, siteId,
+                  WakeResource.Favor).isRight)("takeFavor"),
+                Option.when(TakeWealthRules.validate(value, active, siteId,
+                  WakeResource.Secret).isRight)("takeSecret")
               ).flatten
             }
             takeControls :+ "endWake"

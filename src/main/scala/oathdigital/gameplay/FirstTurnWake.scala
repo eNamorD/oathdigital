@@ -42,25 +42,13 @@ final class FirstGameRules(catalog: ExecutableCatalog)
         validateReady(state, playerId).flatMap { ready =>
           val player = ready.game.current.players.find(_.player == playerId).get
           player.pawnSite.toRight(PawnSiteMissing(playerId)).flatMap { siteId =>
-            val power = takeWealthPower(siteId)
-            val enemies = ready.game.current.players.collect {
-              case other if other.player != playerId &&
-                    other.pawnSite.contains(siteId) => other.player
-            }
-            ready.game.current.map.sites.get(siteId)
-              .toRight(SiteNotInPlay(siteId)).flatMap { site =>
-                if (ready.game.current.turn.usedPowers.contains(power))
-                  Left(PowerAlreadyUsed(power))
-                else if (enemies.nonEmpty)
-                  Left(EnemyPawnBlocksTakeWealth(siteId, enemies))
-                else if (!available(site.tokens, resource))
-                  Left(ResourceUnavailable(siteId, resource))
-                else transition(
+            TakeWealthRules.validate(ready, player, siteId, resource).flatMap {
+              _ => transition(
                   state,
                   Vector(WealthTaken(playerId, siteId, resource)),
                   AwaitingWakeAction(playerId)
                 )
-              }
+            }
           }
         }
       case WakeCommand.EndWake(playerId) =>
@@ -150,19 +138,10 @@ final class FirstGameRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Take Wealth site must be the current pawn site"))
       else {
         val power = takeWealthPower(event.siteId)
-        val enemies = ready.game.current.players.collect {
-          case other if other.player != event.playerId &&
-                other.pawnSite.contains(event.siteId) => other.player
-        }
         ready.game.current.map.sites.get(event.siteId)
           .toRight(SiteNotInPlay(event.siteId)).flatMap { site =>
-            if (ready.game.current.turn.usedPowers.contains(power))
-              Left(PowerAlreadyUsed(power))
-            else if (enemies.nonEmpty)
-              Left(EnemyPawnBlocksTakeWealth(event.siteId, enemies))
-            else if (!available(site.tokens, event.resource))
-              Left(ResourceUnavailable(event.siteId, event.resource))
-            else Right(Ready(updateCurrent(ready) { current =>
+            TakeWealthRules.validate(ready, player, event.siteId, event.resource)
+              .map(_ => Ready(updateCurrent(ready) { current =>
               val players = current.players.map { existing =>
                 if (existing.player != event.playerId) existing
                 else existing.copy(board = event.resource match {
@@ -246,12 +225,6 @@ final class FirstGameRules(catalog: ExecutableCatalog)
   )(f: CurrentGameState => CurrentGameState): ReadyFirstGame =
     ready.copy(game = ready.game.copy(current = f(ready.game.current)))
 
-  private def available(tokens: Tokens, resource: WakeResource): Boolean =
-    resource match {
-      case WakeResource.Favor => tokens.favor > 0
-      case WakeResource.Secret => tokens.secrets > 0
-    }
-
   def takeWealthPower(siteId: SiteId): PowerUseRef =
     PowerUseRef(
       PowerTiming.Wake,
@@ -291,13 +264,7 @@ object TravelRules {
         .toRight(SiteNotInPlay(source))
       destinationDefinition <- catalog.sites.find(_.id == destination)
         .toRight(SiteNotInPlay(destination))
-      coastOverride = has(sourceDefinition, "coast") &&
-        (has(destinationDefinition, "coast") ||
-          has(destinationDefinition, "island"))
-      _ <- if (coastOverride) Right(())
-        else validatePasses(catalog, ready, player, from, to, destination)
-    } yield if (coastOverride) 1 else {
-      val base = (from, to) match {
+      base = (from, to) match {
         case (Region.Cradle, Region.Cradle) => 1
         case (Region.Cradle, Region.Provinces) => 2
         case (Region.Cradle, Region.Hinterland) => 4
@@ -306,9 +273,9 @@ object TravelRules {
         case (Region.Hinterland, Region.Provinces) => 2
         case (Region.Hinterland, Region.Hinterland) => 3
       }
-      base + (if (has(destinationDefinition, "island")) 2 else 0) +
-        (if (has(destinationDefinition, "mountain")) 1 else 0)
-    }
+      resolved <- resolveTravel(catalog, ready, player, source, destination,
+        from, to, base, sourceDefinition.handlers, destinationDefinition.handlers)
+    } yield resolved
   }
 
   def validateSupportedState(
@@ -341,38 +308,63 @@ object TravelRules {
     }
   }
 
-  private def validatePasses(
+  private def resolveTravel(
       catalog: ExecutableCatalog,
       ready: ReadyFirstGame,
       player: PlayerState,
+      source: SiteId,
+      destination: SiteId,
       from: Region,
       to: Region,
-      destination: SiteId
-  ): Either[FirstGameSetupViolation, Unit] =
-    if (from == to) Right(()) else {
-      val map = ready.game.current.map
-      val passes = map.inPlay.filter(id =>
-        map.regionOf(id).contains(to) &&
-          catalog.sites.find(_.id == id).exists(has(_, "pass")) &&
-          id != destination)
-      passes.foldLeft[Either[FirstGameSetupViolation, Unit]](Right(())) {
-        case (failure @ Left(_), _) => failure
-        case (Right(_), pass) => map.sites(pass).forces match {
-          case SiteForces.Occupied(ForceKind.Exile(lineage), _)
-              if lineage == player.lineage => Right(())
-          case SiteForces.Occupied(ForceKind.Exile(lineage), _) =>
-            ready.game.current.players.find(_.lineage == lineage) match {
-              case Some(ruler) => Left(TravelConsentUnsupported(
-                pass, ruler.player))
-              case None => Left(TravelPassBlocked(pass, destination))
-            }
-          case _ => Left(TravelPassBlocked(pass, destination))
-        }
+      baseCost: Int,
+      sourceHandlers: Vector[String],
+      destinationHandlers: Vector[String]
+  ): Either[FirstGameSetupViolation, Int] = {
+    val registry = RuntimeRuleRegistry.default
+    def handlersWithRole(
+        handlers: Vector[String],
+        roles: Set[TravelRuleRole]
+    ): Vector[String] = handlers.filter(id =>
+      registry.lookup(id).flatMap(_.travelRole).exists(roles))
+    def activations(
+        id: SiteId,
+        handlers: Vector[String],
+        roles: Set[TravelRuleRole],
+        priority: Int
+    ) = handlersWithRole(handlers, roles).map(RuleActivation(
+      RuleSourceRef.Site(id), _, priority))
+    val coastRoute = handlersWithRole(sourceHandlers,
+      Set(TravelRuleRole.Coast)).nonEmpty && handlersWithRole(
+      destinationHandlers, Set(TravelRuleRole.Coast, TravelRuleRole.Island)
+    ).nonEmpty
+    val passActivations = if (coastRoute || from == to) Vector.empty else
+      ready.game.current.map.inPlay.flatMap { id =>
+        if (ready.game.current.map.regionOf(id).contains(to) && id != destination)
+          catalog.sites.find(_.id == id).toVector.flatMap(definition =>
+            activations(id, definition.handlers, Set(TravelRuleRole.Pass), 10))
+        else Vector.empty
       }
+    val active = if (coastRoute)
+      activations(source, sourceHandlers, Set(TravelRuleRole.Coast), 0)
+    else passActivations ++
+      activations(destination, destinationHandlers,
+        Set(TravelRuleRole.Island, TravelRuleRole.Mountain), 20)
+    val context = RuleQueryContext.Travel(
+      ready, player, source, destination, from, to, baseCost)
+    registry.resolve(active, context).foldLeft[
+      Either[FirstGameSetupViolation, Int]](Right(baseCost)) {
+      case (failure @ Left(_), _) => failure
+      case (Right(cost), ResolvedRule(_, RuleOutcome.Allow)) => Right(cost)
+      case (_, ResolvedRule(_, RuleOutcome.Block(value))) => Left(value)
+      case (Right(cost), ResolvedRule(_, RuleOutcome.ModifyCost(value, false))) =>
+        Right(cost + value)
+      case (_, ResolvedRule(_, RuleOutcome.ModifyCost(value, true))) => Right(value)
+      case (_, ResolvedRule(_, RuleOutcome.RequireDecision(decision))) =>
+        Left(UnsupportedTravelState(s"decision ${decision.decision.value} required"))
+      case (Right(cost), ResolvedRule(_, RuleOutcome.PostActionEffect(_))) =>
+        Right(cost)
+      case (_, ResolvedRule(_, RuleOutcome.UnsupportedRelevantRule(handler))) =>
+        Left(UnsupportedTravelState(s"unsupported active handler $handler"))
     }
-
-  private def has(
-      definition: oathdigital.catalog.SiteDefinition,
-      power: String
-  ): Boolean = definition.handlers.exists(_.endsWith(s".$power"))
+  }
 }

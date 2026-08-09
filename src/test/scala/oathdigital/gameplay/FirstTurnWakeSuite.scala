@@ -115,6 +115,27 @@ class FirstTurnWakeSuite extends munit.FunSuite {
     )
   }
 
+  test("Take Wealth command legality and private projection agree") {
+    Vector(
+      ready(),
+      ready(favor = 0),
+      ready(secrets = 0),
+      ready(sharedEnemy = true)
+    ).foreach { state =>
+      val Ready(value) = state: @unchecked
+      val active = value.game.current.turn.activePlayer
+      val projection = new oathdigital.application.FirstGameProjector(catalog)
+        .project("take-wealth",
+          oathdigital.application.LoadedFirstGame(state, 9), active)
+      val favorLegal = rules.handle(state,
+        WakeCommand.TakeWealth(active, WakeResource.Favor)).isRight
+      val secretLegal = rules.handle(state,
+        WakeCommand.TakeWealth(active, WakeResource.Secret)).isRight
+      assertEquals(projection.legalControls.contains("takeFavor"), favorLegal)
+      assertEquals(projection.legalControls.contains("takeSecret"), secretLegal)
+    }
+  }
+
   test("wrong phase and future victory states are typed") {
     val state = ready()
     val active = activePlayer(state)
