@@ -23,8 +23,8 @@ class RuleResolutionSuite extends munit.FunSuite {
     val registry = RuleRegistry("known" -> AllowHandler)
     assert(registry.lookup("known").nonEmpty)
     assertEquals(RuntimeRuleRegistry.default.lookup(
-      "site.fair-isle.island").flatMap(_.travelRole),
-      Some(TravelRuleRole.Island))
+      "site.fair-isle.island").flatMap(_.travelModifierKind),
+      Some(TravelModifierKind.Island))
     assertEquals(registry.lookup("unknown"), None)
     val activation = RuleActivation(RuleSourceRef.GameRule("test"), "unknown", 0)
     val resolved = registry.resolve(Vector(activation), null)

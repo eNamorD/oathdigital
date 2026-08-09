@@ -3,7 +3,8 @@
 The engine resolves the bounded runtime powers implemented so far through
 `gameplay/RuleResolution.scala`. This mechanism is deliberately not a rules-text
 interpreter or a data-driven rules DSL. Catalog `handlers` remain stable IDs;
-only IDs listed in `RuntimeRuleRegistry` acquire Scala behavior.
+only IDs listed in `RuntimeRuleRegistry` acquire Scala behavior. Travel handler
+classification uses the rulebook-aligned `TravelModifierKind` vocabulary.
 
 ## Sources and activation
 

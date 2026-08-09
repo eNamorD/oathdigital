@@ -95,19 +95,19 @@ final case class ResolvedRule(
 )
 
 trait TypedRuleHandler {
-  def travelRole: Option[TravelRuleRole] = None
+  def travelModifierKind: Option[TravelModifierKind] = None
   def resolve(
       activation: RuleActivation,
       context: RuleQueryContext
   ): RuleOutcome
 }
 
-sealed trait TravelRuleRole extends Product with Serializable
-object TravelRuleRole {
-  case object Coast extends TravelRuleRole
-  case object Island extends TravelRuleRole
-  case object Mountain extends TravelRuleRole
-  case object Pass extends TravelRuleRole
+sealed trait TravelModifierKind extends Product with Serializable
+object TravelModifierKind {
+  case object Coast extends TravelModifierKind
+  case object Island extends TravelModifierKind
+  case object Mountain extends TravelModifierKind
+  case object Pass extends TravelModifierKind
 }
 
 /** Explicit registry for handlers activated by a caller. Activations resolve by
@@ -146,7 +146,7 @@ object RuntimeRuleRegistry {
   import RuleOutcome._
 
   private val coast = new TypedRuleHandler {
-    override val travelRole = Some(TravelRuleRole.Coast)
+    override val travelModifierKind = Some(TravelModifierKind.Coast)
     def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
       context match {
         case _: RuleQueryContext.Travel => ModifyCost(1, replace = true)
@@ -154,7 +154,7 @@ object RuntimeRuleRegistry {
       }
   }
   private val island = new TypedRuleHandler {
-    override val travelRole = Some(TravelRuleRole.Island)
+    override val travelModifierKind = Some(TravelModifierKind.Island)
     def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
       context match {
         case _: RuleQueryContext.Travel => ModifyCost(2)
@@ -162,7 +162,7 @@ object RuntimeRuleRegistry {
       }
   }
   private val mountain = new TypedRuleHandler {
-    override val travelRole = Some(TravelRuleRole.Mountain)
+    override val travelModifierKind = Some(TravelModifierKind.Mountain)
     def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
       context match {
         case _: RuleQueryContext.Travel => ModifyCost(1)
@@ -170,7 +170,7 @@ object RuntimeRuleRegistry {
       }
   }
   private val pass = new TypedRuleHandler {
-    override val travelRole = Some(TravelRuleRole.Pass)
+    override val travelModifierKind = Some(TravelModifierKind.Pass)
     def resolve(activation: RuleActivation, context: RuleQueryContext): RuleOutcome =
       (activation.source, context) match {
         case (RuleSourceRef.Site(pass), travel: RuleQueryContext.Travel)

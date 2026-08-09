@@ -323,32 +323,34 @@ object TravelRules {
     val registry = RuntimeRuleRegistry.default
     def handlersWithRole(
         handlers: Vector[String],
-        roles: Set[TravelRuleRole]
+        roles: Set[TravelModifierKind]
     ): Vector[String] = handlers.filter(id =>
-      registry.lookup(id).flatMap(_.travelRole).exists(roles))
+      registry.lookup(id).flatMap(_.travelModifierKind).exists(roles))
     def activations(
         id: SiteId,
         handlers: Vector[String],
-        roles: Set[TravelRuleRole],
+        roles: Set[TravelModifierKind],
         priority: Int
     ) = handlersWithRole(handlers, roles).map(RuleActivation(
       RuleSourceRef.Site(id), _, priority))
     val coastRoute = handlersWithRole(sourceHandlers,
-      Set(TravelRuleRole.Coast)).nonEmpty && handlersWithRole(
-      destinationHandlers, Set(TravelRuleRole.Coast, TravelRuleRole.Island)
+      Set(TravelModifierKind.Coast)).nonEmpty && handlersWithRole(
+      destinationHandlers, Set(TravelModifierKind.Coast,
+        TravelModifierKind.Island)
     ).nonEmpty
     val passActivations = if (coastRoute || from == to) Vector.empty else
       ready.game.current.map.inPlay.flatMap { id =>
         if (ready.game.current.map.regionOf(id).contains(to) && id != destination)
           catalog.sites.find(_.id == id).toVector.flatMap(definition =>
-            activations(id, definition.handlers, Set(TravelRuleRole.Pass), 10))
+            activations(id, definition.handlers,
+              Set(TravelModifierKind.Pass), 10))
         else Vector.empty
       }
     val active = if (coastRoute)
-      activations(source, sourceHandlers, Set(TravelRuleRole.Coast), 0)
+      activations(source, sourceHandlers, Set(TravelModifierKind.Coast), 0)
     else passActivations ++
       activations(destination, destinationHandlers,
-        Set(TravelRuleRole.Island, TravelRuleRole.Mountain), 20)
+        Set(TravelModifierKind.Island, TravelModifierKind.Mountain), 20)
     val context = RuleQueryContext.Travel(
       ready, player, source, destination, from, to, baseCost)
     registry.resolve(active, context).foldLeft[
