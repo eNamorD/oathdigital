@@ -64,3 +64,11 @@ To compile both production and test sources without running tests:
 ```sh
 ./sbtw Test/compile
 ```
+
+Interactive UI:
+```sh
+./sbtw frontend/fastLinkJS
+./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
+```
+
+And then open `http://localhost:8080/?mode=server`. Keep the server terminal open while testing. curl http://localhost:8080/health. Stop it cleanly with Ctrl-C; do not delete var/oathdigital if you want existing games preserved.

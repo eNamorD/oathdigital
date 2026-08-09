@@ -7,15 +7,24 @@ been reviewed.
 
 ## Now
 
-- [ ] **L6a — Bounded first normal Travel action**
-  - Implement ordinary first-turn Travel through authoritative rules, v3 event
-    replay, server-derived actor, projection, and destination-selection UI.
-  - Enforce the base region costs and mandatory Coast, Island, Mountain, and
-    Pass behavior while deferring River movement and generic power modifiers.
+- [ ] **R1 — Typed rule activation and action-resolution foundation**
+  - Introduce typed rule sources, queries, outcomes, and deterministic
+    resolution, backed by a Scala registry keyed by stable catalog handler
+    identifiers.
+  - Migrate the existing Travel site modifiers and Take Wealth legality checks
+    into the shared mechanism without changing their authoritative events or
+    replay behavior.
+  - Keep static card-placement restrictions separate from runtime action
+    legality, surface relevant unsupported powers explicitly, and provide only
+    the minimal decision boundary needed by the upcoming Search slice.
+  - Do not build a rules-text interpreter or general JSON rules DSL, and do not
+    add new card powers in this foundation slice.
 
 ## Next
 
 - [ ] **L6b — Bounded Search action vertical slice**
+  - Build Search on the typed rule-resolution and pending-decision boundaries
+    established by R1.
 
 ## Later
 
@@ -84,6 +93,10 @@ been reviewed.
 - [x] Complete L2 board and fallback polish: detailed responsive site cards,
   HRF-style inactive-player waiting, valid-only Wake controls, semantic site
   interactions, and deterministic accessible visual fallbacks with no artwork.
+- [x] Complete L6a bounded first-turn Travel through authoritative commands and
+  events, replay, server-derived actor context, player-scoped projection, and
+  destination-selection UI, including base region costs and mandatory Coast,
+  Island, Mountain, and Pass behavior. Manually verified in the interactive UI.
 
 The combined milestone passes 161 JVM tests, 46 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke

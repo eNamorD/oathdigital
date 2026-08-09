@@ -3,6 +3,7 @@
 .tooling/cache/
 project/target/
 target/
+var/
 
 .DS_Store
 .tooling
