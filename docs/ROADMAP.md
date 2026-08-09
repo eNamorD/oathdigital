@@ -7,24 +7,20 @@ been reviewed.
 
 ## Now
 
-- [ ] **R1 — Typed rule activation and action-resolution foundation**
-  - Introduce typed rule sources, queries, outcomes, and deterministic
-    resolution, backed by a Scala registry keyed by stable catalog handler
-    identifiers.
-  - Migrate the existing Travel site modifiers and Take Wealth legality checks
-    into the shared mechanism without changing their authoritative events or
-    replay behavior.
-  - Keep static card-placement restrictions separate from runtime action
-    legality, surface relevant unsupported powers explicitly, and provide only
-    the minimal decision boundary needed by the upcoming Search slice.
-  - Do not build a rules-text interpreter or general JSON rules DSL, and do not
-    add new card powers in this foundation slice.
+- [ ] **L6b — Bounded Search action vertical slice**
+  - Design the smallest complete Search flow on the typed rule-resolution and
+    pending-decision boundaries established by R1.
+  - Preserve authoritative events, deterministic replay, server-derived actor
+    context, player-scoped hidden information, and valid-only UI choices.
+  - Keep the first implementation to unmodified foundation rules and explicitly
+    defer individual card powers that are not required to complete the flow.
 
 ## Next
 
-- [ ] **L6b — Bounded Search action vertical slice**
-  - Build Search on the typed rule-resolution and pending-decision boundaries
-    established by R1.
+- [ ] **L6c — Choose the next bounded action slice after Search**
+  - Use the Search implementation review to choose between Muster, Trade, and
+    the first representative card-power integration based on which best tests
+    the new rule runtime without broadening scope prematurely.
 
 ## Later
 
@@ -97,8 +93,13 @@ been reviewed.
   events, replay, server-derived actor context, player-scoped projection, and
   destination-selection UI, including base region costs and mandatory Coast,
   Island, Mountain, and Pass behavior. Manually verified in the interactive UI.
+- [x] Complete R1 typed runtime rule resolution with broad stable source
+  identities, explicit catalog-handler registration, deterministic outcome
+  ordering, safe unsupported-rule handling, a minimal decision boundary, and
+  shared Travel and Take Wealth legality queries. Event wire formats and golden
+  replay fixtures remain unchanged.
 
-The combined milestone passes 161 JVM tests, 46 Scala.js tests, the Scala.js
+The combined milestone passes 177 JVM tests, 48 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.
