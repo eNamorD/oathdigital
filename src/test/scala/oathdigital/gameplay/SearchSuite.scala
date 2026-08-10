@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{SearchCommand, SearchRules}
+import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelRules}
 
 import oathdigital.model._
 import oathdigital.setup._
@@ -47,6 +47,28 @@ class SearchSuite extends munit.FunSuite {
     assertEquals(after.game.current.commonCards.worldDeck, Vector(d2, d3))
     assertEquals(after.game.current.tracks.visionsDrawn, 2)
     assert(after.game.current.pending.exists(_.decision == DecisionId("search-1")))
+  }
+
+  test("Travel-only unsupported state does not block Search") {
+    val base = act
+    val player = active(base)
+    val withFaceUpAdviser = base.copy(game = base.game.copy(current =
+      base.game.current.copy(players = base.game.current.players.map { candidate =>
+        if (candidate.player != player.player) candidate
+        else candidate.copy(advisers = candidate.advisers.map {
+          case DenizenState(id, _, tokens) =>
+            DenizenState(id, Orientation.FaceUp, tokens)
+          case other => other
+        })
+      })))
+    val drawn = SearchRules.draw(withFaceUpAdviser, SearchSource.WorldDeck,
+      player.pawnSite.flatMap(withFaceUpAdviser.game.current.map.regionOf).get)
+      .toOption.get
+
+    assert(TravelRules.validateSupportedState(withFaceUpAdviser).isLeft)
+    assert(rules.handle(Ready(withFaceUpAdviser), SearchCommand.Start(
+      player.player, DecisionId("travel-independent"),
+      SearchSource.WorldDeck, drawn)).isRight)
   }
 
   test("completion preserves chosen discard order and returns to Act") {

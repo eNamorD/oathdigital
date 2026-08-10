@@ -84,8 +84,7 @@ private[gameplay] object OathLifecycle {
         Left(WrongPhase(Phase.Act, current.turn.phase))
       else current.pending match {
         case Some(value) => Left(PendingProcedureBlocksAction(value.decision))
-        case None =>
-          actions.TravelRules.validateSupportedState(ready).map(_ => ready)
+        case None => Right(ready)
       }
   }
 
