@@ -16,7 +16,25 @@ final case class SetupPlayerProjection(
     role: String,
     colorToken: String
 )
-final case class SiteCardProjection(cardId: String, label: String)
+final case class CardDetailsProjection(
+    cardId: String,
+    cardKind: String,
+    name: String,
+    suit: Option[String] = None,
+    restrictions: Option[String] = None,
+    rulesText: Option[String] = None,
+    orientation: Option[String] = None,
+    side: Option[String] = None,
+    favor: Int = 0,
+    secrets: Int = 0,
+    relicValue: Option[Int] = None,
+    defense: Option[Int] = None,
+    hidden: Boolean = false
+)
+final case class SiteCardProjection(
+    cardId: String,
+    label: String,
+    details: Option[CardDetailsProjection] = None)
 final case class SiteRelicsProjection(facedownCount: Int)
 final case class SetupSiteProjection(
     siteId: String,
@@ -26,12 +44,17 @@ final case class SetupSiteProjection(
     denizenCapacity: Int,
     relicCapacity: Int,
     denizens: Vector[SiteCardProjection],
-    relics: SiteRelicsProjection
+    relics: SiteRelicsProjection,
+    defense: Int = 0,
+    recoverDifficulty: Option[Int] = None,
+    powers: Vector[SitePowerProjection] = Vector.empty
 )
 final case class SetupRegionProjection(
     regionId: String,
-    sites: Vector[SetupSiteProjection]
+    sites: Vector[SetupSiteProjection],
+    discardCount: Int = 0
 )
+final case class SitePowerProjection(kind: String, label: String, description: Option[String])
 final case class PawnLocationProjection(playerId: String, siteId: String)
 final case class PrivateAdviserChoice(adviserId: String, label: String)
 final case class ActivePlayerResourcesProjection(
@@ -65,6 +88,34 @@ final case class PendingSearchProjection(
     replaceableAdvisers: Vector[String],
     replaceableSiteCards: Vector[String]
 )
+final case class CardResolutionProjection(
+    kind: String,
+    orientation: Option[String] = None,
+    replacementTargets: Vector[CardDetailsProjection] = Vector.empty)
+final case class PendingCardDecisionProjection(
+    decisionId: String,
+    kind: String,
+    actorPlayerId: String,
+    prompt: String,
+    instructions: Vector[String],
+    cards: Vector[CardDetailsProjection],
+    keepMinimum: Int,
+    keepMaximum: Int,
+    orderingRequired: Boolean,
+    resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
+)
+final case class PlayerBoardProjection(
+    playerId: String,
+    warbands: Int,
+    favor: Int,
+    faceUpSecrets: Int,
+    faceDownSecrets: Int,
+    supply: Int,
+    pawnSiteId: Option[String],
+    advisers: Vector[CardDetailsProjection],
+    relics: Vector[CardDetailsProjection],
+    revealedVision: Option[CardDetailsProjection]
+)
 
 final case class GameProjection(
     gameId: String,
@@ -87,7 +138,10 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
     legalMusters: Vector[LegalMusterProjection] = Vector.empty,
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
-    pendingSearch: Option[PendingSearchProjection] = None
+    pendingSearch: Option[PendingSearchProjection] = None,
+    pendingCardDecision: Option[PendingCardDecisionProjection] = None,
+    worldDeckCount: Int = 0,
+    playerBoards: Vector[PlayerBoardProjection] = Vector.empty
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -159,6 +213,18 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 denizenNames.getOrElse(id, safeLabel(id.value))
               ))
           } else Vector.empty
+        val decision = Option.when(privateChoices.nonEmpty)(
+          PendingCardDecisionProjection(
+            CardDecisionIds.startingAdviser(active,
+              progress.adviserChoices.size).value,
+            "starting-adviser", active.value,
+            "Choose your starting adviser",
+            Vector("Choose exactly one adviser."),
+            privateChoices.map(choice => cardDetails(DenizenId(choice.adviserId),
+              Some(Orientation.FaceUp), hidden = false)),
+            1, 1, orderingRequired = false,
+            privateChoices.map(choice => choice.adviserId ->
+              Vector(CardResolutionProjection("starting-adviser"))).toMap))
         GameProjection(
           gameId,
           loaded.nextSequence,
@@ -174,7 +240,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
           controls,
           ready = false,
           completed = false,
-          privateChoices
+          privateChoices,
+          pendingCardDecision = decision
         )
       case Ready(value) =>
         val current = value.game.current
@@ -223,6 +290,21 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 .flatMap(_.denizens.map(_.id.value))
             )
         }
+        val pendingDecision = current.pending.collect {
+          case search: PendingProcedure.Search
+              if requestingPlayer.contains(search.actor) =>
+            PendingCardDecisionProjection(
+              search.decision.value, "search", search.actor.value,
+              "Resolve Search",
+              Vector("Move exactly one card to Keep.",
+                "Remaining cards are discarded from left to right."),
+              search.drawn.map(cardDetails(_, Some(Orientation.FaceUp), hidden = false)),
+              1, 1, orderingRequired = true,
+              search.drawn.map { card => card.value ->
+                SearchRules.legalPlacements(catalog, value, search, card).map(
+                  resolutionProjection)
+              }.toMap)
+        }
         GameProjection(
           gameId,
           loaded.nextSequence,
@@ -240,11 +322,14 @@ final class GameProjector(catalog: ExecutableCatalog) {
           setupPlayers,
           Vector(
             region("cradle", value.game.current.map.cradle,
-              value.game.current.map.sites),
+              value.game.current.map.sites,
+              value.game.current.commonCards.discard(Region.Cradle).size),
             region("provinces", value.game.current.map.provinces,
-              value.game.current.map.sites),
+              value.game.current.map.sites,
+              value.game.current.commonCards.discard(Region.Provinces).size),
             region("hinterland", value.game.current.map.hinterland,
-              value.game.current.map.sites)
+              value.game.current.map.sites,
+              value.game.current.commonCards.discard(Region.Hinterland).size)
           ),
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
@@ -319,7 +404,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     }, result.supplySpent, result.gained)
               }
             else Vector.empty,
-          pendingSearch = pendingSearch
+          pendingSearch = pendingSearch,
+          pendingCardDecision = pendingDecision,
+          worldDeckCount = current.commonCards.worldDeck.size,
+          playerBoards = viewerOrderedBoards(value, requestingPlayer)
         )
     }
 
@@ -352,12 +440,14 @@ final class GameProjector(catalog: ExecutableCatalog) {
   private def region(
       id: String,
       sites: Vector[SiteId],
-      states: Map[SiteId, SiteState] = Map.empty
+      states: Map[SiteId, SiteState] = Map.empty,
+      discardCount: Int = 0
   ): SetupRegionProjection =
     SetupRegionProjection(
       id,
       sites.map(site =>
-        siteProjection(site, states.get(site)))
+        siteProjection(site, states.get(site))),
+      discardCount
     )
 
   private def siteProjection(
@@ -384,13 +474,123 @@ final class GameProjector(catalog: ExecutableCatalog) {
               }
             }
         }
-        SiteCardProjection(denizen.id.value, label)
+        val details = denizen match {
+          case value: DenizenState => Some(cardDetails(value.id,
+            Some(value.orientation), hidden = false).copy(
+              favor = value.tokens.favor, secrets = value.tokens.secrets))
+          case value: EdificeState => Some(CardDetailsProjection(
+            value.id.value, "edifice", label,
+            suit = catalog.edifices.find(_.id.value == value.id.value).map(_.suit.value),
+            side = Some(value.side match {
+              case EdificeSide.Intact => "intact"
+              case EdificeSide.Ruined => "ruined"
+            }), favor = value.tokens.favor, secrets = value.tokens.secrets))
+        }
+        SiteCardProjection(denizen.id.value, label, details)
       },
       // Site relics are facedown (CR pp. 6, 25; NF p. 14). Public and
       // player projections expose only their count; recovery's peek does not
       // yet have an authorized private projection boundary.
-      SiteRelicsProjection(state.fold(0)(_.relics.size))
+      SiteRelicsProjection(state.fold(0)(_.relics.size)),
+      definition.fold(0)(_.defense),
+      definition.flatMap(_.recoverDifficulty),
+      definition.toVector.flatMap(_.handlers).map(sitePower)
     )
+  }
+
+  private def sitePower(handler: String): SitePowerProjection = {
+    val kind = handler.split('.').lastOption.getOrElse(handler)
+    // Display-only vocabulary: Combined Rulebook p.31 and New Foundations
+    // pp.10-11. Executable behavior remains in typed rule handlers.
+    val known = Map(
+      "coast" -> ("Coast", "Travel along the Coast route."),
+      "mountain" -> ("Mountain", "Travel here costs additional Supply."),
+      "river" -> ("River", "Part of the River route."),
+      "island" -> ("Island", "Travel here follows Island travel rules."),
+      "pass" -> ("Pass", "Travel through the Pass is restricted."),
+      "plains" -> ("Plains", "This site has the Plains site power."))
+    known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)) {
+      case (label, description) => SitePowerProjection(kind, label, Some(description))
+    }
+  }
+
+  private def resolutionProjection(
+      placement: SearchPlacement
+  ): CardResolutionProjection = placement match {
+    case SearchPlacement.Discard => CardResolutionProjection("discard")
+    case SearchPlacement.Site(replace) => CardResolutionProjection(
+      "site", Some("face-up"), replace.toVector.map(cardDetails(_, None, hidden = false)))
+    case SearchPlacement.Adviser(orientation, replace) => CardResolutionProjection(
+      "adviser", Some(orientationName(orientation)),
+      replace.toVector.map(cardDetails(_, None, hidden = false)))
+  }
+
+  private def viewerOrderedBoards(
+      ready: ReadyGame,
+      viewer: Option[PlayerId]
+  ): Vector[PlayerBoardProjection] = {
+    val players = ready.game.current.players
+    val start = viewer.flatMap(id => Option(players.indexWhere(_.player == id))
+      .filter(_ >= 0)).getOrElse(0)
+    (players.drop(start) ++ players.take(start)).map { player =>
+      val owns = viewer.contains(player.player)
+      PlayerBoardProjection(player.player.value, player.board.warbands,
+        player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
+        player.board.supply.supply, player.pawnSite.map(_.value),
+        player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown && !owns)
+          hiddenCard(card.id, "adviser") else cardDetails(card.id,
+            Some(adviserOrientation(card)), hidden = false)),
+        player.relics.map(card => if (card.orientation == Orientation.FaceDown && !owns)
+          hiddenCard(card.id, "relic") else cardDetails(card.id,
+            Some(card.orientation), hidden = false)),
+        player.revealedVision.map(card => cardDetails(card.id,
+          Some(card.orientation), hidden = false)))
+    }
+  }
+
+  private def hiddenCard(id: CardId, kind: String) = CardDetailsProjection(
+    "hidden", kind, s"Facedown $kind", orientation = Some("face-down"), hidden = true)
+
+  private def adviserOrientation(card: AdviserState): Orientation = card match {
+    case value: DenizenState => value.orientation
+    case value: VisionState => value.orientation
+  }
+
+  private def orientationName(value: Orientation): String = value match {
+    case Orientation.FaceUp => "face-up"
+    case Orientation.FaceDown => "face-down"
+  }
+
+  private def cardDetails(
+      id: CardId,
+      orientation: Option[Orientation],
+      hidden: Boolean
+  ): CardDetailsProjection = id match {
+    case value: DenizenId => catalog.denizens.find(_.id.value == value.value).fold(
+      CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
+        orientation = orientation.map(orientationName), hidden = hidden)) { d =>
+      CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.value),
+        Some(restrictionName(d.restrictions)), Some(d.rulesText),
+        orientation.map(orientationName), hidden = hidden)
+    }
+    case value: VisionId => CardDetailsProjection(value.value, "vision",
+      safeLabel(value.value), orientation = orientation.map(orientationName), hidden = hidden)
+    case value: RelicId => catalog.relics.find(_.id.value == value.value).fold(
+      CardDetailsProjection(value.value, "relic", safeLabel(value.value),
+        orientation = orientation.map(orientationName), hidden = hidden)) { r =>
+      CardDetailsProjection(value.value, "relic", r.name, rulesText = Some(r.rulesText),
+        orientation = orientation.map(orientationName), relicValue = Some(r.value),
+        defense = Some(r.defense), hidden = hidden)
+    }
+    case other => CardDetailsProjection(other.value, other.getClass.getSimpleName,
+      safeLabel(other.value), orientation = orientation.map(orientationName), hidden = hidden)
+  }
+
+  private def restrictionName(value: oathdigital.catalog.CardRestrictions): String = value match {
+    case oathdigital.catalog.CardRestrictions.Unrestricted => "unrestricted"
+    case oathdigital.catalog.CardRestrictions.SiteOnly => "site-only"
+    case oathdigital.catalog.CardRestrictions.AdviserOnly => "adviser-only"
+    case oathdigital.catalog.CardRestrictions.LockedAdviserOnly => "locked-adviser-only"
   }
 
   private def turnOrder(

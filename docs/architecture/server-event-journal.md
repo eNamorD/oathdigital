@@ -142,9 +142,9 @@ requires exactly the configured `Origin` and one `X-CSRF-Token` header. The
 header is hashed and compared to the stored digest with a constant-time digest
 comparison before request-body or domain handling; failure is a stable `403`
 and performs no append. GET has no player selector. POST accepts
-`expectedNextSequence` plus an actor-free
-`intent`: `placePawn` contains only `siteId`, and `chooseAdviser` contains only
-`adviserId`. Unknown fields, including `playerId`, are rejected. Membership
+`expectedNextSequence` plus an actor-free intent. Card choices use
+`resolveCardDecision` with a decision ID and typed starting-adviser or Search
+resolution. Unknown fields, including `playerId`, are rejected. Membership
 constructs the domain actor, and mutations are attempted once without retry.
 Authenticated bootstrap requires the owner membership and a pre-provisioned
 game resource. Its participant list must exactly match every provisioned
@@ -207,11 +207,18 @@ All endpoints are development-only:
 - `POST /api/dev/first-games/{gameId}/bootstrap?playerId={playerId}`
 - `POST /api/dev/first-games/{gameId}/commands?playerId={playerId}`
 - `GET /api/dev/first-games/{gameId}?playerId={playerId}`
+- `GET /api/dev/first-games/{gameId}/events?limit={1..100}`
 
 `playerId` is a development selector for projection redaction and command
 actor, not authentication or authorization. Both route identifiers are limited
 to 128 characters and the conservative character set `A-Z`, `a-z`, `0-9`,
 `.`, `_`, `:`, and `-`.
+
+The event-history endpoint defaults to 25 envelopes, returns at most 100 in
+chronological order, and is mounted only with the loopback development API.
+It returns raw authoritative envelopes and warns that hidden outcomes may be
+present. It is not mounted by authenticated routes and its data never enters an
+ordinary game projection.
 
 The development bootstrap request supplies public participant order, lineage,
 color, and first player. It never supplies hidden setup order.

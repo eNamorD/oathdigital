@@ -61,9 +61,8 @@ private[frontend] object SiteCardPresentation {
       metrics = Vector(
         SiteMetric("Favor", site.looseFavor),
         SiteMetric("Secrets", site.looseSecrets),
-        SiteMetric("Denizen slots", site.denizenCapacity),
-        SiteMetric("Relic slots", site.relicCapacity)
-      ),
+        SiteMetric("Defense", site.defense)
+      ) ++ site.recoverDifficulty.map(SiteMetric("Recover difficulty", _)),
       denizenVisuals = denizens,
       denizenEmpty = "None",
       relicSummary =

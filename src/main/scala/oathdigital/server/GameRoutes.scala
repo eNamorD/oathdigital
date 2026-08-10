@@ -25,6 +25,9 @@ final class GameServerGateway(
     projector: oathdigital.application.GameProjector,
     planFactory: oathdigital.application.DevelopmentFirstGamePlanFactory
 ) {
+  def rawEventHistory(gameId: String, limit: Int)
+      : Either[GameApplicationError, Vector[String]] =
+    service.rawEventHistory(gameId, limit)
   def bootstrap(
       gameId: String,
       requestingPlayer: PlayerId,
@@ -78,7 +81,20 @@ final class GameRoutes(
 
   val route: Route =
     pathPrefix("api" / "dev" / "first-games" / Segment) { gameId =>
-      parameter("playerId") { playerId =>
+      path("events") {
+        get {
+          parameter("limit".as[Int].withDefault(25)) { limit =>
+            DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId") match {
+              case Left(error) => complete(inputError(error))
+              case Right(validGameId) if limit < 1 || limit > 100 =>
+                complete(jsonResponse(StatusCodes.BadRequest, "malformed-request",
+                  "$.limit: must be between 1 and 100"))
+              case Right(validGameId) => completeRawHistory(
+                gateway.rawEventHistory(validGameId, limit))
+            }
+          }
+        }
+      } ~ parameter("playerId") { playerId =>
         validateIdentifiers(gameId, playerId) match {
           case Left(error) =>
             complete(inputError(error))
@@ -144,6 +160,24 @@ final class GameRoutes(
         }
       }
     }
+
+  private def completeRawHistory(
+      operation: => Either[GameApplicationError, Vector[String]]
+  ): Route = onComplete(Future(operation)(blockingExecutionContext)) {
+    case Success(Right(records)) =>
+      val values = records.map(record => ujson.read(record))
+      complete(HttpResponse(StatusCodes.OK, entity = HttpEntity(
+        ContentTypes.`application/json`, ujson.write(ujson.Obj(
+          "warning" -> "Raw authoritative events may reveal hidden outcomes.",
+          "events" -> ujson.Arr.from(values))))))
+    case Success(Left(error)) =>
+      val (status, code, message, _) = publicError(error)
+      complete(jsonResponse(status, code, message))
+    case Failure(error) =>
+      logger.error("Unhandled raw event-history route failure", error)
+      complete(jsonResponse(StatusCodes.InternalServerError, "internal-error",
+        "the server could not complete the request"))
+  }
 
   private def completeAsync(
       operation: => Either[GameApplicationError, GameProjection]
@@ -224,6 +258,7 @@ final class GameRoutes(
       case GameCommand.Trade(playerId, _, _) => Some(playerId.value)
       case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
       case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
+      case GameCommand.ResolveCardDecision(playerId, _, _) => Some(playerId.value)
       case GameCommand.BeginRest(playerId) => Some(playerId.value)
       case GameCommand.FinishRest(playerId) => Some(playerId.value)
       case GameCommand.Begin(_) => None

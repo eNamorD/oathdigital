@@ -49,7 +49,9 @@ independently compares it with the authoritative source order before accepting:
 1. `SearchStarted(actor, decision, source, origin, supplySpent, drawn)` spends
    Supply, removes the exact cards, advances Visions Drawn when applicable, and
    creates `PendingProcedure.Search`.
-2. `CompleteSearch(actor, decision, kept, discardedInOrder, placement)` verifies
+2. The transport submits generic `ResolveCardDecision(actor, decision,
+   SearchResolution(...))`, which adapts to the internal typed Search command
+   and verifies
    the exact drawn-card permutation, catalog identity, capacity, restrictions,
    replacements, and lock rules. It updates cards/favor, clears the pending
    procedure, and returns to Act action selection.
@@ -81,9 +83,18 @@ because a handler string exists.
 
 HRF's useful pattern is its explicit `Ask` continuation and server-recorded
 `Shuffle`/`Random` continuation vocabulary in `vendor/haunt-roll-fail/hrf/base.scala`.
-The implementation adapts the interaction shape—a forced owner decision with enumerated
-actions—but not HRF's action-authoritative timeline. Oath Digital keeps domain
-events authoritative and projects legal controls from replayed state.
+The implementation adapts the interaction shape—a forced owner decision with
+enumerated actions—but not HRF's action-authoritative timeline. Oath Digital
+keeps domain events authoritative and projects legal controls from replayed
+state. `SearchRules.legalPlacements` enumerates candidates by running the same
+completion validator used by command handling and replay.
+
+The authorized actor receives one `pendingCardDecision` envelope. The client
+first arranges exactly one card in Keep and orders the remaining Discard zone,
+then locally advances to resolution. Only final confirmation submits an atomic
+resolution. Dragging is supplemented by Move to Keep, Move to Discard, Move
+Left, and Move Right controls. Required adviser or site replacement is always
+explicit. Public and other-player projections omit the entire envelope.
 
 ## In scope and deferred
 

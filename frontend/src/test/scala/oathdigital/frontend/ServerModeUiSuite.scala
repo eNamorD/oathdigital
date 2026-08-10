@@ -170,8 +170,7 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(details.metrics, Vector(
       SiteMetric("Favor", 2),
       SiteMetric("Secrets", 1),
-      SiteMetric("Denizen slots", 3),
-      SiteMetric("Relic slots", 2)
+      SiteMetric("Defense", 0)
     ))
     assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
     assertEquals(site.denizens.map(_.denizenId),
@@ -191,7 +190,7 @@ class ServerModeUiSuite extends FunSuite {
       GameSiteRelics(0)
     ))
 
-    assertEquals(details.metrics.map(_.value), Vector(0, 0, 0, 0))
+    assertEquals(details.metrics.map(_.value), Vector(0, 0, 0))
     assertEquals(details.denizenEmpty, "None")
     assertEquals(details.relicSummary, "None")
   }

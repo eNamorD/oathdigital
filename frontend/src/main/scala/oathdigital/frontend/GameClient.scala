@@ -6,6 +6,7 @@ import scala.scalajs.js
 import scala.util.control.NonFatal
 
 final case class TransportResponse(status: Int, body: String)
+final case class RawEvent(sequence: Long, discriminator: String, rawPayload: String)
 trait JsonTransport {
   def request(
       method: String,
@@ -62,7 +63,13 @@ final case class GamePlayer(
     role: String,
     color: PlayerColorToken
 )
-final case class GameSiteCard(denizenId: String, label: String)
+final case class CardDetails(
+    cardId: String, cardKind: String, name: String,
+    suit: Option[String] = None, restrictions: Option[String] = None,
+    rulesText: Option[String] = None, orientation: Option[String] = None,
+    hidden: Boolean = false)
+final case class GameSiteCard(denizenId: String, label: String,
+    details: Option[CardDetails] = None)
 final case class GameSiteRelics(facedownCount: Int)
 final case class GameSite(
     siteId: String,
@@ -72,9 +79,13 @@ final case class GameSite(
     denizenCapacity: Int,
     relicCapacity: Int,
     denizens: Vector[GameSiteCard],
-    relics: GameSiteRelics
+    relics: GameSiteRelics,
+    defense: Int = 0,
+    recoverDifficulty: Option[Int] = None,
+    powers: Vector[SitePower] = Vector.empty
 )
-final case class GameRegion(regionId: String, sites: Vector[GameSite])
+final case class SitePower(kind: String, label: String, description: Option[String])
+final case class GameRegion(regionId: String, sites: Vector[GameSite], discardCount: Int = 0)
 final case class GamePawn(playerId: String, siteId: String)
 final case class AdviserChoice(adviserId: String, label: String)
 final case class ActivePlayerResources(
@@ -108,6 +119,18 @@ final case class PendingSearch(
     replaceableAdvisers: Vector[String],
     replaceableSiteCards: Vector[String]
 )
+final case class CardResolution(kind: String, orientation: Option[String],
+    replacementTargets: Vector[CardDetails])
+final case class PendingCardDecision(
+    decisionId: String, kind: String, actorPlayerId: String, prompt: String,
+    instructions: Vector[String], cards: Vector[CardDetails], keepMinimum: Int,
+    keepMaximum: Int, orderingRequired: Boolean,
+    resolutionsByCard: Map[String, Vector[CardResolution]])
+final case class PlayerBoard(
+    playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
+    faceDownSecrets: Int, supply: Int, pawnSiteId: Option[String],
+    advisers: Vector[CardDetails], relics: Vector[CardDetails],
+    revealedVision: Option[CardDetails])
 final case class GameProjection(
     gameId: String,
     nextSequence: Long,
@@ -128,7 +151,10 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSource] = Vector.empty,
     legalMusters: Vector[LegalMuster] = Vector.empty,
     legalTrades: Vector[LegalTrade] = Vector.empty,
-    pendingSearch: Option[PendingSearch] = None
+    pendingSearch: Option[PendingSearch] = None,
+    pendingCardDecision: Option[PendingCardDecision] = None,
+    worldDeckCount: Int = 0,
+    playerBoards: Vector[PlayerBoard] = Vector.empty
 )
 
 sealed trait GameCommand
@@ -158,6 +184,16 @@ object GameCommand {
       placement: String,
       replace: Option[(String, String)] = None
   ) extends GameCommand
+  final case class ResolveCardDecision(
+      playerId: String, decisionId: String, resolution: DecisionResolution)
+      extends GameCommand
+}
+sealed trait DecisionResolution
+object DecisionResolution {
+  final case class StartingAdviser(adviserId: String) extends DecisionResolution
+  final case class Search(kept: CardDetails, discarded: Vector[CardDetails],
+      placement: String, orientation: Option[String],
+      replacement: Option[CardDetails]) extends DecisionResolution
 }
 
 sealed trait GameClientFailure {
@@ -256,6 +292,29 @@ final class HttpGameClient(transport: JsonTransport)
         encode(selectedPlayerId),
       Some(GameJson.encodeCommand(expectedNextSequence, command))
     )
+
+  def loadRawEventHistory(gameId: String, limit: Int = 25)
+      : Future[Either[GameClientFailure, Vector[RawEvent]]] =
+    transport.request("GET",
+      s"/api/dev/first-games/${encode(gameId)}/events?limit=$limit", None).map {
+      _.flatMap { response =>
+        if (response.status < 200 || response.status >= 300)
+          Left(GameClientFailure.HttpFailure(response.status, "event-history",
+            response.body))
+        else try {
+          val root = js.JSON.parse(response.body)
+          val events = root.selectDynamic("events").asInstanceOf[js.Array[js.Dynamic]]
+          Right(events.toVector.map { event =>
+            val sequence = event.selectDynamic("sequence").asInstanceOf[Double].toLong
+            val discriminator = event.selectDynamic("eventType").asInstanceOf[String]
+            RawEvent(sequence, discriminator, js.JSON.stringify(event))
+          })
+        } catch {
+          case NonFatal(error) => Left(GameClientFailure.DecodeFailure("$.events",
+            Option(error.getMessage).getOrElse("invalid event history")))
+        }
+      }
+    }(scala.scalajs.concurrent.JSExecutionContext.queue)
 
   private def send(method: String, url: String, body: Option[String]) =
     transport.request(method, url, body).map(_.flatMap { response =>
@@ -357,6 +416,24 @@ object GameJson {
             js.Dynamic.literal(kind = kind, id = id) }: _*),
           placement = placementValue
         )
+      case GameCommand.ResolveCardDecision(player, decision, resolution) =>
+        val value = resolution match {
+          case DecisionResolution.StartingAdviser(id) => js.Dynamic.literal(
+            kind = "starting-adviser", adviserId = id)
+          case DecisionResolution.Search(kept, discarded, placement, orientation,
+              replacement) =>
+            val placementValue = js.Dynamic.literal(kind = placement)
+            orientation.foreach(value => placementValue.updateDynamic("orientation")(value))
+            replacement.foreach(card => placementValue.updateDynamic("replace")(
+              js.Dynamic.literal(kind = card.cardKind, id = card.cardId)))
+            js.Dynamic.literal(kind = "search",
+              kept = js.Dynamic.literal(kind = kept.cardKind, id = kept.cardId),
+              discardedInOrder = js.Array(discarded.map(card =>
+                js.Dynamic.literal(kind = card.cardKind, id = card.cardId)): _*),
+              placement = placementValue)
+        }
+        js.Dynamic.literal(`type` = "resolveCardDecision", playerId = player,
+          decisionId = decision, resolution = value)
     }
     js.JSON.stringify(js.Dynamic.literal(
       expectedNextSequence = sequence.toDouble,
@@ -386,6 +463,10 @@ object GameJson {
           (item, path) =>
             for {
               id <- string(item, "regionId", path)
+              discardCount <- optionalField(item, "discardCount").flatMap {
+                case None => Right(0)
+                case Some(_) => int(item, "discardCount", path)
+              }
               sites <- array(item, "sites", path).flatMap(traverse(_, "sites") {
                 (site, sitePath) =>
                   for {
@@ -400,7 +481,14 @@ object GameJson {
                         for {
                           id <- string(denizen, "denizenId", denizenPath)
                           name <- string(denizen, "label", denizenPath)
-                        } yield GameSiteCard(id, name)
+                          detailsValue <- optionalField(denizen, "details")
+                          details <- detailsValue match {
+                            case None => Right(None)
+                            case Some(value) if value == null => Right(None)
+                            case Some(value) => cardDetails(value,
+                              s"$denizenPath.details").map(Some(_))
+                          }
+                        } yield GameSiteCard(id, name, details)
                       })
                     relicsValue <- field(site, "relics", sitePath)
                     relicsObject <- objectValue(
@@ -412,6 +500,27 @@ object GameJson {
                       "facedownCount",
                       s"$sitePath.relics"
                     )
+                    defense <- optionalField(site, "defense").flatMap {
+                      case None => Right(0)
+                      case Some(_) => int(site, "defense", sitePath)
+                    }
+                    recoverValue <- optionalField(site, "recoverDifficulty")
+                    recover <- recoverValue match {
+                      case None => Right(None)
+                      case Some(value) if value == null => Right(None)
+                      case Some(value) if js.typeOf(value) == "number" =>
+                        Right(Some(value.asInstanceOf[Double].toInt))
+                      case _ => Left(GameClientFailure.DecodeFailure(
+                        s"$sitePath.recoverDifficulty", "expected integer or null"))
+                    }
+                    powers <- optionalField(site, "powers").flatMap {
+                      case None => Right(Vector.empty)
+                      case Some(_) => array(site, "powers", sitePath).flatMap(
+                      traverse(_, "powers") { (power, powerPath) => for {
+                        kind <- string(power, "kind", powerPath)
+                        label <- string(power, "label", powerPath)
+                        description <- optionalString(power, "description", powerPath)
+                      } yield SitePower(kind, label, description) }) }
                   } yield GameSite(
                     siteId,
                     label,
@@ -420,10 +529,13 @@ object GameJson {
                     denizenCapacity,
                     relicCapacity,
                     denizens,
-                    GameSiteRelics(facedownCount)
+                    GameSiteRelics(facedownCount),
+                    defense,
+                    recover,
+                    powers
                   )
               })
-            } yield GameRegion(id, sites)
+            } yield GameRegion(id, sites, discardCount)
         })
         pawns <- array(root, "pawnLocations", "$").flatMap(
           traverse(_, "pawnLocations") { (item, path) =>
@@ -435,13 +547,15 @@ object GameJson {
         controls <- stringArray(root, "legalControls", "$")
         ready <- bool(root, "ready", "$")
         completed <- bool(root, "completed", "$")
-        choices <- array(root, "privateAdviserChoices", "$").flatMap(
+        choices <- optionalField(root, "privateAdviserChoices").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "privateAdviserChoices", "$").flatMap(
           traverse(_, "privateAdviserChoices") { (item, path) =>
             for {
               id <- string(item, "adviserId", path)
               label <- string(item, "label", path)
             } yield AdviserChoice(id, label)
-          })
+          }) }
         resources <- optionalField(root, "activePlayerResources").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -532,6 +646,74 @@ object GameJson {
             siteCards <- stringArray(obj, "replaceableSiteCards", "$.pendingSearch")
           } yield Some(PendingSearch(decision, cards, advisers, siteCards)) }
         }
+        pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.pendingCardDecision").flatMap { obj => for {
+            id <- string(obj, "decisionId", "$.pendingCardDecision")
+            kind <- string(obj, "kind", "$.pendingCardDecision")
+            actor <- string(obj, "actorPlayerId", "$.pendingCardDecision")
+            prompt <- string(obj, "prompt", "$.pendingCardDecision")
+            instructions <- stringArray(obj, "instructions", "$.pendingCardDecision")
+            cards <- array(obj, "cards", "$.pendingCardDecision").flatMap(
+              traverse(_, "cards")((card, path) => cardDetails(card, path)))
+            minimum <- int(obj, "keepMinimum", "$.pendingCardDecision")
+            maximum <- int(obj, "keepMaximum", "$.pendingCardDecision")
+            ordering <- bool(obj, "orderingRequired", "$.pendingCardDecision")
+            resolutionsValue <- field(obj, "resolutionsByCard", "$.pendingCardDecision")
+            resolutionsObject <- objectValue(resolutionsValue,
+              "$.pendingCardDecision.resolutionsByCard")
+            resolutions <- cards.foldLeft[Either[GameClientFailure,
+              Map[String, Vector[CardResolution]]]](Right(Map.empty)) {
+              case (Right(acc), card) =>
+                val raw = resolutionsObject.selectDynamic(card.cardId)
+                if (js.isUndefined(raw)) Right(acc.updated(card.cardId, Vector.empty))
+                else raw.asInstanceOf[js.Array[js.Dynamic]].toVector.zipWithIndex
+                  .foldLeft[Either[GameClientFailure, Vector[CardResolution]]](Right(Vector.empty)) {
+                    case (Right(values), (item, index)) =>
+                      val path = s"$$.pendingCardDecision.resolutionsByCard.${card.cardId}[$index]"
+                      for {
+                        kind <- string(item, "kind", path)
+                        orientation <- optionalString(item, "orientation", path)
+                        targets <- array(item, "replacementTargets", path).flatMap(
+                          traverse(_, "replacementTargets")((target, targetPath) =>
+                            cardDetails(target, targetPath)))
+                      } yield values :+ CardResolution(kind, orientation, targets)
+                    case (failure @ Left(_), _) => failure
+                  }.map(value => acc.updated(card.cardId, value))
+              case (failure @ Left(_), _) => failure
+            }
+          } yield Some(PendingCardDecision(id, kind, actor, prompt, instructions,
+            cards, minimum, maximum, ordering, resolutions)) }
+        }
+        worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
+          case None => Right(0)
+          case Some(_) => int(root, "worldDeckCount", "$")
+        }
+        boards <- optionalField(root, "playerBoards").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "playerBoards", "$").flatMap(traverse(_, "playerBoards") {
+          (item, path) => for {
+            player <- string(item, "playerId", path)
+            warbands <- int(item, "warbands", path)
+            favor <- int(item, "favor", path)
+            up <- int(item, "faceUpSecrets", path)
+            down <- int(item, "faceDownSecrets", path)
+            supply <- int(item, "supply", path)
+            pawn <- optionalString(item, "pawnSiteId", path)
+            advisers <- array(item, "advisers", path).flatMap(
+              traverse(_, "advisers")((card, cardPath) => cardDetails(card, cardPath)))
+            relics <- array(item, "relics", path).flatMap(
+              traverse(_, "relics")((card, cardPath) => cardDetails(card, cardPath)))
+            visionValue <- optionalField(item, "revealedVision")
+            vision <- visionValue match {
+              case None => Right(None)
+              case Some(card) if card == null => Right(None)
+              case Some(card) => cardDetails(card, s"$path.revealedVision").map(Some(_))
+            }
+          } yield PlayerBoard(player, warbands, favor, up, down, supply, pawn,
+            advisers, relics, vision)
+        }) }
       } yield GameProjection(
         game,
         sequence,
@@ -552,7 +734,10 @@ object GameJson {
         searchSources,
         musters,
         trades,
-        pendingSearch
+        pendingSearch,
+        pendingDecision,
+        worldDeckCount,
+        boards
       )
     }
   }
@@ -574,6 +759,19 @@ object GameJson {
       case "yellow" => PlayerColorToken.Yellow
       case _ => PlayerColorToken.Neutral
     }
+
+  private def cardDetails(value: js.Dynamic, path: String)
+      : Either[GameClientFailure, CardDetails] = for {
+    id <- string(value, "cardId", path)
+    kind <- string(value, "cardKind", path)
+    name <- string(value, "name", path)
+    suit <- optionalString(value, "suit", path)
+    restrictions <- optionalString(value, "restrictions", path)
+    rulesText <- optionalString(value, "rulesText", path)
+    orientation <- optionalString(value, "orientation", path)
+    hidden <- bool(value, "hidden", path)
+  } yield CardDetails(id, kind, name, suit, restrictions, rulesText,
+    orientation, hidden)
 
   private def economyTarget(obj: js.Dynamic, path: String)
       : Either[GameClientFailure, EconomyTarget] = for {

@@ -1,12 +1,22 @@
 package oathdigital.server
 
-import oathdigital.application.GameCommand
-import oathdigital.model.{EconomyTargetRef, EdificeId, PlayerId}
+import oathdigital.application.{CardDecisionResolution, GameCommand}
+import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId, PlayerId}
 import oathdigital.serialization.{
   GameEventWire
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("generic development card decision carries actor and typed resolution") {
+    val json = commandRequest(ujson.Obj("type" -> "resolveCardDecision",
+      "playerId" -> "p2", "decisionId" -> "setup-adviser-0-p2",
+      "resolution" -> ujson.Obj("kind" -> "starting-adviser",
+        "adviserId" -> "denizen:a")))
+    assertEquals(GameHttpWire.decodeCommand(json).toOption.get.command,
+      GameCommand.ResolveCardDecision(PlayerId("p2"),
+        DecisionId("setup-adviser-0-p2"),
+        CardDecisionResolution.StartingAdviser(DenizenId("denizen:a"))))
+  }
   test("development Rest commands retain the explicit selector actor") {
     val begin = GameHttpWire.decodeCommand(
       """{"expectedNextSequence":12,"command":{"type":"beginRest","playerId":"p1"}}""")
@@ -43,7 +53,7 @@ class GameHttpWireSuite extends munit.FunSuite {
     assert(error.message.contains("bootstrap"))
   }
 
-  test("pawn and adviser commands use explicit discriminators") {
+  test("pawn remains explicit and legacy adviser command is rejected") {
     val pawn =
       """{"expectedNextSequence":1,"command":{"type":"placePawn",
         |"playerId":"p2","siteId":"site:a"}}""".stripMargin
@@ -53,8 +63,7 @@ class GameHttpWireSuite extends munit.FunSuite {
 
     assert(GameHttpWire.decodeCommand(pawn).toOption.get.command
       .isInstanceOf[GameCommand.PlacePawn])
-    assert(GameHttpWire.decodeCommand(adviser).toOption.get.command
-      .isInstanceOf[GameCommand.ChooseAdviser])
+    assert(GameHttpWire.decodeCommand(adviser).isLeft)
   }
 
   test("Wake commands decode explicit actor and wealth choice") {

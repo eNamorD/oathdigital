@@ -232,6 +232,33 @@ object SearchRules {
     }
   }
 
+  /**
+   * Enumerates UI outcomes by running the same completion validator used by
+   * command handling and replay. No presentation-only legality is maintained.
+   */
+  def legalPlacements(
+      catalog: ExecutableCatalog,
+      ready: ReadyGame,
+      pending: PendingProcedure.Search,
+      kept: WorldCardId
+  ): Vector[SearchPlacement] = {
+    val player = ready.game.current.players.find(_.player == pending.actor).get
+    val siteCards = player.pawnSite.toVector
+      .flatMap(ready.game.current.map.sites.get).flatMap(_.denizens.map(_.id))
+    val adviserCards = player.advisers.map(_.id)
+    val candidates = Vector[SearchPlacement](SearchPlacement.Discard) ++
+      (Vector(None) ++ siteCards.map(Some(_))).map(SearchPlacement.Site) ++
+      Vector(Orientation.FaceDown, Orientation.FaceUp).flatMap { orientation =>
+        (Vector(None) ++ adviserCards.map(Some(_))).map(
+          SearchPlacement.Adviser(orientation, _))
+      }
+    val discarded = pending.drawn.filterNot(_ == kept)
+    candidates.distinct.filter { placement =>
+      complete(catalog, ready, pending, SearchCompleted(
+        pending.actor, pending.decision, kept, discarded, placement)).isRight
+    }
+  }
+
   private def place(
       catalog: ExecutableCatalog,
       ready: ReadyGame,

@@ -23,13 +23,15 @@ object ServerModeUi {
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
     var travelSelectionOpen = false
+    var cardDecisionState = Option.empty[CardDecisionState]
+    var rawEvents = Vector.empty[RawEvent]
+    var rawHistorySequence = Option.empty[Long]
 
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
       mount.appendChild(text("div", "eyebrow",
         "Server mode · JVM-authoritative persisted stream"))
-      mount.appendChild(text("h1", "", "Oath Digital first-game setup"))
-      mount.appendChild(controls())
+      mount.appendChild(text("h1", "", "Oath Digital game"))
       coordinator.connectionState match {
         case ServerConnectionState.Disconnected(_) =>
           mount.appendChild(text(
@@ -57,10 +59,13 @@ object ServerModeUi {
           mount.appendChild(status(value))
           mount.appendChild(players(value))
           mount.appendChild(world(value, presentation))
-          if (presentation.showGameplayControls)
-            mount.appendChild(advisers(value))
+          mount.appendChild(playerBoards(value))
           mount.appendChild(wakeActions(value, presentation))
+          value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
+            .foreach(decision => mount.appendChild(cardDecisionModal(value, decision)))
       }
+      mount.appendChild(controls())
+      if (projection.nonEmpty) mount.appendChild(rawEventLog())
     }
 
     def store(
@@ -71,16 +76,28 @@ object ServerModeUi {
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
           travelSelectionOpen = false
+          cardDecisionState = displayed.pendingCardDecision.map { decision =>
+            cardDecisionState.filter(_.decisionId == decision.decisionId)
+              .getOrElse(CardDecisionState.initial(decision))
+          }
           projection = Some(displayed)
           failure = retainedNotice
           render()
           polling.foreach(_.resume(coordinator.capture))
+          if (!rawHistorySequence.contains(displayed.nextSequence)) {
+            rawHistorySequence = Some(displayed.nextSequence)
+            client.loadRawEventHistory(gameId).foreach {
+              case Right(events) => rawEvents = events; render()
+              case Left(_) => ()
+            }
+          }
         case ProjectionRoute.ReloadForActivePlayer(
               displayed,
               nextRequest,
               retainedNotice
             ) =>
           travelSelectionOpen = false
+          cardDecisionState = None
           polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
@@ -112,6 +129,9 @@ object ServerModeUi {
       gameId = id.trim
       projection = None
       travelSelectionOpen = false
+      cardDecisionState = None
+      rawEvents = Vector.empty
+      rawHistorySequence = None
       failure = None
       selectedPlayer = playerId.trim match {
         case "" => "red-exile"
@@ -129,6 +149,9 @@ object ServerModeUi {
       selectedPlayer = bootstrap.firstPlayer
       projection = None
       travelSelectionOpen = false
+      cardDecisionState = None
+      rawEvents = Vector.empty
+      rawHistorySequence = None
       failure = None
       val request = coordinator.switchSession(gameId, selectedPlayer)
       updateUrl(gameId, selectedPlayer)
@@ -203,13 +226,17 @@ object ServerModeUi {
       input.value = gameId
       input.setAttribute("aria-label", "Existing game ID")
       bar.appendChild(input)
-      val playerInput =
-        dom.document.createElement("input").asInstanceOf[dom.html.Input]
-      playerInput.value = selectedPlayer
-      playerInput.setAttribute("aria-label", "Selected player ID")
-      bar.appendChild(playerInput)
+      projection.toVector.flatMap(_.players).foreach { player =>
+        val selector = button(player.displayName,
+          s"player-selector ${player.color.cssClass}")
+        selector.setAttribute("aria-pressed",
+          (player.playerId == selectedPlayer).toString)
+        selector.setAttribute("data-player-id", player.playerId)
+        selector.onclick = _ => loadExisting(input.value, player.playerId)
+        bar.appendChild(selector)
+      }
       val load = button("Load existing game", "load-game")
-      load.onclick = _ => loadExisting(input.value, playerInput.value)
+      load.onclick = _ => loadExisting(input.value, selectedPlayer)
       bar.appendChild(load)
       coordinator.connectionState match {
         case ServerConnectionState.Disconnected(_) =>
@@ -230,6 +257,23 @@ object ServerModeUi {
       fresh.onclick = _ => newGame()
       bar.appendChild(fresh)
       bar
+    }
+
+    def rawEventLog(): dom.Element = {
+      val panel = element("section", "panel raw-event-log")
+      panel.appendChild(text("h2", "", "Raw authoritative event log"))
+      panel.appendChild(text("p", "warning",
+        "Development only. Raw authoritative events may reveal hidden outcomes."))
+      if (rawEvents.isEmpty) panel.appendChild(text("p", "empty-state", "No events."))
+      val list = element("ol", "events")
+      rawEvents.foreach { event =>
+        val item = element("li", "raw-event")
+        item.appendChild(text("strong", "", s"${event.sequence} · ${event.discriminator}"))
+        item.appendChild(text("pre", "raw-payload", event.rawPayload))
+        list.appendChild(item)
+      }
+      panel.appendChild(list)
+      panel
     }
 
     def status(value: GameProjection): dom.Element = {
@@ -259,7 +303,7 @@ object ServerModeUi {
         presentation: ViewerPresentation
     ): dom.Element = {
       val panel = element("section", "panel wake-actions")
-      panel.appendChild(text("h2", "", "Wake actions"))
+      panel.appendChild(text("h2", "", "Available actions"))
       value.activePlayerResources.foreach { resources =>
         panel.appendChild(text(
           "p",
@@ -361,42 +405,142 @@ object ServerModeUi {
         finish.onclick = _ => submit(GameCommand.FinishRest(selectedPlayer))
         panel.appendChild(finish)
       }
-      value.pendingSearch.foreach { search =>
-        panel.appendChild(text("h3", "", "Choose one searched card"))
-        panel.appendChild(text("p", "informational",
-          "Non-kept cards are discarded in the displayed draw order."))
-        search.drawnCards.foreach { card =>
-          val cardPanel = element("div", "search-card")
-          cardPanel.appendChild(text("strong", "", card.label))
-          card.legalPlacements.foreach { placement =>
-            val replacement: Option[(String, String)] = placement match {
-              case "site" if search.replaceableSiteCards.nonEmpty =>
-                Some(cardKind(search.replaceableSiteCards.head) ->
-                  search.replaceableSiteCards.head)
-              case placementKind if placementKind.startsWith("adviser") &&
-                  search.replaceableAdvisers.size >= 3 =>
-                Some(cardKind(search.replaceableAdvisers.head) ->
-                  search.replaceableAdvisers.head)
-              case _ => None
-            }
-            val control = button(placement.replace('-', ' '), "search-choice")
-            control.disabled = !controlsAvailable || !presentation.showGameplayControls
-            control.onclick = _ => submit(GameCommand.CompleteSearch(
-              selectedPlayer,
-              search.decisionId,
-              card.cardId,
-              card.cardKind,
-              search.drawnCards.filterNot(_.cardId == card.cardId)
-                .map(other => other.cardKind -> other.cardId),
-              placement,
-              replacement
-            ))
-            cardPanel.appendChild(control)
-          }
-          panel.appendChild(cardPanel)
-        }
-      }
       panel
+    }
+
+    def cardDecisionModal(
+        value: GameProjection,
+        decision: PendingCardDecision
+    ): dom.Element = {
+      val shell = element("section", "card-decision-modal")
+      shell.setAttribute("role", "dialog")
+      shell.setAttribute("aria-modal", "true")
+      shell.setAttribute("aria-labelledby", "card-decision-title")
+      shell.setAttribute("data-decision-kind", decision.kind)
+      shell.appendChild(text("h2", "", decision.prompt))
+      shell.lastChild.asInstanceOf[dom.Element].id = "card-decision-title"
+      decision.instructions.foreach(instruction =>
+        shell.appendChild(text("p", "decision-instruction", instruction)))
+      val state = cardDecisionState.filter(_.decisionId == decision.decisionId)
+        .getOrElse(CardDecisionState.initial(decision))
+
+      def update(next: CardDecisionState): Unit = {
+        cardDecisionState = Some(next)
+        render()
+      }
+      def cardNode(card: CardDetails, zone: String): dom.Element = {
+        val node = element("article", "decision-card")
+        node.setAttribute("tabindex", "0")
+        node.setAttribute("draggable", "true")
+        node.setAttribute("data-card-id", card.cardId)
+        node.setAttribute("aria-label", card.name)
+        node.appendChild(text("strong", "card-name", card.name))
+        node.appendChild(cardDetailsPopover(card))
+        val move = if (zone == "keep") button("Move to Discard", "move-discard")
+          else button("Move to Keep", "move-keep")
+        move.onclick = _ => if (zone == "keep") update(state.moveToDiscard(card.cardId))
+          else update(state.moveToKeep(card.cardId))
+        node.appendChild(move)
+        if (zone == "discard") {
+          val left = button("Move Left", "move-left")
+          left.disabled = state.discard.headOption.contains(card)
+          left.onclick = _ => update(state.move(card.cardId, -1))
+          val right = button("Move Right", "move-right")
+          right.disabled = state.discard.lastOption.contains(card)
+          right.onclick = _ => update(state.move(card.cardId, 1))
+          node.appendChild(left); node.appendChild(right)
+          node.addEventListener("dragstart", (event: dom.Event) =>
+            event.asInstanceOf[dom.DragEvent].dataTransfer.setData("text/plain", card.cardId))
+          node.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
+          node.addEventListener("drop", (event: dom.Event) => {
+            event.preventDefault()
+            update(state.arrangeDrop(
+              event.asInstanceOf[dom.DragEvent].dataTransfer.getData("text/plain"),
+              Some(card.cardId)))
+          })
+        }
+        node
+      }
+
+      if (decision.kind == "starting-adviser") {
+        val cards = element("div", "decision-cards")
+        decision.cards.foreach(card => cards.appendChild(cardNode(card,
+          if (state.keep.contains(card)) "keep" else "discard")))
+        shell.appendChild(cards)
+        val confirm = button("Confirm adviser", "decision-confirm")
+        confirm.disabled = !state.arrangementValid(decision.cards) || !controlsAvailable
+        confirm.onclick = _ => state.keep.headOption.foreach(card => submit(
+          GameCommand.ResolveCardDecision(selectedPlayer, decision.decisionId,
+            DecisionResolution.StartingAdviser(card.cardId))))
+        shell.appendChild(confirm)
+      } else state.stage match {
+        case CardDecisionStage.Arrange =>
+          val zones = element("div", "decision-zones")
+          val keep = element("section", "decision-zone keep-zone")
+          keep.appendChild(text("h3", "", "Keep"))
+          state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
+          val discard = element("section", "decision-zone discard-zone")
+          discard.appendChild(text("h3", "", "Discard"))
+          discard.appendChild(text("p", "discard-order",
+            "Remaining cards are discarded from left to right."))
+          state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
+          zones.appendChild(keep); zones.appendChild(discard); shell.appendChild(zones)
+          val confirm = button("Confirm arrangement", "decision-confirm")
+          confirm.disabled = !state.arrangementValid(decision.cards)
+          confirm.onclick = _ => update(state.copy(stage = CardDecisionStage.Resolve))
+          shell.appendChild(confirm)
+        case CardDecisionStage.Resolve =>
+          val kept = state.keep.head
+          shell.appendChild(text("h3", "", s"Resolve ${kept.name}"))
+          decision.resolutionsByCard.getOrElse(kept.cardId, Vector.empty).foreach { resolution =>
+            val label = resolution.kind match {
+              case "discard" => "Discard"
+              case "site" => "Play at site"
+              case "adviser" if resolution.orientation.contains("face-down") => "Play facedown"
+              case "adviser" => "Play faceup"
+              case other => other
+            }
+            val choose = button(label, "resolution-choice")
+            choose.setAttribute("aria-pressed", state.selectedResolution.contains(resolution).toString)
+            choose.onclick = _ => update(state.copy(selectedResolution = Some(resolution),
+              selectedReplacement = resolution.replacementTargets.headOption
+                .filter(_ => resolution.replacementTargets.size == 1)))
+            shell.appendChild(choose)
+          }
+          state.selectedResolution.filter(_.replacementTargets.nonEmpty).foreach { resolution =>
+            val select = dom.document.createElement("select").asInstanceOf[dom.html.Select]
+            select.setAttribute("aria-label", "Card to replace")
+            val placeholder = dom.document.createElement("option").asInstanceOf[dom.html.Option]
+            placeholder.value = ""; placeholder.text = "Choose a card to replace"
+            select.appendChild(placeholder)
+            resolution.replacementTargets.foreach { card =>
+              val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
+              option.value = card.cardId; option.text = card.name; select.appendChild(option)
+            }
+            select.onchange = _ => update(state.copy(selectedReplacement =
+              resolution.replacementTargets.find(_.cardId == select.value)))
+            shell.appendChild(select)
+          }
+          val back = button("Back", "decision-back")
+          back.onclick = _ => update(state.copy(stage = CardDecisionStage.Arrange,
+            selectedResolution = None, selectedReplacement = None))
+          shell.appendChild(back)
+          val confirm = button("Final confirm", "decision-confirm")
+          confirm.disabled = state.selectedResolution.isEmpty ||
+            state.selectedResolution.exists(r => r.replacementTargets.nonEmpty &&
+              state.selectedReplacement.isEmpty) || !controlsAvailable
+          confirm.onclick = _ => for {
+            resolution <- state.selectedResolution
+          } submit(GameCommand.ResolveCardDecision(selectedPlayer, decision.decisionId,
+            DecisionResolution.Search(kept, state.discard,
+              resolution.kind match {
+                case "adviser" if resolution.orientation.contains("face-up") => "adviser-face-up"
+                case "adviser" => "adviser-face-down"
+                case other => other
+              }, resolution.orientation, state.selectedReplacement)))
+          shell.appendChild(confirm)
+      }
+      shell
     }
 
     def players(value: GameProjection): dom.Element = {
@@ -418,13 +562,44 @@ object ServerModeUi {
       panel
     }
 
+    def playerBoards(value: GameProjection): dom.Element = {
+      val panel = element("section", "panel player-boards")
+      panel.appendChild(text("h2", "", "Player boards"))
+      if (value.playerBoards.isEmpty)
+        panel.appendChild(text("p", "empty-state", "Player boards are not available yet."))
+      value.playerBoards.foreach { board =>
+        val section = element("section", "player-board")
+        val heading = element("h3", "")
+        heading.appendChild(playerReference(value, board.playerId))
+        section.appendChild(heading)
+        section.appendChild(text("p", "resources",
+          s"Warbands ${board.warbands} · Favor ${board.favor} · Secrets " +
+            s"${board.faceUpSecrets} face up / ${board.faceDownSecrets} face down · " +
+            s"Supply ${board.supply}"))
+        val advisers = element("div", "board-cards advisers")
+        advisers.appendChild(text("strong", "", "Advisers"))
+        board.advisers.foreach(card => advisers.appendChild(cardDetailsPopover(card)))
+        section.appendChild(advisers)
+        val relics = element("div", "board-cards relics")
+        relics.appendChild(text("strong", "", "Relics"))
+        board.relics.foreach(card => relics.appendChild(cardDetailsPopover(card)))
+        section.appendChild(relics)
+        board.revealedVision.foreach(card => {
+          section.appendChild(text("strong", "", "Revealed Vision"))
+          section.appendChild(cardDetailsPopover(card))
+        })
+        panel.appendChild(section)
+      }
+      panel
+    }
+
     def world(
         value: GameProjection,
         presentation: ViewerPresentation
     ): dom.Element = {
       val panel = element("section", "panel world")
       panel.setAttribute("aria-label", "The World")
-      panel.appendChild(text("h2", "", "The World"))
+      panel.appendChild(text("h2", "", s"The World · ${value.worldDeckCount} cards"))
       val regions = element("div", "regions")
       value.world.foreach { region =>
         val section = element("section", "region")
@@ -436,6 +611,8 @@ object ServerModeUi {
         }
         section.setAttribute("aria-label", name)
         section.appendChild(text("h3", "region-label", name))
+        section.appendChild(text("p", "discard-count",
+          s"Discard: ${region.discardCount} cards"))
         val sites = element("div", "sites")
         region.sites.foreach { site =>
           val control: dom.Element =
@@ -492,33 +669,6 @@ object ServerModeUi {
       panel
     }
 
-    def advisers(value: GameProjection): dom.Element = {
-      val panel = element("section", "panel adviser-panel")
-      val heading = element("h2", "")
-      heading.appendChild(dom.document.createTextNode(
-        "Private adviser choices for "
-      ))
-      heading.appendChild(playerReference(value, selectedPlayer))
-      panel.appendChild(heading)
-      if (value.privateAdviserChoices.isEmpty)
-        panel.appendChild(text("p", "", "No private adviser choice is available."))
-      else
-        value.privateAdviserChoices.foreach { choice =>
-          val control = button(choice.label, "adviser")
-          control.setAttribute("data-adviser-id", choice.adviserId)
-          control.disabled = !controlsAvailable ||
-            !value.legalControls.contains("chooseAdviser")
-          control.onclick = _ => submit(
-            GameCommand.ChooseAdviser(
-              selectedPlayer,
-              choice.adviserId
-            )
-          )
-          panel.appendChild(control)
-        }
-      panel
-    }
-
     polling = Some(new SnapshotPollingCoordinator(
       new BrowserPollClock,
       poll
@@ -555,25 +705,65 @@ object ServerModeUi {
       properties.appendChild(item)
     }
     details.appendChild(properties)
+    if (site.powers.nonEmpty) {
+      val powers = element("ul", "site-powers")
+      site.powers.foreach { power =>
+        val item = element("li", "site-power")
+        item.textContent = power.description.fold(power.label)(description =>
+          s"${power.label}: $description")
+        powers.appendChild(item)
+      }
+      details.appendChild(powers)
+    }
 
     val denizens = element("div", "site-denizens")
     denizens.appendChild(text("strong", "", "Denizens: "))
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
-    else presentation.denizenVisuals.foreach { case (denizenId, visual) =>
-      val card = VisualDomRenderer.render(visual, "site-card")
-      card.setAttribute("data-denizen-id", denizenId)
+    else site.denizens.foreach { denizen =>
+      val card = denizen.details.fold[dom.Element](
+        VisualDomRenderer.render(
+          presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
+          "site-card"))(cardDetailsPopover)
+      card.setAttribute("data-denizen-id", denizen.denizenId)
       denizens.appendChild(card)
+    }
+    (site.denizens.size until site.denizenCapacity).foreach { _ =>
+      val slot = text("span", "empty-denizen-slot", "◇")
+      slot.setAttribute("role", "img")
+      slot.setAttribute("aria-label", "Empty denizen slot")
+      denizens.appendChild(slot)
     }
     details.appendChild(denizens)
 
     val relics = element("div", "site-relics")
     relics.appendChild(text("strong", "", "Relics: "))
-    relics.appendChild(dom.document.createTextNode(
-      presentation.relicSummary
-    ))
+    if (site.relics.facedownCount == 0)
+      relics.appendChild(dom.document.createTextNode("None"))
+    (0 until site.relics.facedownCount).foreach { _ =>
+      val relic = text("span", "facedown-relic", "▣")
+      relic.setAttribute("role", "img")
+      relic.setAttribute("aria-label", "Facedown relic")
+      relics.appendChild(relic)
+    }
     details.appendChild(relics)
     details
+  }
+
+  private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
+    val node = element("button", "card-detail")
+    node.setAttribute("type", "button")
+    node.setAttribute("aria-label", card.name)
+    node.setAttribute("data-card-id", card.cardId)
+    node.appendChild(text("span", "card-summary", card.name))
+    val details = element("span", "card-popover")
+    details.setAttribute("role", "tooltip")
+    val metadata = Vector(card.suit.map(value => s"Suit: $value"),
+      card.restrictions.map(value => s"Restrictions: $value"),
+      card.orientation.map(value => s"Orientation: $value"), card.rulesText).flatten
+    details.textContent = metadata.mkString(" · ")
+    node.appendChild(details)
+    node
   }
 
   private[frontend] final case class TakeWealthAction(
@@ -665,13 +855,6 @@ object ServerModeUi {
 
   private def freshGameId(): String =
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
-
-  private def cardKind(id: String): String =
-    id.takeWhile(_ != ':') match {
-      case "vision" => "vision"
-      case "edifice" => "edifice"
-      case _ => "denizen"
-    }
 
   private def queryParameter(name: String): Option[String] =
     FrontendMode.queryParameter(dom.window.location.search, name)

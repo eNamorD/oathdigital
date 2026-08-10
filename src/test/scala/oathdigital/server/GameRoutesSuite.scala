@@ -62,6 +62,14 @@ class GameRoutesSuite extends munit.FunSuite {
       )
       assertEquals(started.statusCode(), 200)
       assertEquals(ujson.read(started.body())("nextSequence").num.toLong, 1L)
+      val history = get(client,
+        s"$base/api/dev/first-games/route-game/events?limit=1")
+      assertEquals(history.statusCode(), 200)
+      assertEquals(ujson.read(history.body())("events").arr.size, 1)
+      assertEquals(ujson.read(history.body())("events")(0)("sequence").num.toLong, 0L)
+      assert(ujson.read(history.body())("warning").str.contains("hidden"))
+      assertEquals(get(client,
+        s"$base/api/dev/first-games/route-game/events?limit=101").statusCode(), 400)
 
       val stale = post(
         client,
@@ -89,8 +97,9 @@ class GameRoutesSuite extends munit.FunSuite {
       val chosen = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":2,"command":{"type":"chooseAdviser",
-           |"playerId":"p2","adviserId":"${adviser.value}"}}""".stripMargin
+        s"""{"expectedNextSequence":2,"command":{"type":"resolveCardDecision",
+           |"playerId":"p2","decisionId":"setup-adviser-0-p2",
+           |"resolution":{"kind":"starting-adviser","adviserId":"${adviser.value}"}}}""".stripMargin
       )
       assertEquals(chosen.statusCode(), 200)
 

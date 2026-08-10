@@ -25,6 +25,7 @@ object GameCommand {
   final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
   final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
       extends GameCommand
+  /** Internal setup adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
       extends GameCommand
   final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
@@ -38,6 +39,7 @@ object GameCommand {
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
+  /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class CompleteSearch(
       playerId: PlayerId,
       decision: DecisionId,
@@ -45,8 +47,30 @@ object GameCommand {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends GameCommand
+  final case class ResolveCardDecision(
+      playerId: PlayerId,
+      decision: DecisionId,
+      resolution: CardDecisionResolution
+  ) extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class FinishRest(playerId: PlayerId) extends GameCommand
+}
+
+sealed trait CardDecisionResolution extends Product with Serializable
+object CardDecisionResolution {
+  final case class StartingAdviser(adviserId: DenizenId)
+      extends CardDecisionResolution
+  final case class Search(
+      kept: WorldCardId,
+      discardedInOrder: Vector[WorldCardId],
+      placement: SearchPlacement
+  ) extends CardDecisionResolution
+}
+
+object CardDecisionIds {
+  /** Stable across reload/replay and derived solely from authoritative setup progress. */
+  def startingAdviser(playerId: PlayerId, placementIndex: Int): DecisionId =
+    DecisionId(s"setup-adviser-${placementIndex}-${playerId.value}")
 }
 
 trait SearchDrawPort {
@@ -121,6 +145,18 @@ final class GameApplicationService(
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
   private val replay = new EventReplayEngine(rules)
+
+  /** Privileged development support. Never include this in a player projection. */
+  def rawEventHistory(
+      gameId: String,
+      limit: Int
+  ): Either[GameApplicationError, Vector[String]] =
+    if (limit < 1 || limit > 100)
+      Left(BootstrapFailure("event history limit must be between 1 and 100"))
+    else repository.load(gameId).left.map(storageError).flatMap {
+      case None => Left(GameApplicationError.StreamNotFound(gameId))
+      case Some(stream) => Right(stream.records.takeRight(limit))
+    }
 
   def load(
       gameId: String
@@ -280,6 +316,24 @@ final class GameApplicationService(
           placement) =>
         rules.handle(state, SearchCommand.Complete(
           playerId, decision, kept, discarded, placement))
+      case GameCommand.ResolveCardDecision(playerId, decision, resolution) =>
+        resolution match {
+          case CardDecisionResolution.StartingAdviser(adviserId) => state match {
+            case progress: OathState.InProgress =>
+              val expected = CardDecisionIds.startingAdviser(
+                playerId, progress.adviserChoices.size)
+              if (decision != expected)
+                Left(OathViolation.InvalidEventOrder(
+                  "stale or incorrect starting-adviser decision ID"))
+              else setupRules.handle(state,
+                FirstGameSetupCommand.ChooseAdviser(playerId, adviserId))
+            case _ => Left(OathViolation.InvalidEventOrder(
+              "starting-adviser resolution has the wrong decision kind"))
+          }
+          case CardDecisionResolution.Search(kept, discarded, placement) =>
+            rules.handle(state, SearchCommand.Complete(
+              playerId, decision, kept, discarded, placement))
+        }
       case GameCommand.BeginRest(playerId) =>
         rules.handle(state, RestCommand.Begin(playerId))
       case GameCommand.FinishRest(playerId) =>

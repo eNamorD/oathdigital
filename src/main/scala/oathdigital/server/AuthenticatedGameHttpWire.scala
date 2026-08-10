@@ -4,6 +4,7 @@ import scala.util.control.NonFatal
 
 import oathdigital.application.{
   BootstrapParticipant,
+  CardDecisionResolution,
   FirstGameBootstrapConfig
 }
 import oathdigital.model._
@@ -28,6 +29,10 @@ object GameIntent {
       kept: WorldCardId,
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
+  ) extends GameIntent
+  final case class ResolveCardDecision(
+      decision: DecisionId,
+      resolution: CardDecisionResolution
   ) extends GameIntent
 }
 
@@ -117,9 +122,7 @@ object AuthenticatedGameHttpWire {
           .flatMap(_ => stringField(obj, "siteId", "$.intent"))
           .map(value => GameIntent.PlacePawn(SiteId(value)))
       case "chooseAdviser" =>
-        exactFields(obj, Set("type", "adviserId"), "$.intent")
-          .flatMap(_ => stringField(obj, "adviserId", "$.intent"))
-          .map(value => GameIntent.ChooseAdviser(DenizenId(value)))
+        Left(HttpInputError("$.intent.type", "use resolveCardDecision"))
       case "takeWealth" =>
         exactFields(obj, Set("type", "resource"), "$.intent")
           .flatMap(_ => stringField(obj, "resource", "$.intent"))
@@ -173,25 +176,42 @@ object AuthenticatedGameHttpWire {
             case _ => Left(HttpInputError("$.intent.source", "unknown Search source"))
           }
       case "completeSearch" =>
-        exactFields(obj, Set("type", "decisionId", "kept", "discardedInOrder",
-          "placement"), "$.intent").flatMap { _ => for {
-          decision <- stringField(obj, "decisionId", "$.intent")
-          keptValue <- field(obj, "kept", "$.intent")
-          kept <- decodeWorldCard(keptValue, "$.intent.kept")
-          discardedValue <- field(obj, "discardedInOrder", "$.intent")
-          discardedArray <- arrayValue(discardedValue, "$.intent.discardedInOrder")
-          discarded <- traverse(discardedArray.zipWithIndex) { case (value, index) =>
-            decodeWorldCard(value, s"$$.intent.discardedInOrder[$index]")
-          }
-          placementValue <- field(obj, "placement", "$.intent")
-          placement <- decodePlacement(placementValue, "$.intent.placement")
-        } yield GameIntent.CompleteSearch(
-          DecisionId(decision), kept, discarded, placement) }
+        Left(HttpInputError("$.intent.type", "use resolveCardDecision"))
+      case "resolveCardDecision" =>
+        exactFields(obj, Set("type", "decisionId", "resolution"), "$.intent")
+          .flatMap { _ => for {
+            decision <- stringField(obj, "decisionId", "$.intent")
+            value <- field(obj, "resolution", "$.intent")
+            resolution <- decodeDecisionResolution(value, "$.intent.resolution")
+          } yield GameIntent.ResolveCardDecision(DecisionId(decision), resolution) }
       case other => Left(HttpInputError(
         "$.intent.type",
         s"unknown intent type '$other'"
       ))
     }
+
+  private def decodeDecisionResolution(value: ujson.Value, path: String)
+      : Either[HttpInputError, CardDecisionResolution] = objectValue(value, path).flatMap { obj =>
+    stringField(obj, "kind", path).flatMap {
+      case "starting-adviser" => for {
+        _ <- exactFields(obj, Set("kind", "adviserId"), path)
+        id <- stringField(obj, "adviserId", path)
+      } yield CardDecisionResolution.StartingAdviser(DenizenId(id))
+      case "search" => for {
+        _ <- exactFields(obj, Set("kind", "kept", "discardedInOrder", "placement"), path)
+        keptValue <- field(obj, "kept", path)
+        kept <- decodeWorldCard(keptValue, s"$path.kept")
+        discardedValue <- field(obj, "discardedInOrder", path)
+        discardedArray <- arrayValue(discardedValue, s"$path.discardedInOrder")
+        discarded <- traverse(discardedArray.zipWithIndex) { case (card, index) =>
+          decodeWorldCard(card, s"$path.discardedInOrder[$index]")
+        }
+        placementValue <- field(obj, "placement", path)
+        placement <- decodePlacement(placementValue, s"$path.placement")
+      } yield CardDecisionResolution.Search(kept, discarded, placement)
+      case other => Left(HttpInputError(s"$path.kind", s"unknown decision resolution '$other'"))
+    }
+  }
 
   private def exactFields(
       obj: ujson.Obj,

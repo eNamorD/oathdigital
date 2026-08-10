@@ -45,6 +45,14 @@ Renderers should always expose `AccessibleLabel`, including when displaying an
 image. They should render `Placeholder.text` and may additionally render its
 short `symbol`. `PresentationExample` is a compile-checked integration sketch.
 
+The server UI presents one player-scoped `pendingCardDecision` protocol for
+starting advisers and Search. Search arrangement is local until final
+confirmation; the server remains authoritative for the kept card, discard
+order, placement, and any required replacement. Ordinary projections redact
+other players' hidden cards. A separate raw authoritative event log is
+available only on the loopback development transport and may reveal hidden
+outcomes.
+
 ## Build
 
 Use the project-local wrapper. A normal verification run does not require

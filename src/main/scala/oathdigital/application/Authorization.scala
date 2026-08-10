@@ -84,6 +84,12 @@ final case class AuthorizedPlayer private (
       discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
     GameCommand.CompleteSearch(
       access.playerId, decision, kept, discarded, placement)
+
+  def resolveCardDecision(
+      decision: DecisionId,
+      resolution: CardDecisionResolution
+  ): GameCommand = GameCommand.ResolveCardDecision(
+    access.playerId, decision, resolution)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

@@ -4,6 +4,7 @@ import scala.util.control.NonFatal
 
 import oathdigital.application.{
   BootstrapParticipant,
+  CardDecisionResolution,
   GameCommand,
   FirstGameBootstrapConfig,
   GameProjection
@@ -102,6 +103,7 @@ object GameHttpWire {
         "world" -> ujson.Arr.from(projection.world.map { region =>
           ujson.Obj(
             "regionId" -> region.regionId,
+            "discardCount" -> region.discardCount,
             "sites" -> ujson.Arr.from(region.sites.map { site =>
               ujson.Obj(
                 "siteId" -> site.siteId,
@@ -110,10 +112,16 @@ object GameHttpWire {
                 "looseSecrets" -> site.looseSecrets,
                 "denizenCapacity" -> site.denizenCapacity,
                 "relicCapacity" -> site.relicCapacity,
+                "defense" -> site.defense,
+                "recoverDifficulty" -> site.recoverDifficulty.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+                "powers" -> ujson.Arr.from(site.powers.map(power => ujson.Obj(
+                  "kind" -> power.kind, "label" -> power.label,
+                  "description" -> power.description.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
                 "denizens" -> ujson.Arr.from(site.denizens.map { denizen =>
                   ujson.Obj(
                     "denizenId" -> denizen.cardId,
-                    "label" -> denizen.label
+                    "label" -> denizen.label,
+                    "details" -> denizen.details.fold[ujson.Value](ujson.Null)(encodeCardDetails)
                   )
                 }),
                 "relics" -> ujson.Obj(
@@ -136,14 +144,7 @@ object GameHttpWire {
         ),
         "ready" -> projection.ready,
         "completed" -> projection.completed,
-        "privateAdviserChoices" -> ujson.Arr.from(
-          projection.privateAdviserChoices.map { choice =>
-            ujson.Obj(
-              "adviserId" -> choice.adviserId,
-              "label" -> choice.label
-            )
-          }
-        ),
+        "worldDeckCount" -> projection.worldDeckCount,
         "activePlayerResources" -> projection.activePlayerResources.fold[
           ujson.Value](ujson.Null)(resources => ujson.Obj(
             "favor" -> resources.favor,
@@ -185,23 +186,50 @@ object GameHttpWire {
             "resource" -> option.resource, "supplyCost" -> option.supplyCost,
             "gained" -> option.gained)
         }),
-        "pendingSearch" -> projection.pendingSearch.fold[ujson.Value](ujson.Null) {
-          search => ujson.Obj(
-            "decisionId" -> search.decisionId,
-            "drawnCards" -> ujson.Arr.from(search.drawnCards.map { card => ujson.Obj(
-              "cardId" -> card.cardId,
-              "cardKind" -> card.cardKind,
-              "label" -> card.label,
-              "legalPlacements" -> ujson.Arr.from(card.legalPlacements.map(ujson.Str(_)))
-            )}),
-            "replaceableAdvisers" -> ujson.Arr.from(
-              search.replaceableAdvisers.map(ujson.Str(_))),
-            "replaceableSiteCards" -> ujson.Arr.from(
-              search.replaceableSiteCards.map(ujson.Str(_)))
+        "pendingCardDecision" -> projection.pendingCardDecision.fold[ujson.Value](ujson.Null) {
+          decision => ujson.Obj(
+            "decisionId" -> decision.decisionId,
+            "kind" -> decision.kind,
+            "actorPlayerId" -> decision.actorPlayerId,
+            "prompt" -> decision.prompt,
+            "instructions" -> ujson.Arr.from(decision.instructions.map(ujson.Str(_))),
+            "cards" -> ujson.Arr.from(decision.cards.map(encodeCardDetails)),
+            "keepMinimum" -> decision.keepMinimum,
+            "keepMaximum" -> decision.keepMaximum,
+            "orderingRequired" -> decision.orderingRequired,
+            "resolutionsByCard" -> ujson.Obj.from(decision.resolutionsByCard.map {
+              case (cardId, resolutions) => cardId -> ujson.Arr.from(resolutions.map { resolution =>
+                ujson.Obj("kind" -> resolution.kind,
+                  "orientation" -> resolution.orientation.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                  "replacementTargets" -> ujson.Arr.from(
+                    resolution.replacementTargets.map(encodeCardDetails)))
+              })
+            })
           )
-        }
+        },
+        "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
+          "playerId" -> board.playerId, "warbands" -> board.warbands,
+          "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
+          "faceDownSecrets" -> board.faceDownSecrets, "supply" -> board.supply,
+          "pawnSiteId" -> board.pawnSiteId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+          "advisers" -> ujson.Arr.from(board.advisers.map(encodeCardDetails)),
+          "relics" -> ujson.Arr.from(board.relics.map(encodeCardDetails)),
+          "revealedVision" -> board.revealedVision.fold[ujson.Value](ujson.Null)(encodeCardDetails)
+        )})
       )
     )
+
+  private def encodeCardDetails(card: oathdigital.application.CardDetailsProjection): ujson.Obj =
+    ujson.Obj("cardId" -> card.cardId, "cardKind" -> card.cardKind,
+      "name" -> card.name, "suit" -> card.suit.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "restrictions" -> card.restrictions.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "rulesText" -> card.rulesText.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "orientation" -> card.orientation.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "side" -> card.side.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+      "favor" -> card.favor, "secrets" -> card.secrets,
+      "relicValue" -> card.relicValue.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+      "defense" -> card.defense.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+      "hidden" -> card.hidden)
 
   def encodeError(code: String, message: String): String =
     ujson.write(ujson.Obj("error" -> code, "message" -> message))
@@ -222,13 +250,7 @@ object GameHttpWire {
           site <- stringField(obj, "siteId", path)
         } yield GameCommand.PlacePawn(PlayerId(player), SiteId(site))
       case "chooseAdviser" =>
-        for {
-          player <- stringField(obj, "playerId", path)
-          adviser <- stringField(obj, "adviserId", path)
-        } yield GameCommand.ChooseAdviser(
-          PlayerId(player),
-          DenizenId(adviser)
-        )
+        Left(HttpInputError(s"$path.type", "use resolveCardDecision"))
       case "takeWealth" =>
         for {
           player <- stringField(obj, "playerId", path)
@@ -286,27 +308,45 @@ object GameHttpWire {
           source <- decodeSearchSource(kind, obj.value.get("region"), path)
         } yield GameCommand.BeginSearch(PlayerId(player), source)
       case "completeSearch" =>
+        Left(HttpInputError(s"$path.type", "use resolveCardDecision"))
+      case "resolveCardDecision" =>
         for {
-          _ <- exactFields(obj, Set("type", "playerId", "decisionId", "kept",
-            "discardedInOrder", "placement"), path)
+          _ <- exactFields(obj, Set("type", "playerId", "decisionId", "resolution"), path)
           player <- stringField(obj, "playerId", path)
           decision <- stringField(obj, "decisionId", path)
-          kept <- worldCardField(obj, "kept", path)
-          discardedValue <- field(obj, "discardedInOrder", path)
-          discardedArray <- arrayValue(discardedValue, s"$path.discardedInOrder")
-          discarded <- traverse(discardedArray.zipWithIndex) { case (value, index) =>
-            decodeWorldCard(value, s"$path.discardedInOrder[$index]")
-          }
-          placementValue <- field(obj, "placement", path)
-          placement <- decodePlacement(placementValue, s"$path.placement")
-        } yield GameCommand.CompleteSearch(
-          PlayerId(player), DecisionId(decision), kept, discarded, placement)
+          value <- field(obj, "resolution", path)
+          resolution <- decodeDecisionResolution(value, s"$path.resolution")
+        } yield GameCommand.ResolveCardDecision(
+          PlayerId(player), DecisionId(decision), resolution)
       case other =>
         Left(HttpInputError(
           s"$path.type",
           s"unknown command type '$other'"
         ))
     }
+
+  private def decodeDecisionResolution(value: ujson.Value, path: String)
+      : Either[HttpInputError, CardDecisionResolution] = objectValue(value, path).flatMap { obj =>
+    stringField(obj, "kind", path).flatMap {
+      case "starting-adviser" => for {
+        _ <- exactFields(obj, Set("kind", "adviserId"), path)
+        id <- stringField(obj, "adviserId", path)
+      } yield CardDecisionResolution.StartingAdviser(DenizenId(id))
+      case "search" => for {
+        _ <- exactFields(obj, Set("kind", "kept", "discardedInOrder", "placement"), path)
+        keptValue <- field(obj, "kept", path)
+        kept <- decodeWorldCard(keptValue, s"$path.kept")
+        discardedValue <- field(obj, "discardedInOrder", path)
+        discardedArray <- arrayValue(discardedValue, s"$path.discardedInOrder")
+        discarded <- traverse(discardedArray.zipWithIndex) { case (card, index) =>
+          decodeWorldCard(card, s"$path.discardedInOrder[$index]")
+        }
+        placementValue <- field(obj, "placement", path)
+        placement <- decodePlacement(placementValue, s"$path.placement")
+      } yield CardDecisionResolution.Search(kept, discarded, placement)
+      case other => Left(HttpInputError(s"$path.kind", s"unknown decision resolution '$other'"))
+    }
+  }
 
   private def safeSequence(
       value: ujson.Value,
@@ -362,9 +402,6 @@ object GameHttpWire {
     }
     case _ => Left(HttpInputError(s"$path.source", "unknown Search source"))
   }
-
-  private def worldCardField(obj: ujson.Obj, name: String, path: String) =
-    field(obj, name, path).flatMap(decodeWorldCard(_, s"$path.$name"))
 
   private def decodeWorldCard(value: ujson.Value, path: String)
       : Either[HttpInputError, WorldCardId] = objectValue(value, path).flatMap { obj =>

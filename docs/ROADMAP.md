@@ -35,6 +35,14 @@ The next milestone has not yet been selected.
 
 ## Done
 
+- [x] **Gameplay UI information and generic card decisions.** Starting-adviser
+  and Search choices share one private typed decision protocol and accessible
+  modal; Search has local keep/discard ordering and explicit authoritative
+  placement/replacement resolution. World piles, detailed sites,
+  viewer-relative redacted player boards, bottom development controls, player
+  selectors, and a loopback-only raw event log are projected and rendered
+  without new assets.
+
 - [x] **L6d — Bounded Economy action slice.** Exile-only, unaltered-Foundation
   Muster and Trade share authoritative denizen access, suit/adviser matching,
   typed rule resolution, limited resource movement, replay-validated v6 events,

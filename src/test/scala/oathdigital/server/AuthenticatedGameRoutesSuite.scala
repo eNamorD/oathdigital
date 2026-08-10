@@ -89,16 +89,13 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       val pawn = post(client, base + "/commands", p2User.value,
         intentBody(1L, "placePawn", "siteId", sites.head.value))
       assertEquals(pawn.statusCode(), 200, pawn.body())
-      assert(ujson.read(pawn.body())("privateAdviserChoices").arr.nonEmpty)
+      assert(ujson.read(pawn.body())("pendingCardDecision")("cards").arr.nonEmpty)
       assertNoHiddenPlan(pawn.body())
 
       Vector(owner, spectator, p3User).foreach { user =>
         val projection = get(client, base, Some(user.value))
         assertEquals(projection.statusCode(), 200)
-        assertEquals(
-          ujson.read(projection.body())("privateAdviserChoices").arr.size,
-          0
-        )
+        assert(ujson.read(projection.body())("pendingCardDecision").isNull)
         assertNoHiddenPlan(projection.body())
       }
 
@@ -106,9 +103,11 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         ujson.write(ujson.Obj(
           "expectedNextSequence" -> 2,
           "intent" -> ujson.Obj(
-            "type" -> "chooseAdviser",
+            "type" -> "resolveCardDecision",
             "playerId" -> "p3",
-            "adviserId" -> plan.denizenOrder(9).value
+            "decisionId" -> "setup-adviser-0-p2",
+            "resolution" -> ujson.Obj("kind" -> "starting-adviser",
+              "adviserId" -> plan.denizenOrder(9).value)
           )
         )))
       assertEquals(impersonation.statusCode(), 400)
@@ -119,12 +118,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       }
 
       val stale = post(client, base + "/commands", p2User.value,
-        intentBody(1L, "chooseAdviser", "adviserId",
-          plan.denizenOrder(9).value))
-      assertEquals(stale.statusCode(), 409)
+        decisionIntentBody(1L, plan.denizenOrder(9).value))
+      assertEquals(stale.statusCode(), 409, stale.body())
       val accepted = post(client, base + "/commands", p2User.value,
-        intentBody(2L, "chooseAdviser", "adviserId",
-          plan.denizenOrder(9).value))
+        decisionIntentBody(2L, plan.denizenOrder(9).value))
       assertEquals(accepted.statusCode(), 200)
 
       database.close()
@@ -164,6 +161,13 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     user.foreach(value => builder.header("X-Test-User", value))
     client.send(builder.build(), JavaResponse.BodyHandlers.ofString())
   }
+
+  private def decisionIntentBody(sequence: Long, adviserId: String): String =
+    ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble),
+      "intent" -> ujson.Obj("type" -> "resolveCardDecision",
+        "decisionId" -> "setup-adviser-0-p2",
+        "resolution" -> ujson.Obj("kind" -> "starting-adviser",
+          "adviserId" -> adviserId))))
 
   private def post(client: HttpClient, url: String, user: String, body: String) =
     client.send(HttpRequest.newBuilder(URI.create(url))

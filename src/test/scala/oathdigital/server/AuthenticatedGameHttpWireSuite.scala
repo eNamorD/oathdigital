@@ -3,6 +3,15 @@ package oathdigital.server
 import oathdigital.model.{EconomyTargetRef, EdificeId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("generic authenticated card decision is actor-free") {
+    val valid = """{"expectedNextSequence":2,"intent":{"type":"resolveCardDecision","decisionId":"setup-adviser-0-p2","resolution":{"kind":"starting-adviser","adviserId":"denizen:a"}}}"""
+    assert(AuthenticatedGameHttpWire.decodeCommand(valid).toOption.get.intent
+      .isInstanceOf[GameIntent.ResolveCardDecision])
+    val impersonation = ujson.read(valid).obj
+    impersonation("intent").obj("playerId") = "p1"
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(impersonation))
+      .left.toOption.get.path, "$.intent.playerId")
+  }
   test("authenticated Rest intents remain actor-free") {
     val begin = AuthenticatedGameHttpWire.decodeCommand(
       """{"expectedNextSequence":12,"intent":{"type":"beginRest"}}""")
@@ -74,7 +83,7 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
 
     val complete =
       """{"expectedNextSequence":11,"intent":{"type":"completeSearch","decisionId":"search-10","kept":{"kind":"denizen","id":"denizen:a"},"discardedInOrder":[{"kind":"vision","id":"vision:b"}],"placement":{"kind":"discard"}}}"""
-    assert(AuthenticatedGameHttpWire.decodeCommand(complete).isRight)
+    assert(AuthenticatedGameHttpWire.decodeCommand(complete).isLeft)
   }
 
   test("authenticated Economy intents preserve typed targets and reject hidden input") {
