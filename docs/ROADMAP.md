@@ -7,15 +7,15 @@ been reviewed.
 
 ## Now
 
-No item is currently assigned.
-
-## Next
-
 - [ ] **L6d — Bounded Economy action slice**
   - Implement Muster and Trade together in `actions/Economy.scala`, sharing
     denizen access and suit/adviser evaluation while retaining distinct typed
     commands and outcomes. Split them only if implemented complexity warrants
     it.
+
+## Next
+
+No item is currently prioritized. Re-evaluate after L6d.
 
 ## Later
 
@@ -60,7 +60,7 @@ No item is currently assigned.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 188 JVM tests, 49 Scala.js tests, the Scala.js
+The combined milestone passes 198 JVM tests, 50 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.
