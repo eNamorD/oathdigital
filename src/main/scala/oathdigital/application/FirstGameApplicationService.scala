@@ -2,7 +2,9 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.{FirstGameRules, SearchCommand, SearchRules, TravelCommand, WakeCommand}
+import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.model._
 import oathdigital.serialization.{FirstGameEventWire, WireError}
 import oathdigital.setup.{
@@ -109,7 +111,7 @@ final class FirstGameApplicationService(
   import RepositoryAppendResult._
 
   private val setupRules = new FirstGameSetupRules(catalog)
-  private val rules = new FirstGameRules(catalog)
+  private val rules = new OathRules(catalog)
   private val replay = new EventReplayEngine(rules)
 
   def load(

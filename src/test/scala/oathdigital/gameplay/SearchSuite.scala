@@ -1,5 +1,7 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.{SearchCommand, SearchRules}
+
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupEvent._
@@ -7,9 +9,9 @@ import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.FirstGameSetupState.Ready
 import oathdigital.setup.FirstGameSetupViolation._
 
-class FirstTurnSearchSuite extends munit.FunSuite {
+class SearchSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
-  private val rules = new FirstGameRules(catalog)
+  private val rules = new OathRules(catalog)
 
   private def act: ReadyFirstGame = {
     val Ready(ready) = execute(setupRules)._1: @unchecked

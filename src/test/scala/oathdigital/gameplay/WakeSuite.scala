@@ -1,5 +1,7 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.phases.{Wake, WakeCommand}
+
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.setup._
@@ -9,9 +11,9 @@ import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.FirstGameSetupState.Ready
 import oathdigital.setup.FirstGameSetupViolation._
 
-class FirstTurnWakeSuite extends munit.FunSuite {
+class WakeSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
-  private val rules = new FirstGameRules(catalog)
+  private val rules = new OathRules(catalog)
 
   private def ready(
       favor: Int = 1,
@@ -54,7 +56,7 @@ class FirstTurnWakeSuite extends munit.FunSuite {
     assertEquals(value.game.current.turn.phase, Phase.Wake)
     assertEquals(totals(accepted.state), before)
     assert(value.game.current.turn.usedPowers.contains(
-      rules.takeWealthPower(activeSite(accepted.state))))
+      Wake.takeWealthPower(activeSite(accepted.state))))
   }
 
   test("Take Wealth transfers a face-up secret") {
@@ -110,8 +112,8 @@ class FirstTurnWakeSuite extends munit.FunSuite {
       WakeCommand.TakeWealth(active, WakeResource.Secret)).left.toOption.get
       .isInstanceOf[PowerAlreadyUsed])
     assertNotEquals(
-      rules.takeWealthPower(activeSite(state)),
-      rules.takeWealthPower(sites.find(_ != activeSite(state)).get)
+      Wake.takeWealthPower(activeSite(state)),
+      Wake.takeWealthPower(sites.find(_ != activeSite(state)).get)
     )
   }
 

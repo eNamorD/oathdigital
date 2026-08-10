@@ -6,7 +6,8 @@ import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyFirstGame
 import oathdigital.setup.WakeResource
-import oathdigital.gameplay.{SearchRules, TakeWealthRules, TravelRules}
+import oathdigital.gameplay.TakeWealthRules
+import oathdigital.gameplay.actions.{SearchRules, TravelRules}
 
 final case class SetupPlayerProjection(
     playerId: String,

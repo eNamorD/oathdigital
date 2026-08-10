@@ -5,10 +5,10 @@ Digital grows beyond its initial bounded slices. It is a living architecture
 guide: the roadmap controls when migrations happen, while this document records
 the boundaries and principles those migrations should preserve.
 
-The current `gameplay/FirstTurnWake.scala` is transitional. It accumulated Wake,
-Travel, and Search while those vertical slices established authoritative events,
-replay, server authority, hidden decisions, and typed rule resolution. It is not
-the intended permanent module boundary.
+Wake, Travel, and Search originally accumulated in one transitional bucket while
+those vertical slices established authoritative events, replay, server authority,
+hidden decisions, and typed rule resolution. They now use the module boundaries
+described below.
 
 ## Target structure
 
@@ -34,7 +34,7 @@ create empty Rest, Economy, Campaign, or Recover placeholders.
 
 ### Aggregate rules
 
-`OathRules` is the deterministic aggregate boundary. It validates the common
+`OathRules` in `gameplay/OathRules.scala` is the deterministic aggregate boundary. It validates the common
 game lifecycle, routes commands and events to the appropriate phase or action,
 and returns the next state, authoritative events, and continuation. It should
 be deliberately boring: detailed costs, choices, card access, and action effects
@@ -151,7 +151,7 @@ After bounded Search is integrated and verified:
 
 1. Extract existing Wake, Travel, and Search behavior into the target modules.
 2. Reduce the aggregate to lifecycle validation and command/event routing.
-3. Delete `FirstTurnWake.scala` once no behavior remains there.
+3. Delete the transitional gameplay bucket once no behavior remains there.
 4. Rename inappropriate runtime `FirstGame*` types in a separate, mechanical
    pass while preserving all serialized bytes and public HTTP behavior.
 5. Run the complete JVM, Scala.js, linker, replay, and golden-fixture gates.

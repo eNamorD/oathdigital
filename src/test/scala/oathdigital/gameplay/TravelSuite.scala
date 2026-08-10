@@ -1,5 +1,8 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.{TravelCommand, TravelRules}
+import oathdigital.gameplay.phases.WakeCommand
+
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameContinue.ActActionSelection
@@ -8,9 +11,9 @@ import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.FirstGameSetupState.Ready
 import oathdigital.setup.FirstGameSetupViolation._
 
-class FirstTurnTravelSuite extends munit.FunSuite {
+class TravelSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
-  private val rules = new FirstGameRules(catalog)
+  private val rules = new OathRules(catalog)
 
   private def site(power: String): SiteId = catalog.sites.find(
     _.handlers.exists(_.endsWith(s".$power"))).get.id
