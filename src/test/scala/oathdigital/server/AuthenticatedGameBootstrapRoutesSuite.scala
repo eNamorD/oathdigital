@@ -18,7 +18,7 @@ import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.FirstGameSetupState
 
-class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
+class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
   test("owner bootstrap uses exactly the provisioned player memberships") {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-bootstrap-test")
@@ -48,10 +48,10 @@ class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
       "bootstrap-game", spectator, Spectator, None), 0L)
 
     val events = new CountingEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, events)
-    val gateway = new AuthenticatedFirstGameGateway(
+    val service = new GameApplicationService(catalog, events)
+    val gateway = new AuthenticatedGameGateway(
       service,
-      new FirstGameProjector(catalog),
+      new GameProjector(catalog),
       new MembershipAuthorizationService(identities),
       identities,
       new DevelopmentFirstGamePlanFactory(catalog)
@@ -70,7 +70,7 @@ class AuthenticatedFirstGameBootstrapRoutesSuite extends munit.FunSuite {
     }
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
-        new AuthenticatedFirstGameRoutes(
+        new AuthenticatedGameRoutes(
           authenticator,
           new SameOriginCsrfProtection("http://127.0.0.1"),
           gateway,

@@ -132,14 +132,17 @@ fixtures.
 `FirstGameSetup`, its plan, and first-game fixtures may remain when they truly
 describe the exile-only introductory setup.
 
-Runtime names are transitional when they govern an ordinary game after setup.
-The following should move toward `Game*` or `Oath*` names:
+Runtime names governing an ordinary game after setup use `Game*` or `Oath*`.
+The R2 cleanup renamed the aggregate, application service, projection, mixed
+event codec, HTTP adapters/routes, and Scala.js client vocabulary accordingly.
 
-- `FirstGameRules`
-- `FirstGameApplicationService`
-- `FirstGameProjection`
-- `FirstGameEventWire`
-- setup-named state or event types that now include ordinary gameplay
+The `FirstGameSetup*` hierarchy, `ReadyFirstGame`, `FirstGameContinue`,
+`FirstGameTransition`, and setup event/violation vocabulary remain deferred
+naming debt. Those types now span setup and ordinary gameplay, but separating
+their hierarchy would be a semantic event/aggregate restructuring rather than
+a safe mechanical rename. `FirstGameSetup`, its plan/rules/factory/fixtures,
+participants, bootstrap configuration, and setup discriminator constants remain
+intentional introductory-scenario names.
 
 Renaming internal types does not authorize a wire-format migration. Existing
 v1-v4 event streams and their discriminators remain compatible unless a future,

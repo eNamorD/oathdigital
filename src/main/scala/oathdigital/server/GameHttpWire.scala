@@ -4,17 +4,17 @@ import scala.util.control.NonFatal
 
 import oathdigital.application.{
   BootstrapParticipant,
-  FirstGameCommand,
+  GameCommand,
   FirstGameBootstrapConfig,
-  FirstGameProjection
+  GameProjection
 }
 import oathdigital.model._
-import oathdigital.serialization.FirstGameEventWire
+import oathdigital.serialization.GameEventWire
 import oathdigital.setup.{PlayerColor, WakeResource}
 
-final case class FirstGameCommandRequest(
+final case class GameCommandRequest(
     expectedNextSequence: Long,
-    command: FirstGameCommand
+    command: GameCommand
 )
 final case class FirstGameBootstrapRequest(
     expectedNextSequence: Long,
@@ -23,7 +23,7 @@ final case class FirstGameBootstrapRequest(
 
 final case class HttpInputError(path: String, message: String)
 
-object FirstGameHttpWire {
+object GameHttpWire {
   def decodeBootstrap(
       json: String
   ): Either[HttpInputError, FirstGameBootstrapRequest] =
@@ -65,7 +65,7 @@ object FirstGameHttpWire {
     }
 
   def decodeCommand(json: String): Either[HttpInputError,
-    FirstGameCommandRequest] =
+    GameCommandRequest] =
     try {
       for {
         root <- objectValue(ujson.read(json), "$")
@@ -74,7 +74,7 @@ object FirstGameHttpWire {
         commandValue <- field(root, "command", "$")
         commandObject <- objectValue(commandValue, "$.command")
         command <- decodeCommandObject(commandObject, "$.command")
-      } yield FirstGameCommandRequest(expected, command)
+      } yield GameCommandRequest(expected, command)
     } catch {
       case NonFatal(error) =>
         Left(HttpInputError(
@@ -83,7 +83,7 @@ object FirstGameHttpWire {
         ))
     }
 
-  def encodeProjection(projection: FirstGameProjection): String =
+  def encodeProjection(projection: GameProjection): String =
     ujson.write(
       ujson.Obj(
         "gameId" -> projection.gameId,
@@ -197,7 +197,7 @@ object FirstGameHttpWire {
   private def decodeCommandObject(
       obj: ujson.Obj,
       path: String
-  ): Either[HttpInputError, FirstGameCommand] =
+  ): Either[HttpInputError, GameCommand] =
     stringField(obj, "type", path).flatMap {
       case "begin" =>
         Left(HttpInputError(
@@ -208,12 +208,12 @@ object FirstGameHttpWire {
         for {
           player <- stringField(obj, "playerId", path)
           site <- stringField(obj, "siteId", path)
-        } yield FirstGameCommand.PlacePawn(PlayerId(player), SiteId(site))
+        } yield GameCommand.PlacePawn(PlayerId(player), SiteId(site))
       case "chooseAdviser" =>
         for {
           player <- stringField(obj, "playerId", path)
           adviser <- stringField(obj, "adviserId", path)
-        } yield FirstGameCommand.ChooseAdviser(
+        } yield GameCommand.ChooseAdviser(
           PlayerId(player),
           DenizenId(adviser)
         )
@@ -229,15 +229,15 @@ object FirstGameHttpWire {
               s"unknown wealth resource '$other'"
             ))
           }
-        } yield FirstGameCommand.TakeWealth(PlayerId(player), resource)
+        } yield GameCommand.TakeWealth(PlayerId(player), resource)
       case "endWake" =>
         stringField(obj, "playerId", path).map(player =>
-          FirstGameCommand.EndWake(PlayerId(player)))
+          GameCommand.EndWake(PlayerId(player)))
       case "travel" =>
         for {
           player <- stringField(obj, "playerId", path)
           destination <- stringField(obj, "destinationSiteId", path)
-        } yield FirstGameCommand.Travel(
+        } yield GameCommand.Travel(
           PlayerId(player), SiteId(destination))
       case "beginSearch" =>
         for {
@@ -245,7 +245,7 @@ object FirstGameHttpWire {
           player <- stringField(obj, "playerId", path)
           kind <- stringField(obj, "source", path)
           source <- decodeSearchSource(kind, obj.value.get("region"), path)
-        } yield FirstGameCommand.BeginSearch(PlayerId(player), source)
+        } yield GameCommand.BeginSearch(PlayerId(player), source)
       case "completeSearch" =>
         for {
           _ <- exactFields(obj, Set("type", "playerId", "decisionId", "kept",
@@ -260,7 +260,7 @@ object FirstGameHttpWire {
           }
           placementValue <- field(obj, "placement", path)
           placement <- decodePlacement(placementValue, s"$path.placement")
-        } yield FirstGameCommand.CompleteSearch(
+        } yield GameCommand.CompleteSearch(
           PlayerId(player), DecisionId(decision), kept, discarded, placement)
       case other =>
         Left(HttpInputError(
@@ -277,13 +277,13 @@ object FirstGameHttpWire {
       case ujson.Num(number)
           if number.isFinite && number == Math.rint(number) &&
             number >= 0 &&
-            number <= FirstGameEventWire.MaxSafeSequence =>
+            number <= GameEventWire.MaxSafeSequence =>
         Right(number.toLong)
       case _: ujson.Num =>
         Left(HttpInputError(
           path,
           s"must be an integer between 0 and " +
-            FirstGameEventWire.MaxSafeSequence
+            GameEventWire.MaxSafeSequence
         ))
       case _ => Left(HttpInputError(path, "expected a number"))
     }

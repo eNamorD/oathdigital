@@ -16,13 +16,13 @@ import akka.http.scaladsl.Http
 
 import oathdigital.application.{
   DevelopmentFirstGamePlanFactory,
-  FirstGameApplicationService,
-  FirstGameProjector,
+  GameApplicationService,
+  GameProjector,
   InMemoryEventStreamRepository
 }
 import oathdigital.setup.FirstGameSetupFixture._
 
-class FirstGameRoutesSuite extends munit.FunSuite {
+class GameRoutesSuite extends munit.FunSuite {
   test("health load malformed request and stale command status mappings") {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "first-game-route-test")
@@ -30,10 +30,10 @@ class FirstGameRoutesSuite extends munit.FunSuite {
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
-    val gateway = new FirstGameServerGateway(
+    val service = new GameApplicationService(catalog, repository)
+    val gateway = new GameServerGateway(
       service,
-      new FirstGameProjector(catalog),
+      new GameProjector(catalog),
       new DevelopmentFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(

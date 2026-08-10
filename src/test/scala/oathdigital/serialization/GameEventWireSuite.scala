@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameSetupEvent.{FirstGameCompleted, WakeEnded,
   SearchCompleted, SearchStarted, Traveled, WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
-class FirstGameEventWireSuite extends munit.FunSuite {
+class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
   test("v2 serialized replay equals command state and preserves ordering") {
@@ -15,11 +15,11 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
-    val json = FirstGameEventWire
+    val json = GameEventWire
       .encodeStream("first-game-001", catalogRef, records)
       .toOption
       .get
-    val decoded = FirstGameEventWire.decodeStream(json).toOption.get
+    val decoded = GameEventWire.decodeStream(json).toOption.get
     val replayRecords = decoded.map { envelope =>
       RecordedEvent(envelope.sequence, envelope.event)
     }
@@ -28,14 +28,14 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     assertEquals(
       decoded.map(_.eventType),
       Vector(
-        FirstGameEventWire.FirstGameStartedType,
-        FirstGameEventWire.PawnPlacedType,
-        FirstGameEventWire.AdviserChosenType,
-        FirstGameEventWire.PawnPlacedType,
-        FirstGameEventWire.AdviserChosenType,
-        FirstGameEventWire.PawnPlacedType,
-        FirstGameEventWire.AdviserChosenType,
-        FirstGameEventWire.FirstGameCompletedType
+        GameEventWire.FirstGameStartedType,
+        GameEventWire.PawnPlacedType,
+        GameEventWire.AdviserChosenType,
+        GameEventWire.PawnPlacedType,
+        GameEventWire.AdviserChosenType,
+        GameEventWire.PawnPlacedType,
+        GameEventWire.AdviserChosenType,
+        GameEventWire.FirstGameCompletedType
       )
     )
     assertEquals(
@@ -50,7 +50,7 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       RecordedEvent(index.toLong, event)
     }
     assert(
-      FirstGameEventWire
+      GameEventWire
         .encodeStream(
           "game",
           catalogRef.copy(version = "other"),
@@ -62,7 +62,7 @@ class FirstGameEventWireSuite extends munit.FunSuite {
         .isInstanceOf[WireError.CatalogMismatch]
     )
     assert(
-      FirstGameEventWire
+      GameEventWire
         .encodeStream(
           "game",
           catalogRef,
@@ -87,27 +87,27 @@ class FirstGameEventWireSuite extends munit.FunSuite {
         value
       }
       assertEquals(
-        FirstGameEventWire.decodeStream(ujson.write(ujson.Arr.from(values))),
+        GameEventWire.decodeStream(ujson.write(ujson.Arr.from(values))),
         Left(expected)
       )
     }
   }
 
   test("malformed unsupported and unknown v2 envelopes fail explicitly") {
-    assert(FirstGameEventWire.decodeStream("{").left.toOption.get
+    assert(GameEventWire.decodeStream("{").left.toOption.get
       .isInstanceOf[WireError.MalformedJson])
 
     val unsupported = completedValue()
     unsupported("formatVersion") = 1
     assertEquals(
-      FirstGameEventWire.decode(unsupported),
+      GameEventWire.decode(unsupported),
       Left(WireError.UnsupportedFormatVersion("$.formatVersion", 1, 2))
     )
 
     val unknown = completedValue()
     unknown("eventType") = "scala.internal.Event"
     assertEquals(
-      FirstGameEventWire.decode(unknown),
+      GameEventWire.decode(unknown),
       Left(WireError.UnknownEventType(
         "$.payload.eventType",
         "scala.internal.Event"
@@ -116,12 +116,12 @@ class FirstGameEventWireSuite extends munit.FunSuite {
   }
 
   test("single-event and batch writers preserve nonzero absolute sequences") {
-    val single = FirstGameEventWire
+    val single = GameEventWire
       .encodeEvent("game", catalogRef, 41L, FirstGameCompleted)
       .toOption
       .get
     assertEquals(
-      FirstGameEventWire.decode(single).toOption.get.sequence,
+      GameEventWire.decode(single).toOption.get.sequence,
       41L
     )
 
@@ -129,11 +129,11 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(41L + index, event)
     }
-    val json = FirstGameEventWire
+    val json = GameEventWire
       .encodeStream("game", catalogRef, 41L, records)
       .toOption
       .get
-    val decoded = FirstGameEventWire.decodeStream(json).toOption.get
+    val decoded = GameEventWire.decodeStream(json).toOption.get
 
     assertEquals(decoded.map(_.sequence), Vector(41L, 42L))
     assertEquals(decoded.map(_.event), events)
@@ -149,8 +149,8 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     val records = events.zipWithIndex.map { case (event, index) =>
       RecordedEvent(index.toLong, event)
     }
-    val decoded = FirstGameEventWire.decodeStream(
-      FirstGameEventWire.encodeStream("mixed", catalogRef, records)
+    val decoded = GameEventWire.decodeStream(
+      GameEventWire.encodeStream("mixed", catalogRef, records)
         .toOption.get).toOption.get
 
     assertEquals(decoded.map(_.formatVersion),
@@ -159,38 +159,38 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       Vector("gameplay.take-wealth", "gameplay.wake-ended"))
     assertEquals(decoded.map(_.event), events)
 
-    val wrongVersion = FirstGameEventWire.encodeEvent(
+    val wrongVersion = GameEventWire.encodeEvent(
       "mixed", catalogRef, 8L, gameplay.head).toOption.get
     wrongVersion("formatVersion") = 2
-    assert(FirstGameEventWire.decode(wrongVersion).isLeft)
+    assert(GameEventWire.decode(wrongVersion).isLeft)
   }
 
   test("v3 traveled has exact discriminator payload and mixed compatibility") {
     val event = Traveled(
       PlayerId("p2"), SiteId("source"), SiteId("destination"), 3)
-    val encoded = FirstGameEventWire.encodeEvent(
+    val encoded = GameEventWire.encodeEvent(
       "travel", catalogRef, 10L, event).toOption.get
     assertEquals(encoded("formatVersion").num.toInt, 3)
     assertEquals(encoded("eventType").str, "gameplay.traveled")
     assertEquals(encoded("payload")("sourceSiteId").str, "source")
     assertEquals(encoded("payload")("destinationSiteId").str, "destination")
     assertEquals(encoded("payload")("supplySpent").num.toInt, 3)
-    assertEquals(FirstGameEventWire.decode(encoded).toOption.get.event, event)
+    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
 
     val events = execute(rules)._2 ++ Vector(
       WakeEnded(PlayerId("p2")), event)
     val records = events.zipWithIndex.map { case (value, index) =>
       RecordedEvent(index.toLong, value)
     }
-    val decoded = FirstGameEventWire.decodeStream(
-      FirstGameEventWire.encodeStream("travel", catalogRef, records)
+    val decoded = GameEventWire.decodeStream(
+      GameEventWire.encodeStream("travel", catalogRef, records)
         .toOption.get).toOption.get
     assertEquals(decoded.map(_.formatVersion).takeRight(2), Vector(3, 3))
     assertEquals(decoded.map(_.eventType).takeRight(2),
       Vector("gameplay.wake-ended", "gameplay.traveled"))
 
     encoded("payload")("supplySpent") = -1
-    assert(FirstGameEventWire.decode(encoded).isLeft)
+    assert(GameEventWire.decode(encoded).isLeft)
   }
 
   test("v4 Search events round trip exact hidden outcome and player choices") {
@@ -201,20 +201,20 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       drawn.head, Vector(drawn(1)),
       SearchPlacement.Adviser(Orientation.FaceDown, None))
     val encoded = Vector(started, completed).zipWithIndex.map {
-      case (event, index) => FirstGameEventWire.encodeEvent(
+      case (event, index) => GameEventWire.encodeEvent(
         "search", catalogRef, 9L + index, event).toOption.get
     }
     assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(4, 4))
     assertEquals(encoded.map(_("eventType").str),
       Vector("gameplay.search-started", "gameplay.search-completed"))
-    assertEquals(encoded.map(value => FirstGameEventWire.decode(value)
+    assertEquals(encoded.map(value => GameEventWire.decode(value)
       .toOption.get.event), Vector(started, completed))
     val fixture = scala.io.Source.fromResource(
       "serialization/search-event-stream-v4.json").mkString.trim
     assertEquals(ujson.read(fixture), ujson.Arr.from(encoded))
 
     encoded.head("payload")("drawn")(0)("id") = "denizen:tampered"
-    assert(FirstGameEventWire.decode(encoded.head).isRight)
+    assert(GameEventWire.decode(encoded.head).isRight)
     // Wire decoding preserves the recorded outcome; authoritative replay is
     // responsible for rejecting disagreement with the deck.
   }
@@ -224,7 +224,7 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       val value = completedValue()
       value("formatVersion") = ujson.Num(number)
       assertEquals(
-        FirstGameEventWire.decode(value),
+        GameEventWire.decode(value),
         Left(
           WireError.WrongType(
             "$.formatVersion",
@@ -238,7 +238,7 @@ class FirstGameEventWireSuite extends munit.FunSuite {
       val value = completedValue()
       value("sequence") = ujson.Num(number)
       assertEquals(
-        FirstGameEventWire.decode(value),
+        GameEventWire.decode(value),
         Left(WireError.WrongType("$.sequence", "expected an integer"))
       )
     }
@@ -246,16 +246,16 @@ class FirstGameEventWireSuite extends munit.FunSuite {
 
   test("numeric boundaries reject negatives and unsafe integer overflow") {
     val rangeMessage =
-      s"must be between 0 and ${FirstGameEventWire.MaxSafeSequence} inclusive"
+      s"must be between 0 and ${GameEventWire.MaxSafeSequence} inclusive"
 
     Vector(
       -1d,
-      (FirstGameEventWire.MaxSafeSequence + 1L).toDouble
+      (GameEventWire.MaxSafeSequence + 1L).toDouble
     ).foreach { number =>
       val value = completedValue()
       value("sequence") = ujson.Num(number)
       assertEquals(
-        FirstGameEventWire.decode(value),
+        GameEventWire.decode(value),
         Left(WireError.InvalidValue("$.sequence", rangeMessage))
       )
     }
@@ -263,51 +263,51 @@ class FirstGameEventWireSuite extends munit.FunSuite {
     val negativeVersion = completedValue()
     negativeVersion("formatVersion") = ujson.Num(-1)
     assertEquals(
-      FirstGameEventWire.decode(negativeVersion),
+      GameEventWire.decode(negativeVersion),
       Left(WireError.InvalidValue("$.formatVersion", rangeMessage))
     )
 
     val overflowVersion = completedValue()
     overflowVersion("formatVersion") =
-      ujson.Num((FirstGameEventWire.MaxSafeSequence + 1L).toDouble)
+      ujson.Num((GameEventWire.MaxSafeSequence + 1L).toDouble)
     assertEquals(
-      FirstGameEventWire.decode(overflowVersion),
+      GameEventWire.decode(overflowVersion),
       Left(WireError.InvalidValue("$.formatVersion", rangeMessage))
     )
 
     assert(
-      FirstGameEventWire
+      GameEventWire
         .encodeEvent("game", catalogRef, -1L, FirstGameCompleted)
         .isLeft
     )
     assert(
-      FirstGameEventWire
+      GameEventWire
         .encodeEvent(
           "game",
           catalogRef,
-          FirstGameEventWire.MaxSafeSequence + 1L,
+          GameEventWire.MaxSafeSequence + 1L,
           FirstGameCompleted
         )
         .isLeft
     )
 
-    val boundary = FirstGameEventWire
+    val boundary = GameEventWire
       .encodeEvent(
         "game",
         catalogRef,
-        FirstGameEventWire.MaxSafeSequence,
+        GameEventWire.MaxSafeSequence,
         FirstGameCompleted
       )
       .toOption
       .get
     assertEquals(
-      FirstGameEventWire.decode(boundary).toOption.get.sequence,
-      FirstGameEventWire.MaxSafeSequence
+      GameEventWire.decode(boundary).toOption.get.sequence,
+      GameEventWire.MaxSafeSequence
     )
   }
 
   private def completedValue(): ujson.Value =
-    FirstGameEventWire
+    GameEventWire
       .encodeEvent("game", catalogRef, 0L, FirstGameCompleted)
       .toOption
       .get

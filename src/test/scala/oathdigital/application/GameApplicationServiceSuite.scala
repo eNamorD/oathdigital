@@ -4,11 +4,11 @@ import java.nio.file.Files
 
 import oathdigital.model._
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
-import oathdigital.serialization.FirstGameEventWire
+import oathdigital.serialization.GameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.FirstGameSetupEvent.{
-  FirstGamePawnPlaced,
+  GamePawnPlaced,
   FirstGameStarted
 }
 import oathdigital.setup.FirstGameSetupViolation.{CatalogMismatch, WrongPlayer}
@@ -16,28 +16,28 @@ import oathdigital.setup.FirstGameSetupState.Ready
 import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyFirstGame
 
-class FirstGameApplicationServiceSuite extends munit.FunSuite {
+class GameApplicationServiceSuite extends munit.FunSuite {
   private def execute(
-      service: FirstGameApplicationService,
+      service: GameApplicationService,
       gameId: String,
       placementSites: Vector[oathdigital.model.SiteId] = sites
-  ): FirstGameAccepted = {
+  ): GameAccepted = {
     var accepted =
-      service.handle(gameId, 0L, FirstGameCommand.Begin(plan))
+      service.handle(gameId, 0L, GameCommand.Begin(plan))
         .toOption.get
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     order.zipWithIndex.foreach { case (playerId, index) =>
       accepted = service.handle(
         gameId,
         accepted.nextSequence,
-        FirstGameCommand.PlacePawn(playerId, placementSites(index))
+        GameCommand.PlacePawn(playerId, placementSites(index))
       ).toOption.get
       val participantIndex =
         plan.participants.indexWhere(_.playerId == playerId)
       accepted = service.handle(
         gameId,
         accepted.nextSequence,
-        FirstGameCommand.ChooseAdviser(
+        GameCommand.ChooseAdviser(
           playerId,
           plan.denizenOrder(6 + participantIndex * 3)
         )
@@ -48,9 +48,9 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("create advance and reload replay the complete persisted v2 stream") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val accepted = execute(service, "game-v2")
-    val reloaded = new FirstGameApplicationService(catalog, repository)
+    val reloaded = new GameApplicationService(catalog, repository)
       .load("game-v2").toOption.flatten.get
 
     assertEquals(reloaded.state, accepted.state)
@@ -60,12 +60,12 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(records.size, 8)
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
-        FirstGameEventWire.FormatVersion))
+        GameEventWire.FormatVersion))
   }
 
   test("gameplay appends v3 at the absolute position and reloads equally") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val wealthSite = catalog.sites.find(site =>
       sites.contains(site.id) && !site.startingResources.isEmpty).get.id
     val otherSites = sites.filterNot(_ == wealthSite).take(2)
@@ -85,19 +85,19 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     val wealth = service.handle(
       "game-wake",
       setup.nextSequence,
-      FirstGameCommand.TakeWealth(active, resource)
+      GameCommand.TakeWealth(active, resource)
     ).toOption.get
     assertEquals(wealth.nextSequence, 9L)
     assertEquals(
-      service.handle("game-wake", 8L, FirstGameCommand.EndWake(active)),
-      Left(FirstGameApplicationError.StaleClientPosition(8L, 9L))
+      service.handle("game-wake", 8L, GameCommand.EndWake(active)),
+      Left(GameApplicationError.StaleClientPosition(8L, 9L))
     )
     val ended = service.handle(
       "game-wake",
       wealth.nextSequence,
-      FirstGameCommand.EndWake(active)
+      GameCommand.EndWake(active)
     ).toOption.get
-    val reloaded = new FirstGameApplicationService(catalog, repository)
+    val reloaded = new GameApplicationService(catalog, repository)
       .load("game-wake").toOption.flatten.get
     val Ready(after) = reloaded.state: @unchecked
 
@@ -115,20 +115,20 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("Travel appends one v3 event and reloads pawn Supply and Act") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-travel")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
     val ended = service.handle("game-travel", setup.nextSequence,
-      FirstGameCommand.EndWake(active)).toOption.get
+      GameCommand.EndWake(active)).toOption.get
     val Ready(inAct) = ended.state: @unchecked
     val before = inAct.game.current.players.find(_.player == active).get
     val destination = inAct.game.current.map.cradle.find(
       !before.pawnSite.contains(_)).getOrElse(
         inAct.game.current.map.provinces.head)
     val traveled = service.handle("game-travel", ended.nextSequence,
-      FirstGameCommand.Travel(active, destination)).toOption.get
-    val loaded = new FirstGameApplicationService(catalog, repository)
+      GameCommand.Travel(active, destination)).toOption.get
+    val loaded = new GameApplicationService(catalog, repository)
       .load("game-travel").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
     val moved = after.game.current.players.find(_.player == active).get
@@ -146,29 +146,29 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("Search persists and reloads pending private decision then completes in v4") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-search")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
     val ended = service.handle("game-search", setup.nextSequence,
-      FirstGameCommand.EndWake(active)).toOption.get
+      GameCommand.EndWake(active)).toOption.get
     val started = service.handle("game-search", ended.nextSequence,
-      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck)).toOption.get
-    val reloadedPending = new FirstGameApplicationService(catalog, repository)
+      GameCommand.BeginSearch(active, SearchSource.WorldDeck)).toOption.get
+    val reloadedPending = new GameApplicationService(catalog, repository)
       .load("game-search").toOption.flatten.get
     assertEquals(reloadedPending.state, started.state)
     val Ready(pendingReady) = reloadedPending.state: @unchecked
     val pending = pendingReady.game.current.pending.get
       .asInstanceOf[PendingProcedure.Search]
     assertEquals(service.handle("game-search", ended.nextSequence,
-      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck)),
-      Left(FirstGameApplicationError.StaleClientPosition(
+      GameCommand.BeginSearch(active, SearchSource.WorldDeck)),
+      Left(GameApplicationError.StaleClientPosition(
         ended.nextSequence, started.nextSequence)))
     val completed = service.handle("game-search", started.nextSequence,
-      FirstGameCommand.CompleteSearch(active, pending.decision,
+      GameCommand.CompleteSearch(active, pending.decision,
         pending.drawn.head, pending.drawn.tail, SearchPlacement.Discard))
       .toOption.get
-    val loaded = new FirstGameApplicationService(catalog, repository)
+    val loaded = new GameApplicationService(catalog, repository)
       .load("game-search").toOption.flatten.get
     assertEquals(loaded.state, completed.state)
     val versions = repository.load("game-search").toOption.flatten.get.records
@@ -182,27 +182,27 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       def prepare(ready: ReadyFirstGame, source: SearchSource, origin: Region) =
         Right(Vector(DenizenId("denizen:tampered")))
     }
-    val service = new FirstGameApplicationService(catalog, repository, port)
+    val service = new GameApplicationService(catalog, repository, port)
     val setup = execute(service, "game-search-tamper")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
     val ended = service.handle("game-search-tamper", setup.nextSequence,
-      FirstGameCommand.EndWake(active)).toOption.get
+      GameCommand.EndWake(active)).toOption.get
     assert(service.handle("game-search-tamper", ended.nextSequence,
-      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck))
-      .left.toOption.get.isInstanceOf[FirstGameApplicationError.CommandRejected])
+      GameCommand.BeginSearch(active, SearchSource.WorldDeck))
+      .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
     assertEquals(repository.load("game-search-tamper").toOption.flatten.get
       .nextSequence, ended.nextSequence)
   }
 
   test("Wake projection is actor-private and Act boundary is informational") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-projection-wake")
     val Ready(ready) = setup.state: @unchecked
     val active = ready.game.current.turn.activePlayer
-    val projector = new FirstGameProjector(catalog)
-    val loaded = LoadedFirstGame(setup.state, setup.nextSequence)
+    val projector = new GameProjector(catalog)
+    val loaded = LoadedGame(setup.state, setup.nextSequence)
 
     val own = projector.project("game-projection-wake", loaded, active)
     val public = projector.projectPublic("game-projection-wake", loaded)
@@ -215,11 +215,11 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     val ended = service.handle(
       "game-projection-wake",
       setup.nextSequence,
-      FirstGameCommand.EndWake(active)
+      GameCommand.EndWake(active)
     ).toOption.get
     val act = projector.project(
       "game-projection-wake",
-      LoadedFirstGame(ended.state, ended.nextSequence),
+      LoadedGame(ended.state, ended.nextSequence),
       active
     )
     assertEquals(act.phase, "act-action-selection")
@@ -230,7 +230,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("site projection exposes ordered public properties without relic identity") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
+    val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-site-details")
     val Ready(ready) = setup.state: @unchecked
     val siteId = ready.game.current.map.cradle.head
@@ -267,11 +267,11 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
           )
       )
     )
-    val loaded = LoadedFirstGame(
+    val loaded = LoadedGame(
       Ready(ready.copy(game = ready.game.copy(current = current))),
       setup.nextSequence
     )
-    val projector = new FirstGameProjector(catalog)
+    val projector = new GameProjector(catalog)
     val own = projector.project("game-site-details", loaded,
       current.turn.activePlayer)
     val public = projector.projectPublic("game-site-details", loaded)
@@ -293,7 +293,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(empty.relics.facedownCount, 0)
     assertEquals(public.world, own.world)
 
-    val json = oathdigital.server.FirstGameHttpWire.encodeProjection(public)
+    val json = oathdigital.server.GameHttpWire.encodeProjection(public)
     assert(json.contains("\"looseFavor\":2"))
     assert(json.contains("\"facedownCount\":2"))
     relicDefinitions.foreach(relic => assert(!json.contains(relic.id.value)))
@@ -301,12 +301,12 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("stale expected position rejects a command legal on current state") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
-    service.handle("game-stale-v2", 0L, FirstGameCommand.Begin(plan))
+    val service = new GameApplicationService(catalog, repository)
+    service.handle("game-stale-v2", 0L, GameCommand.Begin(plan))
     service.handle(
       "game-stale-v2",
       1L,
-      FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+      GameCommand.PlacePawn(PlayerId("p2"), sites.head)
     )
     val adviser = plan.denizenOrder(6 + 1 * 3)
 
@@ -314,9 +314,9 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       service.handle(
         "game-stale-v2",
         1L,
-        FirstGameCommand.ChooseAdviser(PlayerId("p2"), adviser)
+        GameCommand.ChooseAdviser(PlayerId("p2"), adviser)
       ),
-      Left(FirstGameApplicationError.StaleClientPosition(1L, 2L))
+      Left(GameApplicationError.StaleClientPosition(1L, 2L))
     )
     assertEquals(
       repository.load("game-stale-v2").toOption.flatten.get.nextSequence,
@@ -330,11 +330,11 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       "game-v1",
       Vector(ujson.write(ujson.Obj("formatVersion" -> 1)))
     )
-    val result = new FirstGameApplicationService(catalog, repository)
+    val result = new GameApplicationService(catalog, repository)
       .load("game-v1")
 
     assert(result.left.toOption.get match {
-      case FirstGameApplicationError.CodecFailure(
+      case GameApplicationError.CodecFailure(
             _: UnsupportedFormatVersion
           ) => true
       case _ => false
@@ -344,7 +344,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
   test("pre2 history is rejected by pre3 rules at its exact replay index") {
     val repository = new InMemoryEventStreamRepository
     val historical = CatalogRef(catalogRef.ruleset, "2026.07.27-pre2")
-    val record = FirstGameEventWire.encodeEvent(
+    val record = GameEventWire.encodeEvent(
       "game-pre2",
       historical,
       0L,
@@ -353,8 +353,8 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     repository.seed("game-pre2", Vector(ujson.write(record)))
 
     assertEquals(
-      new FirstGameApplicationService(catalog, repository).load("game-pre2"),
-      Left(FirstGameApplicationError.ReplayFailure(
+      new GameApplicationService(catalog, repository).load("game-pre2"),
+      Left(GameApplicationError.ReplayFailure(
         0L,
         CatalogMismatch(catalogRef, historical)
       ))
@@ -364,28 +364,28 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
   test("v2 replay violations report the exact index and append nothing") {
     val repository = new InMemoryEventStreamRepository
     val records = Vector(
-      FirstGameEventWire.encodeEvent(
+      GameEventWire.encodeEvent(
         "game-replay-corrupt",
         catalogRef,
         0L,
         FirstGameStarted(plan)
       ).toOption.get,
-      FirstGameEventWire.encodeEvent(
+      GameEventWire.encodeEvent(
         "game-replay-corrupt",
         catalogRef,
         1L,
-        FirstGamePawnPlaced(PlayerId("p1"), sites.head)
+        GamePawnPlaced(PlayerId("p1"), sites.head)
       ).toOption.get
     ).map(ujson.write(_))
     repository.seed("game-replay-corrupt", records)
 
     assertEquals(
-      new FirstGameApplicationService(catalog, repository).handle(
+      new GameApplicationService(catalog, repository).handle(
         "game-replay-corrupt",
         2L,
-        FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+        GameCommand.PlacePawn(PlayerId("p2"), sites.head)
       ),
-      Left(FirstGameApplicationError.ReplayFailure(
+      Left(GameApplicationError.ReplayFailure(
         1L,
         WrongPlayer(PlayerId("p2"), PlayerId("p1"))
       ))
@@ -402,7 +402,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
         envelopeGameId: String
     ): (EventStreamRepository, () => Int) = {
       var appendCalls = 0
-      val record = FirstGameEventWire.encodeEvent(
+      val record = GameEventWire.encodeEvent(
         envelopeGameId,
         catalogRef,
         0L,
@@ -430,12 +430,12 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       repositoryFor("game-a", "game-b")
     ).foreach { case (repository, appendCalls) =>
       assertEquals(
-        new FirstGameApplicationService(catalog, repository).handle(
+        new GameApplicationService(catalog, repository).handle(
           "game-a",
           1L,
-          FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+          GameCommand.PlacePawn(PlayerId("p2"), sites.head)
         ),
-        Left(FirstGameApplicationError.StreamIdentityMismatch(
+        Left(GameApplicationError.StreamIdentityMismatch(
           "game-a",
           "game-b"
         ))
@@ -446,7 +446,7 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("authoritative v2 history cannot omit sequence zero") {
     val repository = new InMemoryEventStreamRepository
-    val record = FirstGameEventWire.encodeEvent(
+    val record = GameEventWire.encodeEvent(
       "game-missing-zero",
       catalogRef,
       1L,
@@ -455,9 +455,9 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
     repository.seed("game-missing-zero", Vector(ujson.write(record)))
 
     assertEquals(
-      new FirstGameApplicationService(catalog, repository)
+      new GameApplicationService(catalog, repository)
         .load("game-missing-zero"),
-      Left(FirstGameApplicationError.CodecFailure(
+      Left(GameApplicationError.CodecFailure(
         oathdigital.serialization.WireError.InvalidSequence(
           "$[0].sequence",
           0L,
@@ -469,19 +469,19 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
 
   test("player projection redacts other adviser hands and hidden orders") {
     val repository = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, repository)
-    service.handle("game-private", 0L, FirstGameCommand.Begin(plan))
+    val service = new GameApplicationService(catalog, repository)
+    service.handle("game-private", 0L, GameCommand.Begin(plan))
     val placed = service.handle(
       "game-private",
       1L,
-      FirstGameCommand.PlacePawn(PlayerId("p2"), sites.head)
+      GameCommand.PlacePawn(PlayerId("p2"), sites.head)
     ).toOption.get
-    val projector = new FirstGameProjector(catalog)
-    val loaded = LoadedFirstGame(placed.state, placed.nextSequence)
+    val projector = new GameProjector(catalog)
+    val loaded = LoadedGame(placed.state, placed.nextSequence)
     val own = projector.project("game-private", loaded, PlayerId("p2"))
     val other = projector.project("game-private", loaded, PlayerId("p1"))
     val privateIds = own.privateAdviserChoices.map(_.adviserId)
-    val otherJson = oathdigital.server.FirstGameHttpWire
+    val otherJson = oathdigital.server.GameHttpWire
       .encodeProjection(other)
 
     assertEquals(privateIds.size, 3)
@@ -515,14 +515,14 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       OwnedHsqldbEventStreamRepository.open(path).toOption.get
     val accepted =
       try execute(
-        new FirstGameApplicationService(catalog, firstRepository),
+        new GameApplicationService(catalog, firstRepository),
         "game-hsql-v2"
       )
       finally firstRepository.close()
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {
-      val loaded = new FirstGameApplicationService(catalog, reopened)
+      val loaded = new GameApplicationService(catalog, reopened)
         .load("game-hsql-v2").toOption.flatten.get
       assertEquals(loaded.state, accepted.state)
       assertEquals(loaded.nextSequence, 8L)

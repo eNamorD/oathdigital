@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 
 object DevelopmentRoutes {
   def route(
-      firstGame: FirstGameServerGateway,
+      firstGame: GameServerGateway,
       blockingExecutionContext: ExecutionContext,
       serveFrontend: Boolean = true
   ): Route = {
@@ -16,7 +16,7 @@ object DevelopmentRoutes {
         get {
           complete("ok")
         }
-      } ~ new FirstGameRoutes(
+      } ~ new GameRoutes(
         firstGame,
         blockingExecutionContext
       ).route

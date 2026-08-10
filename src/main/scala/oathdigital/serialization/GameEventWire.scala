@@ -7,7 +7,7 @@ import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupEvent._
 
-final case class FirstGameEventEnvelope(
+final case class GameEventEnvelope(
     formatVersion: Int,
     gameId: String,
     sequence: Long,
@@ -22,7 +22,7 @@ final case class FirstGameEventEnvelope(
  * V1 remains owned by `SetupEventWire`; this dual reader/writer boundary keeps
  * its checked-in bytes unchanged instead of reinterpreting old payloads.
  */
-object FirstGameEventWire {
+object GameEventWire {
   import WireError._
 
   val FormatVersion: Int = 2
@@ -47,7 +47,7 @@ object FirstGameEventWire {
       event: FirstGameSetupEvent
   ): Either[WireError, ujson.Value] =
     encode(
-      FirstGameEventEnvelope(
+      GameEventEnvelope(
         formatVersion(event),
         gameId,
         sequence,
@@ -58,7 +58,7 @@ object FirstGameEventWire {
     )
 
   def encode(
-      envelope: FirstGameEventEnvelope
+      envelope: GameEventEnvelope
   ): Either[WireError, ujson.Value] =
     validateEnvelope(envelope).map { _ =>
       ujson.Obj(
@@ -107,7 +107,7 @@ object FirstGameEventWire {
 
   def decodeStream(
       json: String
-  ): Either[WireError, Vector[FirstGameEventEnvelope]] =
+  ): Either[WireError, Vector[GameEventEnvelope]] =
     try {
       ujson.read(json) match {
         case array: ujson.Arr =>
@@ -129,7 +129,7 @@ object FirstGameEventWire {
   def decode(
       value: ujson.Value,
       path: String = "$"
-  ): Either[WireError, FirstGameEventEnvelope] = {
+  ): Either[WireError, GameEventEnvelope] = {
     value match {
       case obj: ujson.Obj =>
         for {
@@ -162,7 +162,7 @@ object FirstGameEventWire {
             ref
           )
           _ <- validateEventVersion(version, eventType, path)
-        } yield FirstGameEventEnvelope(
+        } yield GameEventEnvelope(
           version,
           gameId,
           sequence,
@@ -175,8 +175,8 @@ object FirstGameEventWire {
   }
 
   private def validateStream(
-      envelopes: Vector[FirstGameEventEnvelope]
-  ): Either[WireError, Vector[FirstGameEventEnvelope]] =
+      envelopes: Vector[GameEventEnvelope]
+  ): Either[WireError, Vector[GameEventEnvelope]] =
     envelopes.headOption match {
       case None => Right(envelopes)
       case Some(first) =>
@@ -204,7 +204,7 @@ object FirstGameEventWire {
     }
 
   private def validateEnvelope(
-      envelope: FirstGameEventEnvelope
+      envelope: GameEventEnvelope
   ): Either[WireError, Unit] =
     for {
       _ <-
@@ -236,7 +236,7 @@ object FirstGameEventWire {
   private def discriminator(event: FirstGameSetupEvent): String =
     event match {
       case _: FirstGameStarted => FirstGameStartedType
-      case _: FirstGamePawnPlaced => PawnPlacedType
+      case _: GamePawnPlaced => PawnPlacedType
       case _: StartingAdviserChosen => AdviserChosenType
       case FirstGameCompleted => FirstGameCompletedType
       case _: WealthTaken => TakeWealthType
@@ -255,7 +255,7 @@ object FirstGameEventWire {
   private def encodePayload(event: FirstGameSetupEvent): ujson.Value =
     event match {
       case FirstGameStarted(plan) => encodePlan(plan)
-      case FirstGamePawnPlaced(playerId, siteId) =>
+      case GamePawnPlaced(playerId, siteId) =>
         ujson.Obj(
           "playerId" -> playerId.value,
           "siteId" -> siteId.value
@@ -326,7 +326,7 @@ object FirstGameEventWire {
           }
         case PawnPlacedType =>
           Right(
-            FirstGamePawnPlaced(
+            GamePawnPlaced(
               PlayerId(payload("playerId").str),
               SiteId(payload("siteId").str)
             )

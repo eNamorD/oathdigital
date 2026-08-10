@@ -19,7 +19,7 @@ sealed trait AuthenticatedGameFailure extends Product with Serializable
 object AuthenticatedGameFailure {
   final case class Authorization(error: AuthorizationFailure)
       extends AuthenticatedGameFailure
-  final case class Application(error: FirstGameApplicationError)
+  final case class Application(error: GameApplicationError)
       extends AuthenticatedGameFailure
   final case class Identity(error: IdentityFailure)
       extends AuthenticatedGameFailure
@@ -27,9 +27,9 @@ object AuthenticatedGameFailure {
       extends AuthenticatedGameFailure
 }
 
-final class AuthenticatedFirstGameGateway(
-    service: FirstGameApplicationService,
-    projector: FirstGameProjector,
+final class AuthenticatedGameGateway(
+    service: GameApplicationService,
+    projector: GameProjector,
     authorization: MembershipAuthorizationService,
     identities: IdentityRepository,
     planFactory: FirstGamePlanFactory
@@ -39,13 +39,13 @@ final class AuthenticatedFirstGameGateway(
   def load(
       gameId: String,
       principal: AuthenticatedPrincipal
-  ): Either[AuthenticatedGameFailure, FirstGameProjection] =
+  ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeProjection(gameId, principal)
       .left.map(Authorization)
       .flatMap { access =>
         service.load(gameId).left.map(Application).flatMap {
           case None => Left(Application(
-            FirstGameApplicationError.StreamNotFound(gameId)
+            GameApplicationError.StreamNotFound(gameId)
           ))
           case Some(loaded) => access.scope match {
             case ProjectionScope.PlayerPrivate(playerId) =>
@@ -60,27 +60,27 @@ final class AuthenticatedFirstGameGateway(
       gameId: String,
       principal: AuthenticatedPrincipal,
       request: AuthenticatedCommandRequest
-  ): Either[AuthenticatedGameFailure, FirstGameProjection] =
+  ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeCommand(gameId, principal)
       .left.map(Authorization)
       .flatMap { actor =>
         val command = request.intent match {
-          case FirstGameIntent.PlacePawn(siteId) => actor.placePawn(siteId)
-          case FirstGameIntent.ChooseAdviser(adviserId) =>
+          case GameIntent.PlacePawn(siteId) => actor.placePawn(siteId)
+          case GameIntent.ChooseAdviser(adviserId) =>
             actor.chooseAdviser(adviserId)
-          case FirstGameIntent.TakeWealth(resource) =>
+          case GameIntent.TakeWealth(resource) =>
             actor.takeWealth(resource)
-          case FirstGameIntent.EndWake => actor.endWake
-          case FirstGameIntent.Travel(destination) => actor.travel(destination)
-          case FirstGameIntent.BeginSearch(source) => actor.beginSearch(source)
-          case FirstGameIntent.CompleteSearch(decision, kept, discarded, placement) =>
+          case GameIntent.EndWake => actor.endWake
+          case GameIntent.Travel(destination) => actor.travel(destination)
+          case GameIntent.BeginSearch(source) => actor.beginSearch(source)
+          case GameIntent.CompleteSearch(decision, kept, discarded, placement) =>
             actor.completeSearch(decision, kept, discarded, placement)
         }
         service.handle(gameId, request.expectedNextSequence, command)
           .left.map(Application)
           .map(accepted => projector.project(
             gameId,
-            LoadedFirstGame(accepted.state, accepted.nextSequence),
+            LoadedGame(accepted.state, accepted.nextSequence),
             actor.access.playerId
           ))
       }
@@ -89,7 +89,7 @@ final class AuthenticatedFirstGameGateway(
       gameId: String,
       principal: AuthenticatedPrincipal,
       request: AuthenticatedBootstrapRequest
-  ): Either[AuthenticatedGameFailure, FirstGameProjection] =
+  ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeBootstrap(gameId, principal)
       .left.map(Authorization)
       .flatMap { _ =>
@@ -101,11 +101,11 @@ final class AuthenticatedFirstGameGateway(
                 .flatMap(plan => service.handle(
                   gameId,
                   request.expectedNextSequence,
-                  FirstGameCommand.Begin(plan)
+                  GameCommand.Begin(plan)
                 ).left.map(Application))
                 .map(accepted => projector.projectPublic(
                   gameId,
-                  LoadedFirstGame(accepted.state, accepted.nextSequence)
+                  LoadedGame(accepted.state, accepted.nextSequence)
                 ))
             }
         }
@@ -135,14 +135,14 @@ final class AuthenticatedFirstGameGateway(
   }
 }
 
-final class AuthenticatedFirstGameRoutes(
+final class AuthenticatedGameRoutes(
     authenticator: HttpSessionAuthenticator,
     csrfProtection: SameOriginCsrfProtection,
-    gateway: AuthenticatedFirstGameGateway,
+    gateway: AuthenticatedGameGateway,
     blockingExecutionContext: ExecutionContext
 ) extends Directives {
   private val logger = LoggerFactory.getLogger(
-    classOf[AuthenticatedFirstGameRoutes]
+    classOf[AuthenticatedGameRoutes]
   )
 
   val route: Route =
@@ -196,7 +196,7 @@ final class AuthenticatedFirstGameRoutes(
                       if (!csrfProtection.validate(request, session))
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
-                        AuthenticatedFirstGameHttpWire.decodeCommand(body) match {
+                        AuthenticatedGameHttpWire.decodeCommand(body) match {
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
                             "malformed-request",
@@ -213,7 +213,7 @@ final class AuthenticatedFirstGameRoutes(
                       if (!csrfProtection.validate(request, session))
                         complete(csrfFailure)
                       else entity(as[String]) { body =>
-                        AuthenticatedFirstGameHttpWire.decodeBootstrap(body) match {
+                        AuthenticatedGameHttpWire.decodeBootstrap(body) match {
                           case Left(error) => complete(response(
                             StatusCodes.BadRequest,
                             "malformed-request",
@@ -239,14 +239,14 @@ final class AuthenticatedFirstGameRoutes(
   )
 
   private def completeAsync(
-      operation: => Either[AuthenticatedGameFailure, FirstGameProjection]
+      operation: => Either[AuthenticatedGameFailure, GameProjection]
   ): Route =
     onComplete(Future(operation)(blockingExecutionContext)) {
       case Success(Right(projection)) => complete(HttpResponse(
         StatusCodes.OK,
         entity = HttpEntity(
           ContentTypes.`application/json`,
-          FirstGameHttpWire.encodeProjection(projection)
+          GameHttpWire.encodeProjection(projection)
         )
       ))
       case Success(Left(error)) =>
@@ -285,19 +285,19 @@ final class AuthenticatedFirstGameRoutes(
       (StatusCodes.UnprocessableContent, "membership-configuration-mismatch",
         "participants must exactly match the provisioned player seats", false)
     case AuthenticatedGameFailure.Application(error) => error match {
-      case _: FirstGameApplicationError.StreamNotFound =>
+      case _: GameApplicationError.StreamNotFound =>
         (StatusCodes.NotFound, "stream-not-found",
           "the requested game does not exist", false)
-      case _: FirstGameApplicationError.StaleClientPosition =>
+      case _: GameApplicationError.StaleClientPosition =>
         (StatusCodes.Conflict, "stale-client-position",
           "the client position is stale; refresh and retry", false)
-      case _: FirstGameApplicationError.SequenceConflict =>
+      case _: GameApplicationError.SequenceConflict =>
         (StatusCodes.Conflict, "sequence-conflict",
           "the game changed while the command was handled", false)
-      case _: FirstGameApplicationError.CommandRejected =>
+      case _: GameApplicationError.CommandRejected =>
         (StatusCodes.UnprocessableContent, "command-rejected",
           "the setup rules rejected the command", false)
-      case _: FirstGameApplicationError.DuplicateGame =>
+      case _: GameApplicationError.DuplicateGame =>
         (StatusCodes.Conflict, "duplicate-game",
           "the game event stream already exists", false)
       case _ =>
@@ -314,7 +314,7 @@ final class AuthenticatedFirstGameRoutes(
     status,
     entity = HttpEntity(
       ContentTypes.`application/json`,
-      FirstGameHttpWire.encodeError(code, message)
+      GameHttpWire.encodeError(code, message)
     )
   )
 }

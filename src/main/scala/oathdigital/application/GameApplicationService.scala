@@ -6,7 +6,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.model._
-import oathdigital.serialization.{FirstGameEventWire, WireError}
+import oathdigital.serialization.{GameEventWire, WireError}
 import oathdigital.setup.{
   FirstGameContinue,
   FirstGameSetupCommand,
@@ -19,27 +19,27 @@ import oathdigital.setup.{
   WakeResource
 }
 
-sealed trait FirstGameCommand extends Product with Serializable
-object FirstGameCommand {
-  final case class Begin(plan: FirstGameSetupPlan) extends FirstGameCommand
+sealed trait GameCommand extends Product with Serializable
+object GameCommand {
+  final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
   final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
-      extends FirstGameCommand
+      extends GameCommand
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
-      extends FirstGameCommand
+      extends GameCommand
   final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
-      extends FirstGameCommand
-  final case class EndWake(playerId: PlayerId) extends FirstGameCommand
+      extends GameCommand
+  final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
-      extends FirstGameCommand
+      extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
-      extends FirstGameCommand
+      extends GameCommand
   final case class CompleteSearch(
       playerId: PlayerId,
       decision: DecisionId,
       kept: WorldCardId,
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
-  ) extends FirstGameCommand
+  ) extends GameCommand
 }
 
 trait SearchDrawPort {
@@ -56,58 +56,58 @@ object SearchDrawPort {
   }
 }
 
-final case class FirstGameAccepted(
+final case class GameAccepted(
     state: FirstGameSetupState,
     events: Vector[FirstGameSetupEvent],
     continue: FirstGameContinue,
     nextSequence: Long
 )
 
-final case class LoadedFirstGame(
+final case class LoadedGame(
     state: FirstGameSetupState,
     nextSequence: Long
 )
 
-sealed trait FirstGameApplicationError extends Product with Serializable
-object FirstGameApplicationError {
+sealed trait GameApplicationError extends Product with Serializable
+object GameApplicationError {
   final case class StreamNotFound(gameId: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class DuplicateGame(gameId: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class StaleClientPosition(expected: Long, actual: Long)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class StreamIdentityMismatch(expected: String, actual: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class CodecFailure(error: WireError)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class ReplayFailure(
       index: Long,
       violation: FirstGameSetupViolation
-  ) extends FirstGameApplicationError
+  ) extends GameApplicationError
   final case class CommandRejected(violation: FirstGameSetupViolation)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class BootstrapFailure(message: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class SequenceConflict(expected: Long, actual: Long)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class AppendAcknowledgementMismatch(message: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
   final case class StorageFailure(message: String)
-      extends FirstGameApplicationError
+      extends GameApplicationError
 }
 
 /**
  * Event-sourced application service for v2 setup plus v3 gameplay streams.
  *
- * V1 envelopes are rejected by `FirstGameEventWire`; no implicit migration is
+ * V1 envelopes are rejected by `GameEventWire`; no implicit migration is
  * attempted. Strict contiguous v2/v3 replay shares one reconstruction path.
  */
-final class FirstGameApplicationService(
+final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative
 ) {
-  import FirstGameApplicationError._
+  import GameApplicationError._
   import RepositoryAppendResult._
 
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -116,26 +116,26 @@ final class FirstGameApplicationService(
 
   def load(
       gameId: String
-  ): Either[FirstGameApplicationError, Option[LoadedFirstGame]] =
+  ): Either[GameApplicationError, Option[LoadedGame]] =
     repository.load(gameId).left.map(storageError).flatMap {
       case None => Right(None)
       case Some(stream) =>
         reconstruct(gameId, stream).map(state =>
-          Some(LoadedFirstGame(state, stream.nextSequence)))
+          Some(LoadedGame(state, stream.nextSequence)))
     }
 
   def handle(
       gameId: String,
       expectedNextSequence: Long,
-      command: FirstGameCommand
-  ): Either[FirstGameApplicationError, FirstGameAccepted] =
+      command: GameCommand
+  ): Either[GameApplicationError, GameAccepted] =
     repository.load(gameId).left.map(storageError).flatMap {
       case None =>
         if (expectedNextSequence != 0L)
           Left(StaleClientPosition(expectedNextSequence, 0L))
         else
           command match {
-            case FirstGameCommand.Begin(_) =>
+            case GameCommand.Begin(_) =>
               handleAgainst(
                 gameId,
                 rules.initialState,
@@ -144,7 +144,7 @@ final class FirstGameApplicationService(
                 0L
               )
             case _ =>
-              Left(FirstGameApplicationError.StreamNotFound(gameId))
+              Left(GameApplicationError.StreamNotFound(gameId))
           }
       case Some(stream) =>
         if (expectedNextSequence != stream.nextSequence)
@@ -154,7 +154,7 @@ final class FirstGameApplicationService(
           ))
         else
           command match {
-            case FirstGameCommand.Begin(_) => Left(DuplicateGame(gameId))
+            case GameCommand.Begin(_) => Left(DuplicateGame(gameId))
             case _ =>
               reconstruct(gameId, stream).flatMap { state =>
                 handleAgainst(
@@ -171,12 +171,12 @@ final class FirstGameApplicationService(
   private def reconstruct(
       gameId: String,
       stream: StoredEventStream
-  ): Either[FirstGameApplicationError, FirstGameSetupState] =
+  ): Either[GameApplicationError, FirstGameSetupState] =
     for {
       _ <-
         if (stream.gameId == gameId) Right(())
         else Left(StreamIdentityMismatch(gameId, stream.gameId))
-      envelopes <- FirstGameEventWire
+      envelopes <- GameEventWire
         .decodeStream(stream.records.mkString("[", ",", "]"))
         .left
         .map(CodecFailure)
@@ -200,10 +200,10 @@ final class FirstGameApplicationService(
   private def handleAgainst(
       gameId: String,
       state: FirstGameSetupState,
-      command: FirstGameCommand,
+      command: GameCommand,
       expected: ExpectedStream,
       nextSequence: Long
-  ): Either[FirstGameApplicationError, FirstGameAccepted] =
+  ): Either[GameApplicationError, GameAccepted] =
     for {
       transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected)
       records <- encode(gameId, nextSequence, transition.events)
@@ -212,7 +212,7 @@ final class FirstGameApplicationService(
       accepted <- result match {
         case Appended(first, count)
             if first == nextSequence && count == records.size =>
-          Right(FirstGameAccepted(
+          Right(GameAccepted(
             transition.state,
             transition.events,
             transition.continue,
@@ -220,9 +220,9 @@ final class FirstGameApplicationService(
           ))
         case StreamAlreadyExists => Left(DuplicateGame(gameId))
         case RepositoryAppendResult.StreamNotFound =>
-          Left(FirstGameApplicationError.StreamNotFound(gameId))
+          Left(GameApplicationError.StreamNotFound(gameId))
         case RepositoryAppendResult.SequenceConflict(wanted, actual) =>
-          Left(FirstGameApplicationError.SequenceConflict(wanted, actual))
+          Left(GameApplicationError.SequenceConflict(wanted, actual))
         case Appended(first, count) =>
           Left(AppendAcknowledgementMismatch(
             s"expected first=$nextSequence count=${records.size}; " +
@@ -233,26 +233,26 @@ final class FirstGameApplicationService(
 
   private def applyCommand(
       state: FirstGameSetupState,
-      command: FirstGameCommand,
+      command: GameCommand,
       nextSequence: Long
   ) =
     command match {
-      case FirstGameCommand.Begin(plan) =>
+      case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
-      case FirstGameCommand.PlacePawn(playerId, siteId) =>
+      case GameCommand.PlacePawn(playerId, siteId) =>
         setupRules.handle(state, SetupCommand.PlacePawn(playerId, siteId))
-      case FirstGameCommand.ChooseAdviser(playerId, adviserId) =>
+      case GameCommand.ChooseAdviser(playerId, adviserId) =>
         setupRules.handle(
           state,
           FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
         )
-      case FirstGameCommand.TakeWealth(playerId, resource) =>
+      case GameCommand.TakeWealth(playerId, resource) =>
         rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
-      case FirstGameCommand.EndWake(playerId) =>
+      case GameCommand.EndWake(playerId) =>
         rules.handle(state, WakeCommand.EndWake(playerId))
-      case FirstGameCommand.Travel(playerId, destination) =>
+      case GameCommand.Travel(playerId, destination) =>
         rules.handle(state, TravelCommand.Travel(playerId, destination))
-      case FirstGameCommand.BeginSearch(playerId, source) => state match {
+      case GameCommand.BeginSearch(playerId, source) => state match {
         case FirstGameSetupState.Ready(ready) =>
           for {
             region <- ready.game.current.players.find(_.player == playerId)
@@ -264,7 +264,7 @@ final class FirstGameApplicationService(
           } yield result
         case _ => Left(FirstGameSetupViolation.GameNotStarted)
       }
-      case FirstGameCommand.CompleteSearch(playerId, decision, kept, discarded,
+      case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
         rules.handle(state, SearchCommand.Complete(
           playerId, decision, kept, discarded, placement))
@@ -274,12 +274,12 @@ final class FirstGameApplicationService(
       gameId: String,
       firstSequence: Long,
       events: Vector[FirstGameSetupEvent]
-  ): Either[FirstGameApplicationError, Vector[String]] =
+  ): Either[GameApplicationError, Vector[String]] =
     events.zipWithIndex.foldLeft[
-      Either[FirstGameApplicationError, Vector[String]]
+      Either[GameApplicationError, Vector[String]]
     ](Right(Vector.empty)) {
       case (Right(accumulated), (event, offset)) =>
-        FirstGameEventWire
+        GameEventWire
           .encodeEvent(
             gameId,
             catalog.ref,
@@ -294,7 +294,7 @@ final class FirstGameApplicationService(
 
   private def storageError(
       failure: RepositoryFailure
-  ): FirstGameApplicationError =
+  ): GameApplicationError =
     failure match {
       case RepositoryFailure.StorageFailure(message) =>
         StorageFailure(message)

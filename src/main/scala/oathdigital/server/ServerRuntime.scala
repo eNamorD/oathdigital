@@ -40,8 +40,8 @@ final class ServerCommandGateway private[server] (
 
 final class ServerRuntime private (
     val commands: ServerCommandGateway,
-    val firstGame: FirstGameServerGateway,
-    val authenticatedFirstGame: AuthenticatedFirstGameGateway,
+    val firstGame: GameServerGateway,
+    val authenticatedGame: AuthenticatedGameGateway,
     val authorization: MembershipAuthorizationService,
     val identities: IdentityRepository,
     private val database: HsqldbDatabaseOwner
@@ -80,12 +80,12 @@ object ServerRuntime {
         .map { catalog =>
           val service = new SetupApplicationService(catalog, repository)
           val firstGameService =
-            new oathdigital.application.FirstGameApplicationService(
+            new oathdigital.application.GameApplicationService(
               catalog,
               repository
             )
           val projector =
-            new oathdigital.application.FirstGameProjector(catalog)
+            new oathdigital.application.GameProjector(catalog)
           val planFactory =
             new oathdigital.application.DevelopmentFirstGamePlanFactory(
               catalog
@@ -94,12 +94,12 @@ object ServerRuntime {
             new MembershipAuthorizationService(database.identities)
           new ServerRuntime(
             new ServerCommandGateway(service),
-            new FirstGameServerGateway(
+            new GameServerGateway(
               firstGameService,
               projector,
               planFactory
             ),
-            new AuthenticatedFirstGameGateway(
+            new AuthenticatedGameGateway(
               firstGameService,
               projector,
               authorization,

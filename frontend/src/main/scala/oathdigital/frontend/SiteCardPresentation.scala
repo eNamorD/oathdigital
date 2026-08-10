@@ -32,7 +32,7 @@ private[frontend] final case class SiteCardPresentation(
 )
 
 private[frontend] object SiteCardPresentation {
-  def from(site: FirstGameSite): SiteCardPresentation = {
+  def from(site: GameSite): SiteCardPresentation = {
     val siteEntity = SiteView(
       ViewId(s"site:${site.siteId}"),
       AccessibleLabel(site.label),

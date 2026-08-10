@@ -122,7 +122,7 @@ The compiled page selects its authority mode from an explicit query marker,
 never from the serving port:
 
 - server mode is the default, so `http://127.0.0.1:8080/` (or
-  `?mode=server`) uses `HttpFirstGameClient` and the same-origin development
+  `?mode=server`) uses `HttpGameClient` and the same-origin development
   first-game API;
 - `http://127.0.0.1:8000/?mode=local` explicitly selects
   `LocalDebugSetupClient` for standalone browser-memory testing. The same

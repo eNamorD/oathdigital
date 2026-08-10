@@ -126,9 +126,9 @@ class WakeSuite extends munit.FunSuite {
     ).foreach { state =>
       val Ready(value) = state: @unchecked
       val active = value.game.current.turn.activePlayer
-      val projection = new oathdigital.application.FirstGameProjector(catalog)
+      val projection = new oathdigital.application.GameProjector(catalog)
         .project("take-wealth",
-          oathdigital.application.LoadedFirstGame(state, 9), active)
+          oathdigital.application.LoadedGame(state, 9), active)
       val favorLegal = rules.handle(state,
         WakeCommand.TakeWealth(active, WakeResource.Favor)).isRight
       val secretLegal = rules.handle(state,

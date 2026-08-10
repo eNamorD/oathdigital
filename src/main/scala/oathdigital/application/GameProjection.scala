@@ -59,7 +59,7 @@ final case class PendingSearchProjection(
     replaceableSiteCards: Vector[String]
 )
 
-final case class FirstGameProjection(
+final case class GameProjection(
     gameId: String,
     nextSequence: Long,
     phase: String,
@@ -81,7 +81,7 @@ final case class FirstGameProjection(
     pendingSearch: Option[PendingSearchProjection] = None
 )
 
-final class FirstGameProjector(catalog: ExecutableCatalog) {
+final class GameProjector(catalog: ExecutableCatalog) {
   private val siteNames =
     catalog.sites.map(site => site.id -> site.name).toMap
   private val denizenNames =
@@ -94,23 +94,23 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
 
   def project(
       gameId: String,
-      loaded: LoadedFirstGame,
+      loaded: LoadedGame,
       requestingPlayer: PlayerId
-  ): FirstGameProjection = projectFor(gameId, loaded, Some(requestingPlayer))
+  ): GameProjection = projectFor(gameId, loaded, Some(requestingPlayer))
 
   def projectPublic(
       gameId: String,
-      loaded: LoadedFirstGame
-  ): FirstGameProjection = projectFor(gameId, loaded, None)
+      loaded: LoadedGame
+  ): GameProjection = projectFor(gameId, loaded, None)
 
   private def projectFor(
       gameId: String,
-      loaded: LoadedFirstGame,
+      loaded: LoadedGame,
       requestingPlayer: Option[PlayerId]
-  ): FirstGameProjection =
+  ): GameProjection =
     loaded.state match {
       case NoGame =>
-        FirstGameProjection(
+        GameProjection(
           gameId,
           loaded.nextSequence,
           "not-started",
@@ -150,7 +150,7 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
                 denizenNames.getOrElse(id, safeLabel(id.value))
               ))
           } else Vector.empty
-        FirstGameProjection(
+        GameProjection(
           gameId,
           loaded.nextSequence,
           phase,
@@ -210,7 +210,7 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
                 .flatMap(_.denizens.map(_.id.value))
             )
         }
-        FirstGameProjection(
+        GameProjection(
           gameId,
           loaded.nextSequence,
           current.pending match {

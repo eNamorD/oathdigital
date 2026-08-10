@@ -9,13 +9,13 @@ final case class ServerRequestIdentity(
 sealed trait ProjectionRoute
 object ProjectionRoute {
   final case class Display(
-      projection: FirstGameProjection,
-      notice: Option[FirstGameClientFailure]
+      projection: GameProjection,
+      notice: Option[GameClientFailure]
   ) extends ProjectionRoute
   final case class ReloadForActivePlayer(
-      projection: FirstGameProjection,
+      projection: GameProjection,
       request: ServerRequestIdentity,
-      notice: Option[FirstGameClientFailure]
+      notice: Option[GameClientFailure]
   ) extends ProjectionRoute
 }
 
@@ -23,7 +23,7 @@ sealed trait ServerConnectionState
 object ServerConnectionState {
   case object Connecting extends ServerConnectionState
   case object Connected extends ServerConnectionState
-  final case class Disconnected(failure: FirstGameClientFailure)
+  final case class Disconnected(failure: GameClientFailure)
       extends ServerConnectionState
 }
 
@@ -68,11 +68,11 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
 
   def recordFailure(
       request: ServerRequestIdentity,
-      failure: FirstGameClientFailure
+      failure: GameClientFailure
   ): Boolean =
     if (!accepts(request)) false
     else {
-      if (FirstGameClientFailure.isTransient(failure))
+      if (GameClientFailure.isTransient(failure))
         connection = ServerConnectionState.Disconnected(failure)
       else connection = ServerConnectionState.Connected
       true
@@ -80,8 +80,8 @@ final class ServerSessionCoordinator(initialGameId: String, initialPlayer: Strin
 
   def route(
       request: ServerRequestIdentity,
-      projection: FirstGameProjection,
-      notice: Option[FirstGameClientFailure]
+      projection: GameProjection,
+      notice: Option[GameClientFailure]
   ): Option[ProjectionRoute] =
     if (!accepts(request)) None
     else {

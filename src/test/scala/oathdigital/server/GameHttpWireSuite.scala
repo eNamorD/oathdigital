@@ -1,11 +1,11 @@
 package oathdigital.server
 
-import oathdigital.application.FirstGameCommand
+import oathdigital.application.GameCommand
 import oathdigital.serialization.{
-  FirstGameEventWire
+  GameEventWire
 }
 
-class FirstGameHttpWireSuite extends munit.FunSuite {
+class GameHttpWireSuite extends munit.FunSuite {
   private def commandRequest(command: ujson.Obj): String =
     ujson.write(ujson.Obj(
       "expectedNextSequence" -> 8,
@@ -25,7 +25,7 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
   }
 
   test("generic command transport rejects begin and hidden plan input") {
-    val error = FirstGameHttpWire
+    val error = GameHttpWire
       .decodeCommand(beginRequest(ujson.Num(0))).left.toOption.get
 
     assertEquals(error.path, "$.command.type")
@@ -40,10 +40,10 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
       """{"expectedNextSequence":2,"command":{"type":"chooseAdviser",
         |"playerId":"p2","adviserId":"9"}}""".stripMargin
 
-    assert(FirstGameHttpWire.decodeCommand(pawn).toOption.get.command
-      .isInstanceOf[FirstGameCommand.PlacePawn])
-    assert(FirstGameHttpWire.decodeCommand(adviser).toOption.get.command
-      .isInstanceOf[FirstGameCommand.ChooseAdviser])
+    assert(GameHttpWire.decodeCommand(pawn).toOption.get.command
+      .isInstanceOf[GameCommand.PlacePawn])
+    assert(GameHttpWire.decodeCommand(adviser).toOption.get.command
+      .isInstanceOf[GameCommand.ChooseAdviser])
   }
 
   test("Wake commands decode explicit actor and wealth choice") {
@@ -53,15 +53,15 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
     val end = commandRequest(
       ujson.Obj("type" -> "endWake", "playerId" -> "p2"))
     assertEquals(
-      FirstGameHttpWire.decodeCommand(wealth).toOption.get.command,
-      FirstGameCommand.TakeWealth(
+      GameHttpWire.decodeCommand(wealth).toOption.get.command,
+      GameCommand.TakeWealth(
         oathdigital.model.PlayerId("p2"),
         oathdigital.setup.WakeResource.Favor
       )
     )
     assertEquals(
-      FirstGameHttpWire.decodeCommand(end).toOption.get.command,
-      FirstGameCommand.EndWake(oathdigital.model.PlayerId("p2"))
+      GameHttpWire.decodeCommand(end).toOption.get.command,
+      GameCommand.EndWake(oathdigital.model.PlayerId("p2"))
     )
   }
 
@@ -71,8 +71,8 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
       "playerId" -> "p2",
       "destinationSiteId" -> "site:b"
     ))
-    assertEquals(FirstGameHttpWire.decodeCommand(travel).toOption.get.command,
-      FirstGameCommand.Travel(
+    assertEquals(GameHttpWire.decodeCommand(travel).toOption.get.command,
+      GameCommand.Travel(
         oathdigital.model.PlayerId("p2"),
         oathdigital.model.SiteId("site:b")))
   }
@@ -80,12 +80,12 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
   test("development Search begin rejects client-provided hidden outcomes") {
     val valid = commandRequest(ujson.Obj(
       "type" -> "beginSearch", "playerId" -> "p2", "source" -> "world"))
-    assert(FirstGameHttpWire.decodeCommand(valid).toOption.get.command
-      .isInstanceOf[FirstGameCommand.BeginSearch])
+    assert(GameHttpWire.decodeCommand(valid).toOption.get.command
+      .isInstanceOf[GameCommand.BeginSearch])
     val hidden = commandRequest(ujson.Obj(
       "type" -> "beginSearch", "playerId" -> "p2", "source" -> "world",
       "drawn" -> ujson.Arr("denizen:chosen")))
-    assertEquals(FirstGameHttpWire.decodeCommand(hidden).left.toOption.get.path,
+    assertEquals(GameHttpWire.decodeCommand(hidden).left.toOption.get.path,
       "$.command.drawn")
   }
 
@@ -101,7 +101,7 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
       )),
       "firstPlayer" -> "p1"
     ))
-    val request = FirstGameHttpWire.decodeBootstrap(json).toOption.get
+    val request = GameHttpWire.decodeBootstrap(json).toOption.get
 
     assertEquals(request.expectedNextSequence, 0L)
     assertEquals(
@@ -115,7 +115,7 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
 
   test("malformed fields report stable paths and unsafe sequences fail") {
     assertEquals(
-      FirstGameHttpWire.decodeCommand(
+      GameHttpWire.decodeCommand(
         """{"expectedNextSequence":0,"command":{"type":"placePawn",
           |"playerId":"p1"}}""".stripMargin
       ).left.toOption.get.path,
@@ -124,16 +124,16 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
     Vector(
       ujson.Num(-1),
       ujson.Num(0.5),
-      ujson.Num((FirstGameEventWire.MaxSafeSequence + 1L).toDouble)
+      ujson.Num((GameEventWire.MaxSafeSequence + 1L).toDouble)
     ).foreach { value =>
       assertEquals(
-        FirstGameHttpWire.decodeCommand(beginRequest(value))
+        GameHttpWire.decodeCommand(beginRequest(value))
           .left.toOption.get.path,
         "$.expectedNextSequence"
       )
     }
     assertEquals(
-      FirstGameHttpWire.decodeCommand("{").left.toOption.get.path,
+      GameHttpWire.decodeCommand("{").left.toOption.get.path,
       "$"
     )
   }

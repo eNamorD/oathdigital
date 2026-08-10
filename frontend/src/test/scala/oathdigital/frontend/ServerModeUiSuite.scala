@@ -17,8 +17,8 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(
       actions.map(_.command),
       Vector(
-        FirstGameCommand.TakeWealth("red-exile", "favor"),
-        FirstGameCommand.TakeWealth("red-exile", "secret")
+        GameCommand.TakeWealth("red-exile", "favor"),
+        GameCommand.TakeWealth("red-exile", "secret")
       )
     )
   }
@@ -152,7 +152,7 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("populated site details render properties, stable IDs, and hidden relics") {
-    val site = FirstGameSite(
+    val site = GameSite(
       "site:woods",
       "Woods",
       looseFavor = 2,
@@ -160,10 +160,10 @@ class ServerModeUiSuite extends FunSuite {
       denizenCapacity = 3,
       relicCapacity = 2,
       denizens = Vector(
-        FirstGameSiteCard("denizen:fox", "Fox"),
-        FirstGameSiteCard("denizen:owl", "Owl")
+        GameSiteCard("denizen:fox", "Fox"),
+        GameSiteCard("denizen:owl", "Owl")
       ),
-      relics = FirstGameSiteRelics(2)
+      relics = GameSiteRelics(2)
     )
     val details = SiteCardPresentation.from(site)
 
@@ -180,7 +180,7 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("empty site details have image-independent empty states") {
-    val details = SiteCardPresentation.from(FirstGameSite(
+    val details = SiteCardPresentation.from(GameSite(
       "site:empty",
       "Empty",
       0,
@@ -188,7 +188,7 @@ class ServerModeUiSuite extends FunSuite {
       0,
       0,
       Vector.empty,
-      FirstGameSiteRelics(0)
+      GameSiteRelics(0)
     ))
 
     assertEquals(details.metrics.map(_.value), Vector(0, 0, 0, 0))
@@ -197,15 +197,15 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("site and denizen visuals deterministically fall back without assets") {
-    val details = SiteCardPresentation.from(FirstGameSite(
+    val details = SiteCardPresentation.from(GameSite(
       "woods",
       "Woods",
       0,
       0,
       1,
       0,
-      Vector(FirstGameSiteCard("fox", "Fox")),
-      FirstGameSiteRelics(0)
+      Vector(GameSiteCard("fox", "Fox")),
+      GameSiteRelics(0)
     ))
 
     assertEquals(details.siteVisual.instruction,
@@ -262,20 +262,20 @@ class ServerModeUiSuite extends FunSuite {
       activeParticipantId: String = "red-exile",
       ready: Boolean = true,
       privateAdviserChoices: Vector[AdviserChoice] = Vector.empty
-  ): FirstGameProjection =
-    FirstGameProjection(
+  ): GameProjection =
+    GameProjection(
       gameId = "game-1",
       nextSequence = 8L,
       phase = phase,
       activeParticipantId = Some(activeParticipantId),
       players = Vector(
-        FirstGamePlayer(
+        GamePlayer(
           "red-exile",
           "Red Exile",
           "exile",
           PlayerColorToken.Red
         ),
-        FirstGamePlayer(
+        GamePlayer(
           "blue-exile",
           "Blue Exile",
           "exile",

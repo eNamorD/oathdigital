@@ -101,8 +101,8 @@ class SearchSuite extends munit.FunSuite {
     val started = rules.handle(Ready(base), SearchCommand.Start(
       player.player, DecisionId("private"), SearchSource.WorldDeck, drawn))
       .toOption.get
-    val loaded = oathdigital.application.LoadedFirstGame(started.state, 10)
-    val projector = new oathdigital.application.FirstGameProjector(catalog)
+    val loaded = oathdigital.application.LoadedGame(started.state, 10)
+    val projector = new oathdigital.application.GameProjector(catalog)
     val owner = projector.project("search", loaded, player.player)
     val hidden = projector.project("search", loaded, other.player)
     assertEquals(owner.phase, "search-decision")

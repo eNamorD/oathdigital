@@ -17,7 +17,7 @@ import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.setup.FirstGameSetupFixture._
 
-class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
+class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   test("authenticated routes derive projection scope and command actor") {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-route-test")
@@ -44,8 +44,8 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
       GameMembership("auth-game", spectator, Spectator, None), 0L)
 
     val events = new InMemoryEventStreamRepository
-    val service = new FirstGameApplicationService(catalog, events)
-    service.handle("auth-game", 0L, FirstGameCommand.Begin(plan))
+    val service = new GameApplicationService(catalog, events)
+    service.handle("auth-game", 0L, GameCommand.Begin(plan))
     val csrfToken = "c" * 43
     val csrfDigest = CsrfTokenDigest.fromBytes(
       SensitiveTokenDigest.sha256(csrfToken)
@@ -58,16 +58,16 @@ class AuthenticatedFirstGameRoutesSuite extends munit.FunSuite {
           case None => Left(AuthenticationFailure.MissingCredential)
         })
     }
-    val gateway = new AuthenticatedFirstGameGateway(
+    val gateway = new AuthenticatedGameGateway(
       service,
-      new FirstGameProjector(catalog),
+      new GameProjector(catalog),
       new MembershipAuthorizationService(identities),
       identities,
       new DevelopmentFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
-        new AuthenticatedFirstGameRoutes(
+        new AuthenticatedGameRoutes(
           authenticator,
           new SameOriginCsrfProtection("http://127.0.0.1"),
           gateway,

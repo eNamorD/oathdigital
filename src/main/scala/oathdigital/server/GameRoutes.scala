@@ -14,43 +14,43 @@ import akka.http.scaladsl.server.{Directives, Route}
 import org.slf4j.LoggerFactory
 
 import oathdigital.application.{
-  FirstGameApplicationError,
-  FirstGameCommand,
-  FirstGameProjection
+  GameApplicationError,
+  GameCommand,
+  GameProjection
 }
 import oathdigital.model.PlayerId
 
-final class FirstGameServerGateway(
-    service: oathdigital.application.FirstGameApplicationService,
-    projector: oathdigital.application.FirstGameProjector,
+final class GameServerGateway(
+    service: oathdigital.application.GameApplicationService,
+    projector: oathdigital.application.GameProjector,
     planFactory: oathdigital.application.DevelopmentFirstGamePlanFactory
 ) {
   def bootstrap(
       gameId: String,
       requestingPlayer: PlayerId,
       request: FirstGameBootstrapRequest
-  ): Either[FirstGameApplicationError, FirstGameProjection] =
+  ): Either[GameApplicationError, GameProjection] =
     planFactory.build(request.config)
       .left.map(failure =>
-        FirstGameApplicationError.BootstrapFailure(failure.message))
+        GameApplicationError.BootstrapFailure(failure.message))
       .flatMap(plan =>
         submit(
           gameId,
           requestingPlayer,
           request.expectedNextSequence,
-          FirstGameCommand.Begin(plan)
+          GameCommand.Begin(plan)
         ))
 
   def submit(
       gameId: String,
       requestingPlayer: PlayerId,
       expectedNextSequence: Long,
-      command: FirstGameCommand
-  ): Either[FirstGameApplicationError, FirstGameProjection] =
+      command: GameCommand
+  ): Either[GameApplicationError, GameProjection] =
     service.handle(gameId, expectedNextSequence, command).map { accepted =>
       projector.project(
         gameId,
-        oathdigital.application.LoadedFirstGame(
+        oathdigital.application.LoadedGame(
           accepted.state,
           accepted.nextSequence
         ),
@@ -61,20 +61,20 @@ final class FirstGameServerGateway(
   def load(
       gameId: String,
       requestingPlayer: PlayerId
-  ): Either[FirstGameApplicationError, FirstGameProjection] =
+  ): Either[GameApplicationError, GameProjection] =
     service.load(gameId).flatMap {
       case Some(loaded) =>
         Right(projector.project(gameId, loaded, requestingPlayer))
       case None =>
-        Left(FirstGameApplicationError.StreamNotFound(gameId))
+        Left(GameApplicationError.StreamNotFound(gameId))
     }
 }
 
-final class FirstGameRoutes(
-    gateway: FirstGameServerGateway,
+final class GameRoutes(
+    gateway: GameServerGateway,
     blockingExecutionContext: ExecutionContext
 ) extends Directives {
-  private val logger = LoggerFactory.getLogger(classOf[FirstGameRoutes])
+  private val logger = LoggerFactory.getLogger(classOf[GameRoutes])
 
   val route: Route =
     pathPrefix("api" / "dev" / "first-games" / Segment) { gameId =>
@@ -94,7 +94,7 @@ final class FirstGameRoutes(
             path("commands") {
               post {
                 entity(as[String]) { body =>
-                  FirstGameHttpWire.decodeCommand(body) match {
+                  GameHttpWire.decodeCommand(body) match {
                     case Left(error) =>
                       complete(jsonResponse(
                         StatusCodes.BadRequest,
@@ -124,7 +124,7 @@ final class FirstGameRoutes(
             path("bootstrap") {
               post {
                 entity(as[String]) { body =>
-                  FirstGameHttpWire.decodeBootstrap(body) match {
+                  GameHttpWire.decodeBootstrap(body) match {
                     case Left(error) =>
                       complete(jsonResponse(
                         StatusCodes.BadRequest,
@@ -146,7 +146,7 @@ final class FirstGameRoutes(
     }
 
   private def completeAsync(
-      operation: => Either[FirstGameApplicationError, FirstGameProjection]
+      operation: => Either[GameApplicationError, GameProjection]
   ): Route =
     onComplete(Future(operation)(blockingExecutionContext)) {
       case Success(Right(projection)) =>
@@ -154,7 +154,7 @@ final class FirstGameRoutes(
           StatusCodes.OK,
           entity = HttpEntity(
             ContentTypes.`application/json`,
-            FirstGameHttpWire.encodeProjection(projection)
+            GameHttpWire.encodeProjection(projection)
           )
         ))
       case Success(Left(error)) =>
@@ -172,25 +172,25 @@ final class FirstGameRoutes(
     }
 
   private def publicError(
-      error: FirstGameApplicationError
+      error: GameApplicationError
   ): (StatusCode, String, String, Boolean) =
     error match {
-      case _: FirstGameApplicationError.StreamNotFound =>
+      case _: GameApplicationError.StreamNotFound =>
         (StatusCodes.NotFound, "stream-not-found",
           "the requested game does not exist", false)
-      case _: FirstGameApplicationError.StaleClientPosition =>
+      case _: GameApplicationError.StaleClientPosition =>
         (StatusCodes.Conflict, "stale-client-position",
           "the client position is stale; refresh and retry", false)
-      case _: FirstGameApplicationError.SequenceConflict =>
+      case _: GameApplicationError.SequenceConflict =>
         (StatusCodes.Conflict, "sequence-conflict",
           "the game changed while the command was handled", false)
-      case _: FirstGameApplicationError.DuplicateGame =>
+      case _: GameApplicationError.DuplicateGame =>
         (StatusCodes.Conflict, "duplicate-game",
           "the game already exists", false)
-      case _: FirstGameApplicationError.CommandRejected =>
+      case _: GameApplicationError.CommandRejected =>
         (StatusCodes.UnprocessableContent, "command-rejected",
           "the setup rules rejected the command", false)
-      case _: FirstGameApplicationError.BootstrapFailure =>
+      case _: GameApplicationError.BootstrapFailure =>
         (StatusCodes.UnprocessableContent, "bootstrap-failed",
           "the development setup configuration is invalid", false)
       case _ =>
@@ -212,17 +212,17 @@ final class FirstGameRoutes(
 
   private def validateActor(
       selector: String,
-      command: FirstGameCommand
+      command: GameCommand
   ): Either[HttpInputError, Unit] = {
     val actor = command match {
-      case FirstGameCommand.PlacePawn(playerId, _) => Some(playerId.value)
-      case FirstGameCommand.ChooseAdviser(playerId, _) => Some(playerId.value)
-      case FirstGameCommand.TakeWealth(playerId, _) => Some(playerId.value)
-      case FirstGameCommand.EndWake(playerId) => Some(playerId.value)
-      case FirstGameCommand.Travel(playerId, _) => Some(playerId.value)
-      case FirstGameCommand.BeginSearch(playerId, _) => Some(playerId.value)
-      case FirstGameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
-      case FirstGameCommand.Begin(_) => None
+      case GameCommand.PlacePawn(playerId, _) => Some(playerId.value)
+      case GameCommand.ChooseAdviser(playerId, _) => Some(playerId.value)
+      case GameCommand.TakeWealth(playerId, _) => Some(playerId.value)
+      case GameCommand.EndWake(playerId) => Some(playerId.value)
+      case GameCommand.Travel(playerId, _) => Some(playerId.value)
+      case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
+      case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
+      case GameCommand.Begin(_) => None
     }
     actor match {
       case Some(value) if value != selector =>
@@ -250,7 +250,7 @@ final class FirstGameRoutes(
       status,
       entity = HttpEntity(
         ContentTypes.`application/json`,
-        FirstGameHttpWire.encodeError(code, message)
+        GameHttpWire.encodeError(code, message)
       )
     )
 }

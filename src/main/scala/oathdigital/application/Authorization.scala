@@ -53,27 +53,27 @@ final case class ProjectionAuthorization(
 final case class AuthorizedPlayer private (
     access: GameAccessContext.Player
 ) {
-  def placePawn(siteId: SiteId): FirstGameCommand =
-    FirstGameCommand.PlacePawn(access.playerId, siteId)
+  def placePawn(siteId: SiteId): GameCommand =
+    GameCommand.PlacePawn(access.playerId, siteId)
 
-  def chooseAdviser(adviserId: DenizenId): FirstGameCommand =
-    FirstGameCommand.ChooseAdviser(access.playerId, adviserId)
+  def chooseAdviser(adviserId: DenizenId): GameCommand =
+    GameCommand.ChooseAdviser(access.playerId, adviserId)
 
-  def takeWealth(resource: oathdigital.setup.WakeResource): FirstGameCommand =
-    FirstGameCommand.TakeWealth(access.playerId, resource)
+  def takeWealth(resource: oathdigital.setup.WakeResource): GameCommand =
+    GameCommand.TakeWealth(access.playerId, resource)
 
-  def endWake: FirstGameCommand =
-    FirstGameCommand.EndWake(access.playerId)
+  def endWake: GameCommand =
+    GameCommand.EndWake(access.playerId)
 
-  def travel(destination: SiteId): FirstGameCommand =
-    FirstGameCommand.Travel(access.playerId, destination)
+  def travel(destination: SiteId): GameCommand =
+    GameCommand.Travel(access.playerId, destination)
 
-  def beginSearch(source: SearchSource): FirstGameCommand =
-    FirstGameCommand.BeginSearch(access.playerId, source)
+  def beginSearch(source: SearchSource): GameCommand =
+    GameCommand.BeginSearch(access.playerId, source)
 
   def completeSearch(decision: DecisionId, kept: WorldCardId,
-      discarded: Vector[WorldCardId], placement: SearchPlacement): FirstGameCommand =
-    FirstGameCommand.CompleteSearch(
+      discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
+    GameCommand.CompleteSearch(
       access.playerId, decision, kept, discarded, placement)
 }
 

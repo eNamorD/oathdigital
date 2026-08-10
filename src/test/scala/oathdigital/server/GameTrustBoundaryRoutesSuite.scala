@@ -14,7 +14,7 @@ import oathdigital.application._
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.CatalogRef
 
-class FirstGameTrustBoundaryRoutesSuite extends munit.FunSuite {
+class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
   private val catalog = ExecutableCatalog(
     "test",
     CatalogRef("test", "1"),
@@ -41,9 +41,9 @@ class FirstGameTrustBoundaryRoutesSuite extends munit.FunSuite {
           records: Vector[String]
       ) = Left(RepositoryFailure.StorageFailure(secret))
     }
-    val gateway = new FirstGameServerGateway(
-      new FirstGameApplicationService(catalog, repository),
-      new FirstGameProjector(catalog),
+    val gateway = new GameServerGateway(
+      new GameApplicationService(catalog, repository),
+      new GameProjector(catalog),
       new DevelopmentFirstGamePlanFactory(catalog)
     )
     val binding = Await.result(

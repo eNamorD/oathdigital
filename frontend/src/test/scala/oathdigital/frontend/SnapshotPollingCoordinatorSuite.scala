@@ -79,7 +79,7 @@ class SnapshotPollingCoordinatorSuite extends FunSuite {
 
     poller.resume(initial)
     clock.fireNext()
-    val offline = FirstGameClientFailure.NetworkFailure("offline")
+    val offline = GameClientFailure.NetworkFailure("offline")
     assert(session.recordFailure(initial, offline))
     assert(poller.complete(initial, continuePolling = false))
     poller.stop()

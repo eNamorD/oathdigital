@@ -37,7 +37,7 @@ its checked-in golden fixture. Complete exile-only first-game setup uses a
 separate v2 envelope/vocabulary (`setup.first-game-started`,
 `setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
 `setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
-`FirstGameEventWire` is the v2 reader/writer. This explicit dual-codec policy
+`GameEventWire` is the v2 reader/writer. This explicit dual-codec policy
 avoids silently defaulting new authoritative fields when reading v1 history.
 No automatic v1-to-v2 migration is claimed because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes

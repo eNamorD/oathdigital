@@ -85,15 +85,15 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
         "game-1", AuthenticatedUser(playerUser)).toOption.get
       assertEquals(
         actor.placePawn(SiteId("site-1")),
-        FirstGameCommand.PlacePawn(PlayerId("p1"), SiteId("site-1"))
+        GameCommand.PlacePawn(PlayerId("p1"), SiteId("site-1"))
       )
       assertEquals(
         actor.chooseAdviser(DenizenId("9")),
-        FirstGameCommand.ChooseAdviser(PlayerId("p1"), DenizenId("9"))
+        GameCommand.ChooseAdviser(PlayerId("p1"), DenizenId("9"))
       )
       assertEquals(
         actor.travel(SiteId("site-2")),
-        FirstGameCommand.Travel(PlayerId("p1"), SiteId("site-2"))
+        GameCommand.Travel(PlayerId("p1"), SiteId("site-2"))
       )
       assertEquals(
         service.authorizeCommand("game-1", AuthenticatedUser(ownerUser)),

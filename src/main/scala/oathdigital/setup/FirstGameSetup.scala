@@ -67,7 +67,7 @@ sealed trait FirstGameSetupEvent extends Product with Serializable
 object FirstGameSetupEvent {
   final case class FirstGameStarted(plan: FirstGameSetupPlan)
       extends FirstGameSetupEvent
-  final case class FirstGamePawnPlaced(playerId: PlayerId, siteId: SiteId)
+  final case class GamePawnPlaced(playerId: PlayerId, siteId: SiteId)
       extends FirstGameSetupEvent
   final case class StartingAdviserChosen(
       playerId: PlayerId,
@@ -333,7 +333,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           else
             transition(
               state,
-              Vector(FirstGamePawnPlaced(command.playerId, command.siteId)),
+              Vector(GamePawnPlaced(command.playerId, command.siteId)),
               AwaitingAdviser(command.playerId)
             )
         }
@@ -350,7 +350,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
             validatePlan(plan).map(_ => InProgress(plan, Vector.empty, Vector.empty))
           case _ => Left(GameAlreadyExists)
         }
-      case FirstGamePawnPlaced(playerId, siteId) =>
+      case GamePawnPlaced(playerId, siteId) =>
         state match {
           case progress: InProgress
               if expectedAdviserPlayer(progress).isEmpty &&

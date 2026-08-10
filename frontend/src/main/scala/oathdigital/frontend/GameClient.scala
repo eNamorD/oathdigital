@@ -11,7 +11,7 @@ trait JsonTransport {
       method: String,
       url: String,
       body: Option[String]
-  ): Future[Either[FirstGameClientFailure, TransportResponse]]
+  ): Future[Either[GameClientFailure, TransportResponse]]
 }
 
 final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
@@ -22,8 +22,8 @@ final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
       method: String,
       url: String,
       body: Option[String]
-  ): Future[Either[FirstGameClientFailure, TransportResponse]] = {
-    val promise = Promise[Either[FirstGameClientFailure, TransportResponse]]()
+  ): Future[Either[GameClientFailure, TransportResponse]] = {
+    val promise = Promise[Either[GameClientFailure, TransportResponse]]()
     val xhr = new dom.XMLHttpRequest()
     xhr.open(method, url)
     xhr.timeout = timeoutMillis.toDouble
@@ -34,17 +34,17 @@ final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
         xhr.responseText
       )))
     xhr.onerror = _ =>
-      promise.trySuccess(Left(FirstGameClientFailure.NetworkFailure(
+      promise.trySuccess(Left(GameClientFailure.NetworkFailure(
         s"$method $url failed"
       )))
     xhr.ontimeout = _ =>
-      promise.trySuccess(Left(FirstGameClientFailure.RequestTimedOut(
+      promise.trySuccess(Left(GameClientFailure.RequestTimedOut(
         method,
         url,
         timeoutMillis
       )))
     xhr.onabort = _ =>
-      promise.trySuccess(Left(FirstGameClientFailure.RequestAborted(
+      promise.trySuccess(Left(GameClientFailure.RequestAborted(
         method,
         url
       )))
@@ -56,26 +56,26 @@ final class SameOriginJsonTransport(timeoutMillis: Int = 10000)
   }
 }
 
-final case class FirstGamePlayer(
+final case class GamePlayer(
     playerId: String,
     displayName: String,
     role: String,
     color: PlayerColorToken
 )
-final case class FirstGameSiteCard(denizenId: String, label: String)
-final case class FirstGameSiteRelics(facedownCount: Int)
-final case class FirstGameSite(
+final case class GameSiteCard(denizenId: String, label: String)
+final case class GameSiteRelics(facedownCount: Int)
+final case class GameSite(
     siteId: String,
     label: String,
     looseFavor: Int,
     looseSecrets: Int,
     denizenCapacity: Int,
     relicCapacity: Int,
-    denizens: Vector[FirstGameSiteCard],
-    relics: FirstGameSiteRelics
+    denizens: Vector[GameSiteCard],
+    relics: GameSiteRelics
 )
-final case class FirstGameRegion(regionId: String, sites: Vector[FirstGameSite])
-final case class FirstGamePawn(playerId: String, siteId: String)
+final case class GameRegion(regionId: String, sites: Vector[GameSite])
+final case class GamePawn(playerId: String, siteId: String)
 final case class AdviserChoice(adviserId: String, label: String)
 final case class ActivePlayerResources(
     favor: Int,
@@ -102,14 +102,14 @@ final case class PendingSearch(
     replaceableAdvisers: Vector[String],
     replaceableSiteCards: Vector[String]
 )
-final case class FirstGameProjection(
+final case class GameProjection(
     gameId: String,
     nextSequence: Long,
     phase: String,
     activeParticipantId: Option[String],
-    players: Vector[FirstGamePlayer],
-    world: Vector[FirstGameRegion],
-    pawnLocations: Vector[FirstGamePawn],
+    players: Vector[GamePlayer],
+    world: Vector[GameRegion],
+    pawnLocations: Vector[GamePawn],
     legalControls: Set[String],
     ready: Boolean,
     completed: Boolean,
@@ -123,19 +123,19 @@ final case class FirstGameProjection(
     pendingSearch: Option[PendingSearch] = None
 )
 
-sealed trait FirstGameCommand
-object FirstGameCommand {
+sealed trait GameCommand
+object GameCommand {
   final case class PlacePawn(playerId: String, siteId: String)
-      extends FirstGameCommand
+      extends GameCommand
   final case class ChooseAdviser(playerId: String, adviserId: String)
-      extends FirstGameCommand
+      extends GameCommand
   final case class TakeWealth(playerId: String, resource: String)
-      extends FirstGameCommand
-  final case class EndWake(playerId: String) extends FirstGameCommand
+      extends GameCommand
+  final case class EndWake(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
-      extends FirstGameCommand
+      extends GameCommand
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
-      extends FirstGameCommand
+      extends GameCommand
   final case class CompleteSearch(
       playerId: String,
       decisionId: String,
@@ -144,38 +144,38 @@ object FirstGameCommand {
       discarded: Vector[(String, String)],
       placement: String,
       replace: Option[(String, String)] = None
-  ) extends FirstGameCommand
+  ) extends GameCommand
 }
 
-sealed trait FirstGameClientFailure {
+sealed trait GameClientFailure {
   def message: String
 }
-object FirstGameClientFailure {
-  final case class NetworkFailure(message: String) extends FirstGameClientFailure
+object GameClientFailure {
+  final case class NetworkFailure(message: String) extends GameClientFailure
   final case class RequestTimedOut(method: String, url: String, millis: Int)
-      extends FirstGameClientFailure {
+      extends GameClientFailure {
     override val message: String =
       s"$method $url timed out after $millis ms"
   }
   final case class RequestAborted(method: String, url: String)
-      extends FirstGameClientFailure {
+      extends GameClientFailure {
     override val message: String = s"$method $url was aborted"
   }
   final case class DecodeFailure(path: String, detail: String)
-      extends FirstGameClientFailure {
+      extends GameClientFailure {
     override val message: String = s"$path: $detail"
   }
   final case class HttpFailure(status: Int, code: String, detail: String)
-      extends FirstGameClientFailure {
+      extends GameClientFailure {
     override val message: String = s"HTTP $status $code: $detail"
   }
   final case class StalePosition(detail: String)
-      extends FirstGameClientFailure {
+      extends GameClientFailure {
     override val message: String =
       s"Stale position; refreshed without retrying. $detail"
   }
 
-  def isTransient(failure: FirstGameClientFailure): Boolean = failure match {
+  def isTransient(failure: GameClientFailure): Boolean = failure match {
     case _: NetworkFailure | _: RequestTimedOut | _: RequestAborted => true
     case _ => false
   }
@@ -191,26 +191,26 @@ final case class FirstGameBootstrap(
     firstPlayer: String
 )
 
-trait FirstGameClient {
+trait GameClient {
   def bootstrap(
       gameId: String,
       selectedPlayerId: String,
       config: FirstGameBootstrap
-  ): Future[Either[FirstGameClientFailure, FirstGameProjection]]
+  ): Future[Either[GameClientFailure, GameProjection]]
   def load(
       gameId: String,
       selectedPlayerId: String
-  ): Future[Either[FirstGameClientFailure, FirstGameProjection]]
+  ): Future[Either[GameClientFailure, GameProjection]]
   def submit(
       gameId: String,
       selectedPlayerId: String,
       expectedNextSequence: Long,
-      command: FirstGameCommand
-  ): Future[Either[FirstGameClientFailure, FirstGameProjection]]
+      command: GameCommand
+  ): Future[Either[GameClientFailure, GameProjection]]
 }
 
-final class HttpFirstGameClient(transport: JsonTransport)
-    extends FirstGameClient {
+final class HttpGameClient(transport: JsonTransport)
+    extends GameClient {
   override def bootstrap(
       gameId: String,
       selectedPlayerId: String,
@@ -220,7 +220,7 @@ final class HttpFirstGameClient(transport: JsonTransport)
       "POST",
       s"/api/dev/first-games/${encode(gameId)}/bootstrap?playerId=" +
         encode(selectedPlayerId),
-      Some(FirstGameJson.encodeBootstrap(config))
+      Some(GameJson.encodeBootstrap(config))
     )
 
   override def load(gameId: String, selectedPlayerId: String) =
@@ -235,31 +235,31 @@ final class HttpFirstGameClient(transport: JsonTransport)
       gameId: String,
       selectedPlayerId: String,
       expectedNextSequence: Long,
-      command: FirstGameCommand
+      command: GameCommand
   ) =
     send(
       "POST",
       s"/api/dev/first-games/${encode(gameId)}/commands?playerId=" +
         encode(selectedPlayerId),
-      Some(FirstGameJson.encodeCommand(expectedNextSequence, command))
+      Some(GameJson.encodeCommand(expectedNextSequence, command))
     )
 
   private def send(method: String, url: String, body: Option[String]) =
     transport.request(method, url, body).map(_.flatMap { response =>
       if (response.status >= 200 && response.status < 300)
-        FirstGameJson.decodeProjection(response.body)
+        GameJson.decodeProjection(response.body)
       else
-        FirstGameJson.decodeError(response.body).fold(
-          _ => Left(FirstGameClientFailure.HttpFailure(
+        GameJson.decodeError(response.body).fold(
+          _ => Left(GameClientFailure.HttpFailure(
             response.status,
             "invalid-error-response",
             response.body
           )),
           error =>
             if (response.status == 409)
-              Left(FirstGameClientFailure.StalePosition(error._2))
+              Left(GameClientFailure.StalePosition(error._2))
             else
-              Left(FirstGameClientFailure.HttpFailure(
+              Left(GameClientFailure.HttpFailure(
                 response.status,
                 error._1,
                 error._2
@@ -271,7 +271,7 @@ final class HttpFirstGameClient(transport: JsonTransport)
     js.URIUtils.encodeURIComponent(value)
 }
 
-object FirstGameJson {
+object GameJson {
   private val MaxJsonSafeInteger = 9007199254740991d
 
   def encodeBootstrap(config: FirstGameBootstrap): String =
@@ -286,40 +286,40 @@ object FirstGameJson {
       firstPlayer = config.firstPlayer
     ))
 
-  def encodeCommand(sequence: Long, command: FirstGameCommand): String = {
+  def encodeCommand(sequence: Long, command: GameCommand): String = {
     val payload = command match {
-      case FirstGameCommand.PlacePawn(player, site) =>
+      case GameCommand.PlacePawn(player, site) =>
         js.Dynamic.literal(
           `type` = "placePawn",
           playerId = player,
           siteId = site
         )
-      case FirstGameCommand.ChooseAdviser(player, adviser) =>
+      case GameCommand.ChooseAdviser(player, adviser) =>
         js.Dynamic.literal(
           `type` = "chooseAdviser",
           playerId = player,
           adviserId = adviser
         )
-      case FirstGameCommand.TakeWealth(player, resource) =>
+      case GameCommand.TakeWealth(player, resource) =>
         js.Dynamic.literal(
           `type` = "takeWealth",
           playerId = player,
           resource = resource
         )
-      case FirstGameCommand.EndWake(player) =>
+      case GameCommand.EndWake(player) =>
         js.Dynamic.literal(`type` = "endWake", playerId = player)
-      case FirstGameCommand.Travel(player, destination) =>
+      case GameCommand.Travel(player, destination) =>
         js.Dynamic.literal(
           `type` = "travel",
           playerId = player,
           destinationSiteId = destination
         )
-      case FirstGameCommand.BeginSearch(player, source, region) =>
+      case GameCommand.BeginSearch(player, source, region) =>
         val value = js.Dynamic.literal(
           `type` = "beginSearch", playerId = player, source = source)
         region.foreach(value.updateDynamic("region")(_))
         value
-      case FirstGameCommand.CompleteSearch(player, decision, keptId, keptKind,
+      case GameCommand.CompleteSearch(player, decision, keptId, keptKind,
           discarded, placement, replace) =>
         val placementValue = js.Dynamic.literal(`kind` = placement)
         replace.foreach { case (kind, id) => placementValue.updateDynamic("replace")(
@@ -342,7 +342,7 @@ object FirstGameJson {
 
   def decodeProjection(
       json: String
-  ): Either[FirstGameClientFailure, FirstGameProjection] = safely {
+  ): Either[GameClientFailure, GameProjection] = safely {
     parseObject(json).flatMap { root =>
       for {
         game <- string(root, "gameId", "$")
@@ -356,7 +356,7 @@ object FirstGameJson {
               name <- string(item, "displayName", path)
               role <- string(item, "role", path)
               color <- string(item, "colorToken", path)
-            } yield FirstGamePlayer(id, name, role, colorToken(color))
+            } yield GamePlayer(id, name, role, colorToken(color))
         })
         world <- array(root, "world", "$").flatMap(traverse(_, "world") {
           (item, path) =>
@@ -376,7 +376,7 @@ object FirstGameJson {
                         for {
                           id <- string(denizen, "denizenId", denizenPath)
                           name <- string(denizen, "label", denizenPath)
-                        } yield FirstGameSiteCard(id, name)
+                        } yield GameSiteCard(id, name)
                       })
                     relicsValue <- field(site, "relics", sitePath)
                     relicsObject <- objectValue(
@@ -388,7 +388,7 @@ object FirstGameJson {
                       "facedownCount",
                       s"$sitePath.relics"
                     )
-                  } yield FirstGameSite(
+                  } yield GameSite(
                     siteId,
                     label,
                     looseFavor,
@@ -396,17 +396,17 @@ object FirstGameJson {
                     denizenCapacity,
                     relicCapacity,
                     denizens,
-                    FirstGameSiteRelics(facedownCount)
+                    GameSiteRelics(facedownCount)
                   )
               })
-            } yield FirstGameRegion(id, sites)
+            } yield GameRegion(id, sites)
         })
         pawns <- array(root, "pawnLocations", "$").flatMap(
           traverse(_, "pawnLocations") { (item, path) =>
             for {
               player <- string(item, "playerId", path)
               site <- string(item, "siteId", path)
-            } yield FirstGamePawn(player, site)
+            } yield GamePawn(player, site)
           })
         controls <- stringArray(root, "legalControls", "$")
         ready <- bool(root, "ready", "$")
@@ -443,7 +443,7 @@ object FirstGameJson {
           case None => Right(false)
           case Some(value) if js.typeOf(value) == "boolean" =>
             Right(value.asInstanceOf[Boolean])
-          case _ => Left(FirstGameClientFailure.DecodeFailure(
+          case _ => Left(GameClientFailure.DecodeFailure(
             "$.actionSelectionOpen", "expected boolean"))
         }
         actions <- optionalField(root, "actionFamilies").flatMap {
@@ -485,7 +485,7 @@ object FirstGameJson {
             siteCards <- stringArray(obj, "replaceableSiteCards", "$.pendingSearch")
           } yield Some(PendingSearch(decision, cards, advisers, siteCards)) }
         }
-      } yield FirstGameProjection(
+      } yield GameProjection(
         game,
         sequence,
         phase,
@@ -510,7 +510,7 @@ object FirstGameJson {
 
   def decodeError(
       json: String
-  ): Either[FirstGameClientFailure, (String, String)] =
+  ): Either[GameClientFailure, (String, String)] =
     safely(parseObject(json).flatMap(root =>
       for {
         code <- string(root, "error", "$")
@@ -526,11 +526,11 @@ object FirstGameJson {
       case _ => PlayerColorToken.Neutral
     }
 
-  private def safely[A](decode: => Either[FirstGameClientFailure, A]) =
+  private def safely[A](decode: => Either[GameClientFailure, A]) =
     try decode
     catch {
       case NonFatal(error) =>
-        Left(FirstGameClientFailure.DecodeFailure(
+        Left(GameClientFailure.DecodeFailure(
           "$",
           Option(error.getMessage).getOrElse("malformed projection")
         ))
@@ -538,11 +538,11 @@ object FirstGameJson {
 
   private def parseObject(
       json: String
-  ): Either[FirstGameClientFailure, js.Dynamic] =
+  ): Either[GameClientFailure, js.Dynamic] =
     try objectValue(js.JSON.parse(json), "$")
     catch {
       case NonFatal(error) =>
-        Left(FirstGameClientFailure.DecodeFailure(
+        Left(GameClientFailure.DecodeFailure(
           "$",
           Option(error.getMessage).getOrElse("malformed JSON")
         ))
@@ -551,23 +551,23 @@ object FirstGameJson {
   private def objectValue(
       value: js.Dynamic,
       path: String
-  ): Either[FirstGameClientFailure, js.Dynamic] =
+  ): Either[GameClientFailure, js.Dynamic] =
     if (
       value != null &&
       js.typeOf(value) == "object" &&
       !js.Array.isArray(value)
     ) Right(value)
-    else Left(FirstGameClientFailure.DecodeFailure(path, "expected object"))
+    else Left(GameClientFailure.DecodeFailure(path, "expected object"))
 
   private def field(
       value: js.Dynamic,
       name: String,
       path: String
-  ): Either[FirstGameClientFailure, js.Dynamic] =
+  ): Either[GameClientFailure, js.Dynamic] =
     objectValue(value, path).flatMap { objectValue =>
       val result = objectValue.selectDynamic(name)
       if (js.isUndefined(result))
-        Left(FirstGameClientFailure.DecodeFailure(
+        Left(GameClientFailure.DecodeFailure(
           s"$path.$name",
           "missing field"
         ))
@@ -578,7 +578,7 @@ object FirstGameJson {
     field(value, name, path).flatMap { result =>
       if (js.typeOf(result) == "string" && result.asInstanceOf[String].nonEmpty)
         Right(result.asInstanceOf[String])
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name",
         "expected non-empty string"
       ))
@@ -589,7 +589,7 @@ object FirstGameJson {
       if (result == null) Right(None)
       else if (js.typeOf(result) == "string")
         Right(Some(result.asInstanceOf[String]))
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name",
         "expected string or null"
       ))
@@ -603,7 +603,7 @@ object FirstGameJson {
         result.asInstanceOf[Double] <= MaxJsonSafeInteger &&
         result.asInstanceOf[Double].isWhole
       ) Right(result.asInstanceOf[Double].toLong)
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name",
         "expected non-negative JSON-safe integer"
       ))
@@ -616,14 +616,14 @@ object FirstGameJson {
           result.asInstanceOf[Double] >= 0 &&
           result.asInstanceOf[Double] <= Int.MaxValue)
         Right(result.asInstanceOf[Double].toInt)
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name", "expected non-negative integer"))
     }
 
   private def optionalField(
       value: js.Dynamic,
       name: String
-  ): Either[FirstGameClientFailure, Option[js.Dynamic]] =
+  ): Either[GameClientFailure, Option[js.Dynamic]] =
     objectValue(value, "$").map { obj =>
       val result = obj.selectDynamic(name)
       if (js.isUndefined(result)) None else Some(result)
@@ -633,7 +633,7 @@ object FirstGameJson {
     field(value, name, path).flatMap { result =>
       if (js.typeOf(result) == "boolean")
         Right(result.asInstanceOf[Boolean])
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name",
         "expected boolean"
       ))
@@ -643,7 +643,7 @@ object FirstGameJson {
     field(value, name, path).flatMap { result =>
       if (js.Array.isArray(result))
         Right(result.asInstanceOf[js.Array[js.Dynamic]].toVector)
-      else Left(FirstGameClientFailure.DecodeFailure(
+      else Left(GameClientFailure.DecodeFailure(
         s"$path.$name",
         "expected array"
       ))
@@ -653,7 +653,7 @@ object FirstGameJson {
     array(value, name, path).flatMap { values =>
       traverse(values, name) { (item, itemPath) =>
         if (js.typeOf(item) == "string") Right(item.asInstanceOf[String])
-        else Left(FirstGameClientFailure.DecodeFailure(
+        else Left(GameClientFailure.DecodeFailure(
           itemPath,
           "expected string"
         ))
@@ -663,9 +663,9 @@ object FirstGameJson {
   private def traverse[A](
       values: Vector[js.Dynamic],
       name: String
-  )(decode: (js.Dynamic, String) => Either[FirstGameClientFailure, A]) =
+  )(decode: (js.Dynamic, String) => Either[GameClientFailure, A]) =
     values.zipWithIndex.foldLeft[
-      Either[FirstGameClientFailure, Vector[A]]
+      Either[GameClientFailure, Vector[A]]
     ](Right(Vector.empty)) { case (result, (value, index)) =>
       result.flatMap(accumulated =>
         decode(value, s"$$.$name[$index]").map(accumulated :+ _))

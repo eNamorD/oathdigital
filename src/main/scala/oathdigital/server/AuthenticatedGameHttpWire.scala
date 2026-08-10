@@ -7,28 +7,28 @@ import oathdigital.application.{
   FirstGameBootstrapConfig
 }
 import oathdigital.model._
-import oathdigital.serialization.FirstGameEventWire
+import oathdigital.serialization.GameEventWire
 import oathdigital.setup.{PlayerColor, WakeResource}
 
-sealed trait FirstGameIntent extends Product with Serializable
-object FirstGameIntent {
-  final case class PlacePawn(siteId: SiteId) extends FirstGameIntent
-  final case class ChooseAdviser(adviserId: DenizenId) extends FirstGameIntent
-  final case class TakeWealth(resource: WakeResource) extends FirstGameIntent
-  case object EndWake extends FirstGameIntent
-  final case class Travel(destinationSiteId: SiteId) extends FirstGameIntent
-  final case class BeginSearch(source: SearchSource) extends FirstGameIntent
+sealed trait GameIntent extends Product with Serializable
+object GameIntent {
+  final case class PlacePawn(siteId: SiteId) extends GameIntent
+  final case class ChooseAdviser(adviserId: DenizenId) extends GameIntent
+  final case class TakeWealth(resource: WakeResource) extends GameIntent
+  case object EndWake extends GameIntent
+  final case class Travel(destinationSiteId: SiteId) extends GameIntent
+  final case class BeginSearch(source: SearchSource) extends GameIntent
   final case class CompleteSearch(
       decision: DecisionId,
       kept: WorldCardId,
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
-  ) extends FirstGameIntent
+  ) extends GameIntent
 }
 
 final case class AuthenticatedCommandRequest(
     expectedNextSequence: Long,
-    intent: FirstGameIntent
+    intent: GameIntent
 )
 
 final case class AuthenticatedBootstrapRequest(
@@ -36,7 +36,7 @@ final case class AuthenticatedBootstrapRequest(
     config: FirstGameBootstrapConfig
 )
 
-object AuthenticatedFirstGameHttpWire {
+object AuthenticatedGameHttpWire {
   def decodeBootstrap(
       json: String
   ): Either[HttpInputError, AuthenticatedBootstrapRequest] =
@@ -105,22 +105,22 @@ object AuthenticatedFirstGameHttpWire {
 
   private def decodeIntent(
       obj: ujson.Obj
-  ): Either[HttpInputError, FirstGameIntent] =
+  ): Either[HttpInputError, GameIntent] =
     stringField(obj, "type", "$.intent").flatMap {
       case "placePawn" =>
         exactFields(obj, Set("type", "siteId"), "$.intent")
           .flatMap(_ => stringField(obj, "siteId", "$.intent"))
-          .map(value => FirstGameIntent.PlacePawn(SiteId(value)))
+          .map(value => GameIntent.PlacePawn(SiteId(value)))
       case "chooseAdviser" =>
         exactFields(obj, Set("type", "adviserId"), "$.intent")
           .flatMap(_ => stringField(obj, "adviserId", "$.intent"))
-          .map(value => FirstGameIntent.ChooseAdviser(DenizenId(value)))
+          .map(value => GameIntent.ChooseAdviser(DenizenId(value)))
       case "takeWealth" =>
         exactFields(obj, Set("type", "resource"), "$.intent")
           .flatMap(_ => stringField(obj, "resource", "$.intent"))
           .flatMap {
-            case "favor" => Right(FirstGameIntent.TakeWealth(WakeResource.Favor))
-            case "secret" => Right(FirstGameIntent.TakeWealth(WakeResource.Secret))
+            case "favor" => Right(GameIntent.TakeWealth(WakeResource.Favor))
+            case "secret" => Right(GameIntent.TakeWealth(WakeResource.Secret))
             case other => Left(HttpInputError(
               "$.intent.resource",
               s"unknown wealth resource '$other'"
@@ -128,20 +128,20 @@ object AuthenticatedFirstGameHttpWire {
           }
       case "endWake" =>
         exactFields(obj, Set("type"), "$.intent").map(_ =>
-          FirstGameIntent.EndWake)
+          GameIntent.EndWake)
       case "travel" =>
         exactFields(obj, Set("type", "destinationSiteId"), "$.intent")
           .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))
-          .map(value => FirstGameIntent.Travel(SiteId(value)))
+          .map(value => GameIntent.Travel(SiteId(value)))
       case "beginSearch" =>
         exactFields(obj, Set("type", "source", "region"), "$.intent")
           .flatMap(_ => stringField(obj, "source", "$.intent"))
           .flatMap {
-            case "world" => Right(FirstGameIntent.BeginSearch(SearchSource.WorldDeck))
+            case "world" => Right(GameIntent.BeginSearch(SearchSource.WorldDeck))
             case "regional-discard" => stringField(obj, "region", "$.intent")
               .flatMap(value => Region.all.find(_.key == value).toRight(
                 HttpInputError("$.intent.region", "unknown region")))
-              .map(region => FirstGameIntent.BeginSearch(
+              .map(region => GameIntent.BeginSearch(
                 SearchSource.RegionalDiscard(region)))
             case _ => Left(HttpInputError("$.intent.source", "unknown Search source"))
           }
@@ -158,7 +158,7 @@ object AuthenticatedFirstGameHttpWire {
           }
           placementValue <- field(obj, "placement", "$.intent")
           placement <- decodePlacement(placementValue, "$.intent.placement")
-        } yield FirstGameIntent.CompleteSearch(
+        } yield GameIntent.CompleteSearch(
           DecisionId(decision), kept, discarded, placement) }
       case other => Left(HttpInputError(
         "$.intent.type",
@@ -226,7 +226,7 @@ object AuthenticatedFirstGameHttpWire {
   private def safeSequence(value: ujson.Value, path: String) = value match {
     case ujson.Num(number)
         if number.isFinite && number == Math.rint(number) && number >= 0 &&
-          number <= FirstGameEventWire.MaxSafeSequence => Right(number.toLong)
+          number <= GameEventWire.MaxSafeSequence => Right(number.toLong)
     case _: ujson.Num => Left(HttpInputError(path, "expected a safe non-negative integer"))
     case _ => Left(HttpInputError(path, "expected a number"))
   }

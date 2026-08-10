@@ -45,10 +45,10 @@ object ServerRoutes {
         blockingExecutionContext
       )
       val csrf = new SameOriginCsrfProtection(configuration.publicOrigin)
-      development ~ new AuthenticatedFirstGameRoutes(
+      development ~ new AuthenticatedGameRoutes(
         authenticator,
         csrf,
-        runtime.authenticatedFirstGame,
+        runtime.authenticatedGame,
         blockingExecutionContext
       ).route
     }

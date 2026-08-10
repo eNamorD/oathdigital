@@ -214,12 +214,12 @@ class TravelSuite extends munit.FunSuite {
   test("legal projection omits unaffordable Pass-consent and private routes") {
     val ready = act(supply = 2)
     val player = active(ready)
-    val own = new oathdigital.application.FirstGameProjector(catalog).project(
-      "travel", oathdigital.application.LoadedFirstGame(Ready(ready), 9),
+    val own = new oathdigital.application.GameProjector(catalog).project(
+      "travel", oathdigital.application.LoadedGame(Ready(ready), 9),
       player.player)
     val other = ready.game.current.players.find(_.player != player.player).get
-    val hidden = new oathdigital.application.FirstGameProjector(catalog).project(
-      "travel", oathdigital.application.LoadedFirstGame(Ready(ready), 9),
+    val hidden = new oathdigital.application.GameProjector(catalog).project(
+      "travel", oathdigital.application.LoadedGame(Ready(ready), 9),
       other.player)
     assert(own.legalTravelDestinations.nonEmpty)
     assert(own.legalTravelDestinations.forall(_.supplyCost <= 2))

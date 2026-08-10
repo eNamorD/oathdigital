@@ -7,8 +7,8 @@ import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.server.{
   FirstGameBootstrapRequest,
-  FirstGameHttpWire,
-  FirstGameServerGateway
+  GameHttpWire,
+  GameServerGateway
 }
 import oathdigital.setup.{
   FirstGameSetupCommand,
@@ -69,10 +69,10 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
       .resolve("journal")
     val repository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
-    val service = new FirstGameApplicationService(catalog, repository)
-    val gateway = new FirstGameServerGateway(
+    val service = new GameApplicationService(catalog, repository)
+    val gateway = new GameServerGateway(
       service,
-      new FirstGameProjector(catalog),
+      new GameProjector(catalog),
       new DevelopmentFirstGamePlanFactory(catalog)
     )
     val projection =
@@ -82,7 +82,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
         FirstGameBootstrapRequest(0L, config)
       ).toOption.get
       finally repository.close()
-    val json = FirstGameHttpWire.encodeProjection(projection)
+    val json = GameHttpWire.encodeProjection(projection)
 
     assertEquals(projection.nextSequence, 1L)
     assertEquals(projection.phase, "awaiting-pawn")
@@ -94,7 +94,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
 
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {
-      val loaded = new FirstGameApplicationService(catalog, reopened)
+      val loaded = new GameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get
       assertEquals(loaded.nextSequence, 1L)
       assert(loaded.state.isInstanceOf[FirstGameSetupState.InProgress])

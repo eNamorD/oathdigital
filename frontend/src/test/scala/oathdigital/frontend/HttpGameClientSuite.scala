@@ -5,7 +5,7 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-class HttpFirstGameClientSuite extends FunSuite {
+class HttpGameClientSuite extends FunSuite {
   private val bootstrap = FirstGameBootstrap(
     Vector(
       BootstrapPlayer("red-exile", "red-lineage", "red"),
@@ -19,7 +19,7 @@ class HttpFirstGameClientSuite extends FunSuite {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(sequence = 1)))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
 
     client.bootstrap("new game", "red-exile", bootstrap).map { result =>
       assertEquals(result.toOption.get.nextSequence, 1L)
@@ -50,14 +50,14 @@ class HttpFirstGameClientSuite extends FunSuite {
         choices = false
       )))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
 
     client
       .submit(
         "game-1",
         "red-exile",
         1L,
-        FirstGameCommand.PlacePawn("red-exile", opaqueSite)
+        GameCommand.PlacePawn("red-exile", opaqueSite)
       )
       .flatMap { pawn =>
         val adviser = pawn.toOption.get.privateAdviserChoices.head
@@ -66,7 +66,7 @@ class HttpFirstGameClientSuite extends FunSuite {
           "game-1",
           "red-exile",
           pawn.toOption.get.nextSequence,
-          FirstGameCommand.ChooseAdviser("red-exile", adviser.adviserId)
+          GameCommand.ChooseAdviser("red-exile", adviser.adviserId)
         )
       }
       .map { _ =>
@@ -79,13 +79,13 @@ class HttpFirstGameClientSuite extends FunSuite {
   }
 
   test("Wake commands and action-selection projection are deterministic") {
-    val wealth = FirstGameJson.encodeCommand(
+    val wealth = GameJson.encodeCommand(
       8L,
-      FirstGameCommand.TakeWealth("red-exile", "favor")
+      GameCommand.TakeWealth("red-exile", "favor")
     )
-    val end = FirstGameJson.encodeCommand(
+    val end = GameJson.encodeCommand(
       9L,
-      FirstGameCommand.EndWake("red-exile")
+      GameCommand.EndWake("red-exile")
     )
     assert(wealth.contains("\"type\":\"takeWealth\""))
     assert(wealth.contains("\"resource\":\"favor\""))
@@ -108,15 +108,15 @@ class HttpFirstGameClientSuite extends FunSuite {
         "\"actionSelectionOpen\":true," +
         "\"actionFamilies\":[\"Search\",\"Travel\"]"
     )
-    val projection = FirstGameJson.decodeProjection(json).toOption.get
+    val projection = GameJson.decodeProjection(json).toOption.get
     assert(projection.actionSelectionOpen)
     assertEquals(projection.actionFamilies, Vector("Search", "Travel"))
     assertEquals(projection.activePlayerResources.map(_.supply), Some(7))
   }
 
   test("Travel encodes destination and decodes authoritative legal costs") {
-    val command = FirstGameJson.encodeCommand(10L,
-      FirstGameCommand.Travel("red-exile", "site:b"))
+    val command = GameJson.encodeCommand(10L,
+      GameCommand.Travel("red-exile", "site:b"))
     assert(command.contains("\"type\":\"travel\""))
     assert(command.contains("\"destinationSiteId\":\"site:b\""))
     val json = projectionJson(sequence = 10, choices = false).replace(
@@ -124,14 +124,14 @@ class HttpFirstGameClientSuite extends FunSuite {
       "\"privateAdviserChoices\":[],\"legalTravelDestinations\":[" +
         "{\"siteId\":\"site:b\",\"supplyCost\":2}]"
     )
-    assertEquals(FirstGameJson.decodeProjection(json).toOption.get
+    assertEquals(GameJson.decodeProjection(json).toOption.get
       .legalTravelDestinations,
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
   test("Search encodes only source and decisions and decodes private controls") {
-    val begin = FirstGameJson.encodeCommand(10L,
-      FirstGameCommand.BeginSearch("red-exile", "world", None))
+    val begin = GameJson.encodeCommand(10L,
+      GameCommand.BeginSearch("red-exile", "world", None))
     assert(begin.contains("\"type\":\"beginSearch\""))
     assert(!begin.contains("drawn"))
     val json = projectionJson(sequence = 11, choices = false).replace(
@@ -143,19 +143,19 @@ class HttpFirstGameClientSuite extends FunSuite {
         "\"drawnCards\":[{\"cardId\":\"denizen:a\",\"cardKind\":\"denizen\"," +
         "\"label\":\"A\",\"legalPlacements\":[\"discard\"]}]," +
         "\"replaceableAdvisers\":[],\"replaceableSiteCards\":[]}" )
-    val projection = FirstGameJson.decodeProjection(json).toOption.get
+    val projection = GameJson.decodeProjection(json).toOption.get
     assertEquals(projection.legalSearchSources,
       Vector(LegalSearchSource("world", None, 2)))
     assertEquals(projection.pendingSearch.map(_.drawnCards.map(_.cardId)),
       Some(Vector("denizen:a")))
-    val complete = FirstGameJson.encodeCommand(11L,
-      FirstGameCommand.CompleteSearch("red-exile", "search-10",
+    val complete = GameJson.encodeCommand(11L,
+      GameCommand.CompleteSearch("red-exile", "search-10",
         "denizen:a", "denizen", Vector.empty, "discard"))
     assert(complete.contains("\"decisionId\":\"search-10\""))
   }
 
   test("site detail decoder preserves populated and empty site projections") {
-    val projection = FirstGameJson.decodeProjection(
+    val projection = GameJson.decodeProjection(
       projectionJson(sequence = 2)
     ).toOption.get
     val populated = projection.world.head.sites.head
@@ -168,11 +168,11 @@ class HttpFirstGameClientSuite extends FunSuite {
     assertEquals(
       populated.denizens,
       Vector(
-        FirstGameSiteCard("denizen:z", "Zed"),
-        FirstGameSiteCard("denizen:a", "Able")
+        GameSiteCard("denizen:z", "Zed"),
+        GameSiteCard("denizen:a", "Able")
       )
     )
-    assertEquals(populated.relics, FirstGameSiteRelics(2))
+    assertEquals(populated.relics, GameSiteRelics(2))
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
   }
@@ -185,18 +185,18 @@ class HttpFirstGameClientSuite extends FunSuite {
       )),
       Right(TransportResponse(200, projectionJson(sequence = 2)))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
 
     client
       .submit(
         "game-1",
         "red-exile",
         1L,
-        FirstGameCommand.PlacePawn("red-exile", "site:001")
+        GameCommand.PlacePawn("red-exile", "site:001")
       )
       .flatMap { conflict =>
         assert(conflict.left.toOption.exists(
-          _.isInstanceOf[FirstGameClientFailure.StalePosition]
+          _.isInstanceOf[GameClientFailure.StalePosition]
         ))
         client.load("game-1", "red-exile")
       }
@@ -213,7 +213,7 @@ class HttpFirstGameClientSuite extends FunSuite {
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(sequence = 6)))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
 
     client.load("persisted-game", "blue-exile").map { loaded =>
       assertEquals(loaded.toOption.get.nextSequence, 6L)
@@ -227,10 +227,10 @@ class HttpFirstGameClientSuite extends FunSuite {
 
   test("transient disconnect reconnects by GET at authoritative sequence") {
     val transport = new StubTransport(Vector(
-      Left(FirstGameClientFailure.NetworkFailure("offline")),
+      Left(GameClientFailure.NetworkFailure("offline")),
       Right(TransportResponse(200, projectionJson(sequence = 9)))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val initial = coordinator.switchSession("game-1", "red-exile")
 
@@ -261,14 +261,14 @@ class HttpFirstGameClientSuite extends FunSuite {
   test("reconnect generation rejects late load and command callbacks") {
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val oldLoad = coordinator.switchSession("game-1", "red-exile")
-    val offline = FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000)
+    val offline = GameClientFailure.RequestTimedOut("GET", "/api", 10000)
     assert(coordinator.recordFailure(oldLoad, offline))
 
     val reconnect = coordinator.reconnect()
     assert(!coordinator.accepts(oldLoad))
     assert(!coordinator.recordFailure(
       oldLoad,
-      FirstGameClientFailure.NetworkFailure("late command failure")
+      GameClientFailure.NetworkFailure("late command failure")
     ))
     assertEquals(coordinator.route(
       oldLoad,
@@ -279,17 +279,17 @@ class HttpFirstGameClientSuite extends FunSuite {
   }
 
   test("only transport failures produce disconnected state") {
-    val transient = Vector[FirstGameClientFailure](
-      FirstGameClientFailure.NetworkFailure("offline"),
-      FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000),
-      FirstGameClientFailure.RequestAborted("GET", "/api")
+    val transient = Vector[GameClientFailure](
+      GameClientFailure.NetworkFailure("offline"),
+      GameClientFailure.RequestTimedOut("GET", "/api", 10000),
+      GameClientFailure.RequestAborted("GET", "/api")
     )
-    transient.foreach(error => assert(FirstGameClientFailure.isTransient(error)))
-    assert(!FirstGameClientFailure.isTransient(
-      FirstGameClientFailure.StalePosition("conflict")
+    transient.foreach(error => assert(GameClientFailure.isTransient(error)))
+    assert(!GameClientFailure.isTransient(
+      GameClientFailure.StalePosition("conflict")
     ))
-    assert(!FirstGameClientFailure.isTransient(
-      FirstGameClientFailure.DecodeFailure("$", "bad projection")
+    assert(!GameClientFailure.isTransient(
+      GameClientFailure.DecodeFailure("$", "bad projection")
     ))
   }
 
@@ -298,11 +298,11 @@ class HttpFirstGameClientSuite extends FunSuite {
       Right(TransportResponse(200, """{"gameId":"game-1"}"""))
     ))
 
-    new HttpFirstGameClient(transport)
+    new HttpGameClient(transport)
       .load("game-1", "red-exile")
       .map(result =>
         assert(result.left.toOption.exists(
-          _.isInstanceOf[FirstGameClientFailure.DecodeFailure]
+          _.isInstanceOf[GameClientFailure.DecodeFailure]
         )))
   }
 
@@ -322,15 +322,15 @@ class HttpFirstGameClientSuite extends FunSuite {
     )
 
     malformed.foreach { json =>
-      val result = FirstGameJson.decodeProjection(json)
+      val result = GameJson.decodeProjection(json)
       assert(result.left.toOption.exists(
-        _.isInstanceOf[FirstGameClientFailure.DecodeFailure]
+        _.isInstanceOf[GameClientFailure.DecodeFailure]
       ), json)
     }
   }
 
   test("nextSequence is bounded to the largest JSON-safe integer") {
-    val maximum = FirstGameJson.decodeProjection(
+    val maximum = GameJson.decodeProjection(
       projectionJson(sequence = 1).replace(
         "\"nextSequence\":1",
         "\"nextSequence\":9007199254740991"
@@ -338,14 +338,14 @@ class HttpFirstGameClientSuite extends FunSuite {
     )
     assertEquals(maximum.toOption.get.nextSequence, 9007199254740991L)
 
-    val unsafe = FirstGameJson.decodeProjection(
+    val unsafe = GameJson.decodeProjection(
       projectionJson(sequence = 1).replace(
         "\"nextSequence\":1",
         "\"nextSequence\":9007199254740992"
       )
     )
     assert(unsafe.left.toOption.exists(
-      _.isInstanceOf[FirstGameClientFailure.DecodeFailure]
+      _.isInstanceOf[GameClientFailure.DecodeFailure]
     ))
   }
 
@@ -368,7 +368,7 @@ class HttpFirstGameClientSuite extends FunSuite {
   test("stale refresh routes through active-player selection with notice") {
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val request = coordinator.switchSession("game-1", "red-exile")
-    val stale = FirstGameClientFailure.StalePosition("position changed")
+    val stale = GameClientFailure.StalePosition("position changed")
     val refreshed = projection(activePlayer = "blue-exile")
 
     coordinator.route(request, refreshed, Some(stale)) match {
@@ -403,8 +403,8 @@ class HttpFirstGameClientSuite extends FunSuite {
   }
 
   test("transport timeout and abort are typed failures") {
-    val timeout = FirstGameClientFailure.RequestTimedOut("GET", "/api", 10000)
-    val aborted = FirstGameClientFailure.RequestAborted("POST", "/api")
+    val timeout = GameClientFailure.RequestTimedOut("GET", "/api", 10000)
+    val aborted = GameClientFailure.RequestAborted("POST", "/api")
     assert(timeout.message.contains("10000 ms"))
     assert(aborted.message.contains("aborted"))
   }
@@ -414,7 +414,7 @@ class HttpFirstGameClientSuite extends FunSuite {
       Right(TransportResponse(200, projectionJson(sequence = 1))),
       Right(TransportResponse(200, projectionJson(sequence = 1)))
     ))
-    val client = new HttpFirstGameClient(transport)
+    val client = new HttpGameClient(transport)
 
     client.bootstrap("game-a", "red-exile", bootstrap)
       .flatMap(_ => client.bootstrap("game-b", "red-exile", bootstrap))
@@ -442,7 +442,7 @@ class HttpFirstGameClientSuite extends FunSuite {
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("relicOrder"))
 
-    FirstGameJson.decodeProjection(json) match {
+    GameJson.decodeProjection(json) match {
       case Right(projection) =>
         assert(projection.ready)
         assert(projection.completed)
@@ -501,8 +501,8 @@ class HttpFirstGameClientSuite extends FunSuite {
   private def projection(
       gameId: String = "game-1",
       activePlayer: String = "red-exile"
-  ): FirstGameProjection =
-    FirstGameJson.decodeProjection(
+  ): GameProjection =
+    GameJson.decodeProjection(
       projectionJson(sequence = 2).replace(
         "\"gameId\":\"game-1\"",
         s"\"gameId\":\"$gameId\""
@@ -513,7 +513,7 @@ class HttpFirstGameClientSuite extends FunSuite {
     ).toOption.get
 
   private final class StubTransport(
-      responses: Vector[Either[FirstGameClientFailure, TransportResponse]]
+      responses: Vector[Either[GameClientFailure, TransportResponse]]
   ) extends JsonTransport {
     private val remaining = mutable.Queue(responses: _*)
     val requests =

@@ -15,9 +15,9 @@ object ServerModeUi {
   )
 
   def start(mount: dom.Element): Unit = {
-    val client = new HttpFirstGameClient(new SameOriginJsonTransport)
-    var projection = Option.empty[FirstGameProjection]
-    var failure = Option.empty[FirstGameClientFailure]
+    val client = new HttpGameClient(new SameOriginJsonTransport)
+    var projection = Option.empty[GameProjection]
+    var failure = Option.empty[GameClientFailure]
     var selectedPlayer = queryParameter("playerId").getOrElse("red-exile")
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
@@ -65,8 +65,8 @@ object ServerModeUi {
 
     def store(
         request: ServerRequestIdentity,
-        value: FirstGameProjection,
-        notice: Option[FirstGameClientFailure]
+        value: GameProjection,
+        notice: Option[GameClientFailure]
     ): Unit =
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
@@ -94,14 +94,14 @@ object ServerModeUi {
 
     def accept(
         request: ServerRequestIdentity,
-        result: Either[FirstGameClientFailure, FirstGameProjection],
-        notice: Option[FirstGameClientFailure] = None
+        result: Either[GameClientFailure, GameProjection],
+        notice: Option[GameClientFailure] = None
     ): Unit =
       if (coordinator.accepts(request)) result match {
         case Right(value) => store(request, value, notice)
         case Left(error) =>
           coordinator.recordFailure(request, error)
-          if (FirstGameClientFailure.isTransient(error))
+          if (GameClientFailure.isTransient(error))
             polling.foreach(_.stop())
           failure = Some(error)
           render()
@@ -168,20 +168,20 @@ object ServerModeUi {
             if (accepted) coordinator.recordSnapshotSuccess(request)
           }
         case Left(error) =>
-          val transient = FirstGameClientFailure.isTransient(error)
+          val transient = GameClientFailure.isTransient(error)
           val accepted = polling.exists(
             _.complete(request, continuePolling = !transient)
           )
           if (accepted) accept(request, Left(error))
       }
 
-    def submit(command: FirstGameCommand): Unit =
+    def submit(command: GameCommand): Unit =
       projection.foreach { current =>
         val request = coordinator.capture
         client
           .submit(gameId, selectedPlayer, current.nextSequence, command)
           .foreach {
-            case Left(stale: FirstGameClientFailure.StalePosition)
+            case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
@@ -232,7 +232,7 @@ object ServerModeUi {
       bar
     }
 
-    def status(value: FirstGameProjection): dom.Element = {
+    def status(value: GameProjection): dom.Element = {
       val node = element("div", "status")
       val presentation = viewerPresentation(value, selectedPlayer)
       presentation.waitingForPlayerId match {
@@ -255,7 +255,7 @@ object ServerModeUi {
     }
 
     def wakeActions(
-        value: FirstGameProjection,
+        value: GameProjection,
         presentation: ViewerPresentation
     ): dom.Element = {
       val panel = element("section", "panel wake-actions")
@@ -288,7 +288,7 @@ object ServerModeUi {
         val end = button("End Wake", "wake-action")
         end.disabled = !controlsAvailable ||
           !value.legalControls.contains("endWake")
-        end.onclick = _ => submit(FirstGameCommand.EndWake(selectedPlayer))
+        end.onclick = _ => submit(GameCommand.EndWake(selectedPlayer))
         panel.appendChild(end)
       }
       if (value.actionSelectionOpen) {
@@ -310,7 +310,7 @@ object ServerModeUi {
             }
             val search = button(label, "act-action search-action")
             search.disabled = !controlsAvailable || !presentation.showGameplayControls
-            search.onclick = _ => submit(FirstGameCommand.BeginSearch(
+            search.onclick = _ => submit(GameCommand.BeginSearch(
               selectedPlayer, source.kind, source.region))
             panel.appendChild(search)
           }
@@ -347,7 +347,7 @@ object ServerModeUi {
             }
             val control = button(placement.replace('-', ' '), "search-choice")
             control.disabled = !controlsAvailable || !presentation.showGameplayControls
-            control.onclick = _ => submit(FirstGameCommand.CompleteSearch(
+            control.onclick = _ => submit(GameCommand.CompleteSearch(
               selectedPlayer,
               search.decisionId,
               card.cardId,
@@ -365,7 +365,7 @@ object ServerModeUi {
       panel
     }
 
-    def players(value: FirstGameProjection): dom.Element = {
+    def players(value: GameProjection): dom.Element = {
       val panel = element("section", "panel")
       panel.appendChild(text("h2", "", "Exile players"))
       val list = element("ul", "participants")
@@ -385,7 +385,7 @@ object ServerModeUi {
     }
 
     def world(
-        value: FirstGameProjection,
+        value: GameProjection,
         presentation: ViewerPresentation
     ): dom.Element = {
       val panel = element("section", "panel world")
@@ -420,12 +420,12 @@ object ServerModeUi {
                   buttonControl.appendChild(text(
                     "span", "travel-cost", s"$cost Supply"))
                   buttonControl.onclick = _ => submit(
-                    FirstGameCommand.Travel(selectedPlayer, site.siteId))
+                    GameCommand.Travel(selectedPlayer, site.siteId))
                 case _ =>
                   buttonControl.setAttribute("aria-label",
                     s"${site.label}: place pawn")
                   buttonControl.onclick = _ => submit(
-                    FirstGameCommand.PlacePawn(selectedPlayer, site.siteId))
+                    GameCommand.PlacePawn(selectedPlayer, site.siteId))
               }
               buttonControl
             } else {
@@ -458,7 +458,7 @@ object ServerModeUi {
       panel
     }
 
-    def advisers(value: FirstGameProjection): dom.Element = {
+    def advisers(value: GameProjection): dom.Element = {
       val panel = element("section", "panel adviser-panel")
       val heading = element("h2", "")
       heading.appendChild(dom.document.createTextNode(
@@ -475,7 +475,7 @@ object ServerModeUi {
           control.disabled = !controlsAvailable ||
             !value.legalControls.contains("chooseAdviser")
           control.onclick = _ => submit(
-            FirstGameCommand.ChooseAdviser(
+            GameCommand.ChooseAdviser(
               selectedPlayer,
               choice.adviserId
             )
@@ -506,11 +506,11 @@ object ServerModeUi {
       coordinator.connectionState == ServerConnectionState.Connected
   }
 
-  private def siteLabel(value: FirstGameProjection, siteId: String): String =
+  private def siteLabel(value: GameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
-  private[frontend] def siteDetails(site: FirstGameSite): dom.Element = {
+  private[frontend] def siteDetails(site: GameSite): dom.Element = {
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     val properties = element("dl", "site-properties")
@@ -544,7 +544,7 @@ object ServerModeUi {
 
   private[frontend] final case class TakeWealthAction(
       label: String,
-      command: FirstGameCommand.TakeWealth
+      command: GameCommand.TakeWealth
   )
 
   private[frontend] final case class ViewerPresentation(
@@ -554,7 +554,7 @@ object ServerModeUi {
   )
 
   private[frontend] def viewerPresentation(
-      value: FirstGameProjection,
+      value: GameProjection,
       playerId: String
   ): ViewerPresentation =
     value.activeParticipantId match {
@@ -572,7 +572,7 @@ object ServerModeUi {
     }
 
   private[frontend] def siteCardsActionable(
-      value: FirstGameProjection,
+      value: GameProjection,
       presentation: ViewerPresentation,
       controlsAvailable: Boolean = true,
       travelSelectionOpen: Boolean = false,
@@ -583,13 +583,13 @@ object ServerModeUi {
         (travelSelectionOpen && travelCost(value, siteId).nonEmpty))
 
   private[frontend] def travelCost(
-      value: FirstGameProjection,
+      value: GameProjection,
       siteId: String
   ): Option[Int] = value.legalTravelDestinations
     .find(_.siteId == siteId).map(_.supplyCost)
 
   private[frontend] def takeWealthActions(
-      value: FirstGameProjection,
+      value: GameProjection,
       playerId: String
   ): Vector[TakeWealthAction] =
     if (value.phase != "wake" ||
@@ -597,11 +597,11 @@ object ServerModeUi {
     else Vector(
       "takeFavor" -> TakeWealthAction(
         "Take Wealth: 1 favor",
-        FirstGameCommand.TakeWealth(playerId, "favor")
+        GameCommand.TakeWealth(playerId, "favor")
       ),
       "takeSecret" -> TakeWealthAction(
         "Take Wealth: 1 secret",
-        FirstGameCommand.TakeWealth(playerId, "secret")
+        GameCommand.TakeWealth(playerId, "secret")
       )
     ).collect {
       case (legalControl, action)
@@ -609,7 +609,7 @@ object ServerModeUi {
     }
 
   private[frontend] def playerReference(
-      value: FirstGameProjection,
+      value: GameProjection,
       playerId: String
   ): dom.Element = {
     val player = value.players.find(_.playerId == playerId)
@@ -623,7 +623,7 @@ object ServerModeUi {
   }
 
   private def playerDisplayName(
-      value: FirstGameProjection,
+      value: GameProjection,
       playerId: String
   ): String =
     value.players.find(_.playerId == playerId)
