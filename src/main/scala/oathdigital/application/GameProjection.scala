@@ -8,6 +8,7 @@ import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
 import oathdigital.gameplay.actions.{SearchRules, TravelRules}
+import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
     playerId: String,
@@ -174,7 +175,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val site = active.pawnSite.flatMap(current.map.sites.get)
         val controls =
           if (!requestingPlayer.contains(active.player)) Vector.empty
-          else if (current.turn.phase == Phase.Act && current.pending.isEmpty)
+          else if (Rest.validateBegin(Ready(value), active.player).isRight)
             Vector("beginRest")
           else if (current.turn.phase == Phase.Rest && current.pending.isEmpty)
             Vector("finishRest")

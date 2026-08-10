@@ -413,24 +413,23 @@ object GameEventWire {
           val favor = favorObject.toVector.map { case (key, value) =>
             Suit.all.find(_.key == key).toRight(InvalidValue(
               s"$path.returnedFavor.$key", "unknown suit")).flatMap { suit =>
-              val number = value.num
-              if (number.isFinite && number == Math.rint(number) && number >= 0)
-                Right(suit -> number.toInt)
-              else Left(InvalidValue(s"$path.returnedFavor.$key",
-                "must be a non-negative integer"))
+              safeInt(value, s"$path.returnedFavor.$key").map(suit -> _)
             }
           }
-          favor.foldLeft[Either[WireError, Vector[(Suit, Int)]]](
-            Right(Vector.empty)) {
-            case (Right(acc), Right(entry)) => Right(acc :+ entry)
-            case (Left(error), _) => Left(error)
-            case (_, Left(error)) => Left(error)
-          }.map(entries => RestCompleted(
+          for {
+            entries <- favor.foldLeft[Either[WireError, Vector[(Suit, Int)]]](
+              Right(Vector.empty)) {
+              case (Right(acc), Right(entry)) => Right(acc :+ entry)
+              case (Left(error), _) => Left(error)
+              case (_, Left(error)) => Left(error)
+            }
+            returnedSecrets <- safeIntField(payload.obj, "returnedSecrets", path)
+            refreshedSupply <- safeIntField(payload.obj, "refreshedSupply", path)
+            nextRound <- safeIntField(payload.obj, "nextRound", path)
+          } yield RestCompleted(
             PlayerId(payload("playerId").str), entries.toMap,
-            payload("returnedSecrets").num.toInt,
-            payload("refreshedSupply").num.toInt,
-            PlayerId(payload("nextPlayerId").str),
-            payload("nextRound").num.toInt))
+            returnedSecrets, refreshedSupply,
+            PlayerId(payload("nextPlayerId").str), nextRound)
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -624,6 +623,19 @@ object GameEventWire {
   ): Either[WireError, Long] =
     requiredField(obj, name, path)
       .flatMap(value => safeInteger(value, s"$path.$name"))
+
+  private def safeIntField(obj: ujson.Obj, name: String, path: String)
+      : Either[WireError, Int] =
+    requiredField(obj, name, path).flatMap(value =>
+      safeInt(value, s"$path.$name"))
+
+  private def safeInt(value: ujson.Value, path: String)
+      : Either[WireError, Int] =
+    safeInteger(value, path).flatMap { number =>
+      if (number <= Int.MaxValue.toLong) Right(number.toInt)
+      else Left(InvalidValue(path,
+        s"must be between 0 and ${Int.MaxValue} inclusive"))
+    }
 
   private def safeInteger(
       value: ujson.Value,

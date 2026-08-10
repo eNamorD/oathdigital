@@ -29,7 +29,7 @@ object Rest {
   def handle(catalog: ExecutableCatalog, state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] = command match {
     case RestCommand.Begin(playerId) =>
-      OathLifecycle.validateAct(state, playerId).flatMap(_ =>
+      validateBegin(state, playerId).flatMap(_ =>
         transition(catalog, state, Vector(RestStarted(playerId)),
           AwaitingRestAction(playerId)))
     case RestCommand.Finish(playerId) =>
@@ -44,7 +44,7 @@ object Rest {
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
       : Either[OathViolation, OathState] = event match {
     case RestStarted(playerId) =>
-      OathLifecycle.validateAct(state, playerId).map { ready =>
+      validateBegin(state, playerId).map { ready =>
         Ready(GameStateUpdates.updateCurrent(ready)(current =>
           current.copy(turn = current.turn.copy(phase = Phase.Rest))))
       }
@@ -58,6 +58,13 @@ object Rest {
       }
     case _ => Left(InvalidEventOrder("Rest received a non-Rest event"))
   }
+
+  /** Single legality path for command handling, replay, and projection. */
+  def validateBegin(state: OathState, playerId: PlayerId)
+      : Either[OathViolation, ReadyGame] =
+    OathLifecycle.validateAct(state, playerId).flatMap { ready =>
+      validateSupportedState(ready).map(_ => ready)
+    }
 
   private def validateRest(state: OathState, playerId: PlayerId)
       : Either[OathViolation, ReadyGame] = state match {

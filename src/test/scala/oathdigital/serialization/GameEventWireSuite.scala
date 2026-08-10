@@ -29,6 +29,37 @@ class GameEventWireSuite extends munit.FunSuite {
       GameEventWire.RestStartedType, GameEventWire.RestCompletedType))
   }
 
+  test("v5 Rest numeric facts require exact non-negative Int values") {
+    def restValue(): ujson.Obj = GameEventWire.encodeEvent(
+      "rest", catalogRef, 0L,
+      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2), 3, 6,
+        PlayerId("blue"), 2)).toOption.get.obj
+    def reject(field: String, value: Double, expected: WireError): Unit = {
+      val encoded = restValue()
+      encoded("payload")(field) = ujson.Num(value)
+      assertEquals(GameEventWire.decode(encoded), Left(expected))
+    }
+    val safeRange = s"must be between 0 and ${GameEventWire.MaxSafeSequence} inclusive"
+    val intRange = s"must be between 0 and ${Int.MaxValue} inclusive"
+
+    reject("returnedSecrets", 1.5,
+      WireError.WrongType("$.payload.returnedSecrets", "expected an integer"))
+    reject("refreshedSupply", -1,
+      WireError.InvalidValue("$.payload.refreshedSupply", safeRange))
+    reject("nextRound", Double.PositiveInfinity,
+      WireError.WrongType("$.payload.nextRound", "expected an integer"))
+    reject("returnedSecrets", GameEventWire.MaxSafeSequence.toDouble + 1,
+      WireError.InvalidValue("$.payload.returnedSecrets", safeRange))
+    reject("nextRound", Int.MaxValue.toDouble + 1,
+      WireError.InvalidValue("$.payload.nextRound", intRange))
+
+    val favor = restValue()
+    favor("payload")("returnedFavor")("beast") =
+      ujson.Num(Int.MaxValue.toDouble + 1)
+    assertEquals(GameEventWire.decode(favor), Left(WireError.InvalidValue(
+      "$.payload.returnedFavor.beast", intRange)))
+  }
+
   test("v2 serialized replay equals command state and preserves ordering") {
     val (commandState, events) = execute(rules)
     val records = events.zipWithIndex.map { case (event, index) =>

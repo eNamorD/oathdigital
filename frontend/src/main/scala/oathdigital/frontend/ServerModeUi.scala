@@ -325,11 +325,12 @@ object ServerModeUi {
           panel.appendChild(travel)
           panel.appendChild(text("p", "informational",
             "Other normal action families are not yet implemented."))
-          val rest = button("End Act and Rest", "rest-action")
-          rest.disabled = !controlsAvailable ||
-            !value.legalControls.contains("beginRest")
-          rest.onclick = _ => submit(GameCommand.BeginRest(selectedPlayer))
-          panel.appendChild(rest)
+          if (value.legalControls.contains("beginRest")) {
+            val rest = button("End Act and Rest", "rest-action")
+            rest.disabled = !controlsAvailable
+            rest.onclick = _ => submit(GameCommand.BeginRest(selectedPlayer))
+            panel.appendChild(rest)
+          }
         }
       }
       if (value.phase == "rest" && presentation.showGameplayControls) {

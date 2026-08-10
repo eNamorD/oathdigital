@@ -99,9 +99,29 @@ class RestSuite extends munit.FunSuite {
         lineage.id, lineage.copy(legacies = Vector(
           LegacyState(LegacyId("active-rest"), active = true)))))))
     val actor = unsupported.game.current.turn.activePlayer
-    val started = rules.handle(Ready(unsupported), RestCommand.Begin(actor))
-      .toOption.get
-    assert(rules.handle(started.state, RestCommand.Finish(actor))
+    assert(rules.handle(Ready(unsupported), RestCommand.Begin(actor))
       .left.toOption.get.isInstanceOf[UnsupportedRestState])
+    val projection = new oathdigital.application.GameProjector(catalog).project(
+      "unsupported-rest",
+      oathdigital.application.LoadedGame(Ready(unsupported), 12L), actor)
+    assert(!projection.legalControls.contains("beginRest"))
+  }
+
+  test("last player of round eight cannot enter an unfinishable Rest") {
+    val base = act
+    val participants = base.game.current.players.map(_.player)
+    val start = participants.indexOf(base.support.firstPlayer)
+    val last = (participants.drop(start) ++ participants.take(start)).last
+    val unsupported = base.copy(game = base.game.copy(current =
+      base.game.current.copy(
+        tracks = base.game.current.tracks.copy(round = 8),
+        turn = TurnState(last, Phase.Act, Set.empty))))
+
+    assert(rules.handle(Ready(unsupported), RestCommand.Begin(last))
+      .left.toOption.get.isInstanceOf[UnsupportedRestState])
+    val projection = new oathdigital.application.GameProjector(catalog).project(
+      "round-eight", oathdigital.application.LoadedGame(
+        Ready(unsupported), 30L), last)
+    assert(!projection.legalControls.contains("beginRest"))
   }
 }

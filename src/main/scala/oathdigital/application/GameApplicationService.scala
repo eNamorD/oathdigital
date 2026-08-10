@@ -99,10 +99,11 @@ object GameApplicationError {
 }
 
 /**
- * Event-sourced application service for v2 setup plus v3 gameplay streams.
+ * Event-sourced application service for the current mixed v2-v5 game stream.
  *
  * V1 envelopes are rejected by `GameEventWire`; no implicit migration is
- * attempted. Strict contiguous v2/v3 replay shares one reconstruction path.
+ * attempted. Strict contiguous mixed-version replay shares one reconstruction
+ * path.
  */
 final class GameApplicationService(
     catalog: ExecutableCatalog,
