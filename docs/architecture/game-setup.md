@@ -42,8 +42,9 @@ snapshots, or gameplay.
 
 ## Exile-only complete first-game endpoint
 
-`FirstGameSetupRules` is a separate v2 state machine so the v1 event classes,
-commands, replay behavior, and checked-in golden bytes remain unchanged. It
+`FirstGameSetupRules` is a separate v2 state machine from the historical v1
+bounded proof. This is the current implementation shape, not a pre-release
+compatibility requirement. It
 starts at `NoGame`, records a complete `FirstGameSetupPlan`, reuses the existing
 typed `SetupCommand.PlacePawn`, records each starting adviser choice, and ends
 at `Ready(ReadyGame)`. The endpoint contains a structurally valid

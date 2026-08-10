@@ -24,22 +24,33 @@ Snapshots may be introduced later only as rebuildable replay caches. A snapshot
 must be discardable and recoverable from the authoritative event stream; it
 must not replace or fork that history.
 
-## Wire compatibility
+## Pre-release event-format policy
 
-Durable events use an explicit versioned envelope with stable field names and
-event discriminators. Scala class names and reflection are not part of the
-format. Readers reject unsupported format versions, unknown event types,
+Until the first public release, saved-game event compatibility is not a product
+requirement. Event payloads, discriminators, and the current format version may
+change in place when that produces a simpler coherent model. A breaking change
+must update the writer, reader, replay tests, fixtures, and development data
+together; it does not require a new event version, migration, or backward-
+compatible reader. Local pre-release saves may be discarded.
+
+The first public release establishes the compatibility baseline. From that
+point, changes to published event history require an explicit version and
+migration or rejection policy.
+
+Even before release, durable events use an explicit envelope and never encode
+Scala class names or reflection metadata. Readers reject unknown event types,
 malformed identities, catalog disagreement, and non-contiguous sequence
-positions rather than guessing or defaulting.
+positions rather than guessing or defaulting. Checked-in fixtures protect
+current replay behavior, not immutable historical bytes.
 
-The v1 bounded pawn-placement stream remains byte-for-byte stable and retains
-its checked-in golden fixture. Complete exile-only first-game setup uses a
+The historical v1 bounded pawn-placement proof retains a checked-in fixture.
+Complete exile-only first-game setup uses a
 separate v2 envelope/vocabulary (`setup.first-game-started`,
 `setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
 `setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
-`GameEventWire` handles the mixed v2-v4 game stream. This dual-codec policy
-avoids silently defaulting new authoritative fields when reading v1 history.
-No automatic v1-to-v2 migration is claimed because a v1 stream did not record
+`GameEventWire` handles the mixed v2-v4 game stream. The current dual-codec
+shape avoids silently defaulting fields when reading the bounded v1 fixture.
+No v1-to-v2 migration exists because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes
 needed to construct the v2 aggregate.
 
@@ -55,8 +66,8 @@ discriminators remain v2-only; `gameplay.take-wealth`,
 `gameplay.wake-ended`, and `gameplay.traveled` are v3-only. A reader validates
 one pinned game ID, catalog reference, and absolute safe sequence across the
 mixed stream.
-Existing setup-only streams and their bytes are unchanged. Older readers may
-reject v3 explicitly; no event is silently reinterpreted under another format.
+No event is silently reinterpreted under another format. Pre-release work may
+instead update the current codec and fixtures together under the policy above.
 
 `gameplay.take-wealth` records the actor, the pawn site derived when the
 command was accepted, and the chosen loose resource. `gameplay.wake-ended`

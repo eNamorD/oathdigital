@@ -123,8 +123,8 @@ complete example of this pattern.
 
 Events record durable game facts, not transport requests or derived view data.
 Commands remain transient. Internal Scala names and file boundaries may change
-without changing historical event discriminators, format versions, or golden
-fixtures.
+freely. Before public release, event formats and fixtures may also change under
+the policy in [authoritative-events.md](authoritative-events.md).
 
 ## Naming policy
 
@@ -141,11 +141,11 @@ The mixed setup/gameplay aggregate vocabulary is `OathState`, `ReadyGame`,
 introductory-scenario concepts retain `FirstGame`: the setup command, plan,
 participants, rules, factory, fixtures, Foundation/support data, bootstrap
 configuration, and the `FirstGameStarted`/`FirstGameCompleted` facts and their
-stable setup discriminator constants.
+setup discriminator constants.
 
-Renaming internal types does not authorize a wire-format migration. Existing
-v1-v4 event streams and their discriminators remain compatible unless a future,
-separately reviewed migration explicitly changes that contract.
+The current mixed stream uses v1-v4 vocabulary, but those versions are not a
+public compatibility promise. Before release, a refactor may update the codec
+and checked-in fixtures directly when doing so simplifies the model.
 
 ## Evolution order
 

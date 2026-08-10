@@ -57,7 +57,7 @@ been reviewed.
   pending decisions, replay validation, and Scala.js controls.
 - [x] Modularize gameplay into `OathRules`, phase/action modules, typed rule
   resolution, and consistently named runtime application, wire, server, and
-  frontend boundaries without changing golden history.
+  frontend boundaries while retaining then-current replay behavior.
 
 The combined milestone passes 188 JVM tests, 49 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
@@ -76,3 +76,7 @@ reload reconstruction, and disconnect/reconnect recovery.
   runs the complete build, catalog validation, and test suite once.
 - Completion reports must include changed files, verification commands, test
   counts, unresolved risks, and the resulting commit.
+- Before the first public release, event formats and fixtures may change in
+  place; backward compatibility, migrations, and version bumps are not required.
+  Update the current writer, reader, replay tests, fixtures, and development
+  data together. Public release establishes the compatibility baseline.
