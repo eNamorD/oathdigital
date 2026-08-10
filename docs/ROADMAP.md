@@ -7,12 +7,7 @@ been reviewed.
 
 ## Now
 
-- [ ] **L6c — Rest and turn advancement**
-  - Before adding Rest behavior, separate common Act lifecycle validation from
-    Travel-specific supported-state validation and prove that unsupported
-    Travel modifiers do not block Search or future non-Travel actions.
-  - Implement Rest powers, resource return, secret reveal, Supply refresh,
-    per-turn cleanup, player/round advancement, and the next player's Wake.
+No item is currently assigned.
 
 ## Next
 
@@ -43,6 +38,12 @@ been reviewed.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **L6c — Rest and turn advancement.** Act lifecycle validation is
+  action-neutral. Bounded exile Rest now returns controlled card resources,
+  reveals secrets, refreshes Supply, clears per-turn state, advances the
+  player/round, and enters the next Wake through replay-validated v5 events,
+  persisted commands, scoped projections, HTTP routes, and Scala.js controls.
 
 - [x] Establish the Scala/Scala.js build, HRF reference baseline, core domain
   model, source-cited rules layer, and complete reviewed component catalog.

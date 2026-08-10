@@ -47,9 +47,9 @@ Each phase module owns its commands, base legality, phase-specific powers, event
 evolution helpers, and continuation rules.
 
 `Wake.scala` owns Take Wealth, Wake powers, Wake victory checks, and entry into
-Act. `Rest.scala` will own Rest powers, resource return, secret reveal, Supply
-refresh, per-turn cleanup, player/round advancement, and entry into the next
-Wake.
+Act. `Rest.scala` owns bounded resource return, secret reveal, Supply refresh,
+per-turn cleanup, player/round advancement, and entry into the next Wake;
+component-specific Rest powers remain incremental typed handlers.
 
 ### Action modules
 

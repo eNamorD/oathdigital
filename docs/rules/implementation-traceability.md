@@ -43,10 +43,10 @@ above **Unimplemented**.
 
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |
 |---|---|---|---|---|
-| Round order and Wake → Act → Rest transitions | **Partial** | [CR p. 17](rules-reference.md#round-and-turn-flow) | `gameplay/phases/Wake.scala` implements only the first active Exile's explicit Wake → Act transition. Later turns, player/round advancement and Rest remain absent. | Action transaction boundary F1; later-turn ordering F2. |
+| Round order and Wake → Act → Rest transitions | **Tested (bounded)** | [CR p. 17](rules-reference.md#round-and-turn-flow) | `gameplay/phases/Wake.scala` and `Rest.scala` implement explicit phase transitions, setup-first-player rotation, round advancement, per-turn cleanup, and entry into the next Wake. `RestSuite` and application/reload tests validate the transition. | Round-eight ending resolution, Imperials, and nested action fixed points remain deferred. |
 | Wake victory checks, Wake powers, Take Wealth | **Tested (bounded)** | [CR p. 17](rules-reference.md#wake); power identity/timing CR pp. 28, 31; Take Wealth site context [NF p. 11](new-foundations-delta.md#map-and-pieces) | `gameplay/phases/Wake.scala` transfers one loose favor/secret and records stable timing/source/power references. Enemy/resource/per-site-use legality and private controls share the typed query pipeline in `gameplay/RuleResolution.scala`. Mandatory title/Vision states return typed unsupported violations. Tests: `gameplay/WakeSuite.scala`, mixed v2/v3 wire and application suites. | Generic powers, River movement and victory resolution remain deferred. Optional unsupported Wake powers do not block End Wake. |
-| Act action loop and Supply spending | **Tested (bounded)** | [CR p. 17](rules-reference.md#act) | First-turn Travel and Search spend typed Supply and return to Act action selection. Search persists a pending choice across requests; the general action loop, Rest, and nested-action fixed point remain absent. | Board/action costs B3; nested action boundary F1. |
-| Rest powers, token return, secret reveal, Supply refresh | **Partial** | [CR p. 18](rules-reference.md#rest) | `SupplyRules.refresh` implements the board-table refresh calculation and is tested in `model/SupplySuite.scala`. No Rest transition performs resource return, secret flip, powers, or refresh. | Exact board projection B3; power data B1. |
+| Act action loop and Supply spending | **Tested (bounded)** | [CR p. 17](rules-reference.md#act) | Travel and Search spend typed Supply and return to action selection; the player may explicitly enter Rest. Common Act lifecycle checks are action-neutral, while each action owns its supported-state validation. | Additional actions and nested action fixed points remain deferred (F1). |
+| Rest powers, token return, secret reveal, Supply refresh | **Tested (bounded)** | [CR p. 18](rules-reference.md#rest) | `gameplay/phases/Rest.scala` handles the exile-only, unaltered first-game profile: controlled denizen/relic resources return, facedown secrets reveal, the tested Exile Supply table refreshes, and v5 events validate replay facts. Application, wire, projection, HTTP and frontend suites cover persistence and reload. | Optional component Rest powers, Imperials/Citizens, and round-eight ending resolution remain deferred (B1/B3). |
 | After-action fixed-point checks: bandit refill and title transfer | **Unimplemented** | [CR pp. 15-16](rules-reference.md#core-state-and-terminology) | Relevant force/title state exists; no action boundary or state-based rule evaluator exists. | Explicit transaction/fixed-point policy F1. |
 
 ## Major and minor actions
@@ -111,17 +111,13 @@ rows above. The remaining cross-cutting items are:
 
 ## Upcoming source-cited work
 
-1. **Rest plus phase/round advancement.** Use CR pp. 17-18. The tested Supply
-   projection gives this slice a strong starting point; add resource return,
-   secret reveal, refresh, phase order and active-player/round changes. Resolve
-   F1/F2 so later actions share the same transaction semantics.
-2. **Muster and Trade.** Use CR p. 24 and NF p. 13. These establish access,
+1. **Muster and Trade.** Use CR p. 24 and NF p. 13. These establish access,
    empty-card costs, adviser matching, resource movement, limited warbands and
    the NF yield/cost changes. Trade remains blocked until B3 is authoritative.
-3. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
+2. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
    p. 16. Implement only after the action boundary is stable; it supplies the
    first end-to-end game result without Campaign complexity. Resolve F7.
-4. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
+3. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
    Build on tested Atlas ordering to persist a completed fixture, then add
    World/Beacon, Sun, and Throne once component/legacy data is available.
 
