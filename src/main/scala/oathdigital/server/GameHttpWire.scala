@@ -174,12 +174,14 @@ object GameHttpWire {
             "supplyCost" -> source.supplyCost
           )}),
         "legalMusters" -> ujson.Arr.from(projection.legalMusters.map { option =>
-          ujson.Obj("denizenId" -> option.denizenId, "suit" -> option.suit,
+          ujson.Obj("target" -> ujson.Obj("kind" -> option.targetKind,
+            "id" -> option.targetId), "label" -> option.label, "suit" -> option.suit,
             "supplyCost" -> option.supplyCost,
             "warbandsGained" -> option.warbandsGained)
         }),
         "legalTrades" -> ujson.Arr.from(projection.legalTrades.map { option =>
-          ujson.Obj("denizenId" -> option.denizenId, "suit" -> option.suit,
+          ujson.Obj("target" -> ujson.Obj("kind" -> option.targetKind,
+            "id" -> option.targetId), "label" -> option.label, "suit" -> option.suit,
             "resource" -> option.resource, "supplyCost" -> option.supplyCost,
             "gained" -> option.gained)
         }),
@@ -257,13 +259,17 @@ object GameHttpWire {
           PlayerId(player), SiteId(destination))
       case "muster" =>
         for {
+          _ <- exactFields(obj, Set("type", "playerId", "target"), path)
           player <- stringField(obj, "playerId", path)
-          denizen <- stringField(obj, "denizenId", path)
-        } yield GameCommand.Muster(PlayerId(player), DenizenId(denizen))
+          targetValue <- field(obj, "target", path)
+          target <- decodeEconomyTarget(targetValue, s"$path.target")
+        } yield GameCommand.Muster(PlayerId(player), target)
       case "trade" =>
         for {
+          _ <- exactFields(obj, Set("type", "playerId", "target", "resource"), path)
           player <- stringField(obj, "playerId", path)
-          denizen <- stringField(obj, "denizenId", path)
+          targetValue <- field(obj, "target", path)
+          target <- decodeEconomyTarget(targetValue, s"$path.target")
           value <- stringField(obj, "resource", path)
           resource <- value match {
             case "favor" => Right(TradeResource.Favor)
@@ -271,7 +277,7 @@ object GameHttpWire {
             case other => Left(HttpInputError(s"$path.resource",
               s"unknown Trade resource '$other'"))
           }
-        } yield GameCommand.Trade(PlayerId(player), DenizenId(denizen), resource)
+        } yield GameCommand.Trade(PlayerId(player), target, resource)
       case "beginSearch" =>
         for {
           _ <- exactFields(obj, Set("type", "playerId", "source", "region"), path)
@@ -320,6 +326,20 @@ object GameHttpWire {
         ))
       case _ => Left(HttpInputError(path, "expected a number"))
     }
+
+  private def decodeEconomyTarget(value: ujson.Value, path: String)
+      : Either[HttpInputError, EconomyTargetRef] = for {
+    obj <- objectValue(value, path)
+    _ <- exactFields(obj, Set("kind", "id"), path)
+    kind <- stringField(obj, "kind", path)
+    id <- stringField(obj, "id", path)
+    target <- kind match {
+      case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(id)))
+      case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(id)))
+      case other => Left(HttpInputError(s"$path.kind",
+        s"unsupported Economy target kind '$other'"))
+    }
+  } yield target
 
   private def exactFields(
       obj: ujson.Obj,

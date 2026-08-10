@@ -50,3 +50,6 @@ None is executable in L6d, so typed resolution reports an unsupported relevant
 rule instead of interpreting catalog text or silently applying base behavior.
 Base Economy outcomes are durable v6 facts and replay recalculates their source,
 suit, cost, yield, component limits, and resource movement.
+The target reference carries an explicit denizen/edifice kind through projection,
+HTTP, commands, and events. Edifice activation uses handlers from its current
+intact or ruined face; a non-relevant ruined face remains a legal base target.

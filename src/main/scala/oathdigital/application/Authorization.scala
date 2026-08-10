@@ -71,11 +71,11 @@ final case class AuthorizedPlayer private (
   def travel(destination: SiteId): GameCommand =
     GameCommand.Travel(access.playerId, destination)
 
-  def muster(denizen: CardId): GameCommand =
-    GameCommand.Muster(access.playerId, denizen)
+  def muster(target: EconomyTargetRef): GameCommand =
+    GameCommand.Muster(access.playerId, target)
 
-  def trade(denizen: CardId, resource: oathdigital.setup.TradeResource): GameCommand =
-    GameCommand.Trade(access.playerId, denizen, resource)
+  def trade(target: EconomyTargetRef, resource: oathdigital.setup.TradeResource): GameCommand =
+    GameCommand.Trade(access.playerId, target, resource)
 
   def beginSearch(source: SearchSource): GameCommand =
     GameCommand.BeginSearch(access.playerId, source)

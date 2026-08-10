@@ -19,8 +19,8 @@ object GameIntent {
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
   final case class Travel(destinationSiteId: SiteId) extends GameIntent
-  final case class Muster(denizenId: CardId) extends GameIntent
-  final case class Trade(denizenId: CardId, resource: TradeResource)
+  final case class Muster(target: EconomyTargetRef) extends GameIntent
+  final case class Trade(target: EconomyTargetRef, resource: TradeResource)
       extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
   final case class CompleteSearch(
@@ -143,13 +143,15 @@ object AuthenticatedGameHttpWire {
           .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))
           .map(value => GameIntent.Travel(SiteId(value)))
       case "muster" =>
-        exactFields(obj, Set("type", "denizenId"), "$.intent")
-          .flatMap(_ => stringField(obj, "denizenId", "$.intent"))
-          .map(value => GameIntent.Muster(DenizenId(value)))
+        exactFields(obj, Set("type", "target"), "$.intent")
+          .flatMap(_ => field(obj, "target", "$.intent"))
+          .flatMap(value => decodeEconomyTarget(value, "$.intent.target"))
+          .map(GameIntent.Muster)
       case "trade" =>
         for {
-          _ <- exactFields(obj, Set("type", "denizenId", "resource"), "$.intent")
-          denizen <- stringField(obj, "denizenId", "$.intent")
+          _ <- exactFields(obj, Set("type", "target", "resource"), "$.intent")
+          targetValue <- field(obj, "target", "$.intent")
+          target <- decodeEconomyTarget(targetValue, "$.intent.target")
           value <- stringField(obj, "resource", "$.intent")
           resource <- value match {
             case "favor" => Right(TradeResource.Favor)
@@ -157,7 +159,7 @@ object AuthenticatedGameHttpWire {
             case other => Left(HttpInputError("$.intent.resource",
               s"unknown Trade resource '$other'"))
           }
-        } yield GameIntent.Trade(DenizenId(denizen), resource)
+        } yield GameIntent.Trade(target, resource)
       case "beginSearch" =>
         exactFields(obj, Set("type", "source", "region"), "$.intent")
           .flatMap(_ => stringField(obj, "source", "$.intent"))
@@ -203,6 +205,20 @@ object AuthenticatedGameHttpWire {
       ))
       case None => Right(())
     }
+
+  private def decodeEconomyTarget(value: ujson.Value, path: String)
+      : Either[HttpInputError, EconomyTargetRef] = for {
+    obj <- objectValue(value, path)
+    _ <- exactFields(obj, Set("kind", "id"), path)
+    kind <- stringField(obj, "kind", path)
+    id <- stringField(obj, "id", path)
+    target <- kind match {
+      case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(id)))
+      case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(id)))
+      case other => Left(HttpInputError(s"$path.kind",
+        s"unsupported Economy target kind '$other'"))
+    }
+  } yield target
 
   private def decodeWorldCard(value: ujson.Value, path: String)
       : Either[HttpInputError, WorldCardId] = objectValue(value, path).flatMap { obj =>

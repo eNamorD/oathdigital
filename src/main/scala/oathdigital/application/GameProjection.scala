@@ -48,9 +48,11 @@ final case class CurrentSiteResourcesProjection(
 final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
 final case class LegalSearchSourceProjection(kind: String, region: Option[String], supplyCost: Int)
 final case class LegalMusterProjection(
-    denizenId: String, suit: String, supplyCost: Int, warbandsGained: Int)
+    targetKind: String, targetId: String, label: String, suit: String,
+    supplyCost: Int, warbandsGained: Int)
 final case class LegalTradeProjection(
-    denizenId: String, suit: String, resource: String, supplyCost: Int, gained: Int)
+    targetKind: String, targetId: String, label: String, suit: String,
+    resource: String, supplyCost: Int, gained: Int)
 final case class SearchCardProjection(
     cardId: String,
     cardKind: String,
@@ -299,20 +301,18 @@ final class GameProjector(catalog: ExecutableCatalog) {
           legalMusters =
             if (requestingPlayer.contains(active.player) &&
                 current.turn.phase == Phase.Act && current.pending.isEmpty)
-              Economy.legalMuster(catalog, value, active).collect {
-                case result if result.source.isInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard] =>
-                  val source = result.source.asInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard]
-                  LegalMusterProjection(source.id.value, result.suit.key,
-                    result.supplySpent, result.warbandsGained)
+              Economy.legalMuster(catalog, value, active).map { result =>
+                  LegalMusterProjection(result.target.kind, result.target.id.value,
+                    economyLabel(result.target), result.suit.key, result.supplySpent,
+                    result.warbandsGained)
               }
             else Vector.empty,
           legalTrades =
             if (requestingPlayer.contains(active.player) &&
                 current.turn.phase == Phase.Act && current.pending.isEmpty)
-              Economy.legalTrades(catalog, value, active).collect {
-                case result if result.source.isInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard] =>
-                  val source = result.source.asInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard]
-                  LegalTradeProjection(source.id.value, result.suit.key,
+              Economy.legalTrades(catalog, value, active).map { result =>
+                  LegalTradeProjection(result.target.kind, result.target.id.value,
+                    economyLabel(result.target), result.suit.key,
                     result.resource match {
                       case oathdigital.setup.TradeResource.Favor => "favor"
                       case oathdigital.setup.TradeResource.Secret => "secret"
@@ -322,6 +322,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           pendingSearch = pendingSearch
         )
     }
+
+  private def economyLabel(target: EconomyTargetRef): String = target match {
+    case EconomyTargetRef.Denizen(id) =>
+      denizenNames.getOrElse(id, safeLabel(id.value))
+    case EconomyTargetRef.Edifice(id) =>
+      edificeNames.get(id).map(_._2).getOrElse(safeLabel(id.value))
+  }
 
   private def players(
       participants: Vector[FirstGameParticipant]

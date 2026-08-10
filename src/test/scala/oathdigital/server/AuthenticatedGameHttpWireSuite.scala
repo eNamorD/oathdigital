@@ -1,5 +1,7 @@
 package oathdigital.server
 
+import oathdigital.model.{EconomyTargetRef, EdificeId}
+
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
   test("authenticated Rest intents remain actor-free") {
     val begin = AuthenticatedGameHttpWire.decodeCommand(
@@ -73,6 +75,26 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
     val complete =
       """{"expectedNextSequence":11,"intent":{"type":"completeSearch","decisionId":"search-10","kept":{"kind":"denizen","id":"denizen:a"},"discardedInOrder":[{"kind":"vision","id":"vision:b"}],"placement":{"kind":"discard"}}}"""
     assert(AuthenticatedGameHttpWire.decodeCommand(complete).isRight)
+  }
+
+  test("authenticated Economy intents preserve typed targets and reject hidden input") {
+    val muster =
+      """{"expectedNextSequence":12,"intent":{"type":"muster","target":{"kind":"edifice","id":"E26"}}}"""
+    val trade =
+      """{"expectedNextSequence":13,"intent":{"type":"trade","target":{"kind":"edifice","id":"E26"},"resource":"secret"}}"""
+    val target = EconomyTargetRef.Edifice(EdificeId("E26"))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(muster).toOption.get.intent,
+      GameIntent.Muster(target))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(trade).toOption.get.intent,
+      GameIntent.Trade(target, oathdigital.setup.TradeResource.Secret))
+    val unsupported = ujson.read(muster).obj
+    unsupported("intent").obj("target").obj("kind") = "relic"
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(unsupported))
+      .left.toOption.get.path, "$.intent.target.kind")
+    val hidden = ujson.read(muster).obj
+    hidden("intent").obj("target").obj("side") = "ruined"
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(hidden))
+      .left.toOption.get.path, "$.intent.target.side")
   }
 
   test("authenticated bootstrap accepts only visible seat configuration") {

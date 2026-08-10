@@ -90,7 +90,7 @@ object OathEvent {
   final case class Mustered(
       playerId: PlayerId,
       siteId: SiteId,
-      denizenId: CardId,
+      target: EconomyTargetRef,
       suit: Suit,
       supplySpent: Int,
       warbandsGained: Int
@@ -98,7 +98,7 @@ object OathEvent {
   final case class Traded(
       playerId: PlayerId,
       siteId: SiteId,
-      denizenId: CardId,
+      target: EconomyTargetRef,
       suit: Suit,
       resource: TradeResource,
       supplySpent: Int,
@@ -454,6 +454,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         }
       case _: Traveled =>
         Left(InvalidEventOrder("Travel requires the gameplay evolution"))
+      case _: Mustered | _: Traded =>
+        Left(InvalidEventOrder("Economy requires the gameplay evolution"))
       case _: WealthTaken | _: WakeEnded =>
         Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
       case _: SearchStarted | _: SearchCompleted =>

@@ -32,9 +32,9 @@ object GameCommand {
   final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
       extends GameCommand
-  final case class Muster(playerId: PlayerId, denizenId: CardId)
+  final case class Muster(playerId: PlayerId, target: EconomyTargetRef)
       extends GameCommand
-  final case class Trade(playerId: PlayerId, denizenId: CardId,
+  final case class Trade(playerId: PlayerId, target: EconomyTargetRef,
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
@@ -260,10 +260,10 @@ final class GameApplicationService(
         rules.handle(state, WakeCommand.EndWake(playerId))
       case GameCommand.Travel(playerId, destination) =>
         rules.handle(state, TravelCommand.Travel(playerId, destination))
-      case GameCommand.Muster(playerId, denizen) =>
-        rules.handle(state, EconomyCommand.Muster(playerId, denizen))
-      case GameCommand.Trade(playerId, denizen, resource) =>
-        rules.handle(state, EconomyCommand.Trade(playerId, denizen, resource))
+      case GameCommand.Muster(playerId, target) =>
+        rules.handle(state, EconomyCommand.Muster(playerId, target))
+      case GameCommand.Trade(playerId, target, resource) =>
+        rules.handle(state, EconomyCommand.Trade(playerId, target, resource))
       case GameCommand.BeginSearch(playerId, source) => state match {
         case OathState.Ready(ready) =>
           for {

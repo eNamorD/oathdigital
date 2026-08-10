@@ -325,20 +325,20 @@ object ServerModeUi {
           panel.appendChild(travel)
           value.legalMusters.foreach { option =>
             val control = button(
-              s"Muster ${option.denizenId} (+${option.warbandsGained} warbands)",
+              s"Muster ${option.label} (+${option.warbandsGained} warbands)",
               "act-action muster-action")
             control.disabled = !controlsAvailable || !presentation.showGameplayControls
             control.onclick = _ => submit(GameCommand.Muster(
-              selectedPlayer, option.denizenId))
+              selectedPlayer, option.target))
             panel.appendChild(control)
           }
           value.legalTrades.foreach { option =>
             val control = button(
-              s"Trade ${option.denizenId} for ${option.gained} ${option.resource}",
+              s"Trade ${option.label} for ${option.gained} ${option.resource}",
               "act-action trade-action")
             control.disabled = !controlsAvailable || !presentation.showGameplayControls
             control.onclick = _ => submit(GameCommand.Trade(
-              selectedPlayer, option.denizenId, option.resource))
+              selectedPlayer, option.target, option.resource))
             panel.appendChild(control)
           }
           panel.appendChild(text("p", "informational",

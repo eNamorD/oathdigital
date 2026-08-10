@@ -16,9 +16,9 @@ class GameEventWireSuite extends munit.FunSuite {
     val edifice = EdificeId(catalog.edifices.head.id.value)
     val site = catalog.sites.head.id
     val events = Vector[OathEvent](
-      Mustered(PlayerId("red"), site, denizen,
+      Mustered(PlayerId("red"), site, EconomyTargetRef.Denizen(denizen),
         Suit.Order, 1, 3),
-      Traded(PlayerId("red"), site, edifice,
+      Traded(PlayerId("red"), site, EconomyTargetRef.Edifice(edifice),
         Suit.Hearth, TradeResource.Secret, 1, 2))
     val encoded = GameEventWire.encodeStream("economy", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
@@ -28,6 +28,9 @@ class GameEventWireSuite extends munit.FunSuite {
       .fold(error => fail(error.toString), identity)
     assertEquals(decoded.map(_.formatVersion), Vector(6, 6))
     assertEquals(decoded.map(_.event), events)
+    val invalid = ujson.read(encoded).arr
+    invalid.head("payload")("target")("kind") = "relic"
+    assert(GameEventWire.decodeStream(ujson.write(invalid)).isLeft)
   }
 
   test("v5 Rest events round-trip all authoritative transition facts") {

@@ -61,7 +61,7 @@ No item is currently prioritized. Re-evaluate after L6d.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 205 JVM tests, 51 Scala.js tests, the Scala.js
+The combined milestone passes 210 JVM tests, 51 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

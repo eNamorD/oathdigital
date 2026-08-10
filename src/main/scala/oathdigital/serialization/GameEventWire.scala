@@ -297,13 +297,13 @@ object GameEventWire {
           "destinationSiteId" -> destination.value,
           "supplySpent" -> supplySpent
         )
-      case Mustered(playerId, site, denizen, suit, spent, gained) =>
+      case Mustered(playerId, site, target, suit, spent, gained) =>
         ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
-          "denizen" -> encodeCardRef(denizen), "suit" -> suit.key,
+          "target" -> encodeCardRef(target.id), "suit" -> suit.key,
           "supplySpent" -> spent, "warbandsGained" -> gained)
-      case Traded(playerId, site, denizen, suit, resource, spent, gained) =>
+      case Traded(playerId, site, target, suit, resource, spent, gained) =>
         ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
-          "denizen" -> encodeCardRef(denizen), "suit" -> suit.key,
+          "target" -> encodeCardRef(target.id), "suit" -> suit.key,
           "resource" -> (resource match {
             case TradeResource.Favor => "favor"
             case TradeResource.Secret => "secret"
@@ -403,14 +403,14 @@ object GameEventWire {
             spent.toInt
           ))
         case MusteredType => for {
-          denizen <- decodeCardRef(payload("denizen"), s"$path.denizen")
+          target <- decodeEconomyTarget(payload("target"), s"$path.target")
           suit <- decodeSuit(payload("suit").str, s"$path.suit")
           spent <- safeIntField(payload.obj, "supplySpent", path)
           gained <- safeIntField(payload.obj, "warbandsGained", path)
         } yield Mustered(PlayerId(payload("playerId").str),
-          SiteId(payload("siteId").str), denizen, suit, spent, gained)
+          SiteId(payload("siteId").str), target, suit, spent, gained)
         case TradedType => for {
-          denizen <- decodeCardRef(payload("denizen"), s"$path.denizen")
+          target <- decodeEconomyTarget(payload("target"), s"$path.target")
           suit <- decodeSuit(payload("suit").str, s"$path.suit")
           resource <- payload("resource").str match {
             case "favor" => Right(TradeResource.Favor)
@@ -421,7 +421,7 @@ object GameEventWire {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           gained <- safeIntField(payload.obj, "gained", path)
         } yield Traded(PlayerId(payload("playerId").str),
-          SiteId(payload("siteId").str), denizen, suit, resource, spent, gained)
+          SiteId(payload("siteId").str), target, suit, resource, spent, gained)
         case SearchStartedType =>
           for {
             source <- decodeSearchSource(payload("source"), s"$path.source")
@@ -770,6 +770,13 @@ object GameEventWire {
       case other => Left(InvalidValue(s"$path.kind", s"unknown card kind '$other'"))
     } catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid card reference"))) }
+
+  private def decodeEconomyTarget(value: ujson.Value, path: String)
+      : Either[WireError, EconomyTargetRef] =
+    decodeCardRef(value, path).flatMap { id =>
+      EconomyTargetRef.fromCard(id).toRight(InvalidValue(path,
+        "Economy target must be a denizen or edifice"))
+    }
 
   private def encodeSearchPlacement(value: SearchPlacement): ujson.Value = value match {
     case SearchPlacement.Discard => ujson.Obj("kind" -> "discard")

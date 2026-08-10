@@ -90,9 +90,11 @@ final case class CurrentSiteResources(
 )
 final case class LegalTravelDestination(siteId: String, supplyCost: Int)
 final case class LegalSearchSource(kind: String, region: Option[String], supplyCost: Int)
-final case class LegalMuster(denizenId: String, suit: String,
+final case class EconomyTarget(kind: String, id: String)
+final case class LegalMuster(target: EconomyTarget, label: String, suit: String,
     supplyCost: Int, warbandsGained: Int)
-final case class LegalTrade(denizenId: String, suit: String, resource: String,
+final case class LegalTrade(target: EconomyTarget, label: String, suit: String,
+    resource: String,
     supplyCost: Int, gained: Int)
 final case class SearchCard(
     cardId: String,
@@ -142,8 +144,8 @@ object GameCommand {
   final case class FinishRest(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
       extends GameCommand
-  final case class Muster(playerId: String, denizenId: String) extends GameCommand
-  final case class Trade(playerId: String, denizenId: String, resource: String)
+  final case class Muster(playerId: String, target: EconomyTarget) extends GameCommand
+  final case class Trade(playerId: String, target: EconomyTarget, resource: String)
       extends GameCommand
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
       extends GameCommand
@@ -329,12 +331,13 @@ object GameJson {
           playerId = player,
           destinationSiteId = destination
         )
-      case GameCommand.Muster(player, denizen) =>
+      case GameCommand.Muster(player, target) =>
         js.Dynamic.literal(`type` = "muster", playerId = player,
-          denizenId = denizen)
-      case GameCommand.Trade(player, denizen, resource) =>
+          target = js.Dynamic.literal(kind = target.kind, id = target.id))
+      case GameCommand.Trade(player, target, resource) =>
         js.Dynamic.literal(`type` = "trade", playerId = player,
-          denizenId = denizen, resource = resource)
+          target = js.Dynamic.literal(kind = target.kind, id = target.id),
+          resource = resource)
       case GameCommand.BeginSearch(player, source, region) =>
         val value = js.Dynamic.literal(
           `type` = "beginSearch", playerId = player, source = source)
@@ -494,22 +497,24 @@ object GameJson {
           case None => Right(Vector.empty)
           case Some(_) => array(root, "legalMusters", "$").flatMap(
             traverse(_, "legalMusters") { (item, path) => for {
-              id <- string(item, "denizenId", path)
+              target <- economyTarget(item, path)
+              label <- string(item, "label", path)
               suit <- string(item, "suit", path)
               cost <- int(item, "supplyCost", path)
               gained <- int(item, "warbandsGained", path)
-            } yield LegalMuster(id, suit, cost, gained) })
+            } yield LegalMuster(target, label, suit, cost, gained) })
         }
         trades <- optionalField(root, "legalTrades").flatMap {
           case None => Right(Vector.empty)
           case Some(_) => array(root, "legalTrades", "$").flatMap(
             traverse(_, "legalTrades") { (item, path) => for {
-              id <- string(item, "denizenId", path)
+              target <- economyTarget(item, path)
+              label <- string(item, "label", path)
               suit <- string(item, "suit", path)
               resource <- string(item, "resource", path)
               cost <- int(item, "supplyCost", path)
               gained <- int(item, "gained", path)
-            } yield LegalTrade(id, suit, resource, cost, gained) })
+            } yield LegalTrade(target, label, suit, resource, cost, gained) })
         }
         pendingSearch <- optionalField(root, "pendingSearch").flatMap {
           case None => Right(None)
@@ -569,6 +574,17 @@ object GameJson {
       case "yellow" => PlayerColorToken.Yellow
       case _ => PlayerColorToken.Neutral
     }
+
+  private def economyTarget(obj: js.Dynamic, path: String)
+      : Either[GameClientFailure, EconomyTarget] = for {
+    raw <- field(obj, "target", path)
+    value <- objectValue(raw, s"$path.target")
+    kind <- string(value, "kind", s"$path.target")
+    id <- string(value, "id", s"$path.target")
+    _ <- if (kind == "denizen" || kind == "edifice") Right(())
+      else Left(GameClientFailure.DecodeFailure(s"$path.target.kind",
+        "expected denizen or edifice"))
+  } yield EconomyTarget(kind, id)
 
   private def safely[A](decode: => Either[GameClientFailure, A]) =
     try decode

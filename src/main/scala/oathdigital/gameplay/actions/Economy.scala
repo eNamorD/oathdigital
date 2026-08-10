@@ -12,18 +12,18 @@ import oathdigital.setup.OathViolation._
 
 sealed trait EconomyCommand extends Product with Serializable
 object EconomyCommand {
-  final case class Muster(playerId: PlayerId, denizenId: CardId)
+  final case class Muster(playerId: PlayerId, target: EconomyTargetRef)
       extends EconomyCommand
   final case class Trade(
       playerId: PlayerId,
-      denizenId: CardId,
+      target: EconomyTargetRef,
       resource: TradeResource
   ) extends EconomyCommand
 }
 
-final case class MusterResult(source: RuleSourceRef, suit: Suit,
+final case class MusterResult(target: EconomyTargetRef, source: RuleSourceRef, suit: Suit,
     supplySpent: Int, warbandsGained: Int)
-final case class TradeResult(source: RuleSourceRef, suit: Suit,
+final case class TradeResult(target: EconomyTargetRef, source: RuleSourceRef, suit: Suit,
     resource: TradeResource, supplySpent: Int, gained: Int)
 
 object Economy {
@@ -33,8 +33,8 @@ object Economy {
   def handle(catalog: ExecutableCatalog, state: OathState,
       command: EconomyCommand): Either[OathViolation, OathTransition] =
     command match {
-      case EconomyCommand.Muster(playerId, cardId) =>
-        validate(catalog, state, playerId, cardId).flatMap {
+      case EconomyCommand.Muster(playerId, target) =>
+        validate(catalog, state, playerId, target).flatMap {
           case (ready, player, siteId, card, suit) =>
             for {
               _ <- requireFavor(player, 1)
@@ -42,12 +42,12 @@ object Economy {
               matching = matchingAdvisers(catalog, player, suit)
               available = availableWarbands(ready, player)
               gained = math.min(1 + matching, available)
-              event = Mustered(playerId, siteId, card.id, suit, SupplyCost, gained)
+              event = Mustered(playerId, siteId, target, suit, SupplyCost, gained)
               next <- evolve(catalog, state, event)
             } yield OathTransition(next, Vector(event), ActActionSelection(playerId))
         }
-      case EconomyCommand.Trade(playerId, cardId, resource) =>
-        validate(catalog, state, playerId, cardId).flatMap {
+      case EconomyCommand.Trade(playerId, target, resource) =>
+        validate(catalog, state, playerId, target).flatMap {
           case (ready, player, siteId, card, suit) =>
             for {
               _ <- requireSupply(player)
@@ -59,7 +59,7 @@ object Economy {
                 case TradeResource.Secret =>
                   requireFavor(player, 2).map(_ => matches)
               }
-              event = Traded(playerId, siteId, card.id, suit, resource,
+              event = Traded(playerId, siteId, target, suit, resource,
                 SupplyCost, gained)
               next <- evolve(catalog, state, event)
             } yield OathTransition(next, Vector(event), ActActionSelection(playerId))
@@ -69,11 +69,12 @@ object Economy {
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
       : Either[OathViolation, OathState] = event match {
     case recorded: Mustered =>
-      validate(catalog, state, recorded.playerId, recorded.denizenId).flatMap {
+      validate(catalog, state, recorded.playerId, recorded.target).flatMap {
         case (ready, player, siteId, card, suit) =>
           val expected = math.min(1 + matchingAdvisers(catalog, player, suit),
             availableWarbands(ready, player))
-          if (recorded.siteId != siteId || recorded.suit != suit ||
+          if (recorded.siteId != siteId || recorded.target.id != card.id ||
+              recorded.suit != suit ||
               recorded.supplySpent != SupplyCost)
             Left(EconomySourceMismatch(s"expected $siteId/${card.id}/$suit/1 but recorded $recorded"))
           else if (recorded.warbandsGained != expected)
@@ -84,7 +85,7 @@ object Economy {
           } yield Ready(applyMuster(ready, recorded))
       }
     case recorded: Traded =>
-      validate(catalog, state, recorded.playerId, recorded.denizenId).flatMap {
+      validate(catalog, state, recorded.playerId, recorded.target).flatMap {
         case (ready, player, siteId, card, suit) =>
           val matches = matchingAdvisers(catalog, player, suit)
           val expected = recorded.resource match {
@@ -92,7 +93,8 @@ object Economy {
               ready.support.favorBanks.getOrElse(suit, 0))
             case TradeResource.Secret => matches
           }
-          if (recorded.siteId != siteId || recorded.suit != suit ||
+          if (recorded.siteId != siteId || recorded.target.id != card.id ||
+              recorded.suit != suit ||
               recorded.supplySpent != SupplyCost)
             Left(EconomySourceMismatch(s"expected $siteId/${card.id}/$suit/1 but recorded $recorded"))
           else if (recorded.gained != expected)
@@ -112,7 +114,8 @@ object Economy {
       player: PlayerState): Vector[MusterResult] =
     legalCards(catalog, ready, player).flatMap { case (site, card, suit) =>
       Option.when(player.board.supply.supply >= 1 && player.board.favor >= 1)(
-        MusterResult(RuleSourceRef.SiteCard(site, card.id), suit, 1,
+        MusterResult(EconomyTargetRef.fromCard(card.id).get,
+          sourceOf(site, card), suit, 1,
           math.min(1 + matchingAdvisers(catalog, player, suit),
             availableWarbands(ready, player))))
     }
@@ -122,26 +125,28 @@ object Economy {
     legalCards(catalog, ready, player).flatMap { case (site, card, suit) =>
       if (player.board.supply.supply < 1) Vector.empty else Vector(
         Option.when(player.board.faceUpSecrets >= 1)(TradeResult(
-          RuleSourceRef.SiteCard(site, card.id), suit, TradeResource.Favor, 1,
+          EconomyTargetRef.fromCard(card.id).get, sourceOf(site, card), suit,
+          TradeResource.Favor, 1,
           math.min(1 + matchingAdvisers(catalog, player, suit),
             ready.support.favorBanks.getOrElse(suit, 0)))),
         Option.when(player.board.favor >= 2)(TradeResult(
-          RuleSourceRef.SiteCard(site, card.id), suit, TradeResource.Secret, 1,
+          EconomyTargetRef.fromCard(card.id).get, sourceOf(site, card), suit,
+          TradeResource.Secret, 1,
           matchingAdvisers(catalog, player, suit)))
       ).flatten
     }
 
   private def validate(catalog: ExecutableCatalog, state: OathState,
-      playerId: PlayerId, cardId: CardId) =
+      playerId: PlayerId, target: EconomyTargetRef) =
     OathLifecycle.validateAct(state, playerId).flatMap { ready =>
       val player = ready.game.current.players.find(_.player == playerId).get
       for {
         _ <- validateSupportedState(catalog, ready, player)
         siteId <- player.pawnSite.toRight(PawnSiteMissing(playerId))
         site <- ready.game.current.map.sites.get(siteId).toRight(SiteNotInPlay(siteId))
-        card <- site.denizens.find(_.id == cardId)
-          .toRight(EconomyCardUnavailable(siteId, cardId))
-        _ <- Either.cond(card.tokens.isEmpty, (), EconomyCardNotEmpty(cardId))
+        card <- site.denizens.find(_.id == target.id)
+          .toRight(EconomyCardUnavailable(siteId, target.id))
+        _ <- Either.cond(card.tokens.isEmpty, (), EconomyCardNotEmpty(target.id))
         suit <- suitOf(catalog, card.id).toRight(
           UnsupportedEconomyState(s"no catalog suit for ${card.id}"))
       } yield (ready, player, siteId, card, suit)
@@ -177,6 +182,8 @@ object Economy {
       site.denizens.collect {
         case d: DenizenState =>
           RuleSourceRef.SiteCard(siteId, d.id) -> handlersOf(catalog, d.id)
+        case e: EdificeState =>
+          RuleSourceRef.Edifice(siteId, e.id) -> edificeHandlers(catalog, e)
       }
     }
     val relicSources = player.relics.collect {
@@ -233,7 +240,7 @@ object Economy {
     InsufficientSecrets(amount, player.board.faceUpSecrets))
 
   private def applyMuster(ready: ReadyGame, event: Mustered): ReadyGame =
-    update(ready, event.playerId, event.siteId, event.denizenId,
+    update(ready, event.playerId, event.siteId, event.target.id,
       card => withTokens(card, Tokens(1, 0)), board => board.copy(
         favor = board.favor - 1,
         warbands = board.warbands + event.warbandsGained,
@@ -242,12 +249,12 @@ object Economy {
   private def applyTrade(ready: ReadyGame, event: Traded): ReadyGame = {
     val updated = event.resource match {
       case TradeResource.Favor => update(ready, event.playerId, event.siteId,
-        event.denizenId, card => withTokens(card, Tokens(0, 1)), board => board.copy(
+        event.target.id, card => withTokens(card, Tokens(0, 1)), board => board.copy(
           favor = board.favor + event.gained,
           faceUpSecrets = board.faceUpSecrets - 1,
           supply = SupplyTrack(board.supply.supply - event.supplySpent)))
       case TradeResource.Secret => update(ready, event.playerId, event.siteId,
-        event.denizenId, card => withTokens(card, Tokens(1, 0)), board => board.copy(
+        event.target.id, card => withTokens(card, Tokens(1, 0)), board => board.copy(
           favor = board.favor - 2,
           faceUpSecrets = board.faceUpSecrets + event.gained,
           supply = SupplyTrack(board.supply.supply - event.supplySpent)))
@@ -273,6 +280,11 @@ object Economy {
     case d: DenizenState => d.copy(tokens = tokens)
     case e: EdificeState => e.copy(tokens = tokens)
   }
+  private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
+    card match {
+      case value: DenizenState => RuleSourceRef.SiteCard(siteId, value.id)
+      case value: EdificeState => RuleSourceRef.Edifice(siteId, value.id)
+    }
   private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] =
     catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
       .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
@@ -281,4 +293,12 @@ object Economy {
     catalog.denizens.find(_.id.value == id.value).map(_.handlers)
       .orElse(catalog.relics.find(_.id.value == id.value).map(_.handlers))
       .getOrElse(Vector.empty)
+  private def edificeHandlers(catalog: ExecutableCatalog,
+      state: EdificeState): Vector[String] =
+    catalog.edifices.find(_.id.value == state.id.value).toVector.flatMap {
+      definition => state.side match {
+        case EdificeSide.Intact => definition.intact.handlers
+        case EdificeSide.Ruined => definition.ruined.handlers
+      }
+    }
 }

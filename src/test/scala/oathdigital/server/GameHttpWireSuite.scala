@@ -1,7 +1,7 @@
 package oathdigital.server
 
 import oathdigital.application.GameCommand
-import oathdigital.model.PlayerId
+import oathdigital.model.{EconomyTargetRef, EdificeId, PlayerId}
 import oathdigital.serialization.{
   GameEventWire
 }
@@ -98,6 +98,28 @@ class GameHttpWireSuite extends munit.FunSuite {
       "drawn" -> ujson.Arr("denizen:chosen")))
     assertEquals(GameHttpWire.decodeCommand(hidden).left.toOption.get.path,
       "$.command.drawn")
+  }
+
+  test("development Economy commands preserve typed targets exactly") {
+    val target = ujson.Obj("kind" -> "edifice", "id" -> "E26")
+    val muster = commandRequest(ujson.Obj("type" -> "muster",
+      "playerId" -> "p2", "target" -> target))
+    val trade = commandRequest(ujson.Obj("type" -> "trade",
+      "playerId" -> "p2", "target" -> target, "resource" -> "favor"))
+    val expected = EconomyTargetRef.Edifice(EdificeId("E26"))
+    assertEquals(GameHttpWire.decodeCommand(muster).toOption.get.command,
+      GameCommand.Muster(PlayerId("p2"), expected))
+    assertEquals(GameHttpWire.decodeCommand(trade).toOption.get.command,
+      GameCommand.Trade(PlayerId("p2"), expected,
+        oathdigital.setup.TradeResource.Favor))
+    val unsupported = ujson.read(muster).obj
+    unsupported("command").obj("target").obj("kind") = "relic"
+    assertEquals(GameHttpWire.decodeCommand(ujson.write(unsupported))
+      .left.toOption.get.path, "$.command.target.kind")
+    val hidden = ujson.read(muster).obj
+    hidden("command").obj("outcome") = ujson.Obj("gained" -> 99)
+    assertEquals(GameHttpWire.decodeCommand(ujson.write(hidden))
+      .left.toOption.get.path, "$.command.outcome")
   }
 
   test("development bootstrap decodes only participant configuration") {
