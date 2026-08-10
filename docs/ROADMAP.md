@@ -7,28 +7,23 @@ been reviewed.
 
 ## Now
 
-- [ ] **R2 — Extract gameplay modules and clean up runtime naming**
-  - Follow [the gameplay module architecture](architecture/gameplay-modules.md):
-    extract Wake, Travel, and Search, reduce the aggregate to routing, and
-    delete `FirstTurnWake.scala` without changing behavior.
-  - In a separate mechanical pass, rename runtime `FirstGame*` types that no
-    longer describe setup while preserving v1-v4 event bytes, HTTP behavior,
-    replay compatibility, and golden fixtures.
-  - Complete the full integration gate before implementing additional rules.
-
-## Next
-
 - [ ] **L6c — Rest and turn advancement**
+  - Before adding Rest behavior, separate common Act lifecycle validation from
+    Travel-specific supported-state validation and prove that unsupported
+    Travel modifiers do not block Search or future non-Travel actions.
   - Implement Rest powers, resource return, secret reveal, Supply refresh,
     per-turn cleanup, player/round advancement, and the next player's Wake.
 
-## Later
+## Next
 
 - [ ] **L6d — Bounded Economy action slice**
   - Implement Muster and Trade together in `actions/Economy.scala`, sharing
     denizen access and suit/adviser evaluation while retaining distinct typed
     commands and outcomes. Split them only if implemented complexity warrants
     it.
+
+## Later
+
 - [ ] **X6 — Complete production authentication and deployment**
   - [x] Provider-neutral users, OIDC identity links, memberships, digest-only
     sessions, shared HSQL lifecycle, membership authorization, authenticated
@@ -108,6 +103,12 @@ been reviewed.
   world sources, ordered discards, typed placement restrictions, owner-only
   pending-card projection, reconnect-safe UI controls, and unchanged v1-v3
   compatibility.
+- [x] Complete R2 gameplay modularization and naming cleanup: extract cohesive
+  Wake, Travel, and Search modules; reduce `OathRules` to aggregate routing;
+  remove the transitional gameplay bucket; rename ordinary runtime application,
+  projection, wire, route, client, state, event, continuation, transition, and
+  violation types; and retain `FirstGame*` only for genuine introductory-setup
+  concepts. Golden v1-v4 bytes and public behavior remain unchanged.
 
 The combined milestone passes 188 JVM tests, 49 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
