@@ -2,8 +2,8 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.{FirstGameRules, TravelCommand, WakeCommand}
-import oathdigital.model.{DenizenId, PlayerId, SiteId}
+import oathdigital.gameplay.{FirstGameRules, SearchCommand, SearchRules, TravelCommand, WakeCommand}
+import oathdigital.model._
 import oathdigital.serialization.{FirstGameEventWire, WireError}
 import oathdigital.setup.{
   FirstGameContinue,
@@ -29,6 +29,29 @@ object FirstGameCommand {
   final case class EndWake(playerId: PlayerId) extends FirstGameCommand
   final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
       extends FirstGameCommand
+  final case class BeginSearch(playerId: PlayerId, source: SearchSource)
+      extends FirstGameCommand
+  final case class CompleteSearch(
+      playerId: PlayerId,
+      decision: DecisionId,
+      kept: WorldCardId,
+      discardedInOrder: Vector[WorldCardId],
+      placement: SearchPlacement
+  ) extends FirstGameCommand
+}
+
+trait SearchDrawPort {
+  def prepare(
+      ready: oathdigital.setup.ReadyFirstGame,
+      source: SearchSource,
+      origin: Region
+  ): Either[FirstGameSetupViolation, Vector[WorldCardId]]
+}
+object SearchDrawPort {
+  val authoritative: SearchDrawPort = new SearchDrawPort {
+    def prepare(ready: oathdigital.setup.ReadyFirstGame, source: SearchSource,
+        origin: Region) = SearchRules.draw(ready, source, origin)
+  }
 }
 
 final case class FirstGameAccepted(
@@ -79,7 +102,8 @@ object FirstGameApplicationError {
  */
 final class FirstGameApplicationService(
     catalog: ExecutableCatalog,
-    repository: EventStreamRepository
+    repository: EventStreamRepository,
+    searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative
 ) {
   import FirstGameApplicationError._
   import RepositoryAppendResult._
@@ -179,7 +203,7 @@ final class FirstGameApplicationService(
       nextSequence: Long
   ): Either[FirstGameApplicationError, FirstGameAccepted] =
     for {
-      transition <- applyCommand(state, command).left.map(CommandRejected)
+      transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected)
       records <- encode(gameId, nextSequence, transition.events)
       result <- repository.append(gameId, expected, records)
         .left.map(storageError)
@@ -207,7 +231,8 @@ final class FirstGameApplicationService(
 
   private def applyCommand(
       state: FirstGameSetupState,
-      command: FirstGameCommand
+      command: FirstGameCommand,
+      nextSequence: Long
   ) =
     command match {
       case FirstGameCommand.Begin(plan) =>
@@ -225,6 +250,22 @@ final class FirstGameApplicationService(
         rules.handle(state, WakeCommand.EndWake(playerId))
       case FirstGameCommand.Travel(playerId, destination) =>
         rules.handle(state, TravelCommand.Travel(playerId, destination))
+      case FirstGameCommand.BeginSearch(playerId, source) => state match {
+        case FirstGameSetupState.Ready(ready) =>
+          for {
+            region <- ready.game.current.players.find(_.player == playerId)
+              .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
+              .toRight(FirstGameSetupViolation.PawnSiteMissing(playerId))
+            drawn <- searchDrawPort.prepare(ready, source, region)
+            result <- rules.handle(state, SearchCommand.Start(
+              playerId, DecisionId(s"search-$nextSequence"), source, drawn))
+          } yield result
+        case _ => Left(FirstGameSetupViolation.GameNotStarted)
+      }
+      case FirstGameCommand.CompleteSearch(playerId, decision, kept, discarded,
+          placement) =>
+        rules.handle(state, SearchCommand.Complete(
+          playerId, decision, kept, discarded, placement))
     }
 
   private def encode(

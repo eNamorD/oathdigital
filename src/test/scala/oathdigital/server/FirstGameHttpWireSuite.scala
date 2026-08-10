@@ -77,6 +77,18 @@ class FirstGameHttpWireSuite extends munit.FunSuite {
         oathdigital.model.SiteId("site:b")))
   }
 
+  test("development Search begin rejects client-provided hidden outcomes") {
+    val valid = commandRequest(ujson.Obj(
+      "type" -> "beginSearch", "playerId" -> "p2", "source" -> "world"))
+    assert(FirstGameHttpWire.decodeCommand(valid).toOption.get.command
+      .isInstanceOf[FirstGameCommand.BeginSearch])
+    val hidden = commandRequest(ujson.Obj(
+      "type" -> "beginSearch", "playerId" -> "p2", "source" -> "world",
+      "drawn" -> ujson.Arr("denizen:chosen")))
+    assertEquals(FirstGameHttpWire.decodeCommand(hidden).left.toOption.get.path,
+      "$.command.drawn")
+  }
+
   test("development bootstrap decodes only participant configuration") {
     val json = ujson.write(ujson.Obj(
       "expectedNextSequence" -> 0,

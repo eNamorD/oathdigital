@@ -45,6 +45,23 @@ class AuthenticatedFirstGameHttpWireSuite extends munit.FunSuite {
       .left.toOption.get.path, "$.intent.playerId")
   }
 
+  test("authenticated Search intents are actor-free and reject hidden deck input") {
+    val begin =
+      """{"expectedNextSequence":10,"intent":{"type":"beginSearch","source":"world"}}"""
+    assertEquals(AuthenticatedFirstGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      FirstGameIntent.BeginSearch(oathdigital.model.SearchSource.WorldDeck))
+    val impersonation = ujson.read(begin).obj
+    impersonation("intent").obj("playerId") = "p2"
+    assert(AuthenticatedFirstGameHttpWire.decodeCommand(ujson.write(impersonation)).isLeft)
+    val hiddenOrder = ujson.read(begin).obj
+    hiddenOrder("intent").obj("drawn") = ujson.Arr("denizen:secret")
+    assert(AuthenticatedFirstGameHttpWire.decodeCommand(ujson.write(hiddenOrder)).isLeft)
+
+    val complete =
+      """{"expectedNextSequence":11,"intent":{"type":"completeSearch","decisionId":"search-10","kept":{"kind":"denizen","id":"denizen:a"},"discardedInOrder":[{"kind":"vision","id":"vision:b"}],"placement":{"kind":"discard"}}}"""
+    assert(AuthenticatedFirstGameHttpWire.decodeCommand(complete).isRight)
+  }
+
   test("authenticated bootstrap accepts only visible seat configuration") {
     val valid =
       """{"expectedNextSequence":0,"participants":[{"playerId":"p1","lineageId":"l1","color":"red"}],"firstPlayer":"p1"}"""

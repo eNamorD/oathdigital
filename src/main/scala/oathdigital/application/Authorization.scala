@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.model.{DenizenId, PlayerId, SiteId}
+import oathdigital.model._
 
 sealed trait AuthenticatedPrincipal extends Product with Serializable {
   def userId: UserId
@@ -67,6 +67,14 @@ final case class AuthorizedPlayer private (
 
   def travel(destination: SiteId): FirstGameCommand =
     FirstGameCommand.Travel(access.playerId, destination)
+
+  def beginSearch(source: SearchSource): FirstGameCommand =
+    FirstGameCommand.BeginSearch(access.playerId, source)
+
+  def completeSearch(decision: DecisionId, kept: WorldCardId,
+      discarded: Vector[WorldCardId], placement: SearchPlacement): FirstGameCommand =
+    FirstGameCommand.CompleteSearch(
+      access.playerId, decision, kept, discarded, placement)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

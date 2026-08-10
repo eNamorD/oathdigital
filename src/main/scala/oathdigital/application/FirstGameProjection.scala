@@ -4,8 +4,9 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
+import oathdigital.setup.ReadyFirstGame
 import oathdigital.setup.WakeResource
-import oathdigital.gameplay.{TakeWealthRules, TravelRules}
+import oathdigital.gameplay.{SearchRules, TakeWealthRules, TravelRules}
 
 final case class SetupPlayerProjection(
     playerId: String,
@@ -43,6 +44,19 @@ final case class CurrentSiteResourcesProjection(
     secrets: Int
 )
 final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
+final case class LegalSearchSourceProjection(kind: String, region: Option[String], supplyCost: Int)
+final case class SearchCardProjection(
+    cardId: String,
+    cardKind: String,
+    label: String,
+    legalPlacements: Vector[String]
+)
+final case class PendingSearchProjection(
+    decisionId: String,
+    drawnCards: Vector[SearchCardProjection],
+    replaceableAdvisers: Vector[String],
+    replaceableSiteCards: Vector[String]
+)
 
 final case class FirstGameProjection(
     gameId: String,
@@ -61,7 +75,9 @@ final case class FirstGameProjection(
     actionSelectionOpen: Boolean = false,
     actionFamilies: Vector[String] = Vector.empty,
     legalTravelDestinations: Vector[LegalTravelDestinationProjection] =
-      Vector.empty
+      Vector.empty,
+    legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
+    pendingSearch: Option[PendingSearchProjection] = None
 )
 
 final class FirstGameProjector(catalog: ExecutableCatalog) {
@@ -177,13 +193,34 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
             value.playerColors(player.player).value
           )
         }
+        val pendingSearch = current.pending.collect {
+          case search: PendingProcedure.Search
+              if requestingPlayer.contains(search.actor) =>
+            PendingSearchProjection(
+              search.decision.value,
+              search.drawn.map(card => SearchCardProjection(
+                card.value,
+                card.kind,
+                worldCardLabel(card),
+                legalPlacements(value, active, card)
+              )),
+              active.advisers.filterNot(isLocked).map(_.id.value),
+              active.pawnSite.toVector.flatMap(current.map.sites.get)
+                .flatMap(_.denizens.map(_.id.value))
+            )
+        }
         FirstGameProjection(
           gameId,
           loaded.nextSequence,
-          current.turn.phase match {
+          current.pending match {
+            case Some(_: PendingProcedure.Search) if pendingSearch.nonEmpty =>
+              "search-decision"
+            case Some(_: PendingProcedure.Search) => "search-waiting"
+            case _ => current.turn.phase match {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
             case Phase.Rest => "rest"
+            }
           },
           Some(value.game.current.turn.activePlayer.value),
           setupPlayers,
@@ -214,7 +251,7 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
               state.tokens.favor,
               state.tokens.secrets
             ))),
-          actionSelectionOpen = current.turn.phase == Phase.Act,
+          actionSelectionOpen = current.turn.phase == Phase.Act && current.pending.isEmpty,
           actionFamilies =
             if (current.turn.phase == Phase.Act)
               Vector("Search", "Travel", "Campaign", "Muster", "Trade",
@@ -227,7 +264,27 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
                 case (siteId, cost) =>
                   LegalTravelDestinationProjection(siteId.value, cost)
               }
-            else Vector.empty
+            else Vector.empty,
+          legalSearchSources =
+            if (requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty)
+              active.pawnSite.flatMap(current.map.regionOf).toVector.flatMap { origin =>
+                Vector(SearchSource.WorldDeck,
+                  SearchSource.RegionalDiscard(origin)).flatMap { source =>
+                  SearchRules.cost(value, source, origin).toOption
+                    .filter(_ <= active.board.supply.supply)
+                    .filter(_ => SearchRules.draw(value, source, origin)
+                      .exists(_.nonEmpty)).map { cost => source match {
+                      case SearchSource.WorldDeck =>
+                        LegalSearchSourceProjection("world", None, cost)
+                      case SearchSource.RegionalDiscard(region) =>
+                        LegalSearchSourceProjection(
+                          "regional-discard", Some(region.key), cost)
+                    }}
+                }
+              }
+            else Vector.empty,
+          pendingSearch = pendingSearch
         )
     }
 
@@ -305,4 +362,44 @@ final class FirstGameProjector(catalog: ExecutableCatalog) {
   private def safeLabel(id: String): String =
     id.split(":").lastOption.getOrElse(id)
       .split("-").map(_.capitalize).mkString(" ")
+
+  private def worldCardLabel(id: WorldCardId): String = id match {
+    case value: DenizenId => denizenNames.getOrElse(value, safeLabel(value.value))
+    case value: VisionId => safeLabel(value.value)
+  }
+
+  private def isLocked(card: AdviserState): Boolean = card.id match {
+    case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
+      .exists(_.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
+    case _ => false
+  }
+
+  private def legalPlacements(
+      ready: ReadyFirstGame,
+      player: PlayerState,
+      card: WorldCardId
+  ): Vector[String] = {
+    import oathdigital.catalog.CardRestrictions
+    val base = Vector("discard", "adviser-face-down")
+    card match {
+      case _: VisionId => base :+ "adviser-face-up"
+      case id: DenizenId =>
+        catalog.denizens.find(_.id.value == id.value).fold(base) { definition =>
+          val adviser = if (definition.restrictions == CardRestrictions.SiteOnly)
+            base else base :+ "adviser-face-up"
+          val siteAllowed = definition.restrictions != CardRestrictions.AdviserOnly &&
+            definition.restrictions != CardRestrictions.LockedAdviserOnly &&
+            player.pawnSite.flatMap(ready.game.current.map.sites.get).exists { site =>
+              val capacity = player.pawnSite.flatMap(id =>
+                catalog.sites.find(_.id == id)).map(_.capacity).getOrElse(0)
+              site.denizens.size < capacity || site.denizens.exists {
+                case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value)
+                  .exists(_.suit.value == definition.suit.value)
+                case _ => false
+              }
+            }
+          if (siteAllowed) adviser :+ "site" else adviser
+        }
+    }
+  }
 }

@@ -14,6 +14,7 @@ import oathdigital.setup.FirstGameSetupEvent.{
 import oathdigital.setup.FirstGameSetupViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.setup.FirstGameSetupState.Ready
 import oathdigital.setup.WakeResource
+import oathdigital.setup.ReadyFirstGame
 
 class FirstGameApplicationServiceSuite extends munit.FunSuite {
   private def execute(
@@ -141,6 +142,57 @@ class FirstGameApplicationServiceSuite extends munit.FunSuite {
       .records.last)
     assertEquals(last("formatVersion").num.toInt, 3)
     assertEquals(last("eventType").str, "gameplay.traveled")
+  }
+
+  test("Search persists and reloads pending private decision then completes in v4") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new FirstGameApplicationService(catalog, repository)
+    val setup = execute(service, "game-search")
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val ended = service.handle("game-search", setup.nextSequence,
+      FirstGameCommand.EndWake(active)).toOption.get
+    val started = service.handle("game-search", ended.nextSequence,
+      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck)).toOption.get
+    val reloadedPending = new FirstGameApplicationService(catalog, repository)
+      .load("game-search").toOption.flatten.get
+    assertEquals(reloadedPending.state, started.state)
+    val Ready(pendingReady) = reloadedPending.state: @unchecked
+    val pending = pendingReady.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Search]
+    assertEquals(service.handle("game-search", ended.nextSequence,
+      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck)),
+      Left(FirstGameApplicationError.StaleClientPosition(
+        ended.nextSequence, started.nextSequence)))
+    val completed = service.handle("game-search", started.nextSequence,
+      FirstGameCommand.CompleteSearch(active, pending.decision,
+        pending.drawn.head, pending.drawn.tail, SearchPlacement.Discard))
+      .toOption.get
+    val loaded = new FirstGameApplicationService(catalog, repository)
+      .load("game-search").toOption.flatten.get
+    assertEquals(loaded.state, completed.state)
+    val versions = repository.load("game-search").toOption.flatten.get.records
+      .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt)
+    assertEquals(versions, Vector(4, 4))
+  }
+
+  test("Search draw port cannot inject card identities inconsistent with state") {
+    val repository = new InMemoryEventStreamRepository
+    val port = new SearchDrawPort {
+      def prepare(ready: ReadyFirstGame, source: SearchSource, origin: Region) =
+        Right(Vector(DenizenId("denizen:tampered")))
+    }
+    val service = new FirstGameApplicationService(catalog, repository, port)
+    val setup = execute(service, "game-search-tamper")
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val ended = service.handle("game-search-tamper", setup.nextSequence,
+      FirstGameCommand.EndWake(active)).toOption.get
+    assert(service.handle("game-search-tamper", ended.nextSequence,
+      FirstGameCommand.BeginSearch(active, SearchSource.WorldDeck))
+      .left.toOption.get.isInstanceOf[FirstGameApplicationError.CommandRejected])
+    assertEquals(repository.load("game-search-tamper").toOption.flatten.get
+      .nextSequence, ended.nextSequence)
   }
 
   test("Wake projection is actor-private and Act boundary is informational") {

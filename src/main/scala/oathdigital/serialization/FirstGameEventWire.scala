@@ -27,6 +27,7 @@ object FirstGameEventWire {
 
   val FormatVersion: Int = 2
   val GameplayFormatVersion: Int = 3
+  val SearchFormatVersion: Int = 4
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -35,6 +36,8 @@ object FirstGameEventWire {
   val TakeWealthType = "gameplay.take-wealth"
   val WakeEndedType = "gameplay.wake-ended"
   val TraveledType = "gameplay.traveled"
+  val SearchStartedType = "gameplay.search-started"
+  val SearchCompletedType = "gameplay.search-completed"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -132,7 +135,8 @@ object FirstGameEventWire {
         for {
           version <- formatVersionField(obj, path)
           _ <-
-            if (version == FormatVersion || version == GameplayFormatVersion)
+            if (version == FormatVersion || version == GameplayFormatVersion ||
+                version == SearchFormatVersion)
               Right(())
             else
               Left(
@@ -238,10 +242,13 @@ object FirstGameEventWire {
       case _: WealthTaken => TakeWealthType
       case _: WakeEnded => WakeEndedType
       case _: Traveled => TraveledType
+      case _: SearchStarted => SearchStartedType
+      case _: SearchCompleted => SearchCompletedType
     }
 
   private def formatVersion(event: FirstGameSetupEvent): Int = event match {
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
+    case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _ => FormatVersion
   }
 
@@ -276,6 +283,23 @@ object FirstGameEventWire {
           "sourceSiteId" -> source.value,
           "destinationSiteId" -> destination.value,
           "supplySpent" -> supplySpent
+        )
+      case SearchStarted(playerId, decision, source, origin, spent, drawn) =>
+        ujson.Obj(
+          "playerId" -> playerId.value,
+          "decisionId" -> decision.value,
+          "source" -> encodeSearchSource(source),
+          "origin" -> origin.key,
+          "supplySpent" -> spent,
+          "drawn" -> ujson.Arr.from(drawn.map(encodeWorldCard))
+        )
+      case SearchCompleted(playerId, decision, kept, discarded, placement) =>
+        ujson.Obj(
+          "playerId" -> playerId.value,
+          "decisionId" -> decision.value,
+          "kept" -> encodeWorldCard(kept),
+          "discardedInOrder" -> ujson.Arr.from(discarded.map(encodeWorldCard)),
+          "placement" -> encodeSearchPlacement(placement)
         )
     }
 
@@ -343,6 +367,28 @@ object FirstGameEventWire {
             SiteId(payload("destinationSiteId").str),
             spent.toInt
           ))
+        case SearchStartedType =>
+          for {
+            source <- decodeSearchSource(payload("source"), s"$path.source")
+            origin <- decodeRegion(payload("origin").str, s"$path.origin")
+            drawn <- traverse(payload("drawn").arr.toVector)(decodeWorldCard(_, s"$path.drawn"))
+            spent = payload("supplySpent").num
+            _ <- if (spent.isFinite && spent == Math.rint(spent) && spent >= 0 &&
+              spent <= Int.MaxValue) Right(()) else Left(InvalidValue(
+              s"$path.supplySpent", "must be a non-negative integer"))
+          } yield SearchStarted(
+            PlayerId(payload("playerId").str),
+            DecisionId(payload("decisionId").str), source, origin,
+            spent.toInt, drawn)
+        case SearchCompletedType =>
+          for {
+            kept <- decodeWorldCard(payload("kept"), s"$path.kept")
+            discarded <- traverse(payload("discardedInOrder").arr.toVector)(
+              decodeWorldCard(_, s"$path.discardedInOrder"))
+            placement <- decodeSearchPlacement(payload("placement"), s"$path.placement")
+          } yield SearchCompleted(
+            PlayerId(payload("playerId").str),
+            DecisionId(payload("decisionId").str), kept, discarded, placement)
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -361,7 +407,9 @@ object FirstGameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == TakeWealthType || eventType == WakeEndedType ||
+      if (eventType == SearchStartedType || eventType == SearchCompletedType)
+        SearchFormatVersion
+      else if (eventType == TakeWealthType || eventType == WakeEndedType ||
           eventType == TraveledType)
         GameplayFormatVersion
       else FormatVersion
@@ -573,6 +621,88 @@ object FirstGameEventWire {
 
   private def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
+
+  private def encodeWorldCard(id: WorldCardId): ujson.Value = id match {
+    case value: DenizenId => ujson.Obj("kind" -> "denizen", "id" -> value.value)
+    case value: VisionId => ujson.Obj("kind" -> "vision", "id" -> value.value)
+  }
+
+  private def decodeWorldCard(value: ujson.Value, path: String)
+      : Either[WireError, WorldCardId] = try value("kind").str match {
+    case "denizen" => Right(DenizenId(value("id").str))
+    case "vision" => Right(VisionId(value("id").str))
+    case other => Left(InvalidValue(s"$path.kind", s"unknown world card kind '$other'"))
+  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid world card"))) }
+
+  private def encodeSearchSource(source: SearchSource): ujson.Value = source match {
+    case SearchSource.WorldDeck => ujson.Obj("kind" -> "world")
+    case SearchSource.RegionalDiscard(region) =>
+      ujson.Obj("kind" -> "regional-discard", "region" -> region.key)
+  }
+
+  private def decodeSearchSource(value: ujson.Value, path: String)
+      : Either[WireError, SearchSource] = try value("kind").str match {
+    case "world" => Right(SearchSource.WorldDeck)
+    case "regional-discard" => decodeRegion(value("region").str, s"$path.region")
+      .map(SearchSource.RegionalDiscard)
+    case other => Left(InvalidValue(s"$path.kind", s"unknown Search source '$other'"))
+  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid Search source"))) }
+
+  private def decodeRegion(value: String, path: String): Either[WireError, Region] =
+    Region.all.find(_.key == value).toRight(InvalidValue(path, s"unknown region '$value'"))
+
+  private def encodeCardRef(id: CardId): ujson.Value = id match {
+    case value: DenizenId => encodeWorldCard(value)
+    case value: VisionId => encodeWorldCard(value)
+    case value: EdificeId => ujson.Obj("kind" -> "edifice", "id" -> value.value)
+    case value: RelicId => ujson.Obj("kind" -> "relic", "id" -> value.value)
+    case value: LegacyId => ujson.Obj("kind" -> "legacy", "id" -> value.value)
+  }
+
+  private def decodeCardRef(value: ujson.Value, path: String): Either[WireError, CardId] =
+    try value("kind").str match {
+      case "denizen" => Right(DenizenId(value("id").str))
+      case "vision" => Right(VisionId(value("id").str))
+      case "edifice" => Right(EdificeId(value("id").str))
+      case "relic" => Right(RelicId(value("id").str))
+      case "legacy" => Right(LegacyId(value("id").str))
+      case other => Left(InvalidValue(s"$path.kind", s"unknown card kind '$other'"))
+    } catch { case NonFatal(error) => Left(InvalidValue(path,
+      Option(error.getMessage).getOrElse("invalid card reference"))) }
+
+  private def encodeSearchPlacement(value: SearchPlacement): ujson.Value = value match {
+    case SearchPlacement.Discard => ujson.Obj("kind" -> "discard")
+    case SearchPlacement.Site(replace) => ujson.Obj(
+      "kind" -> "site", "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
+    case SearchPlacement.Adviser(orientation, replace) => ujson.Obj(
+      "kind" -> "adviser",
+      "orientation" -> (if (orientation == Orientation.FaceUp) "face-up" else "face-down"),
+      "replace" -> replace.fold[ujson.Value](ujson.Null)(encodeCardRef))
+  }
+
+  private def decodeSearchPlacement(value: ujson.Value, path: String)
+      : Either[WireError, SearchPlacement] = {
+    def replacement: Either[WireError, Option[CardId]] = value("replace") match {
+      case ujson.Null => Right(None)
+      case card => decodeCardRef(card, s"$path.replace").map(Some(_))
+    }
+    try value("kind").str match {
+      case "discard" => Right(SearchPlacement.Discard)
+      case "site" => replacement.map(SearchPlacement.Site)
+      case "adviser" => for {
+        orientation <- value("orientation").str match {
+          case "face-up" => Right(Orientation.FaceUp)
+          case "face-down" => Right(Orientation.FaceDown)
+          case other => Left(InvalidValue(s"$path.orientation", s"unknown orientation '$other'"))
+        }
+        replace <- replacement
+      } yield SearchPlacement.Adviser(orientation, replace)
+      case other => Left(InvalidValue(s"$path.kind", s"unknown placement '$other'"))
+    } catch { case NonFatal(error) => Left(InvalidValue(path,
+      Option(error.getMessage).getOrElse("invalid Search placement"))) }
+  }
 
   private def traverse[A, B](
       values: Vector[A]

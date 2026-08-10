@@ -1,0 +1,34 @@
+[
+  {
+    "formatVersion": 4,
+    "gameId": "search",
+    "sequence": 9,
+    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},
+    "eventType": "gameplay.search-started",
+    "payload": {
+      "playerId": "p2",
+      "decisionId": "search-9",
+      "source": {"kind": "world"},
+      "origin": "cradle",
+      "supplySpent": 3,
+      "drawn": [
+        {"kind": "denizen", "id": "denizen:a"},
+        {"kind": "vision", "id": "vision:b"}
+      ]
+    }
+  },
+  {
+    "formatVersion": 4,
+    "gameId": "search",
+    "sequence": 10,
+    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},
+    "eventType": "gameplay.search-completed",
+    "payload": {
+      "playerId": "p2",
+      "decisionId": "search-9",
+      "kept": {"kind": "denizen", "id": "denizen:a"},
+      "discardedInOrder": [{"kind": "vision", "id": "vision:b"}],
+      "placement": {"kind": "adviser", "orientation": "face-down", "replace": null}
+    }
+  }
+]

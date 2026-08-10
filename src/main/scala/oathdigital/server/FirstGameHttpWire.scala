@@ -8,7 +8,7 @@ import oathdigital.application.{
   FirstGameBootstrapConfig,
   FirstGameProjection
 }
-import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
+import oathdigital.model._
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.setup.{PlayerColor, WakeResource}
 
@@ -166,7 +166,28 @@ object FirstGameHttpWire {
               "siteId" -> destination.siteId,
               "supplyCost" -> destination.supplyCost
             )
-          })
+          }),
+        "legalSearchSources" -> ujson.Arr.from(
+          projection.legalSearchSources.map { source => ujson.Obj(
+            "kind" -> source.kind,
+            "region" -> source.region.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+            "supplyCost" -> source.supplyCost
+          )}),
+        "pendingSearch" -> projection.pendingSearch.fold[ujson.Value](ujson.Null) {
+          search => ujson.Obj(
+            "decisionId" -> search.decisionId,
+            "drawnCards" -> ujson.Arr.from(search.drawnCards.map { card => ujson.Obj(
+              "cardId" -> card.cardId,
+              "cardKind" -> card.cardKind,
+              "label" -> card.label,
+              "legalPlacements" -> ujson.Arr.from(card.legalPlacements.map(ujson.Str(_)))
+            )}),
+            "replaceableAdvisers" -> ujson.Arr.from(
+              search.replaceableAdvisers.map(ujson.Str(_))),
+            "replaceableSiteCards" -> ujson.Arr.from(
+              search.replaceableSiteCards.map(ujson.Str(_)))
+          )
+        }
       )
     )
 
@@ -218,6 +239,29 @@ object FirstGameHttpWire {
           destination <- stringField(obj, "destinationSiteId", path)
         } yield FirstGameCommand.Travel(
           PlayerId(player), SiteId(destination))
+      case "beginSearch" =>
+        for {
+          _ <- exactFields(obj, Set("type", "playerId", "source", "region"), path)
+          player <- stringField(obj, "playerId", path)
+          kind <- stringField(obj, "source", path)
+          source <- decodeSearchSource(kind, obj.value.get("region"), path)
+        } yield FirstGameCommand.BeginSearch(PlayerId(player), source)
+      case "completeSearch" =>
+        for {
+          _ <- exactFields(obj, Set("type", "playerId", "decisionId", "kept",
+            "discardedInOrder", "placement"), path)
+          player <- stringField(obj, "playerId", path)
+          decision <- stringField(obj, "decisionId", path)
+          kept <- worldCardField(obj, "kept", path)
+          discardedValue <- field(obj, "discardedInOrder", path)
+          discardedArray <- arrayValue(discardedValue, s"$path.discardedInOrder")
+          discarded <- traverse(discardedArray.zipWithIndex) { case (value, index) =>
+            decodeWorldCard(value, s"$path.discardedInOrder[$index]")
+          }
+          placementValue <- field(obj, "placement", path)
+          placement <- decodePlacement(placementValue, s"$path.placement")
+        } yield FirstGameCommand.CompleteSearch(
+          PlayerId(player), DecisionId(decision), kept, discarded, placement)
       case other =>
         Left(HttpInputError(
           s"$path.type",
@@ -243,6 +287,73 @@ object FirstGameHttpWire {
         ))
       case _ => Left(HttpInputError(path, "expected a number"))
     }
+
+  private def exactFields(
+      obj: ujson.Obj,
+      allowed: Set[String],
+      path: String
+  ): Either[HttpInputError, Unit] =
+    obj.value.keys.find(key => !allowed.contains(key)) match {
+      case Some(key) => Left(HttpInputError(s"$path.$key", "field is not accepted"))
+      case None => Right(())
+    }
+
+  private def decodeSearchSource(kind: String, region: Option[ujson.Value], path: String)
+      : Either[HttpInputError, SearchSource] = kind match {
+    case "world" => Right(SearchSource.WorldDeck)
+    case "regional-discard" => region match {
+      case Some(ujson.Str(value)) => Region.all.find(_.key == value)
+        .map(r => SearchSource.RegionalDiscard(r): SearchSource)
+        .toRight(HttpInputError(s"$path.region", "unknown region"))
+      case _ => Left(HttpInputError(s"$path.region", "region is required"))
+    }
+    case _ => Left(HttpInputError(s"$path.source", "unknown Search source"))
+  }
+
+  private def worldCardField(obj: ujson.Obj, name: String, path: String) =
+    field(obj, name, path).flatMap(decodeWorldCard(_, s"$path.$name"))
+
+  private def decodeWorldCard(value: ujson.Value, path: String)
+      : Either[HttpInputError, WorldCardId] = objectValue(value, path).flatMap { obj =>
+    for {
+      kind <- stringField(obj, "kind", path)
+      id <- stringField(obj, "id", path)
+      card <- kind match {
+        case "denizen" => Right(DenizenId(id): WorldCardId)
+        case "vision" => Right(VisionId(id): WorldCardId)
+        case _ => Left(HttpInputError(s"$path.kind", "unknown world card kind"))
+      }
+    } yield card
+  }
+
+  private def decodeCard(value: ujson.Value, path: String): Either[HttpInputError, CardId] =
+    objectValue(value, path).flatMap { obj => for {
+      kind <- stringField(obj, "kind", path)
+      id <- stringField(obj, "id", path)
+      card <- kind match {
+        case "denizen" => Right(DenizenId(id): CardId)
+        case "vision" => Right(VisionId(id): CardId)
+        case "edifice" => Right(EdificeId(id): CardId)
+        case _ => Left(HttpInputError(s"$path.kind", "unsupported replacement card kind"))
+      }
+    } yield card }
+
+  private def decodePlacement(value: ujson.Value, path: String)
+      : Either[HttpInputError, SearchPlacement] = objectValue(value, path).flatMap { obj =>
+    def replacement = obj.value.get("replace") match {
+      case None | Some(ujson.Null) => Right(None)
+      case Some(value) => decodeCard(value, s"$path.replace").map(Some(_))
+    }
+    stringField(obj, "kind", path).flatMap {
+      case "discard" => Right(SearchPlacement.Discard)
+      case "site" => replacement.map(SearchPlacement.Site)
+      case "adviser-face-up" => replacement.map(SearchPlacement.Adviser(
+        Orientation.FaceUp, _))
+      case "adviser-face-down" => replacement.map(SearchPlacement.Adviser(
+        Orientation.FaceDown, _))
+      case _ => Left(HttpInputError(s"$path.kind", "unknown Search placement"))
+    }
+  }
 
   private def stringField(
       obj: ujson.Obj,

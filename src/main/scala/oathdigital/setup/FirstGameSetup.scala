@@ -86,6 +86,21 @@ object FirstGameSetupEvent {
       destinationSiteId: SiteId,
       supplySpent: Int
   ) extends FirstGameSetupEvent
+  final case class SearchStarted(
+      playerId: PlayerId,
+      decision: DecisionId,
+      source: SearchSource,
+      origin: Region,
+      supplySpent: Int,
+      drawn: Vector[WorldCardId]
+  ) extends FirstGameSetupEvent
+  final case class SearchCompleted(
+      playerId: PlayerId,
+      decision: DecisionId,
+      kept: WorldCardId,
+      discardedInOrder: Vector[WorldCardId],
+      placement: SearchPlacement
+  ) extends FirstGameSetupEvent
 }
 
 sealed trait WakeResource extends Product with Serializable
@@ -104,6 +119,8 @@ object FirstGameContinue {
   final case class AwaitingWakeAction(playerId: PlayerId)
       extends FirstGameContinue
   final case class ActActionSelection(playerId: PlayerId)
+      extends FirstGameContinue
+  final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
       extends FirstGameContinue
 }
 
@@ -150,6 +167,24 @@ object FirstGameSetupViolation {
   final case class TravelCostMismatch(expected: Int, actual: Int)
       extends FirstGameSetupViolation
   final case class UnsupportedTravelState(reason: String)
+      extends FirstGameSetupViolation
+  final case class UnsupportedSearchState(reason: String)
+      extends FirstGameSetupViolation
+  final case class SearchSourceUnavailable(source: SearchSource)
+      extends FirstGameSetupViolation
+  final case class SearchDrawMismatch(detail: String)
+      extends FirstGameSetupViolation
+  final case class SearchDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends FirstGameSetupViolation
+  final case class SearchChoiceMismatch(detail: String)
+      extends FirstGameSetupViolation
+  final case class UnknownWorldCard(id: WorldCardId)
+      extends FirstGameSetupViolation
+  final case class InvalidSearchPlacement(detail: String)
+      extends FirstGameSetupViolation
+  final case class LockedAdviserCannotBeDiscarded(id: CardId)
+      extends FirstGameSetupViolation
+  final case class SearchCostMismatch(expected: Int, actual: Int)
       extends FirstGameSetupViolation
   case object ParticipantsEmpty extends FirstGameSetupViolation
   final case class DuplicatePlayer(id: PlayerId)
@@ -371,6 +406,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Travel requires the gameplay evolution"))
       case _: WealthTaken | _: WakeEnded =>
         Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
+      case _: SearchStarted | _: SearchCompleted =>
+        Left(InvalidEventOrder("Search requires the gameplay evolution"))
     }
 
   private def validatePlan(

@@ -129,6 +129,31 @@ class HttpFirstGameClientSuite extends FunSuite {
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
+  test("Search encodes only source and decisions and decodes private controls") {
+    val begin = FirstGameJson.encodeCommand(10L,
+      FirstGameCommand.BeginSearch("red-exile", "world", None))
+    assert(begin.contains("\"type\":\"beginSearch\""))
+    assert(!begin.contains("drawn"))
+    val json = projectionJson(sequence = 11, choices = false).replace(
+      "\"privateAdviserChoices\":[]",
+      "\"privateAdviserChoices\":[]," +
+        "\"legalSearchSources\":[{\"kind\":\"world\",\"region\":null," +
+        "\"supplyCost\":2}]," +
+        "\"pendingSearch\":{\"decisionId\":\"search-10\"," +
+        "\"drawnCards\":[{\"cardId\":\"denizen:a\",\"cardKind\":\"denizen\"," +
+        "\"label\":\"A\",\"legalPlacements\":[\"discard\"]}]," +
+        "\"replaceableAdvisers\":[],\"replaceableSiteCards\":[]}" )
+    val projection = FirstGameJson.decodeProjection(json).toOption.get
+    assertEquals(projection.legalSearchSources,
+      Vector(LegalSearchSource("world", None, 2)))
+    assertEquals(projection.pendingSearch.map(_.drawnCards.map(_.cardId)),
+      Some(Vector("denizen:a")))
+    val complete = FirstGameJson.encodeCommand(11L,
+      FirstGameCommand.CompleteSearch("red-exile", "search-10",
+        "denizen:a", "denizen", Vector.empty, "discard"))
+    assert(complete.contains("\"decisionId\":\"search-10\""))
+  }
+
   test("site detail decoder preserves populated and empty site projections") {
     val projection = FirstGameJson.decodeProjection(
       projectionJson(sequence = 2)

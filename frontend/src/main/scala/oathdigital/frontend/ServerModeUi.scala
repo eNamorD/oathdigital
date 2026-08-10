@@ -302,6 +302,18 @@ object ServerModeUi {
           }
           panel.appendChild(cancel)
         } else {
+          value.legalSearchSources.foreach { source =>
+            val label = source.kind match {
+              case "world" => s"Search world deck (${source.supplyCost} Supply)"
+              case _ => s"Search ${source.region.getOrElse("regional")} discard " +
+                s"(${source.supplyCost} Supply)"
+            }
+            val search = button(label, "act-action search-action")
+            search.disabled = !controlsAvailable || !presentation.showGameplayControls
+            search.onclick = _ => submit(FirstGameCommand.BeginSearch(
+              selectedPlayer, source.kind, source.region))
+            panel.appendChild(search)
+          }
           val travel = button("Travel", "act-action travel-action")
           travel.disabled = !controlsAvailable ||
             value.legalTravelDestinations.isEmpty ||
@@ -313,6 +325,41 @@ object ServerModeUi {
           panel.appendChild(travel)
           panel.appendChild(text("p", "informational",
             "Other normal action families are not yet implemented."))
+        }
+      }
+      value.pendingSearch.foreach { search =>
+        panel.appendChild(text("h3", "", "Choose one searched card"))
+        panel.appendChild(text("p", "informational",
+          "Non-kept cards are discarded in the displayed draw order."))
+        search.drawnCards.foreach { card =>
+          val cardPanel = element("div", "search-card")
+          cardPanel.appendChild(text("strong", "", card.label))
+          card.legalPlacements.foreach { placement =>
+            val replacement: Option[(String, String)] = placement match {
+              case "site" if search.replaceableSiteCards.nonEmpty =>
+                Some(cardKind(search.replaceableSiteCards.head) ->
+                  search.replaceableSiteCards.head)
+              case placementKind if placementKind.startsWith("adviser") &&
+                  search.replaceableAdvisers.size >= 3 =>
+                Some(cardKind(search.replaceableAdvisers.head) ->
+                  search.replaceableAdvisers.head)
+              case _ => None
+            }
+            val control = button(placement.replace('-', ' '), "search-choice")
+            control.disabled = !controlsAvailable || !presentation.showGameplayControls
+            control.onclick = _ => submit(FirstGameCommand.CompleteSearch(
+              selectedPlayer,
+              search.decisionId,
+              card.cardId,
+              card.cardKind,
+              search.drawnCards.filterNot(_.cardId == card.cardId)
+                .map(other => other.cardKind -> other.cardId),
+              placement,
+              replacement
+            ))
+            cardPanel.appendChild(control)
+          }
+          panel.appendChild(cardPanel)
         }
       }
       panel
@@ -584,6 +631,13 @@ object ServerModeUi {
 
   private def freshGameId(): String =
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
+
+  private def cardKind(id: String): String =
+    id.takeWhile(_ != ':') match {
+      case "vision" => "vision"
+      case "edifice" => "edifice"
+      case _ => "denizen"
+    }
 
   private def queryParameter(name: String): Option[String] =
     FrontendMode.queryParameter(dom.window.location.search, name)

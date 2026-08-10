@@ -72,6 +72,9 @@ final class AuthenticatedFirstGameGateway(
             actor.takeWealth(resource)
           case FirstGameIntent.EndWake => actor.endWake
           case FirstGameIntent.Travel(destination) => actor.travel(destination)
+          case FirstGameIntent.BeginSearch(source) => actor.beginSearch(source)
+          case FirstGameIntent.CompleteSearch(decision, kept, discarded, placement) =>
+            actor.completeSearch(decision, kept, discarded, placement)
         }
         service.handle(gameId, request.expectedNextSequence, command)
           .left.map(Application)

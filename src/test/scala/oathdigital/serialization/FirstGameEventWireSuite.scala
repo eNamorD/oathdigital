@@ -2,9 +2,9 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
-import oathdigital.model.{PlayerId, SiteId}
+import oathdigital.model._
 import oathdigital.setup.FirstGameSetupEvent.{FirstGameCompleted, WakeEnded,
-  Traveled, WealthTaken}
+  SearchCompleted, SearchStarted, Traveled, WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class FirstGameEventWireSuite extends munit.FunSuite {
@@ -191,6 +191,32 @@ class FirstGameEventWireSuite extends munit.FunSuite {
 
     encoded("payload")("supplySpent") = -1
     assert(FirstGameEventWire.decode(encoded).isLeft)
+  }
+
+  test("v4 Search events round trip exact hidden outcome and player choices") {
+    val drawn = Vector[WorldCardId](DenizenId("denizen:a"), VisionId("vision:b"))
+    val started = SearchStarted(PlayerId("p2"), DecisionId("search-9"),
+      SearchSource.WorldDeck, Region.Cradle, 3, drawn)
+    val completed = SearchCompleted(PlayerId("p2"), DecisionId("search-9"),
+      drawn.head, Vector(drawn(1)),
+      SearchPlacement.Adviser(Orientation.FaceDown, None))
+    val encoded = Vector(started, completed).zipWithIndex.map {
+      case (event, index) => FirstGameEventWire.encodeEvent(
+        "search", catalogRef, 9L + index, event).toOption.get
+    }
+    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(4, 4))
+    assertEquals(encoded.map(_("eventType").str),
+      Vector("gameplay.search-started", "gameplay.search-completed"))
+    assertEquals(encoded.map(value => FirstGameEventWire.decode(value)
+      .toOption.get.event), Vector(started, completed))
+    val fixture = scala.io.Source.fromResource(
+      "serialization/search-event-stream-v4.json").mkString.trim
+    assertEquals(ujson.read(fixture), ujson.Arr.from(encoded))
+
+    encoded.head("payload")("drawn")(0)("id") = "denizen:tampered"
+    assert(FirstGameEventWire.decode(encoded.head).isRight)
+    // Wire decoding preserves the recorded outcome; authoritative replay is
+    // responsible for rejecting disagreement with the deck.
   }
 
   test("format version and sequence reject fractional and nonfinite numbers") {

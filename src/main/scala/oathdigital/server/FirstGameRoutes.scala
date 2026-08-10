@@ -220,6 +220,8 @@ final class FirstGameRoutes(
       case FirstGameCommand.TakeWealth(playerId, _) => Some(playerId.value)
       case FirstGameCommand.EndWake(playerId) => Some(playerId.value)
       case FirstGameCommand.Travel(playerId, _) => Some(playerId.value)
+      case FirstGameCommand.BeginSearch(playerId, _) => Some(playerId.value)
+      case FirstGameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
       case FirstGameCommand.Begin(_) => None
     }
     actor match {

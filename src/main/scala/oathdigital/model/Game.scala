@@ -112,8 +112,14 @@ sealed trait PendingProcedure extends Product with Serializable {
   def decision: DecisionId
 }
 object PendingProcedure {
-  final case class Search(decision: DecisionId, actor: PlayerId)
-      extends PendingProcedure
+  final case class Search(
+      decision: DecisionId,
+      actor: PlayerId,
+      source: SearchSource = SearchSource.WorldDeck,
+      origin: Region = Region.Cradle,
+      supplySpent: Int = 0,
+      drawn: Vector[WorldCardId] = Vector.empty
+  ) extends PendingProcedure
 
   final case class Campaign(decision: DecisionId, actor: PlayerId)
       extends PendingProcedure
@@ -132,6 +138,22 @@ object PendingProcedure {
       task: ChronicleTask,
       taskHolders: Map[ChronicleTask, PlayerId]
   ) extends PendingProcedure
+}
+
+sealed trait SearchSource extends Product with Serializable
+object SearchSource {
+  case object WorldDeck extends SearchSource
+  final case class RegionalDiscard(region: Region) extends SearchSource
+}
+
+sealed trait SearchPlacement extends Product with Serializable
+object SearchPlacement {
+  case object Discard extends SearchPlacement
+  final case class Site(replace: Option[CardId]) extends SearchPlacement
+  final case class Adviser(
+      orientation: Orientation,
+      replace: Option[CardId]
+  ) extends SearchPlacement
 }
 
 final case class GameResult(winner: PlayerId)

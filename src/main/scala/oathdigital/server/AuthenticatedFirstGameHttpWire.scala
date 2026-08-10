@@ -6,7 +6,7 @@ import oathdigital.application.{
   BootstrapParticipant,
   FirstGameBootstrapConfig
 }
-import oathdigital.model.{DenizenId, LineageId, PlayerId, SiteId}
+import oathdigital.model._
 import oathdigital.serialization.FirstGameEventWire
 import oathdigital.setup.{PlayerColor, WakeResource}
 
@@ -17,6 +17,13 @@ object FirstGameIntent {
   final case class TakeWealth(resource: WakeResource) extends FirstGameIntent
   case object EndWake extends FirstGameIntent
   final case class Travel(destinationSiteId: SiteId) extends FirstGameIntent
+  final case class BeginSearch(source: SearchSource) extends FirstGameIntent
+  final case class CompleteSearch(
+      decision: DecisionId,
+      kept: WorldCardId,
+      discardedInOrder: Vector[WorldCardId],
+      placement: SearchPlacement
+  ) extends FirstGameIntent
 }
 
 final case class AuthenticatedCommandRequest(
@@ -126,6 +133,33 @@ object AuthenticatedFirstGameHttpWire {
         exactFields(obj, Set("type", "destinationSiteId"), "$.intent")
           .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))
           .map(value => FirstGameIntent.Travel(SiteId(value)))
+      case "beginSearch" =>
+        exactFields(obj, Set("type", "source", "region"), "$.intent")
+          .flatMap(_ => stringField(obj, "source", "$.intent"))
+          .flatMap {
+            case "world" => Right(FirstGameIntent.BeginSearch(SearchSource.WorldDeck))
+            case "regional-discard" => stringField(obj, "region", "$.intent")
+              .flatMap(value => Region.all.find(_.key == value).toRight(
+                HttpInputError("$.intent.region", "unknown region")))
+              .map(region => FirstGameIntent.BeginSearch(
+                SearchSource.RegionalDiscard(region)))
+            case _ => Left(HttpInputError("$.intent.source", "unknown Search source"))
+          }
+      case "completeSearch" =>
+        exactFields(obj, Set("type", "decisionId", "kept", "discardedInOrder",
+          "placement"), "$.intent").flatMap { _ => for {
+          decision <- stringField(obj, "decisionId", "$.intent")
+          keptValue <- field(obj, "kept", "$.intent")
+          kept <- decodeWorldCard(keptValue, "$.intent.kept")
+          discardedValue <- field(obj, "discardedInOrder", "$.intent")
+          discardedArray <- arrayValue(discardedValue, "$.intent.discardedInOrder")
+          discarded <- traverse(discardedArray.zipWithIndex) { case (value, index) =>
+            decodeWorldCard(value, s"$$.intent.discardedInOrder[$index]")
+          }
+          placementValue <- field(obj, "placement", "$.intent")
+          placement <- decodePlacement(placementValue, "$.intent.placement")
+        } yield FirstGameIntent.CompleteSearch(
+          DecisionId(decision), kept, discarded, placement) }
       case other => Left(HttpInputError(
         "$.intent.type",
         s"unknown intent type '$other'"
@@ -144,6 +178,50 @@ object AuthenticatedFirstGameHttpWire {
       ))
       case None => Right(())
     }
+
+  private def decodeWorldCard(value: ujson.Value, path: String)
+      : Either[HttpInputError, WorldCardId] = objectValue(value, path).flatMap { obj =>
+    for {
+      kind <- stringField(obj, "kind", path)
+      id <- stringField(obj, "id", path)
+      card <- kind match {
+        case "denizen" => Right(DenizenId(id): WorldCardId)
+        case "vision" => Right(VisionId(id): WorldCardId)
+        case _ => Left(HttpInputError(s"$path.kind", "unknown world card kind"))
+      }
+    } yield card
+  }
+
+  private def decodePlacement(value: ujson.Value, path: String)
+      : Either[HttpInputError, SearchPlacement] = objectValue(value, path).flatMap { obj =>
+    val replacement = obj.value.get("replace") match {
+      case None | Some(ujson.Null) => Right(None)
+      case Some(value) => decodeCard(value, s"$path.replace").map(Some(_))
+    }
+    stringField(obj, "kind", path).flatMap {
+      case "discard" => Right(SearchPlacement.Discard)
+      case "site" => replacement.map(SearchPlacement.Site)
+      case "adviser-face-up" => replacement.map(SearchPlacement.Adviser(
+        Orientation.FaceUp, _))
+      case "adviser-face-down" => replacement.map(SearchPlacement.Adviser(
+        Orientation.FaceDown, _))
+      case _ => Left(HttpInputError(s"$path.kind", "unknown Search placement"))
+    }
+  }
+
+  private def decodeCard(value: ujson.Value, path: String)
+      : Either[HttpInputError, CardId] = objectValue(value, path).flatMap { obj =>
+    for {
+      kind <- stringField(obj, "kind", path)
+      id <- stringField(obj, "id", path)
+      card <- kind match {
+        case "denizen" => Right(DenizenId(id): CardId)
+        case "vision" => Right(VisionId(id): CardId)
+        case "edifice" => Right(EdificeId(id): CardId)
+        case _ => Left(HttpInputError(s"$path.kind", "unsupported replacement card kind"))
+      }
+    } yield card
+  }
 
   private def safeSequence(value: ujson.Value, path: String) = value match {
     case ujson.Num(number)

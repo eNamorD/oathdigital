@@ -89,6 +89,19 @@ final case class CurrentSiteResources(
     secrets: Int
 )
 final case class LegalTravelDestination(siteId: String, supplyCost: Int)
+final case class LegalSearchSource(kind: String, region: Option[String], supplyCost: Int)
+final case class SearchCard(
+    cardId: String,
+    cardKind: String,
+    label: String,
+    legalPlacements: Vector[String]
+)
+final case class PendingSearch(
+    decisionId: String,
+    drawnCards: Vector[SearchCard],
+    replaceableAdvisers: Vector[String],
+    replaceableSiteCards: Vector[String]
+)
 final case class FirstGameProjection(
     gameId: String,
     nextSequence: Long,
@@ -105,7 +118,9 @@ final case class FirstGameProjection(
     currentSiteResources: Option[CurrentSiteResources] = None,
     actionSelectionOpen: Boolean = false,
     actionFamilies: Vector[String] = Vector.empty,
-    legalTravelDestinations: Vector[LegalTravelDestination] = Vector.empty
+    legalTravelDestinations: Vector[LegalTravelDestination] = Vector.empty,
+    legalSearchSources: Vector[LegalSearchSource] = Vector.empty,
+    pendingSearch: Option[PendingSearch] = None
 )
 
 sealed trait FirstGameCommand
@@ -119,6 +134,17 @@ object FirstGameCommand {
   final case class EndWake(playerId: String) extends FirstGameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
       extends FirstGameCommand
+  final case class BeginSearch(playerId: String, source: String, region: Option[String])
+      extends FirstGameCommand
+  final case class CompleteSearch(
+      playerId: String,
+      decisionId: String,
+      keptId: String,
+      keptKind: String,
+      discarded: Vector[(String, String)],
+      placement: String,
+      replace: Option[(String, String)] = None
+  ) extends FirstGameCommand
 }
 
 sealed trait FirstGameClientFailure {
@@ -288,6 +314,25 @@ object FirstGameJson {
           playerId = player,
           destinationSiteId = destination
         )
+      case FirstGameCommand.BeginSearch(player, source, region) =>
+        val value = js.Dynamic.literal(
+          `type` = "beginSearch", playerId = player, source = source)
+        region.foreach(value.updateDynamic("region")(_))
+        value
+      case FirstGameCommand.CompleteSearch(player, decision, keptId, keptKind,
+          discarded, placement, replace) =>
+        val placementValue = js.Dynamic.literal(`kind` = placement)
+        replace.foreach { case (kind, id) => placementValue.updateDynamic("replace")(
+          js.Dynamic.literal(kind = kind, id = id)) }
+        js.Dynamic.literal(
+          `type` = "completeSearch",
+          playerId = player,
+          decisionId = decision,
+          kept = js.Dynamic.literal(kind = keptKind, id = keptId),
+          discardedInOrder = js.Array(discarded.map { case (kind, id) =>
+            js.Dynamic.literal(kind = kind, id = id) }: _*),
+          placement = placementValue
+        )
     }
     js.JSON.stringify(js.Dynamic.literal(
       expectedNextSequence = sequence.toDouble,
@@ -415,6 +460,31 @@ object FirstGameJson {
               } yield LegalTravelDestination(site, cost)
             })
         }
+        searchSources <- optionalField(root, "legalSearchSources").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "legalSearchSources", "$").flatMap(
+            traverse(_, "legalSearchSources") { (item, path) => for {
+              kind <- string(item, "kind", path)
+              region <- optionalString(item, "region", path)
+              cost <- int(item, "supplyCost", path)
+            } yield LegalSearchSource(kind, region, cost) })
+        }
+        pendingSearch <- optionalField(root, "pendingSearch").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.pendingSearch").flatMap { obj => for {
+            decision <- string(obj, "decisionId", "$.pendingSearch")
+            cards <- array(obj, "drawnCards", "$.pendingSearch").flatMap(
+              traverse(_, "drawnCards") { (card, path) => for {
+                id <- string(card, "cardId", path)
+                kind <- string(card, "cardKind", path)
+                label <- string(card, "label", path)
+                placements <- stringArray(card, "legalPlacements", path)
+              } yield SearchCard(id, kind, label, placements) })
+            advisers <- stringArray(obj, "replaceableAdvisers", "$.pendingSearch")
+            siteCards <- stringArray(obj, "replaceableSiteCards", "$.pendingSearch")
+          } yield Some(PendingSearch(decision, cards, advisers, siteCards)) }
+        }
       } yield FirstGameProjection(
         game,
         sequence,
@@ -431,7 +501,9 @@ object FirstGameJson {
         siteResources,
         actionOpen,
         actions,
-        destinations
+        destinations,
+        searchSources,
+        pendingSearch
       )
     }
   }
