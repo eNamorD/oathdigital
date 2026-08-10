@@ -56,7 +56,6 @@ final case class SetupRegionProjection(
 )
 final case class SitePowerProjection(kind: String, label: String, description: Option[String])
 final case class PawnLocationProjection(playerId: String, siteId: String)
-final case class PrivateAdviserChoice(adviserId: String, label: String)
 final case class ActivePlayerResourcesProjection(
     favor: Int,
     faceUpSecrets: Int,
@@ -76,21 +75,10 @@ final case class LegalMusterProjection(
 final case class LegalTradeProjection(
     targetKind: String, targetId: String, label: String, suit: String,
     resource: String, supplyCost: Int, gained: Int)
-final case class SearchCardProjection(
-    cardId: String,
-    cardKind: String,
-    label: String,
-    legalPlacements: Vector[String]
-)
-final case class PendingSearchProjection(
-    decisionId: String,
-    drawnCards: Vector[SearchCardProjection],
-    replaceableAdvisers: Vector[String],
-    replaceableSiteCards: Vector[String]
-)
 final case class CardResolutionProjection(
     kind: String,
     orientation: Option[String] = None,
+    replacementRequired: Boolean = false,
     replacementTargets: Vector[CardDetailsProjection] = Vector.empty)
 final case class PendingCardDecisionProjection(
     decisionId: String,
@@ -128,7 +116,6 @@ final case class GameProjection(
     legalControls: Vector[String],
     ready: Boolean,
     completed: Boolean,
-    privateAdviserChoices: Vector[PrivateAdviserChoice],
     activePlayerResources: Option[ActivePlayerResourcesProjection] = None,
     currentSiteResources: Option[CurrentSiteResourcesProjection] = None,
     actionSelectionOpen: Boolean = false,
@@ -138,7 +125,6 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
     legalMusters: Vector[LegalMusterProjection] = Vector.empty,
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
-    pendingSearch: Option[PendingSearchProjection] = None,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     worldDeckCount: Int = 0,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty
@@ -183,8 +169,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
           Vector.empty,
           Vector.empty,
           ready = false,
-          completed = false,
-          Vector.empty
+          completed = false
         )
       case progress: InProgress =>
         val order = turnOrder(progress.plan.participants,
@@ -201,29 +186,25 @@ final class GameProjector(catalog: ExecutableCatalog) {
           if (!requestingPlayer.contains(active)) Vector.empty
           else if (awaitingAdviser) Vector("chooseAdviser")
           else Vector("placePawn")
-        val privateChoices =
+        val privateCards =
           if (requestingPlayer.contains(active) && awaitingAdviser) {
             val participantIndex = progress.plan.participants
               .indexWhere(participant =>
                 requestingPlayer.contains(participant.playerId))
             progress.plan.denizenOrder
               .slice(6 + participantIndex * 3, 9 + participantIndex * 3)
-              .map(id => PrivateAdviserChoice(
-                id.value,
-                denizenNames.getOrElse(id, safeLabel(id.value))
-              ))
+              .map(id => cardDetails(id, Some(Orientation.FaceUp), hidden = false))
           } else Vector.empty
-        val decision = Option.when(privateChoices.nonEmpty)(
+        val decision = Option.when(privateCards.nonEmpty)(
           PendingCardDecisionProjection(
             CardDecisionIds.startingAdviser(active,
               progress.adviserChoices.size).value,
             "starting-adviser", active.value,
             "Choose your starting adviser",
             Vector("Choose exactly one adviser."),
-            privateChoices.map(choice => cardDetails(DenizenId(choice.adviserId),
-              Some(Orientation.FaceUp), hidden = false)),
+            privateCards,
             1, 1, orderingRequired = false,
-            privateChoices.map(choice => choice.adviserId ->
+            privateCards.map(card => card.cardId ->
               Vector(CardResolutionProjection("starting-adviser"))).toMap))
         GameProjection(
           gameId,
@@ -240,7 +221,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
           controls,
           ready = false,
           completed = false,
-          privateChoices,
           pendingCardDecision = decision
         )
       case Ready(value) =>
@@ -274,22 +254,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
             value.playerColors(player.player).value
           )
         }
-        val pendingSearch = current.pending.collect {
-          case search: PendingProcedure.Search
-              if requestingPlayer.contains(search.actor) =>
-            PendingSearchProjection(
-              search.decision.value,
-              search.drawn.map(card => SearchCardProjection(
-                card.value,
-                card.kind,
-                worldCardLabel(card),
-                legalPlacements(value, active, card)
-              )),
-              active.advisers.filterNot(isLocked).map(_.id.value),
-              active.pawnSite.toVector.flatMap(current.map.sites.get)
-                .flatMap(_.denizens.map(_.id.value))
-            )
-        }
         val pendingDecision = current.pending.collect {
           case search: PendingProcedure.Search
               if requestingPlayer.contains(search.actor) =>
@@ -301,15 +265,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
               search.drawn.map(cardDetails(_, Some(Orientation.FaceUp), hidden = false)),
               1, 1, orderingRequired = true,
               search.drawn.map { card => card.value ->
-                SearchRules.legalPlacements(catalog, value, search, card).map(
-                  resolutionProjection)
+                groupedResolutions(SearchRules.legalPlacements(
+                  catalog, value, search, card))
               }.toMap)
         }
         GameProjection(
           gameId,
           loaded.nextSequence,
           current.pending match {
-            case Some(_: PendingProcedure.Search) if pendingSearch.nonEmpty =>
+            case Some(_: PendingProcedure.Search) if pendingDecision.nonEmpty =>
               "search-decision"
             case Some(_: PendingProcedure.Search) => "search-waiting"
             case _ => current.turn.phase match {
@@ -337,7 +301,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
           controls,
           ready = true,
           completed = true,
-          Vector.empty,
           Some(ActivePlayerResourcesProjection(
             active.board.favor,
             active.board.faceUpSecrets,
@@ -404,7 +367,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     }, result.supplySpent, result.gained)
               }
             else Vector.empty,
-          pendingSearch = pendingSearch,
           pendingCardDecision = pendingDecision,
           worldDeckCount = current.commonCards.worldDeck.size,
           playerBoards = viewerOrderedBoards(value, requestingPlayer)
@@ -514,15 +476,36 @@ final class GameProjector(catalog: ExecutableCatalog) {
     }
   }
 
-  private def resolutionProjection(
-      placement: SearchPlacement
-  ): CardResolutionProjection = placement match {
-    case SearchPlacement.Discard => CardResolutionProjection("discard")
-    case SearchPlacement.Site(replace) => CardResolutionProjection(
-      "site", Some("face-up"), replace.toVector.map(cardDetails(_, None, hidden = false)))
-    case SearchPlacement.Adviser(orientation, replace) => CardResolutionProjection(
-      "adviser", Some(orientationName(orientation)),
-      replace.toVector.map(cardDetails(_, None, hidden = false)))
+  private def groupedResolutions(
+      placements: Vector[SearchPlacement]
+  ): Vector[CardResolutionProjection] = {
+    val orderedKeys = placements.map {
+      case SearchPlacement.Discard => "discard" -> None
+      case SearchPlacement.Site(_) => "site" -> Some("face-up")
+      case SearchPlacement.Adviser(orientation, _) =>
+        "adviser" -> Some(orientationName(orientation))
+    }.distinct
+    orderedKeys.map { case (kind, orientation) =>
+      val matching = placements.filter {
+        case SearchPlacement.Discard => kind == "discard"
+        case SearchPlacement.Site(_) => kind == "site"
+        case SearchPlacement.Adviser(value, _) =>
+          kind == "adviser" && orientation.contains(orientationName(value))
+      }
+      val replacements = matching.flatMap {
+        case SearchPlacement.Site(replace) => replace
+        case SearchPlacement.Adviser(_, replace) => replace
+        case SearchPlacement.Discard => None
+      }.distinct
+      val required = matching.nonEmpty && matching.forall {
+        case SearchPlacement.Site(replace) => replace.nonEmpty
+        case SearchPlacement.Adviser(_, replace) => replace.nonEmpty
+        case SearchPlacement.Discard => false
+      }
+      CardResolutionProjection(kind, orientation, required,
+        if (required) replacements.map(cardDetails(_, None, hidden = false))
+        else Vector.empty)
+    }
   }
 
   private def viewerOrderedBoards(
@@ -610,38 +593,4 @@ final class GameProjector(catalog: ExecutableCatalog) {
     case value: VisionId => safeLabel(value.value)
   }
 
-  private def isLocked(card: AdviserState): Boolean = card.id match {
-    case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
-      .exists(_.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
-    case _ => false
-  }
-
-  private def legalPlacements(
-      ready: ReadyGame,
-      player: PlayerState,
-      card: WorldCardId
-  ): Vector[String] = {
-    import oathdigital.catalog.CardRestrictions
-    val base = Vector("discard", "adviser-face-down")
-    card match {
-      case _: VisionId => base :+ "adviser-face-up"
-      case id: DenizenId =>
-        catalog.denizens.find(_.id.value == id.value).fold(base) { definition =>
-          val adviser = if (definition.restrictions == CardRestrictions.SiteOnly)
-            base else base :+ "adviser-face-up"
-          val siteAllowed = definition.restrictions != CardRestrictions.AdviserOnly &&
-            definition.restrictions != CardRestrictions.LockedAdviserOnly &&
-            player.pawnSite.flatMap(ready.game.current.map.sites.get).exists { site =>
-              val capacity = player.pawnSite.flatMap(id =>
-                catalog.sites.find(_.id == id)).map(_.capacity).getOrElse(0)
-              site.denizens.size < capacity || site.denizens.exists {
-                case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value)
-                  .exists(_.suit.value == definition.suit.value)
-                case _ => false
-              }
-            }
-          if (siteAllowed) adviser :+ "site" else adviser
-        }
-    }
-  }
 }

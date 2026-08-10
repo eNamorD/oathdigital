@@ -201,6 +201,7 @@ object GameHttpWire {
               case (cardId, resolutions) => cardId -> ujson.Arr.from(resolutions.map { resolution =>
                 ujson.Obj("kind" -> resolution.kind,
                   "orientation" -> resolution.orientation.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                  "replacementRequired" -> resolution.replacementRequired,
                   "replacementTargets" -> ujson.Arr.from(
                     resolution.replacementTargets.map(encodeCardDetails)))
               })

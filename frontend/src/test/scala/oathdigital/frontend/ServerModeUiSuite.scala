@@ -73,10 +73,7 @@ class ServerModeUiSuite extends FunSuite {
       Set("placePawn", "chooseAdviser"),
       phase = "awaiting-adviser",
       activeParticipantId = "red-exile",
-      ready = false,
-      privateAdviserChoices = Vector(
-        AdviserChoice("adviser-1", "Adviser One")
-      )
+      ready = false
     )
 
     val presentation = ServerModeUi.viewerPresentation(value, "blue-exile")
@@ -99,10 +96,7 @@ class ServerModeUiSuite extends FunSuite {
     val setup = projection(
       Set("chooseAdviser"),
       phase = "awaiting-adviser",
-      ready = false,
-      privateAdviserChoices = Vector(
-        AdviserChoice("adviser-1", "Adviser One")
-      )
+      ready = false
     )
     assert(ServerModeUi.viewerPresentation(
       setup,
@@ -259,8 +253,7 @@ class ServerModeUiSuite extends FunSuite {
       legalControls: Set[String],
       phase: String = "wake",
       activeParticipantId: String = "red-exile",
-      ready: Boolean = true,
-      privateAdviserChoices: Vector[AdviserChoice] = Vector.empty
+      ready: Boolean = true
   ): GameProjection =
     GameProjection(
       gameId = "game-1",
@@ -285,7 +278,6 @@ class ServerModeUiSuite extends FunSuite {
       pawnLocations = Vector.empty,
       legalControls = legalControls,
       ready = ready,
-      completed = false,
-      privateAdviserChoices = privateAdviserChoices
+      completed = false
     )
 }

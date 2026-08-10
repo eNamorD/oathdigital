@@ -128,10 +128,10 @@ class SearchSuite extends munit.FunSuite {
     val owner = projector.project("search", loaded, player.player)
     val hidden = projector.project("search", loaded, other.player)
     assertEquals(owner.phase, "search-decision")
-    assertEquals(owner.pendingSearch.map(_.drawnCards.map(_.cardId)),
+    assertEquals(owner.pendingCardDecision.map(_.cards.map(_.cardId)),
       Some(drawn.map(_.value)))
     assertEquals(hidden.phase, "search-waiting")
-    assertEquals(hidden.pendingSearch, None)
+    assertEquals(hidden.pendingCardDecision, None)
     assertEquals(hidden.legalControls, Vector.empty)
     assertEquals(hidden.legalSearchSources, Vector.empty)
   }
@@ -174,6 +174,26 @@ class SearchSuite extends munit.FunSuite {
         if (p.player == player.player) fullPlayer else p),
       pending = Some(PendingProcedure.Search(DecisionId("replace"), player.player,
         SearchSource.WorldDeck, origin, 2, ids.slice(3, 5))))))
+    val projection = new oathdigital.application.GameProjector(catalog).project(
+      "search-replacement", oathdigital.application.LoadedGame(Ready(ready), 10),
+      player.player)
+    val resolutions = projection.pendingCardDecision.get
+      .resolutionsByCard(ids(3).value)
+    val facedown = resolutions.filter(resolution =>
+      resolution.kind == "adviser" &&
+        resolution.orientation.contains("face-down"))
+    assertEquals(facedown.size, 1)
+    assert(facedown.head.replacementRequired)
+    assertEquals(facedown.head.replacementTargets.map(_.cardId).toSet,
+      ids.take(3).map(_.value).toSet)
+    val wire = ujson.read(oathdigital.server.GameHttpWire
+      .encodeProjection(projection))
+    val encoded = wire("pendingCardDecision")("resolutionsByCard")(ids(3).value)
+      .arr.filter(value => value("kind").str == "adviser" &&
+        value("orientation").str == "face-down")
+    assertEquals(encoded.size, 1)
+    assert(encoded.head("replacementRequired").bool)
+    assertEquals(encoded.head("replacementTargets").arr.size, 3)
     val completed = rules.evolve(Ready(ready), SearchCompleted(player.player,
       DecisionId("replace"), ids(3), Vector(ids(4)),
       SearchPlacement.Adviser(Orientation.FaceDown, Some(ids.head))))

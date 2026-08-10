@@ -535,12 +535,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val loaded = LoadedGame(placed.state, placed.nextSequence)
     val own = projector.project("game-private", loaded, PlayerId("p2"))
     val other = projector.project("game-private", loaded, PlayerId("p1"))
-    val privateIds = own.privateAdviserChoices.map(_.adviserId)
+    val privateIds = own.pendingCardDecision.toVector.flatMap(_.cards)
+      .map(_.cardId)
     val otherJson = oathdigital.server.GameHttpWire
       .encodeProjection(other)
 
     assertEquals(privateIds.size, 3)
-    assertEquals(other.privateAdviserChoices, Vector.empty)
+    assertEquals(other.pendingCardDecision, None)
+    val publicShape = ujson.read(otherJson).obj
+    assert(!publicShape.contains("privateAdviserChoices"))
+    assert(!publicShape.contains("pendingSearch"))
+    assert(publicShape.contains("pendingCardDecision"))
     privateIds.foreach(id => assert(!otherJson.contains(id)))
     val exposedValues = jsonStrings(ujson.read(otherJson))
     assertEquals(

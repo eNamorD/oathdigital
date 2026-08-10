@@ -68,13 +68,15 @@ class HttpGameClientSuite extends FunSuite {
         GameCommand.PlacePawn("red-exile", opaqueSite)
       )
       .flatMap { pawn =>
-        val adviser = pawn.toOption.get.privateAdviserChoices.head
-        assertEquals(adviser.adviserId, opaqueAdviser)
+        val adviser = pawn.toOption.get.pendingCardDecision.get.cards.head
+        assertEquals(adviser.cardId, opaqueAdviser)
         client.submit(
           "game-1",
           "red-exile",
           pawn.toOption.get.nextSequence,
-          GameCommand.ChooseAdviser("red-exile", adviser.adviserId)
+          GameCommand.ResolveCardDecision("red-exile",
+            pawn.toOption.get.pendingCardDecision.get.decisionId,
+            DecisionResolution.StartingAdviser(adviser.cardId))
         )
       }
       .map { _ =>
@@ -106,8 +108,8 @@ class HttpGameClientSuite extends FunSuite {
       completed = true,
       choices = false
     ).replace(
-      "\"privateAdviserChoices\":[]",
-      "\"privateAdviserChoices\":[]," +
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null," +
         "\"activePlayerResources\":{" +
         "\"favor\":2,\"faceUpSecrets\":1," +
         "\"faceDownSecrets\":0,\"supply\":7}," +
@@ -128,8 +130,8 @@ class HttpGameClientSuite extends FunSuite {
     assert(command.contains("\"type\":\"travel\""))
     assert(command.contains("\"destinationSiteId\":\"site:b\""))
     val json = projectionJson(sequence = 10, choices = false).replace(
-      "\"privateAdviserChoices\":[]",
-      "\"privateAdviserChoices\":[],\"legalTravelDestinations\":[" +
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null,\"legalTravelDestinations\":[" +
         "{\"siteId\":\"site:b\",\"supplyCost\":2}]"
     )
     assertEquals(GameJson.decodeProjection(json).toOption.get
@@ -143,22 +145,28 @@ class HttpGameClientSuite extends FunSuite {
     assert(begin.contains("\"type\":\"beginSearch\""))
     assert(!begin.contains("drawn"))
     val json = projectionJson(sequence = 11, choices = false).replace(
-      "\"privateAdviserChoices\":[]",
-      "\"privateAdviserChoices\":[]," +
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":{" +
+        "\"decisionId\":\"search-10\",\"kind\":\"search\"," +
+        "\"actorPlayerId\":\"red-exile\",\"prompt\":\"Resolve Search\"," +
+        "\"instructions\":[],\"cards\":[" + cardJson("denizen:a", "denizen", "A") + "]," +
+        "\"keepMinimum\":1,\"keepMaximum\":1,\"orderingRequired\":true," +
+        "\"resolutionsByCard\":{\"denizen:a\":[{\"kind\":\"discard\"," +
+        "\"orientation\":null,\"replacementRequired\":false," +
+        "\"replacementTargets\":[]}]}} ," +
         "\"legalSearchSources\":[{\"kind\":\"world\",\"region\":null," +
-        "\"supplyCost\":2}]," +
-        "\"pendingSearch\":{\"decisionId\":\"search-10\"," +
-        "\"drawnCards\":[{\"cardId\":\"denizen:a\",\"cardKind\":\"denizen\"," +
-        "\"label\":\"A\",\"legalPlacements\":[\"discard\"]}]," +
-        "\"replaceableAdvisers\":[],\"replaceableSiteCards\":[]}" )
+        "\"supplyCost\":2}]" )
     val projection = GameJson.decodeProjection(json).toOption.get
     assertEquals(projection.legalSearchSources,
       Vector(LegalSearchSource("world", None, 2)))
-    assertEquals(projection.pendingSearch.map(_.drawnCards.map(_.cardId)),
+    assertEquals(projection.pendingCardDecision.map(_.cards.map(_.cardId)),
       Some(Vector("denizen:a")))
+    assertEquals(projection.pendingCardDecision.get
+      .resolutionsByCard("denizen:a").head.replacementRequired, false)
     val complete = GameJson.encodeCommand(11L,
-      GameCommand.CompleteSearch("red-exile", "search-10",
-        "denizen:a", "denizen", Vector.empty, "discard"))
+      GameCommand.ResolveCardDecision("red-exile", "search-10",
+        DecisionResolution.Search(CardDetails("denizen:a", "denizen", "A"),
+          Vector.empty, "discard", None, None)))
     assert(complete.contains("\"decisionId\":\"search-10\""))
   }
 
@@ -171,8 +179,8 @@ class HttpGameClientSuite extends FunSuite {
     assert(muster.contains("\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}"))
     assert(trade.contains("\"resource\":\"secret\""))
     val json = projectionJson(sequence = 12, choices = false).replace(
-      "\"privateAdviserChoices\":[]",
-      "\"privateAdviserChoices\":[]," +
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null," +
         "\"legalMusters\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
         "\"label\":\"Ruined Hallowed Spring\",\"suit\":\"order\",\"supplyCost\":1,\"warbandsGained\":2}]," +
         "\"legalTrades\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
@@ -482,7 +490,7 @@ class HttpGameClientSuite extends FunSuite {
         assert(projection.ready)
         assert(projection.completed)
         assertEquals(projection.phase, "ready")
-        assertEquals(projection.privateAdviserChoices, Vector.empty)
+        assertEquals(projection.pendingCardDecision, None)
       case Left(failure) => fail(failure.message)
     }
   }
@@ -496,10 +504,10 @@ class HttpGameClientSuite extends FunSuite {
       completed: Boolean = false,
       choices: Boolean = true
   ): String = {
-    val privateChoices =
+    val pendingDecision =
       if (choices)
-        s"""[{"adviserId":"$adviserId","label":"Printed Adviser"}]"""
-      else "[]"
+        s"""{"decisionId":"setup-adviser-0-red-exile","kind":"starting-adviser","actorPlayerId":"red-exile","prompt":"Choose adviser","instructions":[],"cards":[${cardJson(adviserId, "denizen", "Printed Adviser")}],"keepMinimum":1,"keepMaximum":1,"orderingRequired":false,"resolutionsByCard":{"$adviserId":[{"kind":"starting-adviser","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}}"""
+      else "null"
     s"""{
        |"gameId":"game-1",
        |"nextSequence":$sequence,
@@ -519,9 +527,12 @@ class HttpGameClientSuite extends FunSuite {
        |"legalControls":["placePawn","chooseAdviser"],
        |"ready":$ready,
        |"completed":$completed,
-       |"privateAdviserChoices":$privateChoices
+       |"pendingCardDecision":$pendingDecision
        |}""".stripMargin
   }
+
+  private def cardJson(id: String, kind: String, name: String): String =
+    s"""{"cardId":"$id","cardKind":"$kind","name":"$name","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-up","hidden":false}"""
 
   private def siteJson(
       siteId: String,

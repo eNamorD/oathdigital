@@ -32,4 +32,42 @@ class CardDecisionStateSuite extends munit.FunSuite {
     assertEquals(state.moveToDiscard("a").discard.map(_.cardId),
       Vector("c", "b", "a"))
   }
+
+  test("zone drops move cards in both directions") {
+    val initial = CardDecisionState.initial(decision)
+    val kept = ServerModeUi.dropOnKeep(initial, "b")
+    assertEquals(kept.keep.map(_.cardId), Vector("b"))
+    val returned = ServerModeUi.dropOnDiscard(kept, "b")
+    assertEquals(returned.keep, Vector.empty)
+    assertEquals(returned.discard.map(_.cardId), Vector("a", "c", "b"))
+    val before = ServerModeUi.dropBeforeDiscard(kept, "b", "c")
+    assertEquals(before.keep, Vector.empty)
+    assertEquals(before.discard.map(_.cardId), Vector("a", "b", "c"))
+  }
+
+  test("projected keep bounds govern arrangement validity") {
+    val bounded = decision.copy(keepMinimum = 0, keepMaximum = 2)
+    val empty = CardDecisionState.initial(bounded)
+    assert(empty.arrangementValid(cards))
+    val two = empty.moveToKeep("a").moveToKeep("b")
+    assert(two.arrangementValid(cards))
+    assertEquals(two.keep.map(_.cardId), Vector("a", "b"))
+    assertEquals(two.moveToKeep("c"), two)
+  }
+
+  test("required replacement remains explicit until a legal target is selected") {
+    val targets = cards.take(2)
+    val required = CardResolution("adviser", Some("face-down"),
+      replacementRequired = true, replacementTargets = targets)
+    val state = CardDecisionState.initial(decision).moveToKeep("c")
+      .copy(stage = CardDecisionStage.Resolve).chooseResolution(required)
+    assertEquals(state.selectedReplacement, None)
+    assert(!state.resolutionValid)
+    assert(state.chooseReplacement("a").resolutionValid)
+    assert(!state.chooseReplacement("missing").resolutionValid)
+
+    val optional = CardResolution("discard", None,
+      replacementRequired = false, Vector.empty)
+    assert(state.chooseResolution(optional).resolutionValid)
+  }
 }

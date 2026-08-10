@@ -12,18 +12,28 @@ final case class CardDecisionState(
     stage: CardDecisionStage,
     keep: Vector[CardDetails],
     discard: Vector[CardDetails],
+    keepMinimum: Int,
+    keepMaximum: Int,
     selectedResolution: Option[CardResolution] = None,
     selectedReplacement: Option[CardDetails] = None
 ) {
   def allIds: Vector[String] = (keep ++ discard).map(_.cardId)
   def arrangementValid(expected: Vector[CardDetails]): Boolean =
-    keep.size == 1 && allIds.size == expected.size &&
+    keep.size >= keepMinimum && keep.size <= keepMaximum &&
+      allIds.size == expected.size &&
       allIds.distinct.size == expected.size && allIds.toSet == expected.map(_.cardId).toSet
 
   def moveToKeep(cardId: String): CardDecisionState = {
-    val selected = (keep ++ discard).find(_.cardId == cardId).toVector
-    copy(keep = selected, discard = (keep ++ discard).filterNot(_.cardId == cardId),
-      selectedResolution = None, selectedReplacement = None)
+    discard.find(_.cardId == cardId).fold(this) { selected =>
+      if (keep.size < keepMaximum)
+        copy(keep = keep :+ selected, discard = discard.filterNot(_.cardId == cardId),
+          selectedResolution = None, selectedReplacement = None)
+      else if (keepMaximum == 1)
+        copy(keep = Vector(selected),
+          discard = keep ++ discard.filterNot(_.cardId == cardId),
+          selectedResolution = None, selectedReplacement = None)
+      else this
+    }
   }
 
   def moveToDiscard(cardId: String): CardDecisionState =
@@ -50,13 +60,25 @@ final case class CardDecisionState(
       copy(discard = cards.patch(index, Vector(card), 0))
     }
   }
+
+  def chooseResolution(resolution: CardResolution): CardDecisionState =
+    copy(selectedResolution = Some(resolution), selectedReplacement = None)
+
+  def chooseReplacement(cardId: String): CardDecisionState =
+    copy(selectedReplacement = selectedResolution.toVector
+      .flatMap(_.replacementTargets).find(_.cardId == cardId))
+
+  def resolutionValid: Boolean = selectedResolution.exists { resolution =>
+    !resolution.replacementRequired || selectedReplacement.exists(selected =>
+      resolution.replacementTargets.exists(_.cardId == selected.cardId))
+  }
 }
 
 object CardDecisionState {
   def initial(decision: PendingCardDecision): CardDecisionState =
     if (decision.kind == "starting-adviser")
       CardDecisionState(decision.decisionId, CardDecisionStage.Arrange,
-        Vector.empty, decision.cards)
+        Vector.empty, decision.cards, decision.keepMinimum, decision.keepMaximum)
     else CardDecisionState(decision.decisionId, CardDecisionStage.Arrange,
-      Vector.empty, decision.cards)
+      Vector.empty, decision.cards, decision.keepMinimum, decision.keepMaximum)
 }

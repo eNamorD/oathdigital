@@ -441,6 +441,9 @@ object ServerModeUi {
         move.onclick = _ => if (zone == "keep") update(state.moveToDiscard(card.cardId))
           else update(state.moveToKeep(card.cardId))
         node.appendChild(move)
+        node.addEventListener("dragstart", (event: dom.Event) =>
+          event.asInstanceOf[dom.DragEvent].dataTransfer
+            .setData("text/plain", card.cardId))
         if (zone == "discard") {
           val left = button("Move Left", "move-left")
           left.disabled = state.discard.headOption.contains(card)
@@ -449,14 +452,13 @@ object ServerModeUi {
           right.disabled = state.discard.lastOption.contains(card)
           right.onclick = _ => update(state.move(card.cardId, 1))
           node.appendChild(left); node.appendChild(right)
-          node.addEventListener("dragstart", (event: dom.Event) =>
-            event.asInstanceOf[dom.DragEvent].dataTransfer.setData("text/plain", card.cardId))
           node.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
           node.addEventListener("drop", (event: dom.Event) => {
             event.preventDefault()
-            update(state.arrangeDrop(
+            event.stopPropagation()
+            update(dropBeforeDiscard(state,
               event.asInstanceOf[dom.DragEvent].dataTransfer.getData("text/plain"),
-              Some(card.cardId)))
+              card.cardId))
           })
         }
         node
@@ -479,11 +481,24 @@ object ServerModeUi {
           val keep = element("section", "decision-zone keep-zone")
           keep.appendChild(text("h3", "", "Keep"))
           state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
+          keep.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
+          keep.addEventListener("drop", (event: dom.Event) => {
+            event.preventDefault()
+            update(dropOnKeep(state, event.asInstanceOf[dom.DragEvent]
+              .dataTransfer.getData("text/plain")))
+          })
           val discard = element("section", "decision-zone discard-zone")
           discard.appendChild(text("h3", "", "Discard"))
           discard.appendChild(text("p", "discard-order",
             "Remaining cards are discarded from left to right."))
           state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
+          discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
+          discard.addEventListener("drop", (event: dom.Event) => {
+            event.preventDefault()
+            val cardId = event.asInstanceOf[dom.DragEvent]
+              .dataTransfer.getData("text/plain")
+            update(dropOnDiscard(state, cardId))
+          })
           zones.appendChild(keep); zones.appendChild(discard); shell.appendChild(zones)
           val confirm = button("Confirm arrangement", "decision-confirm")
           confirm.disabled = !state.arrangementValid(decision.cards)
@@ -502,12 +517,10 @@ object ServerModeUi {
             }
             val choose = button(label, "resolution-choice")
             choose.setAttribute("aria-pressed", state.selectedResolution.contains(resolution).toString)
-            choose.onclick = _ => update(state.copy(selectedResolution = Some(resolution),
-              selectedReplacement = resolution.replacementTargets.headOption
-                .filter(_ => resolution.replacementTargets.size == 1)))
+            choose.onclick = _ => update(state.chooseResolution(resolution))
             shell.appendChild(choose)
           }
-          state.selectedResolution.filter(_.replacementTargets.nonEmpty).foreach { resolution =>
+          state.selectedResolution.filter(_.replacementRequired).foreach { resolution =>
             val select = dom.document.createElement("select").asInstanceOf[dom.html.Select]
             select.setAttribute("aria-label", "Card to replace")
             val placeholder = dom.document.createElement("option").asInstanceOf[dom.html.Option]
@@ -517,8 +530,7 @@ object ServerModeUi {
               val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
               option.value = card.cardId; option.text = card.name; select.appendChild(option)
             }
-            select.onchange = _ => update(state.copy(selectedReplacement =
-              resolution.replacementTargets.find(_.cardId == select.value)))
+            select.onchange = _ => update(state.chooseReplacement(select.value))
             shell.appendChild(select)
           }
           val back = button("Back", "decision-back")
@@ -526,9 +538,7 @@ object ServerModeUi {
             selectedResolution = None, selectedReplacement = None))
           shell.appendChild(back)
           val confirm = button("Final confirm", "decision-confirm")
-          confirm.disabled = state.selectedResolution.isEmpty ||
-            state.selectedResolution.exists(r => r.replacementTargets.nonEmpty &&
-              state.selectedReplacement.isEmpty) || !controlsAvailable
+          confirm.disabled = !state.resolutionValid || !controlsAvailable
           confirm.onclick = _ => for {
             resolution <- state.selectedResolution
           } submit(GameCommand.ResolveCardDecision(selectedPlayer, decision.decisionId,
@@ -748,6 +758,28 @@ object ServerModeUi {
     }
     details.appendChild(relics)
     details
+  }
+
+  private[frontend] def dropOnKeep(
+      state: CardDecisionState,
+      cardId: String
+  ): CardDecisionState = state.moveToKeep(cardId)
+
+  private[frontend] def dropOnDiscard(
+      state: CardDecisionState,
+      cardId: String
+  ): CardDecisionState =
+    if (state.keep.exists(_.cardId == cardId)) state.moveToDiscard(cardId)
+    else state.arrangeDrop(cardId, None)
+
+  private[frontend] def dropBeforeDiscard(
+      state: CardDecisionState,
+      cardId: String,
+      beforeCardId: String
+  ): CardDecisionState = {
+    val inDiscard = if (state.keep.exists(_.cardId == cardId))
+      state.moveToDiscard(cardId) else state
+    inDiscard.arrangeDrop(cardId, Some(beforeCardId))
   }
 
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {

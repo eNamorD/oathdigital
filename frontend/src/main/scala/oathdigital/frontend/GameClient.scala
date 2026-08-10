@@ -87,7 +87,6 @@ final case class GameSite(
 final case class SitePower(kind: String, label: String, description: Option[String])
 final case class GameRegion(regionId: String, sites: Vector[GameSite], discardCount: Int = 0)
 final case class GamePawn(playerId: String, siteId: String)
-final case class AdviserChoice(adviserId: String, label: String)
 final case class ActivePlayerResources(
     favor: Int,
     faceUpSecrets: Int,
@@ -107,20 +106,8 @@ final case class LegalMuster(target: EconomyTarget, label: String, suit: String,
 final case class LegalTrade(target: EconomyTarget, label: String, suit: String,
     resource: String,
     supplyCost: Int, gained: Int)
-final case class SearchCard(
-    cardId: String,
-    cardKind: String,
-    label: String,
-    legalPlacements: Vector[String]
-)
-final case class PendingSearch(
-    decisionId: String,
-    drawnCards: Vector[SearchCard],
-    replaceableAdvisers: Vector[String],
-    replaceableSiteCards: Vector[String]
-)
 final case class CardResolution(kind: String, orientation: Option[String],
-    replacementTargets: Vector[CardDetails])
+    replacementRequired: Boolean, replacementTargets: Vector[CardDetails])
 final case class PendingCardDecision(
     decisionId: String, kind: String, actorPlayerId: String, prompt: String,
     instructions: Vector[String], cards: Vector[CardDetails], keepMinimum: Int,
@@ -142,7 +129,6 @@ final case class GameProjection(
     legalControls: Set[String],
     ready: Boolean,
     completed: Boolean,
-    privateAdviserChoices: Vector[AdviserChoice],
     activePlayerResources: Option[ActivePlayerResources] = None,
     currentSiteResources: Option[CurrentSiteResources] = None,
     actionSelectionOpen: Boolean = false,
@@ -151,7 +137,6 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSource] = Vector.empty,
     legalMusters: Vector[LegalMuster] = Vector.empty,
     legalTrades: Vector[LegalTrade] = Vector.empty,
-    pendingSearch: Option[PendingSearch] = None,
     pendingCardDecision: Option[PendingCardDecision] = None,
     worldDeckCount: Int = 0,
     playerBoards: Vector[PlayerBoard] = Vector.empty
@@ -547,15 +532,6 @@ object GameJson {
         controls <- stringArray(root, "legalControls", "$")
         ready <- bool(root, "ready", "$")
         completed <- bool(root, "completed", "$")
-        choices <- optionalField(root, "privateAdviserChoices").flatMap {
-          case None => Right(Vector.empty)
-          case Some(_) => array(root, "privateAdviserChoices", "$").flatMap(
-          traverse(_, "privateAdviserChoices") { (item, path) =>
-            for {
-              id <- string(item, "adviserId", path)
-              label <- string(item, "label", path)
-            } yield AdviserChoice(id, label)
-          }) }
         resources <- optionalField(root, "activePlayerResources").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -630,22 +606,6 @@ object GameJson {
               gained <- int(item, "gained", path)
             } yield LegalTrade(target, label, suit, resource, cost, gained) })
         }
-        pendingSearch <- optionalField(root, "pendingSearch").flatMap {
-          case None => Right(None)
-          case Some(value) if value == null => Right(None)
-          case Some(value) => objectValue(value, "$.pendingSearch").flatMap { obj => for {
-            decision <- string(obj, "decisionId", "$.pendingSearch")
-            cards <- array(obj, "drawnCards", "$.pendingSearch").flatMap(
-              traverse(_, "drawnCards") { (card, path) => for {
-                id <- string(card, "cardId", path)
-                kind <- string(card, "cardKind", path)
-                label <- string(card, "label", path)
-                placements <- stringArray(card, "legalPlacements", path)
-              } yield SearchCard(id, kind, label, placements) })
-            advisers <- stringArray(obj, "replaceableAdvisers", "$.pendingSearch")
-            siteCards <- stringArray(obj, "replaceableSiteCards", "$.pendingSearch")
-          } yield Some(PendingSearch(decision, cards, advisers, siteCards)) }
-        }
         pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -675,10 +635,13 @@ object GameJson {
                       for {
                         kind <- string(item, "kind", path)
                         orientation <- optionalString(item, "orientation", path)
+                        replacementRequired <- bool(item,
+                          "replacementRequired", path)
                         targets <- array(item, "replacementTargets", path).flatMap(
                           traverse(_, "replacementTargets")((target, targetPath) =>
                             cardDetails(target, targetPath)))
-                      } yield values :+ CardResolution(kind, orientation, targets)
+                      } yield values :+ CardResolution(kind, orientation,
+                        replacementRequired, targets)
                     case (failure @ Left(_), _) => failure
                   }.map(value => acc.updated(card.cardId, value))
               case (failure @ Left(_), _) => failure
@@ -725,7 +688,6 @@ object GameJson {
         controls.toSet,
         ready,
         completed,
-        choices,
         resources,
         siteResources,
         actionOpen,
@@ -734,7 +696,6 @@ object GameJson {
         searchSources,
         musters,
         trades,
-        pendingSearch,
         pendingDecision,
         worldDeckCount,
         boards
