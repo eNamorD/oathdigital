@@ -46,8 +46,9 @@ power identity changed in this slice.
 
 Bounded Economy activates the explicit set of Muster/Trade handler IDs from
 accessible faceup advisers, the pawn site's denizens, and held faceup relics.
-None is executable in L6d, so typed resolution reports an unsupported relevant
-rule instead of interpreting catalog text or silently applying base behavior.
+No Economy modifier is executable in L6d, so typed resolution reports an
+unsupported relevant rule instead of interpreting catalog text or silently
+applying base behavior.
 Base Economy outcomes are durable v6 facts and replay recalculates their source,
 suit, cost, yield, component limits, and resource movement.
 The target reference carries an explicit denizen/edifice kind through projection,

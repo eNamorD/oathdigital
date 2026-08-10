@@ -143,7 +143,7 @@ participants, rules, factory, fixtures, Foundation/support data, bootstrap
 configuration, and the `FirstGameStarted`/`FirstGameCompleted` facts and their
 setup discriminator constants.
 
-The current mixed stream uses v1-v4 vocabulary, but those versions are not a
+The current mixed stream uses v1-v6 vocabulary, but those versions are not a
 public compatibility promise. Before release, a refactor may update the codec
 and checked-in fixtures directly when doing so simplifies the model.
 
@@ -152,11 +152,10 @@ and checked-in fixtures directly when doing so simplifies the model.
 The structural extraction and runtime naming cleanup are complete. New work
 should preserve those boundaries:
 
-1. Separate common Act lifecycle validation from action-specific support checks.
-2. Implement Rest and turn advancement before adding more Act actions.
-3. Implement Muster and Trade as the first combined Economy slice.
-4. Split Economy only if implemented decision flows create independent reasons
-   to change.
+Common Act lifecycle validation, Rest, and the combined Economy slice are now
+implemented. Future action modules should reuse the same command/replay/
+projection legality path. Split Economy only if later decision flows create
+independent reasons to change.
 
 ## Guardrails
 

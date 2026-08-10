@@ -36,7 +36,7 @@ above **Unimplemented**.
 | Six foundation setup effects and world-deck construction | **Blocked** | [CR pp. 10-12](rules-reference.md#later-games); mutable foundations [NF p. 9](new-foundations-delta.md#campaign-structure) | Foundation face/source state and reviewed catalog records exist; no typed handler executes a foundation. | Executable Foundation handlers B2; catalog text must not be mistaken for behavior. |
 | Ordered pawn placement on an eight-site 2/3/3 map | **Tested** | [CR pp. 7, 13](rules-reference.md#setup) | `setup/Setup.scala` and `FirstGameSetupRules` enforce compatible catalog, unique participants/lineages/sites, eight known sites, participant order, in-play destinations, completion and replay. | Imperial placement restrictions remain absent. |
 | Starting adviser choice and pawn placement | **Tested (bounded)** | [CR pp. 7, 13](rules-reference.md#setup) | The first-game flow records each Exile's private adviser choice, enforces ownership/order, and then places pawns. Player-scoped projections expose only the active player's choices. | Imperial placement and reveal rules remain unimplemented; hidden sharing policy F4. |
-| Event encoding, replay and application orchestration | **Tested** | Engineering support, not a rulebook statement | `GameEventWire`, `GameApplicationService`, replay, and optimistic repository contracts support mixed v2-v4 setup/gameplay streams. Tests cover malformed history, replay failures, conflicts, reload, and private projections. | Future events must preserve the same compatibility and redaction boundaries. |
+| Event encoding, replay and application orchestration | **Tested** | Engineering support, not a rulebook statement | `GameEventWire`, `GameApplicationService`, replay, and optimistic repository contracts support the current mixed v2-v6 setup/gameplay stream. Tests cover malformed history, replay failures, conflicts, reload, and private projections. | Before public release, formats may change in place, but replay correctness and redaction remain required. |
 | Durable event repository/database adapter | **Tested** | Engineering support, not a rulebook statement | `HsqldbEventStreamRepository` stores atomic ordered batches, performs schema migrations, rejects conflicts, and reconstructs streams after close/reopen. | Operational backup and production deployment remain outside game rules. |
 
 ## Turn and phase flow
@@ -111,13 +111,10 @@ rows above. The remaining cross-cutting items are:
 
 ## Upcoming source-cited work
 
-1. **Muster and Trade.** Use CR p. 24 and NF p. 13. These establish access,
-   empty-card costs, adviser matching, resource movement, limited warbands and
-   the NF yield/cost changes. Trade remains blocked until B3 is authoritative.
-2. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
+1. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
    p. 16. Implement only after the action boundary is stable; it supplies the
    first end-to-end game result without Campaign complexity. Resolve F7.
-3. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
+2. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
    Build on tested Atlas ordering to persist a completed fixture, then add
    World/Beacon, Sun, and Throne once component/legacy data is available.
 

@@ -1,6 +1,6 @@
 # Server-authoritative event journal
 
-Status: implemented through schema v3 and mixed v2-v4 game streams.
+Status: implemented through schema v3 and mixed v2-v6 game streams.
 
 ## Authority boundary
 
@@ -197,7 +197,7 @@ startup, bind, and shutdown messages are not silently discarded.
 
 ## Loopback development API
 
-The game API uses mixed v2-v4 streams and remains separate from the historical
+The game API uses mixed v2-v6 streams and remains separate from the historical
 v1 pawn-placement service. Versions are rejected rather than reinterpreted by
 the wrong codec.
 

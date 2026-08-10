@@ -48,7 +48,7 @@ Complete exile-only first-game setup uses a
 separate v2 envelope/vocabulary (`setup.first-game-started`,
 `setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
 `setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
-`GameEventWire` handles the mixed v2-v5 game stream. The current dual-codec
+`GameEventWire` handles the mixed v2-v6 game stream. The current dual-codec
 shape avoids silently defaulting fields when reading the bounded v1 fixture.
 No v1-to-v2 migration exists because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes
@@ -83,6 +83,11 @@ Rest adds `gameplay.rest-started` and `gameplay.rest-completed` in v5. The
 completion event records returned favor by suit, returned secrets, refreshed
 Supply, and the resulting player/round position. Replay derives those facts
 again from prior state and rejects disagreement before entering the next Wake.
+
+Economy adds `gameplay.mustered` and `gameplay.traded` in v6. Each event records
+the typed denizen-or-edifice target and resolved cost/yield. Replay recalculates
+access, suit matching, resource movement, and component limits before accepting
+the recorded outcome.
 
 The catalog reference is pinned in every envelope. For `setup.started`, it is
 also present in the payload because it is domain data; the codec requires the

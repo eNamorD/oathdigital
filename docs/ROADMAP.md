@@ -7,11 +7,11 @@ been reviewed.
 
 ## Now
 
-No item is currently prioritized. Re-evaluate after L6d.
+No item is currently assigned.
 
 ## Next
 
-No item is currently prioritized. Re-evaluate after L6d.
+The next milestone has not yet been selected.
 
 ## Later
 
