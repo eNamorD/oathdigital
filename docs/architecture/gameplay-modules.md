@@ -1,0 +1,177 @@
+# Gameplay module architecture
+
+This document defines the intended structure of the gameplay engine as Oath
+Digital grows beyond its initial bounded slices. It is a living architecture
+guide: the roadmap controls when migrations happen, while this document records
+the boundaries and principles those migrations should preserve.
+
+The current `gameplay/FirstTurnWake.scala` is transitional. It accumulated Wake,
+Travel, and Search while those vertical slices established authoritative events,
+replay, server authority, hidden decisions, and typed rule resolution. It is not
+the intended permanent module boundary.
+
+## Target structure
+
+```text
+oathdigital/gameplay/
+  OathRules.scala
+  RuleResolution.scala
+
+  phases/
+    Wake.scala
+    Rest.scala
+
+  actions/
+    Travel.scala
+    Search.scala
+    Economy.scala
+    Campaign.scala
+    Recover.scala
+```
+
+Files should be added only when they own working behavior. The refactor must not
+create empty Rest, Economy, Campaign, or Recover placeholders.
+
+### Aggregate rules
+
+`OathRules` is the deterministic aggregate boundary. It validates the common
+game lifecycle, routes commands and events to the appropriate phase or action,
+and returns the next state, authoritative events, and continuation. It should
+be deliberately boring: detailed costs, choices, card access, and action effects
+belong to their action or phase module.
+
+### Phase modules
+
+Wake and Rest bookend every turn and therefore remain distinct from Act actions.
+Each phase module owns its commands, base legality, phase-specific powers, event
+evolution helpers, and continuation rules.
+
+`Wake.scala` owns Take Wealth, Wake powers, Wake victory checks, and entry into
+Act. `Rest.scala` will own Rest powers, resource return, secret reveal, Supply
+refresh, per-turn cleanup, player/round advancement, and entry into the next
+Wake.
+
+### Action modules
+
+An action module keeps its command vocabulary, base legality, cost calculation,
+pending decision flow, and event evolution together. Travel and Search are
+separate because their state transitions and choices are materially different.
+
+Muster and Trade begin together in `Economy.scala`. Both spend Supply, choose an
+accessible denizen, inspect suit and adviser context, and resolve an economic
+yield. They should split only when their implementations acquire independent
+decision flows or become difficult to navigate. File size is evidence, not a
+rule; roughly 350-450 meaningful lines should prompt a cohesion review rather
+than an automatic split.
+
+Campaign and Recover should receive separate modules only when their implemented
+procedures justify those boundaries.
+
+### Shared rule resolution
+
+`RuleResolution.scala` contains the typed runtime vocabulary described in
+[rule-resolution.md](rule-resolution.md): stable sources, explicit handler
+registration, action queries, deterministic outcomes, and decision boundaries.
+It must not become an interpreted rules-text engine or a general JSON DSL.
+
+Small power handlers should be grouped by the action or timing they modify, for
+example Travel, Search, economy, Campaign, or Wake/victory handlers. Do not
+create one source file per card. A card receives its own module only when its
+procedure is independently complex.
+
+## Dependency direction
+
+Dependencies point inward toward deterministic domain behavior:
+
+```text
+HTTP / Scala.js UI
+        |
+application services and player-scoped projections
+        |
+OathRules -> phase/action modules -> typed rule resolution
+        |
+domain model, catalog definitions, and authoritative events
+        |
+generic replay and event-journal contracts
+```
+
+- Server routes derive the actor and translate transport intents; they do not
+  implement rules.
+- Application services load streams, replay state, invoke rules, and append
+  accepted events with optimistic concurrency.
+- Projections redact hidden information and present legal choices; they do not
+  maintain a second rules implementation.
+- The Scala.js client renders projected state and sends selected intents; it
+  never supplies authoritative randomness or hidden deck state.
+- Persistence stores versioned event bytes and has no knowledge of gameplay
+  legality.
+
+## One authoritative legality path
+
+Commands, replay validation, and legal-choice projection must call the same
+typed base rules and modifier resolution. A projection may transform a legal
+result for display, but it must not recreate legality using parallel Boolean
+conditions. This prevents the UI from offering commands the aggregate rejects
+and prevents replay from accepting outcomes live commands could not produce.
+
+Multi-step actions use an explicit `PendingProcedure`. Server-owned random
+outcomes are recorded in authoritative events, then replay validates those
+facts against the preceding state instead of drawing again. Player-scoped
+projections expose pending private information only to its authorized actor.
+The bounded Search design in [bounded-search.md](bounded-search.md) is the first
+complete example of this pattern.
+
+Events record durable game facts, not transport requests or derived view data.
+Commands remain transient. Internal Scala names and file boundaries may change
+without changing historical event discriminators, format versions, or golden
+fixtures.
+
+## Naming policy
+
+“First game” remains a valid scenario and setup qualifier. Names such as
+`FirstGameSetup`, its plan, and first-game fixtures may remain when they truly
+describe the exile-only introductory setup.
+
+Runtime names are transitional when they govern an ordinary game after setup.
+The following should move toward `Game*` or `Oath*` names:
+
+- `FirstGameRules`
+- `FirstGameApplicationService`
+- `FirstGameProjection`
+- `FirstGameEventWire`
+- setup-named state or event types that now include ordinary gameplay
+
+Renaming internal types does not authorize a wire-format migration. Existing
+v1-v4 event streams and their discriminators remain compatible unless a future,
+separately reviewed migration explicitly changes that contract.
+
+## Refactor sequence
+
+After bounded Search is integrated and verified:
+
+1. Extract existing Wake, Travel, and Search behavior into the target modules.
+2. Reduce the aggregate to lifecycle validation and command/event routing.
+3. Delete `FirstTurnWake.scala` once no behavior remains there.
+4. Rename inappropriate runtime `FirstGame*` types in a separate, mechanical
+   pass while preserving all serialized bytes and public HTTP behavior.
+5. Run the complete JVM, Scala.js, linker, replay, and golden-fixture gates.
+6. Implement Rest and turn advancement before adding more Act actions.
+7. Implement Muster and Trade as the first combined Economy slice.
+
+Extraction and broad naming cleanup should remain separate commits so review
+can distinguish moved behavior from mechanical renames. Neither step should add
+new rules.
+
+## Guardrails
+
+- Split modules by independent reasons to change, not by one type per file.
+- Keep closely related command, legality, and evolution code together.
+- Do not let the aggregate become an append-only action bucket.
+- Do not duplicate legality in projections or clients.
+- Do not infer executable behavior from catalog rules text.
+- Do not silently ignore a relevant activated but unsupported power.
+- Prefer table-driven registrations and tests for small modifiers.
+- Add a generic abstraction only after multiple implemented rules demonstrate
+  the shared behavior.
+- Preserve authoritative replay and hidden-information boundaries through every
+  refactor.

@@ -7,23 +7,28 @@ been reviewed.
 
 ## Now
 
-- [ ] **L6b — Bounded Search action vertical slice**
-  - Design the smallest complete Search flow on the typed rule-resolution and
-    pending-decision boundaries established by R1.
-  - Preserve authoritative events, deterministic replay, server-derived actor
-    context, player-scoped hidden information, and valid-only UI choices.
-  - Keep the first implementation to unmodified foundation rules and explicitly
-    defer individual card powers that are not required to complete the flow.
+- [ ] **R2 — Extract gameplay modules and clean up runtime naming**
+  - Follow [the gameplay module architecture](architecture/gameplay-modules.md):
+    extract Wake, Travel, and Search, reduce the aggregate to routing, and
+    delete `FirstTurnWake.scala` without changing behavior.
+  - In a separate mechanical pass, rename runtime `FirstGame*` types that no
+    longer describe setup while preserving v1-v4 event bytes, HTTP behavior,
+    replay compatibility, and golden fixtures.
+  - Complete the full integration gate before implementing additional rules.
 
 ## Next
 
-- [ ] **L6c — Choose the next bounded action slice after Search**
-  - Use the Search implementation review to choose between Muster, Trade, and
-    the first representative card-power integration based on which best tests
-    the new rule runtime without broadening scope prematurely.
+- [ ] **L6c — Rest and turn advancement**
+  - Implement Rest powers, resource return, secret reveal, Supply refresh,
+    per-turn cleanup, player/round advancement, and the next player's Wake.
 
 ## Later
 
+- [ ] **L6d — Bounded Economy action slice**
+  - Implement Muster and Trade together in `actions/Economy.scala`, sharing
+    denizen access and suit/adviser evaluation while retaining distinct typed
+    commands and outcomes. Split them only if implemented complexity warrants
+    it.
 - [ ] **X6 — Complete production authentication and deployment**
   - [x] Provider-neutral users, OIDC identity links, memberships, digest-only
     sessions, shared HSQL lifecycle, membership authorization, authenticated
@@ -98,8 +103,13 @@ been reviewed.
   ordering, safe unsupported-rule handling, a minimal decision boundary, and
   shared Travel and Take Wealth legality queries. Event wire formats and golden
   replay fixtures remain unchanged.
+- [x] Complete L6b bounded Search with server-prepared deterministic draws,
+  v4 authoritative pending/completion events, replay validation, regional and
+  world sources, ordered discards, typed placement restrictions, owner-only
+  pending-card projection, reconnect-safe UI controls, and unchanged v1-v3
+  compatibility.
 
-The combined milestone passes 177 JVM tests, 48 Scala.js tests, the Scala.js
+The combined milestone passes 188 JVM tests, 49 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

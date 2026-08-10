@@ -23,6 +23,13 @@ The bounded setup command/event/replay slice is documented in
 The production decision that domain events, rather than commands, are
 authoritative is recorded in
 [`docs/architecture/authoritative-events.md`](docs/architecture/authoritative-events.md).
+The intended gameplay package boundaries, naming policy, and refactor sequence
+are recorded in
+[`docs/architecture/gameplay-modules.md`](docs/architecture/gameplay-modules.md).
+Typed power activation is described in
+[`docs/architecture/rule-resolution.md`](docs/architecture/rule-resolution.md),
+and the first hidden-decision implementation is documented in
+[`docs/architecture/bounded-search.md`](docs/architecture/bounded-search.md).
 
 The rules engine in `oathdigital.engine` has no UI or asset dependency.
 `oathdigital.catalog` loads selected, source-verified catalog projections into
