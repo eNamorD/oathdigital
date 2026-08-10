@@ -71,6 +71,8 @@ final class AuthenticatedGameGateway(
           case GameIntent.TakeWealth(resource) =>
             actor.takeWealth(resource)
           case GameIntent.EndWake => actor.endWake
+          case GameIntent.BeginRest => actor.beginRest
+          case GameIntent.FinishRest => actor.finishRest
           case GameIntent.Travel(destination) => actor.travel(destination)
           case GameIntent.BeginSearch(source) => actor.beginSearch(source)
           case GameIntent.CompleteSearch(decision, kept, discarded, placement) =>

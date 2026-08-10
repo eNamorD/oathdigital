@@ -65,6 +65,9 @@ final case class AuthorizedPlayer private (
   def endWake: GameCommand =
     GameCommand.EndWake(access.playerId)
 
+  def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
+  def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
+
   def travel(destination: SiteId): GameCommand =
     GameCommand.Travel(access.playerId, destination)
 

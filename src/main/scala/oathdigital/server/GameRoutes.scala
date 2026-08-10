@@ -222,6 +222,8 @@ final class GameRoutes(
       case GameCommand.Travel(playerId, _) => Some(playerId.value)
       case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
       case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
+      case GameCommand.BeginRest(playerId) => Some(playerId.value)
+      case GameCommand.FinishRest(playerId) => Some(playerId.value)
       case GameCommand.Begin(_) => None
     }
     actor match {

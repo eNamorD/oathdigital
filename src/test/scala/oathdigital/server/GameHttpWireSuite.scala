@@ -1,11 +1,22 @@
 package oathdigital.server
 
 import oathdigital.application.GameCommand
+import oathdigital.model.PlayerId
 import oathdigital.serialization.{
   GameEventWire
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("development Rest commands retain the explicit selector actor") {
+    val begin = GameHttpWire.decodeCommand(
+      """{"expectedNextSequence":12,"command":{"type":"beginRest","playerId":"p1"}}""")
+      .toOption.get
+    val finish = GameHttpWire.decodeCommand(
+      """{"expectedNextSequence":13,"command":{"type":"finishRest","playerId":"p1"}}""")
+      .toOption.get
+    assertEquals(begin.command, GameCommand.BeginRest(PlayerId("p1")))
+    assertEquals(finish.command, GameCommand.FinishRest(PlayerId("p1")))
+  }
   private def commandRequest(command: ujson.Obj): String =
     ujson.write(ujson.Obj(
       "expectedNextSequence" -> 8,

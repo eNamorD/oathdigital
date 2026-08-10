@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Search, SearchCommand, Travel, TravelCommand}
-import oathdigital.gameplay.phases.{Wake, WakeCommand}
+import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.OathEvent._
@@ -35,6 +35,10 @@ final class OathRules(catalog: ExecutableCatalog)
   ): Either[OathViolation, OathTransition] =
     Search.handle(catalog, state, command)
 
+  def handle(state: OathState, command: RestCommand)
+      : Either[OathViolation, OathTransition] =
+    Rest.handle(catalog, state, command)
+
   override def evolve(
       state: OathState,
       event: OathEvent
@@ -45,6 +49,8 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: Traveled => Travel.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
+      case event: RestStarted => Rest.evolve(catalog, state, event)
+      case event: RestCompleted => Rest.evolve(catalog, state, event)
       case setupEvent => setup.evolve(state, setupEvent)
     }
 }

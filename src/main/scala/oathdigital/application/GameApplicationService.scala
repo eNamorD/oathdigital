@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelCommand}
-import oathdigital.gameplay.phases.WakeCommand
+import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
 import oathdigital.setup.{
@@ -40,6 +40,8 @@ object GameCommand {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends GameCommand
+  final case class BeginRest(playerId: PlayerId) extends GameCommand
+  final case class FinishRest(playerId: PlayerId) extends GameCommand
 }
 
 trait SearchDrawPort {
@@ -268,6 +270,10 @@ final class GameApplicationService(
           placement) =>
         rules.handle(state, SearchCommand.Complete(
           playerId, decision, kept, discarded, placement))
+      case GameCommand.BeginRest(playerId) =>
+        rules.handle(state, RestCommand.Begin(playerId))
+      case GameCommand.FinishRest(playerId) =>
+        rules.handle(state, RestCommand.Finish(playerId))
     }
 
   private def encode(

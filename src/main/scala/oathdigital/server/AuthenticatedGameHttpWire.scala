@@ -16,6 +16,8 @@ object GameIntent {
   final case class ChooseAdviser(adviserId: DenizenId) extends GameIntent
   final case class TakeWealth(resource: WakeResource) extends GameIntent
   case object EndWake extends GameIntent
+  case object BeginRest extends GameIntent
+  case object FinishRest extends GameIntent
   final case class Travel(destinationSiteId: SiteId) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
   final case class CompleteSearch(
@@ -129,6 +131,10 @@ object AuthenticatedGameHttpWire {
       case "endWake" =>
         exactFields(obj, Set("type"), "$.intent").map(_ =>
           GameIntent.EndWake)
+      case "beginRest" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.BeginRest)
+      case "finishRest" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.FinishRest)
       case "travel" =>
         exactFields(obj, Set("type", "destinationSiteId"), "$.intent")
           .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))

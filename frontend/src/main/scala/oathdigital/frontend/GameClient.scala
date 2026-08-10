@@ -132,6 +132,8 @@ object GameCommand {
   final case class TakeWealth(playerId: String, resource: String)
       extends GameCommand
   final case class EndWake(playerId: String) extends GameCommand
+  final case class BeginRest(playerId: String) extends GameCommand
+  final case class FinishRest(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
       extends GameCommand
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
@@ -308,6 +310,10 @@ object GameJson {
         )
       case GameCommand.EndWake(player) =>
         js.Dynamic.literal(`type` = "endWake", playerId = player)
+      case GameCommand.BeginRest(player) =>
+        js.Dynamic.literal(`type` = "beginRest", playerId = player)
+      case GameCommand.FinishRest(player) =>
+        js.Dynamic.literal(`type` = "finishRest", playerId = player)
       case GameCommand.Travel(player, destination) =>
         js.Dynamic.literal(
           `type` = "travel",

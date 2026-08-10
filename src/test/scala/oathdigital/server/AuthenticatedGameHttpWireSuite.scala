@@ -1,6 +1,19 @@
 package oathdigital.server
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated Rest intents remain actor-free") {
+    val begin = AuthenticatedGameHttpWire.decodeCommand(
+      """{"expectedNextSequence":12,"intent":{"type":"beginRest"}}""")
+      .toOption.get
+    val finish = AuthenticatedGameHttpWire.decodeCommand(
+      """{"expectedNextSequence":13,"intent":{"type":"finishRest"}}""")
+      .toOption.get
+    assertEquals(begin.intent, GameIntent.BeginRest)
+    assertEquals(finish.intent, GameIntent.FinishRest)
+    assert(AuthenticatedGameHttpWire.decodeCommand(
+      """{"expectedNextSequence":12,"intent":{"type":"beginRest","playerId":"p1"}}""")
+      .isLeft)
+  }
   test("authenticated command intents contain no actor field") {
     val valid =
       """{"expectedNextSequence":1,"intent":{"type":"placePawn","siteId":"S1"}}"""

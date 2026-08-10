@@ -233,6 +233,12 @@ object GameHttpWire {
       case "endWake" =>
         stringField(obj, "playerId", path).map(player =>
           GameCommand.EndWake(PlayerId(player)))
+      case "beginRest" =>
+        stringField(obj, "playerId", path).map(player =>
+          GameCommand.BeginRest(PlayerId(player)))
+      case "finishRest" =>
+        stringField(obj, "playerId", path).map(player =>
+          GameCommand.FinishRest(PlayerId(player)))
       case "travel" =>
         for {
           player <- stringField(obj, "playerId", path)

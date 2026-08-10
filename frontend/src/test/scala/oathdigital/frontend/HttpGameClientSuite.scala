@@ -6,6 +6,14 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class HttpGameClientSuite extends FunSuite {
+  test("Rest commands encode current sequence and actor") {
+    val begin = GameJson.encodeCommand(12L, GameCommand.BeginRest("red-exile"))
+    val finish = GameJson.encodeCommand(13L, GameCommand.FinishRest("red-exile"))
+    assert(begin.contains("\"type\":\"beginRest\""))
+    assert(begin.contains("\"expectedNextSequence\":12"))
+    assert(finish.contains("\"type\":\"finishRest\""))
+    assert(finish.contains("\"playerId\":\"red-exile\""))
+  }
   private val bootstrap = FirstGameBootstrap(
     Vector(
       BootstrapPlayer("red-exile", "red-lineage", "red"),

@@ -28,6 +28,7 @@ object GameEventWire {
   val FormatVersion: Int = 2
   val GameplayFormatVersion: Int = 3
   val SearchFormatVersion: Int = 4
+  val RestFormatVersion: Int = 5
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -38,6 +39,8 @@ object GameEventWire {
   val TraveledType = "gameplay.traveled"
   val SearchStartedType = "gameplay.search-started"
   val SearchCompletedType = "gameplay.search-completed"
+  val RestStartedType = "gameplay.rest-started"
+  val RestCompletedType = "gameplay.rest-completed"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -136,7 +139,7 @@ object GameEventWire {
           version <- formatVersionField(obj, path)
           _ <-
             if (version == FormatVersion || version == GameplayFormatVersion ||
-                version == SearchFormatVersion)
+                version == SearchFormatVersion || version == RestFormatVersion)
               Right(())
             else
               Left(
@@ -244,11 +247,14 @@ object GameEventWire {
       case _: Traveled => TraveledType
       case _: SearchStarted => SearchStartedType
       case _: SearchCompleted => SearchCompletedType
+      case _: RestStarted => RestStartedType
+      case _: RestCompleted => RestCompletedType
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
+    case _: RestStarted | _: RestCompleted => RestFormatVersion
     case _ => FormatVersion
   }
 
@@ -300,6 +306,17 @@ object GameEventWire {
           "kept" -> encodeWorldCard(kept),
           "discardedInOrder" -> ujson.Arr.from(discarded.map(encodeWorldCard)),
           "placement" -> encodeSearchPlacement(placement)
+        )
+      case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
+      case RestCompleted(playerId, favor, secrets, supply, next, round) =>
+        ujson.Obj(
+          "playerId" -> playerId.value,
+          "returnedFavor" -> ujson.Obj.from(favor.toVector.sortBy(_._1.key)
+            .map { case (suit, amount) => suit.key -> ujson.Num(amount) }),
+          "returnedSecrets" -> secrets,
+          "refreshedSupply" -> supply,
+          "nextPlayerId" -> next.value,
+          "nextRound" -> round
         )
     }
 
@@ -389,6 +406,31 @@ object GameEventWire {
           } yield SearchCompleted(
             PlayerId(payload("playerId").str),
             DecisionId(payload("decisionId").str), kept, discarded, placement)
+        case RestStartedType =>
+          Right(RestStarted(PlayerId(payload("playerId").str)))
+        case RestCompletedType =>
+          val favorObject = payload("returnedFavor").obj
+          val favor = favorObject.toVector.map { case (key, value) =>
+            Suit.all.find(_.key == key).toRight(InvalidValue(
+              s"$path.returnedFavor.$key", "unknown suit")).flatMap { suit =>
+              val number = value.num
+              if (number.isFinite && number == Math.rint(number) && number >= 0)
+                Right(suit -> number.toInt)
+              else Left(InvalidValue(s"$path.returnedFavor.$key",
+                "must be a non-negative integer"))
+            }
+          }
+          favor.foldLeft[Either[WireError, Vector[(Suit, Int)]]](
+            Right(Vector.empty)) {
+            case (Right(acc), Right(entry)) => Right(acc :+ entry)
+            case (Left(error), _) => Left(error)
+            case (_, Left(error)) => Left(error)
+          }.map(entries => RestCompleted(
+            PlayerId(payload("playerId").str), entries.toMap,
+            payload("returnedSecrets").num.toInt,
+            payload("refreshedSupply").num.toInt,
+            PlayerId(payload("nextPlayerId").str),
+            payload("nextRound").num.toInt))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -407,7 +449,9 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == SearchStartedType || eventType == SearchCompletedType)
+      if (eventType == RestStartedType || eventType == RestCompletedType)
+        RestFormatVersion
+      else if (eventType == SearchStartedType || eventType == SearchCompletedType)
         SearchFormatVersion
       else if (eventType == TakeWealthType || eventType == WakeEndedType ||
           eventType == TraveledType)

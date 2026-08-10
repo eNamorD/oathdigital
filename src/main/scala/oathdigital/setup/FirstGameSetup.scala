@@ -33,7 +33,8 @@ object FirstGameFoundationProfile {
 
 final case class FirstGameSupportState(
     foundationProfile: FirstGameFoundationProfile,
-    favorBanks: Map[Suit, Int]
+    favorBanks: Map[Suit, Int],
+    firstPlayer: PlayerId
 )
 
 final case class ReadyGame(
@@ -101,6 +102,15 @@ object OathEvent {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends OathEvent
+  final case class RestStarted(playerId: PlayerId) extends OathEvent
+  final case class RestCompleted(
+      playerId: PlayerId,
+      returnedFavor: Map[Suit, Int],
+      returnedSecrets: Int,
+      refreshedSupply: Int,
+      nextPlayerId: PlayerId,
+      nextRound: Int
+  ) extends OathEvent
 }
 
 sealed trait WakeResource extends Product with Serializable
@@ -119,6 +129,8 @@ object OathContinue {
   final case class AwaitingWakeAction(playerId: PlayerId)
       extends OathContinue
   final case class ActActionSelection(playerId: PlayerId)
+      extends OathContinue
+  final case class AwaitingRestAction(playerId: PlayerId)
       extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
@@ -185,6 +197,10 @@ object OathViolation {
   final case class LockedAdviserCannotBeDiscarded(id: CardId)
       extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)
+      extends OathViolation
+  final case class UnsupportedRestState(reason: String)
+      extends OathViolation
+  final case class RestOutcomeMismatch(detail: String)
       extends OathViolation
   case object ParticipantsEmpty extends OathViolation
   final case class DuplicatePlayer(id: PlayerId)
@@ -408,6 +424,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
       case _: SearchStarted | _: SearchCompleted =>
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
+      case _: RestStarted | _: RestCompleted =>
+        Left(InvalidEventOrder("Rest requires the gameplay evolution"))
     }
 
   private def validatePlan(
@@ -698,7 +716,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           plan.participants.map(p => p.playerId -> p.color).toMap,
           FirstGameSupportState(
             FirstGameFoundationProfile.FixedUnaltered,
-            favorBanks(plan)
+            favorBanks(plan),
+            plan.firstPlayer
           )
         )
       )

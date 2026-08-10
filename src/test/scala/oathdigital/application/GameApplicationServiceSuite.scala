@@ -224,8 +224,36 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector.empty)
+    assertEquals(act.legalControls, Vector("beginRest"))
     assertEquals(act.actionFamilies.size, 8)
+  }
+
+  test("Rest v5 commands persist reload and project the next player's Wake") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val setup = execute(service, "game-rest")
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val act = service.handle("game-rest", setup.nextSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val begun = service.handle("game-rest", act.nextSequence,
+      GameCommand.BeginRest(active)).toOption.get
+    val restProjection = new GameProjector(catalog).project("game-rest",
+      LoadedGame(begun.state, begun.nextSequence), active)
+    assertEquals(restProjection.phase, "rest")
+    assertEquals(restProjection.legalControls, Vector("finishRest"))
+    val finished = service.handle("game-rest", begun.nextSequence,
+      GameCommand.FinishRest(active)).toOption.get
+    val loaded = new GameApplicationService(catalog, repository)
+      .load("game-rest").toOption.flatten.get
+    val Ready(after) = loaded.state: @unchecked
+
+    assertEquals(loaded.state, finished.state)
+    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(after.game.current.turn.activePlayer, active)
+    assertEquals(repository.load("game-rest").toOption.flatten.get.records
+      .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt),
+      Vector(5, 5))
   }
 
   test("site projection exposes ordered public properties without relic identity") {

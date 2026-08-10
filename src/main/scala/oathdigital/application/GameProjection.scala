@@ -173,8 +173,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
           _.player == current.turn.activePlayer).get
         val site = active.pawnSite.flatMap(current.map.sites.get)
         val controls =
-          if (!requestingPlayer.contains(active.player) ||
-              current.turn.phase != Phase.Wake) Vector.empty
+          if (!requestingPlayer.contains(active.player)) Vector.empty
+          else if (current.turn.phase == Phase.Act && current.pending.isEmpty)
+            Vector("beginRest")
+          else if (current.turn.phase == Phase.Rest && current.pending.isEmpty)
+            Vector("finishRest")
+          else if (current.turn.phase != Phase.Wake) Vector.empty
           else {
             val takeControls = active.pawnSite.toVector.flatMap { siteId =>
               Vector(

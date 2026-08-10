@@ -4,11 +4,30 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
 import oathdigital.model._
 import oathdigital.setup.OathEvent.{FirstGameCompleted, WakeEnded,
-  SearchCompleted, SearchStarted, Traveled, WealthTaken}
+  RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
+  WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
+
+  test("v5 Rest events round-trip all authoritative transition facts") {
+    val events = Vector[OathEvent](
+      RestStarted(PlayerId("red")),
+      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2, Suit.Order -> 1),
+        returnedSecrets = 3, refreshedSupply = 6, PlayerId("blue"), 2)
+    )
+    val encoded = GameEventWire.encodeStream("rest", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    val decoded = GameEventWire.decodeStream(encoded).toOption.get
+
+    assertEquals(decoded.map(_.formatVersion), Vector(5, 5))
+    assertEquals(decoded.map(_.event), events)
+    assertEquals(decoded.map(_.eventType), Vector(
+      GameEventWire.RestStartedType, GameEventWire.RestCompletedType))
+  }
 
   test("v2 serialized replay equals command state and preserves ordering") {
     val (commandState, events) = execute(rules)

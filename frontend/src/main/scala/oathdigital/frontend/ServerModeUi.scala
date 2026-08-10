@@ -325,7 +325,22 @@ object ServerModeUi {
           panel.appendChild(travel)
           panel.appendChild(text("p", "informational",
             "Other normal action families are not yet implemented."))
+          val rest = button("End Act and Rest", "rest-action")
+          rest.disabled = !controlsAvailable ||
+            !value.legalControls.contains("beginRest")
+          rest.onclick = _ => submit(GameCommand.BeginRest(selectedPlayer))
+          panel.appendChild(rest)
         }
+      }
+      if (value.phase == "rest" && presentation.showGameplayControls) {
+        panel.appendChild(text("p", "informational",
+          "Finish Rest to return card resources, reveal secrets, refresh " +
+            "Supply, and wake the next player."))
+        val finish = button("Finish Rest", "rest-action")
+        finish.disabled = !controlsAvailable ||
+          !value.legalControls.contains("finishRest")
+        finish.onclick = _ => submit(GameCommand.FinishRest(selectedPlayer))
+        panel.appendChild(finish)
       }
       value.pendingSearch.foreach { search =>
         panel.appendChild(text("h3", "", "Choose one searched card"))
