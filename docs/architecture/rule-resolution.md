@@ -23,8 +23,9 @@ selected handler missing from the registry produces
 
 The typed vocabulary covers allow, block, additive or replacing cost changes,
 a required decision boundary, post-action effects, and unsupported relevant
-rules. The decision type is only a seam for a future command-owned
-`PendingProcedure`; this slice creates no decision and implements no Search.
+rules. The decision outcome is the typed seam for command-owned
+`PendingProcedure` flows. Bounded Search uses a pending procedure, while its
+base rules currently have no registered Search modifier.
 
 Activations are ordered by ascending priority, stable source key, then handler
 ID. Travel uses these priority bands:

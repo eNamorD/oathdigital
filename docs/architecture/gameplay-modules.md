@@ -147,22 +147,16 @@ Renaming internal types does not authorize a wire-format migration. Existing
 v1-v4 event streams and their discriminators remain compatible unless a future,
 separately reviewed migration explicitly changes that contract.
 
-## Refactor sequence
+## Evolution order
 
-After bounded Search is integrated and verified:
+The structural extraction and runtime naming cleanup are complete. New work
+should preserve those boundaries:
 
-1. Extract existing Wake, Travel, and Search behavior into the target modules.
-2. Reduce the aggregate to lifecycle validation and command/event routing.
-3. Delete the transitional gameplay bucket once no behavior remains there.
-4. Rename inappropriate runtime `FirstGame*` types in a separate, mechanical
-   pass while preserving all serialized bytes and public HTTP behavior.
-5. Run the complete JVM, Scala.js, linker, replay, and golden-fixture gates.
-6. Implement Rest and turn advancement before adding more Act actions.
-7. Implement Muster and Trade as the first combined Economy slice.
-
-Extraction and broad naming cleanup should remain separate commits so review
-can distinguish moved behavior from mechanical renames. Neither step should add
-new rules.
+1. Separate common Act lifecycle validation from action-specific support checks.
+2. Implement Rest and turn advancement before adding more Act actions.
+3. Implement Muster and Trade as the first combined Economy slice.
+4. Split Economy only if implemented decision flows create independent reasons
+   to change.
 
 ## Guardrails
 

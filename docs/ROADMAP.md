@@ -44,71 +44,20 @@ been reviewed.
 
 ## Done
 
-- [x] Clone, inspect, and compile HRF and its Scala.js dependencies.
-- [x] Establish the Oath Digital Scala build and baseline tests.
-- [x] Define the core domain model and architecture boundaries.
-- [x] Create and validate the initial component catalog and loader.
-- [x] Add image-independent presentation and fallback models.
-- [x] Implement the bounded setup command/event/replay slice.
-- [x] Choose authoritative domain events and document the decision.
-- [x] Add explicit, versioned setup-event serialization and compatibility tests.
-- [x] Refactor the runtime catalog into five complete component families while
-  retaining ingestion evidence and manual-review data separately.
-- [x] Complete the HRF UI reuse spike and deliver an interactive Scala.js setup
-  page whose displayed state is derived from authoritative-event replay.
-- [x] Add the storage-neutral setup application service, in-memory repository,
-  optimistic-concurrency contract, and typed failure handling.
-- [x] Add source-cited rulebook implementation traceability without treating
-  placeholder domain types as implemented rules.
-- [x] Integrate the frontend with a server-authoritative bootstrap and command
-  API while retaining an explicit browser-memory debug mode.
-- [x] Add the file-backed HSQLDB event journal, schema upgrades, atomic event
-  batches, optimistic concurrency, and close/reopen reconstruction.
-- [x] Complete and present the exile-only first-game setup through Ready, with
-  The World, player naming/color treatment, restart controls, and permanent
-  image-independent fallbacks.
-- [x] Integrate the reviewed printed-ID catalog and typed denizen placement
-  restrictions as catalog `2026.08.03-pre3` / schema `1.1.0`.
-- [x] Complete the batch integration gate, including independent diff review,
-  catalog validation, clean JVM/Scala.js builds, database restart, persisted
-  browser reload, and distinct-stream restart testing.
-- [x] Complete X3 client synchronization and reconnect: persisted game/player
-  URLs, explicit recovery from transport failures, stale-response generation
-  guards, refresh-only conflict handling, and visibility-aware player-scoped
-  snapshot polling keyed by authoritative `nextSequence`.
-- [x] Complete X5 replay and concurrency hardening across v1/v2 compatibility,
-  malformed and misidentified streams, exact replay-failure indexes, sequence
-  integrity, concurrent creation/appends, atomic rollback, restart durability,
-  and stale HTTP command handling.
-- [x] Establish the deferred X6 security foundation through schema-v3
-  digest-only sessions, membership-derived authorization, authenticated game
-  routes, exact-origin CSRF protection, and deterministic HSQL close/reopen.
-- [x] Complete L1 first-turn Wake through separate Take Wealth and End Wake
-  commands, mixed v2/v3 authoritative replay, server and authenticated command
-  boundaries, player-scoped UI controls, and the Act action-selection boundary.
-- [x] Complete L2 board and fallback polish: detailed responsive site cards,
-  HRF-style inactive-player waiting, valid-only Wake controls, semantic site
-  interactions, and deterministic accessible visual fallbacks with no artwork.
-- [x] Complete L6a bounded first-turn Travel through authoritative commands and
-  events, replay, server-derived actor context, player-scoped projection, and
-  destination-selection UI, including base region costs and mandatory Coast,
-  Island, Mountain, and Pass behavior. Manually verified in the interactive UI.
-- [x] Complete R1 typed runtime rule resolution with broad stable source
-  identities, explicit catalog-handler registration, deterministic outcome
-  ordering, safe unsupported-rule handling, a minimal decision boundary, and
-  shared Travel and Take Wealth legality queries. Event wire formats and golden
-  replay fixtures remain unchanged.
-- [x] Complete L6b bounded Search with server-prepared deterministic draws,
-  v4 authoritative pending/completion events, replay validation, regional and
-  world sources, ordered discards, typed placement restrictions, owner-only
-  pending-card projection, reconnect-safe UI controls, and unchanged v1-v3
-  compatibility.
-- [x] Complete R2 gameplay modularization and naming cleanup: extract cohesive
-  Wake, Travel, and Search modules; reduce `OathRules` to aggregate routing;
-  remove the transitional gameplay bucket; rename ordinary runtime application,
-  projection, wire, route, client, state, event, continuation, transition, and
-  violation types; and retain `FirstGame*` only for genuine introductory-setup
-  concepts. Golden v1-v4 bytes and public behavior remain unchanged.
+- [x] Establish the Scala/Scala.js build, HRF reference baseline, core domain
+  model, source-cited rules layer, and complete reviewed component catalog.
+- [x] Implement authoritative versioned events, deterministic replay,
+  optimistic application services, and the schema-v3 HSQLDB event/identity
+  store with concurrency, restart, and malformed-history hardening.
+- [x] Deliver the exile-only introductory setup and responsive image-independent
+  server UI, including player-scoped controls, reconnect/polling, restart, and
+  authenticated membership/session/CSRF foundations.
+- [x] Implement bounded Wake, Travel, and Search through mixed v2-v4 history,
+  including typed Travel modifiers, server-prepared Search draws, private
+  pending decisions, replay validation, and Scala.js controls.
+- [x] Modularize gameplay into `OathRules`, phase/action modules, typed rule
+  resolution, and consistently named runtime application, wire, server, and
+  frontend boundaries without changing golden history.
 
 The combined milestone passes 188 JVM tests, 49 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke

@@ -1,7 +1,7 @@
 # Oath Digital
 
-This project begins with a small, pure-Scala board-game engine based on the
-architectural lessons from HRF:
+Oath Digital is a Scala/Scala.js implementation of Oath: New Foundations built
+around a deterministic, server-authoritative game engine:
 
 - accepted commands are transient requests and resulting domain events are the
   authoritative durable source of truth;
@@ -16,26 +16,19 @@ depend on HRF's complete Scala.js framework.
 
 ## Architecture
 
-The durable core-domain decisions and milestone acceptance criteria are
-recorded in [`docs/architecture/core-domain-model.md`](docs/architecture/core-domain-model.md).
-The bounded setup command/event/replay slice is documented in
-[`docs/architecture/game-setup.md`](docs/architecture/game-setup.md).
-The production decision that domain events, rather than commands, are
-authoritative is recorded in
-[`docs/architecture/authoritative-events.md`](docs/architecture/authoritative-events.md).
-The intended gameplay package boundaries, naming policy, and refactor sequence
-are recorded in
-[`docs/architecture/gameplay-modules.md`](docs/architecture/gameplay-modules.md).
-Typed power activation is described in
-[`docs/architecture/rule-resolution.md`](docs/architecture/rule-resolution.md),
-and the first hidden-decision implementation is documented in
-[`docs/architecture/bounded-search.md`](docs/architecture/bounded-search.md).
+- [Core domain model](docs/architecture/core-domain-model.md)
+- [Authoritative domain events](docs/architecture/authoritative-events.md)
+- [First-game setup](docs/architecture/game-setup.md)
+- [Server event journal and security boundary](docs/architecture/server-event-journal.md)
+- [Gameplay module structure](docs/architecture/gameplay-modules.md)
+- [Typed rule resolution](docs/architecture/rule-resolution.md)
+- [Bounded Search and hidden decisions](docs/architecture/bounded-search.md)
 
 The rules engine in `oathdigital.engine` has no UI or asset dependency.
 `oathdigital.catalog` loads selected, source-verified catalog projections into
 typed definitions and rejects incompatible or unresolved executable data.
-`oathdigital.presentation` is a small boundary between rules/application code
-and a future terminal, web, or native renderer:
+`oathdigital.presentation` is the image-independent boundary between
+rules/application code and renderers:
 
 - `BoardView` contains immutable `SiteView`, `CardView`, `PieceView`, and
   `ActionView` values.
@@ -54,10 +47,12 @@ short `symbol`. `PresentationExample` is a compile-checked integration sketch.
 
 ## Build
 
-Use the project-local wrapper:
+Use the project-local wrapper. A normal verification run does not require
+`clean`:
 
 ```sh
-./sbtw clean compile test Test/compile
+./sbtw compile test
+./sbtw frontend/test frontend/fastLinkJS
 ```
 
 Run the complete unit-test suite with:
@@ -72,10 +67,13 @@ To compile both production and test sources without running tests:
 ./sbtw Test/compile
 ```
 
-Interactive UI:
+To run the interactive server UI:
+
 ```sh
 ./sbtw frontend/fastLinkJS
 ./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
 ```
 
-And then open `http://localhost:8080/?mode=server`. Keep the server terminal open while testing. curl http://localhost:8080/health. Stop it cleanly with Ctrl-C; do not delete var/oathdigital if you want existing games preserved.
+Open `http://localhost:8080/?mode=server`. Keep the server terminal open while
+testing; `curl http://localhost:8080/health` checks its health. Stop it with
+Ctrl-C. Keep `var/oathdigital*` to preserve local games.

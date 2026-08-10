@@ -1,17 +1,14 @@
 # Server-authoritative event journal
 
-Status: Batch B foundation.
+Status: implemented through schema v3 and mixed v2-v4 game streams.
 
 ## Authority boundary
 
 The JVM server is the sole production command authority. Network and UI inputs
-are transient requests: a decoder constructs a typed setup command and passes
-it, together with the event position on which the client based the request, to
-`ServerCommandGateway`. The gateway delegates to
-`SetupApplicationService`, which loads and replays the authoritative stream,
-validates the command, and appends only the emitted versioned domain-event
-envelopes. Clients never append events, submit HRF action strings, or decide
-that a command was accepted.
+are transient requests. `GameApplicationService` loads and replays the
+authoritative stream, validates one typed command through `OathRules`, and
+appends only emitted versioned domain-event envelopes. Clients never append
+events or decide that a command was accepted.
 
 The loaded stream position must equal the client's `expectedNextSequence`
 before domain validation begins. A mismatch returns
@@ -20,11 +17,6 @@ would still be legal in the newer state. The client must reload before issuing
 a new command. This protects the asynchronous browser contract independently
 of the repository's second optimistic check, which protects the later
 load-to-append race.
-
-The initial HTTP surface intentionally exposes only `GET /health`. Command
-route and JSON decoding are isolated as the next transport layer over
-`ServerCommandGateway`; Batch C can expand the setup vocabulary without
-changing the journal schema or database adapter.
 
 ## Database schema and upgrades
 
@@ -101,16 +93,6 @@ that callers might mistake for proof that no commit occurred. JDBC/Hikari
 connection acquisition still has a bounded startup timeout. Callers should
 retry stale-position responses only after reload; generic infrastructure
 failures are not an idempotency protocol and must not be blindly replayed.
-
-## HRF concepts
-
-Retained from HRF are durable journal/entry separation, stable journal
-identity, ordered entry positions, internal user identity, explicit relational
-resource access, and server-owned persistence. Oath uses typed membership roles
-instead of HRF's stringly `full/read/append` rights and stores explicit domain
-event envelopes rather than serialized actions. HRF's raw reusable secrets,
-URL credentials, and client-supplied identity are not copied. OIDC transport,
-cookie issuance, invitations, and notifications remain later X6 work.
 
 ## Authentication and membership boundary
 
@@ -207,19 +189,17 @@ Focused tests and standalone tools may use the explicitly owning
 their `close` delegates to their visible owner. Production code opens only
 `HsqldbDatabaseOwner`, preventing two silent owners for one database path.
 
-All synchronous journal/application calls made by future command routes must
-run on `oathdigital.blocking-dispatcher`, a dedicated fixed thread pool defined
-in `application.conf`; they must not run on Akka's default dispatcher. The
-current health route performs no database work. Coordinated database shutdown
-also uses the blocking dispatcher. Logback supplies the SLF4J backend so
+Synchronous journal/application calls run on `oathdigital.blocking-dispatcher`,
+a dedicated fixed thread pool defined in `application.conf`; they do not run on
+Akka's default dispatcher. Coordinated database shutdown also uses the blocking
+dispatcher. Logback supplies the SLF4J backend so
 startup, bind, and shutdown messages are not silently discarded.
 
-## Development first-game setup API
+## Loopback development API
 
-The exile-only v2 setup API is intentionally separate from the v1 bounded setup
-service. V1 envelopes remain format version 1; v2 streams require format
-version 2 and are rejected rather than reinterpreted or migrated when read by
-the wrong service.
+The game API uses mixed v2-v4 streams and remains separate from the historical
+v1 pawn-placement service. Versions are rejected rather than reinterpreted by
+the wrong codec.
 
 All endpoints are development-only:
 
@@ -228,26 +208,13 @@ All endpoints are development-only:
 - `POST /api/dev/first-games/{gameId}/commands?playerId={playerId}`
 - `GET /api/dev/first-games/{gameId}?playerId={playerId}`
 
-`playerId` is a development selector for projection redaction, not
-authentication or authorization. It must match the actor in `placePawn` and
-`chooseAdviser` requests. Both route identifiers are limited to 128 characters
-and the conservative character set `A-Z`, `a-z`, `0-9`, `.`, `_`, `:`, and
-`-`.
+`playerId` is a development selector for projection redaction and command
+actor, not authentication or authorization. Both route identifiers are limited
+to 128 characters and the conservative character set `A-Z`, `a-z`, `0-9`,
+`.`, `_`, `:`, and `-`.
 
-The development bootstrap route avoids copying the complete executable catalog
-and hidden plan into the browser. Its small body is:
-
-```json
-{
-  "expectedNextSequence": 0,
-  "participants": [
-    {"playerId": "p1", "lineageId": "l1", "color": "red"},
-    {"playerId": "p2", "lineageId": "l2", "color": "blue"},
-    {"playerId": "p3", "lineageId": "l3", "color": "yellow"}
-  ],
-  "firstPlayer": "p2"
-}
-```
+The development bootstrap request supplies public participant order, lineage,
+color, and first player. It never supplies hidden setup order.
 
 `DevelopmentFirstGamePlanFactory` deterministically selects eight catalog
 sites; ten printed denizen IDs per suit; the valid starting-hand, regional,
@@ -258,57 +225,15 @@ randomness. The derived plan is submitted through the same v2 `Begin`
 application command, so it is fully recorded in the authoritative first event.
 Neither the plan nor its hidden orders are returned by the route.
 
-The POST body is:
+The command route accepts the implemented setup, Wake, Travel, and Search
+intents. Transport-level `begin` and server-prepared Search draws are rejected:
+bootstrap is the only creation path, and hidden outcomes never come from the
+browser. No Scala class names or reflection are part of the protocol.
+Missing/wrong fields report JSON paths, and expected positions must be
+non-negative JSON-safe integers.
 
-```json
-{
-  "expectedNextSequence": 2,
-  "command": {
-    "type": "chooseAdviser",
-    "playerId": "p2",
-    "adviserId": "9"
-  }
-}
-```
-
-The generic command route accepts only `placePawn` and `chooseAdviser`.
-Transport-level `begin` is rejected: bootstrap is the only HTTP creation path,
-and the full plan never comes from the browser. `Begin` remains an internal
-application command used by the server-derived bootstrap. No Scala class names
-or reflection are part of the protocol. Missing/wrong fields report JSON
-paths, and expected positions must be non-negative JSON-safe integers.
-
-Successful POST and GET responses share the player-scoped projection:
-
-```json
-{
-  "gameId": "game-1",
-  "nextSequence": 3,
-  "phase": "awaiting-pawn",
-  "activeParticipantId": "p3",
-  "players": [
-    {
-      "playerId": "p2",
-      "displayName": "P2",
-      "role": "exile",
-      "colorToken": "blue"
-    }
-  ],
-  "world": [
-    {
-      "regionId": "cradle",
-      "sites": [{"siteId": "site:a", "label": "A"}]
-    }
-  ],
-  "pawnLocations": [{"playerId": "p2", "siteId": "site:a"}],
-  "legalControls": [],
-  "ready": false,
-  "completed": false,
-  "privateAdviserChoices": []
-}
-```
-
-The projection never contains the authoritative event stream, relic shuffle
+Successful POST and GET responses share the player-scoped projection. It never
+contains the authoritative event stream, relic shuffle
 order, world-deck order, or another player's adviser alternatives. The private
 adviser list is populated only when the selected player is the active adviser
 chooser. This is privacy shaping for development, not a security boundary.
@@ -333,5 +258,5 @@ permission is required.
 Because these routes are unauthenticated, `OathServer` refuses to install them
 on anything except `127.0.0.1`, `localhost`, or `::1`; wildcard and non-loopback
 host overrides fail startup. Real authentication, authorization, game
-membership checks, and a production transport must be implemented before any
-part of `/api/dev` can be promoted beyond loopback development.
+membership checks, and a production transport are available only through the
+separately mounted authenticated routes; `/api/dev` remains loopback-only.

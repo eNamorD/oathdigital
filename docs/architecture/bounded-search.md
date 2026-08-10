@@ -1,6 +1,6 @@
 # Bounded first-game Search
 
-Status: implemented for L6b, August 2026.
+Status: implemented, August 2026.
 
 ## Rules and boundary
 
@@ -31,8 +31,8 @@ The implementation treats the head of `worldDeck` as its top. Regional discard
 vectors retain the established setup representation: the last element is the
 top, so draws read from the end and discards append in the chosen order.
 
-The slice intentionally protects searched-card fronts as decision-owner-only,
-as required by the product boundary for L6b. CR p. 42 describes facedown cards
+The implementation protects searched-card fronts as decision-owner-only.
+CR p. 42 describes facedown cards
 outside a player area as private but otherwise makes in-play information public;
 the stronger digital redaction is a conservative anti-leak policy, not a claim
 that tabletop players must conceal a Search draw. Only the actor projection
@@ -81,7 +81,7 @@ because a handler string exists.
 
 HRF's useful pattern is its explicit `Ask` continuation and server-recorded
 `Shuffle`/`Random` continuation vocabulary in `vendor/haunt-roll-fail/hrf/base.scala`.
-L6b adapts the interaction shape—a forced owner decision with enumerated
+The implementation adapts the interaction shape—a forced owner decision with enumerated
 actions—but not HRF's action-authoritative timeline. Oath Digital keeps domain
 events authoritative and projects legal controls from replayed state.
 

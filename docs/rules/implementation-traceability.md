@@ -1,6 +1,6 @@
 # Rulebook implementation traceability
 
-Last reviewed: 2026-07-30
+Last reviewed: 2026-08-09
 
 This matrix maps the source-cited rules knowledge layer to executable behavior
 and tests. It is a project-management aid, not a second rules reference. Read
@@ -31,13 +31,13 @@ above **Unimplemented**.
 
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |
 |---|---|---|---|---|
-| First-game common setup, map population, decks, banks, tracks, player wealth and legacies | **Unimplemented** | [CR pp. 6-7](rules-reference.md#very-first-game-only); changed/randomized by [NF p. 8](new-foundations-delta.md#campaign-structure) | `SetupRules` accepts an already chosen eight-site order and participants; it does not construct this state. Model only: `model/Game.scala`, `model/World.scala`, `model/Cards.scala`. | Card, board, banner and component data B1/B3-B5; hidden choices F4; first-game citizenship policy F8. Foundation faces B2 apply to later-game setup, not this row. |
+| First-game common setup, map population, decks, banks, tracks and player wealth | **Tested (bounded)** | [CR pp. 6-7](rules-reference.md#very-first-game-only); changed/randomized by [NF p. 8](new-foundations-delta.md#campaign-structure) | `setup/FirstGameSetup.scala` constructs the exile-only introductory game from a recorded server-derived plan. Setup, wire, application, persistence, server, and frontend suites cover replay and presentation. | Legacies, Imperial roles, altered Foundations, and later-game restoration remain excluded. |
 | Later-game restoration from campaign/Atlas | **Unimplemented** | [CR pp. 8-9](rules-reference.md#later-games); Atlas emphasis [NF p. 12](new-foundations-delta.md#map-and-pieces) | Atlas storage/removal helpers are tested in `model/WorldModelSuite.scala`; no setup command applies the restoration procedure. | Foundation faces B2; Chronicle-produced stored state must exist first. |
-| Six foundation setup effects and world-deck construction | **Blocked** | [CR pp. 10-12](rules-reference.md#later-games); mutable foundations [NF p. 9](new-foundations-delta.md#campaign-structure) | Foundation face/source state exists in `model/World.scala`; catalog setup-card metadata is decoded/tested by `catalog/CatalogLoaderSuite.scala`. No handler executes a foundation. | Exact foundation component text/IDs B2; catalog currently must not be mistaken for behavior. |
-| Ordered pawn placement on an eight-site 2/3/3 map | **Tested** | [CR pp. 7, 13](rules-reference.md#setup) | `setup/Setup.scala` enforces compatible catalog, unique participants/lineages/sites, eight known sites, participant order, in-play destinations, completion and replay. Tests: `setup/SetupRulesSuite.scala`, `serialization/SetupEventWireSuite.scala`. | Imperial placement restrictions and the preceding adviser/reveal choices are absent, so this row covers placement sequencing only. |
-| Adviser choice/reveal and Imperial placement restrictions | **Unimplemented** | [CR p. 13](rules-reference.md#later-games) | Adviser and starting-adviser containers exist in `model/Game.scala` and `model/CardIndex.scala`; no setup behavior selects, reveals, or restricts placement. | Hidden-information policy F4; card/component data B5. |
-| Setup event encoding, replay and in-memory repository orchestration | **Tested** | Engineering support, not a rulebook statement | `setup/Setup.scala`, `serialization/EventWire.scala`, `application/EventStreamRepository.scala`, and `application/SetupApplicationService.scala` provide event evolution, versioned encoding, replay, optimistic append semantics and command orchestration over an in-memory repository. Tests: `setup/SetupRulesSuite.scala`, `serialization/SetupEventWireSuite.scala`, `application/SetupApplicationServiceSuite.scala`. | Process-local memory is not durable storage. Extend the event vocabulary for future setup steps without presenting repository mechanics as game rules. |
-| Durable setup event repository/database adapter | **Unimplemented** | Engineering support, not a rulebook statement | `application/EventStreamRepository.scala` defines the adapter boundary, but its only implementation is `InMemoryEventStreamRepository`; no database/file-backed adapter or durability test was found. | Choose storage, transaction, recovery, schema migration and operational backup policy. |
+| Six foundation setup effects and world-deck construction | **Blocked** | [CR pp. 10-12](rules-reference.md#later-games); mutable foundations [NF p. 9](new-foundations-delta.md#campaign-structure) | Foundation face/source state and reviewed catalog records exist; no typed handler executes a foundation. | Executable Foundation handlers B2; catalog text must not be mistaken for behavior. |
+| Ordered pawn placement on an eight-site 2/3/3 map | **Tested** | [CR pp. 7, 13](rules-reference.md#setup) | `setup/Setup.scala` and `FirstGameSetupRules` enforce compatible catalog, unique participants/lineages/sites, eight known sites, participant order, in-play destinations, completion and replay. | Imperial placement restrictions remain absent. |
+| Starting adviser choice and pawn placement | **Tested (bounded)** | [CR pp. 7, 13](rules-reference.md#setup) | The first-game flow records each Exile's private adviser choice, enforces ownership/order, and then places pawns. Player-scoped projections expose only the active player's choices. | Imperial placement and reveal rules remain unimplemented; hidden sharing policy F4. |
+| Event encoding, replay and application orchestration | **Tested** | Engineering support, not a rulebook statement | `GameEventWire`, `GameApplicationService`, replay, and optimistic repository contracts support mixed v2-v4 setup/gameplay streams. Tests cover malformed history, replay failures, conflicts, reload, and private projections. | Future events must preserve the same compatibility and redaction boundaries. |
+| Durable event repository/database adapter | **Tested** | Engineering support, not a rulebook statement | `HsqldbEventStreamRepository` stores atomic ordered batches, performs schema migrations, rejects conflicts, and reconstructs streams after close/reopen. | Operational backup and production deployment remain outside game rules. |
 
 ## Turn and phase flow
 
@@ -54,7 +54,7 @@ above **Unimplemented**.
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |
 |---|---|---|---|---|
 | Search | **Tested (bounded)** | [CR p. 20](rules-reference.md#search---2-to-4-supply) and simultaneous ordering [CR p. 42](rules-reference.md#rules-precedence-and-timing) | [bounded-search.md](../architecture/bounded-search.md) documents the exile-only, unaltered-Foundation procedure. `gameplay/actions/Search.scala` implements costs, ordered draw/early Vision stop, v4 durable pending/completion events, ordered next-region discards, typed site/adviser restrictions, favor gain, owner-only projection, HTTP intents, replay and Scala.js controls. `SearchSuite`, wire/application/server/frontend suites cover the slice. | Individual component powers, altered Foundations, Imperials, later turns and generic after-action checks remain deferred. |
-| Travel | **Tested (bounded)** | [CR p. 21](rules-reference.md#travel---1-to-4-supply-before-modifiers); site powers CR p. 31 and NF p. 11; consent timing CR p. 43 | `gameplay/actions/Travel.scala` implements first-turn exile-only normal Travel with the region matrix and Supply debit. Coast/Island/Mountain/Pass activate through the exact-ID typed registry documented in [rule-resolution.md](../architecture/rule-resolution.md). Command, deterministic replay, private legal-destination projection, and L2 destination selection share resolution. Tests cover registry precedence, engine, v2/v3 wire, application reload, actor derivation/trust boundaries, projection and frontend behavior. | River, consent workflow, generic card/relic/edifice/legacy/Foundation modifiers, later turns and Rest remain deferred. Unsupported relevant handlers and modifier-bearing states fail typed rather than being ignored. |
+| Travel | **Tested (bounded)** | [CR p. 21](rules-reference.md#travel---1-to-4-supply-before-modifiers); site powers CR p. 31 and NF p. 11; consent timing CR p. 43 | `gameplay/actions/Travel.scala` implements first-turn exile-only normal Travel with the region matrix and Supply debit. Coast/Island/Mountain/Pass activate through the exact-ID typed registry documented in [rule-resolution.md](../architecture/rule-resolution.md). Command, deterministic replay, private legal-destination projection, and destination-selection UI share resolution. Tests cover registry precedence, engine, v2/v3 wire, application reload, actor derivation/trust boundaries, projection and frontend behavior. | River, consent workflow, generic card/relic/edifice/legacy/Foundation modifiers, later turns and Rest remain deferred. Unsupported relevant handlers and modifier-bearing states fail typed rather than being ignored. |
 | Campaign: Conquest/Raid targeting and battle resolution | **Blocked** | [CR pp. 22-23](rules-reference.md#campaign---2-supply); split/ordering/discard changes [NF p. 13](new-foundations-delta.md#actions) | `PendingProcedure.Campaign` and force/relic orientation state exist; no campaign type, target, dice, plan, loss, conquest or raid transition exists. | Battle-plan/card data B1/B5; target legality F9; RNG/event policy F6; action boundary F1. |
 | Muster | **Unimplemented** | [CR p. 24](rules-reference.md#muster---1-supply); variable yield [NF p. 13](new-foundations-delta.md#actions) | Denizen tokens, adviser orientation and warband counts are modeled; no action behavior exists. | Card access/power rules B1. |
 | Trade | **Blocked** | [CR p. 24](rules-reference.md#trade---1-supply); secret cost changed [NF p. 13](new-foundations-delta.md#actions) | Resource state and tested Supply arithmetic exist; no trade behavior exists. | Exact player-board yield table B3. |
@@ -62,7 +62,7 @@ above **Unimplemented**.
 | Recover | **Blocked** | [CR p. 25](rules-reference.md#recover---1-supply); redesigned [NF p. 14](new-foundations-delta.md#actions) | `PendingProcedure.Recover`, relic orientation and catalog difficulty fields exist; no roll/payment/peek/take behavior exists. | Site/component data B5; RNG/event policy F6; hidden-information policy F4. |
 | Challenge and banner resource actions | **Blocked** | [CR pp. 26, 32](rules-reference.md#challenge---1-supply); new action/banner changes [NF pp. 12, 15](new-foundations-delta.md#banners) | Banner face/holder/resource state is modeled and face identity is tested in `model/WorldModelSuite.scala`; no challenge or ribbon behavior exists. | Exact banner faces/ribbons B4. |
 | Core minor actions: adviser play/discard, powers, relic peek, warband move, negotiation, self-exile, Imperial transfer | **Blocked** | [CR p. 27 and pp. 32, 34-35](rules-reference.md#minor-actions); negotiation/exile changes [NF p. 15](new-foundations-delta.md#actions) | `PendingProcedure.Negotiation` and required state containers exist; no minor-action transitions exist. | Card powers B1; hidden information F4; component limits F5; Empire behavior. |
-| Power framework, precedence and timing | **Blocked** | [CR pp. 28-30, 42](rules-reference.md#rules-precedence-and-timing) | `PowerId` and per-turn `usedPowers` exist; no power catalog/interpreter or precedence resolver exists. | Exact card corpus B1/B5; ordering F2; first-game exception F8. |
+| Power framework, precedence and timing | **Partial** | [CR pp. 28-30, 42](rules-reference.md#rules-precedence-and-timing) | `RuleResolution.scala` provides typed sources, explicit handler registration, deterministic ordering, blocks, cost changes, decisions, and unsupported outcomes. Travel uses it for Coast/Island/Mountain/Pass; Take Wealth shares typed legality queries. | Most component handlers, simultaneous ordering F2, and first-game citizenship policy F8 remain. |
 
 ## Campaign, victory, and Empire
 
@@ -78,7 +78,7 @@ above **Unimplemented**.
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |
 |---|---|---|---|---|
 | Campaign-state representation and structural invariants: Atlas, lineages, roles, foundations, Reliquary, reserves, oath, era | **Tested** | Durable state inventory [CR pp. 36-41](chronicle.md#durable-state-to-preserve); persistent changes [NF pp. 7, 9, 12](new-foundations-delta.md#campaign-structure) | Aggregate/card-location invariants are tested in `model/DomainValidationSuite.scala`, `model/CardIndexSuite.scala`, `model/PlayerSetupStateSuite.scala`, and Atlas behavior in `model/WorldModelSuite.scala`. This proves in-memory representation/invariants, not Chronicle rules or persistence. `CardIndex` is explicitly derived and not serialized. | Chronicle transitions must establish and preserve these invariants. |
-| Full campaign serialization, durable repository and version migration | **Unimplemented** | Persistence requirements [CR pp. 36-41](chronicle.md#durable-state-to-preserve) | No full-aggregate wire format, durable adapter, reload test, schema versioning or migration behavior was found. `CardIndex` must be rebuilt from serialized owner containers rather than persisted. | Choose storage/transaction boundaries and forward/backward compatibility policy. |
+| Full campaign serialization and migration | **Partial** | Persistence requirements [CR pp. 36-41](chronicle.md#durable-state-to-preserve) | Versioned authoritative streams, schema migrations, reload, and durable adapters are tested for the current game. No Chronicle/post-game event vocabulary or cross-version campaign migration exists. `CardIndex` remains derived. | Define Chronicle events, archival boundaries, and campaign migration policy. |
 | Sun task | **Blocked** | [CR p. 36](chronicle.md#1-the-sun) | `ChronicleTask.Sun` and a pending Chronicle shape exist only. | Legacy goals/powers B5; role-sensitive ties F7; absent actor policy F10. |
 | Throne task | **Blocked** | [CR p. 37](chronicle.md#2-the-throne) | State can represent roles, sites, relics, Reliquary, scores and oath goal; no task behavior exists. | Edifice/legacy data B5; era ties F7; component limits F5. |
 | World task | **Unimplemented** | [CR p. 38](chronicle.md#3-the-world) | World/discard, adviser and Dispossessed containers exist and are indexed; no redistribution/choice behavior exists. | Hidden choice policy F4. |
@@ -109,30 +109,19 @@ rows above. The remaining cross-cutting items are:
 | Bury semantics | **Unimplemented** | [NF p. 16](new-foundations-delta.md#empire-and-other-changes); normative CR glossary/fine print | Decks and card locations exist; no bury operation exists. | Card identity/location plus action transaction behavior F1. |
 | All-or-nothing migration/component replacement | **Not runtime gameplay** | [NF pp. 1-6](new-foundations-delta.md#expansion-boundary-and-physical-migration) | Catalog ruleset/version identity is checked by `catalog/CatalogLoader.scala` and setup/wire tests. Physical box migration is documentation/operator scope. | External conversion guidance and complete component corpus were not ingested. |
 
-## Recommended next source-cited vertical slices
+## Upcoming source-cited work
 
-1. **Complete first-game setup through built-in Take Wealth.** Use CR pp. 6-7,
-   13, 17 and NF pp. 8, 11. Extend the existing setup event flow to construct
-   banks, map/site contents, world deck, players, tracks, adviser/legacy choices,
-   pawn placement and the built-in Wake action. This turns today’s tested
-   placement fragment into the smallest playable, replayable boundary. Resolve
-   B1/B3-B5 and F4/F8; B1 is required for a complete Wake with card Wake powers,
-   but foundation faces B2 are later-game setup and do not block this slice.
-2. **Rest plus phase/round advancement.** Use CR pp. 17-18. The tested Supply
+1. **Rest plus phase/round advancement.** Use CR pp. 17-18. The tested Supply
    projection gives this slice a strong starting point; add resource return,
    secret reveal, refresh, phase order and active-player/round changes. Resolve
    F1/F2 so later actions share the same transaction semantics.
-3. **Search as the first major action.** Use CR p. 20. It exercises Supply,
-   world/regional decks, Vision stopping/tracks, hidden choice, card placement,
-   regional discard cycling and the after-action checkpoint without requiring
-   battle dice. Resolve B1/B5 and F4.
-4. **Muster then Trade.** Use CR p. 24 and NF p. 13. These establish access,
+2. **Muster and Trade.** Use CR p. 24 and NF p. 13. These establish access,
    empty-card costs, adviser matching, resource movement, limited warbands and
    the NF yield/cost changes. Trade remains blocked until B3 is authoritative.
-5. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
+3. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
    p. 16. Implement only after the action boundary is stable; it supplies the
    first end-to-end game result without Campaign complexity. Resolve F7.
-6. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
+4. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
    Build on tested Atlas ordering to persist a completed fixture, then add
    World/Beacon, Sun, and Throne once component/legacy data is available.
 

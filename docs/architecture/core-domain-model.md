@@ -1,6 +1,6 @@
 # Core domain model
 
-Status: accepted foundation, July 2026.
+Status: accepted foundation, reviewed August 2026.
 
 This note records the durable boundary decisions for the core model. It is not
 a gameplay-rules specification.
@@ -78,19 +78,18 @@ game must use an explicit envelope containing:
 - either a versioned state payload or the authoritative action/event journal.
 
 Do not serialize `CardIndex`, presentation views, or Scala class names as
-external type discriminators. Codec and migration implementation is deferred
-until the first persisted vertical slice so compatibility is tested against a
-real command and replay path.
+external type discriminators. Oath Digital uses explicit versioned event
+envelopes and reconstructs state through deterministic replay; see
+[authoritative-events.md](authoritative-events.md).
 
 ## Certain versus rules-dependent
 
 The identity, Atlas, Supply, banner, card-location, map-region, player/lineage,
 campaign/current-game, and projection decisions above are accepted. The
-machine-readable component catalog is authoritative for its own inventory and
-provenance, while unresolved transcription fields remain explicitly
-non-executable. At this milestone, 447 of 471 definitions still carry
-crop-level `unresolved` fields. Catalog validity therefore means structurally
-valid and source-traceable, not gameplay-complete.
+machine-readable component catalog is authoritative for its inventory, printed
+identities, reviewed text, restrictions, and stable handler keys. Catalog
+validity does not imply that every handler has executable behavior;
+unsupported relevant powers must fail explicitly.
 
 The following remain rules-dependent and are not foundation invariants:
 
@@ -103,46 +102,5 @@ The following remain rules-dependent and are not foundation invariants:
 - seeded-random command/event semantics.
 
 These items are tracked in `docs/rules/ambiguities.md` and should be resolved in
-the vertical slice that first needs them.
-
-## Milestone acceptance criteria
-
-The core-domain milestone is accepted when:
-
-1. Production and test sources compile on Scala 2.13 with no dependency on UI
-   or vendored HRF code.
-2. Typed singleton component IDs, container-owned mutable card state, and a
-   derived non-serialized `CardIndex` are present.
-3. Current game, campaign/chronicle, player/lineage, map/Atlas, banner,
-   resource, phase/turn, and pending-procedure state are representable.
-4. Constructor and aggregate validation cover the structural invariants listed
-   above, including malformed edge cases.
-5. The catalog validator confirms the catalog identity, Atlas, banner, Supply,
-   provenance, and corpus safeguards.
-6. The full Scala test suite and catalog validator pass.
-7. Rules execution, persistence codecs, private projections, and complete card
-   transcription remain separately staged and are not simulated in the data
-   model.
-
-## Recommended next vertical slice
-
-Build a source-verified minimum executable catalog subset and a typed Scala
-catalog loader before implementing setup or gameplay:
-
-1. Define typed catalog records and decode errors without coupling JSON schema
-   shapes to runtime game state.
-2. Select only the components needed for a deterministic setup fixture.
-3. Verify every runtime-required field in that subset against its cited source
-   crop, record review status, and make unresolved required fields a loader
-   error rather than silently defaulting them.
-4. Validate typed printed IDs, catalog/ruleset versions, references, and
-   duplicate identities at load time.
-5. Add fixture, negative-decoding, and catalog-version compatibility tests.
-
-Once that gate passes, implement setup as the first command/event/replay slice:
-load the pinned subset, create or validate lineages and players, place initial
-sites and pawns, initialize numeric Supply and starting advisers, emit durable
-events, and project public setup state. This exercises identity, catalog
-binding, aggregate validation, deterministic ordering, serialization
-versioning, and replay without prematurely implementing card powers or the full
-action phase.
+the vertical slice that first needs them. Current behavior belongs in
+`docs/rules/implementation-traceability.md`; scheduling belongs in the roadmap.

@@ -1,6 +1,6 @@
 # Authoritative domain events
 
-Status: accepted, July 2026.
+Status: accepted, reviewed August 2026.
 
 ## Decision
 
@@ -37,7 +37,7 @@ its checked-in golden fixture. Complete exile-only first-game setup uses a
 separate v2 envelope/vocabulary (`setup.first-game-started`,
 `setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
 `setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
-`GameEventWire` is the v2 reader/writer. This explicit dual-codec policy
+`GameEventWire` handles the mixed v2-v4 game stream. This dual-codec policy
 avoids silently defaulting new authoritative fields when reading v1 history.
 No automatic v1-to-v2 migration is claimed because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes
@@ -50,10 +50,11 @@ batch's declared or first position. Both version and sequence fields are
 decoded as exact integers; fractional, negative, non-finite, overflowing, and
 non-JSON-safe values are rejected rather than truncated.
 
-First-turn gameplay extends the same contiguous game stream with format v3.
-Setup discriminators remain v2-only; `gameplay.take-wealth` and
-`gameplay.wake-ended` are v3-only. A reader validates one pinned game ID,
-catalog reference, and absolute safe sequence across the mixed v2/v3 stream.
+Wake and Travel extend the same contiguous game stream with format v3. Setup
+discriminators remain v2-only; `gameplay.take-wealth`,
+`gameplay.wake-ended`, and `gameplay.traveled` are v3-only. A reader validates
+one pinned game ID, catalog reference, and absolute safe sequence across the
+mixed stream.
 Existing setup-only streams and their bytes are unchanged. Older readers may
 reject v3 explicitly; no event is silently reinterpreted under another format.
 
@@ -61,6 +62,11 @@ reject v3 explicitly; no event is silently reinterpreted under another format.
 command was accepted, and the chosen loose resource. `gameplay.wake-ended`
 records the actor and advances Wake to Act. Both replay deterministically;
 neither replay nor command handling makes a random or hidden choice.
+
+Search adds `gameplay.search-started` and `gameplay.search-completed` in v4.
+The start event records the server-prepared draw required for deterministic
+replay; completion records the player's ordered decision. These privileged
+events are not exposed through ordinary player projections.
 
 The catalog reference is pinned in every envelope. For `setup.started`, it is
 also present in the payload because it is domain data; the codec requires the

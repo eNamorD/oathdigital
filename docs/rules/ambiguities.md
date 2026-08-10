@@ -2,13 +2,13 @@
 
 These are not claimed errors in the rulebook. They are places where an implementation needs component data, a product decision, or a more explicit formalization.
 
-## Blocking without component/card corpus
+## Component-data dependencies
 
-1. **Card powers and exact costs.** CR defines the power framework but defers individual cards to the cards and official database. Many actions can be modified or replaced by these powers (CR pp. 28-30, 42).
-2. **Foundation faces.** The six normal/altered setup effects are summarized in CR pp. 10-11, but reliable execution should ingest the setup-card text and IDs directly.
+1. **Card powers and exact costs.** The catalog contains stable printed IDs, reviewed text, and handler keys, but most handlers have no executable Scala behavior. Many actions can be modified or replaced by these powers (CR pp. 28-30, 42).
+2. **Foundation faces.** The catalog contains the six normal/altered records, but their setup effects still require typed handlers verified against CR pp. 10-11.
 3. **Player-board tables/icons.** Trade yield, Supply refresh thresholds, and some costs are graphically encoded on player boards; prose points to them but does not fully enumerate every numeric row (CR pp. 18, 24).
 4. **Banner ribbons and non-default faces.** CR p. 32 explains ribbon semantics, but machine execution needs exact component-side icon sequences and initial values.
-5. **Legacy/card identity.** Goals and general behavior are defined, but all 36 legacy powers, suit bonus conditions, relic values, denizen IDs, site statistics, and relic/battle-plan attributes require component ingestion.
+5. **Component behavior coverage.** Printed identities and the runtime catalog are complete, but legacy powers, battle plans, banner ribbons, and many component-specific effects still require typed executable handlers.
 
 ## Formalization decisions
 
@@ -28,4 +28,3 @@ These are not claimed errors in the rulebook. They are places where an implement
 - NF is intentionally a change overview. When its simplification omits a detail, use CR, not inference.
 - The PDFs are dated May/June 2026. No errata, FAQ, card database snapshot, or base-edition rulebook was provided, so this layer cannot validate later corrections or reconstruct every old-vs-new sentence.
 - Printed glyphs/icons do not always survive text extraction semantically. Numeric prose was cross-checked visually, but icon-only component details should be ingested from structured component data before implementation.
-
