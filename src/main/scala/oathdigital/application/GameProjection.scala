@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{Economy, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -47,6 +47,10 @@ final case class CurrentSiteResourcesProjection(
 )
 final case class LegalTravelDestinationProjection(siteId: String, supplyCost: Int)
 final case class LegalSearchSourceProjection(kind: String, region: Option[String], supplyCost: Int)
+final case class LegalMusterProjection(
+    denizenId: String, suit: String, supplyCost: Int, warbandsGained: Int)
+final case class LegalTradeProjection(
+    denizenId: String, suit: String, resource: String, supplyCost: Int, gained: Int)
 final case class SearchCardProjection(
     cardId: String,
     cardKind: String,
@@ -79,6 +83,8 @@ final case class GameProjection(
     legalTravelDestinations: Vector[LegalTravelDestinationProjection] =
       Vector.empty,
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
+    legalMusters: Vector[LegalMusterProjection] = Vector.empty,
+    legalTrades: Vector[LegalTradeProjection] = Vector.empty,
     pendingSearch: Option[PendingSearchProjection] = None
 )
 
@@ -288,6 +294,29 @@ final class GameProjector(catalog: ExecutableCatalog) {
                           "regional-discard", Some(region.key), cost)
                     }}
                 }
+              }
+            else Vector.empty,
+          legalMusters =
+            if (requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty)
+              Economy.legalMuster(catalog, value, active).collect {
+                case result if result.source.isInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard] =>
+                  val source = result.source.asInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard]
+                  LegalMusterProjection(source.id.value, result.suit.key,
+                    result.supplySpent, result.warbandsGained)
+              }
+            else Vector.empty,
+          legalTrades =
+            if (requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty)
+              Economy.legalTrades(catalog, value, active).collect {
+                case result if result.source.isInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard] =>
+                  val source = result.source.asInstanceOf[oathdigital.gameplay.RuleSourceRef.SiteCard]
+                  LegalTradeProjection(source.id.value, result.suit.key,
+                    result.resource match {
+                      case oathdigital.setup.TradeResource.Favor => "favor"
+                      case oathdigital.setup.TradeResource.Secret => "secret"
+                    }, result.supplySpent, result.gained)
               }
             else Vector.empty,
           pendingSearch = pendingSearch

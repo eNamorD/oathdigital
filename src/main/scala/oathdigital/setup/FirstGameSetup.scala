@@ -87,6 +87,23 @@ object OathEvent {
       destinationSiteId: SiteId,
       supplySpent: Int
   ) extends OathEvent
+  final case class Mustered(
+      playerId: PlayerId,
+      siteId: SiteId,
+      denizenId: CardId,
+      suit: Suit,
+      supplySpent: Int,
+      warbandsGained: Int
+  ) extends OathEvent
+  final case class Traded(
+      playerId: PlayerId,
+      siteId: SiteId,
+      denizenId: CardId,
+      suit: Suit,
+      resource: TradeResource,
+      supplySpent: Int,
+      gained: Int
+  ) extends OathEvent
   final case class SearchStarted(
       playerId: PlayerId,
       decision: DecisionId,
@@ -111,6 +128,12 @@ object OathEvent {
       nextPlayerId: PlayerId,
       nextRound: Int
   ) extends OathEvent
+}
+
+sealed trait TradeResource extends Product with Serializable
+object TradeResource {
+  case object Favor extends TradeResource
+  case object Secret extends TradeResource
 }
 
 sealed trait WakeResource extends Product with Serializable
@@ -179,6 +202,17 @@ object OathViolation {
   final case class TravelCostMismatch(expected: Int, actual: Int)
       extends OathViolation
   final case class UnsupportedTravelState(reason: String)
+      extends OathViolation
+  final case class UnsupportedEconomyState(reason: String)
+      extends OathViolation
+  final case class EconomyCardUnavailable(siteId: SiteId, cardId: CardId)
+      extends OathViolation
+  final case class EconomyCardNotEmpty(cardId: CardId) extends OathViolation
+  final case class EconomySourceMismatch(detail: String) extends OathViolation
+  final case class EconomyOutcomeMismatch(detail: String) extends OathViolation
+  final case class InsufficientFavor(required: Int, available: Int)
+      extends OathViolation
+  final case class InsufficientSecrets(required: Int, available: Int)
       extends OathViolation
   final case class UnsupportedSearchState(reason: String)
       extends OathViolation

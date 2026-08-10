@@ -98,7 +98,7 @@ Place one favor on an empty denizen at the pawn's site. Gain one warband to boar
 
 ### Trade - 1 Supply
 
-Use an empty denizen at the pawn's site. For favor, place one secret and gain favor based on matching faceup advisers. For secrets, place one favor and burn one favor, then gain secrets based on matching faceup advisers. Exact yield is printed on the player board (CR p. 24; NF p. 13).
+Use an empty denizen at the pawn's site. For favor, place one secret and gain one favor plus one per matching faceup adviser from the matching suit bank. For secrets, place one favor and burn one favor, then gain one secret per matching faceup adviser (including zero) (CR p. 24; NF p. 13).
 
 ### Forge - 1 Supply
 
@@ -152,4 +152,3 @@ Without Empire, round 8 uses War Exhaustion while skipping Stable Regime and Cha
 - Component supply is normally limited; dice are unlimited. If a limited component runs out, ignore additional placement (CR p. 42).
 - Public and private information are enumerated on CR p. 42. A player may choose/share all their private information.
 - Consent must be actively enforced when an "Enemies cannot" persistent effect applies; forgetting waives it for that moment (CR p. 43).
-

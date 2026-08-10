@@ -3,13 +3,32 @@ package oathdigital.serialization
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
 import oathdigital.model._
-import oathdigital.setup.OathEvent.{FirstGameCompleted, WakeEnded,
+import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
+
+  test("v6 Economy events round-trip source cost yield and NF resource mode") {
+    val denizen = DenizenId(catalog.denizens.head.id.value)
+    val edifice = EdificeId(catalog.edifices.head.id.value)
+    val site = catalog.sites.head.id
+    val events = Vector[OathEvent](
+      Mustered(PlayerId("red"), site, denizen,
+        Suit.Order, 1, 3),
+      Traded(PlayerId("red"), site, edifice,
+        Suit.Hearth, TradeResource.Secret, 1, 2))
+    val encoded = GameEventWire.encodeStream("economy", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).fold(error => fail(error.toString), identity)
+    val decoded = GameEventWire.decodeStream(encoded)
+      .fold(error => fail(error.toString), identity)
+    assertEquals(decoded.map(_.formatVersion), Vector(6, 6))
+    assertEquals(decoded.map(_.event), events)
+  }
 
   test("v5 Rest events round-trip all authoritative transition facts") {
     val events = Vector[OathEvent](

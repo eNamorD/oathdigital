@@ -323,6 +323,24 @@ object ServerModeUi {
             render()
           }
           panel.appendChild(travel)
+          value.legalMusters.foreach { option =>
+            val control = button(
+              s"Muster ${option.denizenId} (+${option.warbandsGained} warbands)",
+              "act-action muster-action")
+            control.disabled = !controlsAvailable || !presentation.showGameplayControls
+            control.onclick = _ => submit(GameCommand.Muster(
+              selectedPlayer, option.denizenId))
+            panel.appendChild(control)
+          }
+          value.legalTrades.foreach { option =>
+            val control = button(
+              s"Trade ${option.denizenId} for ${option.gained} ${option.resource}",
+              "act-action trade-action")
+            control.disabled = !controlsAvailable || !presentation.showGameplayControls
+            control.onclick = _ => submit(GameCommand.Trade(
+              selectedPlayer, option.denizenId, option.resource))
+            panel.appendChild(control)
+          }
           panel.appendChild(text("p", "informational",
             "Other normal action families are not yet implemented."))
           if (value.legalControls.contains("beginRest")) {

@@ -29,6 +29,7 @@ object GameEventWire {
   val GameplayFormatVersion: Int = 3
   val SearchFormatVersion: Int = 4
   val RestFormatVersion: Int = 5
+  val EconomyFormatVersion: Int = 6
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -37,6 +38,8 @@ object GameEventWire {
   val TakeWealthType = "gameplay.take-wealth"
   val WakeEndedType = "gameplay.wake-ended"
   val TraveledType = "gameplay.traveled"
+  val MusteredType = "gameplay.mustered"
+  val TradedType = "gameplay.traded"
   val SearchStartedType = "gameplay.search-started"
   val SearchCompletedType = "gameplay.search-completed"
   val RestStartedType = "gameplay.rest-started"
@@ -139,7 +142,8 @@ object GameEventWire {
           version <- formatVersionField(obj, path)
           _ <-
             if (version == FormatVersion || version == GameplayFormatVersion ||
-                version == SearchFormatVersion || version == RestFormatVersion)
+                version == SearchFormatVersion || version == RestFormatVersion ||
+                version == EconomyFormatVersion)
               Right(())
             else
               Left(
@@ -245,6 +249,8 @@ object GameEventWire {
       case _: WealthTaken => TakeWealthType
       case _: WakeEnded => WakeEndedType
       case _: Traveled => TraveledType
+      case _: Mustered => MusteredType
+      case _: Traded => TradedType
       case _: SearchStarted => SearchStartedType
       case _: SearchCompleted => SearchCompletedType
       case _: RestStarted => RestStartedType
@@ -253,6 +259,7 @@ object GameEventWire {
 
   private def formatVersion(event: OathEvent): Int = event match {
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
+    case _: Mustered | _: Traded => EconomyFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
     case _ => FormatVersion
@@ -290,6 +297,17 @@ object GameEventWire {
           "destinationSiteId" -> destination.value,
           "supplySpent" -> supplySpent
         )
+      case Mustered(playerId, site, denizen, suit, spent, gained) =>
+        ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
+          "denizen" -> encodeCardRef(denizen), "suit" -> suit.key,
+          "supplySpent" -> spent, "warbandsGained" -> gained)
+      case Traded(playerId, site, denizen, suit, resource, spent, gained) =>
+        ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
+          "denizen" -> encodeCardRef(denizen), "suit" -> suit.key,
+          "resource" -> (resource match {
+            case TradeResource.Favor => "favor"
+            case TradeResource.Secret => "secret"
+          }), "supplySpent" -> spent, "gained" -> gained)
       case SearchStarted(playerId, decision, source, origin, spent, drawn) =>
         ujson.Obj(
           "playerId" -> playerId.value,
@@ -384,6 +402,26 @@ object GameEventWire {
             SiteId(payload("destinationSiteId").str),
             spent.toInt
           ))
+        case MusteredType => for {
+          denizen <- decodeCardRef(payload("denizen"), s"$path.denizen")
+          suit <- decodeSuit(payload("suit").str, s"$path.suit")
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          gained <- safeIntField(payload.obj, "warbandsGained", path)
+        } yield Mustered(PlayerId(payload("playerId").str),
+          SiteId(payload("siteId").str), denizen, suit, spent, gained)
+        case TradedType => for {
+          denizen <- decodeCardRef(payload("denizen"), s"$path.denizen")
+          suit <- decodeSuit(payload("suit").str, s"$path.suit")
+          resource <- payload("resource").str match {
+            case "favor" => Right(TradeResource.Favor)
+            case "secret" => Right(TradeResource.Secret)
+            case other => Left(InvalidValue(s"$path.resource",
+              s"unknown Trade resource '$other'"))
+          }
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          gained <- safeIntField(payload.obj, "gained", path)
+        } yield Traded(PlayerId(payload("playerId").str),
+          SiteId(payload("siteId").str), denizen, suit, resource, spent, gained)
         case SearchStartedType =>
           for {
             source <- decodeSearchSource(payload("source"), s"$path.source")
@@ -448,7 +486,9 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == RestStartedType || eventType == RestCompletedType)
+      if (eventType == MusteredType || eventType == TradedType)
+        EconomyFormatVersion
+      else if (eventType == RestStartedType || eventType == RestCompletedType)
         RestFormatVersion
       else if (eventType == SearchStartedType || eventType == SearchCompletedType)
         SearchFormatVersion
@@ -708,6 +748,9 @@ object GameEventWire {
 
   private def decodeRegion(value: String, path: String): Either[WireError, Region] =
     Region.all.find(_.key == value).toRight(InvalidValue(path, s"unknown region '$value'"))
+
+  private def decodeSuit(value: String, path: String): Either[WireError, Suit] =
+    Suit.all.find(_.key == value).toRight(InvalidValue(path, s"unknown suit '$value'"))
 
   private def encodeCardRef(id: CardId): ujson.Value = id match {
     case value: DenizenId => encodeWorldCard(value)

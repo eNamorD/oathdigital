@@ -90,6 +90,10 @@ final case class CurrentSiteResources(
 )
 final case class LegalTravelDestination(siteId: String, supplyCost: Int)
 final case class LegalSearchSource(kind: String, region: Option[String], supplyCost: Int)
+final case class LegalMuster(denizenId: String, suit: String,
+    supplyCost: Int, warbandsGained: Int)
+final case class LegalTrade(denizenId: String, suit: String, resource: String,
+    supplyCost: Int, gained: Int)
 final case class SearchCard(
     cardId: String,
     cardKind: String,
@@ -120,6 +124,8 @@ final case class GameProjection(
     actionFamilies: Vector[String] = Vector.empty,
     legalTravelDestinations: Vector[LegalTravelDestination] = Vector.empty,
     legalSearchSources: Vector[LegalSearchSource] = Vector.empty,
+    legalMusters: Vector[LegalMuster] = Vector.empty,
+    legalTrades: Vector[LegalTrade] = Vector.empty,
     pendingSearch: Option[PendingSearch] = None
 )
 
@@ -135,6 +141,9 @@ object GameCommand {
   final case class BeginRest(playerId: String) extends GameCommand
   final case class FinishRest(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
+      extends GameCommand
+  final case class Muster(playerId: String, denizenId: String) extends GameCommand
+  final case class Trade(playerId: String, denizenId: String, resource: String)
       extends GameCommand
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
       extends GameCommand
@@ -320,6 +329,12 @@ object GameJson {
           playerId = player,
           destinationSiteId = destination
         )
+      case GameCommand.Muster(player, denizen) =>
+        js.Dynamic.literal(`type` = "muster", playerId = player,
+          denizenId = denizen)
+      case GameCommand.Trade(player, denizen, resource) =>
+        js.Dynamic.literal(`type` = "trade", playerId = player,
+          denizenId = denizen, resource = resource)
       case GameCommand.BeginSearch(player, source, region) =>
         val value = js.Dynamic.literal(
           `type` = "beginSearch", playerId = player, source = source)
@@ -475,6 +490,27 @@ object GameJson {
               cost <- int(item, "supplyCost", path)
             } yield LegalSearchSource(kind, region, cost) })
         }
+        musters <- optionalField(root, "legalMusters").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "legalMusters", "$").flatMap(
+            traverse(_, "legalMusters") { (item, path) => for {
+              id <- string(item, "denizenId", path)
+              suit <- string(item, "suit", path)
+              cost <- int(item, "supplyCost", path)
+              gained <- int(item, "warbandsGained", path)
+            } yield LegalMuster(id, suit, cost, gained) })
+        }
+        trades <- optionalField(root, "legalTrades").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "legalTrades", "$").flatMap(
+            traverse(_, "legalTrades") { (item, path) => for {
+              id <- string(item, "denizenId", path)
+              suit <- string(item, "suit", path)
+              resource <- string(item, "resource", path)
+              cost <- int(item, "supplyCost", path)
+              gained <- int(item, "gained", path)
+            } yield LegalTrade(id, suit, resource, cost, gained) })
+        }
         pendingSearch <- optionalField(root, "pendingSearch").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -509,6 +545,8 @@ object GameJson {
         actions,
         destinations,
         searchSources,
+        musters,
+        trades,
         pendingSearch
       )
     }

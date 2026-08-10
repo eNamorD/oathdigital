@@ -220,6 +220,8 @@ final class GameRoutes(
       case GameCommand.TakeWealth(playerId, _) => Some(playerId.value)
       case GameCommand.EndWake(playerId) => Some(playerId.value)
       case GameCommand.Travel(playerId, _) => Some(playerId.value)
+      case GameCommand.Muster(playerId, _) => Some(playerId.value)
+      case GameCommand.Trade(playerId, _, _) => Some(playerId.value)
       case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
       case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
       case GameCommand.BeginRest(playerId) => Some(playerId.value)

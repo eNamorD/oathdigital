@@ -7,11 +7,7 @@ been reviewed.
 
 ## Now
 
-- [ ] **L6d — Bounded Economy action slice**
-  - Implement Muster and Trade together in `actions/Economy.scala`, sharing
-    denizen access and suit/adviser evaluation while retaining distinct typed
-    commands and outcomes. Split them only if implemented complexity warrants
-    it.
+No item is currently prioritized. Re-evaluate after L6d.
 
 ## Next
 
@@ -39,6 +35,11 @@ No item is currently prioritized. Re-evaluate after L6d.
 
 ## Done
 
+- [x] **L6d — Bounded Economy action slice.** Exile-only, unaltered-Foundation
+  Muster and Trade share authoritative denizen access, suit/adviser matching,
+  typed rule resolution, limited resource movement, replay-validated v6 events,
+  persisted commands, scoped projections, HTTP intents, and Scala.js controls.
+
 - [x] **L6c — Rest and turn advancement.** Act lifecycle validation is
   action-neutral. Bounded exile Rest now returns controlled card resources,
   reveals secrets, refreshes Supply, clears per-turn state, advances the
@@ -60,7 +61,7 @@ No item is currently prioritized. Re-evaluate after L6d.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 198 JVM tests, 50 Scala.js tests, the Scala.js
+The combined milestone passes 205 JVM tests, 51 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.gameplay.actions.{Search, SearchCommand, Travel, TravelCommand}
+import oathdigital.gameplay.actions.{Economy, EconomyCommand, Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
@@ -29,6 +29,10 @@ final class OathRules(catalog: ExecutableCatalog)
   ): Either[OathViolation, OathTransition] =
     Travel.handle(catalog, state, command)
 
+  def handle(state: OathState, command: EconomyCommand)
+      : Either[OathViolation, OathTransition] =
+    Economy.handle(catalog, state, command)
+
   def handle(
       state: OathState,
       command: SearchCommand
@@ -47,6 +51,8 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: WealthTaken => Wake.evolve(state, event)
       case event: WakeEnded => Wake.evolve(state, event)
       case event: Traveled => Travel.evolve(catalog, state, event)
+      case event: Mustered => Economy.evolve(catalog, state, event)
+      case event: Traded => Economy.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
       case event: RestStarted => Rest.evolve(catalog, state, event)

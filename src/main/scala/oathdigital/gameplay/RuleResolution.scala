@@ -59,6 +59,9 @@ object RuleQueryContext {
       siteId: SiteId,
       resource: WakeResource
   ) extends RuleQueryContext
+
+  final case class Economy(ready: ReadyGame, player: PlayerState)
+      extends RuleQueryContext
 }
 
 final case class RuleActivation(

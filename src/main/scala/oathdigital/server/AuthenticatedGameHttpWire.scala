@@ -8,7 +8,7 @@ import oathdigital.application.{
 }
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
-import oathdigital.setup.{PlayerColor, WakeResource}
+import oathdigital.setup.{PlayerColor, TradeResource, WakeResource}
 
 sealed trait GameIntent extends Product with Serializable
 object GameIntent {
@@ -19,6 +19,9 @@ object GameIntent {
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
   final case class Travel(destinationSiteId: SiteId) extends GameIntent
+  final case class Muster(denizenId: CardId) extends GameIntent
+  final case class Trade(denizenId: CardId, resource: TradeResource)
+      extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
   final case class CompleteSearch(
       decision: DecisionId,
@@ -139,6 +142,22 @@ object AuthenticatedGameHttpWire {
         exactFields(obj, Set("type", "destinationSiteId"), "$.intent")
           .flatMap(_ => stringField(obj, "destinationSiteId", "$.intent"))
           .map(value => GameIntent.Travel(SiteId(value)))
+      case "muster" =>
+        exactFields(obj, Set("type", "denizenId"), "$.intent")
+          .flatMap(_ => stringField(obj, "denizenId", "$.intent"))
+          .map(value => GameIntent.Muster(DenizenId(value)))
+      case "trade" =>
+        for {
+          _ <- exactFields(obj, Set("type", "denizenId", "resource"), "$.intent")
+          denizen <- stringField(obj, "denizenId", "$.intent")
+          value <- stringField(obj, "resource", "$.intent")
+          resource <- value match {
+            case "favor" => Right(TradeResource.Favor)
+            case "secret" => Right(TradeResource.Secret)
+            case other => Left(HttpInputError("$.intent.resource",
+              s"unknown Trade resource '$other'"))
+          }
+        } yield GameIntent.Trade(DenizenId(denizen), resource)
       case "beginSearch" =>
         exactFields(obj, Set("type", "source", "region"), "$.intent")
           .flatMap(_ => stringField(obj, "source", "$.intent"))

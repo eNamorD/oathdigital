@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.actions.{EconomyCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -16,6 +16,7 @@ import oathdigital.setup.{
   OathState,
   OathViolation,
   SetupCommand,
+  TradeResource,
   WakeResource
 }
 
@@ -31,6 +32,10 @@ object GameCommand {
   final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
       extends GameCommand
+  final case class Muster(playerId: PlayerId, denizenId: CardId)
+      extends GameCommand
+  final case class Trade(playerId: PlayerId, denizenId: CardId,
+      resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
   final case class CompleteSearch(
@@ -255,6 +260,10 @@ final class GameApplicationService(
         rules.handle(state, WakeCommand.EndWake(playerId))
       case GameCommand.Travel(playerId, destination) =>
         rules.handle(state, TravelCommand.Travel(playerId, destination))
+      case GameCommand.Muster(playerId, denizen) =>
+        rules.handle(state, EconomyCommand.Muster(playerId, denizen))
+      case GameCommand.Trade(playerId, denizen, resource) =>
+        rules.handle(state, EconomyCommand.Trade(playerId, denizen, resource))
       case GameCommand.BeginSearch(playerId, source) => state match {
         case OathState.Ready(ready) =>
           for {

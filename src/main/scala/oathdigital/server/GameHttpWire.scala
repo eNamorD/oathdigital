@@ -10,7 +10,7 @@ import oathdigital.application.{
 }
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
-import oathdigital.setup.{PlayerColor, WakeResource}
+import oathdigital.setup.{PlayerColor, TradeResource, WakeResource}
 
 final case class GameCommandRequest(
     expectedNextSequence: Long,
@@ -173,6 +173,16 @@ object GameHttpWire {
             "region" -> source.region.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
             "supplyCost" -> source.supplyCost
           )}),
+        "legalMusters" -> ujson.Arr.from(projection.legalMusters.map { option =>
+          ujson.Obj("denizenId" -> option.denizenId, "suit" -> option.suit,
+            "supplyCost" -> option.supplyCost,
+            "warbandsGained" -> option.warbandsGained)
+        }),
+        "legalTrades" -> ujson.Arr.from(projection.legalTrades.map { option =>
+          ujson.Obj("denizenId" -> option.denizenId, "suit" -> option.suit,
+            "resource" -> option.resource, "supplyCost" -> option.supplyCost,
+            "gained" -> option.gained)
+        }),
         "pendingSearch" -> projection.pendingSearch.fold[ujson.Value](ujson.Null) {
           search => ujson.Obj(
             "decisionId" -> search.decisionId,
@@ -245,6 +255,23 @@ object GameHttpWire {
           destination <- stringField(obj, "destinationSiteId", path)
         } yield GameCommand.Travel(
           PlayerId(player), SiteId(destination))
+      case "muster" =>
+        for {
+          player <- stringField(obj, "playerId", path)
+          denizen <- stringField(obj, "denizenId", path)
+        } yield GameCommand.Muster(PlayerId(player), DenizenId(denizen))
+      case "trade" =>
+        for {
+          player <- stringField(obj, "playerId", path)
+          denizen <- stringField(obj, "denizenId", path)
+          value <- stringField(obj, "resource", path)
+          resource <- value match {
+            case "favor" => Right(TradeResource.Favor)
+            case "secret" => Right(TradeResource.Secret)
+            case other => Left(HttpInputError(s"$path.resource",
+              s"unknown Trade resource '$other'"))
+          }
+        } yield GameCommand.Trade(PlayerId(player), DenizenId(denizen), resource)
       case "beginSearch" =>
         for {
           _ <- exactFields(obj, Set("type", "playerId", "source", "region"), path)

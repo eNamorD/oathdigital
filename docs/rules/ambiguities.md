@@ -6,7 +6,10 @@ These are not claimed errors in the rulebook. They are places where an implement
 
 1. **Card powers and exact costs.** The catalog contains stable printed IDs, reviewed text, and handler keys, but most handlers have no executable Scala behavior. Many actions can be modified or replaced by these powers (CR pp. 28-30, 42).
 2. **Foundation faces.** The catalog contains the six normal/altered records, but their setup effects still require typed handlers verified against CR pp. 10-11.
-3. **Player-board tables/icons.** Trade yield, Supply refresh thresholds, and some costs are graphically encoded on player boards; prose points to them but does not fully enumerate every numeric row (CR pp. 18, 24).
+3. **Player-board tables/icons.** Supply refresh thresholds and some costs are
+   graphically encoded on player boards. Trade yield is resolved by the current
+   combined rulebook prose: favor is 1 + matches; secrets equal matches (CR
+   pp. 18, 24).
 4. **Banner ribbons and non-default faces.** CR p. 32 explains ribbon semantics, but machine execution needs exact component-side icon sequences and initial values.
 5. **Component behavior coverage.** Printed identities and the runtime catalog are complete, but legacy powers, battle plans, banner ribbons, and many component-specific effects still require typed executable handlers.
 

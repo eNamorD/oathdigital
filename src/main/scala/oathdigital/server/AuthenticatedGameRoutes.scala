@@ -74,6 +74,8 @@ final class AuthenticatedGameGateway(
           case GameIntent.BeginRest => actor.beginRest
           case GameIntent.FinishRest => actor.finishRest
           case GameIntent.Travel(destination) => actor.travel(destination)
+          case GameIntent.Muster(denizen) => actor.muster(denizen)
+          case GameIntent.Trade(denizen, resource) => actor.trade(denizen, resource)
           case GameIntent.BeginSearch(source) => actor.beginSearch(source)
           case GameIntent.CompleteSearch(decision, kept, discarded, placement) =>
             actor.completeSearch(decision, kept, discarded, placement)

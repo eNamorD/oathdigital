@@ -162,6 +162,28 @@ class HttpGameClientSuite extends FunSuite {
     assert(complete.contains("\"decisionId\":\"search-10\""))
   }
 
+  test("Economy encodes typed intents and decodes authoritative yields") {
+    val muster = GameJson.encodeCommand(12L,
+      GameCommand.Muster("red-exile", "denizen:plain"))
+    val trade = GameJson.encodeCommand(13L,
+      GameCommand.Trade("red-exile", "denizen:plain", "secret"))
+    assert(muster.contains("\"type\":\"muster\""))
+    assert(trade.contains("\"resource\":\"secret\""))
+    val json = projectionJson(sequence = 12, choices = false).replace(
+      "\"privateAdviserChoices\":[]",
+      "\"privateAdviserChoices\":[]," +
+        "\"legalMusters\":[{\"denizenId\":\"denizen:plain\"," +
+        "\"suit\":\"order\",\"supplyCost\":1,\"warbandsGained\":2}]," +
+        "\"legalTrades\":[{\"denizenId\":\"denizen:plain\"," +
+        "\"suit\":\"order\",\"resource\":\"secret\"," +
+        "\"supplyCost\":1,\"gained\":1}]"
+    )
+    val projection = GameJson.decodeProjection(json).toOption.get
+    assertEquals(projection.legalMusters.head.warbandsGained, 2)
+    assertEquals(projection.legalTrades.head,
+      LegalTrade("denizen:plain", "order", "secret", 1, 1))
+  }
+
   test("site detail decoder preserves populated and empty site projections") {
     val projection = GameJson.decodeProjection(
       projectionJson(sequence = 2)

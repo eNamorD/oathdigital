@@ -43,3 +43,10 @@ still contain the fully resolved durable result (for example, Travel Supply
 spent). Replay independently reruns the query and rejects a mismatched source,
 cost, legality condition, or resource invariant. No event schema or serialized
 power identity changed in this slice.
+
+Bounded Economy activates the explicit set of Muster/Trade handler IDs from
+accessible faceup advisers, the pawn site's denizens, and held faceup relics.
+None is executable in L6d, so typed resolution reports an unsupported relevant
+rule instead of interpreting catalog text or silently applying base behavior.
+Base Economy outcomes are durable v6 facts and replay recalculates their source,
+suit, cost, yield, component limits, and resource movement.
