@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathViolation._
 
 /** Stable identity for a runtime rule source. PowerUseRef remains the narrower,
   * wire-compatible identity for use-limited powers.
@@ -44,7 +44,7 @@ object RuleSourceRef {
 sealed trait RuleQueryContext extends Product with Serializable
 object RuleQueryContext {
   final case class Travel(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       source: SiteId,
       destination: SiteId,
@@ -54,7 +54,7 @@ object RuleQueryContext {
   ) extends RuleQueryContext
 
   final case class TakeWealth(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       siteId: SiteId,
       resource: WakeResource
@@ -70,7 +70,7 @@ final case class RuleActivation(
 sealed trait RuleOutcome extends Product with Serializable
 object RuleOutcome {
   case object Allow extends RuleOutcome
-  final case class Block(violation: FirstGameSetupViolation) extends RuleOutcome
+  final case class Block(violation: OathViolation) extends RuleOutcome
   final case class ModifyCost(value: Int, replace: Boolean = false)
       extends RuleOutcome
   final case class RequireDecision(decision: RuleDecisionBoundary)
@@ -212,11 +212,11 @@ object RuntimeRuleRegistry {
 
 object TakeWealthRules {
   def validate(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       siteId: SiteId,
       resource: WakeResource
-  ): Either[FirstGameSetupViolation, Unit] = {
+  ): Either[OathViolation, Unit] = {
     val context = RuleQueryContext.TakeWealth(ready, player, siteId, resource)
     val power = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(siteId),
       PowerId("take-wealth"))

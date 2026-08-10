@@ -136,13 +136,12 @@ Runtime names governing an ordinary game after setup use `Game*` or `Oath*`.
 The R2 cleanup renamed the aggregate, application service, projection, mixed
 event codec, HTTP adapters/routes, and Scala.js client vocabulary accordingly.
 
-The `FirstGameSetup*` hierarchy, `ReadyFirstGame`, `FirstGameContinue`,
-`FirstGameTransition`, and setup event/violation vocabulary remain deferred
-naming debt. Those types now span setup and ordinary gameplay, but separating
-their hierarchy would be a semantic event/aggregate restructuring rather than
-a safe mechanical rename. `FirstGameSetup`, its plan/rules/factory/fixtures,
-participants, bootstrap configuration, and setup discriminator constants remain
-intentional introductory-scenario names.
+The mixed setup/gameplay aggregate vocabulary is `OathState`, `ReadyGame`,
+`OathEvent`, `OathContinue`, `OathTransition`, and `OathViolation`. Genuine
+introductory-scenario concepts retain `FirstGame`: the setup command, plan,
+participants, rules, factory, fixtures, Foundation/support data, bootstrap
+configuration, and the `FirstGameStarted`/`FirstGameCompleted` facts and their
+stable setup discriminator constants.
 
 Renaming internal types does not authorize a wire-format migration. Existing
 v1-v4 event streams and their discriminators remain compatible unless a future,

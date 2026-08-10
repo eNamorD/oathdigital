@@ -2,9 +2,9 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
-import oathdigital.setup.FirstGameSetupState.{InProgress, NoGame, Ready}
+import oathdigital.setup.OathState.{InProgress, NoGame, Ready}
 import oathdigital.setup.FirstGameParticipant
-import oathdigital.setup.ReadyFirstGame
+import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
 import oathdigital.gameplay.actions.{SearchRules, TravelRules}
@@ -376,7 +376,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
   }
 
   private def legalPlacements(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       card: WorldCardId
   ): Vector[String] = {

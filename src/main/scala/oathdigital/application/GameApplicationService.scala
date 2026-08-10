@@ -8,13 +8,13 @@ import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
 import oathdigital.setup.{
-  FirstGameContinue,
+  OathContinue,
   FirstGameSetupCommand,
-  FirstGameSetupEvent,
+  OathEvent,
   FirstGameSetupPlan,
   FirstGameSetupRules,
-  FirstGameSetupState,
-  FirstGameSetupViolation,
+  OathState,
+  OathViolation,
   SetupCommand,
   WakeResource
 }
@@ -44,27 +44,27 @@ object GameCommand {
 
 trait SearchDrawPort {
   def prepare(
-      ready: oathdigital.setup.ReadyFirstGame,
+      ready: oathdigital.setup.ReadyGame,
       source: SearchSource,
       origin: Region
-  ): Either[FirstGameSetupViolation, Vector[WorldCardId]]
+  ): Either[OathViolation, Vector[WorldCardId]]
 }
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
-    def prepare(ready: oathdigital.setup.ReadyFirstGame, source: SearchSource,
+    def prepare(ready: oathdigital.setup.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
   }
 }
 
 final case class GameAccepted(
-    state: FirstGameSetupState,
-    events: Vector[FirstGameSetupEvent],
-    continue: FirstGameContinue,
+    state: OathState,
+    events: Vector[OathEvent],
+    continue: OathContinue,
     nextSequence: Long
 )
 
 final case class LoadedGame(
-    state: FirstGameSetupState,
+    state: OathState,
     nextSequence: Long
 )
 
@@ -82,9 +82,9 @@ object GameApplicationError {
       extends GameApplicationError
   final case class ReplayFailure(
       index: Long,
-      violation: FirstGameSetupViolation
+      violation: OathViolation
   ) extends GameApplicationError
-  final case class CommandRejected(violation: FirstGameSetupViolation)
+  final case class CommandRejected(violation: OathViolation)
       extends GameApplicationError
   final case class BootstrapFailure(message: String)
       extends GameApplicationError
@@ -171,7 +171,7 @@ final class GameApplicationService(
   private def reconstruct(
       gameId: String,
       stream: StoredEventStream
-  ): Either[GameApplicationError, FirstGameSetupState] =
+  ): Either[GameApplicationError, OathState] =
     for {
       _ <-
         if (stream.gameId == gameId) Right(())
@@ -199,7 +199,7 @@ final class GameApplicationService(
 
   private def handleAgainst(
       gameId: String,
-      state: FirstGameSetupState,
+      state: OathState,
       command: GameCommand,
       expected: ExpectedStream,
       nextSequence: Long
@@ -232,7 +232,7 @@ final class GameApplicationService(
     } yield accepted
 
   private def applyCommand(
-      state: FirstGameSetupState,
+      state: OathState,
       command: GameCommand,
       nextSequence: Long
   ) =
@@ -253,16 +253,16 @@ final class GameApplicationService(
       case GameCommand.Travel(playerId, destination) =>
         rules.handle(state, TravelCommand.Travel(playerId, destination))
       case GameCommand.BeginSearch(playerId, source) => state match {
-        case FirstGameSetupState.Ready(ready) =>
+        case OathState.Ready(ready) =>
           for {
             region <- ready.game.current.players.find(_.player == playerId)
               .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
-              .toRight(FirstGameSetupViolation.PawnSiteMissing(playerId))
+              .toRight(OathViolation.PawnSiteMissing(playerId))
             drawn <- searchDrawPort.prepare(ready, source, region)
             result <- rules.handle(state, SearchCommand.Start(
               playerId, DecisionId(s"search-$nextSequence"), source, drawn))
           } yield result
-        case _ => Left(FirstGameSetupViolation.GameNotStarted)
+        case _ => Left(OathViolation.GameNotStarted)
       }
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
@@ -273,7 +273,7 @@ final class GameApplicationService(
   private def encode(
       gameId: String,
       firstSequence: Long,
-      events: Vector[FirstGameSetupEvent]
+      events: Vector[OathEvent]
   ): Either[GameApplicationError, Vector[String]] =
     events.zipWithIndex.foldLeft[
       Either[GameApplicationError, Vector[String]]

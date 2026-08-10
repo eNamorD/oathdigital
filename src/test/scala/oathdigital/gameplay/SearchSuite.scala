@@ -4,22 +4,22 @@ import oathdigital.gameplay.actions.{SearchCommand, SearchRules}
 
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupEvent._
+import oathdigital.setup.OathEvent._
 import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.FirstGameSetupState.Ready
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathState.Ready
+import oathdigital.setup.OathViolation._
 
 class SearchSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
-  private def act: ReadyFirstGame = {
+  private def act: ReadyGame = {
     val Ready(ready) = execute(setupRules)._1: @unchecked
     ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       turn = ready.game.current.turn.copy(phase = Phase.Act))))
   }
 
-  private def active(ready: ReadyFirstGame) = ready.game.current.players.find(
+  private def active(ready: ReadyGame) = ready.game.current.players.find(
     _.player == ready.game.current.turn.activePlayer).get
 
   test("world Search spends track cost draws in order and stops on a Vision") {

@@ -13,7 +13,7 @@ import oathdigital.server.{
 import oathdigital.setup.{
   FirstGameSetupCommand,
   FirstGameSetupRules,
-  FirstGameSetupState
+  OathState
 }
 import oathdigital.setup.FirstGameSetupFixture._
 
@@ -34,7 +34,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     val rules = new FirstGameSetupRules(catalog)
 
     assert(rules.handle(
-      FirstGameSetupState.NoGame,
+      OathState.NoGame,
       FirstGameSetupCommand.Begin(derived)
     ).isRight)
     assertEquals(derived.orderedSites.size, 8)
@@ -97,7 +97,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       val loaded = new GameApplicationService(catalog, reopened)
         .load("bootstrap-game").toOption.flatten.get
       assertEquals(loaded.nextSequence, 1L)
-      assert(loaded.state.isInstanceOf[FirstGameSetupState.InProgress])
+      assert(loaded.state.isInstanceOf[OathState.InProgress])
     } finally reopened.close()
   }
 }

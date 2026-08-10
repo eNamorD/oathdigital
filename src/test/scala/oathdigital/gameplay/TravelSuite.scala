@@ -5,11 +5,11 @@ import oathdigital.gameplay.phases.WakeCommand
 
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameContinue.ActActionSelection
-import oathdigital.setup.FirstGameSetupEvent.Traveled
+import oathdigital.setup.OathContinue.ActActionSelection
+import oathdigital.setup.OathEvent.Traveled
 import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.FirstGameSetupState.Ready
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathState.Ready
+import oathdigital.setup.OathViolation._
 
 class TravelSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -28,7 +28,7 @@ class TravelSuite extends munit.FunSuite {
       source: SiteId = plains.head,
       supply: Int = 7,
       passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1)
-  ): ReadyFirstGame = {
+  ): ReadyGame = {
     val Ready(initial) = execute(setup)._1: @unchecked
     val selected = (Vector(source, coast, plains(1), mountain, pass,
       plains(2), island, plains(3))).distinct ++
@@ -56,7 +56,7 @@ class TravelSuite extends munit.FunSuite {
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }
 
-  private def active(ready: ReadyFirstGame): PlayerState =
+  private def active(ready: ReadyGame): PlayerState =
     ready.game.current.players.find(
       _.player == ready.game.current.turn.activePlayer).get
 

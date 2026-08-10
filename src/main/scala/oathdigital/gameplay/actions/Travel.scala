@@ -3,10 +3,10 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameContinue._
-import oathdigital.setup.FirstGameSetupEvent._
-import oathdigital.setup.FirstGameSetupState._
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathContinue._
+import oathdigital.setup.OathEvent._
+import oathdigital.setup.OathState._
+import oathdigital.setup.OathViolation._
 
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
 import oathdigital.gameplay._
@@ -21,9 +21,9 @@ object TravelCommand {
 object Travel {
   def handle(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
+      state: OathState,
       command: TravelCommand
-  ): Either[FirstGameSetupViolation, FirstGameTransition] = command match {
+  ): Either[OathViolation, OathTransition] = command match {
     case TravelCommand.Travel(playerId, destination) =>
       OathLifecycle.validateAct(state, playerId).flatMap { ready =>
         val player = ready.game.current.players.find(_.player == playerId).get
@@ -44,9 +44,9 @@ object Travel {
   }
   def evolve(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
+      state: OathState,
       event: Traveled
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] =
+  ): Either[OathViolation, OathState] =
     OathLifecycle.validateAct(state, event.playerId).flatMap { ready =>
       val current = ready.game.current
       val player = current.players.find(_.player == event.playerId).get
@@ -75,25 +75,25 @@ object Travel {
 
   private def transition(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
-      events: Vector[FirstGameSetupEvent],
-      continue: FirstGameContinue
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
-    events.foldLeft[Either[FirstGameSetupViolation, FirstGameSetupState]](Right(state))(
+      state: OathState,
+      events: Vector[OathEvent],
+      continue: OathContinue
+  ): Either[OathViolation, OathTransition] =
+    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
       (next, event) => next.flatMap {
         case current => event match {
           case traveled: Traveled => evolve(catalog, current, traveled)
           case _ => Left(InvalidEventOrder("Travel received a non-Travel event"))
         }
-      }).map(FirstGameTransition(_, events, continue))
+      }).map(OathTransition(_, events, continue))
 }
 
 object TravelRules {
-  import FirstGameSetupViolation._
+  import OathViolation._
 
   def legalDestinations(
       catalog: ExecutableCatalog,
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState
   ): Vector[(SiteId, Int)] =
     player.pawnSite.toVector.flatMap(source =>
@@ -104,11 +104,11 @@ object TravelRules {
 
   def cost(
       catalog: ExecutableCatalog,
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       source: SiteId,
       destination: SiteId
-  ): Either[FirstGameSetupViolation, Int] = {
+  ): Either[OathViolation, Int] = {
     val map = ready.game.current.map
     for {
       _ <- validateSupportedState(ready)
@@ -134,8 +134,8 @@ object TravelRules {
   }
 
   def validateSupportedState(
-      ready: ReadyFirstGame
-  ): Either[FirstGameSetupViolation, Unit] = {
+      ready: ReadyGame
+  ): Either[OathViolation, Unit] = {
     val game = ready.game
     val current = game.current
     val reason =
@@ -165,7 +165,7 @@ object TravelRules {
 
   private def resolveTravel(
       catalog: ExecutableCatalog,
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       player: PlayerState,
       source: SiteId,
       destination: SiteId,
@@ -174,7 +174,7 @@ object TravelRules {
       baseCost: Int,
       sourceHandlers: Vector[String],
       destinationHandlers: Vector[String]
-  ): Either[FirstGameSetupViolation, Int] = {
+  ): Either[OathViolation, Int] = {
     val registry = RuntimeRuleRegistry.default
     def handlersWithRole(
         handlers: Vector[String],
@@ -209,7 +209,7 @@ object TravelRules {
     val context = RuleQueryContext.Travel(
       ready, player, source, destination, from, to, baseCost)
     registry.resolve(active, context).foldLeft[
-      Either[FirstGameSetupViolation, Int]](Right(baseCost)) {
+      Either[OathViolation, Int]](Right(baseCost)) {
       case (failure @ Left(_), _) => failure
       case (Right(cost), ResolvedRule(_, RuleOutcome.Allow)) => Right(cost)
       case (_, ResolvedRule(_, RuleOutcome.Block(value))) => Left(value)

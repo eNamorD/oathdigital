@@ -47,7 +47,7 @@ snapshots, or gameplay.
 commands, replay behavior, and checked-in golden bytes remain unchanged. It
 starts at `NoGame`, records a complete `FirstGameSetupPlan`, reuses the existing
 typed `SetupCommand.PlacePawn`, records each starting adviser choice, and ends
-at `Ready(ReadyFirstGame)`. The endpoint contains a structurally valid
+at `Ready(ReadyGame)`. The endpoint contains a structurally valid
 `OathGame`; its selected first player is active at `Phase.Wake`, meaning they
 are ready to begin their first turn. Wake behavior is not executed here.
 
@@ -84,7 +84,7 @@ shuffle because it is an Imperial component.
 
 ## First-turn Wake endpoint
 
-The first post-setup slice retains `Ready(ReadyFirstGame)` as the aggregate and
+The first post-setup slice retains `Ready(ReadyGame)` as the aggregate and
 implements only the built-in Take Wealth power and the explicit choice to end
 Wake. CR p. 17 orders the mandatory Oathkeeper/Usurper and Vision checks before
 optional Wake powers, permits Wake powers once each, and defines Take Wealth.

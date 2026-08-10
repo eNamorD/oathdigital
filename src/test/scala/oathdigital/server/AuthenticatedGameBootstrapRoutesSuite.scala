@@ -16,7 +16,7 @@ import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.FirstGameSetupState
+import oathdigital.setup.OathState
 
 class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
   test("owner bootstrap uses exactly the provisioned player memberships") {
@@ -150,7 +150,7 @@ class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
       val replayed = service.load("bootstrap-game").toOption.flatten.get
       assertEquals(replayed.nextSequence, 1L)
       val replayedPlan = replayed.state
-        .asInstanceOf[FirstGameSetupState.InProgress].plan
+        .asInstanceOf[OathState.InProgress].plan
       assertEquals(
         replayedPlan.participants.map(_.playerId.value),
         Vector("p2", "p3", "p1")

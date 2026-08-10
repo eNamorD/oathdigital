@@ -5,7 +5,7 @@ import scala.util.control.NonFatal
 import oathdigital.engine.RecordedEvent
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupEvent._
+import oathdigital.setup.OathEvent._
 
 final case class GameEventEnvelope(
     formatVersion: Int,
@@ -13,7 +13,7 @@ final case class GameEventEnvelope(
     sequence: Long,
     catalog: CatalogRef,
     eventType: String,
-    event: FirstGameSetupEvent
+    event: OathEvent
 )
 
 /**
@@ -44,7 +44,7 @@ object GameEventWire {
       gameId: String,
       catalog: CatalogRef,
       sequence: Long,
-      event: FirstGameSetupEvent
+      event: OathEvent
   ): Either[WireError, ujson.Value] =
     encode(
       GameEventEnvelope(
@@ -74,7 +74,7 @@ object GameEventWire {
   def encodeStream(
       gameId: String,
       catalog: CatalogRef,
-      events: Vector[RecordedEvent[FirstGameSetupEvent]]
+      events: Vector[RecordedEvent[OathEvent]]
   ): Either[WireError, String] = {
     val startSequence = events.headOption.map(_.index).getOrElse(0L)
     encodeStream(gameId, catalog, startSequence, events)
@@ -84,7 +84,7 @@ object GameEventWire {
       gameId: String,
       catalog: CatalogRef,
       startSequence: Long,
-      events: Vector[RecordedEvent[FirstGameSetupEvent]]
+      events: Vector[RecordedEvent[OathEvent]]
   ): Either[WireError, String] =
     validateSequence(startSequence, "$[*].sequence").flatMap { _ =>
       traverse(events.zipWithIndex) { case (record, position) =>
@@ -233,7 +233,7 @@ object GameEventWire {
       _ <- validateEventCatalog(envelope.event, envelope.catalog, "$")
     } yield ()
 
-  private def discriminator(event: FirstGameSetupEvent): String =
+  private def discriminator(event: OathEvent): String =
     event match {
       case _: FirstGameStarted => FirstGameStartedType
       case _: GamePawnPlaced => PawnPlacedType
@@ -246,13 +246,13 @@ object GameEventWire {
       case _: SearchCompleted => SearchCompletedType
     }
 
-  private def formatVersion(event: FirstGameSetupEvent): Int = event match {
+  private def formatVersion(event: OathEvent): Int = event match {
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _ => FormatVersion
   }
 
-  private def encodePayload(event: FirstGameSetupEvent): ujson.Value =
+  private def encodePayload(event: OathEvent): ujson.Value =
     event match {
       case FirstGameStarted(plan) => encodePlan(plan)
       case GamePawnPlaced(playerId, siteId) =>
@@ -308,7 +308,7 @@ object GameEventWire {
       payload: ujson.Value,
       path: String,
       envelopeCatalog: CatalogRef
-  ): Either[WireError, FirstGameSetupEvent] =
+  ): Either[WireError, OathEvent] =
     try {
       eventType match {
         case FirstGameStartedType =>
@@ -509,7 +509,7 @@ object GameEventWire {
     }
 
   private def validateEventCatalog(
-      event: FirstGameSetupEvent,
+      event: OathEvent,
       catalog: CatalogRef,
       path: String
   ): Either[WireError, Unit] =

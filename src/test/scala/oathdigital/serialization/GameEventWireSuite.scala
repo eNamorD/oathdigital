@@ -3,7 +3,7 @@ package oathdigital.serialization
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.setup._
 import oathdigital.model._
-import oathdigital.setup.FirstGameSetupEvent.{FirstGameCompleted, WakeEnded,
+import oathdigital.setup.OathEvent.{FirstGameCompleted, WakeEnded,
   SearchCompleted, SearchStarted, Traveled, WealthTaken}
 import oathdigital.setup.FirstGameSetupFixture._
 

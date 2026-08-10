@@ -5,11 +5,11 @@ import java.nio.file.Paths
 import oathdigital.catalog._
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
-import oathdigital.setup.FirstGameContinue._
+import oathdigital.setup.OathContinue._
 import oathdigital.setup.FirstGameSetupCommand._
-import oathdigital.setup.FirstGameSetupEvent._
-import oathdigital.setup.FirstGameSetupState._
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathEvent._
+import oathdigital.setup.OathState._
+import oathdigital.setup.OathViolation._
 import oathdigital.setup.SetupCommand.PlacePawn
 
 object FirstGameSetupFixture {
@@ -76,7 +76,7 @@ object FirstGameSetupFixture {
   def execute(
       rules: FirstGameSetupRules,
       setupPlan: FirstGameSetupPlan = plan
-  ): (FirstGameSetupState, Vector[FirstGameSetupEvent]) = {
+  ): (OathState, Vector[OathEvent]) = {
     val started = rules.handle(NoGame, Begin(setupPlan)).toOption.get
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     order.zipWithIndex.foldLeft(started.state -> started.events) {

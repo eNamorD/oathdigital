@@ -5,11 +5,11 @@ import oathdigital.gameplay.phases.{Wake, WakeCommand}
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameContinue._
-import oathdigital.setup.FirstGameSetupEvent._
+import oathdigital.setup.OathContinue._
+import oathdigital.setup.OathEvent._
 import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.FirstGameSetupState.Ready
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathState.Ready
+import oathdigital.setup.OathViolation._
 
 class WakeSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -19,7 +19,7 @@ class WakeSuite extends munit.FunSuite {
       favor: Int = 1,
       secrets: Int = 1,
       sharedEnemy: Boolean = false
-  ): FirstGameSetupState = {
+  ): OathState = {
     val Ready(value) = execute(setupRules)._1: @unchecked
     val active = value.game.current.turn.activePlayer
     val activeSite = value.game.current.players.find(_.player == active)
@@ -163,7 +163,7 @@ class WakeSuite extends munit.FunSuite {
       WakeCommand.EndWake(active)).toOption.get
     val events = wealth.events ++ ended.events
     val replay = events.zipWithIndex.foldLeft[
-      Either[FirstGameSetupViolation, FirstGameSetupState]](Right(initial)) {
+      Either[OathViolation, OathState]](Right(initial)) {
       case (next, (event, _)) => next.flatMap(rules.evolve(_, event))
     }
     assertEquals(replay, Right(ended.state))
@@ -178,18 +178,18 @@ class WakeSuite extends munit.FunSuite {
     assertEquals(corrupt.left.toOption.get.index, 9L)
   }
 
-  private def activePlayer(state: FirstGameSetupState): PlayerId = {
+  private def activePlayer(state: OathState): PlayerId = {
     val Ready(value) = state: @unchecked
     value.game.current.turn.activePlayer
   }
 
-  private def activeSite(state: FirstGameSetupState): SiteId = {
+  private def activeSite(state: OathState): SiteId = {
     val Ready(value) = state: @unchecked
     value.game.current.players.find(
       _.player == value.game.current.turn.activePlayer).flatMap(_.pawnSite).get
   }
 
-  private def totals(state: FirstGameSetupState): (Int, Int) = {
+  private def totals(state: OathState): (Int, Int) = {
     val Ready(value) = state: @unchecked
     val playerTokens = value.game.current.players.foldLeft((0, 0)) {
       case ((favor, secrets), player) =>

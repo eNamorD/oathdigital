@@ -2,34 +2,46 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupEvent._
-import oathdigital.setup.FirstGameSetupState._
-import oathdigital.setup.FirstGameSetupViolation._
 import oathdigital.gameplay.actions.{Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.phases.{Wake, WakeCommand}
+import oathdigital.model._
+import oathdigital.setup._
+import oathdigital.setup.OathEvent._
+import oathdigital.setup.OathState._
+import oathdigital.setup.OathViolation._
 
 /** Deterministic aggregate boundary for setup and gameplay routing. */
 final class OathRules(catalog: ExecutableCatalog)
-    extends EventEvolution[FirstGameSetupState, FirstGameSetupEvent, FirstGameSetupViolation] {
+    extends EventEvolution[OathState, OathEvent, OathViolation] {
   private val setup = new FirstGameSetupRules(catalog)
 
-  override val initialState: FirstGameSetupState = setup.initialState
+  override val initialState: OathState = setup.initialState
 
-  def handle(state: FirstGameSetupState, command: WakeCommand): Either[FirstGameSetupViolation, FirstGameTransition] =
-    Wake.handle(catalog, state, command)
+  def handle(
+      state: OathState,
+      command: WakeCommand
+  ): Either[OathViolation, OathTransition] =
+    Wake.handle(state, command)
 
-  def handle(state: FirstGameSetupState, command: TravelCommand): Either[FirstGameSetupViolation, FirstGameTransition] =
+  def handle(
+      state: OathState,
+      command: TravelCommand
+  ): Either[OathViolation, OathTransition] =
     Travel.handle(catalog, state, command)
 
-  def handle(state: FirstGameSetupState, command: SearchCommand): Either[FirstGameSetupViolation, FirstGameTransition] =
+  def handle(
+      state: OathState,
+      command: SearchCommand
+  ): Either[OathViolation, OathTransition] =
     Search.handle(catalog, state, command)
 
-  override def evolve(state: FirstGameSetupState, event: FirstGameSetupEvent): Either[FirstGameSetupViolation, FirstGameSetupState] =
+  override def evolve(
+      state: OathState,
+      event: OathEvent
+  ): Either[OathViolation, OathState] =
     event match {
-      case event: WealthTaken => Wake.evolve(catalog, state, event)
-      case event: WakeEnded => Wake.evolve(catalog, state, event)
+      case event: WealthTaken => Wake.evolve(state, event)
+      case event: WakeEnded => Wake.evolve(state, event)
       case event: Traveled => Travel.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
@@ -39,9 +51,9 @@ final class OathRules(catalog: ExecutableCatalog)
 
 private[gameplay] object OathLifecycle {
   def validateReady(
-      state: FirstGameSetupState,
+      state: OathState,
       playerId: PlayerId
-  ): Either[FirstGameSetupViolation, ReadyFirstGame] =
+  ): Either[OathViolation, ReadyGame] =
     state match {
       case NoGame | _: InProgress => Left(GameNotStarted)
       case Ready(ready) =>
@@ -59,9 +71,9 @@ private[gameplay] object OathLifecycle {
     }
 
   def validateAct(
-      state: FirstGameSetupState,
+      state: OathState,
       playerId: PlayerId
-  ): Either[FirstGameSetupViolation, ReadyFirstGame] = state match {
+  ): Either[OathViolation, ReadyGame] = state match {
     case NoGame | _: InProgress => Left(GameNotStarted)
     case Ready(ready) =>
       val current = ready.game.current
@@ -72,15 +84,16 @@ private[gameplay] object OathLifecycle {
         Left(WrongPhase(Phase.Act, current.turn.phase))
       else current.pending match {
         case Some(value) => Left(PendingProcedureBlocksAction(value.decision))
-        case None => actions.TravelRules.validateSupportedState(ready).map(_ => ready)
+        case None =>
+          actions.TravelRules.validateSupportedState(ready).map(_ => ready)
       }
   }
 
   def validateSearchDecision(
-      state: FirstGameSetupState,
+      state: OathState,
       playerId: PlayerId,
       decision: DecisionId
-  ): Either[FirstGameSetupViolation, ReadyFirstGame] = state match {
+  ): Either[OathViolation, ReadyGame] = state match {
     case Ready(ready) if ready.game.current.turn.activePlayer != playerId =>
       Left(WrongPlayer(ready.game.current.turn.activePlayer, playerId))
     case Ready(ready) if ready.game.current.turn.phase != Phase.Act =>
@@ -96,10 +109,11 @@ private[gameplay] object OathLifecycle {
     }
     case _ => Left(GameNotStarted)
   }
-
 }
 
 private[gameplay] object GameStateUpdates {
-  def updateCurrent(ready: ReadyFirstGame)(f: CurrentGameState => CurrentGameState): ReadyFirstGame =
+  def updateCurrent(
+      ready: ReadyGame
+  )(f: CurrentGameState => CurrentGameState): ReadyGame =
     ready.copy(game = ready.game.copy(current = f(ready.game.current)))
 }

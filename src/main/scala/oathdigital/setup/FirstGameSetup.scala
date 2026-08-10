@@ -36,23 +36,23 @@ final case class FirstGameSupportState(
     favorBanks: Map[Suit, Int]
 )
 
-final case class ReadyFirstGame(
+final case class ReadyGame(
     game: OathGame,
     playerColors: Map[PlayerId, PlayerColor],
     support: FirstGameSupportState
 )
 
-sealed trait FirstGameSetupState extends Product with Serializable
-object FirstGameSetupState {
-  case object NoGame extends FirstGameSetupState
+sealed trait OathState extends Product with Serializable
+object OathState {
+  case object NoGame extends OathState
 
   final case class InProgress(
       plan: FirstGameSetupPlan,
       placements: Vector[PawnPlacement],
       adviserChoices: Vector[(PlayerId, DenizenId)]
-  ) extends FirstGameSetupState
+  ) extends OathState
 
-  final case class Ready(value: ReadyFirstGame) extends FirstGameSetupState
+  final case class Ready(value: ReadyGame) extends OathState
 }
 
 sealed trait FirstGameSetupCommand extends Product with Serializable
@@ -63,29 +63,29 @@ object FirstGameSetupCommand {
       extends FirstGameSetupCommand
 }
 
-sealed trait FirstGameSetupEvent extends Product with Serializable
-object FirstGameSetupEvent {
+sealed trait OathEvent extends Product with Serializable
+object OathEvent {
   final case class FirstGameStarted(plan: FirstGameSetupPlan)
-      extends FirstGameSetupEvent
+      extends OathEvent
   final case class GamePawnPlaced(playerId: PlayerId, siteId: SiteId)
-      extends FirstGameSetupEvent
+      extends OathEvent
   final case class StartingAdviserChosen(
       playerId: PlayerId,
       adviserId: DenizenId
-  ) extends FirstGameSetupEvent
-  case object FirstGameCompleted extends FirstGameSetupEvent
+  ) extends OathEvent
+  case object FirstGameCompleted extends OathEvent
   final case class WealthTaken(
       playerId: PlayerId,
       siteId: SiteId,
       resource: WakeResource
-  ) extends FirstGameSetupEvent
-  final case class WakeEnded(playerId: PlayerId) extends FirstGameSetupEvent
+  ) extends OathEvent
+  final case class WakeEnded(playerId: PlayerId) extends OathEvent
   final case class Traveled(
       playerId: PlayerId,
       sourceSiteId: SiteId,
       destinationSiteId: SiteId,
       supplySpent: Int
-  ) extends FirstGameSetupEvent
+  ) extends OathEvent
   final case class SearchStarted(
       playerId: PlayerId,
       decision: DecisionId,
@@ -93,14 +93,14 @@ object FirstGameSetupEvent {
       origin: Region,
       supplySpent: Int,
       drawn: Vector[WorldCardId]
-  ) extends FirstGameSetupEvent
+  ) extends OathEvent
   final case class SearchCompleted(
       playerId: PlayerId,
       decision: DecisionId,
       kept: WorldCardId,
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
-  ) extends FirstGameSetupEvent
+  ) extends OathEvent
 }
 
 sealed trait WakeResource extends Product with Serializable
@@ -109,118 +109,118 @@ object WakeResource {
   case object Secret extends WakeResource
 }
 
-sealed trait FirstGameContinue extends Product with Serializable
-object FirstGameContinue {
-  final case class AwaitingPawn(playerId: PlayerId) extends FirstGameContinue
+sealed trait OathContinue extends Product with Serializable
+object OathContinue {
+  final case class AwaitingPawn(playerId: PlayerId) extends OathContinue
   final case class AwaitingAdviser(playerId: PlayerId)
-      extends FirstGameContinue
+      extends OathContinue
   final case class ReadyForFirstTurn(playerId: PlayerId)
-      extends FirstGameContinue
+      extends OathContinue
   final case class AwaitingWakeAction(playerId: PlayerId)
-      extends FirstGameContinue
+      extends OathContinue
   final case class ActActionSelection(playerId: PlayerId)
-      extends FirstGameContinue
+      extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
-      extends FirstGameContinue
+      extends OathContinue
 }
 
-final case class FirstGameTransition(
-    state: FirstGameSetupState,
-    events: Vector[FirstGameSetupEvent],
-    continue: FirstGameContinue
+final case class OathTransition(
+    state: OathState,
+    events: Vector[OathEvent],
+    continue: OathContinue
 )
 
-sealed trait FirstGameSetupViolation extends Product with Serializable
-object FirstGameSetupViolation {
-  case object GameAlreadyExists extends FirstGameSetupViolation
-  case object GameNotStarted extends FirstGameSetupViolation
-  case object GameAlreadyReady extends FirstGameSetupViolation
+sealed trait OathViolation extends Product with Serializable
+object OathViolation {
+  case object GameAlreadyExists extends OathViolation
+  case object GameNotStarted extends OathViolation
+  case object GameAlreadyReady extends OathViolation
   final case class CatalogMismatch(expected: CatalogRef, actual: CatalogRef)
-      extends FirstGameSetupViolation
-  case object GameEnded extends FirstGameSetupViolation
+      extends OathViolation
+  case object GameEnded extends OathViolation
   final case class WrongPhase(expected: Phase, actual: Phase)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnsupportedWakeVictoryState(reason: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class PawnSiteMissing(playerId: PlayerId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class ResourceUnavailable(siteId: SiteId, resource: WakeResource)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class EnemyPawnBlocksTakeWealth(
       siteId: SiteId,
       enemies: Vector[PlayerId]
-  ) extends FirstGameSetupViolation
+  ) extends OathViolation
   final case class PowerAlreadyUsed(power: PowerUseRef)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class PendingProcedureBlocksAction(decision: DecisionId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SameTravelSite(siteId: SiteId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class TravelPassBlocked(passSiteId: SiteId, destination: SiteId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class TravelConsentUnsupported(passSiteId: SiteId, ruler: PlayerId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InsufficientSupply(required: Int, available: Int)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class TravelSourceMismatch(expected: SiteId, actual: SiteId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class TravelCostMismatch(expected: Int, actual: Int)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnsupportedTravelState(reason: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnsupportedSearchState(reason: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SearchSourceUnavailable(source: SearchSource)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SearchDrawMismatch(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SearchDecisionMismatch(expected: DecisionId, actual: DecisionId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SearchChoiceMismatch(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnknownWorldCard(id: WorldCardId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InvalidSearchPlacement(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class LockedAdviserCannotBeDiscarded(id: CardId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)
-      extends FirstGameSetupViolation
-  case object ParticipantsEmpty extends FirstGameSetupViolation
+      extends OathViolation
+  case object ParticipantsEmpty extends OathViolation
   final case class DuplicatePlayer(id: PlayerId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class DuplicateLineage(id: LineageId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class DuplicateColor(color: PlayerColor)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnknownFirstPlayer(id: PlayerId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class WrongCount(field: String, expected: Int, actual: Int)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class DuplicateComponent(field: String, id: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class UnknownComponent(field: String, id: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class WrongDenizenSuitCount(suit: String, actual: Int)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InvalidWorldDeck(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InvalidRelicOrder(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InvalidHomelandEdifice(siteId: SiteId, detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class WrongPlayer(expected: PlayerId, actual: PlayerId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class SiteNotInPlay(siteId: SiteId)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class AdviserNotInHand(
       playerId: PlayerId,
       adviserId: DenizenId
-  ) extends FirstGameSetupViolation
+  ) extends OathViolation
   final case class InvalidEventOrder(detail: String)
-      extends FirstGameSetupViolation
+      extends OathViolation
   final case class InvalidAggregate(problems: Vector[DomainProblem])
-      extends FirstGameSetupViolation
+      extends OathViolation
 }
 
 object FirstGameRulesData {
@@ -241,17 +241,17 @@ object FirstGameRulesData {
  */
 final class FirstGameSetupRules(catalog: ExecutableCatalog)
     extends EventEvolution[
-      FirstGameSetupState,
-      FirstGameSetupEvent,
-      FirstGameSetupViolation
+      OathState,
+      OathEvent,
+      OathViolation
     ] {
-  import FirstGameContinue._
+  import OathContinue._
   import FirstGameSetupCommand._
-  import FirstGameSetupEvent._
-  import FirstGameSetupState._
-  import FirstGameSetupViolation._
+  import OathEvent._
+  import OathState._
+  import OathViolation._
 
-  override val initialState: FirstGameSetupState = NoGame
+  override val initialState: OathState = NoGame
 
   private val sitesById = catalog.sites.map(site => site.id -> site).toMap
   private val denizensById =
@@ -263,9 +263,9 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
 
   def handle(
-      state: FirstGameSetupState,
+      state: OathState,
       command: FirstGameSetupCommand
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
+  ): Either[OathViolation, OathTransition] =
     command match {
       case Begin(plan) =>
         state match {
@@ -314,9 +314,9 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
 
   /** Reuses the v1 bounded pawn-placement command type unchanged. */
   def handle(
-      state: FirstGameSetupState,
+      state: OathState,
       command: PlacePawn
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
+  ): Either[OathViolation, OathTransition] =
     state match {
       case NoGame => Left(GameNotStarted)
       case _: Ready => Left(GameAlreadyReady)
@@ -340,9 +340,9 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     }
 
   override def evolve(
-      state: FirstGameSetupState,
-      event: FirstGameSetupEvent
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] =
+      state: OathState,
+      event: OathEvent
+  ): Either[OathViolation, OathState] =
     event match {
       case FirstGameStarted(plan) =>
         state match {
@@ -412,7 +412,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
 
   private def validatePlan(
       plan: FirstGameSetupPlan
-  ): Either[FirstGameSetupViolation, Unit] = {
+  ): Either[OathViolation, Unit] = {
     def duplicate[A](values: Vector[A]): Option[A] = {
       val seen = scala.collection.mutable.HashSet.empty[A]
       values.find(value => !seen.add(value))
@@ -462,7 +462,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
 
   private def validateSuitCounts(
       plan: FirstGameSetupPlan
-  ): Either[FirstGameSetupViolation, Unit] =
+  ): Either[OathViolation, Unit] =
     CatalogSuit.values.toVector.sorted
       .collectFirst {
         case suit
@@ -478,7 +478,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
 
   private def validateWorldDeck(
       plan: FirstGameSetupPlan
-  ): Either[FirstGameSetupViolation, Unit] = {
+  ): Either[OathViolation, Unit] = {
     val dealt = 6 + plan.participants.size * 3
     val remaining = plan.denizenOrder.drop(dealt).toSet
     val deckDenizens = plan.worldDeckOrder.collect {
@@ -515,7 +515,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
   private def validateRelics(
       plan: FirstGameSetupPlan,
       duplicate: Option[RelicId]
-  ): Either[FirstGameSetupViolation, Unit] =
+  ): Either[OathViolation, Unit] =
     if (duplicate.nonEmpty)
       Left(DuplicateComponent("relicOrder", duplicate.get.value))
     else if (plan.relicOrder.toSet != relicIds.toSet)
@@ -526,7 +526,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
 
   private def validateHomelands(
       plan: FirstGameSetupPlan
-  ): Either[FirstGameSetupViolation, Unit] = {
+  ): Either[OathViolation, Unit] = {
     val entries = plan.homelandEdifices
     val duplicates = entries.groupBy(_._1).collectFirst {
       case (site, values) if values.size > 1 => site
@@ -580,22 +580,22 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     else None
 
   private def transition(
-      state: FirstGameSetupState,
-      events: Vector[FirstGameSetupEvent],
-      continue: FirstGameContinue
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
+      state: OathState,
+      events: Vector[OathEvent],
+      continue: OathContinue
+  ): Either[OathViolation, OathTransition] =
     events
-      .foldLeft[Either[FirstGameSetupViolation, FirstGameSetupState]](
+      .foldLeft[Either[OathViolation, OathState]](
         Right(state)
       ) {
         case (Right(current), event) => evolve(current, event)
         case (failure @ Left(_), _) => failure
       }
-      .map(FirstGameTransition(_, events, continue))
+      .map(OathTransition(_, events, continue))
 
   private def buildReady(
       progress: InProgress
-  ): Either[FirstGameSetupViolation, ReadyFirstGame] = {
+  ): Either[OathViolation, ReadyGame] = {
     val plan = progress.plan
     val placementMap = progress.placements.map(p => p.playerId -> p.siteId).toMap
     val adviserMap = progress.adviserChoices.toMap
@@ -693,7 +693,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     if (problems.nonEmpty) Left(InvalidAggregate(problems))
     else
       Right(
-        ReadyFirstGame(
+        ReadyGame(
           game,
           plan.participants.map(p => p.playerId -> p.color).toMap,
           FirstGameSupportState(

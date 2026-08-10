@@ -3,10 +3,10 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameContinue._
-import oathdigital.setup.FirstGameSetupEvent._
-import oathdigital.setup.FirstGameSetupState._
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathContinue._
+import oathdigital.setup.OathEvent._
+import oathdigital.setup.OathState._
+import oathdigital.setup.OathViolation._
 
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
@@ -33,9 +33,9 @@ object SearchCommand {
 object Search {
   def handle(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
+      state: OathState,
       command: SearchCommand
-  ): Either[FirstGameSetupViolation, FirstGameTransition] = command match {
+  ): Either[OathViolation, OathTransition] = command match {
     case SearchCommand.Start(playerId, decision, source, drawn) =>
       OathLifecycle.validateAct(state, playerId).flatMap { ready =>
         val player = ready.game.current.players.find(_.player == playerId).get
@@ -64,9 +64,9 @@ object Search {
   }
 
   private def evolveSearchStarted(
-      state: FirstGameSetupState,
+      state: OathState,
       event: SearchStarted
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] =
+  ): Either[OathViolation, OathState] =
     OathLifecycle.validateAct(state, event.playerId).flatMap { ready =>
       val current = ready.game.current
       val player = current.players.find(_.player == event.playerId).get
@@ -106,9 +106,9 @@ object Search {
 
   private def evolveSearchCompleted(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
+      state: OathState,
       event: SearchCompleted
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] =
+  ): Either[OathViolation, OathState] =
     OathLifecycle.validateSearchDecision(state, event.playerId, event.decision).flatMap { ready =>
       val pending = ready.game.current.pending.get
         .asInstanceOf[PendingProcedure.Search]
@@ -117,9 +117,9 @@ object Search {
 
   def evolve(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
-      event: FirstGameSetupEvent
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] = event match {
+      state: OathState,
+      event: OathEvent
+  ): Either[OathViolation, OathState] = event match {
     case started: SearchStarted => evolveSearchStarted(state, started)
     case completed: SearchCompleted => evolveSearchCompleted(catalog, state, completed)
     case _ => Left(InvalidEventOrder("Search received a non-Search event"))
@@ -127,22 +127,22 @@ object Search {
 
   private def transition(
       catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
-      events: Vector[FirstGameSetupEvent],
-      continue: FirstGameContinue
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
-    events.foldLeft[Either[FirstGameSetupViolation, FirstGameSetupState]](Right(state))(
+      state: OathState,
+      events: Vector[OathEvent],
+      continue: OathContinue
+  ): Either[OathViolation, OathTransition] =
+    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
       (next, event) => next.flatMap(evolve(catalog, _, event)))
-      .map(FirstGameTransition(_, events, continue))
+      .map(OathTransition(_, events, continue))
 }
 
 object SearchRules {
-  import FirstGameSetupViolation._
+  import OathViolation._
   import oathdigital.catalog.CardRestrictions
 
   def validateSupportedState(
-      ready: ReadyFirstGame
-  ): Either[FirstGameSetupViolation, Unit] = {
+      ready: ReadyGame
+  ): Either[OathViolation, Unit] = {
     val game = ready.game
     val reason =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile))
@@ -155,15 +155,15 @@ object SearchRules {
       else if (game.current.players.exists(_.relics.nonEmpty))
         Some("held relic Search modifiers are not supported")
       else None
-    reason.fold[Either[FirstGameSetupViolation, Unit]](Right(()))(
+    reason.fold[Either[OathViolation, Unit]](Right(()))(
       value => Left(UnsupportedSearchState(value)))
   }
 
   def cost(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       source: SearchSource,
       origin: Region
-  ): Either[FirstGameSetupViolation, Int] = source match {
+  ): Either[OathViolation, Int] = source match {
     case SearchSource.WorldDeck =>
       Right(math.min(4, 2 + ready.game.current.tracks.visionsDrawn))
     case SearchSource.RegionalDiscard(region) if region == origin => Right(2)
@@ -172,10 +172,10 @@ object SearchRules {
 
   /** World decks use head-as-top; discard piles use last-as-top. */
   def draw(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       source: SearchSource,
       origin: Region
-  ): Either[FirstGameSetupViolation, Vector[WorldCardId]] =
+  ): Either[OathViolation, Vector[WorldCardId]] =
     cost(ready, source, origin).map { _ => source match {
       case SearchSource.WorldDeck =>
         ready.game.current.commonCards.worldDeck.take(3)
@@ -197,10 +197,10 @@ object SearchRules {
 
   def complete(
       catalog: ExecutableCatalog,
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       pending: PendingProcedure.Search,
       event: SearchCompleted
-  ): Either[FirstGameSetupViolation, ReadyFirstGame] = {
+  ): Either[OathViolation, ReadyGame] = {
     val drawn = pending.drawn
     val expectedDiscards = drawn.filterNot(_ == event.kept)
     for {
@@ -234,11 +234,11 @@ object SearchRules {
 
   private def place(
       catalog: ExecutableCatalog,
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       pending: PendingProcedure.Search,
       kept: WorldCardId,
       placement: SearchPlacement
-  ): Either[FirstGameSetupViolation, SearchPlacementResult] = {
+  ): Either[OathViolation, SearchPlacementResult] = {
     val current = ready.game.current
     val player = current.players.find(_.player == pending.actor).get
     placement match {
@@ -325,7 +325,7 @@ object SearchRules {
       catalog: ExecutableCatalog,
       player: PlayerState,
       replace: Option[CardId]
-  ): Either[FirstGameSetupViolation, (Vector[AdviserState], Option[WorldCardId])] = {
+  ): Either[OathViolation, (Vector[AdviserState], Option[WorldCardId])] = {
     val mustReplace = player.advisers.size >= 3
     if (mustReplace != replace.nonEmpty)
       Left(InvalidSearchPlacement(
@@ -355,7 +355,7 @@ object SearchRules {
       site: SiteState,
       playedSuit: String,
       replace: Option[CardId]
-  ): Either[FirstGameSetupViolation, (Vector[SiteDenizenState], Option[CardId])] = {
+  ): Either[OathViolation, (Vector[SiteDenizenState], Option[CardId])] = {
     val capacity = catalog.sites.find(_.id == siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
     if (!full && replace.nonEmpty)
@@ -375,7 +375,7 @@ object SearchRules {
   }
 
   private final case class SearchPlacementResult(
-      ready: ReadyFirstGame,
+      ready: ReadyGame,
       discardedWorld: Vector[WorldCardId] = Vector.empty,
       discardedEdifices: Vector[EdificeId] = Vector.empty
   )

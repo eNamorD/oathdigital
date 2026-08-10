@@ -7,14 +7,14 @@ import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.FirstGameSetupEvent.{
+import oathdigital.setup.OathEvent.{
   GamePawnPlaced,
   FirstGameStarted
 }
-import oathdigital.setup.FirstGameSetupViolation.{CatalogMismatch, WrongPlayer}
-import oathdigital.setup.FirstGameSetupState.Ready
+import oathdigital.setup.OathViolation.{CatalogMismatch, WrongPlayer}
+import oathdigital.setup.OathState.Ready
 import oathdigital.setup.WakeResource
-import oathdigital.setup.ReadyFirstGame
+import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
   private def execute(
@@ -179,7 +179,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("Search draw port cannot inject card identities inconsistent with state") {
     val repository = new InMemoryEventStreamRepository
     val port = new SearchDrawPort {
-      def prepare(ready: ReadyFirstGame, source: SearchSource, origin: Region) =
+      def prepare(ready: ReadyGame, source: SearchSource, origin: Region) =
         Right(Vector(DenizenId("denizen:tampered")))
     }
     val service = new GameApplicationService(catalog, repository, port)

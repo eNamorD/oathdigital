@@ -1,15 +1,13 @@
 package oathdigital.gameplay.phases
 
-import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, TakeWealthRules}
 import oathdigital.model._
 import oathdigital.setup._
-import oathdigital.setup.FirstGameContinue._
-import oathdigital.setup.FirstGameSetupEvent._
-import oathdigital.setup.FirstGameSetupState._
-import oathdigital.setup.FirstGameSetupViolation._
+import oathdigital.setup.OathContinue._
+import oathdigital.setup.OathEvent._
+import oathdigital.setup.OathState._
+import oathdigital.setup.OathViolation._
 
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
-import oathdigital.gameplay.TakeWealthRules
 import GameStateUpdates.updateCurrent
 
 sealed trait WakeCommand extends Product with Serializable
@@ -19,24 +17,22 @@ object WakeCommand {
   final case class EndWake(playerId: PlayerId) extends WakeCommand
 }
 
-
 object Wake {
   def handle(
-      catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
+      state: OathState,
       command: WakeCommand
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
+  ): Either[OathViolation, OathTransition] =
     command match {
       case WakeCommand.TakeWealth(playerId, resource) =>
         OathLifecycle.validateReady(state, playerId).flatMap { ready =>
           val player = ready.game.current.players.find(_.player == playerId).get
           player.pawnSite.toRight(PawnSiteMissing(playerId)).flatMap { siteId =>
             TakeWealthRules.validate(ready, player, siteId, resource).flatMap {
-              _ => transition(
-                catalog,
+              _ =>
+                transition(
                 state,
-                  Vector(WealthTaken(playerId, siteId, resource)),
-                  AwaitingWakeAction(playerId)
+                Vector(WealthTaken(playerId, siteId, resource)),
+                AwaitingWakeAction(playerId)
                 )
             }
           }
@@ -44,30 +40,31 @@ object Wake {
       case WakeCommand.EndWake(playerId) =>
         OathLifecycle.validateReady(state, playerId).flatMap(_ =>
           transition(
-                catalog,
-                state,
+            state,
             Vector(WakeEnded(playerId)),
             ActActionSelection(playerId)
           ))
     }
+
   def evolve(
-      catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
-      event: FirstGameSetupEvent
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] = event match {
+      state: OathState,
+      event: OathEvent
+  ): Either[OathViolation, OathState] = event match {
     case event: WealthTaken => evolveWealth(state, event)
     case WakeEnded(playerId) =>
       OathLifecycle.validateReady(state, playerId).map { ready =>
-        Ready(updateCurrent(ready)(current =>
-          current.copy(turn = current.turn.copy(phase = Phase.Act))))
+        Ready(
+          updateCurrent(ready)(current =>
+            current.copy(turn = current.turn.copy(phase = Phase.Act)))
+        )
       }
     case _ => Left(InvalidEventOrder("Wake received a non-Wake event"))
   }
 
   private def evolveWealth(
-      state: FirstGameSetupState,
+      state: OathState,
       event: WealthTaken
-  ): Either[FirstGameSetupViolation, FirstGameSetupState] =
+  ): Either[OathViolation, OathState] =
     OathLifecycle.validateReady(state, event.playerId).flatMap { ready =>
       val player = ready.game.current.players.find(
         _.player == event.playerId).get
@@ -111,15 +108,18 @@ object Wake {
     }
 
   private def transition(
-      catalog: ExecutableCatalog,
-      state: FirstGameSetupState,
-      events: Vector[FirstGameSetupEvent],
-      continue: FirstGameContinue
-  ): Either[FirstGameSetupViolation, FirstGameTransition] =
-    events.foldLeft[Either[FirstGameSetupViolation, FirstGameSetupState]](Right(state))(
-      (next, event) => next.flatMap(evolve(catalog, _, event)))
-      .map(FirstGameTransition(_, events, continue))
+      state: OathState,
+      events: Vector[OathEvent],
+      continue: OathContinue
+  ): Either[OathViolation, OathTransition] =
+    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
+      (next, event) => next.flatMap(evolve(_, event)))
+      .map(OathTransition(_, events, continue))
 
   def takeWealthPower(siteId: SiteId): PowerUseRef =
-    PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(siteId), PowerId("take-wealth"))
+    PowerUseRef(
+      PowerTiming.Wake,
+      PowerSourceRef.Site(siteId),
+      PowerId("take-wealth")
+    )
 }
