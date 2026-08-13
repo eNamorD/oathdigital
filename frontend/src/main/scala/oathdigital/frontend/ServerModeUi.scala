@@ -811,8 +811,11 @@ object ServerModeUi {
       card.relicValue.map(value => s"Relic value: $value"),
       card.defense.map(value => s"Defense: $value"),
       card.rulesText.map(value => s"Rules: $value")).flatten
-    metadata.foreach(value =>
-      details.appendChild(text("span", "card-property", value)))
+    metadata.zipWithIndex.foreach { case (value, index) =>
+      details.appendChild(text("span", "card-property", value))
+      if (index < metadata.size - 1)
+        details.appendChild(dom.document.createElement("br"))
+    }
     node.appendChild(details)
     node
   }
