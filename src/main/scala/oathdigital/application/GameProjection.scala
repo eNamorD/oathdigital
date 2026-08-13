@@ -36,6 +36,7 @@ final case class SiteCardProjection(
     label: String,
     details: Option[CardDetailsProjection] = None)
 final case class SiteRelicsProjection(facedownCount: Int)
+final case class ForgeCostProjection(favor: Int, secrets: Int)
 final case class SetupSiteProjection(
     siteId: String,
     label: String,
@@ -47,12 +48,14 @@ final case class SetupSiteProjection(
     relics: SiteRelicsProjection,
     defense: Int = 0,
     recoverDifficulty: Option[Int] = None,
+    forgeCost: Option[ForgeCostProjection] = None,
     powers: Vector[SitePowerProjection] = Vector.empty
 )
 final case class SetupRegionProjection(
     regionId: String,
     sites: Vector[SetupSiteProjection],
-    discardCount: Int = 0
+    discardCount: Int = 0,
+    discardTopCardKind: Option[String] = None
 )
 final case class SitePowerProjection(kind: String, label: String, description: Option[String])
 final case class PawnLocationProjection(playerId: String, siteId: String)
@@ -127,6 +130,7 @@ final case class GameProjection(
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     worldDeckCount: Int = 0,
+    worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty
 )
 
@@ -287,13 +291,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           Vector(
             region("cradle", value.game.current.map.cradle,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Cradle).size),
+              value.game.current.commonCards.discard(Region.Cradle)),
             region("provinces", value.game.current.map.provinces,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Provinces).size),
+              value.game.current.commonCards.discard(Region.Provinces)),
             region("hinterland", value.game.current.map.hinterland,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Hinterland).size)
+              value.game.current.commonCards.discard(Region.Hinterland))
           ),
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
@@ -369,6 +373,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             else Vector.empty,
           pendingCardDecision = pendingDecision,
           worldDeckCount = current.commonCards.worldDeck.size,
+          // The World Deck is facedown; even its top card's type is private.
+          worldDeckTopCardKind = Option.when(current.commonCards.worldDeck.nonEmpty)("hidden"),
           playerBoards = viewerOrderedBoards(value, requestingPlayer)
         )
     }
@@ -403,13 +409,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
       id: String,
       sites: Vector[SiteId],
       states: Map[SiteId, SiteState] = Map.empty,
-      discardCount: Int = 0
+      discard: Vector[CardId] = Vector.empty
   ): SetupRegionProjection =
     SetupRegionProjection(
       id,
       sites.map(site =>
         siteProjection(site, states.get(site))),
-      discardCount
+      discard.size,
+      // Regional discards are faceup public piles; the final element is top.
+      discard.lastOption.map(cardKind)
     )
 
   private def siteProjection(
@@ -455,9 +463,16 @@ final class GameProjector(catalog: ExecutableCatalog) {
       // yet have an authorized private projection boundary.
       SiteRelicsProjection(state.fold(0)(_.relics.size)),
       definition.fold(0)(_.defense),
-      definition.flatMap(_.recoverDifficulty),
+      definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(site.recoverDifficulty).flatten),
+      definition.flatMap(_.forgeRequirements).map(tokens =>
+        ForgeCostProjection(tokens.favor, tokens.secrets)),
       definition.toVector.flatMap(_.handlers).map(sitePower)
     )
+  }
+
+  private def cardKind(card: CardId): String = card match {
+    case _: VisionId => "vision"
+    case _ => "denizen"
   }
 
   private def sitePower(handler: String): SitePowerProjection = {

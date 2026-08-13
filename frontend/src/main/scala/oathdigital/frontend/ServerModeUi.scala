@@ -56,13 +56,10 @@ object ServerModeUi {
         case None => ()
         case Some(value) =>
           val presentation = viewerPresentation(value, selectedPlayer)
-          mount.appendChild(status(value))
+          mount.appendChild(actionsPanel(value, presentation))
           mount.appendChild(players(value))
           mount.appendChild(world(value, presentation))
           mount.appendChild(playerBoards(value))
-          mount.appendChild(wakeActions(value, presentation))
-          value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
-            .foreach(decision => mount.appendChild(cardDecisionModal(value, decision)))
       }
       mount.appendChild(controls())
       if (projection.nonEmpty) mount.appendChild(rawEventLog())
@@ -285,6 +282,16 @@ object ServerModeUi {
           node.appendChild(playerReference(value, playerId))
         case None if value.phase == "act-action-selection" =>
           node.textContent = "Act phase — choose your first normal action."
+        case None if value.phase == "wake" =>
+          node.textContent = "Wake phase — take available wealth or end Wake."
+        case None if value.phase == "rest" =>
+          node.textContent = "Rest phase — finish Rest when ready."
+        case None if value.phase == "search-decision" =>
+          node.textContent = "Act phase — resolve your Search."
+        case None if value.phase == "awaiting-adviser" =>
+          node.textContent = "Setup — choose your starting adviser."
+        case None if value.phase == "awaiting-pawn" =>
+          node.textContent = "Setup — choose your pawn's starting site."
         case None =>
           node.appendChild(dom.document.createTextNode(
             s"${value.phase}; active participant: "
@@ -298,12 +305,13 @@ object ServerModeUi {
       node
     }
 
-    def wakeActions(
+    def actionsPanel(
         value: GameProjection,
         presentation: ViewerPresentation
     ): dom.Element = {
       val panel = element("section", "panel wake-actions")
       panel.appendChild(text("h2", "", "Available actions"))
+      panel.appendChild(status(value))
       value.activePlayerResources.foreach { resources =>
         panel.appendChild(text(
           "p",
@@ -405,16 +413,16 @@ object ServerModeUi {
         finish.onclick = _ => submit(GameCommand.FinishRest(selectedPlayer))
         panel.appendChild(finish)
       }
+      value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
+        .foreach(decision => panel.appendChild(cardDecision(value, decision)))
       panel
     }
 
-    def cardDecisionModal(
+    def cardDecision(
         value: GameProjection,
         decision: PendingCardDecision
     ): dom.Element = {
-      val shell = element("section", "card-decision-modal")
-      shell.setAttribute("role", "dialog")
-      shell.setAttribute("aria-modal", "true")
+      val shell = element("section", "card-decision")
       shell.setAttribute("aria-labelledby", "card-decision-title")
       shell.setAttribute("data-decision-kind", decision.kind)
       shell.appendChild(text("h2", "", decision.prompt))
@@ -536,7 +544,8 @@ object ServerModeUi {
           val back = button("Back", "decision-back")
           back.onclick = _ => update(state.copy(stage = CardDecisionStage.Arrange,
             selectedResolution = None, selectedReplacement = None))
-          shell.appendChild(back)
+          val confirmRow = element("div", "decision-final-row")
+          confirmRow.appendChild(back)
           val confirm = button("Final confirm", "decision-confirm")
           confirm.disabled = !state.resolutionValid || !controlsAvailable
           confirm.onclick = _ => for {
@@ -548,7 +557,8 @@ object ServerModeUi {
                 case "adviser" => "adviser-face-down"
                 case other => other
               }, resolution.orientation, state.selectedReplacement)))
-          shell.appendChild(confirm)
+          confirmRow.appendChild(confirm)
+          shell.appendChild(confirmRow)
       }
       shell
     }
@@ -609,7 +619,9 @@ object ServerModeUi {
     ): dom.Element = {
       val panel = element("section", "panel world")
       panel.setAttribute("aria-label", "The World")
-      panel.appendChild(text("h2", "", s"The World · ${value.worldDeckCount} cards"))
+      panel.appendChild(text("h2", "", "The World"))
+      panel.appendChild(pileDisplay("World deck", value.worldDeckCount,
+        value.worldDeckTopCardKind))
       val regions = element("div", "regions")
       value.world.foreach { region =>
         val section = element("section", "region")
@@ -621,8 +633,8 @@ object ServerModeUi {
         }
         section.setAttribute("aria-label", name)
         section.appendChild(text("h3", "region-label", name))
-        section.appendChild(text("p", "discard-count",
-          s"Discard: ${region.discardCount} cards"))
+        section.appendChild(pileDisplay("Discard", region.discardCount,
+          region.discardTopCardKind))
         val sites = element("div", "sites")
         region.sites.foreach { site =>
           val control: dom.Element =
@@ -792,11 +804,47 @@ object ServerModeUi {
     details.setAttribute("role", "tooltip")
     val metadata = Vector(card.suit.map(value => s"Suit: $value"),
       card.restrictions.map(value => s"Restrictions: $value"),
-      card.orientation.map(value => s"Orientation: $value"), card.rulesText).flatten
-    details.textContent = metadata.mkString(" · ")
+      card.orientation.map(value => s"Orientation: $value"),
+      card.side.map(value => s"Side: $value"),
+      Option.when(card.favor > 0)(s"Favor: ${card.favor}"),
+      Option.when(card.secrets > 0)(s"Secrets: ${card.secrets}"),
+      card.relicValue.map(value => s"Relic value: $value"),
+      card.defense.map(value => s"Defense: $value"),
+      card.rulesText.map(value => s"Rules: $value")).flatten
+    metadata.foreach(value =>
+      details.appendChild(text("span", "card-property", value)))
     node.appendChild(details)
     node
   }
+
+  private[frontend] def pileDisplay(
+      label: String,
+      count: Int,
+      topCardKind: Option[String]
+  ): dom.Element = {
+    val pile = element("div", "pile-display")
+    pile.appendChild(text("span", "pile-label", s"$label:"))
+    val css = if (count == 0) "pile-card pile-empty" else "pile-card pile-back"
+    val symbol = pileSymbol(count, topCardKind)
+    val back = text("span", css, symbol)
+    back.setAttribute("role", "img")
+    back.setAttribute("aria-label", if (count == 0) "Empty pile"
+      else topCardKind match {
+        case Some("denizen") => "Denizen card on top"
+        case Some("vision") => "Vision card on top"
+        case _ => "Facedown card; type hidden"
+      })
+    pile.appendChild(back)
+    pile.appendChild(text("span", "pile-count", s"x$count"))
+    pile
+  }
+
+  private[frontend] def pileSymbol(count: Int, topCardKind: Option[String]): String =
+    if (count == 0) "" else topCardKind match {
+      case Some("denizen") => "D"
+      case Some("vision") => "V"
+      case _ => ""
+    }
 
   private[frontend] final case class TakeWealthAction(
       label: String,

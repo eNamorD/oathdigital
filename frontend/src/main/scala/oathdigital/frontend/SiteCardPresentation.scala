@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import oathdigital.presentation._
 
-private[frontend] final case class SiteMetric(label: String, value: Int)
+private[frontend] final case class SiteMetric(label: String, value: String)
 
 private[frontend] final case class VisualRenderPlan(
     instruction: VisualInstruction,
@@ -59,10 +59,13 @@ private[frontend] object SiteCardPresentation {
         ImageLoadResult.NotRequested
       ),
       metrics = Vector(
-        SiteMetric("Favor", site.looseFavor),
-        SiteMetric("Secrets", site.looseSecrets),
-        SiteMetric("Defense", site.defense)
-      ) ++ site.recoverDifficulty.map(SiteMetric("Recover difficulty", _)),
+        SiteMetric("Favor", site.looseFavor.toString),
+        SiteMetric("Secrets", site.looseSecrets.toString),
+        SiteMetric("Defense", site.defense.toString)
+      ) ++ site.forgeCost.map(cost => SiteMetric("Forge cost",
+        s"${cost.favor} favor · ${cost.secrets} secrets"))
+        .orElse(site.recoverDifficulty.map(value =>
+          SiteMetric("Recover difficulty", value.toString))),
       denizenVisuals = denizens,
       denizenEmpty = "None",
       relicSummary =

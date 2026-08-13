@@ -309,6 +309,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       tokens = Tokens(2, 1)
     )
     val current = ready.game.current.copy(
+      commonCards = ready.game.current.commonCards.copy(
+        regionalDiscards = Map(
+          Region.Cradle -> Vector(DenizenId(denizenDefinitions.head.id.value)),
+          Region.Provinces -> Vector(VisionId("vision:conquest")),
+          Region.Hinterland -> Vector.empty)),
       map = ready.game.current.map.copy(
         sites = ready.game.current.map.sites
           .updated(siteId, populated)
@@ -347,10 +352,29 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
     assertEquals(public.world, own.world)
+    assertEquals(own.world.map(region => region.regionId ->
+      region.discardTopCardKind).toMap,
+      Map("cradle" -> Some("denizen"), "provinces" -> Some("vision"),
+        "hinterland" -> None))
+    assertEquals(own.worldDeckTopCardKind,
+      Option.when(current.commonCards.worldDeck.nonEmpty)("hidden"))
+    own.world.flatMap(_.sites).foreach { projected =>
+      val source = catalog.sites.find(_.id.value == projected.siteId).get
+      if (source.capacity == 3) {
+        assertEquals(projected.recoverDifficulty, None)
+        assertEquals(projected.forgeCost.map(cost =>
+          Tokens(cost.favor, cost.secrets)), source.forgeRequirements)
+      } else {
+        assertEquals(projected.forgeCost, None)
+        assertEquals(projected.recoverDifficulty, source.recoverDifficulty)
+      }
+    }
 
     val json = oathdigital.server.GameHttpWire.encodeProjection(public)
     assert(json.contains("\"looseFavor\":2"))
     assert(json.contains("\"facedownCount\":2"))
+    assert(json.contains("\"discardTopCardKind\":\"denizen\""))
+    assert(json.contains("\"worldDeckTopCardKind\":\"hidden\""))
     relicDefinitions.foreach(relic => assert(!json.contains(relic.id.value)))
   }
 

@@ -30,6 +30,9 @@ CR p. 20 also establishes these placement rules:
 The implementation treats the head of `worldDeck` as its top. Regional discard
 vectors retain the established setup representation: the last element is the
 top, so draws read from the end and discards append in the chosen order.
+Regional discard tops are faceup public information, so projections include
+their Denizen/Vision kind for pile display. The facedown World Deck projects a
+neutral back and count only; its top-card kind remains hidden.
 
 The implementation protects searched-card fronts as decision-owner-only.
 CR p. 42 describes facedown cards

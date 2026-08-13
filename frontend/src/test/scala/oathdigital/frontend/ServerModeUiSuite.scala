@@ -162,9 +162,9 @@ class ServerModeUiSuite extends FunSuite {
     val details = SiteCardPresentation.from(site)
 
     assertEquals(details.metrics, Vector(
-      SiteMetric("Favor", 2),
-      SiteMetric("Secrets", 1),
-      SiteMetric("Defense", 0)
+      SiteMetric("Favor", "2"),
+      SiteMetric("Secrets", "1"),
+      SiteMetric("Defense", "0")
     ))
     assertEquals(site.denizens.map(_.label), Vector("Fox", "Owl"))
     assertEquals(site.denizens.map(_.denizenId),
@@ -184,9 +184,29 @@ class ServerModeUiSuite extends FunSuite {
       GameSiteRelics(0)
     ))
 
-    assertEquals(details.metrics.map(_.value), Vector(0, 0, 0))
+    assertEquals(details.metrics.map(_.value), Vector("0", "0", "0"))
     assertEquals(details.denizenEmpty, "None")
     assertEquals(details.relicSummary, "None")
+  }
+
+  test("site metric uses Forge cost instead of Recover difficulty") {
+    val forged = SiteCardPresentation.from(GameSite("forge", "Forge", 0, 0,
+      3, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(4),
+      forgeCost = Some(ForgeCost(2, 1))))
+    assert(forged.metrics.contains(SiteMetric("Forge cost", "2 favor · 1 secrets")))
+    assert(!forged.metrics.exists(_.label == "Recover difficulty"))
+
+    val recover = SiteCardPresentation.from(GameSite("recover", "Recover", 0, 0,
+      2, 0, Vector.empty, GameSiteRelics(0), recoverDifficulty = Some(3)))
+    assert(recover.metrics.contains(SiteMetric("Recover difficulty", "3")))
+    assert(!recover.metrics.exists(_.label == "Forge cost"))
+  }
+
+  test("pile symbols distinguish public tops, hidden tops, and empty piles") {
+    assertEquals(ServerModeUi.pileSymbol(2, Some("denizen")), "D")
+    assertEquals(ServerModeUi.pileSymbol(1, Some("vision")), "V")
+    assertEquals(ServerModeUi.pileSymbol(3, Some("hidden")), "")
+    assertEquals(ServerModeUi.pileSymbol(0, None), "")
   }
 
   test("site and denizen visuals deterministically fall back without assets") {

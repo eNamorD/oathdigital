@@ -104,6 +104,7 @@ object GameHttpWire {
           ujson.Obj(
             "regionId" -> region.regionId,
             "discardCount" -> region.discardCount,
+            "discardTopCardKind" -> region.discardTopCardKind.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
             "sites" -> ujson.Arr.from(region.sites.map { site =>
               ujson.Obj(
                 "siteId" -> site.siteId,
@@ -114,6 +115,8 @@ object GameHttpWire {
                 "relicCapacity" -> site.relicCapacity,
                 "defense" -> site.defense,
                 "recoverDifficulty" -> site.recoverDifficulty.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+                "forgeCost" -> site.forgeCost.fold[ujson.Value](ujson.Null)(cost => ujson.Obj(
+                  "favor" -> cost.favor, "secrets" -> cost.secrets)),
                 "powers" -> ujson.Arr.from(site.powers.map(power => ujson.Obj(
                   "kind" -> power.kind, "label" -> power.label,
                   "description" -> power.description.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
@@ -145,6 +148,7 @@ object GameHttpWire {
         "ready" -> projection.ready,
         "completed" -> projection.completed,
         "worldDeckCount" -> projection.worldDeckCount,
+        "worldDeckTopCardKind" -> projection.worldDeckTopCardKind.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
         "activePlayerResources" -> projection.activePlayerResources.fold[
           ujson.Value](ujson.Null)(resources => ujson.Obj(
             "favor" -> resources.favor,

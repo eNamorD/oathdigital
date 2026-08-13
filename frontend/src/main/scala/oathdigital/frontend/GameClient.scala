@@ -67,10 +67,13 @@ final case class CardDetails(
     cardId: String, cardKind: String, name: String,
     suit: Option[String] = None, restrictions: Option[String] = None,
     rulesText: Option[String] = None, orientation: Option[String] = None,
+    side: Option[String] = None, favor: Int = 0, secrets: Int = 0,
+    relicValue: Option[Int] = None, defense: Option[Int] = None,
     hidden: Boolean = false)
 final case class GameSiteCard(denizenId: String, label: String,
     details: Option[CardDetails] = None)
 final case class GameSiteRelics(facedownCount: Int)
+final case class ForgeCost(favor: Int, secrets: Int)
 final case class GameSite(
     siteId: String,
     label: String,
@@ -82,10 +85,12 @@ final case class GameSite(
     relics: GameSiteRelics,
     defense: Int = 0,
     recoverDifficulty: Option[Int] = None,
+    forgeCost: Option[ForgeCost] = None,
     powers: Vector[SitePower] = Vector.empty
 )
 final case class SitePower(kind: String, label: String, description: Option[String])
-final case class GameRegion(regionId: String, sites: Vector[GameSite], discardCount: Int = 0)
+final case class GameRegion(regionId: String, sites: Vector[GameSite], discardCount: Int = 0,
+    discardTopCardKind: Option[String] = None)
 final case class GamePawn(playerId: String, siteId: String)
 final case class ActivePlayerResources(
     favor: Int,
@@ -139,6 +144,7 @@ final case class GameProjection(
     legalTrades: Vector[LegalTrade] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecision] = None,
     worldDeckCount: Int = 0,
+    worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoard] = Vector.empty
 )
 
@@ -452,6 +458,12 @@ object GameJson {
                 case None => Right(0)
                 case Some(_) => int(item, "discardCount", path)
               }
+              discardTopValue <- optionalField(item, "discardTopCardKind")
+              discardTop <- discardTopValue match {
+                case None => Right(None)
+                case Some(value) if value == null => Right(None)
+                case Some(_) => optionalString(item, "discardTopCardKind", path)
+              }
               sites <- array(item, "sites", path).flatMap(traverse(_, "sites") {
                 (site, sitePath) =>
                   for {
@@ -498,6 +510,17 @@ object GameJson {
                       case _ => Left(GameClientFailure.DecodeFailure(
                         s"$sitePath.recoverDifficulty", "expected integer or null"))
                     }
+                    forgeValue <- optionalField(site, "forgeCost")
+                    forge <- forgeValue match {
+                      case None => Right(None)
+                      case Some(value) if value == null => Right(None)
+                      case Some(value) => objectValue(value, s"$sitePath.forgeCost").flatMap { obj =>
+                        for {
+                          favor <- int(obj, "favor", s"$sitePath.forgeCost")
+                          secrets <- int(obj, "secrets", s"$sitePath.forgeCost")
+                        } yield Some(ForgeCost(favor, secrets))
+                      }
+                    }
                     powers <- optionalField(site, "powers").flatMap {
                       case None => Right(Vector.empty)
                       case Some(_) => array(site, "powers", sitePath).flatMap(
@@ -517,10 +540,11 @@ object GameJson {
                     GameSiteRelics(facedownCount),
                     defense,
                     recover,
+                    forge,
                     powers
                   )
               })
-            } yield GameRegion(id, sites, discardCount)
+            } yield GameRegion(id, sites, discardCount, discardTop)
         })
         pawns <- array(root, "pawnLocations", "$").flatMap(
           traverse(_, "pawnLocations") { (item, path) =>
@@ -653,6 +677,12 @@ object GameJson {
           case None => Right(0)
           case Some(_) => int(root, "worldDeckCount", "$")
         }
+        worldDeckTopValue <- optionalField(root, "worldDeckTopCardKind")
+        worldDeckTop <- worldDeckTopValue match {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(_) => optionalString(root, "worldDeckTopCardKind", "$")
+        }
         boards <- optionalField(root, "playerBoards").flatMap {
           case None => Right(Vector.empty)
           case Some(_) => array(root, "playerBoards", "$").flatMap(traverse(_, "playerBoards") {
@@ -698,6 +728,7 @@ object GameJson {
         trades,
         pendingDecision,
         worldDeckCount,
+        worldDeckTop,
         boards
       )
     }
@@ -730,9 +761,30 @@ object GameJson {
     restrictions <- optionalString(value, "restrictions", path)
     rulesText <- optionalString(value, "rulesText", path)
     orientation <- optionalString(value, "orientation", path)
+    side <- optionalText(value, "side", path)
+    favor <- optionalInt(value, "favor", path).map(_.getOrElse(0))
+    secrets <- optionalInt(value, "secrets", path).map(_.getOrElse(0))
+    relicValue <- optionalInt(value, "relicValue", path)
+    defense <- optionalInt(value, "defense", path)
     hidden <- bool(value, "hidden", path)
   } yield CardDetails(id, kind, name, suit, restrictions, rulesText,
-    orientation, hidden)
+    orientation, side, favor, secrets, relicValue, defense, hidden)
+
+  private def optionalText(value: js.Dynamic, name: String, path: String)
+      : Either[GameClientFailure, Option[String]] =
+    optionalField(value, name).flatMap {
+      case None => Right(None)
+      case Some(raw) if raw == null => Right(None)
+      case Some(_) => optionalString(value, name, path)
+    }
+
+  private def optionalInt(value: js.Dynamic, name: String, path: String)
+      : Either[GameClientFailure, Option[Int]] =
+    optionalField(value, name).flatMap {
+      case None => Right(None)
+      case Some(raw) if raw == null => Right(None)
+      case Some(_) => int(value, name, path).map(Some(_))
+    }
 
   private def economyTarget(obj: js.Dynamic, path: String)
       : Either[GameClientFailure, EconomyTarget] = for {

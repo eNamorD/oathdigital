@@ -37,8 +37,9 @@ The next milestone has not yet been selected.
 
 - [x] **Gameplay UI information and generic card decisions.** Starting-adviser
   and Search choices share one private typed decision protocol and accessible
-  modal; Search has local keep/discard ordering and explicit authoritative
-  placement/replacement resolution. World piles, detailed sites,
+  inline Actions panel; Search has local keep/discard ordering and explicit authoritative
+  placement/replacement resolution. Typed pile displays preserve facedown World
+  Deck privacy while exposing public regional-discard tops; detailed sites,
   viewer-relative redacted player boards, bottom development controls, player
   selectors, and a loopback-only raw event log are projected and rendered
   without new assets.
