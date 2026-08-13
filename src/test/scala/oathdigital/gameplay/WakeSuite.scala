@@ -84,6 +84,37 @@ class WakeSuite extends munit.FunSuite {
     assertEquals(value.game.current.turn.phase, Phase.Act)
   }
 
+  test("End Wake remains legal while another player has a revealed Vision") {
+    val state = ready()
+    val active = activePlayer(state)
+    val Ready(value) = state: @unchecked
+    val other = value.game.current.players.indexWhere(_.player != active)
+    val players = value.game.current.players.updated(
+      other,
+      value.game.current.players(other).copy(
+        revealedVision = Some(VisionState(
+          VisionId("V1"),
+          Orientation.FaceUp
+        ))
+      )
+    )
+    val visionRevealed = Ready(value.copy(game = value.game.copy(current =
+      value.game.current.copy(players = players))))
+
+    val accepted = rules.handle(
+      visionRevealed,
+      WakeCommand.EndWake(active)
+    ).toOption.get
+    val Ready(after) = accepted.state: @unchecked
+
+    assertEquals(accepted.events, Vector(WakeEnded(active)))
+    assertEquals(after.game.current.turn.phase, Phase.Act)
+    assertEquals(
+      after.game.current.players(other).revealedVision,
+      Some(VisionState(VisionId("V1"), Orientation.FaceUp))
+    )
+  }
+
   test("Take Wealth rejects enemy pawn missing resource and wrong actor") {
     val state = ready(sharedEnemy = true)
     val active = activePlayer(state)

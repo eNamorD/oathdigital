@@ -84,8 +84,6 @@ private[gameplay] object OathLifecycle {
           Left(WrongPhase(Phase.Wake, current.turn.phase))
         else if (current.title.holder.nonEmpty)
           Left(UnsupportedWakeVictoryState("Oathkeeper or Usurper is held"))
-        else if (current.players.exists(_.revealedVision.nonEmpty))
-          Left(UnsupportedWakeVictoryState("a Vision is revealed"))
         else Right(ready)
     }
 
