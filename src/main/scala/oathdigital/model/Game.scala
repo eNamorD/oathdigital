@@ -124,8 +124,15 @@ object PendingProcedure {
   final case class Campaign(decision: DecisionId, actor: PlayerId)
       extends PendingProcedure
 
-  final case class Recover(decision: DecisionId, actor: PlayerId)
-      extends PendingProcedure
+  final case class Recover(
+      decision: DecisionId,
+      actor: PlayerId,
+      site: SiteId,
+      difficulty: Int,
+      rolls: Vector[Vector[DefenseDieFace]],
+      supplySpent: Int,
+      successful: Boolean
+  ) extends PendingProcedure
 
   final case class Negotiation(
       decision: DecisionId,
@@ -138,6 +145,23 @@ object PendingProcedure {
       task: ChronicleTask,
       taskHolders: Map[ChronicleTask, PlayerId]
   ) extends PendingProcedure
+}
+
+sealed trait DefenseDieFace extends Product with Serializable
+object DefenseDieFace {
+  case object Blank extends DefenseDieFace
+  case object OneShield extends DefenseDieFace
+  case object TwoShields extends DefenseDieFace
+  case object Doubler extends DefenseDieFace
+
+  def score(faces: Vector[DefenseDieFace]): Int = {
+    val shields = faces.map {
+      case OneShield => 1
+      case TwoShields => 2
+      case _ => 0
+    }.sum
+    shields * (1 << faces.count(_ == Doubler))
+  }
 }
 
 sealed trait SearchSource extends Product with Serializable

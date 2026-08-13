@@ -6,6 +6,18 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class HttpGameClientSuite extends FunSuite {
+  test("Recover commands encode decisions and private relic resolution") {
+    assert(GameJson.encodeCommand(20, GameCommand.BeginRecover("red"))
+      .contains("\"type\":\"beginRecover\""))
+    assert(GameJson.encodeCommand(21, GameCommand.AddRecoverDice("red", "recover-20"))
+      .contains("\"decisionId\":\"recover-20\""))
+    assert(GameJson.encodeCommand(21, GameCommand.StopRecover("red", "recover-20"))
+      .contains("\"type\":\"stopRecover\""))
+    val take = GameJson.encodeCommand(22, GameCommand.ResolveCardDecision(
+      "red", "recover-20", DecisionResolution.TakeFacedownRelic("relic:R1")))
+    assert(take.contains("\"kind\":\"take-facedown-relic\""))
+    assert(take.contains("\"relicId\":\"relic:R1\""))
+  }
   test("Rest commands encode current sequence and actor") {
     val begin = GameJson.encodeCommand(12L, GameCommand.BeginRest("red-exile"))
     val finish = GameJson.encodeCommand(13L, GameCommand.FinishRest("red-exile"))

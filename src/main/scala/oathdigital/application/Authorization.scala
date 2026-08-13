@@ -80,6 +80,12 @@ final case class AuthorizedPlayer private (
   def beginSearch(source: SearchSource): GameCommand =
     GameCommand.BeginSearch(access.playerId, source)
 
+  def beginRecover: GameCommand = GameCommand.BeginRecover(access.playerId)
+  def addRecoverDice(decision: DecisionId): GameCommand =
+    GameCommand.AddRecoverDice(access.playerId, decision)
+  def stopRecover(decision: DecisionId): GameCommand =
+    GameCommand.StopRecover(access.playerId, decision)
+
   def completeSearch(decision: DecisionId, kept: WorldCardId,
       discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
     GameCommand.CompleteSearch(

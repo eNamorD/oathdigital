@@ -5,11 +5,29 @@ import oathdigital.setup._
 import oathdigital.model._
 import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken}
+  WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
+
+  test("v7 Recover events round-trip exact dice costs and chosen relic") {
+    val events = Vector[OathEvent](
+      RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
+        Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
+      RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
+      RelicRecovered(PlayerId("red"), DecisionId("recover-2"), SiteId("site"),
+        RelicId("relic")))
+    val encoded = GameEventWire.encodeStream("recover", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
+      .toOption.get
+    val decoded = GameEventWire.decodeStream(encoded).toOption.get
+    assertEquals(decoded.map(_.formatVersion), Vector(7, 7, 7))
+    assertEquals(decoded.map(_.event), events)
+    val tampered = ujson.read(encoded).arr
+    tampered.head("payload")("dice")(0) = "opaque-integer"
+    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+  }
 
   test("v6 Economy events round-trip source cost yield and NF resource mode") {
     val denizen = DenizenId(catalog.denizens.head.id.value)

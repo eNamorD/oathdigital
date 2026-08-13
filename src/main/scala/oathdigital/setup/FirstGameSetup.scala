@@ -119,6 +119,15 @@ object OathEvent {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends OathEvent
+  final case class RecoverRolled(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      supplySpent: Int, dice: Vector[DefenseDieFace]
+  ) extends OathEvent
+  final case class RecoverStopped(playerId: PlayerId, decision: DecisionId)
+      extends OathEvent
+  final case class RelicRecovered(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId, relicId: RelicId
+  ) extends OathEvent
   final case class RestStarted(playerId: PlayerId) extends OathEvent
   final case class RestCompleted(
       playerId: PlayerId,
@@ -156,6 +165,10 @@ object OathContinue {
   final case class AwaitingRestAction(playerId: PlayerId)
       extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
+  final case class AwaitingRecoverRoll(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
+  final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
 }
 
@@ -232,6 +245,11 @@ object OathViolation {
       extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)
       extends OathViolation
+  final case class UnsupportedRecoverState(reason: String) extends OathViolation
+  final case class RecoverDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class RecoverOutcomeMismatch(detail: String) extends OathViolation
+  final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
   final case class RestOutcomeMismatch(detail: String)

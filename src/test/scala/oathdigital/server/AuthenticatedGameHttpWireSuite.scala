@@ -3,6 +3,26 @@ package oathdigital.server
 import oathdigital.model.{EconomyTargetRef, EdificeId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated Recover intents and private relic choice are actor-free") {
+    val begin = """{"expectedNextSequence":20,"intent":{"type":"beginRecover"}}"""
+    val add = """{"expectedNextSequence":21,"intent":{"type":"addRecoverDice","decisionId":"recover-20"}}"""
+    val stop = """{"expectedNextSequence":21,"intent":{"type":"stopRecover","decisionId":"recover-20"}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      GameIntent.BeginRecover)
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(add).toOption.get.intent,
+      GameIntent.AddRecoverDice(oathdigital.model.DecisionId("recover-20")))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(stop).toOption.get.intent,
+      GameIntent.StopRecover(oathdigital.model.DecisionId("recover-20")))
+    val take = """{"expectedNextSequence":22,"intent":{"type":"resolveCardDecision","decisionId":"recover-20","resolution":{"kind":"take-facedown-relic","relicId":"relic:R1"}}}"""
+    val resolved = AuthenticatedGameHttpWire.decodeCommand(take).toOption.get.intent
+      .asInstanceOf[GameIntent.ResolveCardDecision]
+    assertEquals(resolved.resolution,
+      oathdigital.application.CardDecisionResolution.TakeFacedownRelic(
+        oathdigital.model.RelicId("relic:R1")))
+    val spoofed = ujson.read(add).obj
+    spoofed("intent").obj("playerId") = "other"
+    assert(AuthenticatedGameHttpWire.decodeCommand(ujson.write(spoofed)).isLeft)
+  }
   test("generic authenticated card decision is actor-free") {
     val valid = """{"expectedNextSequence":2,"intent":{"type":"resolveCardDecision","decisionId":"setup-adviser-0-p2","resolution":{"kind":"starting-adviser","adviserId":"denizen:a"}}}"""
     assert(AuthenticatedGameHttpWire.decodeCommand(valid).toOption.get.intent

@@ -24,6 +24,9 @@ object GameIntent {
   final case class Trade(target: EconomyTargetRef, resource: TradeResource)
       extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
+  case object BeginRecover extends GameIntent
+  final case class AddRecoverDice(decision: DecisionId) extends GameIntent
+  final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class CompleteSearch(
       decision: DecisionId,
       kept: WorldCardId,
@@ -177,6 +180,16 @@ object AuthenticatedGameHttpWire {
           }
       case "completeSearch" =>
         Left(HttpInputError("$.intent.type", "use resolveCardDecision"))
+      case "beginRecover" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.BeginRecover)
+      case "addRecoverDice" =>
+        exactFields(obj, Set("type", "decisionId"), "$.intent")
+          .flatMap(_ => stringField(obj, "decisionId", "$.intent"))
+          .map(id => GameIntent.AddRecoverDice(DecisionId(id)))
+      case "stopRecover" =>
+        exactFields(obj, Set("type", "decisionId"), "$.intent")
+          .flatMap(_ => stringField(obj, "decisionId", "$.intent"))
+          .map(id => GameIntent.StopRecover(DecisionId(id)))
       case "resolveCardDecision" =>
         exactFields(obj, Set("type", "decisionId", "resolution"), "$.intent")
           .flatMap { _ => for {
@@ -209,6 +222,10 @@ object AuthenticatedGameHttpWire {
         placementValue <- field(obj, "placement", path)
         placement <- decodePlacement(placementValue, s"$path.placement")
       } yield CardDecisionResolution.Search(kept, discarded, placement)
+      case "take-facedown-relic" => for {
+        _ <- exactFields(obj, Set("kind", "relicId"), path)
+        id <- stringField(obj, "relicId", path)
+      } yield CardDecisionResolution.TakeFacedownRelic(RelicId(id))
       case other => Left(HttpInputError(s"$path.kind", s"unknown decision resolution '$other'"))
     }
   }

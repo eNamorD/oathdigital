@@ -11,7 +11,8 @@ No item is currently assigned.
 
 ## Next
 
-The next milestone has not yet been selected.
+**Forge**, after Campaign and site-rule support make its rule and modifier
+interactions meaningfully legal rather than a disconnected base action.
 
 ## Later
 
@@ -34,6 +35,14 @@ The next milestone has not yet been selected.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **L6e — Bounded Recover action slice.** Exile-only,
+  unaltered-Foundation Recover spends Supply for recorded pairs of typed defense
+  dice, accumulates shields and doublers across rolls, permits an unsuccessful
+  stop, and privately takes exactly one facedown site relic on success. Typed
+  pending procedure state, replay-validated v7 events, injected server
+  randomness, authenticated intents, viewer-relative projections, and inline
+  Scala.js controls preserve deterministic replay and hidden information.
 
 - [x] **Gameplay UI information and generic card decisions.** Starting-adviser
   and Search choices share one private typed decision protocol and accessible

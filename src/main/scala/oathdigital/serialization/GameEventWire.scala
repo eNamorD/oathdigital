@@ -30,6 +30,7 @@ object GameEventWire {
   val SearchFormatVersion: Int = 4
   val RestFormatVersion: Int = 5
   val EconomyFormatVersion: Int = 6
+  val RecoverFormatVersion: Int = 7
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -44,6 +45,9 @@ object GameEventWire {
   val SearchCompletedType = "gameplay.search-completed"
   val RestStartedType = "gameplay.rest-started"
   val RestCompletedType = "gameplay.rest-completed"
+  val RecoverRolledType = "gameplay.recover-rolled"
+  val RecoverStoppedType = "gameplay.recover-stopped"
+  val RelicRecoveredType = "gameplay.relic-recovered"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -143,7 +147,7 @@ object GameEventWire {
           _ <-
             if (version == FormatVersion || version == GameplayFormatVersion ||
                 version == SearchFormatVersion || version == RestFormatVersion ||
-                version == EconomyFormatVersion)
+                version == EconomyFormatVersion || version == RecoverFormatVersion)
               Right(())
             else
               Left(
@@ -255,6 +259,9 @@ object GameEventWire {
       case _: SearchCompleted => SearchCompletedType
       case _: RestStarted => RestStartedType
       case _: RestCompleted => RestCompletedType
+      case _: RecoverRolled => RecoverRolledType
+      case _: RecoverStopped => RecoverStoppedType
+      case _: RelicRecovered => RelicRecoveredType
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
@@ -262,6 +269,7 @@ object GameEventWire {
     case _: Mustered | _: Traded => EconomyFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
+    case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered => RecoverFormatVersion
     case _ => FormatVersion
   }
 
@@ -336,6 +344,15 @@ object GameEventWire {
           "nextPlayerId" -> next.value,
           "nextRound" -> round
         )
+      case RecoverRolled(player, decision, site, spent, dice) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "supplySpent" -> spent,
+        "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
+      case RecoverStopped(player, decision) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value)
+      case RelicRecovered(player, decision, site, relic) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "relicId" -> relic.value)
     }
 
   private def decodePayload(
@@ -468,6 +485,18 @@ object GameEventWire {
             PlayerId(payload("playerId").str), entries.toMap,
             returnedSecrets, refreshedSupply,
             PlayerId(payload("nextPlayerId").str), nextRound)
+        case RecoverRolledType => for {
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          dice <- traverse(payload("dice").arr.toVector)(v =>
+            decodeDefenseFace(v.str, s"$path.dice"))
+        } yield RecoverRolled(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          spent, dice)
+        case RecoverStoppedType => Right(RecoverStopped(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
+        case RelicRecoveredType => Right(RelicRecovered(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
+          SiteId(payload("siteId").str), RelicId(payload("relicId").str)))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -486,7 +515,9 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == MusteredType || eventType == TradedType)
+      if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
+          eventType == RelicRecoveredType) RecoverFormatVersion
+      else if (eventType == MusteredType || eventType == TradedType)
         EconomyFormatVersion
       else if (eventType == RestStartedType || eventType == RestCompletedType)
         RestFormatVersion
@@ -717,6 +748,21 @@ object GameEventWire {
 
   private def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
+
+  private def encodeDefenseFace(face: DefenseDieFace): String = face match {
+    case DefenseDieFace.Blank => "blank"
+    case DefenseDieFace.OneShield => "one-shield"
+    case DefenseDieFace.TwoShields => "two-shields"
+    case DefenseDieFace.Doubler => "doubler"
+  }
+
+  private def decodeDefenseFace(value: String, path: String) = value match {
+    case "blank" => Right(DefenseDieFace.Blank)
+    case "one-shield" => Right(DefenseDieFace.OneShield)
+    case "two-shields" => Right(DefenseDieFace.TwoShields)
+    case "doubler" => Right(DefenseDieFace.Doubler)
+    case other => Left(InvalidValue(path, s"unknown defense die face '$other'"))
+  }
 
   private def encodeWorldCard(id: WorldCardId): ujson.Value = id match {
     case value: DenizenId => ujson.Obj("kind" -> "denizen", "id" -> value.value)

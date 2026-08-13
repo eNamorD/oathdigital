@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.{EconomyCommand, SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.actions.{EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -39,6 +39,11 @@ object GameCommand {
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
+  final case class BeginRecover(playerId: PlayerId) extends GameCommand
+  final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
+      extends GameCommand
+  final case class StopRecover(playerId: PlayerId, decision: DecisionId)
+      extends GameCommand
   /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class CompleteSearch(
       playerId: PlayerId,
@@ -65,6 +70,21 @@ object CardDecisionResolution {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends CardDecisionResolution
+  final case class TakeFacedownRelic(relicId: RelicId)
+      extends CardDecisionResolution
+}
+
+trait DefenseDicePort {
+  def rollTwo(): Vector[DefenseDieFace]
+}
+object DefenseDicePort {
+  val random: DefenseDicePort = new DefenseDicePort {
+    private val rng = new scala.util.Random()
+    private val faces = Vector(DefenseDieFace.Blank, DefenseDieFace.Blank,
+      DefenseDieFace.OneShield, DefenseDieFace.OneShield,
+      DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
+    def rollTwo(): Vector[DefenseDieFace] = Vector.fill(2)(faces(rng.nextInt(6)))
+  }
 }
 
 object CardDecisionIds {
@@ -137,7 +157,8 @@ object GameApplicationError {
 final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
-    searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative
+    searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
+    defenseDicePort: DefenseDicePort = DefenseDicePort.random
 ) {
   import GameApplicationError._
   import RepositoryAppendResult._
@@ -312,6 +333,14 @@ final class GameApplicationService(
           } yield result
         case _ => Left(OathViolation.GameNotStarted)
       }
+      case GameCommand.BeginRecover(playerId) =>
+        rules.handle(state, RecoverCommand.Roll(playerId,
+          DecisionId(s"recover-$nextSequence"), defenseDicePort.rollTwo()))
+      case GameCommand.AddRecoverDice(playerId, decision) =>
+        rules.handle(state, RecoverCommand.Roll(playerId, decision,
+          defenseDicePort.rollTwo()))
+      case GameCommand.StopRecover(playerId, decision) =>
+        rules.handle(state, RecoverCommand.Stop(playerId, decision))
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
         rules.handle(state, SearchCommand.Complete(
@@ -333,6 +362,9 @@ final class GameApplicationService(
           case CardDecisionResolution.Search(kept, discarded, placement) =>
             rules.handle(state, SearchCommand.Complete(
               playerId, decision, kept, discarded, placement))
+          case CardDecisionResolution.TakeFacedownRelic(relicId) =>
+            rules.handle(state, RecoverCommand.TakeRelic(
+              playerId, decision, relicId))
         }
       case GameCommand.BeginRest(playerId) =>
         rules.handle(state, RestCommand.Begin(playerId))

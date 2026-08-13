@@ -152,8 +152,8 @@ and checked-in fixtures directly when doing so simplifies the model.
 The structural extraction and runtime naming cleanup are complete. New work
 should preserve those boundaries:
 
-Common Act lifecycle validation, Rest, and the combined Economy slice are now
-implemented. Future action modules should reuse the same command/replay/
+Common Act lifecycle validation, Rest, the combined Economy slice, and bounded
+Recover are now implemented. Future action modules should reuse the same command/replay/
 projection legality path. Split Economy only if later decision flows create
 independent reasons to change.
 

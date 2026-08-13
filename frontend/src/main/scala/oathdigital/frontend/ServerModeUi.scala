@@ -366,6 +366,12 @@ object ServerModeUi {
               selectedPlayer, source.kind, source.region))
             panel.appendChild(search)
           }
+          if (value.legalControls.contains("beginRecover")) {
+            val recover = button("Recover (1 Supply)", "act-action recover-action")
+            recover.disabled = !controlsAvailable
+            recover.onclick = _ => submit(GameCommand.BeginRecover(selectedPlayer))
+            panel.appendChild(recover)
+          }
           val travel = button("Travel", "act-action travel-action")
           travel.disabled = !controlsAvailable ||
             value.legalTravelDestinations.isEmpty ||
@@ -401,6 +407,26 @@ object ServerModeUi {
             rest.onclick = _ => submit(GameCommand.BeginRest(selectedPlayer))
             panel.appendChild(rest)
           }
+        }
+      }
+      value.recover.filter(_ => presentation.showGameplayControls).foreach { recover =>
+        panel.appendChild(text("h2", "", "Recover"))
+        panel.appendChild(text("p", "recover-results",
+          s"Dice: ${recover.dice.mkString(", ")} · ${recover.shields}/${recover.difficulty} shields · " +
+            s"${recover.supplySpent} Supply spent · ${recover.supplyRemaining} remaining"))
+        if (recover.canAddDice) {
+          val add = button("Spend 1 Supply for two dice", "recover-add")
+          add.disabled = !controlsAvailable
+          add.onclick = _ => submit(GameCommand.AddRecoverDice(
+            selectedPlayer, recover.decisionId))
+          panel.appendChild(add)
+        }
+        if (recover.canStop) {
+          val stop = button("Stop Recover", "recover-stop")
+          stop.disabled = !controlsAvailable
+          stop.onclick = _ => submit(GameCommand.StopRecover(
+            selectedPlayer, recover.decisionId))
+          panel.appendChild(stop)
         }
       }
       if (value.phase == "rest" && presentation.showGameplayControls) {
@@ -499,7 +525,16 @@ object ServerModeUi {
         zones
       }
 
-      if (decision.kind == "starting-adviser") {
+      if (decision.kind == "recover-relic") {
+        decision.cards.foreach { card =>
+          val choose = button(s"Take ${card.name} facedown", "resolution-choice")
+          choose.disabled = !controlsAvailable
+          choose.onclick = _ => submit(GameCommand.ResolveCardDecision(
+            selectedPlayer, decision.decisionId,
+            DecisionResolution.TakeFacedownRelic(card.cardId)))
+          shell.appendChild(choose)
+        }
+      } else if (decision.kind == "starting-adviser") {
         shell.appendChild(arrangementZones(showDiscardOrder = false))
         val confirm = button("Confirm adviser", "decision-confirm")
         confirm.disabled = !state.arrangementValid(decision.cards) || !controlsAvailable

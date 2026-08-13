@@ -143,10 +143,14 @@ final case class GameProjection(
     legalMusters: Vector[LegalMuster] = Vector.empty,
     legalTrades: Vector[LegalTrade] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecision] = None,
+    recover: Option[RecoverState] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoard] = Vector.empty
 )
+final case class RecoverState(decisionId: String, dice: Vector[String],
+    shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
+    canAddDice: Boolean, canStop: Boolean)
 
 sealed trait GameCommand
 object GameCommand {
@@ -166,6 +170,9 @@ object GameCommand {
       extends GameCommand
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
       extends GameCommand
+  final case class BeginRecover(playerId: String) extends GameCommand
+  final case class AddRecoverDice(playerId: String, decisionId: String) extends GameCommand
+  final case class StopRecover(playerId: String, decisionId: String) extends GameCommand
   final case class CompleteSearch(
       playerId: String,
       decisionId: String,
@@ -185,6 +192,7 @@ object DecisionResolution {
   final case class Search(kept: CardDetails, discarded: Vector[CardDetails],
       placement: String, orientation: Option[String],
       replacement: Option[CardDetails]) extends DecisionResolution
+  final case class TakeFacedownRelic(relicId: String) extends DecisionResolution
 }
 
 sealed trait GameClientFailure {
@@ -393,6 +401,14 @@ object GameJson {
           `type` = "beginSearch", playerId = player, source = source)
         region.foreach(value.updateDynamic("region")(_))
         value
+      case GameCommand.BeginRecover(player) =>
+        js.Dynamic.literal(`type` = "beginRecover", playerId = player)
+      case GameCommand.AddRecoverDice(player, decision) =>
+        js.Dynamic.literal(`type` = "addRecoverDice", playerId = player,
+          decisionId = decision)
+      case GameCommand.StopRecover(player, decision) =>
+        js.Dynamic.literal(`type` = "stopRecover", playerId = player,
+          decisionId = decision)
       case GameCommand.CompleteSearch(player, decision, keptId, keptKind,
           discarded, placement, replace) =>
         val placementValue = js.Dynamic.literal(`kind` = placement)
@@ -422,6 +438,8 @@ object GameJson {
               discardedInOrder = js.Array(discarded.map(card =>
                 js.Dynamic.literal(kind = card.cardKind, id = card.cardId)): _*),
               placement = placementValue)
+          case DecisionResolution.TakeFacedownRelic(id) =>
+            js.Dynamic.literal(kind = "take-facedown-relic", relicId = id)
         }
         js.Dynamic.literal(`type` = "resolveCardDecision", playerId = player,
           decisionId = decision, resolution = value)
@@ -673,6 +691,21 @@ object GameJson {
           } yield Some(PendingCardDecision(id, kind, actor, prompt, instructions,
             cards, minimum, maximum, ordering, resolutions)) }
         }
+        recover <- optionalField(root, "recover").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.recover").flatMap { obj => for {
+            id <- string(obj, "decisionId", "$.recover")
+            dice <- stringArray(obj, "dice", "$.recover")
+            shields <- int(obj, "shields", "$.recover")
+            difficulty <- int(obj, "difficulty", "$.recover")
+            spent <- int(obj, "supplySpent", "$.recover")
+            remaining <- int(obj, "supplyRemaining", "$.recover")
+            add <- bool(obj, "canAddDice", "$.recover")
+            stop <- bool(obj, "canStop", "$.recover")
+          } yield Some(RecoverState(id, dice, shields, difficulty, spent,
+            remaining, add, stop)) }
+        }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)
           case Some(_) => int(root, "worldDeckCount", "$")
@@ -727,6 +760,7 @@ object GameJson {
         musters,
         trades,
         pendingDecision,
+        recover,
         worldDeckCount,
         worldDeckTop,
         boards

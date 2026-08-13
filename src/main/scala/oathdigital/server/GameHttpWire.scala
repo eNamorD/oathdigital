@@ -212,6 +212,14 @@ object GameHttpWire {
             })
           )
         },
+        "recover" -> projection.recover.fold[ujson.Value](ujson.Null) { recover =>
+          ujson.Obj("decisionId" -> recover.decisionId,
+            "dice" -> ujson.Arr.from(recover.dice.map(ujson.Str(_))),
+            "shields" -> recover.shields, "difficulty" -> recover.difficulty,
+            "supplySpent" -> recover.supplySpent,
+            "supplyRemaining" -> recover.supplyRemaining,
+            "canAddDice" -> recover.canAddDice, "canStop" -> recover.canStop)
+        },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -312,6 +320,16 @@ object GameHttpWire {
           kind <- stringField(obj, "source", path)
           source <- decodeSearchSource(kind, obj.value.get("region"), path)
         } yield GameCommand.BeginSearch(PlayerId(player), source)
+      case "beginRecover" =>
+        stringField(obj, "playerId", path).map(p => GameCommand.BeginRecover(PlayerId(p)))
+      case "addRecoverDice" => for {
+        p <- stringField(obj, "playerId", path)
+        d <- stringField(obj, "decisionId", path)
+      } yield GameCommand.AddRecoverDice(PlayerId(p), DecisionId(d))
+      case "stopRecover" => for {
+        p <- stringField(obj, "playerId", path)
+        d <- stringField(obj, "decisionId", path)
+      } yield GameCommand.StopRecover(PlayerId(p), DecisionId(d))
       case "completeSearch" =>
         Left(HttpInputError(s"$path.type", "use resolveCardDecision"))
       case "resolveCardDecision" =>
@@ -349,6 +367,10 @@ object GameHttpWire {
         placementValue <- field(obj, "placement", path)
         placement <- decodePlacement(placementValue, s"$path.placement")
       } yield CardDecisionResolution.Search(kept, discarded, placement)
+      case "take-facedown-relic" => for {
+        _ <- exactFields(obj, Set("kind", "relicId"), path)
+        id <- stringField(obj, "relicId", path)
+      } yield CardDecisionResolution.TakeFacedownRelic(RelicId(id))
       case other => Left(HttpInputError(s"$path.kind", s"unknown decision resolution '$other'"))
     }
   }

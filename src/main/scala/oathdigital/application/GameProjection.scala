@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{Economy, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{Economy, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -95,6 +95,10 @@ final case class PendingCardDecisionProjection(
     orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
 )
+final case class RecoverProjection(
+    decisionId: String, dice: Vector[String], shields: Int,
+    difficulty: Int, supplySpent: Int, supplyRemaining: Int,
+    canAddDice: Boolean, canStop: Boolean)
 final case class PlayerBoardProjection(
     playerId: String,
     warbands: Int,
@@ -129,6 +133,7 @@ final case class GameProjection(
     legalMusters: Vector[LegalMusterProjection] = Vector.empty,
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
+    recover: Option[RecoverProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty
@@ -235,21 +240,32 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val site = active.pawnSite.flatMap(current.map.sites.get)
         val controls =
           if (!requestingPlayer.contains(active.player)) Vector.empty
-          else if (Rest.validateBegin(Ready(value), active.player).isRight)
-            Vector("beginRest")
-          else if (current.turn.phase == Phase.Rest && current.pending.isEmpty)
-            Vector("finishRest")
-          else if (current.turn.phase != Phase.Wake) Vector.empty
-          else {
-            val takeControls = active.pawnSite.toVector.flatMap { siteId =>
-              Vector(
-                Option.when(TakeWealthRules.validate(value, active, siteId,
-                  WakeResource.Favor).isRight)("takeFavor"),
-                Option.when(TakeWealthRules.validate(value, active, siteId,
-                  WakeResource.Secret).isRight)("takeSecret")
-              ).flatten
-            }
-            takeControls :+ "endWake"
+          else current.pending match {
+            case Some(r: PendingProcedure.Recover) if !r.successful =>
+              Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
+                Some("stopRecover")).flatten
+            case Some(_: PendingProcedure.Recover) => Vector.empty
+            case _ if current.turn.phase == Phase.Act &&
+                active.pawnSite.exists(siteId =>
+                  RecoverRules.validate(catalog, value, active, siteId).isRight) =>
+              Vector("beginRecover")
+            case _ =>
+              if (Rest.validateBegin(Ready(value), active.player).isRight)
+                Vector("beginRest")
+              else if (current.turn.phase == Phase.Rest && current.pending.isEmpty)
+                Vector("finishRest")
+              else if (current.turn.phase != Phase.Wake) Vector.empty
+              else {
+                val takeControls = active.pawnSite.toVector.flatMap { siteId =>
+                  Vector(
+                    Option.when(TakeWealthRules.validate(value, active, siteId,
+                      WakeResource.Favor).isRight)("takeFavor"),
+                    Option.when(TakeWealthRules.validate(value, active, siteId,
+                      WakeResource.Secret).isRight)("takeSecret")
+                  ).flatten
+                }
+                takeControls :+ "endWake"
+              }
           }
         val setupPlayers = value.game.current.players.map { player =>
           SetupPlayerProjection(
@@ -273,6 +289,24 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 groupedResolutions(SearchRules.legalPlacements(
                   catalog, value, search, card))
               }.toMap)
+          case recover: PendingProcedure.Recover
+              if recover.successful && requestingPlayer.contains(recover.actor) =>
+            val relics = current.map.sites(recover.site).relics
+            PendingCardDecisionProjection(recover.decision.value, "recover-relic",
+              recover.actor.value, "Choose a relic to recover",
+              Vector("You privately peek at the site's relics.",
+                "Take exactly one; it remains facedown."),
+              relics.map(r => cardDetails(r.id, Some(Orientation.FaceDown), hidden = false)),
+              1, 1, orderingRequired = false,
+              relics.map(r => r.id.value -> Vector(
+                CardResolutionProjection("take-facedown-relic"))).toMap)
+        }
+        val recoverProjection = current.pending.collect {
+          case r: PendingProcedure.Recover if requestingPlayer.contains(r.actor) =>
+            val remaining = current.players.find(_.player == r.actor).get.board.supply.supply
+            RecoverProjection(r.decision.value, r.rolls.flatten.map(defenseFaceName),
+              RecoverRules.score(r.rolls.flatten), r.difficulty, r.supplySpent,
+              remaining, !r.successful && remaining > 0, !r.successful)
         }
         GameProjection(
           gameId,
@@ -281,6 +315,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Search) if pendingDecision.nonEmpty =>
               "search-decision"
             case Some(_: PendingProcedure.Search) => "search-waiting"
+            case Some(r: PendingProcedure.Recover) if requestingPlayer.contains(r.actor) && r.successful => "recover-relic-decision"
+            case Some(_: PendingProcedure.Recover) if recoverProjection.nonEmpty => "recover-rolling"
+            case Some(_: PendingProcedure.Recover) => "recover-waiting"
             case _ => current.turn.phase match {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
@@ -373,6 +410,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
               }
             else Vector.empty,
           pendingCardDecision = pendingDecision,
+          recover = recoverProjection,
           worldDeckCount = current.commonCards.worldDeck.size,
           // Card backs/types are public; the World Deck top is its head.
           worldDeckTopCardKind = current.commonCards.worldDeck.headOption.map(cardKind),
@@ -558,6 +596,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
   private def orientationName(value: Orientation): String = value match {
     case Orientation.FaceUp => "face-up"
     case Orientation.FaceDown => "face-down"
+  }
+
+  private def defenseFaceName(value: DefenseDieFace): String = value match {
+    case DefenseDieFace.Blank => "blank"
+    case DefenseDieFace.OneShield => "one-shield"
+    case DefenseDieFace.TwoShields => "two-shields"
+    case DefenseDieFace.Doubler => "doubler"
   }
 
   private def cardDetails(
