@@ -245,17 +245,18 @@ final class GameProjector(catalog: ExecutableCatalog) {
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
                 Some("stopRecover")).flatten
             case Some(_: PendingProcedure.Recover) => Vector.empty
-            case _ if current.turn.phase == Phase.Act &&
-                active.pawnSite.exists(siteId =>
-                  RecoverRules.validate(catalog, value, active, siteId).isRight) =>
-              Vector("beginRecover")
-            case _ =>
-              if (Rest.validateBegin(Ready(value), active.player).isRight)
-                Vector("beginRest")
-              else if (current.turn.phase == Phase.Rest && current.pending.isEmpty)
-                Vector("finishRest")
-              else if (current.turn.phase != Phase.Wake) Vector.empty
-              else {
+            case Some(_) => Vector.empty
+            case None => current.turn.phase match {
+              case Phase.Act =>
+                Vector(
+                  Option.when(Rest.validateBegin(Ready(value), active.player).isRight)(
+                    "beginRest"),
+                  Option.when(active.pawnSite.exists(siteId =>
+                    RecoverRules.validate(catalog, value, active, siteId).isRight))(
+                    "beginRecover")
+                ).flatten
+              case Phase.Rest => Vector("finishRest")
+              case Phase.Wake =>
                 val takeControls = active.pawnSite.toVector.flatMap { siteId =>
                   Vector(
                     Option.when(TakeWealthRules.validate(value, active, siteId,
@@ -265,7 +266,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
                   ).flatten
                 }
                 takeControls :+ "endWake"
-              }
+            }
           }
         val setupPlayers = value.game.current.players.map { player =>
           SetupPlayerProjection(

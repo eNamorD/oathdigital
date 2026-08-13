@@ -39,6 +39,15 @@ class RecoverSuite extends munit.FunSuite {
       DefenseDieFace.Doubler)), 0)
   }
 
+  test("ordinary Act projects Recover and Rest as additive legal controls") {
+    val (ready, player, _, _) = recoverable
+    val projection = new GameProjector(catalog).project(
+      "recover-controls", LoadedGame(Ready(ready), 1), player.player)
+
+    assertEquals(projection.legalControls.toSet,
+      Set("beginRecover", "beginRest"))
+  }
+
   test("each payment records two dice and stop returns to Act without revealing") {
     val (ready, player, _, _) = recoverable
     val id = DecisionId("recover-test")
