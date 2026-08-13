@@ -68,6 +68,23 @@ class ServerModeUiSuite extends FunSuite {
     )
   }
 
+  test("inactive Act viewer sees no action-selection controls") {
+    val value = projection(Set("beginRest"), phase = "act-action-selection")
+      .copy(actionSelectionOpen = true,
+        legalSearchSources = Vector(LegalSearchSource("world", None, 2)),
+        legalTravelDestinations = Vector(LegalTravelDestination("site:1", 2)),
+        legalMusters = Vector(LegalMuster(EconomyTarget("denizen", "d1"),
+          "Muster target", "order", 1, 2)),
+        legalTrades = Vector(LegalTrade(EconomyTarget("denizen", "d1"),
+          "Trade target", "order", "favor", 1, 2)))
+    val inactive = ServerModeUi.viewerPresentation(value, "blue-exile")
+    val active = ServerModeUi.viewerPresentation(value, "red-exile")
+
+    assertEquals(inactive.waitingForPlayerId, Some("red-exile"))
+    assert(!ServerModeUi.showActActionControls(value, inactive))
+    assert(ServerModeUi.showActActionControls(value, active))
+  }
+
   test("inactive setup viewer waits without pawn or private adviser controls") {
     val value = projection(
       Set("placePawn", "chooseAdviser"),

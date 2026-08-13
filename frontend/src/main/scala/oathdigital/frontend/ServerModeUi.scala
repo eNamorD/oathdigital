@@ -343,7 +343,7 @@ object ServerModeUi {
         end.onclick = _ => submit(GameCommand.EndWake(selectedPlayer))
         panel.appendChild(end)
       }
-      if (value.actionSelectionOpen) {
+      if (showActActionControls(value, presentation)) {
         if (travelSelectionOpen) {
           panel.appendChild(text("p", "informational",
             "Choose a destination site."))
@@ -544,8 +544,8 @@ object ServerModeUi {
           val back = button("Back", "decision-back")
           back.onclick = _ => update(state.copy(stage = CardDecisionStage.Arrange,
             selectedResolution = None, selectedReplacement = None))
+          shell.appendChild(back)
           val confirmRow = element("div", "decision-final-row")
-          confirmRow.appendChild(back)
           val confirm = button("Final confirm", "decision-confirm")
           confirm.disabled = !state.resolutionValid || !controlsAvailable
           confirm.onclick = _ => for {
@@ -877,6 +877,11 @@ object ServerModeUi {
         waitingForDisplayName = None
       )
     }
+
+  private[frontend] def showActActionControls(
+      value: GameProjection,
+      presentation: ViewerPresentation
+  ): Boolean = value.actionSelectionOpen && presentation.showGameplayControls
 
   private[frontend] def siteCardsActionable(
       value: GameProjection,
