@@ -16,6 +16,17 @@ class CardDecisionStateSuite extends munit.FunSuite {
     assert(!state.arrangementValid(cards))
   }
 
+  test("starting adviser starts in Discard and requires one card in Keep") {
+    val adviserDecision = decision.copy(decisionId = "setup-adviser-0-p1",
+      kind = "starting-adviser", prompt = "Choose your starting adviser",
+      orderingRequired = false)
+    val initial = CardDecisionState.initial(adviserDecision)
+    assertEquals(initial.keep, Vector.empty)
+    assertEquals(initial.discard, cards)
+    assert(!initial.arrangementValid(cards))
+    assert(initial.moveToKeep("b").arrangementValid(cards))
+  }
+
   test("exactly one keep and complete unique discard order is required") {
     val state = CardDecisionState.initial(decision).moveToKeep("b")
     assert(state.arrangementValid(cards))

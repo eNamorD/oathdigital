@@ -205,7 +205,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
               progress.adviserChoices.size).value,
             "starting-adviser", active.value,
             "Choose your starting adviser",
-            Vector("Choose exactly one adviser."),
+            Vector("Move exactly one adviser to Keep.",
+              "The remaining candidates are discarded."),
             privateCards,
             1, 1, orderingRequired = false,
             privateCards.map(card => card.cardId ->
@@ -373,8 +374,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             else Vector.empty,
           pendingCardDecision = pendingDecision,
           worldDeckCount = current.commonCards.worldDeck.size,
-          // The World Deck is facedown; even its top card's type is private.
-          worldDeckTopCardKind = Option.when(current.commonCards.worldDeck.nonEmpty)("hidden"),
+          // Card backs/types are public; the World Deck top is its head.
+          worldDeckTopCardKind = current.commonCards.worldDeck.headOption.map(cardKind),
           playerBoards = viewerOrderedBoards(value, requestingPlayer)
         )
     }

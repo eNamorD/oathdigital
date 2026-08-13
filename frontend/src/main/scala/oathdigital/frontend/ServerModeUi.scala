@@ -472,11 +472,35 @@ object ServerModeUi {
         node
       }
 
+      def arrangementZones(showDiscardOrder: Boolean): dom.Element = {
+        val zones = element("div", "decision-zones")
+        val keep = element("section", "decision-zone keep-zone")
+        keep.appendChild(text("h3", "", "Keep"))
+        state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
+        keep.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
+        keep.addEventListener("drop", (event: dom.Event) => {
+          event.preventDefault()
+          update(dropOnKeep(state, event.asInstanceOf[dom.DragEvent]
+            .dataTransfer.getData("text/plain")))
+        })
+        val discard = element("section", "decision-zone discard-zone")
+        discard.appendChild(text("h3", "", "Discard"))
+        if (showDiscardOrder) discard.appendChild(text("p", "discard-order",
+          "Remaining cards are discarded from left to right."))
+        state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
+        discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
+        discard.addEventListener("drop", (event: dom.Event) => {
+          event.preventDefault()
+          update(dropOnDiscard(state, event.asInstanceOf[dom.DragEvent]
+            .dataTransfer.getData("text/plain")))
+        })
+        zones.appendChild(keep)
+        zones.appendChild(discard)
+        zones
+      }
+
       if (decision.kind == "starting-adviser") {
-        val cards = element("div", "decision-cards")
-        decision.cards.foreach(card => cards.appendChild(cardNode(card,
-          if (state.keep.contains(card)) "keep" else "discard")))
-        shell.appendChild(cards)
+        shell.appendChild(arrangementZones(showDiscardOrder = false))
         val confirm = button("Confirm adviser", "decision-confirm")
         confirm.disabled = !state.arrangementValid(decision.cards) || !controlsAvailable
         confirm.onclick = _ => state.keep.headOption.foreach(card => submit(
@@ -485,29 +509,7 @@ object ServerModeUi {
         shell.appendChild(confirm)
       } else state.stage match {
         case CardDecisionStage.Arrange =>
-          val zones = element("div", "decision-zones")
-          val keep = element("section", "decision-zone keep-zone")
-          keep.appendChild(text("h3", "", "Keep"))
-          state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
-          keep.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
-          keep.addEventListener("drop", (event: dom.Event) => {
-            event.preventDefault()
-            update(dropOnKeep(state, event.asInstanceOf[dom.DragEvent]
-              .dataTransfer.getData("text/plain")))
-          })
-          val discard = element("section", "decision-zone discard-zone")
-          discard.appendChild(text("h3", "", "Discard"))
-          discard.appendChild(text("p", "discard-order",
-            "Remaining cards are discarded from left to right."))
-          state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
-          discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
-          discard.addEventListener("drop", (event: dom.Event) => {
-            event.preventDefault()
-            val cardId = event.asInstanceOf[dom.DragEvent]
-              .dataTransfer.getData("text/plain")
-            update(dropOnDiscard(state, cardId))
-          })
-          zones.appendChild(keep); zones.appendChild(discard); shell.appendChild(zones)
+          shell.appendChild(arrangementZones(showDiscardOrder = true))
           val confirm = button("Confirm arrangement", "decision-confirm")
           confirm.disabled = !state.arrangementValid(decision.cards)
           confirm.onclick = _ => update(state.copy(stage = CardDecisionStage.Resolve))
@@ -544,8 +546,8 @@ object ServerModeUi {
           val back = button("Back", "decision-back")
           back.onclick = _ => update(state.copy(stage = CardDecisionStage.Arrange,
             selectedResolution = None, selectedReplacement = None))
-          shell.appendChild(back)
           val confirmRow = element("div", "decision-final-row")
+          confirmRow.appendChild(back)
           val confirm = button("Final confirm", "decision-confirm")
           confirm.disabled = !state.resolutionValid || !controlsAvailable
           confirm.onclick = _ => for {
@@ -827,9 +829,9 @@ object ServerModeUi {
   ): dom.Element = {
     val pile = element("div", "pile-display")
     pile.appendChild(text("span", "pile-label", s"$label:"))
-    val css = if (count == 0) "pile-card pile-empty" else "pile-card pile-back"
+    val css = pileCardClasses(count)
     val symbol = pileSymbol(count, topCardKind)
-    val back = text("span", css, symbol)
+    val back = text("span", css, if (symbol.isEmpty) "\u00a0" else symbol)
     back.setAttribute("role", "img")
     back.setAttribute("aria-label", if (count == 0) "Empty pile"
       else topCardKind match {
@@ -848,6 +850,9 @@ object ServerModeUi {
       case Some("vision") => "V"
       case _ => ""
     }
+
+  private[frontend] def pileCardClasses(count: Int): String =
+    if (count == 0) "pile-card pile-empty" else "pile-card pile-back"
 
   private[frontend] final case class TakeWealthAction(
       label: String,

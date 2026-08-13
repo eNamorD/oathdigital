@@ -357,7 +357,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Map("cradle" -> Some("denizen"), "provinces" -> Some("vision"),
         "hinterland" -> None))
     assertEquals(own.worldDeckTopCardKind,
-      Option.when(current.commonCards.worldDeck.nonEmpty)("hidden"))
+      current.commonCards.worldDeck.headOption.map(_.kind))
+    def worldTop(deck: Vector[WorldCardId]) = projector.project(
+      "game-world-top", LoadedGame(Ready(ready.copy(game = ready.game.copy(
+        current = current.copy(commonCards = current.commonCards.copy(
+          worldDeck = deck))))), setup.nextSequence), current.turn.activePlayer)
+      .worldDeckTopCardKind
+    assertEquals(worldTop(Vector(VisionId("vision:conquest"))), Some("vision"))
+    assertEquals(worldTop(Vector.empty), None)
     own.world.flatMap(_.sites).foreach { projected =>
       val source = catalog.sites.find(_.id.value == projected.siteId).get
       if (source.capacity == 3) {
@@ -374,7 +381,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(json.contains("\"looseFavor\":2"))
     assert(json.contains("\"facedownCount\":2"))
     assert(json.contains("\"discardTopCardKind\":\"denizen\""))
-    assert(json.contains("\"worldDeckTopCardKind\":\"hidden\""))
+    current.commonCards.worldDeck.headOption.foreach(card =>
+      assert(json.contains(s"\"worldDeckTopCardKind\":\"${card.kind}\"")))
     relicDefinitions.foreach(relic => assert(!json.contains(relic.id.value)))
   }
 

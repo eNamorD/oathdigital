@@ -219,11 +219,12 @@ class ServerModeUiSuite extends FunSuite {
     assert(!recover.metrics.exists(_.label == "Forge cost"))
   }
 
-  test("pile symbols distinguish public tops, hidden tops, and empty piles") {
+  test("pile symbols and shape classes distinguish public tops and empty piles") {
     assertEquals(ServerModeUi.pileSymbol(2, Some("denizen")), "D")
     assertEquals(ServerModeUi.pileSymbol(1, Some("vision")), "V")
-    assertEquals(ServerModeUi.pileSymbol(3, Some("hidden")), "")
     assertEquals(ServerModeUi.pileSymbol(0, None), "")
+    assertEquals(ServerModeUi.pileCardClasses(2), "pile-card pile-back")
+    assertEquals(ServerModeUi.pileCardClasses(0), "pile-card pile-empty")
   }
 
   test("site and denizen visuals deterministically fall back without assets") {

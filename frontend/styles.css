@@ -204,10 +204,13 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .card-detail:focus-within .card-popover { display: block; }
 .card-property { display: block; }
 .pile-display { display: flex; align-items: center; gap: 6px; margin: 7px 0; }
-.pile-card { display: inline-flex; width: 1.55rem; height: 2.15rem; align-items: center;
-  justify-content: center; border: 1px solid #88775d; border-radius: 4px; font-weight: 700; }
-.pile-back { background: #493751; color: #fff; }
-.pile-empty { background: transparent; }
+.pile-display > .pile-card { display: inline-flex; box-sizing: border-box;
+  flex: 0 0 1.65rem; width: 1.65rem; min-width: 1.65rem; height: 2.3rem;
+  min-height: 2.3rem; align-items: center; justify-content: center;
+  border: 2px solid #d2a85e; border-radius: 4px; font-weight: 800;
+  line-height: 1; vertical-align: middle; }
+.pile-display > .pile-back { background-color: #493751; color: #fff; }
+.pile-display > .pile-empty { background-color: #17140f; color: transparent; }
 .empty-denizen-slot, .facedown-relic { display: inline-grid; width: 2rem; height: 2rem;
   margin: 3px; place-items: center; border: 1px dashed #88775d; border-radius: 5px; }
 .player-boards { margin-top: 18px; }
