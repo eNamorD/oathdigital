@@ -228,8 +228,21 @@ class HttpGameClientSuite extends FunSuite {
       )
     )
     assertEquals(populated.relics, GameSiteRelics(2))
+    assertEquals(populated.forces, Some(SiteForces("exile", 2, "player",
+      Some("red-exile"), "Red Warbands", "red")))
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
+    assertEquals(empty.forces, None)
+
+    val invalidCount = projectionJson(sequence = 2)
+      .replace("\"count\":2", "\"count\":0")
+    assert(GameJson.decodeProjection(invalidCount).isLeft)
+    val invalidRuler = projectionJson(sequence = 2)
+      .replace("\"rulerKind\":\"player\"", "\"rulerKind\":\"mystery\"")
+    assert(GameJson.decodeProjection(invalidRuler).isLeft)
+    val mismatchedColor = projectionJson(sequence = 2)
+      .replace("\"colorToken\":\"red\"", "\"colorToken\":\"bandit\"")
+    assert(GameJson.decodeProjection(mismatchedColor).isLeft)
   }
 
   test("409 is surfaced and caller refreshes without command retry") {
@@ -552,9 +565,9 @@ class HttpGameClientSuite extends FunSuite {
       populated: Boolean = false
   ): String =
     if (populated)
-      s"""{"siteId":"$siteId","label":"$label","looseFavor":2,"looseSecrets":1,"denizenCapacity":3,"relicCapacity":2,"denizens":[{"denizenId":"denizen:z","label":"Zed"},{"denizenId":"denizen:a","label":"Able"}],"relics":{"facedownCount":2}}"""
+      s"""{"siteId":"$siteId","label":"$label","looseFavor":2,"looseSecrets":1,"denizenCapacity":3,"relicCapacity":2,"denizens":[{"denizenId":"denizen:z","label":"Zed"},{"denizenId":"denizen:a","label":"Able"}],"relics":{"facedownCount":2},"forces":{"forceKind":"exile","count":2,"rulerKind":"player","rulerPlayerId":"red-exile","label":"Red Warbands","colorToken":"red"}}"""
     else
-      s"""{"siteId":"$siteId","label":"$label","looseFavor":0,"looseSecrets":0,"denizenCapacity":0,"relicCapacity":0,"denizens":[],"relics":{"facedownCount":0}}"""
+      s"""{"siteId":"$siteId","label":"$label","looseFavor":0,"looseSecrets":0,"denizenCapacity":0,"relicCapacity":0,"denizens":[],"relics":{"facedownCount":0},"forces":null}"""
 
   private def projection(
       gameId: String = "game-1",

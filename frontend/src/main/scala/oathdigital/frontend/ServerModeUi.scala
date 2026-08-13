@@ -764,6 +764,13 @@ object ServerModeUi {
       properties.appendChild(item)
     }
     details.appendChild(properties)
+    site.forces.foreach { forces =>
+      val row = text("p", s"site-forces ${forceCssClass(forces)}",
+        forceText(forces))
+      row.setAttribute("data-ruler-kind", forces.rulerKind)
+      forces.rulerPlayerId.foreach(row.setAttribute("data-ruler-player-id", _))
+      details.appendChild(row)
+    }
     if (site.powers.nonEmpty) {
       val powers = element("ul", "site-powers")
       site.powers.foreach { power =>
@@ -808,6 +815,12 @@ object ServerModeUi {
     details.appendChild(relics)
     details
   }
+
+  private[frontend] def forceText(forces: SiteForces): String =
+    s"${forces.label} x${forces.count}"
+
+  private[frontend] def forceCssClass(forces: SiteForces): String =
+    s"force-${forces.colorToken}"
 
   private[frontend] def dropOnKeep(
       state: CardDecisionState,

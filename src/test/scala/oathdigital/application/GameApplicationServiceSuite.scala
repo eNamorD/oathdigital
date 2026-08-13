@@ -5,6 +5,7 @@ import java.nio.file.Files
 import oathdigital.model._
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
+import oathdigital.server.GameHttpWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.OathEvent.{
@@ -290,10 +291,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(ready) = setup.state: @unchecked
     val siteId = ready.game.current.map.cradle.head
     val emptySiteId = ready.game.current.map.cradle(1)
+    val imperialSiteId = ready.game.current.map.provinces.head
+    val banditSiteId = ready.game.current.map.provinces(1)
+    val otherPlayerSiteId = ready.game.current.map.provinces(2)
     val definition = catalog.sites.find(_.id == siteId).get
     val denizenDefinitions = catalog.denizens.take(2)
     val relicDefinitions = catalog.relics.take(2)
+    val activePlayer = ready.game.current.players.find(
+      _.player == ready.game.current.turn.activePlayer).get
+    val otherPlayer = ready.game.current.players.find(_ != activePlayer).get
     val populated = ready.game.current.map.sites(siteId).copy(
+      forces = SiteForces.Occupied(ForceKind.Exile(activePlayer.lineage), 2),
       denizens = denizenDefinitions.reverse.map(definition =>
         DenizenState(
           DenizenId(definition.id.value),
@@ -320,11 +328,19 @@ class GameApplicationServiceSuite extends munit.FunSuite {
           .updated(
             emptySiteId,
             ready.game.current.map.sites(emptySiteId).copy(
+              forces = SiteForces.Empty,
               denizens = Vector.empty,
               relics = Vector.empty,
               tokens = Tokens.empty
             )
           )
+          .updated(imperialSiteId, ready.game.current.map.sites(imperialSiteId)
+            .copy(forces = SiteForces.Occupied(ForceKind.Imperial, 1)))
+          .updated(banditSiteId, ready.game.current.map.sites(banditSiteId)
+            .copy(forces = SiteForces.Occupied(ForceKind.Bandit, 3)))
+          .updated(otherPlayerSiteId, ready.game.current.map.sites(otherPlayerSiteId)
+            .copy(forces = SiteForces.Occupied(
+              ForceKind.Exile(otherPlayer.lineage), 4)))
       )
     )
     val loaded = LoadedGame(
@@ -351,6 +367,32 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(site.relics.facedownCount, 2)
     assertEquals(empty.denizens, Vector.empty)
     assertEquals(empty.relics.facedownCount, 0)
+    assertEquals(site.forces, Some(SiteForcesProjection("exile", 2, "player",
+      Some(activePlayer.player.value),
+      s"${ready.playerColors(activePlayer.player).value.capitalize} Warbands",
+      ready.playerColors(activePlayer.player).value)))
+    assertEquals(empty.forces, None)
+    assertEquals(own.world.flatMap(_.sites).find(_.siteId == imperialSiteId.value)
+      .flatMap(_.forces), Some(SiteForcesProjection("imperial", 1, "empire",
+      None, "Imperial Warbands", "empire")))
+    assertEquals(own.world.flatMap(_.sites).find(_.siteId == banditSiteId.value)
+      .flatMap(_.forces), Some(SiteForcesProjection("bandit", 3, "bandit",
+      None, "Bandit Warbands", "bandit")))
+    val otherColor = ready.playerColors(otherPlayer.player).value
+    assertEquals(own.world.flatMap(_.sites).find(_.siteId == otherPlayerSiteId.value)
+      .flatMap(_.forces), Some(SiteForcesProjection("exile", 4, "player",
+      Some(otherPlayer.player.value), s"${otherColor.capitalize} Warbands",
+      otherColor)))
+    val wire = ujson.read(GameHttpWire.encodeProjection(own))
+    val wireSites = wire("world").arr.flatMap(_("sites").arr)
+    val wirePlayerForces = wireSites.find(_("siteId").str == siteId.value)
+      .get("forces")
+    assertEquals(wirePlayerForces.obj.keySet,
+      Set("forceKind", "count", "rulerKind", "rulerPlayerId", "label",
+        "colorToken"))
+    assertEquals(wirePlayerForces("rulerPlayerId").str, activePlayer.player.value)
+    assertEquals(wireSites.find(_("siteId").str == emptySiteId.value)
+      .get("forces"), ujson.Null)
     assertEquals(public.world, own.world)
     assertEquals(own.world.map(region => region.regionId ->
       region.discardTopCardKind).toMap,

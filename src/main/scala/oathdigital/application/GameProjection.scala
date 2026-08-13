@@ -37,6 +37,14 @@ final case class SiteCardProjection(
     details: Option[CardDetailsProjection] = None)
 final case class SiteRelicsProjection(facedownCount: Int)
 final case class ForgeCostProjection(favor: Int, secrets: Int)
+final case class SiteForcesProjection(
+    forceKind: String,
+    count: Int,
+    rulerKind: String,
+    rulerPlayerId: Option[String],
+    label: String,
+    colorToken: String
+)
 final case class SetupSiteProjection(
     siteId: String,
     label: String,
@@ -49,7 +57,8 @@ final case class SetupSiteProjection(
     defense: Int = 0,
     recoverDifficulty: Option[Int] = None,
     forgeCost: Option[ForgeCostProjection] = None,
-    powers: Vector[SitePowerProjection] = Vector.empty
+    powers: Vector[SitePowerProjection] = Vector.empty,
+    forces: Option[SiteForcesProjection] = None
 )
 final case class SetupRegionProjection(
     regionId: String,
@@ -330,13 +339,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           Vector(
             region("cradle", value.game.current.map.cradle,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Cradle)),
+              value.game.current.commonCards.discard(Region.Cradle), Some(value)),
             region("provinces", value.game.current.map.provinces,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Provinces)),
+              value.game.current.commonCards.discard(Region.Provinces), Some(value)),
             region("hinterland", value.game.current.map.hinterland,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Hinterland))
+              value.game.current.commonCards.discard(Region.Hinterland), Some(value))
           ),
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
@@ -449,12 +458,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
       id: String,
       sites: Vector[SiteId],
       states: Map[SiteId, SiteState] = Map.empty,
-      discard: Vector[CardId] = Vector.empty
+      discard: Vector[CardId] = Vector.empty,
+      ready: Option[ReadyGame] = None
   ): SetupRegionProjection =
     SetupRegionProjection(
       id,
       sites.map(site =>
-        siteProjection(site, states.get(site))),
+        siteProjection(site, states.get(site), ready)),
       discard.size,
       // Regional discards are faceup public piles; the final element is top.
       discard.lastOption.map(cardKind)
@@ -462,7 +472,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
 
   private def siteProjection(
       siteId: SiteId,
-      state: Option[SiteState]
+      state: Option[SiteState],
+      ready: Option[ReadyGame]
   ): SetupSiteProjection = {
     val definition = siteDefinitions.get(siteId)
     SetupSiteProjection(
@@ -506,8 +517,40 @@ final class GameProjector(catalog: ExecutableCatalog) {
       definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(site.recoverDifficulty).flatten),
       definition.flatMap(_.forgeRequirements).map(tokens =>
         ForgeCostProjection(tokens.favor, tokens.secrets)),
-      definition.toVector.flatMap(_.handlers).map(sitePower)
+      definition.toVector.flatMap(_.handlers).map(sitePower),
+      for {
+        site <- state
+        game <- ready
+        occupied <- site.forces match {
+          case value: SiteForces.Occupied => Some(value)
+          case SiteForces.Empty => None
+        }
+      } yield forceProjection(occupied, game)
     )
+  }
+
+  private def forceProjection(forces: SiteForces.Occupied,
+      ready: ReadyGame): SiteForcesProjection = {
+    val ruler = SiteRule.ruler(forces, ready.game.current.players).fold(
+      error => throw new IllegalStateException(
+        s"invalid site ruler mapping: $error"), identity)
+    forces.kind match {
+      case ForceKind.Exile(lineage) =>
+        val SiteRuler.Player(playerId) = ruler: @unchecked
+        val color = ready.playerColors.getOrElse(playerId,
+          throw new IllegalStateException(
+            s"missing color for site ruler ${playerId.value}"))
+        val colorLabel = color.value.headOption.fold(color.value)(head =>
+          s"${head.toUpper}${color.value.drop(1)}")
+        SiteForcesProjection("exile", forces.count, "player",
+          Some(playerId.value), s"$colorLabel Warbands", color.value)
+      case ForceKind.Imperial =>
+        SiteForcesProjection("imperial", forces.count, "empire", None,
+          "Imperial Warbands", "empire")
+      case ForceKind.Bandit =>
+        SiteForcesProjection("bandit", forces.count, "bandit", None,
+          "Bandit Warbands", "bandit")
+    }
   }
 
   private def cardKind(card: CardId): String = card match {

@@ -31,6 +31,56 @@ object SiteForces {
   }
 }
 
+sealed trait SiteRuler extends Product with Serializable
+object SiteRuler {
+  case object Unruled extends SiteRuler
+  case object Bandits extends SiteRuler
+  case object Empire extends SiteRuler
+  final case class Player(playerId: PlayerId) extends SiteRuler
+}
+
+sealed trait SiteRuleError extends Product with Serializable
+object SiteRuleError {
+  final case class UnknownLineage(lineage: LineageId) extends SiteRuleError
+  final case class DuplicateCurrentLineage(
+      lineage: LineageId,
+      players: Vector[PlayerId]
+  ) extends SiteRuleError
+}
+
+/** Direct interpretation of the physical warbands stored at a site. */
+object SiteRule {
+  import SiteRuleError._
+  import SiteRuler._
+
+  def ruler(forces: SiteForces, players: Vector[PlayerState])
+      : Either[SiteRuleError, SiteRuler] = forces match {
+    case SiteForces.Empty => Right(Unruled)
+    case SiteForces.Occupied(ForceKind.Bandit, _) => Right(Bandits)
+    case SiteForces.Occupied(ForceKind.Imperial, _) => Right(Empire)
+    case SiteForces.Occupied(ForceKind.Exile(lineage), _) =>
+      players.filter(_.lineage == lineage).map(_.player) match {
+        case Vector(player) => Right(Player(player))
+        case Vector() => Left(UnknownLineage(lineage))
+        case duplicates => Left(DuplicateCurrentLineage(lineage, duplicates))
+      }
+  }
+
+  def ruledBy(forces: SiteForces, players: Vector[PlayerState], player: PlayerId)
+      : Either[SiteRuleError, Boolean] =
+    ruler(forces, players).map(_ == Player(player))
+
+  def sameRuler(left: SiteForces, right: SiteForces,
+      players: Vector[PlayerState]): Either[SiteRuleError, Boolean] =
+    for {
+      leftRuler <- ruler(left, players)
+      rightRuler <- ruler(right, players)
+    } yield leftRuler != Unruled && leftRuler == rightRuler
+
+  def enemies(left: SiteRuler, right: SiteRuler): Boolean =
+    left != Unruled && right != Unruled && left != right
+}
+
 final case class SiteState(
     forces: SiteForces,
     denizens: Vector[SiteDenizenState],

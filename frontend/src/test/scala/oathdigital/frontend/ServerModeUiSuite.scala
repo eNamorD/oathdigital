@@ -4,6 +4,25 @@ import munit.FunSuite
 import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
+  test("site forces retain accessible labels counts and stable color classes") {
+    val cases = Vector(
+      SiteForces("exile", 2, "player", Some("red-exile"),
+        "Red Warbands", "red") -> ("Red Warbands x2", "force-red"),
+      SiteForces("exile", 1, "player", Some("blue-exile"),
+        "Blue Warbands", "blue") -> ("Blue Warbands x1", "force-blue"),
+      SiteForces("imperial", 1, "empire", None,
+        "Imperial Warbands", "empire") -> ("Imperial Warbands x1", "force-empire"),
+      SiteForces("bandit", 3, "bandit", None,
+        "Bandit Warbands", "bandit") -> ("Bandit Warbands x3", "force-bandit")
+    )
+    cases.foreach { case (forces, (label, cssClass)) =>
+      assertEquals(ServerModeUi.forceText(forces), label)
+      assertEquals(ServerModeUi.forceCssClass(forces), cssClass)
+    }
+    assertEquals(GameSite("empty", "Empty", 0, 0, 0, 0, Vector.empty,
+      GameSiteRelics(0)).forces, None)
+  }
+
   test("Take Wealth actions use the active-player labels and commands") {
     val actions = ServerModeUi.takeWealthActions(
       projection(Set("takeFavor", "takeSecret", "endWake")),

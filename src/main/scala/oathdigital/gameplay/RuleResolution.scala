@@ -179,16 +179,15 @@ object RuntimeRuleRegistry {
         case (RuleSourceRef.Site(pass), travel: RuleQueryContext.Travel)
             if pass == travel.destination || travel.from == travel.to => Allow
         case (RuleSourceRef.Site(pass), travel: RuleQueryContext.Travel) =>
-          travel.ready.game.current.map.sites(pass).forces match {
-            case SiteForces.Occupied(ForceKind.Exile(lineage), _)
-                if lineage == travel.player.lineage => Allow
-            case SiteForces.Occupied(ForceKind.Exile(lineage), _) =>
-              travel.ready.game.current.players.find(_.lineage == lineage) match {
-                case Some(ruler) => Block(TravelConsentUnsupported(
-                  pass, ruler.player))
-                case None => Block(TravelPassBlocked(pass, travel.destination))
-              }
-            case _ => Block(TravelPassBlocked(pass, travel.destination))
+          SiteRule.ruler(travel.ready.game.current.map.sites(pass).forces,
+            travel.ready.game.current.players) match {
+            case Right(SiteRuler.Player(player))
+                if player == travel.player.player => Allow
+            case Right(SiteRuler.Player(player)) =>
+              Block(TravelConsentUnsupported(pass, player))
+            case Right(_) => Block(TravelPassBlocked(pass, travel.destination))
+            case Left(error) => Block(UnsupportedTravelState(
+              s"invalid site ruler mapping: $error"))
           }
         case _ => Allow
       }

@@ -11,8 +11,13 @@ No item is currently assigned.
 
 ## Next
 
-**Forge**, after Campaign and site-rule support make its rule and modifier
-interactions meaningfully legal rather than a disconnected base action.
+**Bounded Campaign**, using the authoritative site ruler/force projection now
+in place. Remaining work is target selection (mandatory origin and optional
+same-ruler sites), force formation, dice and battle plans, losses,
+conquest/raid outcomes, and post-action bandit refill.
+
+**Forge** follows Campaign, when conquest can make player-ruled sites
+reachable and its rule/modifier interactions meaningfully legal.
 
 ## Later
 
@@ -35,6 +40,15 @@ interactions meaningfully legal rather than a disconnected base action.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign prerequisite — authoritative site rule and force
+  presentation.** `SiteForces` remains the sole stored source and directly
+  derives unruled, Bandit, shared Empire, or current-player rule. Shared
+  player/same-ruler/enemy checks now support Economy access and Pass consent;
+  public typed projections, strict HTTP/Scala.js decoding, accessible labels,
+  and stable player/Empire/Bandit colors expose every site's physical force.
+  Corrupt lineage mappings fail explicitly. Bandit refill remains deferred to
+  Campaign because no general action-completion seam exists.
 
 - [x] **L6e — Bounded Recover action slice.** Exile-only,
   unaltered-Foundation Recover spends Supply for recorded pairs of typed defense

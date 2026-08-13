@@ -120,6 +120,15 @@ object GameHttpWire {
                 "powers" -> ujson.Arr.from(site.powers.map(power => ujson.Obj(
                   "kind" -> power.kind, "label" -> power.label,
                   "description" -> power.description.fold[ujson.Value](ujson.Null)(ujson.Str(_))))),
+                "forces" -> site.forces.fold[ujson.Value](ujson.Null)(forces =>
+                  ujson.Obj(
+                    "forceKind" -> forces.forceKind,
+                    "count" -> forces.count,
+                    "rulerKind" -> forces.rulerKind,
+                    "rulerPlayerId" -> forces.rulerPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                    "label" -> forces.label,
+                    "colorToken" -> forces.colorToken
+                  )),
                 "denizens" -> ujson.Arr.from(site.denizens.map { denizen =>
                   ujson.Obj(
                     "denizenId" -> denizen.cardId,

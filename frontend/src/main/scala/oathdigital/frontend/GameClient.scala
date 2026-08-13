@@ -74,6 +74,14 @@ final case class GameSiteCard(denizenId: String, label: String,
     details: Option[CardDetails] = None)
 final case class GameSiteRelics(facedownCount: Int)
 final case class ForgeCost(favor: Int, secrets: Int)
+final case class SiteForces(
+    forceKind: String,
+    count: Int,
+    rulerKind: String,
+    rulerPlayerId: Option[String],
+    label: String,
+    colorToken: String
+)
 final case class GameSite(
     siteId: String,
     label: String,
@@ -86,7 +94,8 @@ final case class GameSite(
     defense: Int = 0,
     recoverDifficulty: Option[Int] = None,
     forgeCost: Option[ForgeCost] = None,
-    powers: Vector[SitePower] = Vector.empty
+    powers: Vector[SitePower] = Vector.empty,
+    forces: Option[SiteForces] = None
 )
 final case class SitePower(kind: String, label: String, description: Option[String])
 final case class GameRegion(regionId: String, sites: Vector[GameSite], discardCount: Int = 0,
@@ -547,6 +556,40 @@ object GameJson {
                         label <- string(power, "label", powerPath)
                         description <- optionalString(power, "description", powerPath)
                       } yield SitePower(kind, label, description) }) }
+                    forcesValue <- field(site, "forces", sitePath)
+                    forces <- if (forcesValue == null) Right(None) else
+                      objectValue(forcesValue, s"$sitePath.forces").flatMap { obj =>
+                        for {
+                          kind <- string(obj, "forceKind", s"$sitePath.forces")
+                          _ <- Either.cond(Set("exile", "imperial", "bandit").contains(kind), (),
+                            GameClientFailure.DecodeFailure(s"$sitePath.forces.forceKind",
+                              s"unsupported force kind '$kind'"))
+                          count <- int(obj, "count", s"$sitePath.forces")
+                          _ <- Either.cond(count > 0, (), GameClientFailure.DecodeFailure(
+                            s"$sitePath.forces.count", "expected positive integer"))
+                          ruler <- string(obj, "rulerKind", s"$sitePath.forces")
+                          _ <- Either.cond(Set("player", "empire", "bandit").contains(ruler), (),
+                            GameClientFailure.DecodeFailure(s"$sitePath.forces.rulerKind",
+                              s"unsupported ruler kind '$ruler'"))
+                          rulerPlayer <- optionalString(obj, "rulerPlayerId", s"$sitePath.forces")
+                          _ <- Either.cond((ruler == "player") == rulerPlayer.nonEmpty, (),
+                            GameClientFailure.DecodeFailure(s"$sitePath.forces.rulerPlayerId",
+                              "player ruler requires an ID and shared rulers forbid one"))
+                          forceLabel <- string(obj, "label", s"$sitePath.forces")
+                          color <- string(obj, "colorToken", s"$sitePath.forces")
+                          _ <- Either.cond(
+                            (kind, ruler, color) match {
+                              case ("exile", "player",
+                                  "red" | "blue" | "yellow" | "purple") => true
+                              case ("imperial", "empire", "empire") => true
+                              case ("bandit", "bandit", "bandit") => true
+                              case _ => false
+                            }, (), GameClientFailure.DecodeFailure(
+                              s"$sitePath.forces",
+                              "force, ruler, and color tokens do not agree"))
+                        } yield Some(SiteForces(kind, count, ruler, rulerPlayer,
+                          forceLabel, color))
+                      }
                   } yield GameSite(
                     siteId,
                     label,
@@ -559,7 +602,8 @@ object GameJson {
                     defense,
                     recover,
                     forge,
-                    powers
+                    powers,
+                    forces
                   )
               })
             } yield GameRegion(id, sites, discardCount, discardTop)

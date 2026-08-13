@@ -170,15 +170,21 @@ object Economy {
       case d: DenizenState if d.orientation == Orientation.FaceUp =>
         RuleSourceRef.Adviser(player.player, d.id) -> handlersOf(catalog, d.id)
     }
-    val accessibleSites = game.current.map.sites.collect {
-      case (siteId, site) if player.pawnSite.contains(siteId) ||
-          (site.forces match {
-            case SiteForces.Occupied(ForceKind.Exile(owner), _) =>
-              owner == player.lineage
-            case _ => false
-          }) => siteId -> site
+    val ruledSites = game.current.map.sites.toVector.foldLeft[
+      Either[OathViolation, Vector[(SiteId, SiteState)]]](Right(Vector.empty)) {
+      case (Right(acc), entry @ (_, site)) =>
+        SiteRule.ruledBy(site.forces, game.current.players, player.player)
+          .left.map(error => UnsupportedEconomyState(
+            s"invalid site ruler mapping: $error"))
+          .map(ruled => if (ruled) acc :+ entry else acc)
+      case (left @ Left(_), _) => left
     }
-    val siteSources = accessibleSites.toVector.flatMap { case (siteId, site) =>
+    val accessibleSites = ruledSites.map(_.filterNot(entry =>
+      player.pawnSite.contains(entry._1))).map { ruled =>
+      player.pawnSite.toVector.flatMap(siteId =>
+        game.current.map.sites.get(siteId).map(siteId -> _)) ++ ruled
+    }
+    val siteSources = accessibleSites.getOrElse(Vector.empty).flatMap { case (siteId, site) =>
       site.denizens.collect {
         case d: DenizenState =>
           RuleSourceRef.SiteCard(siteId, d.id) -> handlersOf(catalog, d.id)
@@ -199,7 +205,8 @@ object Economy {
       case value if value.outcome.isInstanceOf[RuleOutcome.UnsupportedRelevantRule] =>
         value.activation.handlerId
     }
-    if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
+    if (accessibleSites.isLeft) accessibleSites.map(_ => ())
+    else if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
       Left(UnsupportedEconomyState("altered Foundations are not supported"))
     else if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedEconomyState("Economy is limited to the exile-only first game"))

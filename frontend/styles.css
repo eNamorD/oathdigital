@@ -136,6 +136,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .site-property dt { color: #a99b82; font-size: 0.68rem; line-height: 1.2; text-transform: uppercase; }
 .site-property dd { margin: 1px 0 0; color: #fff2d6; font-weight: 800; }
 .site-denizens, .site-relics { min-width: 0; margin-top: 5px; overflow-wrap: anywhere; }
+.site-forces { margin: 7px 0 0; font-weight: 800; }
+.force-red { color: #ffaaa5; }
+.force-blue { color: #8ecbff; }
+.force-yellow { color: #ffe08a; }
+.force-purple, .force-empire { color: #d9b8ff; }
+.force-bandit { color: #d7ed72; }
 .site-card {
   display: inline-flex;
   min-width: 1.65rem;
