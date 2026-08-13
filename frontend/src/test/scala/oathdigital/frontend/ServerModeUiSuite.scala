@@ -4,6 +4,38 @@ import munit.FunSuite
 import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
+  test("selection actions map only authorized single target shapes to commands") {
+    def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
+      false, Vector.empty)
+    assertEquals(ServerModeUi.commandForSelection(action("travel"),
+      Vector(BoardTargetRef.Site("site:b")), "red"),
+      Some(GameCommand.Travel("red", "site:b")))
+    assertEquals(ServerModeUi.commandForSelection(action("muster"), Vector(
+      BoardTargetRef.SiteCard("site", "edifice", "E26")), "red"),
+      Some(GameCommand.Muster("red", EconomyTarget("edifice", "E26"))))
+    assertEquals(ServerModeUi.commandForSelection(action("trade-favor"), Vector(
+      BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
+      Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "favor")))
+    assertEquals(ServerModeUi.commandForSelection(action("trade-secret"), Vector(
+      BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
+      Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "secret")))
+    assertEquals(ServerModeUi.commandForSelection(action("travel"), Vector(
+      BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+  }
+
+  test("selection copy exposes details and non-color cardinality instructions") {
+    val single = BoardTargetAction("travel", "Travel", 1, 1, false,
+      Vector.empty)
+    val multi = single.copy(actionKind = "campaign", maximum = 3)
+    assert(ServerModeUi.cardinalityInstruction(single).contains("immediately"))
+    assertEquals(ServerModeUi.cardinalityInstruction(multi),
+      "Choose 1 to 3 targets, then confirm.")
+    assertEquals(ServerModeUi.candidateButtonLabel(BoardTargetCandidate(
+      BoardTargetRef.Site("b"), "Site B", Vector("2 Supply"))),
+      "Site B · 2 Supply")
+    assertEquals(ServerModeUi.actionLabel("trade-secret"), "Trade for secrets")
+  }
+
   test("site forces retain accessible labels counts and stable color classes") {
     val cases = Vector(
       SiteForces("exile", 2, "player", Some("red-exile"),
@@ -140,45 +172,15 @@ class ServerModeUiSuite extends FunSuite {
     ).showGameplayControls)
   }
 
-  test("active Wake sites are read-only while legal setup sites are buttons") {
-    val wake = projection(Set("takeFavor", "endWake"))
-    assertEquals(ServerModeUi.siteCardsActionable(
-      wake,
-      ServerModeUi.viewerPresentation(wake, "red-exile")
-    ), false)
-
-    val setup = projection(
-      Set("placePawn"),
-      phase = "awaiting-pawn",
-      ready = false
-    )
-    assertEquals(ServerModeUi.siteCardsActionable(
-      setup,
-      ServerModeUi.viewerPresentation(setup, "red-exile")
-    ), true)
-    assertEquals(ServerModeUi.siteCardsActionable(
-      setup,
-      ServerModeUi.viewerPresentation(setup, "red-exile"),
-      controlsAvailable = false
-    ), false)
-    assertEquals(ServerModeUi.siteCardsActionable(
-      setup,
-      ServerModeUi.viewerPresentation(setup, "blue-exile")
-    ), false)
-  }
-
-  test("Travel selection makes only projected L2 site cards actionable") {
-    val value = projection(Set.empty, phase = "act-action-selection").copy(
-      actionSelectionOpen = true,
-      legalTravelDestinations = Vector(
-        LegalTravelDestination("site:legal", 2)))
-    val viewer = ServerModeUi.viewerPresentation(value, "red-exile")
-    assert(ServerModeUi.siteCardsActionable(
-      value, viewer, travelSelectionOpen = true, siteId = "site:legal"))
-    assert(!ServerModeUi.siteCardsActionable(
-      value, viewer, travelSelectionOpen = true, siteId = "site:blocked"))
-    assertEquals(ServerModeUi.travelCost(value, "site:legal"), Some(2))
-    assertEquals(ServerModeUi.travelCost(value, "site:blocked"), None)
+  test("board target classes distinguish candidate selected and read-only state") {
+    assertEquals(ServerModeUi.siteTargetClasses(false, false),
+      "site site-readonly")
+    assertEquals(ServerModeUi.siteTargetClasses(true, false),
+      "site board-target")
+    assertEquals(ServerModeUi.siteTargetClasses(true, true),
+      "site board-target board-target-selected")
+    assert(ServerModeUi.cardTargetClasses(true, true)
+      .contains("board-target-selected"))
   }
 
   test("populated site details render properties, stable IDs, and hidden relics") {

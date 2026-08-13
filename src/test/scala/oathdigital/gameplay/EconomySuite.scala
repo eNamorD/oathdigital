@@ -138,8 +138,15 @@ class EconomySuite extends munit.FunSuite {
       oathdigital.application.LoadedGame(Ready(ready), 4), other.player)
     assert(own.legalMusters.nonEmpty)
     assert(own.legalTrades.nonEmpty)
+    assertEquals(own.boardTargetActions.map(_.actionKind).toSet,
+      Set("travel", "muster", "trade-favor", "trade-secret"))
+    val economy = own.boardTargetActions.filterNot(_.actionKind == "travel")
+    assert(economy.flatMap(_.candidates).forall(_.target.isInstanceOf[
+      oathdigital.application.BoardTargetRefProjection.SiteCard]))
+    assert(economy.flatMap(_.candidates).forall(_.details.size == 2))
     assertEquals(hidden.legalMusters, Vector.empty)
     assertEquals(hidden.legalTrades, Vector.empty)
+    assertEquals(hidden.boardTargetActions, Vector.empty)
   }
 
   test("ruined edifice is a legal typed target and replays its update") {

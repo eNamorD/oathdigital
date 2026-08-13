@@ -86,6 +86,19 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
 
     assertEquals(projection.nextSequence, 1L)
     assertEquals(projection.phase, "awaiting-pawn")
+    val placement = projection.boardTargetActions.head
+    assertEquals(placement.actionKind, "place-pawn")
+    assert(placement.autoActivate)
+    assertEquals(placement.minimum -> placement.maximum, 1 -> 1)
+    assertEquals(placement.candidates.map(_.target).toSet,
+      projection.world.flatMap(_.sites).map(site =>
+        oathdigital.model.SiteId(site.siteId)).map(site =>
+        (BoardTargetRefProjection.Site(site.value): BoardTargetRefProjection)).toSet)
+    val targetWire = ujson.read(json)("boardTargetActions")(0)
+    assertEquals(targetWire("actionKind").str, "place-pawn")
+    assertEquals(targetWire("minimum").num.toInt ->
+      targetWire("maximum").num.toInt, 1 -> 1)
+    assertEquals(targetWire("candidates")(0)("target")("kind").str, "site")
     assert(!json.contains("relicOrder"))
     assert(!json.contains("worldDeckOrder"))
     assert(!json.contains("denizenOrder"))

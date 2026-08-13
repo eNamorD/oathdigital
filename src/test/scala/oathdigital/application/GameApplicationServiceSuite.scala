@@ -254,6 +254,16 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(act.actionSelectionOpen)
     assertEquals(act.legalControls, Vector("beginRest"))
     assertEquals(act.actionFamilies.size, 8)
+    assert(act.boardTargetActions.exists(_.actionKind == "travel"))
+    val travel = act.boardTargetActions.find(_.actionKind == "travel").get
+    assertEquals(travel.minimum -> travel.maximum, 1 -> 1)
+    assert(!travel.autoActivate)
+    assert(travel.candidates.forall(_.target.isInstanceOf[
+      BoardTargetRefProjection.Site]))
+    assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
+    assertEquals(projector.projectPublic("game-projection-wake",
+      LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
+      Vector.empty)
   }
 
   test("Rest v5 commands persist reload and project the next player's Wake") {

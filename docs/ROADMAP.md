@@ -41,6 +41,16 @@ reachable and its rule/modifier interactions meaningfully legal.
 
 ## Done
 
+- [x] **Campaign prerequisite 2 — reusable board target selection.** A typed,
+  server-authorized selection protocol now represents sites, site cards with
+  denizen/edifice identity, player advisers, and player relics independently
+  from private card decisions. Setup placement auto-activates; Travel, Muster,
+  and separate favor/secret Trade modes use action-first selection with
+  projected costs/yields, accessible candidate controls, stable selected state,
+  cardinality-gated multi-select support, and stale-context clearing. Adviser,
+  relic, and multi-site hooks are prepared but no Campaign mechanics activate
+  them.
+
 - [x] **Campaign prerequisite — authoritative site rule and force
   presentation.** `SiteForces` remains the sole stored source and directly
   derives unruled, Bandit, shared Empire, or current-player rule. Shared

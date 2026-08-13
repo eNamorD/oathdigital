@@ -151,6 +151,25 @@ class HttpGameClientSuite extends FunSuite {
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
+  test("typed board-target actions decode sites cards advisers relics and reject malformed refs") {
+    val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
+    val json = projectionJson(sequence = 10, choices = false)
+      .replace("\"boardTargetActions\":[]",
+        s"\"boardTargetActions\":$actions")
+    val decoded = GameJson.decodeProjection(json).toOption.get
+      .boardTargetActions.head
+    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 4)
+    assertEquals(decoded.candidates.map(_.target), Vector(
+      BoardTargetRef.Site("site:b"),
+      BoardTargetRef.SiteCard("site:b", "edifice", "E26"),
+      BoardTargetRef.PlayerAdviser("red-exile", "D1"),
+      BoardTargetRef.PlayerRelic("red-exile", "R1")))
+    assert(GameJson.decodeProjection(json.replace("player-relic", "unknown")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"maximum\":4", "\"maximum\":5")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"cardKind\":\"edifice\"",
+      "\"cardKind\":\"relic\"")).isLeft)
+  }
+
   test("Search encodes only source and decisions and decodes private controls") {
     val begin = GameJson.encodeCommand(10L,
       GameCommand.BeginSearch("red-exile", "world", None))
@@ -552,6 +571,7 @@ class HttpGameClientSuite extends FunSuite {
        |"legalControls":["placePawn","chooseAdviser"],
        |"ready":$ready,
        |"completed":$completed,
+       |"boardTargetActions":[],
        |"pendingCardDecision":$pendingDecision
        |}""".stripMargin
   }

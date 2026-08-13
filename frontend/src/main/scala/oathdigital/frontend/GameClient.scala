@@ -120,6 +120,31 @@ final case class LegalMuster(target: EconomyTarget, label: String, suit: String,
 final case class LegalTrade(target: EconomyTarget, label: String, suit: String,
     resource: String,
     supplyCost: Int, gained: Int)
+sealed trait BoardTargetRef extends Product with Serializable {
+  def stableKey: String
+}
+object BoardTargetRef {
+  final case class Site(siteId: String) extends BoardTargetRef {
+    def stableKey: String = s"site:$siteId"
+  }
+  final case class SiteCard(siteId: String, cardKind: String, cardId: String)
+      extends BoardTargetRef {
+    def stableKey: String = s"site-card:$siteId:$cardKind:$cardId"
+  }
+  final case class PlayerAdviser(playerId: String, cardId: String)
+      extends BoardTargetRef {
+    def stableKey: String = s"player-adviser:$playerId:$cardId"
+  }
+  final case class PlayerRelic(playerId: String, relicId: String)
+      extends BoardTargetRef {
+    def stableKey: String = s"player-relic:$playerId:$relicId"
+  }
+}
+final case class BoardTargetCandidate(
+    target: BoardTargetRef, label: String, details: Vector[String])
+final case class BoardTargetAction(
+    actionKind: String, prompt: String, minimum: Int, maximum: Int,
+    autoActivate: Boolean, candidates: Vector[BoardTargetCandidate])
 final case class CardResolution(kind: String, orientation: Option[String],
     replacementRequired: Boolean, replacementTargets: Vector[CardDetails])
 final case class PendingCardDecision(
@@ -151,6 +176,7 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSource] = Vector.empty,
     legalMusters: Vector[LegalMuster] = Vector.empty,
     legalTrades: Vector[LegalTrade] = Vector.empty,
+    boardTargetActions: Vector[BoardTargetAction] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecision] = None,
     recover: Option[RecoverState] = None,
     worldDeckCount: Int = 0,
@@ -692,6 +718,29 @@ object GameJson {
               gained <- int(item, "gained", path)
             } yield LegalTrade(target, label, suit, resource, cost, gained) })
         }
+        boardActions <- array(root, "boardTargetActions", "$").flatMap(
+          traverse(_, "boardTargetActions") { (item, path) => for {
+            kind <- string(item, "actionKind", path)
+            prompt <- string(item, "prompt", path)
+            minimum <- int(item, "minimum", path)
+            maximum <- int(item, "maximum", path)
+            auto <- bool(item, "autoActivate", path)
+            candidates <- array(item, "candidates", path).flatMap(
+              traverse(_, "candidates") { (candidate, candidatePath) => for {
+                targetValue <- field(candidate, "target", candidatePath)
+                target <- boardTargetRef(targetValue, s"$candidatePath.target")
+                label <- string(candidate, "label", candidatePath)
+                details <- stringArray(candidate, "details", candidatePath)
+              } yield BoardTargetCandidate(target, label, details) })
+            _ <- Either.cond(minimum >= 0 && maximum >= minimum &&
+              maximum <= candidates.size, (), GameClientFailure.DecodeFailure(
+                path, "invalid board-target cardinality"))
+            keys = candidates.map(_.target.stableKey)
+            _ <- Either.cond(keys.distinct.size == keys.size, (),
+              GameClientFailure.DecodeFailure(s"$path.candidates",
+                "duplicate target reference"))
+          } yield BoardTargetAction(kind, prompt, minimum, maximum, auto,
+            candidates) })
         pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -803,6 +852,7 @@ object GameJson {
         searchSources,
         musters,
         trades,
+        boardActions,
         pendingDecision,
         recover,
         worldDeckCount,
@@ -874,6 +924,33 @@ object GameJson {
       else Left(GameClientFailure.DecodeFailure(s"$path.target.kind",
         "expected denizen or edifice"))
   } yield EconomyTarget(kind, id)
+
+  private def boardTargetRef(value: js.Dynamic, path: String)
+      : Either[GameClientFailure, BoardTargetRef] = for {
+    obj <- objectValue(value, path)
+    kind <- string(obj, "kind", path)
+    target <- kind match {
+      case "site" => string(obj, "siteId", path).map(BoardTargetRef.Site)
+      case "site-card" => for {
+        site <- string(obj, "siteId", path)
+        cardKind <- string(obj, "cardKind", path)
+        _ <- Either.cond(Set("denizen", "edifice").contains(cardKind), (),
+          GameClientFailure.DecodeFailure(s"$path.cardKind",
+            "expected denizen or edifice"))
+        card <- string(obj, "cardId", path)
+      } yield BoardTargetRef.SiteCard(site, cardKind, card)
+      case "player-adviser" => for {
+        player <- string(obj, "playerId", path)
+        card <- string(obj, "cardId", path)
+      } yield BoardTargetRef.PlayerAdviser(player, card)
+      case "player-relic" => for {
+        player <- string(obj, "playerId", path)
+        relic <- string(obj, "relicId", path)
+      } yield BoardTargetRef.PlayerRelic(player, relic)
+      case other => Left(GameClientFailure.DecodeFailure(s"$path.kind",
+        s"unsupported board target kind '$other'"))
+    }
+  } yield target
 
   private def safely[A](decode: => Either[GameClientFailure, A]) =
     try decode

@@ -22,7 +22,7 @@ object ServerModeUi {
     var gameId = queryParameter("gameId").getOrElse(freshGameId())
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
-    var travelSelectionOpen = false
+    var boardSelectionState = Option.empty[BoardTargetSelectionState]
     var cardDecisionState = Option.empty[CardDecisionState]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
@@ -72,7 +72,10 @@ object ServerModeUi {
     ): Unit =
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
-          travelSelectionOpen = false
+          boardSelectionState = Some(BoardTargetSelectionState.reconcile(
+            boardSelectionState,
+            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
+            displayed.boardTargetActions))
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -93,7 +96,7 @@ object ServerModeUi {
               nextRequest,
               retainedNotice
             ) =>
-          travelSelectionOpen = false
+          boardSelectionState = None
           cardDecisionState = None
           polling.foreach(_.stop())
           projection = Some(displayed)
@@ -125,7 +128,7 @@ object ServerModeUi {
       polling.foreach(_.stop())
       gameId = id.trim
       projection = None
-      travelSelectionOpen = false
+      boardSelectionState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -145,7 +148,7 @@ object ServerModeUi {
       gameId = freshGameId()
       selectedPlayer = bootstrap.firstPlayer
       projection = None
-      travelSelectionOpen = false
+      boardSelectionState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -203,6 +206,7 @@ object ServerModeUi {
           .foreach {
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
+              boardSelectionState = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
                 refreshed => accept(request, refreshed, Some(stale))
@@ -210,6 +214,17 @@ object ServerModeUi {
             case other => accept(request, other)
           }
       }
+
+    def handleBoardSelection(result: BoardSelectionResult): Unit = result match {
+      case BoardSelectionResult.Updated(state) =>
+        boardSelectionState = Some(state)
+        render()
+      case BoardSelectionResult.Submit(action, targets) =>
+        commandForSelection(action, targets, selectedPlayer).foreach { command =>
+          boardSelectionState = None
+          submit(command)
+        }
+    }
 
     def controls(): dom.Element = {
       val bar = element("div", "debug-toolbar")
@@ -343,16 +358,36 @@ object ServerModeUi {
         end.onclick = _ => submit(GameCommand.EndWake(selectedPlayer))
         panel.appendChild(end)
       }
+      if (!value.actionSelectionOpen && presentation.showGameplayControls) {
+        boardSelectionState.flatMap(_.activeAction).foreach { action =>
+          panel.appendChild(text("p", "selection-instruction", action.prompt))
+          panel.appendChild(text("p", "selection-cardinality",
+            cardinalityInstruction(action)))
+        }
+      }
       if (showActActionControls(value, presentation)) {
-        if (travelSelectionOpen) {
-          panel.appendChild(text("p", "informational",
-            "Choose a destination site."))
-          val cancel = button("Cancel Travel", "cancel-travel")
-          cancel.onclick = _ => {
-            travelSelectionOpen = false
-            render()
+        val selection = boardSelectionState.flatMap(_.activeAction)
+        if (selection.nonEmpty) {
+          val action = selection.get
+          panel.appendChild(text("p", "selection-instruction", action.prompt))
+          panel.appendChild(text("p", "selection-cardinality",
+            cardinalityInstruction(action)))
+          if (!action.autoActivate) {
+            val cancel = button("Cancel", "cancel-board-selection")
+            cancel.onclick = _ => {
+              boardSelectionState = boardSelectionState.map(_.cancel)
+              render()
+            }
+            panel.appendChild(cancel)
           }
-          panel.appendChild(cancel)
+          if (action.maximum > 1) {
+            val confirm = button("Confirm selection", "confirm-board-selection")
+            confirm.disabled = !controlsAvailable ||
+              !boardSelectionState.exists(_.canConfirm)
+            confirm.onclick = _ => boardSelectionState.flatMap(_.confirm)
+              .foreach(handleBoardSelection)
+            panel.appendChild(confirm)
+          }
         } else {
           value.legalSearchSources.foreach { source =>
             val label = source.kind match {
@@ -372,31 +407,16 @@ object ServerModeUi {
             recover.onclick = _ => submit(GameCommand.BeginRecover(selectedPlayer))
             panel.appendChild(recover)
           }
-          val travel = button("Travel", "act-action travel-action")
-          travel.disabled = !controlsAvailable ||
-            value.legalTravelDestinations.isEmpty ||
-            !presentation.showGameplayControls
-          travel.onclick = _ => {
-            travelSelectionOpen = true
-            render()
-          }
-          panel.appendChild(travel)
-          value.legalMusters.foreach { option =>
-            val control = button(
-              s"Muster ${option.label} (+${option.warbandsGained} warbands)",
-              "act-action muster-action")
-            control.disabled = !controlsAvailable || !presentation.showGameplayControls
-            control.onclick = _ => submit(GameCommand.Muster(
-              selectedPlayer, option.target))
-            panel.appendChild(control)
-          }
-          value.legalTrades.foreach { option =>
-            val control = button(
-              s"Trade ${option.label} for ${option.gained} ${option.resource}",
-              "act-action trade-action")
-            control.disabled = !controlsAvailable || !presentation.showGameplayControls
-            control.onclick = _ => submit(GameCommand.Trade(
-              selectedPlayer, option.target, option.resource))
+          value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
+            val control = button(actionLabel(action.actionKind),
+              s"act-action target-action action-${action.actionKind}")
+            control.disabled = !controlsAvailable ||
+              !presentation.showGameplayControls || action.candidates.isEmpty
+            control.onclick = _ => {
+              boardSelectionState = boardSelectionState.map(
+                _.activate(action.actionKind))
+              render()
+            }
             panel.appendChild(control)
           }
           panel.appendChild(text("p", "informational",
@@ -635,11 +655,17 @@ object ServerModeUi {
             s"Supply ${board.supply}"))
         val advisers = element("div", "board-cards advisers")
         advisers.appendChild(text("strong", "", "Advisers"))
-        board.advisers.foreach(card => advisers.appendChild(cardDetailsPopover(card)))
+        board.advisers.foreach { card =>
+          advisers.appendChild(boardCardTarget(card,
+            BoardTargetRef.PlayerAdviser(board.playerId, card.cardId)))
+        }
         section.appendChild(advisers)
         val relics = element("div", "board-cards relics")
         relics.appendChild(text("strong", "", "Relics"))
-        board.relics.foreach(card => relics.appendChild(cardDetailsPopover(card)))
+        board.relics.foreach { card =>
+          relics.appendChild(boardCardTarget(card,
+            BoardTargetRef.PlayerRelic(board.playerId, card.cardId)))
+        }
         section.appendChild(relics)
         board.revealedVision.foreach(card => {
           section.appendChild(text("strong", "", "Revealed Vision"))
@@ -648,6 +674,25 @@ object ServerModeUi {
         panel.appendChild(section)
       }
       panel
+    }
+
+    def boardCardTarget(card: CardDetails, target: BoardTargetRef): dom.Element = {
+      val candidate = boardSelectionState.flatMap(_.activeAction.flatMap(
+        _.candidates.find(_.target == target)))
+      val shell = element("span", cardTargetClasses(candidate.nonEmpty,
+        boardSelectionState.exists(_.selected(target))))
+      shell.setAttribute("data-target-ref", target.stableKey)
+      shell.appendChild(cardDetailsPopover(card))
+      candidate.foreach { value =>
+        val choose = button(candidateButtonLabel(value), "board-target-control")
+        choose.setAttribute("data-target-ref", target.stableKey)
+        choose.setAttribute("aria-pressed",
+          boardSelectionState.exists(_.selected(target)).toString)
+        choose.onclick = _ => boardSelectionState.foreach(state =>
+          handleBoardSelection(state.choose(target)))
+        shell.appendChild(choose)
+      }
+      shell
     }
 
     def world(
@@ -674,35 +719,14 @@ object ServerModeUi {
           region.discardTopCardKind))
         val sites = element("div", "sites")
         region.sites.foreach { site =>
-          val control: dom.Element =
-            if (siteCardsActionable(
-              value,
-              presentation,
-              controlsAvailable,
-              travelSelectionOpen,
-              site.siteId
-            )) {
-              val buttonControl = button("", "site")
-              travelCost(value, site.siteId) match {
-                case Some(cost) if travelSelectionOpen =>
-                  buttonControl.setAttribute("aria-label",
-                    s"${site.label}: Travel for $cost Supply")
-                  buttonControl.appendChild(text(
-                    "span", "travel-cost", s"$cost Supply"))
-                  buttonControl.onclick = _ => submit(
-                    GameCommand.Travel(selectedPlayer, site.siteId))
-                case _ =>
-                  buttonControl.setAttribute("aria-label",
-                    s"${site.label}: place pawn")
-                  buttonControl.onclick = _ => submit(
-                    GameCommand.PlacePawn(selectedPlayer, site.siteId))
-              }
-              buttonControl
-            } else {
-              val readonly = element("article", "site site-readonly")
-              readonly.setAttribute("aria-label", site.label)
-              readonly
-            }
+          val siteTarget = BoardTargetRef.Site(site.siteId)
+          val candidate = boardSelectionState.flatMap(
+            _.activeAction.flatMap(_.candidates.find(_.target == siteTarget)))
+          val isSelected = boardSelectionState.exists(_.selected(siteTarget))
+          val control = element("article", siteTargetClasses(candidate.nonEmpty,
+            isSelected))
+          control.setAttribute("aria-label", site.label)
+          control.setAttribute("data-target-ref", siteTarget.stableKey)
           val heading = element("div", "site-heading")
           heading.appendChild(VisualDomRenderer.render(
             SiteCardPresentation.from(site).siteVisual,
@@ -710,6 +734,15 @@ object ServerModeUi {
           ))
           heading.appendChild(text("span", "site-name", site.label))
           control.appendChild(heading)
+          candidate.foreach { value =>
+            val choose = button(candidateButtonLabel(value), "board-target-control")
+            choose.setAttribute("data-target-ref", siteTarget.stableKey)
+            choose.setAttribute("aria-pressed", isSelected.toString)
+            choose.disabled = !controlsAvailable || !presentation.showGameplayControls
+            choose.onclick = _ => boardSelectionState.foreach(state =>
+              handleBoardSelection(state.choose(siteTarget)))
+            control.appendChild(choose)
+          }
           val pawns = element("div", "site-pawns")
           value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
             val marker = element("span", "pawn")
@@ -718,7 +751,9 @@ object ServerModeUi {
             pawns.appendChild(marker)
           }
           if (pawns.childNodes.length > 0) control.appendChild(pawns)
-          control.appendChild(siteDetails(site))
+          control.appendChild(siteDetails(site, boardSelectionState,
+            target => boardSelectionState.foreach(state =>
+              handleBoardSelection(state.choose(target)))))
           sites.appendChild(control)
         }
         section.appendChild(sites)
@@ -753,7 +788,9 @@ object ServerModeUi {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
-  private[frontend] def siteDetails(site: GameSite): dom.Element = {
+  private[frontend] def siteDetails(site: GameSite,
+      selection: Option[BoardTargetSelectionState] = None,
+      chooseTarget: BoardTargetRef => Unit = _ => ()): dom.Element = {
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     val properties = element("dl", "site-properties")
@@ -787,12 +824,27 @@ object ServerModeUi {
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
     else site.denizens.foreach { denizen =>
-      val card = denizen.details.fold[dom.Element](
-        VisualDomRenderer.render(
-          presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
-          "site-card"))(cardDetailsPopover)
+      val target = BoardTargetRef.SiteCard(site.siteId,
+        denizen.details.fold("denizen")(_.cardKind), denizen.denizenId)
+      val candidate = selection.flatMap(_.activeAction.flatMap(
+        _.candidates.find(_.target == target)))
+      val shell = element("span", cardTargetClasses(candidate.nonEmpty,
+        selection.exists(_.selected(target))))
+      shell.setAttribute("data-target-ref", target.stableKey)
+      val card = denizen.details.fold[dom.Element](VisualDomRenderer.render(
+        presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
+        "site-card"))(cardDetailsPopover)
       card.setAttribute("data-denizen-id", denizen.denizenId)
-      denizens.appendChild(card)
+      shell.appendChild(card)
+      candidate.foreach { value =>
+        val choose = button(candidateButtonLabel(value), "board-target-control")
+        choose.setAttribute("data-target-ref", target.stableKey)
+        choose.setAttribute("aria-pressed",
+          selection.exists(_.selected(target)).toString)
+        choose.onclick = _ => chooseTarget(target)
+        shell.appendChild(choose)
+      }
+      denizens.appendChild(shell)
     }
     (site.denizens.size until site.denizenCapacity).foreach { _ =>
       val slot = text("span", "empty-denizen-slot", "◇")
@@ -936,22 +988,46 @@ object ServerModeUi {
       presentation: ViewerPresentation
   ): Boolean = value.actionSelectionOpen && presentation.showGameplayControls
 
-  private[frontend] def siteCardsActionable(
-      value: GameProjection,
-      presentation: ViewerPresentation,
-      controlsAvailable: Boolean = true,
-      travelSelectionOpen: Boolean = false,
-      siteId: String = ""
-  ): Boolean =
-    controlsAvailable && presentation.showGameplayControls &&
-      (value.legalControls.contains("placePawn") ||
-        (travelSelectionOpen && travelCost(value, siteId).nonEmpty))
+  private[frontend] def actionLabel(kind: String): String = kind match {
+    case "travel" => "Travel"
+    case "muster" => "Muster"
+    case "trade-favor" => "Trade for favor"
+    case "trade-secret" => "Trade for secrets"
+    case other => other
+  }
 
-  private[frontend] def travelCost(
-      value: GameProjection,
-      siteId: String
-  ): Option[Int] = value.legalTravelDestinations
-    .find(_.siteId == siteId).map(_.supplyCost)
+  private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
+    if (action.maximum == 1) "Choose one target. Selection submits immediately."
+    else s"Choose ${action.minimum} to ${action.maximum} targets, then confirm."
+
+  private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
+    (candidate.label +: candidate.details).mkString(" · ")
+
+  private[frontend] def siteTargetClasses(candidate: Boolean,
+      selected: Boolean): String =
+    Vector("site", if (candidate) "board-target" else "site-readonly",
+      if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
+
+  private[frontend] def cardTargetClasses(candidate: Boolean,
+      selected: Boolean): String =
+    Vector("site-card-target", if (candidate) "board-target" else "",
+      if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
+
+  private[frontend] def commandForSelection(action: BoardTargetAction,
+      targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
+    (action.actionKind, targets) match {
+      case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
+        Some(GameCommand.PlacePawn(playerId, site))
+      case ("travel", Vector(BoardTargetRef.Site(site))) =>
+        Some(GameCommand.Travel(playerId, site))
+      case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
+        Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
+      case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
+        Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "favor"))
+      case ("trade-secret", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
+        Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "secret"))
+      case _ => None
+    }
 
   private[frontend] def takeWealthActions(
       value: GameProjection,

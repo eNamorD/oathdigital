@@ -199,6 +199,20 @@ object GameHttpWire {
             "resource" -> option.resource, "supplyCost" -> option.supplyCost,
             "gained" -> option.gained)
         }),
+        "boardTargetActions" -> ujson.Arr.from(
+          projection.boardTargetActions.map { action => ujson.Obj(
+            "actionKind" -> action.actionKind,
+            "prompt" -> action.prompt,
+            "minimum" -> action.minimum,
+            "maximum" -> action.maximum,
+            "autoActivate" -> action.autoActivate,
+            "candidates" -> ujson.Arr.from(action.candidates.map { candidate =>
+              ujson.Obj("target" -> encodeBoardTarget(candidate.target),
+                "label" -> candidate.label,
+                "details" -> ujson.Arr.from(
+                  candidate.details.map(ujson.Str(_))))
+            }))
+          }),
         "pendingCardDecision" -> projection.pendingCardDecision.fold[ujson.Value](ujson.Null) {
           decision => ujson.Obj(
             "decisionId" -> decision.decisionId,
@@ -252,6 +266,25 @@ object GameHttpWire {
       "relicValue" -> card.relicValue.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
       "defense" -> card.defense.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
       "hidden" -> card.hidden)
+
+  private def encodeBoardTarget(
+      target: oathdigital.application.BoardTargetRefProjection
+  ): ujson.Obj = target match {
+    case oathdigital.application.BoardTargetRefProjection.Site(siteId) =>
+      ujson.Obj("kind" -> "site", "siteId" -> siteId)
+    case oathdigital.application.BoardTargetRefProjection.SiteCard(
+        siteId, cardKind, cardId) =>
+      ujson.Obj("kind" -> "site-card", "siteId" -> siteId,
+        "cardKind" -> cardKind, "cardId" -> cardId)
+    case oathdigital.application.BoardTargetRefProjection.PlayerAdviser(
+        playerId, cardId) =>
+      ujson.Obj("kind" -> "player-adviser", "playerId" -> playerId,
+        "cardId" -> cardId)
+    case oathdigital.application.BoardTargetRefProjection.PlayerRelic(
+        playerId, relicId) =>
+      ujson.Obj("kind" -> "player-relic", "playerId" -> playerId,
+        "relicId" -> relicId)
+  }
 
   def encodeError(code: String, message: String): String =
     ujson.write(ujson.Obj("error" -> code, "message" -> message))

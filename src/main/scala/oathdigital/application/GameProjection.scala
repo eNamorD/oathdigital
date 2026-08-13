@@ -87,6 +87,34 @@ final case class LegalMusterProjection(
 final case class LegalTradeProjection(
     targetKind: String, targetId: String, label: String, suit: String,
     resource: String, supplyCost: Int, gained: Int)
+sealed trait BoardTargetRefProjection extends Product with Serializable
+object BoardTargetRefProjection {
+  final case class Site(siteId: String) extends BoardTargetRefProjection
+  final case class SiteCard(siteId: String, cardKind: String, cardId: String)
+      extends BoardTargetRefProjection
+  final case class PlayerAdviser(playerId: String, cardId: String)
+      extends BoardTargetRefProjection
+  final case class PlayerRelic(playerId: String, relicId: String)
+      extends BoardTargetRefProjection
+}
+final case class BoardTargetCandidateProjection(
+    target: BoardTargetRefProjection,
+    label: String,
+    details: Vector[String] = Vector.empty
+)
+final case class BoardTargetActionProjection(
+    actionKind: String,
+    prompt: String,
+    minimum: Int,
+    maximum: Int,
+    autoActivate: Boolean,
+    candidates: Vector[BoardTargetCandidateProjection]
+) {
+  require(minimum >= 0, "selection minimum must be non-negative")
+  require(maximum >= minimum, "selection maximum must include minimum")
+  require(maximum <= candidates.size,
+    "selection maximum cannot exceed authorized candidates")
+}
 final case class CardResolutionProjection(
     kind: String,
     orientation: Option[String] = None,
@@ -141,6 +169,7 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
     legalMusters: Vector[LegalMusterProjection] = Vector.empty,
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
+    boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     recover: Option[RecoverProjection] = None,
     worldDeckCount: Int = 0,
@@ -240,7 +269,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           controls,
           ready = false,
           completed = false,
-          pendingCardDecision = decision
+          pendingCardDecision = decision,
+          boardTargetActions = Option.when(controls.contains("placePawn"))(
+            BoardTargetActionProjection("place-pawn", "Choose a starting site",
+              1, 1, autoActivate = true,
+              progress.plan.orderedSites.map(site => BoardTargetCandidateProjection(
+                BoardTargetRefProjection.Site(site.value),
+                siteNames.getOrElse(site, safeLabel(site.value)))))).toVector
         )
       case Ready(value) =>
         val current = value.game.current
@@ -419,6 +454,11 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     }, result.supplySpent, result.gained)
               }
             else Vector.empty,
+          boardTargetActions =
+            if (requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty)
+              boardTargetActions(value, active)
+            else Vector.empty,
           pendingCardDecision = pendingDecision,
           recover = recoverProjection,
           worldDeckCount = current.commonCards.worldDeck.size,
@@ -433,6 +473,51 @@ final class GameProjector(catalog: ExecutableCatalog) {
       denizenNames.getOrElse(id, safeLabel(id.value))
     case EconomyTargetRef.Edifice(id) =>
       edificeNames.get(id).map(_._2).getOrElse(safeLabel(id.value))
+  }
+
+  private def boardTargetActions(ready: ReadyGame,
+      player: PlayerState): Vector[BoardTargetActionProjection] = {
+    val travel = TravelRules.legalDestinations(catalog, ready, player).map {
+      case (siteId, cost) => BoardTargetCandidateProjection(
+        BoardTargetRefProjection.Site(siteId.value),
+        siteNames.getOrElse(siteId, safeLabel(siteId.value)),
+        Vector(s"$cost Supply"))
+    }
+    val musters = Economy.legalMuster(catalog, ready, player).map { result =>
+      economyCandidate(result.target, result.source,
+        Vector(s"${result.supplySpent} Supply",
+          s"+${result.warbandsGained} warbands"))
+    }
+    val trades = Economy.legalTrades(catalog, ready, player)
+    val favor = trades.filter(_.resource == oathdigital.setup.TradeResource.Favor)
+      .map(result => economyCandidate(result.target, result.source,
+        Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
+    val secret = trades.filter(_.resource == oathdigital.setup.TradeResource.Secret)
+      .map(result => economyCandidate(result.target, result.source,
+        Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
+    Vector(
+      selection("travel", "Choose a Travel destination", travel),
+      selection("muster", "Choose a card to Muster from", musters),
+      selection("trade-favor", "Choose a card to Trade for favor", favor),
+      selection("trade-secret", "Choose a card to Trade for secrets", secret)
+    ).flatten
+  }
+
+  private def selection(kind: String, prompt: String,
+      candidates: Vector[BoardTargetCandidateProjection]) =
+    Option.when(candidates.nonEmpty)(BoardTargetActionProjection(
+      kind, prompt, 1, 1, autoActivate = false, candidates))
+
+  private def economyCandidate(target: EconomyTargetRef,
+      source: oathdigital.gameplay.RuleSourceRef, details: Vector[String]) = {
+    val siteId = source match {
+      case oathdigital.gameplay.RuleSourceRef.SiteCard(site, _) => site
+      case oathdigital.gameplay.RuleSourceRef.Edifice(site, _) => site
+      case other => throw new IllegalStateException(
+        s"Economy candidate has non-site source $other")
+    }
+    BoardTargetCandidateProjection(BoardTargetRefProjection.SiteCard(
+      siteId.value, target.kind, target.id.value), economyLabel(target), details)
   }
 
   private def players(

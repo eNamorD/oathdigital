@@ -95,9 +95,35 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   color: #f5ecd7;
   text-align: left;
 }
-.site:enabled { cursor: pointer; border-color: #d2a85e; }
-.site:enabled:hover { background: #3b3123; transform: translateY(-1px); }
 .site-readonly { cursor: default; }
+.board-target { border-color: #d2a85e; box-shadow: inset 0 0 0 1px #d2a85e; }
+.board-target:hover, .board-target:focus-within {
+  border-color: #fff2d6;
+  box-shadow: 0 0 0 3px rgba(210, 168, 94, 0.35);
+}
+.board-target-selected {
+  border-color: #8ecbff;
+  box-shadow: inset 0 0 0 2px #8ecbff;
+  background: #243442;
+}
+.board-target-control {
+  display: block;
+  width: 100%;
+  min-height: 38px;
+  margin-top: 7px;
+  border: 1px solid #d2a85e;
+  border-radius: 6px;
+  background: #211d17;
+  color: #fff2d6;
+  font-weight: 800;
+}
+.board-target-control:hover, .board-target-control:focus-visible {
+  outline: 3px solid #fff2d6;
+  outline-offset: 2px;
+  background: #3b3123;
+}
+.board-target-control[aria-pressed="true"]::before { content: "✓ "; }
+.site-card-target { display: inline-block; margin-right: 5px; padding: 2px; border: 1px solid transparent; border-radius: 7px; }
 .site-heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .site-name {
   min-width: 0;
