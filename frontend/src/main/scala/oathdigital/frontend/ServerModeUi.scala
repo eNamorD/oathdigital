@@ -301,6 +301,9 @@ object ServerModeUi {
           node.textContent = "Wake phase — take available wealth or end Wake."
         case None if value.phase == "rest" =>
           node.textContent = "Rest phase — finish Rest when ready."
+        case None if value.phase == "game-over" =>
+          node.textContent = value.oathkeeper.flatMap(_.winnerPlayerId)
+            .fold("Game over.")(winner => s"Game over — $winner wins as Usurper.")
         case None if value.phase == "search-decision" =>
           node.textContent = "Act phase — resolve your Search."
         case None if value.phase == "awaiting-adviser" =>
@@ -327,6 +330,13 @@ object ServerModeUi {
       val panel = element("section", "panel wake-actions")
       panel.appendChild(text("h2", "", "Available actions"))
       panel.appendChild(status(value))
+      value.oathkeeper.foreach { oath =>
+        val holder = oath.holderPlayerId.getOrElse("unheld")
+        val limiter = if (oath.usurperLimited) " · Usurper locked until round 4" else ""
+        val winner = oath.winnerPlayerId.fold("")(id => s" · Winner: $id")
+        panel.appendChild(text("p", "oathkeeper-status",
+          s"Oath of Supremacy · ${oath.side.capitalize}: $holder$limiter$winner"))
+      }
       value.activePlayerResources.foreach { resources =>
         panel.appendChild(text(
           "p",

@@ -6,6 +6,8 @@ import oathdigital.model._
 import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
+import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
+  UsurperVictory}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
@@ -55,7 +57,8 @@ class GameEventWireSuite extends munit.FunSuite {
     val events = Vector[OathEvent](
       RestStarted(PlayerId("red")),
       RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2, Suit.Order -> 1),
-        returnedSecrets = 3, refreshedSupply = 6, PlayerId("blue"), 2)
+        returnedSecrets = 3, refreshedSupply = 6, PlayerId("blue"), 2,
+        usurperLimited = true)
     )
     val encoded = GameEventWire.encodeStream("rest", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
@@ -73,7 +76,7 @@ class GameEventWireSuite extends munit.FunSuite {
     def restValue(): ujson.Obj = GameEventWire.encodeEvent(
       "rest", catalogRef, 0L,
       RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2), 3, 6,
-        PlayerId("blue"), 2)).toOption.get.obj
+        PlayerId("blue"), 2, usurperLimited = true)).toOption.get.obj
     def reject(field: String, value: Double, expected: WireError): Unit = {
       val encoded = restValue()
       encoded("payload")(field) = ujson.Num(value)
@@ -281,6 +284,24 @@ class GameEventWireSuite extends munit.FunSuite {
 
     encoded("payload")("supplySpent") = -1
     assert(GameEventWire.decode(encoded).isLeft)
+  }
+
+  test("current state-based Oathkeeper and Usurper events round trip") {
+    val events = Vector[OathEvent](
+      OathkeeperChanged(Some(PlayerId("p2"))),
+      UsurperFlipped(PlayerId("p2")),
+      UsurperVictory(PlayerId("p2")))
+    val encoded = events.zipWithIndex.map { case (event, index) =>
+      GameEventWire.encodeEvent("oath", catalogRef, 20L + index, event)
+        .toOption.get
+    }
+    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(7, 7, 7))
+    assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
+      events)
+    val noHolder = GameEventWire.encodeEvent("oath", catalogRef, 23L,
+      OathkeeperChanged(None)).toOption.get
+    assertEquals(GameEventWire.decode(noHolder).toOption.get.event,
+      OathkeeperChanged(None))
   }
 
   test("v4 Search events round trip exact hidden outcome and player choices") {

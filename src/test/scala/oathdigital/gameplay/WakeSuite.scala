@@ -169,7 +169,7 @@ class WakeSuite extends munit.FunSuite {
     }
   }
 
-  test("wrong phase and future victory states are typed") {
+  test("wrong phase and limited Oathkeeper Wake remains playable") {
     val state = ready()
     val active = activePlayer(state)
     val ended = rules.handle(state, WakeCommand.EndWake(active)).toOption.get.state
@@ -181,8 +181,7 @@ class WakeSuite extends munit.FunSuite {
     val titled = Ready(value.copy(game = value.game.copy(current =
       value.game.current.copy(title =
         OathkeeperState(Some(active), TitleSide.Oathkeeper)))))
-    assert(rules.handle(titled, WakeCommand.EndWake(active)).left.toOption.get
-      .isInstanceOf[UnsupportedWakeVictoryState])
+    assert(rules.handle(titled, WakeCommand.EndWake(active)).isRight)
   }
 
   test("command evolution and replay are equal and corrupt index is exact") {

@@ -128,7 +128,9 @@ object Rest {
       val last = index == order.size - 1
       RestCompleted(playerId, favor, secrets, supply.supply,
         if (last) order.head else order(index + 1),
-        current.tracks.round + (if (last) 1 else 0))
+        current.tracks.round + (if (last) 1 else 0),
+        current.tracks.usurperLimited &&
+          current.tracks.round + (if (last) 1 else 0) < 4)
     }
   }
 
@@ -170,7 +172,8 @@ object Rest {
       game = ready.game.copy(current = current.copy(
         players = players,
         map = current.map.copy(sites = sites),
-        tracks = current.tracks.copy(round = event.nextRound),
+        tracks = current.tracks.copy(round = event.nextRound,
+          usurperLimited = event.usurperLimited),
         turn = TurnState(event.nextPlayerId, Phase.Wake, Set.empty),
         pending = None)))
   }

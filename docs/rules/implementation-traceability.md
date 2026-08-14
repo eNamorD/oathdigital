@@ -69,7 +69,7 @@ above **Unimplemented**.
 
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |
 |---|---|---|---|---|
-| Oathkeeper qualification, transfer, Usurper limiter and Wake victory | **Unimplemented** | [CR pp. 16, 19](rules-reference.md#oathkeeper-and-usurper); Protection excludes banners [NF p. 16](new-foundations-delta.md#empire-and-other-changes) | Goals/title/tracks are modeled and holder references validated in `model/DomainValidation.scala`; no qualification or victory behavior exists. | Context-specific ties F7; action boundary F1. |
+| Oathkeeper qualification, transfer, Usurper limiter and Wake victory | **Tested (bounded)** | [CR pp. 16-17, 19](rules-reference.md#oathkeeper-and-usurper); Protection excludes banners [NF p. 16](new-foundations-delta.md#empire-and-other-changes) | `gameplay/StateBasedEvaluation.scala` is the single fixed-profile path for Supremacy checks after completed actions and Usurper checks on entry to Wake. It records replay-validated title/flip/victory events in the current pre-release format; `RestCompleted` records the authoritative limiter state and releases it on entry to round four. Persistence/reload and public HTTP/Scala.js status are covered. Focused and full suites cover unique transfer, holder retention without Usurper demotion, no invented initial tie winner, explicit rejection of the deferred holder-choice case, real round-three-to-four limiter release, a completed-action/turn-cycle Usurper victory, replay tampering, wire, persistence, HTTP, and client decoding. | The displaced-holder choice awaits Campaign's decision boundary. Protection, banners, altered Foundations, Imperials, Visions, round-eight endings, and Chronicle remain excluded. |
 | Vision reveal/qualification/victory and Conspiracy | **Blocked** | [CR pp. 16, 30](rules-reference.md#visions); Conspiracy changed [NF p. 16](new-foundations-delta.md#empire-and-other-changes) | Vision states/catalog goal shape exist and catalog decoding is tested; no reveal, three-Vision gate, goal evaluation or Conspiracy action exists. | Exact Vision/component data B5; hidden information F4. |
 | End die, rounds 5-8, War Exhaustion and no-Empire fallback | **Unimplemented** | [CR p. 19](rules-reference.md#empire-endings) | Round/result state exists; no end-of-round evaluator or die roll exists. | RNG/event policy F6; tie rules F7. |
 | Chancellor/Citizen roles, Successor and Empire actions | **Unimplemented** | [CR pp. 19, 34-35](rules-reference.md#empire-endings); simplified/changed exile rules [NF pp. 15-16](new-foundations-delta.md#empire-and-other-changes) | Role/Imperial force/Grand-Scepter-capable card state is modeled; multiple Chancellors are rejected by domain validation. No citizenship, Successor, Scepter or Imperial rule behavior exists. | Card/Scepter powers B1/B5; first-game policy F8. |
@@ -112,10 +112,7 @@ rows above. The remaining cross-cutting items are:
 
 ## Upcoming source-cited work
 
-1. **Oathkeeper/Usurper state-based victory.** Use CR pp. 16-17, 19 and NF
-   p. 16. Implement only after the action boundary is stable; it supplies the
-   first end-to-end game result without Campaign complexity. Resolve F7.
-2. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
+1. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
    Build on tested Atlas ordering to persist a completed fixture, then add
    World/Beacon, Sun, and Throne once component/legacy data is available.
 

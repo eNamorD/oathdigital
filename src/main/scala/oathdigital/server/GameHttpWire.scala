@@ -156,6 +156,12 @@ object GameHttpWire {
         ),
         "ready" -> projection.ready,
         "completed" -> projection.completed,
+        "oathkeeper" -> projection.oathkeeper.fold[ujson.Value](ujson.Null) { oath =>
+          ujson.Obj("goal" -> oath.goal,
+            "holderPlayerId" -> oath.holderPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+            "side" -> oath.side, "usurperLimited" -> oath.usurperLimited,
+            "winnerPlayerId" -> oath.winnerPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)))
+        },
         "worldDeckCount" -> projection.worldDeckCount,
         "worldDeckTopCardKind" -> projection.worldDeckTopCardKind.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
         "activePlayerResources" -> projection.activePlayerResources.fold[

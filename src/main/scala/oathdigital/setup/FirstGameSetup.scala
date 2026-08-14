@@ -135,8 +135,12 @@ object OathEvent {
       returnedSecrets: Int,
       refreshedSupply: Int,
       nextPlayerId: PlayerId,
-      nextRound: Int
+      nextRound: Int,
+      usurperLimited: Boolean
   ) extends OathEvent
+  final case class OathkeeperChanged(holder: Option[PlayerId]) extends OathEvent
+  final case class UsurperFlipped(playerId: PlayerId) extends OathEvent
+  final case class UsurperVictory(playerId: PlayerId) extends OathEvent
 }
 
 sealed trait TradeResource extends Product with Serializable
@@ -170,6 +174,7 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class GameFinished(winner: PlayerId) extends OathContinue
 }
 
 final case class OathTransition(
@@ -189,6 +194,8 @@ object OathViolation {
   final case class WrongPhase(expected: Phase, actual: Phase)
       extends OathViolation
   final case class UnsupportedWakeVictoryState(reason: String)
+      extends OathViolation
+  final case class UnsupportedOathkeeperTie(reason: String)
       extends OathViolation
   final case class PawnSiteMissing(playerId: PlayerId)
       extends OathViolation
@@ -480,6 +487,10 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
+      case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered =>
+        Left(InvalidEventOrder("Recover requires the gameplay evolution"))
+      case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
+        Left(InvalidEventOrder("state-based checks require gameplay evolution"))
     }
 
   private def validatePlan(

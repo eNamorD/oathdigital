@@ -48,6 +48,9 @@ object GameEventWire {
   val RecoverRolledType = "gameplay.recover-rolled"
   val RecoverStoppedType = "gameplay.recover-stopped"
   val RelicRecoveredType = "gameplay.relic-recovered"
+  val OathkeeperChangedType = "gameplay.oathkeeper-changed"
+  val UsurperFlippedType = "gameplay.usurper-flipped"
+  val UsurperVictoryType = "gameplay.usurper-victory"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -262,6 +265,9 @@ object GameEventWire {
       case _: RecoverRolled => RecoverRolledType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
+      case _: OathkeeperChanged => OathkeeperChangedType
+      case _: UsurperFlipped => UsurperFlippedType
+      case _: UsurperVictory => UsurperVictoryType
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
@@ -270,6 +276,8 @@ object GameEventWire {
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
     case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered => RecoverFormatVersion
+    case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
+      RecoverFormatVersion
     case _ => FormatVersion
   }
 
@@ -334,7 +342,7 @@ object GameEventWire {
           "placement" -> encodeSearchPlacement(placement)
         )
       case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
-      case RestCompleted(playerId, favor, secrets, supply, next, round) =>
+      case RestCompleted(playerId, favor, secrets, supply, next, round, limited) =>
         ujson.Obj(
           "playerId" -> playerId.value,
           "returnedFavor" -> ujson.Obj.from(favor.toVector.sortBy(_._1.key)
@@ -342,7 +350,8 @@ object GameEventWire {
           "returnedSecrets" -> secrets,
           "refreshedSupply" -> supply,
           "nextPlayerId" -> next.value,
-          "nextRound" -> round
+          "nextRound" -> round,
+          "usurperLimited" -> limited
         )
       case RecoverRolled(player, decision, site, spent, dice) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -353,6 +362,10 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
+      case OathkeeperChanged(holder) => ujson.Obj(
+        "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)))
+      case UsurperFlipped(player) => ujson.Obj("playerId" -> player.value)
+      case UsurperVictory(player) => ujson.Obj("playerId" -> player.value)
     }
 
   private def decodePayload(
@@ -481,10 +494,11 @@ object GameEventWire {
             returnedSecrets <- safeIntField(payload.obj, "returnedSecrets", path)
             refreshedSupply <- safeIntField(payload.obj, "refreshedSupply", path)
             nextRound <- safeIntField(payload.obj, "nextRound", path)
+            limited = payload("usurperLimited").bool
           } yield RestCompleted(
             PlayerId(payload("playerId").str), entries.toMap,
             returnedSecrets, refreshedSupply,
-            PlayerId(payload("nextPlayerId").str), nextRound)
+            PlayerId(payload("nextPlayerId").str), nextRound, limited)
         case RecoverRolledType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           dice <- traverse(payload("dice").arr.toVector)(v =>
@@ -497,6 +511,15 @@ object GameEventWire {
         case RelicRecoveredType => Right(RelicRecovered(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
           SiteId(payload("siteId").str), RelicId(payload("relicId").str)))
+        case OathkeeperChangedType =>
+          payload("holderPlayerId") match {
+            case ujson.Null => Right(OathkeeperChanged(None))
+            case value => Right(OathkeeperChanged(Some(PlayerId(value.str))))
+          }
+        case UsurperFlippedType =>
+          Right(UsurperFlipped(PlayerId(payload("playerId").str)))
+        case UsurperVictoryType =>
+          Right(UsurperVictory(PlayerId(payload("playerId").str)))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -516,7 +539,9 @@ object GameEventWire {
   ): Either[WireError, Unit] = {
     val expected =
       if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
-          eventType == RelicRecoveredType) RecoverFormatVersion
+          eventType == RelicRecoveredType || eventType == OathkeeperChangedType ||
+          eventType == UsurperFlippedType || eventType == UsurperVictoryType)
+        RecoverFormatVersion
       else if (eventType == MusteredType || eventType == TradedType)
         EconomyFormatVersion
       else if (eventType == RestStartedType || eventType == RestCompletedType)

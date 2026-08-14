@@ -27,25 +27,41 @@ final class OathRules(catalog: ExecutableCatalog)
       state: OathState,
       command: TravelCommand
   ): Either[OathViolation, OathTransition] =
-    Travel.handle(catalog, state, command)
+    Travel.handle(catalog, state, command).flatMap(completeAction)
 
   def handle(state: OathState, command: EconomyCommand)
       : Either[OathViolation, OathTransition] =
-    Economy.handle(catalog, state, command)
+    Economy.handle(catalog, state, command).flatMap(completeAction)
 
   def handle(
       state: OathState,
       command: SearchCommand
   ): Either[OathViolation, OathTransition] =
-    Search.handle(catalog, state, command)
+    Search.handle(catalog, state, command).flatMap { transition =>
+      command match {
+        case _: SearchCommand.Complete => completeAction(transition)
+        case _ => Right(transition)
+      }
+    }
 
   def handle(state: OathState, command: RecoverCommand)
       : Either[OathViolation, OathTransition] =
-    Recover.handle(catalog, state, command)
+    Recover.handle(catalog, state, command).flatMap { transition =>
+      command match {
+        case _: RecoverCommand.Stop | _: RecoverCommand.TakeRelic =>
+          completeAction(transition)
+        case _ => Right(transition)
+      }
+    }
 
   def handle(state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] =
-    Rest.handle(catalog, state, command)
+    Rest.handle(catalog, state, command).flatMap { transition =>
+      command match {
+        case _: RestCommand.Finish => enterWake(transition)
+        case _ => Right(transition)
+      }
+    }
 
   override def evolve(
       state: OathState,
@@ -64,7 +80,29 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
       case event: RestStarted => Rest.evolve(catalog, state, event)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
+      case event: OathkeeperChanged => StateBasedEvaluation.evolve(state, event)
+      case event: UsurperFlipped => StateBasedEvaluation.evolve(state, event)
+      case event: UsurperVictory => StateBasedEvaluation.evolve(state, event)
       case setupEvent => setup.evolve(state, setupEvent)
+    }
+
+  private def completeAction(transition: OathTransition) =
+    appendEvaluation(transition, StateBasedEvaluation.afterAction)
+
+  private def enterWake(transition: OathTransition) =
+    appendEvaluation(transition, StateBasedEvaluation.atWake)
+
+  private def appendEvaluation(transition: OathTransition,
+      evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =
+    evaluate(transition.state).flatMap {
+      case None => Right(transition)
+      case Some(event) => evolve(transition.state, event).map { next =>
+        transition.copy(state = next, events = transition.events :+ event,
+          continue = event match {
+            case UsurperVictory(winner) => OathContinue.GameFinished(winner)
+            case _ => transition.continue
+          })
+      }
     }
 }
 
@@ -82,8 +120,6 @@ private[gameplay] object OathLifecycle {
           Left(WrongPlayer(current.turn.activePlayer, playerId))
         else if (current.turn.phase != Phase.Wake)
           Left(WrongPhase(Phase.Wake, current.turn.phase))
-        else if (current.title.holder.nonEmpty)
-          Left(UnsupportedWakeVictoryState("Oathkeeper or Usurper is held"))
         else Right(ready)
     }
 

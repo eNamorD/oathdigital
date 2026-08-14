@@ -181,11 +181,14 @@ final case class GameProjection(
     recover: Option[RecoverState] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
-    playerBoards: Vector[PlayerBoard] = Vector.empty
+    playerBoards: Vector[PlayerBoard] = Vector.empty,
+    oathkeeper: Option[OathkeeperStatus] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
+final case class OathkeeperStatus(goal: String, holderPlayerId: Option[String],
+    side: String, usurperLimited: Boolean, winnerPlayerId: Option[String])
 
 sealed trait GameCommand
 object GameCommand {
@@ -644,6 +647,17 @@ object GameJson {
         controls <- stringArray(root, "legalControls", "$")
         ready <- bool(root, "ready", "$")
         completed <- bool(root, "completed", "$")
+        oathkeeper <- optionalField(root, "oathkeeper").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.oathkeeper").flatMap { obj => for {
+            goal <- string(obj, "goal", "$.oathkeeper")
+            holder <- optionalString(obj, "holderPlayerId", "$.oathkeeper")
+            side <- string(obj, "side", "$.oathkeeper")
+            limited <- bool(obj, "usurperLimited", "$.oathkeeper")
+            winner <- optionalString(obj, "winnerPlayerId", "$.oathkeeper")
+          } yield Some(OathkeeperStatus(goal, holder, side, limited, winner)) }
+        }
         resources <- optionalField(root, "activePlayerResources").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -857,7 +871,8 @@ object GameJson {
         recover,
         worldDeckCount,
         worldDeckTop,
-        boards
+        boards,
+        oathkeeper
       )
     }
   }

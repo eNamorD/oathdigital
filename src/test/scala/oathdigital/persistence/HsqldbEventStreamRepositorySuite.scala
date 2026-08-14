@@ -15,6 +15,9 @@ import oathdigital.application.{
 }
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.{CatalogRef, PlayerId}
+import oathdigital.serialization.GameEventWire
+import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
+  UsurperVictory}
 import oathdigital.serialization.WireError.MalformedJson
 import oathdigital.setup.SetupCommand.PlacePawn
 
@@ -176,6 +179,31 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         Vector("zero", "one", "two", "three")
       )
     } finally repository.close()
+  }
+
+  test("persists and reloads exact Oathkeeper evaluation records") {
+    val path = databasePath("oathkeeper-reload")
+    val events = Vector(
+      OathkeeperChanged(Some(PlayerId("p2"))),
+      UsurperFlipped(PlayerId("p2")),
+      UsurperVictory(PlayerId("p2")))
+    val records = events.zipWithIndex.map { case (event, index) =>
+      ujson.write(GameEventWire.encodeEvent("oathkeeper", catalog.ref,
+        index.toLong, event).toOption.get)
+    }
+    val first = open(path)
+    try assertEquals(first.append("oathkeeper", ExpectedStream.MustNotExist,
+      records), Right(RepositoryAppendResult.Appended(0L, 3)))
+    finally first.close()
+
+    val reloaded = open(path)
+    try {
+      val stored = reloaded.load("oathkeeper").toOption.flatten.get
+      assertEquals(stored.records, records)
+      val decoded = GameEventWire.decodeStream(
+        stored.records.mkString("[", ",", "]")).toOption.get
+      assertEquals(decoded.map(_.event), events)
+    } finally reloaded.close()
   }
 
   test("sequence conflict writes no part of a proposed batch") {

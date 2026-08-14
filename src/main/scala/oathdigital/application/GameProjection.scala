@@ -136,6 +136,9 @@ final case class RecoverProjection(
     decisionId: String, dice: Vector[String], shields: Int,
     difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
+final case class OathkeeperProjection(
+    goal: String, holderPlayerId: Option[String], side: String,
+    usurperLimited: Boolean, winnerPlayerId: Option[String])
 final case class PlayerBoardProjection(
     playerId: String,
     warbands: Int,
@@ -174,7 +177,8 @@ final case class GameProjection(
     recover: Option[RecoverProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
-    playerBoards: Vector[PlayerBoardProjection] = Vector.empty
+    playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
+    oathkeeper: Option[OathkeeperProjection] = None
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -283,7 +287,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
           _.player == current.turn.activePlayer).get
         val site = active.pawnSite.flatMap(current.map.sites.get)
         val controls =
-          if (!requestingPlayer.contains(active.player)) Vector.empty
+          if (current.result.nonEmpty || !requestingPlayer.contains(active.player)) Vector.empty
           else current.pending match {
             case Some(r: PendingProcedure.Recover) if !r.successful =>
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
@@ -356,7 +360,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
         GameProjection(
           gameId,
           loaded.nextSequence,
-          current.pending match {
+          if (current.result.nonEmpty) "game-over"
+          else current.pending match {
             case Some(_: PendingProcedure.Search) if pendingDecision.nonEmpty =>
               "search-decision"
             case Some(_: PendingProcedure.Search) => "search-waiting"
@@ -400,9 +405,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
               state.tokens.favor,
               state.tokens.secrets
             ))),
-          actionSelectionOpen = current.turn.phase == Phase.Act && current.pending.isEmpty,
+          actionSelectionOpen = current.result.isEmpty &&
+            current.turn.phase == Phase.Act && current.pending.isEmpty,
           actionFamilies =
-            if (current.turn.phase == Phase.Act)
+            if (current.result.isEmpty && current.turn.phase == Phase.Act)
               Vector("Search", "Travel", "Campaign", "Muster", "Trade",
                 "Forge", "Recover", "Challenge")
             else Vector.empty,
@@ -464,7 +470,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           worldDeckCount = current.commonCards.worldDeck.size,
           // Card backs/types are public; the World Deck top is its head.
           worldDeckTopCardKind = current.commonCards.worldDeck.headOption.map(cardKind),
-          playerBoards = viewerOrderedBoards(value, requestingPlayer)
+          playerBoards = viewerOrderedBoards(value, requestingPlayer),
+          oathkeeper = Some(OathkeeperProjection(
+            "supremacy", current.title.holder.map(_.value),
+            current.title.side match {
+              case TitleSide.Oathkeeper => "oathkeeper"
+              case TitleSide.Usurper => "usurper"
+            }, current.tracks.usurperLimited, current.result.map(_.winner.value)))
         )
     }
 

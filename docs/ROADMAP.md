@@ -41,6 +41,16 @@ reachable and its rule/modifier interactions meaningfully legal.
 
 ## Done
 
+- [x] **Bounded first-game Oathkeeper/Usurper ending.** The fixed unaltered,
+  all-Exile profile now evaluates Supremacy through one state-based path at
+  completed action boundaries, retains a tied current holder without inventing
+  a general F7 resolver, honors the no-Empire limiter, flips Oathkeeper to
+  Usurper on Wake, and records a retained-Usurper Wake victory. Replay-validated
+  events in the current pre-release format, HSQL reload, HTTP/client projection,
+  and image-independent UI status are covered. The displaced-holder
+  tied-recipient choice remains attached to future Campaign decision work; no
+  Campaign, Vision, Empire ending, or Chronicle behavior was added.
+
 - [x] **Campaign prerequisite 2 — reusable board target selection.** A typed,
   server-authorized selection protocol now represents sites, site cards with
   denizen/edifice identity, player advisers, and player relics independently
@@ -103,7 +113,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 210 JVM tests, 51 Scala.js tests, the Scala.js
+The combined milestone passes 230 JVM tests, 71 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

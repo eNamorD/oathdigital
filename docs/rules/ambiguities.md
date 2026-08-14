@@ -21,7 +21,16 @@ These are not claimed errors in the rulebook. They are places where an implement
 4. **Private information.** The rules permit owners to view/share their private data. Multiplayer UI needs visibility and reveal/audit policies for facedown advisers, relics, drawn cards, and secret selections (CR p. 42).
 5. **Unlimited dice vs limited pieces.** Dice are unlimited; other components are limited and extra placement is ignored. Decide whether digital inventory should preserve physical limits exactly (CR p. 42).
 6. **Random winner/coin flips.** No-Empire exhaustion can choose randomly, and unclear Tribunal promise breach uses a coin flip. Specify RNG seed and event log behavior (CR pp. 19, 30).
-7. **Ties by role/context.** Oathkeeper, legacy, Vision exhaustion, era, and other ties use different rules. Do not generalize a single tie resolver (CR pp. 16, 19, 36-37).
+7. **Ties by role/context (resolved only for fixed first-game Supremacy).**
+   Supremacy's ordinary qualification is strict: rule more sites than every
+   other player, so an initially unheld title is not assigned across a highest
+   tie. CR p. 16 then supplies title-specific exceptions: a current holder in
+   the highest tie retains it; if the holder is displaced by multiple tied
+   leaders, that holder chooses the recipient. The current bounded evaluator
+   implements the deterministic first two cases and rejects the last until a
+   Campaign-era holder-choice procedure exists. This is not a generic tie
+   resolver; legacy, Vision exhaustion, era, and other ties remain unresolved
+   in their own contexts (CR pp. 16, 19, 36-37).
 8. **First game exception.** CR recommends ignoring "become Citizen" powers in the first game, wording this as a recommendation rather than a strict prohibition. Product rules need a configurable or explicit interpretation (CR p. 30; CR p. 34 uses similar guidance).
 9. **Campaign target legality under Pass and zero-capacity sites.** Target generation must combine campaign type, ruler, region Pass consent, and special no-capacity cases (CR pp. 21-22, 30-31).
 10. **Chronicle actor availability.** Banner task assignment can target "anyone"; player attendance may change between games. Define whether absent/stored lineages can be assigned tasks or whether "anyone" means current participants (CR p. 36).

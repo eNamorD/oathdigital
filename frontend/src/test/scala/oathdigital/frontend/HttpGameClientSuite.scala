@@ -6,6 +6,19 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class HttpGameClientSuite extends FunSuite {
+  test("projection decodes scoped Oathkeeper and Usurper victory status") {
+    val json = projectionJson(sequence = 30, phase = "game-over",
+      ready = true, completed = true, choices = false).replace(
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null,\"oathkeeper\":{" +
+        "\"goal\":\"supremacy\",\"holderPlayerId\":\"red-exile\"," +
+        "\"side\":\"usurper\",\"usurperLimited\":false," +
+        "\"winnerPlayerId\":\"red-exile\"}")
+    val decoded = GameJson.decodeProjection(json).toOption.get
+    assertEquals(decoded.oathkeeper, Some(OathkeeperStatus("supremacy",
+      Some("red-exile"), "usurper", usurperLimited = false,
+      Some("red-exile"))))
+  }
   test("Recover commands encode decisions and private relic resolution") {
     assert(GameJson.encodeCommand(20, GameCommand.BeginRecover("red"))
       .contains("\"type\":\"beginRecover\""))

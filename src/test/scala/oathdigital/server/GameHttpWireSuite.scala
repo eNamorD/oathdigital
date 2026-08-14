@@ -1,12 +1,25 @@
 package oathdigital.server
 
-import oathdigital.application.{CardDecisionResolution, GameCommand}
+import oathdigital.application.{CardDecisionResolution, GameCommand, GameProjection,
+  OathkeeperProjection}
 import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId, PlayerId}
 import oathdigital.serialization.{
   GameEventWire
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("projection exposes public scoped Oathkeeper and victory status") {
+    val projection = GameProjection("game", 12L, "game-over", Some("p2"),
+      Vector.empty, Vector.empty, Vector.empty, Vector.empty,
+      ready = true, completed = true,
+      oathkeeper = Some(OathkeeperProjection("supremacy", Some("p2"),
+        "usurper", usurperLimited = false, Some("p2"))))
+    val json = ujson.read(GameHttpWire.encodeProjection(projection))
+    assertEquals(json("oathkeeper")("holderPlayerId").str, "p2")
+    assertEquals(json("oathkeeper")("side").str, "usurper")
+    assertEquals(json("oathkeeper")("winnerPlayerId").str, "p2")
+    assert(!GameHttpWire.encodeProjection(projection).contains("lineage"))
+  }
   test("generic development card decision carries actor and typed resolution") {
     val json = commandRequest(ujson.Obj("type" -> "resolveCardDecision",
       "playerId" -> "p2", "decisionId" -> "setup-adviser-0-p2",
