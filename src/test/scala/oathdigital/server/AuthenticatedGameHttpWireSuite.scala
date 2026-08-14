@@ -3,6 +3,38 @@ package oathdigital.server
 import oathdigital.model.{EconomyTargetRef, EdificeId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated Campaign intents are actor-free and exclude dice outcomes") {
+    val begin = """{"expectedNextSequence":30,"intent":{"type":"beginCampaignConquest","targetSiteId":"site:a","attackDiceCount":3}}"""
+    val sacrifice = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignSacrifice","decisionId":"campaign-30","count":1}}"""
+    val place = """{"expectedNextSequence":32,"intent":{"type":"placeCampaignForce","decisionId":"campaign-30","count":2}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      GameIntent.BeginCampaignConquest(oathdigital.model.SiteId("site:a"), 3))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(sacrifice).toOption.get.intent,
+      GameIntent.ChooseCampaignSacrifice(
+        oathdigital.model.DecisionId("campaign-30"), 1))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(place).toOption.get.intent,
+      GameIntent.PlaceCampaignForce(
+        oathdigital.model.DecisionId("campaign-30"), 2))
+    val tampered = ujson.read(sacrifice).obj
+    tampered("intent").obj("defenseDice") = ujson.Arr("doubler")
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(tampered))
+      .left.toOption.get.path, "$.intent.defenseDice")
+    val spoofed = ujson.read(begin).obj
+    spoofed("intent").obj("playerId") = "other"
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(spoofed))
+      .left.toOption.get.path, "$.intent.playerId")
+  }
+
+  test("authenticated Campaign counts require non-negative integers") {
+    Vector(-1, 1.5).foreach { count =>
+      val json = ujson.write(ujson.Obj("expectedNextSequence" -> 30,
+        "intent" -> ujson.Obj("type" -> "beginCampaignConquest",
+          "targetSiteId" -> "site:a", "attackDiceCount" -> count)))
+      assertEquals(AuthenticatedGameHttpWire.decodeCommand(json)
+        .left.toOption.get.path, "$.intent.attackDiceCount")
+    }
+  }
+
   test("authenticated Recover intents and private relic choice are actor-free") {
     val begin = """{"expectedNextSequence":20,"intent":{"type":"beginRecover"}}"""
     val add = """{"expectedNextSequence":21,"intent":{"type":"addRecoverDice","decisionId":"recover-20"}}"""

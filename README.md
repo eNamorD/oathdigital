@@ -23,6 +23,7 @@ depend on HRF's complete Scala.js framework.
 - [Gameplay module structure](docs/architecture/gameplay-modules.md)
 - [Typed rule resolution](docs/architecture/rule-resolution.md)
 - [Bounded Search and hidden decisions](docs/architecture/bounded-search.md)
+- [Bounded Campaign](docs/architecture/bounded-campaign.md)
 
 The rules engine in `oathdigital.engine` has no UI or asset dependency.
 `oathdigital.catalog` loads selected, source-verified catalog projections into

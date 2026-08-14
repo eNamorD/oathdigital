@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.{EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.actions.{CampaignCommand, CampaignRules, EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -44,6 +44,12 @@ object GameCommand {
       extends GameCommand
   final case class StopRecover(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
+  final case class BeginCampaignConquest(playerId: PlayerId, targetSiteId: SiteId,
+      attackDiceCount: Int) extends GameCommand
+  final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,
+      count: Int) extends GameCommand
+  final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
+      count: Int) extends GameCommand
   /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class CompleteSearch(
       playerId: PlayerId,
@@ -84,6 +90,25 @@ object DefenseDicePort {
       DefenseDieFace.OneShield, DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
     def rollTwo(): Vector[DefenseDieFace] = Vector.fill(2)(faces(rng.nextInt(6)))
+  }
+}
+
+trait CampaignDicePort {
+  def rollAttack(count: Int): Vector[AttackDieFace]
+  def rollDefense(count: Int): Vector[DefenseDieFace]
+}
+object CampaignDicePort {
+  val random: CampaignDicePort = new CampaignDicePort {
+    private val rng = new scala.util.Random()
+    private val attack = Vector(
+      AttackDieFace.HollowSword, AttackDieFace.HollowSword,
+      AttackDieFace.HollowSword, AttackDieFace.OneSword,
+      AttackDieFace.OneSword, AttackDieFace.TwoSwordsSkull)
+    private val defense = Vector(DefenseDieFace.Blank, DefenseDieFace.Blank,
+      DefenseDieFace.OneShield, DefenseDieFace.OneShield,
+      DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
+    def rollAttack(count: Int) = Vector.fill(count)(attack(rng.nextInt(6)))
+    def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
   }
 }
 
@@ -158,7 +183,8 @@ final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
-    defenseDicePort: DefenseDicePort = DefenseDicePort.random
+    defenseDicePort: DefenseDicePort = DefenseDicePort.random,
+    campaignDicePort: CampaignDicePort = CampaignDicePort.random
 ) {
   import GameApplicationError._
   import RepositoryAppendResult._
@@ -341,6 +367,24 @@ final class GameApplicationService(
           defenseDicePort.rollTwo()))
       case GameCommand.StopRecover(playerId, decision) =>
         rules.handle(state, RecoverCommand.Stop(playerId, decision))
+      case GameCommand.BeginCampaignConquest(playerId, target, count) =>
+        rules.handle(state, CampaignCommand.Start(playerId,
+          DecisionId(s"campaign-$nextSequence"), target, count,
+          campaignDicePort.rollAttack(count)))
+      case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
+        case OathState.Ready(ready) => ready.game.current.pending match {
+          case Some(c: PendingProcedure.Campaign) =>
+            val defenseCount = CampaignRules.siteDefinition(catalog, c.site).map(_.defense).getOrElse(0)
+            rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
+              campaignDicePort.rollDefense(defenseCount)))
+          case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
+            count, Vector.empty))
+        }
+        case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
+          count, Vector.empty))
+      }
+      case GameCommand.PlaceCampaignForce(playerId, decision, count) =>
+        rules.handle(state, CampaignCommand.Place(playerId, decision, count))
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
         rules.handle(state, SearchCommand.Complete(

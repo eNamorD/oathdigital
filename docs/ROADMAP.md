@@ -11,10 +11,11 @@ No item is currently assigned.
 
 ## Next
 
-**Bounded Campaign**, using the authoritative site ruler/force projection now
-in place. Remaining work is target selection (mandatory origin and optional
-same-ruler sites), force formation, dice and battle plans, losses,
-conquest/raid outcomes, and post-action bandit refill.
+**Campaign expansion**, building on the verified single-site bandit Conquest
+slice. Remaining work is player defenders, optional additional same-ruler
+sites, accessible partial-force browser selection (the engine/API already
+accept partial force), executable battle plans, multi-site loss/placement, Raid
+outcomes, and the displaced-Oathkeeper tie decision.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -40,6 +41,18 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Bounded Campaign — single-site bandit Conquest.** Fixed unaltered,
+  all-Exile games can spend 2 Supply to attack the mandatory pawn-site bandits
+  through typed target selection. Server-recorded physical attack/defense dice,
+  explicit sacrifice and conquest-placement decisions, finite force movement,
+  replay validation, scoped HTTP/Scala.js controls, persistence/reload, and the
+  shared bandit-refill-then-Supremacy boundary are tested. Relevant unsupported
+  Campaign/battle-plan powers across the actor's full access reject explicitly.
+  The browser labels and commits all board warbands; authoritative engine/API
+  partial-force support is retained for later UI work. Player defenders,
+  additional targets, Raid, and executable battle plans remain deferred; see
+  `docs/architecture/bounded-campaign.md`.
 
 - [x] **Bounded first-game Oathkeeper/Usurper ending.** The fixed unaltered,
   all-Exile profile now evaluates Supremacy through one state-based path at
@@ -113,7 +126,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 230 JVM tests, 71 Scala.js tests, the Scala.js
+The combined milestone passes 243 JVM tests, 73 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

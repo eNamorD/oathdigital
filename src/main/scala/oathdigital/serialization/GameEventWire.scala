@@ -48,6 +48,10 @@ object GameEventWire {
   val RecoverRolledType = "gameplay.recover-rolled"
   val RecoverStoppedType = "gameplay.recover-stopped"
   val RelicRecoveredType = "gameplay.relic-recovered"
+  val CampaignStartedType = "gameplay.campaign-started"
+  val CampaignSacrificedType = "gameplay.campaign-sacrificed"
+  val CampaignConqueredType = "gameplay.campaign-conquered"
+  val BanditsRefilledType = "gameplay.bandits-refilled"
   val OathkeeperChangedType = "gameplay.oathkeeper-changed"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
@@ -265,6 +269,10 @@ object GameEventWire {
       case _: RecoverRolled => RecoverRolledType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
+      case _: CampaignStarted => CampaignStartedType
+      case _: CampaignSacrificed => CampaignSacrificedType
+      case _: CampaignConquered => CampaignConqueredType
+      case _: BanditsRefilled => BanditsRefilledType
       case _: OathkeeperChanged => OathkeeperChangedType
       case _: UsurperFlipped => UsurperFlippedType
       case _: UsurperVictory => UsurperVictoryType
@@ -275,7 +283,9 @@ object GameEventWire {
     case _: Mustered | _: Traded => EconomyFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
-    case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered => RecoverFormatVersion
+    case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
+        _: CampaignStarted | _: CampaignSacrificed | _: CampaignConquered |
+        _: BanditsRefilled => RecoverFormatVersion
     case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
       RecoverFormatVersion
     case _ => FormatVersion
@@ -362,6 +372,24 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
+      case CampaignStarted(player, decision, site, spent, force, dice) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "supplySpent" -> spent, "force" -> force,
+        "attackDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeAttackFace(d)))))
+      case CampaignSacrificed(player, decision, sacrificed, dice, attack,
+          defense, skulls, victorious) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "sacrificed" -> sacrificed,
+        "defenseDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeDefenseFace(d)))),
+        "attack" -> attack, "defense" -> defense, "skullLosses" -> skulls,
+        "victorious" -> victorious)
+      case CampaignConquered(player, decision, site, placed) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "placed" -> placed)
+      case BanditsRefilled(sites) => ujson.Obj("sites" -> ujson.Arr.from(
+        sites.map { case (site, count) =>
+          ujson.Obj("siteId" -> site.value, "count" -> count)
+        }))
       case OathkeeperChanged(holder) => ujson.Obj(
         "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)))
       case UsurperFlipped(player) => ujson.Obj("playerId" -> player.value)
@@ -511,6 +539,33 @@ object GameEventWire {
         case RelicRecoveredType => Right(RelicRecovered(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
           SiteId(payload("siteId").str), RelicId(payload("relicId").str)))
+        case CampaignStartedType => for {
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          force <- safeIntField(payload.obj, "force", path)
+          dice <- traverse(payload("attackDice").arr.toVector)(v =>
+            decodeAttackFace(v.str, s"$path.attackDice"))
+        } yield CampaignStarted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          spent, force, dice)
+        case CampaignSacrificedType => for {
+          sacrificed <- safeIntField(payload.obj, "sacrificed", path)
+          attack <- safeIntField(payload.obj, "attack", path)
+          defense <- safeIntField(payload.obj, "defense", path)
+          skulls <- safeIntField(payload.obj, "skullLosses", path)
+          dice <- traverse(payload("defenseDice").arr.toVector)(v =>
+            decodeDefenseFace(v.str, s"$path.defenseDice"))
+        } yield CampaignSacrificed(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), sacrificed, dice, attack,
+          defense, skulls, payload("victorious").bool)
+        case CampaignConqueredType => for {
+          placed <- safeIntField(payload.obj, "placed", path)
+        } yield CampaignConquered(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str), placed)
+        case BanditsRefilledType => for {
+          sites <- traverse(payload("sites").arr.toVector) { value => for {
+            count <- safeIntField(value.obj, "count", s"$path.sites")
+          } yield SiteId(value("siteId").str) -> count }
+        } yield BanditsRefilled(sites)
         case OathkeeperChangedType =>
           payload("holderPlayerId") match {
             case ujson.Null => Right(OathkeeperChanged(None))
@@ -539,7 +594,10 @@ object GameEventWire {
   ): Either[WireError, Unit] = {
     val expected =
       if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
-          eventType == RelicRecoveredType || eventType == OathkeeperChangedType ||
+          eventType == RelicRecoveredType || eventType == CampaignStartedType ||
+          eventType == CampaignSacrificedType || eventType == CampaignConqueredType ||
+          eventType == BanditsRefilledType ||
+          eventType == OathkeeperChangedType ||
           eventType == UsurperFlippedType || eventType == UsurperVictoryType)
         RecoverFormatVersion
       else if (eventType == MusteredType || eventType == TradedType)
@@ -779,6 +837,19 @@ object GameEventWire {
     case DefenseDieFace.OneShield => "one-shield"
     case DefenseDieFace.TwoShields => "two-shields"
     case DefenseDieFace.Doubler => "doubler"
+  }
+
+  private def encodeAttackFace(face: AttackDieFace): String = face match {
+    case AttackDieFace.HollowSword => "hollow-sword"
+    case AttackDieFace.OneSword => "one-sword"
+    case AttackDieFace.TwoSwordsSkull => "two-swords-skull"
+  }
+
+  private def decodeAttackFace(value: String, path: String) = value match {
+    case "hollow-sword" => Right(AttackDieFace.HollowSword)
+    case "one-sword" => Right(AttackDieFace.OneSword)
+    case "two-swords-skull" => Right(AttackDieFace.TwoSwordsSkull)
+    case other => Left(InvalidValue(path, s"unknown attack die face '$other'"))
   }
 
   private def decodeDefenseFace(value: String, path: String) = value match {

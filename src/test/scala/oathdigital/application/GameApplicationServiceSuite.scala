@@ -18,6 +18,35 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("Campaign dice persist and reload without client randomness") {
+    val repository = new InMemoryEventStreamRepository
+    val dice = new CampaignDicePort {
+      def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
+      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+    }
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = dice)
+    val safe = catalog.sites.find(site =>
+      site.handlers.forall(h => !h.endsWith(".mountain") &&
+        !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id
+    val setup = execute(service, "campaign-persist", Vector(sites(0), sites(1), safe))
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val act = service.handle("campaign-persist", setup.nextSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val projected = new GameProjector(catalog).project("campaign-persist",
+      LoadedGame(act.state, act.nextSequence), active)
+    val target = projected.boardTargetActions.find(_.actionKind == "campaign-conquest")
+      .get.candidates.head.target.asInstanceOf[BoardTargetRefProjection.Site].siteId
+    val started = service.handle("campaign-persist", act.nextSequence,
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).toOption.get
+    assert(started.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignStarted])
+    val reloaded = new GameApplicationService(catalog, repository,
+      campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
+    assertEquals(reloaded.state, started.state)
+    assertEquals(reloaded.nextSequence, started.nextSequence)
+  }
+
   private def execute(
       service: GameApplicationService,
       gameId: String,

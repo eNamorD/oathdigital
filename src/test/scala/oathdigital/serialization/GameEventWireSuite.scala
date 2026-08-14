@@ -13,6 +13,27 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("current pre-release Campaign events round-trip exact dice and choices") {
+    val events = Vector[OathEvent](
+      OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),
+        SiteId("site"), 2, 2, Vector(AttackDieFace.HollowSword,
+          AttackDieFace.TwoSwordsSkull)),
+      OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
+        1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
+      OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
+        SiteId("site"), 1),
+      OathEvent.BanditsRefilled(Vector(SiteId("empty") -> 2)))
+    val encoded = GameEventWire.encodeStream("campaign", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
+      .toOption.get
+    val decoded = GameEventWire.decodeStream(encoded).toOption.get
+    assertEquals(decoded.map(_.formatVersion), Vector.fill(4)(7))
+    assertEquals(decoded.map(_.event), events)
+    val tampered = ujson.read(encoded).arr
+    tampered.head("payload")("attackDice")(0) = "unknown-face"
+    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+  }
+
   test("v7 Recover events round-trip exact dice costs and chosen relic") {
     val events = Vector[OathEvent](
       RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,

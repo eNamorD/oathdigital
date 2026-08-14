@@ -179,6 +179,7 @@ final case class GameProjection(
     boardTargetActions: Vector[BoardTargetAction] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecision] = None,
     recover: Option[RecoverState] = None,
+    campaign: Option[CampaignState] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoard] = Vector.empty,
@@ -187,6 +188,10 @@ final case class GameProjection(
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
+final case class CampaignState(decisionId: String, siteId: String, force: Int,
+    attackDice: Vector[String], attack: Int, skullLosses: Int,
+    maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
+    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
 final case class OathkeeperStatus(goal: String, holderPlayerId: Option[String],
     side: String, usurperLimited: Boolean, winnerPlayerId: Option[String])
 
@@ -203,6 +208,13 @@ object GameCommand {
   final case class FinishRest(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
       extends GameCommand
+  final case class CampaignConquest(playerId: String, targetSiteId: String,
+      attackDiceCount: Int)
+      extends GameCommand
+  final case class ChooseCampaignSacrifice(playerId: String, decisionId: String,
+      count: Int) extends GameCommand
+  final case class PlaceCampaignForce(playerId: String, decisionId: String,
+      count: Int) extends GameCommand
   final case class Muster(playerId: String, target: EconomyTarget) extends GameCommand
   final case class Trade(playerId: String, target: EconomyTarget, resource: String)
       extends GameCommand
@@ -427,6 +439,19 @@ object GameJson {
           playerId = player,
           destinationSiteId = destination
         )
+      case GameCommand.CampaignConquest(player, target, count) =>
+        js.Dynamic.literal(
+          `type` = "beginCampaignConquest",
+          playerId = player,
+          targetSiteId = target,
+          attackDiceCount = count
+        )
+      case GameCommand.ChooseCampaignSacrifice(player, decision, count) =>
+        js.Dynamic.literal(`type` = "chooseCampaignSacrifice",
+          playerId = player, decisionId = decision, count = count)
+      case GameCommand.PlaceCampaignForce(player, decision, count) =>
+        js.Dynamic.literal(`type` = "placeCampaignForce",
+          playerId = player, decisionId = decision, count = count)
       case GameCommand.Muster(player, target) =>
         js.Dynamic.literal(`type` = "muster", playerId = player,
           target = js.Dynamic.literal(kind = target.kind, id = target.id))
@@ -813,6 +838,31 @@ object GameJson {
           } yield Some(RecoverState(id, dice, shields, difficulty, spent,
             remaining, add, stop)) }
         }
+        campaign <- optionalField(root, "campaign").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.campaign").flatMap { obj => for {
+            id <- string(obj, "decisionId", "$.campaign")
+            site <- string(obj, "siteId", "$.campaign")
+            force <- int(obj, "force", "$.campaign")
+            attackDice <- stringArray(obj, "attackDice", "$.campaign")
+            attack <- int(obj, "attack", "$.campaign")
+            skulls <- int(obj, "skullLosses", "$.campaign")
+            maximumSacrifice <- int(obj, "maxSacrifice", "$.campaign")
+            sacrificed <- optionalInt(obj, "sacrificed", "$.campaign")
+            defenseDice <- stringArray(obj, "defenseDice", "$.campaign")
+            defense <- optionalInt(obj, "defense", "$.campaign")
+            victoriousValue <- optionalField(obj, "victorious")
+            victorious <- victoriousValue match {
+              case None => Right(None)
+              case Some(value) if value == null => Right(None)
+              case Some(_) => bool(obj, "victorious", "$.campaign").map(Some(_))
+            }
+            maximumPlacement <- int(obj, "maxPlacement", "$.campaign")
+          } yield Some(CampaignState(id, site, force, attackDice, attack,
+            skulls, maximumSacrifice, sacrificed, defenseDice, defense,
+            victorious, maximumPlacement)) }
+        }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)
           case Some(_) => int(root, "worldDeckCount", "$")
@@ -869,6 +919,7 @@ object GameJson {
         boardActions,
         pendingDecision,
         recover,
+        campaign,
         worldDeckCount,
         worldDeckTop,
         boards,

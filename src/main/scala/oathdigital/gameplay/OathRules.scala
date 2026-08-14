@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.gameplay.actions.{Economy, EconomyCommand, Recover, RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, Economy, EconomyCommand, Recover, RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
@@ -54,6 +54,19 @@ final class OathRules(catalog: ExecutableCatalog)
       }
     }
 
+  def handle(state: OathState, command: CampaignCommand)
+      : Either[OathViolation, OathTransition] =
+    Campaign.handle(catalog, state, command).flatMap { transition =>
+      command match {
+        case _: CampaignCommand.Place => completeAction(transition)
+        case _: CampaignCommand.Sacrifice if (transition.state match {
+          case Ready(ready) => ready.game.current.pending.isEmpty
+          case _ => false
+        }) => completeAction(transition)
+        case _ => Right(transition)
+      }
+    }
+
   def handle(state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] =
     Rest.handle(catalog, state, command).flatMap { transition =>
@@ -78,16 +91,21 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: RecoverRolled => Recover.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
+      case event: CampaignStarted => Campaign.evolve(catalog, state, event)
+      case event: CampaignSacrificed => Campaign.evolve(catalog, state, event)
+      case event: CampaignConquered => Campaign.evolve(catalog, state, event)
       case event: RestStarted => Rest.evolve(catalog, state, event)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
-      case event: OathkeeperChanged => StateBasedEvaluation.evolve(state, event)
-      case event: UsurperFlipped => StateBasedEvaluation.evolve(state, event)
-      case event: UsurperVictory => StateBasedEvaluation.evolve(state, event)
+      case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: OathkeeperChanged => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
       case setupEvent => setup.evolve(state, setupEvent)
     }
 
   private def completeAction(transition: OathTransition) =
-    appendEvaluation(transition, StateBasedEvaluation.afterAction)
+    appendEvaluation(transition, StateBasedEvaluation.banditRefill(catalog, _))
+      .flatMap(appendEvaluation(_, StateBasedEvaluation.afterAction))
 
   private def enterWake(transition: OathTransition) =
     appendEvaluation(transition, StateBasedEvaluation.atWake)

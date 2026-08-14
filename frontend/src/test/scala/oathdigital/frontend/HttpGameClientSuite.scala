@@ -164,6 +164,48 @@ class HttpGameClientSuite extends FunSuite {
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
+  test("bounded Campaign encodes only the selected authoritative site") {
+    val encoded = GameJson.encodeCommand(17,
+      GameCommand.CampaignConquest("red-exile", "site:b", 3))
+    assert(encoded.contains("\"expectedNextSequence\":17"))
+    assert(encoded.contains("\"type\":\"beginCampaignConquest\""))
+    assert(encoded.contains("\"playerId\":\"red-exile\""))
+    assert(encoded.contains("\"targetSiteId\":\"site:b\""))
+    assert(encoded.contains("\"attackDiceCount\":3"))
+    assert(!encoded.contains("\"attackDice\":"))
+    assert(!encoded.contains("defenseDice"))
+
+    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Commit all 3 board warbands"]}]}]"""
+    val projected = projectionJson(sequence = 17, choices = false)
+      .replace("\"boardTargetActions\":[]",
+        s"\"boardTargetActions\":$action")
+    val decoded = GameJson.decodeProjection(projected).toOption.get
+      .boardTargetActions.head
+    assertEquals(decoded.actionKind, "campaign-conquest")
+    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
+    assertEquals(decoded.candidates.map(_.target),
+      Vector(BoardTargetRef.Site("site:b")))
+
+    val pending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
+    val pendingJson = projectionJson(sequence = 18, choices = false)
+      .replace("\"pendingCardDecision\":null",
+        s"\"pendingCardDecision\":null,\"campaign\":$pending")
+    assertEquals(GameJson.decodeProjection(pendingJson).toOption.get.campaign,
+      Some(CampaignState("campaign-17", "site:b", 3,
+        Vector("two-swords", "skull"), 2, 1, 2, None, Vector.empty,
+        None, None, 0)))
+
+    val sacrifice = GameJson.encodeCommand(18,
+      GameCommand.ChooseCampaignSacrifice("red-exile", "campaign-17", 1))
+    assert(sacrifice.contains("\"type\":\"chooseCampaignSacrifice\""))
+    assert(sacrifice.contains("\"decisionId\":\"campaign-17\""))
+    assert(sacrifice.contains("\"count\":1"))
+    val placement = GameJson.encodeCommand(20,
+      GameCommand.PlaceCampaignForce("red-exile", "campaign-17", 0))
+    assert(placement.contains("\"type\":\"placeCampaignForce\""))
+    assert(placement.contains("\"count\":0"))
+  }
+
   test("typed board-target actions decode sites cards advisers relics and reject malformed refs") {
     val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)

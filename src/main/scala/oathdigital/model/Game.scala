@@ -121,8 +121,19 @@ object PendingProcedure {
       drawn: Vector[WorldCardId] = Vector.empty
   ) extends PendingProcedure
 
-  final case class Campaign(decision: DecisionId, actor: PlayerId)
-      extends PendingProcedure
+  final case class Campaign(
+      decision: DecisionId,
+      actor: PlayerId,
+      site: SiteId,
+      force: Int,
+      attackDice: Vector[AttackDieFace],
+      attack: Int,
+      skullLosses: Int,
+      sacrificed: Option[Int],
+      defenseDice: Vector[DefenseDieFace],
+      defense: Option[Int],
+      victorious: Option[Boolean]
+  ) extends PendingProcedure
 
   final case class Recover(
       decision: DecisionId,
@@ -145,6 +156,20 @@ object PendingProcedure {
       task: ChronicleTask,
       taskHolders: Map[ChronicleTask, PlayerId]
   ) extends PendingProcedure
+}
+
+sealed trait AttackDieFace extends Product with Serializable
+object AttackDieFace {
+  case object HollowSword extends AttackDieFace
+  case object OneSword extends AttackDieFace
+  case object TwoSwordsSkull extends AttackDieFace
+
+  def score(faces: Vector[AttackDieFace]): Int =
+    faces.count(_ == OneSword) + faces.count(_ == HollowSword) / 2 +
+      faces.count(_ == TwoSwordsSkull) * 2
+
+  def skulls(faces: Vector[AttackDieFace]): Int =
+    faces.count(_ == TwoSwordsSkull)
 }
 
 sealed trait DefenseDieFace extends Product with Serializable

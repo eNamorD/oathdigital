@@ -10,6 +10,9 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.commandForSelection(action("travel"),
       Vector(BoardTargetRef.Site("site:b")), "red"),
       Some(GameCommand.Travel("red", "site:b")))
+    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+      Vector(BoardTargetRef.Site("site:b")), "red", 4),
+      Some(GameCommand.CampaignConquest("red", "site:b", 4)))
     assertEquals(ServerModeUi.commandForSelection(action("muster"), Vector(
       BoardTargetRef.SiteCard("site", "edifice", "E26")), "red"),
       Some(GameCommand.Muster("red", EconomyTarget("edifice", "E26"))))
@@ -21,6 +24,11 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "secret")))
     assertEquals(ServerModeUi.commandForSelection(action("travel"), Vector(
       BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+      Vector(BoardTargetRef.Site("site:a"), BoardTargetRef.Site("site:b")),
+      "red", 4), None)
+    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+      Vector(BoardTargetRef.Site("site:b")), "red", 0), None)
   }
 
   test("selection copy exposes details and non-color cardinality instructions") {
@@ -33,7 +41,15 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.candidateButtonLabel(BoardTargetCandidate(
       BoardTargetRef.Site("b"), "Site B", Vector("2 Supply"))),
       "Site B · 2 Supply")
+    assertEquals(ServerModeUi.candidateButtonLabel(BoardTargetCandidate(
+      BoardTargetRef.Site("b"), "Site B",
+      Vector("2 Supply", "Commit all 4 board warbands"))),
+      "Site B · 2 Supply · Commit all 4 board warbands")
     assertEquals(ServerModeUi.actionLabel("trade-secret"), "Trade for secrets")
+  }
+
+  test("bounded Campaign uses the generic single-site action label") {
+    assertEquals(ServerModeUi.actionLabel("campaign-conquest"), "Campaign")
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

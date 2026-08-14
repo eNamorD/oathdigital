@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.OathEvent._
@@ -15,6 +16,18 @@ import oathdigital.setup.OathViolation._
  * guessed here. This is deliberately not a reusable, context-free tie breaker.
  */
 object StateBasedEvaluation {
+  def banditRefill(catalog: ExecutableCatalog, state: OathState)
+      : Either[OathViolation, Option[OathEvent]] = supported(state).map { ready =>
+    val capacities = catalog.sites.map(s => s.id -> s.capacity).toMap
+    val refills = ready.game.current.map.inPlay.flatMap { siteId =>
+      ready.game.current.map.sites.get(siteId).collect {
+        case SiteState(SiteForces.Empty, _, _, _) if capacities.getOrElse(siteId, 0) > 0 =>
+          siteId -> capacities(siteId)
+      }
+    }
+    Option.when(refills.nonEmpty)(BanditsRefilled(refills))
+  }
+
   def afterAction(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).flatMap { ready =>
       val current = ready.game.current
@@ -56,8 +69,18 @@ object StateBasedEvaluation {
       }
     }
 
-  def evolve(state: OathState, event: OathEvent): Either[OathViolation, OathState] =
+  def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent): Either[OathViolation, OathState] =
     event match {
+      case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap {
+        case Some(expected: BanditsRefilled) if expected == recorded =>
+          update(state)(current => current.copy(map = current.map.copy(
+            sites = recorded.sites.foldLeft(current.map.sites) {
+              case (sites, (id, count)) => sites.updated(id,
+                sites(id).copy(forces = SiteForces.Occupied(ForceKind.Bandit, count)))
+            })))
+        case expected => Left(InvalidEventOrder(
+          s"Bandit refill mismatch: expected $expected, recorded $recorded"))
+      }
       case recorded: OathkeeperChanged =>
         afterAction(state).flatMap {
           case Some(expected: OathkeeperChanged) if expected == recorded =>

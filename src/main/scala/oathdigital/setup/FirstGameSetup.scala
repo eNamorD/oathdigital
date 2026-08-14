@@ -128,6 +128,19 @@ object OathEvent {
   final case class RelicRecovered(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId, relicId: RelicId
   ) extends OathEvent
+  final case class CampaignStarted(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      supplySpent: Int, force: Int, attackDice: Vector[AttackDieFace]
+  ) extends OathEvent
+  final case class CampaignSacrificed(
+      playerId: PlayerId, decision: DecisionId, sacrificed: Int,
+      defenseDice: Vector[DefenseDieFace], attack: Int, defense: Int,
+      skullLosses: Int, victorious: Boolean
+  ) extends OathEvent
+  final case class CampaignConquered(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId, placed: Int
+  ) extends OathEvent
+  final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
   final case class RestStarted(playerId: PlayerId) extends OathEvent
   final case class RestCompleted(
       playerId: PlayerId,
@@ -173,6 +186,10 @@ object OathContinue {
   final case class AwaitingRecoverRoll(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
+  final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
+  final case class AwaitingCampaignPlacement(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class GameFinished(winner: PlayerId) extends OathContinue
 }
@@ -256,6 +273,11 @@ object OathViolation {
   final case class RecoverDecisionMismatch(expected: DecisionId, actual: DecisionId)
       extends OathViolation
   final case class RecoverOutcomeMismatch(detail: String) extends OathViolation
+  final case class UnsupportedCampaignState(reason: String) extends OathViolation
+  final case class CampaignUnavailable(reason: String) extends OathViolation
+  final case class CampaignDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class CampaignOutcomeMismatch(detail: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
@@ -487,7 +509,9 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
-      case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered =>
+      case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
+          _: CampaignStarted | _: CampaignSacrificed | _: CampaignConquered |
+          _: BanditsRefilled =>
         Left(InvalidEventOrder("Recover requires the gameplay evolution"))
       case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
         Left(InvalidEventOrder("state-based checks require gameplay evolution"))

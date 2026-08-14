@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{Economy, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{CampaignRules, Economy, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -136,6 +136,11 @@ final case class RecoverProjection(
     decisionId: String, dice: Vector[String], shields: Int,
     difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
+final case class CampaignProjection(
+    decisionId: String, siteId: String, force: Int,
+    attackDice: Vector[String], attack: Int, skullLosses: Int,
+    maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
+    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String])
@@ -175,6 +180,7 @@ final case class GameProjection(
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     recover: Option[RecoverProjection] = None,
+    campaign: Option[CampaignProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
@@ -293,6 +299,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
                 Some("stopRecover")).flatten
             case Some(_: PendingProcedure.Recover) => Vector.empty
+            case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
+              Vector("placeCampaignForce")
+            case Some(_: PendingProcedure.Campaign) => Vector("chooseCampaignSacrifice")
             case Some(_) => Vector.empty
             case None => current.turn.phase match {
               case Phase.Act =>
@@ -357,6 +366,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
               RecoverRules.score(r.rolls.flatten), r.difficulty, r.supplySpent,
               remaining, !r.successful && remaining > 0, !r.successful)
         }
+        val campaignProjection = current.pending.collect {
+          case c: PendingProcedure.Campaign if requestingPlayer.contains(c.actor) =>
+            val remaining = c.force - c.skullLosses
+            CampaignProjection(c.decision.value, c.site.value, c.force,
+              c.attackDice.map(attackFaceName), c.attack, c.skullLosses,
+              remaining, c.sacrificed, c.defenseDice.map(defenseFaceName),
+              c.defense, c.victorious,
+              remaining - c.sacrificed.getOrElse(0))
+        }
         GameProjection(
           gameId,
           loaded.nextSequence,
@@ -368,6 +386,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(r: PendingProcedure.Recover) if requestingPlayer.contains(r.actor) && r.successful => "recover-relic-decision"
             case Some(_: PendingProcedure.Recover) if recoverProjection.nonEmpty => "recover-rolling"
             case Some(_: PendingProcedure.Recover) => "recover-waiting"
+            case Some(_: PendingProcedure.Campaign) if campaignProjection.exists(_.victorious.contains(true)) => "campaign-placement"
+            case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
+            case Some(_: PendingProcedure.Campaign) => "campaign-waiting"
             case _ => current.turn.phase match {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
@@ -467,6 +488,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             else Vector.empty,
           pendingCardDecision = pendingDecision,
           recover = recoverProjection,
+          campaign = campaignProjection,
           worldDeckCount = current.commonCards.worldDeck.size,
           // Card backs/types are public; the World Deck top is its head.
           worldDeckTopCardKind = current.commonCards.worldDeck.headOption.map(cardKind),
@@ -501,6 +523,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
           s"+${result.warbandsGained} warbands"))
     }
     val trades = Economy.legalTrades(catalog, ready, player)
+    val campaign = CampaignRules.legalTargets(catalog, ready, player.player).map { siteId =>
+      BoardTargetCandidateProjection(BoardTargetRefProjection.Site(siteId.value),
+        siteNames.getOrElse(siteId, safeLabel(siteId.value)),
+        Vector(s"${oathdigital.gameplay.actions.Campaign.SupplyCost} Supply",
+          s"Commit all ${player.board.warbands} board warbands"))
+    }
     val favor = trades.filter(_.resource == oathdigital.setup.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
@@ -509,6 +537,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     Vector(
       selection("travel", "Choose a Travel destination", travel),
+      selection("campaign-conquest", "Choose the mandatory Conquest site", campaign),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)
@@ -530,6 +559,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
     }
     BoardTargetCandidateProjection(BoardTargetRefProjection.SiteCard(
       siteId.value, target.kind, target.id.value), economyLabel(target), details)
+  }
+
+  private def attackFaceName(value: AttackDieFace): String = value match {
+    case AttackDieFace.HollowSword => "hollow-sword"
+    case AttackDieFace.OneSword => "one-sword"
+    case AttackDieFace.TwoSwordsSkull => "two-swords-skull"
   }
 
   private def players(

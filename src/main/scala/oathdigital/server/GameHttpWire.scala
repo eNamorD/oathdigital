@@ -249,6 +249,18 @@ object GameHttpWire {
             "supplyRemaining" -> recover.supplyRemaining,
             "canAddDice" -> recover.canAddDice, "canStop" -> recover.canStop)
         },
+        "campaign" -> projection.campaign.fold[ujson.Value](ujson.Null) { campaign =>
+          ujson.Obj("decisionId" -> campaign.decisionId, "siteId" -> campaign.siteId,
+            "force" -> campaign.force,
+            "attackDice" -> ujson.Arr.from(campaign.attackDice.map(ujson.Str(_))),
+            "attack" -> campaign.attack, "skullLosses" -> campaign.skullLosses,
+            "maxSacrifice" -> campaign.maxSacrifice,
+            "sacrificed" -> campaign.sacrificed.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+            "defenseDice" -> ujson.Arr.from(campaign.defenseDice.map(ujson.Str(_))),
+            "defense" -> campaign.defense.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
+            "victorious" -> campaign.victorious.fold[ujson.Value](ujson.Null)(ujson.Bool(_)),
+            "maxPlacement" -> campaign.maxPlacement)
+        },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -378,6 +390,31 @@ object GameHttpWire {
         p <- stringField(obj, "playerId", path)
         d <- stringField(obj, "decisionId", path)
       } yield GameCommand.StopRecover(PlayerId(p), DecisionId(d))
+      case "beginCampaignConquest" => for {
+        _ <- exactFields(obj,
+          Set("type", "playerId", "targetSiteId", "attackDiceCount"), path)
+        player <- stringField(obj, "playerId", path)
+        site <- stringField(obj, "targetSiteId", path)
+        countValue <- field(obj, "attackDiceCount", path)
+        count <- nonNegativeInt(countValue, s"$path.attackDiceCount")
+      } yield GameCommand.BeginCampaignConquest(
+        PlayerId(player), SiteId(site), count)
+      case "chooseCampaignSacrifice" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "count"), path)
+        player <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+        countValue <- field(obj, "count", path)
+        count <- nonNegativeInt(countValue, s"$path.count")
+      } yield GameCommand.ChooseCampaignSacrifice(
+        PlayerId(player), DecisionId(decision), count)
+      case "placeCampaignForce" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "count"), path)
+        player <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+        countValue <- field(obj, "count", path)
+        count <- nonNegativeInt(countValue, s"$path.count")
+      } yield GameCommand.PlaceCampaignForce(
+        PlayerId(player), DecisionId(decision), count)
       case "completeSearch" =>
         Left(HttpInputError(s"$path.type", "use resolveCardDecision"))
       case "resolveCardDecision" =>
@@ -476,6 +513,15 @@ object GameHttpWire {
       case _ => Left(HttpInputError(s"$path.region", "region is required"))
     }
     case _ => Left(HttpInputError(s"$path.source", "unknown Search source"))
+  }
+
+  private def nonNegativeInt(value: ujson.Value, path: String)
+      : Either[HttpInputError, Int] = value match {
+    case ujson.Num(number) if number.isFinite && number == Math.rint(number) &&
+        number >= 0 && number <= Int.MaxValue => Right(number.toInt)
+    case _: ujson.Num => Left(HttpInputError(path,
+      "expected a non-negative 32-bit integer"))
+    case _ => Left(HttpInputError(path, "expected a number"))
   }
 
   private def decodeWorldCard(value: ujson.Value, path: String)

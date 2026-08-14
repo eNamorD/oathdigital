@@ -86,6 +86,15 @@ final case class AuthorizedPlayer private (
   def stopRecover(decision: DecisionId): GameCommand =
     GameCommand.StopRecover(access.playerId, decision)
 
+  def beginCampaignConquest(targetSiteId: SiteId,
+      attackDiceCount: Int): GameCommand =
+    GameCommand.BeginCampaignConquest(
+      access.playerId, targetSiteId, attackDiceCount)
+  def chooseCampaignSacrifice(decision: DecisionId, count: Int): GameCommand =
+    GameCommand.ChooseCampaignSacrifice(access.playerId, decision, count)
+  def placeCampaignForce(decision: DecisionId, count: Int): GameCommand =
+    GameCommand.PlaceCampaignForce(access.playerId, decision, count)
+
   def completeSearch(decision: DecisionId, kept: WorldCardId,
       discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
     GameCommand.CompleteSearch(

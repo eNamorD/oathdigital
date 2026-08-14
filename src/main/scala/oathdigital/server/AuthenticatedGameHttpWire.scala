@@ -27,6 +27,18 @@ object GameIntent {
   case object BeginRecover extends GameIntent
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
+  final case class BeginCampaignConquest(
+      targetSiteId: SiteId,
+      attackDiceCount: Int
+  ) extends GameIntent
+  final case class ChooseCampaignSacrifice(
+      decision: DecisionId,
+      count: Int
+  ) extends GameIntent
+  final case class PlaceCampaignForce(
+      decision: DecisionId,
+      count: Int
+  ) extends GameIntent
   final case class CompleteSearch(
       decision: DecisionId,
       kept: WorldCardId,
@@ -190,6 +202,25 @@ object AuthenticatedGameHttpWire {
         exactFields(obj, Set("type", "decisionId"), "$.intent")
           .flatMap(_ => stringField(obj, "decisionId", "$.intent"))
           .map(id => GameIntent.StopRecover(DecisionId(id)))
+      case "beginCampaignConquest" => for {
+        _ <- exactFields(obj,
+          Set("type", "targetSiteId", "attackDiceCount"), "$.intent")
+        site <- stringField(obj, "targetSiteId", "$.intent")
+        countValue <- field(obj, "attackDiceCount", "$.intent")
+        count <- nonNegativeInt(countValue, "$.intent.attackDiceCount")
+      } yield GameIntent.BeginCampaignConquest(SiteId(site), count)
+      case "chooseCampaignSacrifice" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "count"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        countValue <- field(obj, "count", "$.intent")
+        count <- nonNegativeInt(countValue, "$.intent.count")
+      } yield GameIntent.ChooseCampaignSacrifice(DecisionId(decision), count)
+      case "placeCampaignForce" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "count"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        countValue <- field(obj, "count", "$.intent")
+        count <- nonNegativeInt(countValue, "$.intent.count")
+      } yield GameIntent.PlaceCampaignForce(DecisionId(decision), count)
       case "resolveCardDecision" =>
         exactFields(obj, Set("type", "decisionId", "resolution"), "$.intent")
           .flatMap { _ => for {
@@ -306,6 +337,15 @@ object AuthenticatedGameHttpWire {
         if number.isFinite && number == Math.rint(number) && number >= 0 &&
           number <= GameEventWire.MaxSafeSequence => Right(number.toLong)
     case _: ujson.Num => Left(HttpInputError(path, "expected a safe non-negative integer"))
+    case _ => Left(HttpInputError(path, "expected a number"))
+  }
+
+  private def nonNegativeInt(value: ujson.Value, path: String)
+      : Either[HttpInputError, Int] = value match {
+    case ujson.Num(number) if number.isFinite && number == Math.rint(number) &&
+        number >= 0 && number <= Int.MaxValue => Right(number.toInt)
+    case _: ujson.Num => Left(HttpInputError(path,
+      "expected a non-negative 32-bit integer"))
     case _ => Left(HttpInputError(path, "expected a number"))
   }
 

@@ -220,7 +220,9 @@ object ServerModeUi {
         boardSelectionState = Some(state)
         render()
       case BoardSelectionResult.Submit(action, targets) =>
-        commandForSelection(action, targets, selectedPlayer).foreach { command =>
+        val force = projection.toVector.flatMap(_.playerBoards)
+          .find(_.playerId == selectedPlayer).map(_.warbands).getOrElse(0)
+        commandForSelection(action, targets, selectedPlayer, force).foreach { command =>
           boardSelectionState = None
           submit(command)
         }
@@ -457,6 +459,39 @@ object ServerModeUi {
           stop.onclick = _ => submit(GameCommand.StopRecover(
             selectedPlayer, recover.decisionId))
           panel.appendChild(stop)
+        }
+      }
+      value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
+        panel.appendChild(text("h2", "", "Campaign"))
+        panel.appendChild(text("p", "campaign-results",
+          s"Attack dice: ${campaign.attackDice.mkString(", ")} · " +
+            s"${campaign.attack} attack · ${campaign.skullLosses} skull losses"))
+        if (campaign.sacrificed.isEmpty) {
+          panel.appendChild(text("p", "campaign-instruction",
+            "Choose surviving warbands to sacrifice for +1 attack each."))
+          (0 to campaign.maxSacrifice).foreach { count =>
+            val choose = button(s"Sacrifice $count", "campaign-sacrifice")
+            choose.disabled = !controlsAvailable
+            choose.onclick = _ => submit(GameCommand.ChooseCampaignSacrifice(
+              selectedPlayer, campaign.decisionId, count))
+            panel.appendChild(choose)
+          }
+        } else {
+          val outcome = if (campaign.victorious.contains(true)) "Victory" else "Defeat"
+          panel.appendChild(text("p", "campaign-defense",
+            s"Defense dice: ${campaign.defenseDice.mkString(", ")} · " +
+              s"${campaign.defense.getOrElse(0)} defense · $outcome"))
+          if (campaign.victorious.contains(true)) {
+            panel.appendChild(text("p", "campaign-instruction",
+              "Choose warbands to place at the conquered site."))
+            (0 to campaign.maxPlacement).foreach { count =>
+              val place = button(s"Place $count", "campaign-place")
+              place.disabled = !controlsAvailable
+              place.onclick = _ => submit(GameCommand.PlaceCampaignForce(
+                selectedPlayer, campaign.decisionId, count))
+              panel.appendChild(place)
+            }
+          }
         }
       }
       if (value.phase == "rest" && presentation.showGameplayControls) {
@@ -1000,6 +1035,7 @@ object ServerModeUi {
 
   private[frontend] def actionLabel(kind: String): String = kind match {
     case "travel" => "Travel"
+    case "campaign-conquest" => "Campaign"
     case "muster" => "Muster"
     case "trade-favor" => "Trade for favor"
     case "trade-secret" => "Trade for secrets"
@@ -1024,12 +1060,16 @@ object ServerModeUi {
       if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
   private[frontend] def commandForSelection(action: BoardTargetAction,
-      targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
+      targets: Vector[BoardTargetRef], playerId: String,
+      attackDiceCount: Int = 0): Option[GameCommand] =
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.PlacePawn(playerId, site))
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.Travel(playerId, site))
+      case ("campaign-conquest", Vector(BoardTargetRef.Site(site))) =>
+        Option.when(attackDiceCount > 0)(
+          GameCommand.CampaignConquest(playerId, site, attackDiceCount))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
