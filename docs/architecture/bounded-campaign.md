@@ -52,9 +52,10 @@ lineage-to-ruler mappings reject instead of being treated as harmless.
 ## Authoritative procedure
 
 Campaign costs 2 Supply. The active Exile must be in Act, have a pawn at a site
-ruled by bandits, and have at least one board warband. The authoritative engine
-and HTTP contracts accept a positive attack-die count no greater than the
-actor's board warbands; that count is the force. The private action projection
+ruled by bandits, and may gather from zero up to all warbands on their board.
+The authoritative engine and HTTP contracts accept that non-negative count as
+the force. The Empty Attack Pool rule therefore permits a zero-force Campaign.
+The private action projection
 publishes the current legal force minimum and maximum, available board warbands,
 and Supply cost alongside the mandatory target. After target selection, the
 browser holds a local formation draft and presents labelled decrement,

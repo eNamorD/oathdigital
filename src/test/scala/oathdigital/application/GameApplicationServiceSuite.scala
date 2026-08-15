@@ -47,8 +47,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val beforeInvalid = repository.load("campaign-rng-validation").toOption.flatten.get
       .records
     assert(service.handle("campaign-rng-validation", act.nextSequence,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).isLeft)
-    assert(service.handle("campaign-rng-validation", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 999)).isLeft)
     assert(service.handle("campaign-rng-validation", act.nextSequence - 1,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).isLeft)
@@ -98,17 +96,19 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val target = projected.boardTargetActions.find(_.actionKind == "campaign-conquest")
       .get.candidates.head.target.asInstanceOf[BoardTargetRefProjection.Site].siteId
     val started = service.handle("campaign-persist", act.nextSequence,
-      GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).toOption.get
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).toOption.get
     val startEvent = started.events.head.asInstanceOf[
       oathdigital.setup.OathEvent.CampaignStarted]
-    assertEquals(startEvent.force, 1)
+    assertEquals(startEvent.force, 0)
     val Ready(afterPartial) = started.state: @unchecked
     assertEquals(afterPartial.game.current.players.find(_.player == active).get
       .board.warbands,
-      ready.game.current.players.find(_.player == active).get.board.warbands - 1)
+      ready.game.current.players.find(_.player == active).get.board.warbands)
     val chosen = service.handle("campaign-persist", started.nextSequence,
       GameCommand.FinishCampaignPlans(active,
         DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
+    assertEquals(chosen.events.head.asInstanceOf[
+      oathdigital.setup.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
     assert(chosen.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignPlansFinished])
     val reloaded = new GameApplicationService(catalog, repository,
       campaignDicePort = dice).load("campaign-persist").toOption.flatten.get

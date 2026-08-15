@@ -91,6 +91,19 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(formation.supplyCost, 2)
   }
 
+  test("empty formation selects confirms and reports all warbands remaining") {
+    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
+      false, Vector(siteA), Some(BoardTargetFormation(0, 0, 0, 2)))
+    val formation = BoardTargetSelectionState.reconcile(None, context,
+      Vector(action)).activate(action.actionKind).choose(siteA.target)
+      .asInstanceOf[BoardSelectionResult.Form].state
+    assertEquals(formation.force, 0)
+    assertEquals(formation.decrement.force, 0)
+    assertEquals(formation.increment.force, 0)
+    assertEquals(formation.remainingWarbands, 0)
+    assertEquals(formation.attackDiceBeforePlans, 0)
+  }
+
   test("formation clears on context candidates or projected facts changes") {
     val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
       false, Vector(siteA), Some(BoardTargetFormation(1, 4, 4, 2)))

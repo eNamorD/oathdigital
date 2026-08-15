@@ -108,11 +108,13 @@ final case class BoardTargetFormationProjection(
     availableWarbands: Int,
     supplyCost: Int
 ) {
-  require(minimumForce >= 1, "formation minimum must be positive")
+  require(minimumForce >= 0, "formation minimum must be non-negative")
   require(maximumForce >= minimumForce,
     "formation maximum must include minimum")
   require(maximumForce <= availableWarbands,
     "formation maximum cannot exceed available warbands")
+  require(availableWarbands >= 0,
+    "formation available warbands must be non-negative")
   require(supplyCost >= 0, "formation Supply cost must be non-negative")
 }
 final case class BoardTargetActionProjection(
@@ -577,7 +579,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
       BoardTargetCandidateProjection(BoardTargetRefProjection.Site(siteId.value),
         siteNames.getOrElse(siteId, safeLabel(siteId.value)),
         Vector(s"${oathdigital.gameplay.actions.Campaign.SupplyCost} Supply",
-          s"Choose 1 to ${player.board.warbands} board warbands"))
+          s"Choose ${oathdigital.gameplay.actions.Campaign.MinimumForce} to " +
+            s"${player.board.warbands} board warbands"))
     }
     val favor = trades.filter(_.resource == oathdigital.setup.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,

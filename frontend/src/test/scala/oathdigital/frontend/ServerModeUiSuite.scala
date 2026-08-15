@@ -82,6 +82,12 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignConquest("red", "site:b", 2)))
     assertEquals(ServerModeUi.commandForFormation(formation.copy(
       target = BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+    val empty = formation.copy(force = 0)
+    assertEquals(ServerModeUi.campaignFormationSummary(empty),
+      "Committed force: 0. Board warbands remaining: 4. " +
+        "Attack dice before plans: 0. Cost: 2 Supply.")
+    assertEquals(ServerModeUi.commandForFormation(empty, "red"),
+      Some(GameCommand.CampaignConquest("red", "site:b", 0)))
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

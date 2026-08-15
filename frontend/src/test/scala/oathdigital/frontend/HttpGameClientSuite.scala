@@ -175,7 +175,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(!encoded.contains("\"attackDice\":"))
     assert(!encoded.contains("defenseDice"))
 
-    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"formation":{"minimumForce":1,"maximumForce":3,"availableWarbands":3,"supplyCost":2},"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Choose 1 to 3 board warbands"]}]}]"""
+    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"formation":{"minimumForce":0,"maximumForce":3,"availableWarbands":3,"supplyCost":2},"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Choose 0 to 3 board warbands"]}]}]"""
     val projected = projectionJson(sequence = 17, choices = false)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$action")
@@ -185,7 +185,7 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
     assertEquals(decoded.candidates.map(_.target),
       Vector(BoardTargetRef.Site("site:b")))
-    assertEquals(decoded.formation, Some(BoardTargetFormation(1, 3, 3, 2)))
+    assertEquals(decoded.formation, Some(BoardTargetFormation(0, 3, 3, 2)))
 
     val pending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
     val pendingJson = projectionJson(sequence = 18, choices = false)

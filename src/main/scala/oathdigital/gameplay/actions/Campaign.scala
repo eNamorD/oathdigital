@@ -27,7 +27,7 @@ object CampaignCommand {
 
 object Campaign {
   val SupplyCost = 2
-  val MinimumForce = 1
+  val MinimumForce = 0
 
   /** Validates every non-random fact needed to choose an attacker plan. The
     * application boundary must call this before preparing physical dice.
@@ -459,7 +459,7 @@ object CampaignRules {
 
   def legalTargets(catalog: ExecutableCatalog, ready: ReadyGame, playerId: PlayerId)
       : Vector[SiteId] = ready.game.current.players.find(_.player == playerId).toVector
-    .filter(hasFormationResources).flatMap(_.pawnSite).filter { site =>
+    .filter(hasCampaignSupply).flatMap(_.pawnSite).filter { site =>
       ready.game.current.map.sites.get(site).exists(_.forces match {
         case SiteForces.Occupied(ForceKind.Bandit, _) => true
         case _ => false
@@ -479,14 +479,13 @@ object CampaignRules {
         case _ => Left(CampaignUnavailable("bounded Conquest supports bandit-ruled sites only"))
       }
       _ <- if (player.board.supply.supply >= Campaign.SupplyCost) Right(()) else Left(InsufficientSupply(Campaign.SupplyCost, player.board.supply.supply))
-      _ <- if (force >= Campaign.MinimumForce && force <= player.board.warbands) Right(()) else Left(CampaignUnavailable("attack force must be between one and board warbands"))
+      _ <- if (force >= Campaign.MinimumForce && force <= player.board.warbands) Right(()) else Left(CampaignUnavailable("attack force must be between zero and board warbands"))
       _ <- validateSupported(catalog, ready, playerId, site)
     } yield ()
   }
 
-  private def hasFormationResources(player: PlayerState): Boolean =
-    player.board.warbands >= Campaign.MinimumForce &&
-      player.board.supply.supply >= Campaign.SupplyCost
+  private def hasCampaignSupply(player: PlayerState): Boolean =
+    player.board.supply.supply >= Campaign.SupplyCost
 
   private def validateSupported(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, site: SiteId): Either[OathViolation, Unit] = {

@@ -46,8 +46,9 @@ reachable and its rule/modifier interactions meaningfully legal.
   step with server-authored force bounds, available warbands, Supply cost, and
   pre-plan dice. Accessible direct/decrement/increment controls require an
   explicit confirmation; Back and Cancel remain local. Stale context clears
-  formation, inactive viewers receive none, and zero-warband or unaffordable
-  Campaigns project no action. Command validation and replay retain authority.
+  formation, inactive viewers receive none, and unaffordable Campaigns project
+  no action. A player with no board warbands receives the legal `0..0` empty-pool
+  formation. Command validation and replay retain authority.
 
 - [x] **Campaign expansion — ordered plans and Brass Army.** The attacker may
   use distinct accessible plans once each in an authoritative chosen order,
@@ -159,7 +160,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 259 JVM tests, 75 Scala.js tests, the Scala.js
+The combined milestone passes 261 JVM tests, 76 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

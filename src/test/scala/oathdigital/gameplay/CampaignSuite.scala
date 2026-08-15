@@ -64,10 +64,10 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(action.candidates.map(_.target),
       Vector(BoardTargetRefProjection.Site(site.value)))
     assertEquals(action.candidates.head.details,
-      Vector("2 Supply", s"Choose 1 to ${player.board.warbands} board warbands"))
+      Vector("2 Supply", s"Choose 0 to ${player.board.warbands} board warbands"))
     assertEquals(action.formation, Some(
       oathdigital.application.BoardTargetFormationProjection(
-        1, player.board.warbands, player.board.warbands, 2)))
+        0, player.board.warbands, player.board.warbands, 2)))
     val hidden = new GameProjector(catalog).projectPublic("campaign",
       LoadedGame(Ready(ready), 1))
     assertEquals(hidden.boardTargetActions, Vector.empty)
@@ -81,7 +81,7 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(changed.maximumForce -> changed.availableWarbands, 2 -> 2)
   }
 
-  test("Campaign projection requires current force and full Supply cost") {
+  test("Campaign projection permits an empty force and requires full Supply cost") {
     val (ready, player, site) = campaignReady
     def withResources(warbands: Int, supply: Int): ReadyGame =
       ready.copy(game = ready.game.copy(current = ready.game.current.copy(
@@ -92,29 +92,97 @@ class CampaignSuite extends munit.FunSuite {
       .project("campaign-resources", LoadedGame(Ready(state), 2), player.player)
       .boardTargetActions.find(_.actionKind == "campaign-conquest")
 
-    Vector(0 -> Campaign.SupplyCost, 1 -> 0, 1 -> 1).foreach {
+    Vector(0 -> 0, 0 -> 1, 1 -> 0, 1 -> 1).foreach {
       case (warbands, supply) =>
         val state = withResources(warbands, supply)
         assertEquals(CampaignRules.legalTargets(catalog, state, player.player),
           Vector.empty)
         assertEquals(campaignAction(state), None)
+        assert(rules.handle(Ready(state), CampaignCommand.Start(player.player,
+          DecisionId(s"campaign-insufficient-$warbands-$supply"), site, 0))
+          .left.toOption.get.isInstanceOf[InsufficientSupply])
     }
 
-    val exact = withResources(Campaign.MinimumForce, Campaign.SupplyCost)
-    assertEquals(CampaignRules.legalTargets(catalog, exact, player.player),
+    val empty = withResources(0, Campaign.SupplyCost)
+    assertEquals(CampaignRules.legalTargets(catalog, empty, player.player),
       Vector(site))
+    assertEquals(campaignAction(empty).flatMap(_.formation), Some(
+      oathdigital.application.BoardTargetFormationProjection(0, 0, 0,
+        Campaign.SupplyCost)))
+
+    val exact = withResources(1, Campaign.SupplyCost)
     val formation = campaignAction(exact).flatMap(_.formation).get
     assertEquals(formation, oathdigital.application.BoardTargetFormationProjection(
-      Campaign.MinimumForce, Campaign.MinimumForce, Campaign.MinimumForce,
-      Campaign.SupplyCost))
+      Campaign.MinimumForce, 1, 1, Campaign.SupplyCost))
   }
 
   test("formation projection rejects malformed authoritative bounds") {
     import oathdigital.application.BoardTargetFormationProjection
-    intercept[IllegalArgumentException](BoardTargetFormationProjection(0, 1, 1, 2))
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(-1, 1, 1, 2))
     intercept[IllegalArgumentException](BoardTargetFormationProjection(2, 1, 2, 2))
     intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 2, 1, 2))
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(0, 0, -1, 2))
     intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 1, 1, -1))
+  }
+
+  test("empty force finishes with an empty attack pool and zero bounds") {
+    val (ready, player, site) = campaignReady
+    val decision = DecisionId("campaign-empty")
+    val declared = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      decision, site, 0)).toOption.get
+    val finished = rules.handle(declared.state, CampaignCommand.FinishPlans(
+      player.player, decision, Vector.empty)).toOption.get
+    val Ready(after) = finished.state: @unchecked
+    val pending = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(pending.attackDice, Vector.empty)
+    assertEquals(pending.attack -> pending.skullLosses, 0 -> 0)
+    val projected = new GameProjector(catalog).project("campaign-empty",
+      LoadedGame(finished.state, 2), player.player).campaign.get
+    assertEquals(projected.maxSacrifice -> projected.maxPlacement, 0 -> 0)
+  }
+
+  test("empty force can use Brass Army with and without Outriders") {
+    val (ready, player, site) = campaignReady
+    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army")).get
+    val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
+    val brassSource = PendingProcedure.CampaignPlanSource.Relic(player.player,
+      RelicId(brass.id.value))
+    val outridersSource = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+      DenizenId(outriders.id.value))
+    val actor = player.copy(board = player.board.copy(faceUpSecrets = 1),
+      advisers = Vector(DenizenState(DenizenId(outriders.id.value),
+        Orientation.FaceUp, Tokens.empty)),
+      relics = Vector(RelicState(RelicId(brass.id.value), Orientation.FaceUp,
+        Tokens.empty)))
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p =>
+        if (p.player == player.player) actor else p))))
+    val skulls = Vector.fill(4)(AttackDieFace.TwoSwordsSkull)
+
+    def finish(id: String, plans: Vector[PendingProcedure.CampaignPlanSource]) = {
+      val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
+        DecisionId(id), site, 0)).toOption.get
+      val selected = plans.foldLeft(declared) { (transition, source) =>
+        rules.handle(transition.state, CampaignCommand.ChoosePlan(player.player,
+          DecisionId(id), source)).toOption.get
+      }
+      rules.handle(selected.state, CampaignCommand.FinishPlans(player.player,
+        DecisionId(id), skulls)).toOption.get
+    }
+
+    val Ready(brassOnly) = finish("campaign-empty-brass",
+      Vector(brassSource)).state: @unchecked
+    val brassResult = brassOnly.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(brassResult.attackDice.size, 4)
+    assertEquals(brassResult.attack -> brassResult.skullLosses, 0 -> 0)
+
+    val Ready(combined) = finish("campaign-empty-combined",
+      Vector(outridersSource, brassSource)).state: @unchecked
+    val combinedResult = combined.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(combinedResult.attackDice.size, 4)
+    assertEquals(combinedResult.attack -> combinedResult.skullLosses, 8 -> 0)
   }
 
   test("staged conquest records cost dice sacrifice and explicit placement") {

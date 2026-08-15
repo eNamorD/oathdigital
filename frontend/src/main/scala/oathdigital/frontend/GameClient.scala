@@ -801,7 +801,8 @@ object GameJson {
                   max <- int(obj, "maximumForce", s"$path.formation")
                   warbands <- int(obj, "availableWarbands", s"$path.formation")
                   cost <- int(obj, "supplyCost", s"$path.formation")
-                  _ <- Either.cond(min >= 1 && max >= min && max <= warbands && cost >= 0,
+                  _ <- Either.cond(min >= 0 && max >= min && warbands >= 0 &&
+                    max <= warbands && cost >= 0,
                     (), GameClientFailure.DecodeFailure(s"$path.formation",
                       "invalid board-target formation bounds"))
                 } yield Some(BoardTargetFormation(min, max, warbands, cost))
