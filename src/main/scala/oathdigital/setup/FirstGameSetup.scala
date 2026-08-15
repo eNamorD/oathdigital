@@ -130,7 +130,14 @@ object OathEvent {
   ) extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      supplySpent: Int, force: Int, attackDice: Vector[AttackDieFace]
+      supplySpent: Int, force: Int
+  ) extends OathEvent
+  final case class CampaignPlanChosen(
+      playerId: PlayerId, decision: DecisionId,
+      source: Option[PendingProcedure.CampaignPlanSource],
+      handlerId: Option[String], favorCost: Int, secretCost: Int,
+      revealed: Boolean, ignoreAttackSkulls: Boolean,
+      attackDice: Vector[AttackDieFace], attack: Int, skullLosses: Int
   ) extends OathEvent
   final case class CampaignSacrificed(
       playerId: PlayerId, decision: DecisionId, sacrificed: Int,
@@ -188,6 +195,8 @@ object OathContinue {
   final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
+  final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlacement(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
@@ -277,6 +286,7 @@ object OathViolation {
   final case class CampaignUnavailable(reason: String) extends OathViolation
   final case class CampaignDecisionMismatch(expected: DecisionId, actual: DecisionId)
       extends OathViolation
+  final case class CampaignPlanUnavailable(detail: String) extends OathViolation
   final case class CampaignOutcomeMismatch(detail: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
@@ -510,7 +520,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
-          _: CampaignStarted | _: CampaignSacrificed | _: CampaignConquered |
+          _: CampaignStarted | _: CampaignPlanChosen | _: CampaignSacrificed | _: CampaignConquered |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("Recover requires the gameplay evolution"))
       case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>

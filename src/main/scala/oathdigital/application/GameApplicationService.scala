@@ -3,7 +3,8 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.{CampaignCommand, CampaignRules, EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
+  EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -46,6 +47,8 @@ object GameCommand {
       extends GameCommand
   final case class BeginCampaignConquest(playerId: PlayerId, targetSiteId: SiteId,
       attackDiceCount: Int) extends GameCommand
+  final case class ChooseCampaignPlan(playerId: PlayerId, decision: DecisionId,
+      source: Option[PendingProcedure.CampaignPlanSource]) extends GameCommand
   final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
@@ -369,8 +372,13 @@ final class GameApplicationService(
         rules.handle(state, RecoverCommand.Stop(playerId, decision))
       case GameCommand.BeginCampaignConquest(playerId, target, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
-          DecisionId(s"campaign-$nextSequence"), target, count,
-          campaignDicePort.rollAttack(count)))
+          DecisionId(s"campaign-$nextSequence"), target, count))
+      case GameCommand.ChooseCampaignPlan(playerId, decision, source) =>
+        Campaign.prepareChoosePlan(catalog, state, playerId, decision,
+          source).flatMap { force =>
+          rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision,
+            source, campaignDicePort.rollAttack(force)))
+        }
       case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
         case OathState.Ready(ready) => ready.game.current.pending match {
           case Some(c: PendingProcedure.Campaign) =>

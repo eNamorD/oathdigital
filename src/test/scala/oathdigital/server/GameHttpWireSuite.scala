@@ -2,7 +2,8 @@ package oathdigital.server
 
 import oathdigital.application.{CardDecisionResolution, GameCommand, GameProjection,
   OathkeeperProjection}
-import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId, PlayerId}
+import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId,
+  PendingProcedure, PlayerId}
 import oathdigital.serialization.{
   GameEventWire
 }
@@ -14,6 +15,10 @@ class GameHttpWireSuite extends munit.FunSuite {
       "attackDiceCount" -> 3))
     val sacrifice = commandRequest(ujson.Obj("type" -> "chooseCampaignSacrifice",
       "playerId" -> "p2", "decisionId" -> "campaign-8", "count" -> 1))
+    val plan = commandRequest(ujson.Obj("type" -> "chooseCampaignPlan",
+      "playerId" -> "p2", "decisionId" -> "campaign-8",
+      "source" -> ujson.Obj("kind" -> "adviser", "playerId" -> "p2",
+        "cardId" -> "143")))
     val place = commandRequest(ujson.Obj("type" -> "placeCampaignForce",
       "playerId" -> "p2", "decisionId" -> "campaign-8", "count" -> 2))
     assertEquals(GameHttpWire.decodeCommand(begin).toOption.get.command,
@@ -22,6 +27,10 @@ class GameHttpWireSuite extends munit.FunSuite {
     assertEquals(GameHttpWire.decodeCommand(sacrifice).toOption.get.command,
       GameCommand.ChooseCampaignSacrifice(PlayerId("p2"),
         DecisionId("campaign-8"), 1))
+    assertEquals(GameHttpWire.decodeCommand(plan).toOption.get.command,
+      GameCommand.ChooseCampaignPlan(PlayerId("p2"), DecisionId("campaign-8"),
+        Some(PendingProcedure.CampaignPlanSource.Adviser(PlayerId("p2"),
+          DenizenId("143")))))
     assertEquals(GameHttpWire.decodeCommand(place).toOption.get.command,
       GameCommand.PlaceCampaignForce(PlayerId("p2"),
         DecisionId("campaign-8"), 2))

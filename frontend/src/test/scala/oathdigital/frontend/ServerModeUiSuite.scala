@@ -50,6 +50,13 @@ class ServerModeUiSuite extends FunSuite {
 
   test("bounded Campaign uses the generic single-site action label") {
     assertEquals(ServerModeUi.actionLabel("campaign-conquest"), "Campaign")
+    val skip = CampaignPlanChoice("skip", None, None, None, None,
+      "Use no battle plan", None, 0, 0, "Roll normally")
+    val outriders = CampaignPlanChoice("adviser", Some("source"), Some("red"),
+      None, Some("143"), "Outriders", Some("denizen.outriders"), 0, 0,
+      "Ignore all attack-roll skull losses")
+    assertEquals(ServerModeUi.campaignPlanButtonLabel(skip), "Use no battle plan")
+    assertEquals(ServerModeUi.campaignPlanButtonLabel(outriders), "Outriders")
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

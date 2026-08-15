@@ -82,6 +82,8 @@ final class AuthenticatedGameGateway(
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteId, attackDiceCount) =>
             actor.beginCampaignConquest(targetSiteId, attackDiceCount)
+          case GameIntent.ChooseCampaignPlan(decision, source) =>
+            actor.chooseCampaignPlan(decision, source)
           case GameIntent.ChooseCampaignSacrifice(decision, count) =>
             actor.chooseCampaignSacrifice(decision, count)
           case GameIntent.PlaceCampaignForce(decision, count) =>

@@ -112,6 +112,29 @@ sealed trait PendingProcedure extends Product with Serializable {
   def decision: DecisionId
 }
 object PendingProcedure {
+  sealed trait CampaignPlanSource extends Product with Serializable {
+    def stableKey: String
+  }
+  object CampaignPlanSource {
+    final case class Adviser(playerId: PlayerId, id: DenizenId)
+        extends CampaignPlanSource {
+      def stableKey: String = s"adviser:${playerId.value}:denizen:${id.value}"
+    }
+    final case class SiteCard(siteId: SiteId, id: DenizenId)
+        extends CampaignPlanSource {
+      def stableKey: String = s"site-card:${siteId.value}:denizen:${id.value}"
+    }
+  }
+
+  final case class CampaignPlanResolution(
+      source: Option[CampaignPlanSource],
+      handlerId: Option[String],
+      favorCost: Int,
+      secretCost: Int,
+      revealed: Boolean,
+      ignoreAttackSkulls: Boolean
+  )
+
   final case class Search(
       decision: DecisionId,
       actor: PlayerId,
@@ -129,6 +152,7 @@ object PendingProcedure {
       attackDice: Vector[AttackDieFace],
       attack: Int,
       skullLosses: Int,
+      plan: Option[CampaignPlanResolution],
       sacrificed: Option[Int],
       defenseDice: Vector[DefenseDieFace],
       defense: Option[Int],

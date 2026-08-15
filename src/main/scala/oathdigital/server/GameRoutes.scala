@@ -261,6 +261,7 @@ final class GameRoutes(
       case GameCommand.AddRecoverDice(playerId, _) => Some(playerId.value)
       case GameCommand.StopRecover(playerId, _) => Some(playerId.value)
       case GameCommand.BeginCampaignConquest(playerId, _, _) => Some(playerId.value)
+      case GameCommand.ChooseCampaignPlan(playerId, _, _) => Some(playerId.value)
       case GameCommand.ChooseCampaignSacrifice(playerId, _, _) => Some(playerId.value)
       case GameCommand.PlaceCampaignForce(playerId, _, _) => Some(playerId.value)
       case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)

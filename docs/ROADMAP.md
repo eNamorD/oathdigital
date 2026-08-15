@@ -12,11 +12,13 @@ No item is currently assigned.
 ## Next
 
 **Campaign expansion**, building on the verified single-site bandit Conquest
-slice. Next, add a typed optional battle-plan choice and recorded resolution,
-then implement a small audited set of modifiers and costs. Player defenders,
-optional additional same-ruler sites, accessible partial-force browser
-selection (the engine/API already accept partial force), multi-site
-loss/placement, Raid outcomes, and the displaced-Oathkeeper tie decision follow.
+slice. Next, extend the verified optional-plan decision with a small audited
+paid dice-pool modifier, beginning with Brass Army if its availability, secret
+cost, and extra attack dice can be represented without widening the battle
+boundary. Player defenders, optional additional same-ruler sites, accessible
+partial-force browser selection (the engine/API already accept partial force),
+multi-site loss/placement, Raid outcomes, and the displaced-Oathkeeper tie
+decision follow.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -42,6 +44,15 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign expansion — first optional attacker battle plan.** Campaign
+  now pauses before attack randomness for an actor-private choice between an
+  explicit skip and each accessible Outriders source. Selecting Outriders may
+  reveal a facedown card and records its stable source, exact handler, costs,
+  mechanical result, and physical dice; replay recalculates the attack and
+  ignored skull losses. Rejected commands consume no randomness, malformed
+  client choice shapes fail decoding, and every other relevant plan remains
+  conservatively blocked.
 
 - [x] **Campaign expansion prerequisite — typed power boundary.** All eight
   Campaign timing windows are explicit, accessible powers are discovered and
@@ -135,7 +146,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 250 JVM tests, 73 Scala.js tests, the Scala.js
+The combined milestone passes 253 JVM tests, 73 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

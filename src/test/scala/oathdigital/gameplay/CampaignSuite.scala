@@ -13,6 +13,15 @@ class CampaignSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
+  private def startAndChoose(ready: ReadyGame, player: PlayerState, site: SiteId,
+      id: DecisionId, force: Int, dice: Vector[AttackDieFace],
+      source: Option[PendingProcedure.CampaignPlanSource] = None): OathTransition = {
+    val started = rules.handle(Ready(ready), CampaignCommand.Start(
+      player.player, id, site, force)).toOption.get
+    rules.handle(started.state, CampaignCommand.ChoosePlan(
+      player.player, id, source, dice)).toOption.get
+  }
+
   private def campaignReady: (ReadyGame, PlayerState, SiteId) = {
     val Ready(base) = execute(setup)._1: @unchecked
     val active = base.game.current.players.find(_.player == base.game.current.turn.activePlayer).get
@@ -53,9 +62,9 @@ class CampaignSuite extends munit.FunSuite {
   test("staged conquest records cost dice sacrifice and explicit placement") {
     val (ready, player, site) = campaignReady
     val id = DecisionId("campaign-test")
-    val started = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
-      id, site, 3, Vector(AttackDieFace.OneSword, AttackDieFace.OneSword,
-        AttackDieFace.TwoSwordsSkull))).toOption.get
+    val started = startAndChoose(ready, player, site, id, 3,
+      Vector(AttackDieFace.OneSword, AttackDieFace.OneSword,
+        AttackDieFace.TwoSwordsSkull))
     val Ready(afterStart) = started.state: @unchecked
     val pending = afterStart.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
     assertEquals(pending.attack, 4)
@@ -80,10 +89,10 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, site) = campaignReady
     val id = DecisionId("campaign-loss")
     assert(rules.evolve(Ready(ready), CampaignStarted(player.player, id, site,
-      1, 2, Vector(AttackDieFace.OneSword))).left.toOption.get
+      1, 2)).left.toOption.get
       .isInstanceOf[CampaignOutcomeMismatch])
-    val started = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
-      id, site, 2, Vector.fill(2)(AttackDieFace.HollowSword))).toOption.get
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.HollowSword))
     val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
       DefenseDieFace.TwoShields)
     val recorded = CampaignSacrificed(player.player, id, 0, defenseDice,
@@ -120,6 +129,62 @@ class CampaignSuite extends munit.FunSuite {
       .left.toOption.get
     assert(error.isInstanceOf[CampaignUnavailable])
     assert(error.toString.contains("Vow of Peace"))
+  }
+
+  test("facedown owned Outriders is offered by exact source and ignores recorded skulls") {
+    val (ready, player, site) = campaignReady
+    val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
+    val source = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+      DenizenId(outriders.id.value))
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(advisers = Vector(DenizenState(DenizenId(outriders.id.value),
+          Orientation.FaceDown, Tokens.empty)))))))
+    val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
+      DecisionId("campaign-outriders"), site, 1)).toOption.get
+    val Ready(pendingState) = declared.state: @unchecked
+    val pending = pendingState.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(CampaignRules.legalPlanChoices(catalog, pendingState, pending),
+      Vector(source))
+    val projector = new GameProjector(catalog)
+    val actorView = projector.project("campaign-outriders",
+      LoadedGame(declared.state, 1), player.player)
+    assertEquals(actorView.campaign.get.planChoices.map(_.kind),
+      Vector("skip", "adviser"))
+    assertEquals(actorView.legalControls, Vector("chooseCampaignPlan"))
+    val other = pendingState.game.current.players.find(_.player != player.player).get.player
+    val otherView = projector.project("campaign-outriders",
+      LoadedGame(declared.state, 1), other)
+    assertEquals(otherView.campaign, None)
+    assertEquals(otherView.phase, "campaign-waiting")
+    assertEquals(projector.projectPublic("campaign-outriders",
+      LoadedGame(declared.state, 1)).campaign, None)
+    val chosen = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
+      pending.decision, Some(source), Vector(AttackDieFace.TwoSwordsSkull))).toOption.get
+    assert(chosen.events.head.asInstanceOf[CampaignPlanChosen].revealed)
+    val Ready(after) = chosen.state: @unchecked
+    val result = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(result.attack, 2)
+    assertEquals(result.skullLosses, 0)
+    assertEquals(after.game.current.players.find(_.player == player.player).get
+      .advisers.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
+  }
+
+  test("Campaign plan choice rejects stale and tampered sources") {
+    val (ready, player, site) = campaignReady
+    val declared = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      DecisionId("campaign-stale-plan"), site, 1)).toOption.get
+    val fake = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+      DenizenId("not-outriders"))
+    val error = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
+      DecisionId("campaign-stale-plan"), Some(fake), Vector(AttackDieFace.OneSword)))
+      .left.toOption.get
+    assert(error.isInstanceOf[CampaignPlanUnavailable])
+    val tampered = CampaignPlanChosen(player.player, DecisionId("campaign-stale-plan"),
+      None, None, 0, 0, revealed = false, ignoreAttackSkulls = true,
+      Vector(AttackDieFace.TwoSwordsSkull), attack = 2, skullLosses = 0)
+    assert(rules.evolve(declared.state, tampered).left.toOption.get
+      .isInstanceOf[CampaignOutcomeMismatch])
   }
 
   test("facedown Vow of Peace has no active pre-Campaign restriction") {
@@ -228,8 +293,8 @@ class CampaignSuite extends munit.FunSuite {
   test("zero placement refills bandits before the action-boundary title check") {
     val (ready, player, site) = campaignReady
     val id = DecisionId("campaign-refill")
-    val started = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
-      id, site, 2, Vector.fill(2)(AttackDieFace.TwoSwordsSkull))).toOption.get
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.TwoSwordsSkull))
     val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
       DefenseDieFace.Blank)
     val won = rules.handle(started.state, CampaignCommand.Sacrifice(

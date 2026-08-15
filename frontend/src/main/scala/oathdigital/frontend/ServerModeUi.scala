@@ -463,9 +463,21 @@ object ServerModeUi {
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
         panel.appendChild(text("h2", "", "Campaign"))
-        panel.appendChild(text("p", "campaign-results",
-          s"Attack dice: ${campaign.attackDice.mkString(", ")} · " +
-            s"${campaign.attack} attack · ${campaign.skullLosses} skull losses"))
+        if (!campaign.planChosen) {
+          panel.appendChild(text("p", "campaign-instruction",
+            "Choose an attacker battle plan, or roll without one."))
+          campaign.planChoices.foreach { choice =>
+            val choose = button(campaignPlanButtonLabel(choice), "campaign-plan")
+            choose.title = choice.mechanicalResult
+            choose.disabled = !controlsAvailable
+            choose.onclick = _ => submit(GameCommand.ChooseCampaignPlan(
+              selectedPlayer, campaign.decisionId, choice))
+            panel.appendChild(choose)
+          }
+        } else {
+          panel.appendChild(text("p", "campaign-results",
+            s"Attack dice: ${campaign.attackDice.mkString(", ")} · " +
+              s"${campaign.attack} attack · ${campaign.skullLosses} skull losses"))
         if (campaign.sacrificed.isEmpty) {
           panel.appendChild(text("p", "campaign-instruction",
             "Choose surviving warbands to sacrifice for +1 attack each."))
@@ -492,6 +504,7 @@ object ServerModeUi {
               panel.appendChild(place)
             }
           }
+        }
         }
       }
       if (value.phase == "rest" && presentation.showGameplayControls) {
@@ -1048,6 +1061,14 @@ object ServerModeUi {
 
   private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
     (candidate.label +: candidate.details).mkString(" · ")
+
+  private[frontend] def campaignPlanButtonLabel(choice: CampaignPlanChoice): String = {
+    val cost = Vector(
+      Option.when(choice.favorCost > 0)(s"${choice.favorCost} Favor"),
+      Option.when(choice.secretCost > 0)(s"${choice.secretCost} Secret")
+    ).flatten.mkString(", ")
+    if (cost.isEmpty) choice.label else s"${choice.label} ($cost)"
+  }
 
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =

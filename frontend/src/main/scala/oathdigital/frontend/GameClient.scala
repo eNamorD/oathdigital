@@ -189,9 +189,14 @@ final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
 final case class CampaignState(decisionId: String, siteId: String, force: Int,
+    planChosen: Boolean, planChoices: Vector[CampaignPlanChoice],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
+final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
+    playerId: Option[String], siteId: Option[String], cardId: Option[String],
+    label: String, handlerId: Option[String], favorCost: Int, secretCost: Int,
+    mechanicalResult: String)
 final case class OathkeeperStatus(goal: String, holderPlayerId: Option[String],
     side: String, usurperLimited: Boolean, winnerPlayerId: Option[String])
 
@@ -211,6 +216,8 @@ object GameCommand {
   final case class CampaignConquest(playerId: String, targetSiteId: String,
       attackDiceCount: Int)
       extends GameCommand
+  final case class ChooseCampaignPlan(playerId: String, decisionId: String,
+      choice: CampaignPlanChoice) extends GameCommand
   final case class ChooseCampaignSacrifice(playerId: String, decisionId: String,
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: String, decisionId: String,
@@ -446,6 +453,16 @@ object GameJson {
           targetSiteId = target,
           attackDiceCount = count
         )
+      case GameCommand.ChooseCampaignPlan(player, decision, choice) =>
+        val source: js.Any = choice.kind match {
+          case "skip" => null
+          case "adviser" => js.Dynamic.literal(kind = "adviser",
+            playerId = choice.playerId.get, cardId = choice.cardId.get)
+          case "site-card" => js.Dynamic.literal(kind = "site-card",
+            siteId = choice.siteId.get, cardId = choice.cardId.get)
+        }
+        js.Dynamic.literal(`type` = "chooseCampaignPlan", playerId = player,
+          decisionId = decision, source = source)
       case GameCommand.ChooseCampaignSacrifice(player, decision, count) =>
         js.Dynamic.literal(`type` = "chooseCampaignSacrifice",
           playerId = player, decisionId = decision, count = count)
@@ -845,6 +862,23 @@ object GameJson {
             id <- string(obj, "decisionId", "$.campaign")
             site <- string(obj, "siteId", "$.campaign")
             force <- int(obj, "force", "$.campaign")
+            planChosen <- bool(obj, "planChosen", "$.campaign")
+            planChoices <- array(obj, "planChoices", "$.campaign").flatMap(
+              traverse(_, "planChoices") { (choice, choicePath) => for {
+                kind <- string(choice, "kind", choicePath)
+                sourceKey <- optionalString(choice, "sourceKey", choicePath)
+                player <- optionalString(choice, "playerId", choicePath)
+                choiceSite <- optionalString(choice, "siteId", choicePath)
+                card <- optionalString(choice, "cardId", choicePath)
+                label <- string(choice, "label", choicePath)
+                handler <- optionalString(choice, "handlerId", choicePath)
+                favor <- int(choice, "favorCost", choicePath)
+                secret <- int(choice, "secretCost", choicePath)
+                result <- string(choice, "mechanicalResult", choicePath)
+                decoded = CampaignPlanChoice(kind, sourceKey, player, choiceSite,
+                  card, label, handler, favor, secret, result)
+                valid <- validateCampaignPlanChoice(decoded, choicePath)
+              } yield valid })
             attackDice <- stringArray(obj, "attackDice", "$.campaign")
             attack <- int(obj, "attack", "$.campaign")
             skulls <- int(obj, "skullLosses", "$.campaign")
@@ -859,7 +893,8 @@ object GameJson {
               case Some(_) => bool(obj, "victorious", "$.campaign").map(Some(_))
             }
             maximumPlacement <- int(obj, "maxPlacement", "$.campaign")
-          } yield Some(CampaignState(id, site, force, attackDice, attack,
+          } yield Some(CampaignState(id, site, force, planChosen, planChoices,
+            attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,
             victorious, maximumPlacement)) }
         }
@@ -1151,6 +1186,21 @@ object GameJson {
         ))
       }
     }
+
+  private def validateCampaignPlanChoice(choice: CampaignPlanChoice, path: String)
+      : Either[GameClientFailure, CampaignPlanChoice] = {
+    val valid = choice.kind match {
+      case "skip" => choice.sourceKey.isEmpty && choice.playerId.isEmpty &&
+        choice.siteId.isEmpty && choice.cardId.isEmpty
+      case "adviser" => choice.sourceKey.nonEmpty && choice.playerId.nonEmpty &&
+        choice.siteId.isEmpty && choice.cardId.nonEmpty
+      case "site-card" => choice.sourceKey.nonEmpty && choice.playerId.isEmpty &&
+        choice.siteId.nonEmpty && choice.cardId.nonEmpty
+      case _ => false
+    }
+    Either.cond(valid, choice, GameClientFailure.DecodeFailure(path,
+      s"invalid Campaign plan choice shape '${choice.kind}'"))
+  }
 
   private def traverse[A](
       values: Vector[js.Dynamic],

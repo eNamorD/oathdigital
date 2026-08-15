@@ -20,9 +20,11 @@ placement; and remaining end, victory, and defeat effects.
 The source-verified inventory for this boundary is:
 
 - safely executable now: the mandatory `denizen.vow-of-peace` Campaign block
-  at target and force formation;
+  at target and force formation, and optional attacker plan
+  `denizen.outriders` (“Ignore all skulls you roll”) at the attacker battle-plan
+  window;
 - blocked by missing decisions or data: every optional attacker battle plan,
-  including otherwise simple modifiers such as Outriders and Brass Army;
+  including otherwise simple pool modifiers such as Brass Army;
   rerolls, costs, directional `±` choices, conditional pools, discard/bury,
   favor-bank rewards, and remaining victory/defeat/end effects;
 - irrelevant to bandit Conquest: defender-only and Raid-only powers,
@@ -30,9 +32,15 @@ The source-verified inventory for this boundary is:
   Weeping Banner, and Peace Envoy are not in this class: each can change this
   boundary and therefore rejects pending typed resolution.
 
-No printed battle plan is auto-selected. Even a mechanically beneficial plan
-is optional printed behavior, so executing it without an audited choice would
-fabricate a rule. Blocked rules report exact handler and stable source identity.
+No printed battle plan is auto-selected. The actor receives an authoritative
+choice containing explicit skip and each accessible Outriders source. Selecting
+a facedown Outriders adviser or site card records and applies its reveal. The
+recorded choice includes the stable source, exact handler, zero costs, reveal
+fact, and `ignoreAttackSkulls` result; the following physical attack faces are
+also recorded, and replay derives zero skull losses without rerolling. Choices
+are projected only to the actor, while public and other-player projections show
+only that Campaign is waiting. Blocked rules report exact handler and stable
+source identity.
 Mountain/Plains Campaign effects also remain blocked. Raid still needs
 facedown-card dispossession, relic/banner transfers, favor burning, and a typed
 defender relocation choice. Site access is derived through `SiteRule`; corrupt
@@ -50,6 +58,9 @@ deferred.
 The pawn site is the mandatory and only target. The player confirms that typed
 site target through the reusable board-target protocol. The application service
 supplies recorded attack and defense dice; clients never supply randomness.
+Declaration first commits force and Supply and creates the pending attacker-plan
+decision. Attack dice are prepared only after the server revalidates the chosen
+source (or explicit skip), so the printed plan window precedes randomness.
 
 Defender dice equal the site's printed defense. Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
@@ -87,7 +98,7 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 - optional additional same-ruler sites and multi-site force/loss allocation;
 - conquest against another player;
 - partial-force selection in the browser (the engine/API already support it);
-- typed optional attacker/defender battle-plan selection and resolution;
+- further optional attacker plans and all defender battle-plan selection;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;
 - Raid targets, theft/discard/burn effects, banner rules, and relocation;

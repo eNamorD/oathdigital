@@ -16,8 +16,13 @@ class GameEventWireSuite extends munit.FunSuite {
   test("current pre-release Campaign events round-trip exact dice and choices") {
     val events = Vector[OathEvent](
       OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),
-        SiteId("site"), 2, 2, Vector(AttackDieFace.HollowSword,
-          AttackDieFace.TwoSwordsSkull)),
+        SiteId("site"), 2, 2),
+      OathEvent.CampaignPlanChosen(PlayerId("red"), DecisionId("campaign-1"),
+        Some(PendingProcedure.CampaignPlanSource.Adviser(PlayerId("red"),
+          DenizenId("143"))), Some("denizen.outriders"), 0, 0,
+        revealed = true, ignoreAttackSkulls = true,
+        Vector(AttackDieFace.HollowSword, AttackDieFace.TwoSwordsSkull),
+        attack = 2, skullLosses = 0),
       OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
         1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
       OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
@@ -27,10 +32,10 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
       .toOption.get
     val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(4)(7))
+    assertEquals(decoded.map(_.formatVersion), Vector.fill(5)(7))
     assertEquals(decoded.map(_.event), events)
     val tampered = ujson.read(encoded).arr
-    tampered.head("payload")("attackDice")(0) = "unknown-face"
+    tampered(1)("payload")("attackDice")(0) = "unknown-face"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
   }
 

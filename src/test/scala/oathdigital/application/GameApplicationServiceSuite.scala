@@ -18,6 +18,54 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("invalid Campaign plan requests consume no attack randomness") {
+    val repository = new InMemoryEventStreamRepository
+    var attackRolls = Vector.empty[Int]
+    val dice = new CampaignDicePort {
+      def rollAttack(count: Int) = {
+        attackRolls = attackRolls :+ count
+        Vector.fill(count)(AttackDieFace.OneSword)
+      }
+      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+    }
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = dice)
+    val safe = catalog.sites.find(site => site.handlers.forall(h =>
+      !h.endsWith(".mountain") && !h.endsWith(".plains") &&
+        !h.contains(".homeland-"))).get.id
+    val setup = execute(service, "campaign-rng-validation",
+      Vector(sites(0), sites(1), safe))
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val other = ready.game.current.players.find(_.player != active).get.player
+    val act = service.handle("campaign-rng-validation", setup.nextSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val target = new GameProjector(catalog).project("campaign-rng-validation",
+      LoadedGame(act.state, act.nextSequence), active).boardTargetActions
+      .find(_.actionKind == "campaign-conquest").get.candidates.head.target
+      .asInstanceOf[BoardTargetRefProjection.Site].siteId
+    val declared = service.handle("campaign-rng-validation", act.nextSequence,
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 2)).toOption.get
+    val decision = DecisionId(s"campaign-${act.nextSequence}")
+    val invalid = Some(PendingProcedure.CampaignPlanSource.Adviser(active,
+      DenizenId("not-outriders")))
+
+    assert(service.handle("campaign-rng-validation", declared.nextSequence,
+      GameCommand.ChooseCampaignPlan(other, decision, None)).isLeft)
+    assert(service.handle("campaign-rng-validation", declared.nextSequence,
+      GameCommand.ChooseCampaignPlan(active, DecisionId("stale"), None)).isLeft)
+    assert(service.handle("campaign-rng-validation", declared.nextSequence,
+      GameCommand.ChooseCampaignPlan(active, decision, invalid)).isLeft)
+    assertEquals(attackRolls, Vector.empty)
+
+    val chosen = service.handle("campaign-rng-validation", declared.nextSequence,
+      GameCommand.ChooseCampaignPlan(active, decision, None)).toOption.get
+    assertEquals(attackRolls, Vector(2))
+    assert(service.handle("campaign-rng-validation", chosen.nextSequence,
+      GameCommand.ChooseCampaignPlan(active, decision, None)).isLeft)
+    assertEquals(attackRolls, Vector(2))
+  }
+
   test("Campaign dice persist and reload without client randomness") {
     val repository = new InMemoryEventStreamRepository
     val dice = new CampaignDicePort {
@@ -41,10 +89,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val started = service.handle("campaign-persist", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).toOption.get
     assert(started.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignStarted])
+    val chosen = service.handle("campaign-persist", started.nextSequence,
+      GameCommand.ChooseCampaignPlan(active,
+        DecisionId(s"campaign-${act.nextSequence}"), None)).toOption.get
+    assert(chosen.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignPlanChosen])
     val reloaded = new GameApplicationService(catalog, repository,
       campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
-    assertEquals(reloaded.state, started.state)
-    assertEquals(reloaded.nextSequence, started.nextSequence)
+    assertEquals(reloaded.state, chosen.state)
+    assertEquals(reloaded.nextSequence, chosen.nextSequence)
   }
 
   private def execute(

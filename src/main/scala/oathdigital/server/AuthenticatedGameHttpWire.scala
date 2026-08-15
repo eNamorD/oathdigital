@@ -31,6 +31,10 @@ object GameIntent {
       targetSiteId: SiteId,
       attackDiceCount: Int
   ) extends GameIntent
+  final case class ChooseCampaignPlan(
+      decision: DecisionId,
+      source: Option[PendingProcedure.CampaignPlanSource]
+  ) extends GameIntent
   final case class ChooseCampaignSacrifice(
       decision: DecisionId,
       count: Int
@@ -209,6 +213,12 @@ object AuthenticatedGameHttpWire {
         countValue <- field(obj, "attackDiceCount", "$.intent")
         count <- nonNegativeInt(countValue, "$.intent.attackDiceCount")
       } yield GameIntent.BeginCampaignConquest(SiteId(site), count)
+      case "chooseCampaignPlan" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "source"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        sourceValue <- field(obj, "source", "$.intent")
+        source <- decodeCampaignPlanSource(sourceValue, "$.intent.source")
+      } yield GameIntent.ChooseCampaignPlan(DecisionId(decision), source)
       case "chooseCampaignSacrifice" => for {
         _ <- exactFields(obj, Set("type", "decisionId", "count"), "$.intent")
         decision <- stringField(obj, "decisionId", "$.intent")
@@ -299,6 +309,29 @@ object AuthenticatedGameHttpWire {
         case _ => Left(HttpInputError(s"$path.kind", "unknown world card kind"))
       }
     } yield card
+  }
+
+  private def decodeCampaignPlanSource(value: ujson.Value, path: String)
+      : Either[HttpInputError, Option[PendingProcedure.CampaignPlanSource]] = value match {
+    case ujson.Null => Right(None)
+    case _ => objectValue(value, path).flatMap { obj =>
+      stringField(obj, "kind", path).flatMap {
+        case "adviser" => for {
+          _ <- exactFields(obj, Set("kind", "playerId", "cardId"), path)
+          player <- stringField(obj, "playerId", path)
+          card <- stringField(obj, "cardId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.Adviser(
+          PlayerId(player), DenizenId(card)))
+        case "site-card" => for {
+          _ <- exactFields(obj, Set("kind", "siteId", "cardId"), path)
+          site <- stringField(obj, "siteId", path)
+          card <- stringField(obj, "cardId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.SiteCard(
+          SiteId(site), DenizenId(card)))
+        case other => Left(HttpInputError(s"$path.kind",
+          s"unknown Campaign plan source '$other'"))
+      }
+    }
   }
 
   private def decodePlacement(value: ujson.Value, path: String)

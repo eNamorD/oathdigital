@@ -138,9 +138,15 @@ final case class RecoverProjection(
     canAddDice: Boolean, canStop: Boolean)
 final case class CampaignProjection(
     decisionId: String, siteId: String, force: Int,
+    planChosen: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
+final case class CampaignPlanChoiceProjection(
+    kind: String, sourceKey: Option[String], playerId: Option[String],
+    siteId: Option[String], cardId: Option[String], label: String,
+    handlerId: Option[String], favorCost: Int, secretCost: Int,
+    mechanicalResult: String)
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String])
@@ -301,6 +307,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Recover) => Vector.empty
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
               Vector("placeCampaignForce")
+            case Some(c: PendingProcedure.Campaign) if c.plan.isEmpty =>
+              Vector("chooseCampaignPlan")
             case Some(_: PendingProcedure.Campaign) => Vector("chooseCampaignSacrifice")
             case Some(_) => Vector.empty
             case None => current.turn.phase match {
@@ -369,7 +377,24 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val campaignProjection = current.pending.collect {
           case c: PendingProcedure.Campaign if requestingPlayer.contains(c.actor) =>
             val remaining = c.force - c.skullLosses
+            val planChoices = CampaignPlanChoiceProjection("skip", None, None,
+              None, None, "Use no battle plan", None, 0, 0,
+              "Roll normally") +: CampaignRules.legalPlanChoices(catalog, value, c).map {
+              case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
+                CampaignPlanChoiceProjection("adviser", Some(
+                  PendingProcedure.CampaignPlanSource.Adviser(player, id).stableKey),
+                  Some(player.value), None, Some(id.value),
+                  denizenNames.getOrElse(id, "Outriders"), Some("denizen.outriders"),
+                  0, 0, "Ignore all attack-roll skull losses")
+              case PendingProcedure.CampaignPlanSource.SiteCard(site, id) =>
+                CampaignPlanChoiceProjection("site-card", Some(
+                  PendingProcedure.CampaignPlanSource.SiteCard(site, id).stableKey),
+                  None, Some(site.value), Some(id.value),
+                  denizenNames.getOrElse(id, "Outriders"), Some("denizen.outriders"),
+                  0, 0, "Ignore all attack-roll skull losses")
+            }
             CampaignProjection(c.decision.value, c.site.value, c.force,
+              c.plan.nonEmpty, if (c.plan.isEmpty) planChoices else Vector.empty,
               c.attackDice.map(attackFaceName), c.attack, c.skullLosses,
               remaining, c.sacrificed, c.defenseDice.map(defenseFaceName),
               c.defense, c.victorious,
@@ -387,6 +412,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Recover) if recoverProjection.nonEmpty => "recover-rolling"
             case Some(_: PendingProcedure.Recover) => "recover-waiting"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.exists(_.victorious.contains(true)) => "campaign-placement"
+            case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && c.plan.isEmpty => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
             case Some(_: PendingProcedure.Campaign) => "campaign-waiting"
             case _ => current.turn.phase match {
