@@ -152,7 +152,7 @@ object PendingProcedure {
   final case class Campaign(
       decision: DecisionId,
       actor: PlayerId,
-      site: SiteId,
+      targetSites: Vector[SiteId],
       force: Int,
       plans: Vector[CampaignPlanResolution],
       plansFinished: Boolean,

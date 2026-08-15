@@ -28,9 +28,13 @@ object GameIntent {
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class BeginCampaignConquest(
-      targetSiteId: SiteId,
+      targetSiteIds: Vector[SiteId],
       attackDiceCount: Int
   ) extends GameIntent
+  object BeginCampaignConquest {
+    def apply(targetSiteId: SiteId, attackDiceCount: Int): BeginCampaignConquest =
+      new BeginCampaignConquest(Vector(targetSiteId), attackDiceCount)
+  }
   final case class ChooseCampaignPlan(
       decision: DecisionId,
       source: PendingProcedure.CampaignPlanSource
@@ -209,11 +213,20 @@ object AuthenticatedGameHttpWire {
           .map(id => GameIntent.StopRecover(DecisionId(id)))
       case "beginCampaignConquest" => for {
         _ <- exactFields(obj,
-          Set("type", "targetSiteId", "attackDiceCount"), "$.intent")
-        site <- stringField(obj, "targetSiteId", "$.intent")
+          Set("type", "targetSiteIds", "attackDiceCount"), "$.intent")
+        sitesValue <- field(obj, "targetSiteIds", "$.intent")
+        siteValues <- arrayValue(sitesValue, "$.intent.targetSiteIds")
+        sites <- siteValues.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[SiteId]]](Right(Vector.empty)) {
+            case (result, (value, index)) => result.flatMap(existing => value match {
+              case ujson.Str(site) => Right(existing :+ SiteId(site))
+              case _ => Left(HttpInputError(
+                s"$$.intent.targetSiteIds[$index]", "expected a string"))
+            })
+          }
         countValue <- field(obj, "attackDiceCount", "$.intent")
         count <- nonNegativeInt(countValue, "$.intent.attackDiceCount")
-      } yield GameIntent.BeginCampaignConquest(SiteId(site), count)
+      } yield GameIntent.BeginCampaignConquest(sites, count)
       case "chooseCampaignPlan" => for {
         _ <- exactFields(obj, Set("type", "decisionId", "source"), "$.intent")
         decision <- stringField(obj, "decisionId", "$.intent")

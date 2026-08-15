@@ -148,7 +148,8 @@ final case class BoardTargetFormation(
 final case class BoardTargetAction(
     actionKind: String, prompt: String, minimum: Int, maximum: Int,
     autoActivate: Boolean, candidates: Vector[BoardTargetCandidate],
-    formation: Option[BoardTargetFormation] = None)
+    formation: Option[BoardTargetFormation] = None,
+    requiredTargets: Vector[BoardTargetRef] = Vector.empty)
 final case class CardResolution(kind: String, orientation: Option[String],
     replacementRequired: Boolean, replacementTargets: Vector[CardDetails])
 final case class PendingCardDecision(
@@ -192,12 +193,23 @@ final case class GameProjection(
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
-final case class CampaignState(decisionId: String, siteId: String, force: Int,
+final case class CampaignState(decisionId: String, targetSiteIds: Vector[String], force: Int,
     plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
     selectedPlans: Vector[CampaignPlanChoice],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
+object CampaignState {
+  def apply(decisionId: String, siteId: String, force: Int,
+      plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
+      selectedPlans: Vector[CampaignPlanChoice], attackDice: Vector[String],
+      attack: Int, skullLosses: Int, maxSacrifice: Int, sacrificed: Option[Int],
+      defenseDice: Vector[String], defense: Option[Int],
+      victorious: Option[Boolean], maxPlacement: Int): CampaignState =
+    new CampaignState(decisionId, Vector(siteId), force, plansFinished,
+      planChoices, selectedPlans, attackDice, attack, skullLosses, maxSacrifice,
+      sacrificed, defenseDice, defense, victorious, maxPlacement)
+}
 final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
     playerId: Option[String], siteId: Option[String], cardId: Option[String],
     label: String, handlerId: Option[String], favorCost: Int, secretCost: Int,
@@ -218,9 +230,14 @@ object GameCommand {
   final case class FinishRest(playerId: String) extends GameCommand
   final case class Travel(playerId: String, destinationSiteId: String)
       extends GameCommand
-  final case class CampaignConquest(playerId: String, targetSiteId: String,
+  final case class CampaignConquest(playerId: String, targetSiteIds: Vector[String],
       attackDiceCount: Int)
       extends GameCommand
+  object CampaignConquest {
+    def apply(playerId: String, targetSiteId: String,
+        attackDiceCount: Int): CampaignConquest =
+      new CampaignConquest(playerId, Vector(targetSiteId), attackDiceCount)
+  }
   final case class ChooseCampaignPlan(playerId: String, decisionId: String,
       choice: CampaignPlanChoice) extends GameCommand
   final case class FinishCampaignPlans(playerId: String, decisionId: String)
@@ -453,11 +470,11 @@ object GameJson {
           playerId = player,
           destinationSiteId = destination
         )
-      case GameCommand.CampaignConquest(player, target, count) =>
+      case GameCommand.CampaignConquest(player, targets, count) =>
         js.Dynamic.literal(
           `type` = "beginCampaignConquest",
           playerId = player,
-          targetSiteId = target,
+          targetSiteIds = js.Array(targets: _*),
           attackDiceCount = count
         )
       case GameCommand.ChooseCampaignPlan(player, decision, choice) =>
@@ -792,6 +809,9 @@ object GameJson {
             minimum <- int(item, "minimum", path)
             maximum <- int(item, "maximum", path)
             auto <- bool(item, "autoActivate", path)
+            required <- array(item, "requiredTargets", path).flatMap(
+              traverse(_, "requiredTargets")((value, requiredPath) =>
+                boardTargetRef(value, requiredPath)))
             formation <- optionalField(item, "formation").flatMap {
               case None => Right(None)
               case Some(value) if value == null => Right(None)
@@ -822,8 +842,12 @@ object GameJson {
             _ <- Either.cond(keys.distinct.size == keys.size, (),
               GameClientFailure.DecodeFailure(s"$path.candidates",
                 "duplicate target reference"))
+            _ <- Either.cond(required.distinct.size == required.size &&
+              required.forall(candidates.map(_.target).contains) &&
+              required.size <= minimum, (), GameClientFailure.DecodeFailure(
+                s"$path.requiredTargets", "invalid required target reference"))
           } yield BoardTargetAction(kind, prompt, minimum, maximum, auto,
-            candidates, formation) })
+            candidates, formation, required) })
         pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -887,7 +911,10 @@ object GameJson {
           case Some(value) if value == null => Right(None)
           case Some(value) => objectValue(value, "$.campaign").flatMap { obj => for {
             id <- string(obj, "decisionId", "$.campaign")
-            site <- string(obj, "siteId", "$.campaign")
+            sites <- stringArray(obj, "targetSiteIds", "$.campaign")
+            _ <- Either.cond(sites.nonEmpty && sites.distinct.size == sites.size,
+              (), GameClientFailure.DecodeFailure("$.campaign.targetSiteIds",
+                "Campaign targets must be non-empty and distinct"))
             force <- int(obj, "force", "$.campaign")
             plansFinished <- bool(obj, "plansFinished", "$.campaign")
             planChoices <- decodeCampaignPlanChoices(obj, "planChoices")
@@ -911,7 +938,7 @@ object GameJson {
               case Some(_) => bool(obj, "victorious", "$.campaign").map(Some(_))
             }
             maximumPlacement <- int(obj, "maxPlacement", "$.campaign")
-          } yield Some(CampaignState(id, site, force, plansFinished, planChoices,
+          } yield Some(CampaignState(id, sites, force, plansFinished, planChoices,
             selectedPlans,
             attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,

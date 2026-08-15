@@ -124,12 +124,19 @@ final case class BoardTargetActionProjection(
     maximum: Int,
     autoActivate: Boolean,
     candidates: Vector[BoardTargetCandidateProjection],
-    formation: Option[BoardTargetFormationProjection] = None
+    formation: Option[BoardTargetFormationProjection] = None,
+    requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty
 ) {
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")
   require(maximum <= candidates.size,
     "selection maximum cannot exceed authorized candidates")
+  require(requiredTargets.distinct.size == requiredTargets.size,
+    "required selection targets must be distinct")
+  require(requiredTargets.forall(required => candidates.exists(_.target == required)),
+    "required selection targets must be authorized candidates")
+  require(requiredTargets.size <= minimum,
+    "required selection targets must fit within the minimum")
 }
 final case class CardResolutionProjection(
     kind: String,
@@ -153,7 +160,7 @@ final case class RecoverProjection(
     difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
 final case class CampaignProjection(
-    decisionId: String, siteId: String, force: Int,
+    decisionId: String, targetSiteIds: Vector[String], force: Int,
     plansFinished: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],
     selectedPlans: Vector[CampaignPlanChoiceProjection],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
@@ -418,7 +425,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             val selectedPlans = c.plans.map(plan =>
               planProjection(plan.source).copy(favorCost = plan.favorCost,
                 secretCost = plan.secretCost))
-            CampaignProjection(c.decision.value, c.site.value, c.force,
+            CampaignProjection(c.decision.value, c.targetSites.map(_.value), c.force,
               c.plansFinished, if (c.plansFinished) Vector.empty else planChoices,
               selectedPlans,
               c.attackDice.map(attackFaceName), c.attack, c.skullLosses,
@@ -590,10 +597,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     Vector(
       selection("travel", "Choose a Travel destination", travel),
-      selection("campaign-conquest", "Choose the mandatory Conquest site", campaign,
+      selection("campaign-conquest", "Choose optional same-ruler Conquest sites", campaign,
         Option.when(campaign.nonEmpty)(BoardTargetFormationProjection(
           oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
-          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost))),
+          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
+        minimum = 1, maximum = campaign.size,
+        requiredTargets = campaign.headOption.map(_.target).toVector),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)
@@ -602,9 +611,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
 
   private def selection(kind: String, prompt: String,
       candidates: Vector[BoardTargetCandidateProjection],
-      formation: Option[BoardTargetFormationProjection] = None) =
+      formation: Option[BoardTargetFormationProjection] = None,
+      minimum: Int = 1, maximum: Int = 1,
+      requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty) =
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(
-      kind, prompt, 1, 1, autoActivate = false, candidates, formation))
+      kind, prompt, minimum, maximum, autoActivate = false, candidates,
+      formation, requiredTargets))
 
   private def economyCandidate(target: EconomyTargetRef,
       source: oathdigital.gameplay.RuleSourceRef, details: Vector[String]) = {

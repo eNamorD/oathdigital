@@ -46,6 +46,23 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       Some(Vector(siteA.target, siteB.target)))
   }
 
+  test("Campaign keeps its mandatory site selected and forms all chosen targets") {
+    val action = BoardTargetAction("campaign-conquest", "Targets", 1, 2,
+      autoActivate = false, Vector(siteA, siteB),
+      Some(BoardTargetFormation(0, 3, 3, 2)), Vector(siteA.target))
+    val active = BoardTargetSelectionState.reconcile(None, context,
+      Vector(action)).activate(action.actionKind)
+    assert(active.selected(siteA.target))
+    val stillRequired = active.choose(siteA.target).asInstanceOf[
+      BoardSelectionResult.Updated].state
+    assert(stillRequired.selected(siteA.target))
+    val selected = stillRequired.choose(siteB.target).asInstanceOf[
+      BoardSelectionResult.Updated].state
+    val formation = selected.confirmResult.get.asInstanceOf[
+      BoardSelectionResult.Form].state
+    assertEquals(formation.targets, Vector(siteA.target, siteB.target))
+  }
+
   test("state clears on sequence player game candidate or action changes") {
     val action = BoardTargetAction("travel", "Travel", 1, 2,
       autoActivate = false, Vector(siteA, siteB))

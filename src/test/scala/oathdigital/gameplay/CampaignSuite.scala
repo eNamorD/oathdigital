@@ -56,12 +56,16 @@ class CampaignSuite extends munit.FunSuite {
 
   test("legality and projection agree on mandatory bandit origin") {
     val (ready, player, site) = campaignReady
-    assertEquals(CampaignRules.legalTargets(catalog, ready, player.player), Vector(site))
+    val legal = CampaignRules.legalTargets(catalog, ready, player.player)
+    assertEquals(legal.head, site)
+    assert(legal.size > 1)
     val projection = new GameProjector(catalog).project("campaign",
       LoadedGame(Ready(ready), 1), player.player)
     val action = projection.boardTargetActions.find(_.actionKind == "campaign-conquest").get
-    assertEquals(action.minimum -> action.maximum, 1 -> 1)
-    assertEquals(action.candidates.map(_.target),
+    assertEquals(action.minimum -> action.maximum, 1 -> legal.size)
+    assertEquals(action.candidates.map(_.target), legal.map(id =>
+      BoardTargetRefProjection.Site(id.value)))
+    assertEquals(action.requiredTargets,
       Vector(BoardTargetRefProjection.Site(site.value)))
     assertEquals(action.candidates.head.details,
       Vector("2 Supply", s"Choose 0 to ${player.board.warbands} board warbands"))
@@ -79,6 +83,67 @@ class CampaignSuite extends munit.FunSuite {
       LoadedGame(Ready(reduced), 2), player.player).boardTargetActions
       .find(_.actionKind == "campaign-conquest").flatMap(_.formation).get
     assertEquals(changed.maximumForce -> changed.availableWarbands, 2 -> 2)
+  }
+
+  test("multi-site Conquest preserves the mandatory origin and canonical targets") {
+    val (ready, player, pawn) = campaignReady
+    val legal = CampaignRules.legalTargets(catalog, ready, player.player)
+    val optional = legal(1)
+    val targets = Vector(pawn, optional)
+    val decision = DecisionId("campaign-multi-target")
+    val transition = rules.handle(Ready(ready), CampaignCommand.Start(
+      player.player, decision, targets, 0)).toOption.get
+    val started = transition.events.head.asInstanceOf[CampaignStarted]
+    assertEquals(started.targetSites, targets)
+    val Ready(afterStart) = transition.state: @unchecked
+    assertEquals(afterStart.game.current.pending.collect {
+      case campaign: PendingProcedure.Campaign => campaign.targetSites
+    }, Some(targets))
+    assert(rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      decision, Vector(optional), 0)).isLeft)
+    assert(rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      decision, Vector(pawn, pawn), 0)).isLeft)
+    assert(rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      decision, Vector(pawn, legal.last, optional), 0)).isLeft)
+    assertEquals(rules.evolve(Ready(ready), started), Right(transition.state))
+  }
+
+  test("Pass permits its own target but blocks other sites in its region") {
+    val Ready(initial) = execute(setup)._1: @unchecked
+    val pass = catalog.sites.find(_.handlers.contains(
+      "site.narrow-pass.pass")).get.id
+    val others = catalog.sites.map(_.id).filterNot(_ == pass)
+    val ordered = Vector(others.head, others(1), pass, others(2), others(3),
+      others(4), others(5), others(6))
+    val states = ordered.map { id =>
+      val definition = catalog.sites.find(_.id == id).get
+      id -> SiteState(
+        if (definition.capacity == 0) SiteForces.Empty
+        else SiteForces.Occupied(ForceKind.Bandit, definition.capacity),
+        Vector.empty, Vector.empty, definition.startingResources)
+    }.toMap
+    val source = ordered.head
+    val blocked = ordered(3)
+    val activeId = initial.game.current.turn.activePlayer
+    val players = initial.game.current.players.map { player =>
+      if (player.player == activeId) player.copy(pawnSite = Some(source),
+        board = player.board.copy(supply = SupplyTrack(Campaign.SupplyCost)))
+      else player
+    }
+    val base = initial.copy(game = initial.game.copy(current =
+      initial.game.current.copy(players = players,
+        map = MapState(ordered.take(2), ordered.slice(2, 5), ordered.slice(5, 8),
+          states), turn = initial.game.current.turn.copy(phase = Phase.Act))))
+    assert(CampaignRules.passAllowsTarget(catalog, base, activeId, source, pass))
+    assert(!CampaignRules.passAllowsTarget(catalog, base, activeId, source, blocked))
+    val lineage = players.find(_.player == activeId).get.lineage
+    val controlledPass = base.copy(game = base.game.copy(current =
+      base.game.current.copy(map = base.game.current.map.copy(sites =
+        base.game.current.map.sites.updated(pass,
+          base.game.current.map.sites(pass).copy(forces =
+            SiteForces.Occupied(ForceKind.Exile(lineage), 1)))))))
+    assert(CampaignRules.passAllowsTarget(catalog, controlledPass, activeId,
+      source, blocked))
   }
 
   test("Campaign projection permits an empty force and requires full Supply cost") {
@@ -104,8 +169,8 @@ class CampaignSuite extends munit.FunSuite {
     }
 
     val empty = withResources(0, Campaign.SupplyCost)
-    assertEquals(CampaignRules.legalTargets(catalog, empty, player.player),
-      Vector(site))
+    assertEquals(CampaignRules.legalTargets(catalog, empty, player.player).head,
+      site)
     assertEquals(campaignAction(empty).flatMap(_.formation), Some(
       oathdigital.application.BoardTargetFormationProjection(0, 0, 0,
         Campaign.SupplyCost)))

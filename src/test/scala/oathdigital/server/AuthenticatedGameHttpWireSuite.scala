@@ -5,13 +5,14 @@ import oathdigital.model.{DenizenId, EconomyTargetRef, EdificeId, PendingProcedu
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
   test("authenticated Campaign intents are actor-free and exclude dice outcomes") {
-    val begin = """{"expectedNextSequence":30,"intent":{"type":"beginCampaignConquest","targetSiteId":"site:a","attackDiceCount":3}}"""
+    val begin = """{"expectedNextSequence":30,"intent":{"type":"beginCampaignConquest","targetSiteIds":["site:a","site:b"],"attackDiceCount":3}}"""
     val sacrifice = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignSacrifice","decisionId":"campaign-30","count":1}}"""
     val plan = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignPlan","decisionId":"campaign-30","source":{"kind":"adviser","playerId":"p2","cardId":"143"}}}"""
     val finish = """{"expectedNextSequence":32,"intent":{"type":"finishCampaignPlans","decisionId":"campaign-30"}}"""
     val place = """{"expectedNextSequence":32,"intent":{"type":"placeCampaignForce","decisionId":"campaign-30","count":2}}"""
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
-      GameIntent.BeginCampaignConquest(oathdigital.model.SiteId("site:a"), 3))
+      GameIntent.BeginCampaignConquest(Vector(oathdigital.model.SiteId("site:a"),
+        oathdigital.model.SiteId("site:b")), 3))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(sacrifice).toOption.get.intent,
       GameIntent.ChooseCampaignSacrifice(
         oathdigital.model.DecisionId("campaign-30"), 1))
@@ -45,7 +46,7 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
     Vector(-1, 1.5).foreach { count =>
       val json = ujson.write(ujson.Obj("expectedNextSequence" -> 30,
         "intent" -> ujson.Obj("type" -> "beginCampaignConquest",
-          "targetSiteId" -> "site:a", "attackDiceCount" -> count)))
+          "targetSiteIds" -> ujson.Arr("site:a"), "attackDiceCount" -> count)))
       assertEquals(AuthenticatedGameHttpWire.decodeCommand(json)
         .left.toOption.get.path, "$.intent.attackDiceCount")
     }

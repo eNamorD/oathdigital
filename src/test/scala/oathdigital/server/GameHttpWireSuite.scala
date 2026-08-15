@@ -11,7 +11,7 @@ import oathdigital.serialization.{
 class GameHttpWireSuite extends munit.FunSuite {
   test("development Campaign commands retain explicit selector actor") {
     val begin = commandRequest(ujson.Obj("type" -> "beginCampaignConquest",
-      "playerId" -> "p2", "targetSiteId" -> "site:a",
+      "playerId" -> "p2", "targetSiteIds" -> ujson.Arr("site:a", "site:b"),
       "attackDiceCount" -> 3))
     val sacrifice = commandRequest(ujson.Obj("type" -> "chooseCampaignSacrifice",
       "playerId" -> "p2", "decisionId" -> "campaign-8", "count" -> 1))
@@ -25,7 +25,8 @@ class GameHttpWireSuite extends munit.FunSuite {
       "playerId" -> "p2", "decisionId" -> "campaign-8"))
     assertEquals(GameHttpWire.decodeCommand(begin).toOption.get.command,
       GameCommand.BeginCampaignConquest(PlayerId("p2"),
-        oathdigital.model.SiteId("site:a"), 3))
+        Vector(oathdigital.model.SiteId("site:a"),
+          oathdigital.model.SiteId("site:b")), 3))
     assertEquals(GameHttpWire.decodeCommand(sacrifice).toOption.get.command,
       GameCommand.ChooseCampaignSacrifice(PlayerId("p2"),
         DecisionId("campaign-8"), 1))

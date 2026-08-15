@@ -16,7 +16,7 @@ private[frontend] object BoardSelectionResult {
 private[frontend] final case class BoardTargetFormationState(
     context: BoardSelectionContext,
     action: BoardTargetAction,
-    target: BoardTargetRef,
+    targets: Vector[BoardTargetRef],
     force: Int
 ) {
   private def facts = action.formation.get
@@ -32,11 +32,15 @@ private[frontend] final case class BoardTargetFormationState(
     if (value >= minimumForce && value <= maximumForce) copy(force = value) else this
 }
 private[frontend] object BoardTargetFormationState {
+  def apply(context: BoardSelectionContext, action: BoardTargetAction,
+      target: BoardTargetRef, force: Int): BoardTargetFormationState =
+    new BoardTargetFormationState(context, action, Vector(target), force)
+
   def reconcile(previous: Option[BoardTargetFormationState],
       context: BoardSelectionContext, actions: Vector[BoardTargetAction]) =
     previous.filter(state => state.context == context &&
-      actions.contains(state.action) && state.action.candidates.exists(
-        _.target == state.target))
+      actions.contains(state.action) && state.targets.forall(target =>
+        state.action.candidates.exists(_.target == target)))
 }
 
 private[frontend] final case class BoardTargetSelectionState(
@@ -49,9 +53,10 @@ private[frontend] final case class BoardTargetSelectionState(
     actions.find(_.actionKind == kind))
 
   def activate(kind: String): BoardTargetSelectionState =
-    if (actions.exists(action => action.actionKind == kind && !action.autoActivate))
-      copy(activeActionKind = Some(kind), selectedKeys = Set.empty)
-    else this
+    actions.find(action => action.actionKind == kind && !action.autoActivate)
+      .map(action => copy(activeActionKind = Some(kind),
+        selectedKeys = action.requiredTargets.map(_.stableKey).toSet))
+      .getOrElse(this)
 
   def cancel: BoardTargetSelectionState = activeAction match {
     case Some(action) if !action.autoActivate =>
@@ -62,13 +67,15 @@ private[frontend] final case class BoardTargetSelectionState(
   def choose(target: BoardTargetRef): BoardSelectionResult = activeAction match {
     case Some(action) if action.candidates.exists(_.target == target) &&
         action.maximum == 1 && action.formation.nonEmpty =>
-      BoardSelectionResult.Form(BoardTargetFormationState(context, action, target,
+      BoardSelectionResult.Form(BoardTargetFormationState(context, action,
+        Vector(target),
         action.formation.get.maximumForce))
     case Some(action) if action.candidates.exists(_.target == target) &&
         action.maximum == 1 => BoardSelectionResult.Submit(action, Vector(target))
     case Some(action) if action.candidates.exists(_.target == target) =>
       val key = target.stableKey
-      val next = if (selectedKeys.contains(key)) selectedKeys - key
+      val required = action.requiredTargets.map(_.stableKey).toSet
+      val next = if (selectedKeys.contains(key) && !required(key)) selectedKeys - key
       else if (selectedKeys.size < action.maximum) selectedKeys + key
       else selectedKeys
       BoardSelectionResult.Updated(copy(selectedKeys = next))
@@ -88,9 +95,19 @@ private[frontend] final case class BoardTargetSelectionState(
 
   def confirm: Option[BoardSelectionResult.Submit] = for {
     action <- activeAction if canConfirm
-  } yield BoardSelectionResult.Submit(action, action.candidates.collect {
+    targets = action.candidates.collect {
     case candidate if selected(candidate.target) => candidate.target
-  })
+    }
+  } yield BoardSelectionResult.Submit(action, targets)
+
+  def confirmResult: Option[BoardSelectionResult] = confirm.map { confirmed =>
+    confirmed.action.formation match {
+      case Some(formation) => BoardSelectionResult.Form(
+        BoardTargetFormationState(context, confirmed.action, confirmed.targets,
+          formation.maximumForce))
+      case None => confirmed
+    }
+  }
 }
 
 private[frontend] object BoardTargetSelectionState {
@@ -100,6 +117,8 @@ private[frontend] object BoardTargetSelectionState {
     case Some(state) if state.context == context && state.actions == actions => state
     case _ =>
       val automatic = actions.find(_.autoActivate).map(_.actionKind)
-      BoardTargetSelectionState(context, actions, automatic, Set.empty)
+      val required = automatic.toVector.flatMap(kind => actions.find(
+        _.actionKind == kind).toVector.flatMap(_.requiredTargets)).map(_.stableKey).toSet
+      BoardTargetSelectionState(context, actions, automatic, required)
   }
 }

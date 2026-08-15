@@ -376,9 +376,10 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
-      case CampaignStarted(player, decision, site, spent, force) => ujson.Obj(
+      case CampaignStarted(player, decision, sites, spent, force) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
-        "siteId" -> site.value, "supplySpent" -> spent, "force" -> force)
+        "targetSiteIds" -> ujson.Arr.from(sites.map(site => ujson.Str(site.value))),
+        "supplySpent" -> spent, "force" -> force)
       case CampaignPlanChosen(player, decision, source, handler, favor, secret,
           revealed, ignoreSkulls, addedDice) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -560,8 +561,10 @@ object GameEventWire {
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
+          sites <- traverse(payload("targetSiteIds").arr.toVector)(value =>
+            Right(SiteId(value.str)))
         } yield CampaignStarted(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          DecisionId(payload("decisionId").str), sites,
           spent, force)
         case CampaignPlanChosenType => for {
           source <- decodeCampaignPlanSource(payload("source"), s"$path.source")

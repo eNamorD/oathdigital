@@ -1,9 +1,10 @@
 # Bounded Campaign design
 
-This slice implements the smallest coherent first-game Campaign procedure:
-single-site Conquest against bandits at the acting Exile's pawn site, with
-fixed unaltered Foundations and a typed boundary for relevant Campaign powers.
-Full multi-site Conquest and Raid remain out of scope.
+This design began as the smallest coherent first-game Campaign procedure and
+now includes authoritative multi-site target declaration for Conquest against
+bandits, with fixed unaltered Foundations and a typed boundary for relevant
+Campaign powers. Multi-site loss and placement allocation and Raid remain out
+of scope.
 
 ## Typed rule pipeline and inventory
 
@@ -67,8 +68,14 @@ projected formation facts, and are discarded on any change, conflict, cancel,
 or submission. These bounds improve the interaction only: command handling and
 replay still revalidate actor, phase, target, Supply, pending state, current
 warbands, and submitted force.
-The pawn site is the mandatory and only target. The player confirms that typed
-site target through the reusable board-target protocol. The application service
+The pawn site is mandatory and is persisted first. The player may toggle any
+number of additional sites ruled by the same bandit defender. Candidates are
+projected in map order, the mandatory site cannot be deselected, and the final
+distinct target vector must retain canonical map order. The server rejects
+missing, duplicate, reordered, stale, differently ruled, and Pass-blocked
+targets. The complete target set is carried by the command, pending procedure,
+event, projection, and replay path. The player confirms those typed site targets
+through the reusable board-target protocol. The application service
 supplies recorded attack and defense dice; clients never supply randomness.
 Declaration first commits force and Supply and creates the pending attacker-plan
 decision. Attack dice are prepared only after the server revalidates the chosen
@@ -82,7 +89,8 @@ When Outriders was also selected, all skull losses are ignored and every skull
 die retains its swords. Without Outriders, skull dice beyond the physical force
 cannot kill a warband and contribute no swords.
 
-Defender dice equal the site's printed defense. Attack faces record hollow
+Defender dice equal the sum of the targeted sites' printed defense; bandit
+forces at all targets likewise contribute to defense. Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
 pair. A skull removes one force warband, and its two swords count only when that
 loss can be paid. Defense faces use the existing blank/shield/doubler
@@ -98,7 +106,7 @@ bandits remain. Supply and committed pieces are validated against the preceding
 state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
 
-Typed staged events record target, force, cost, both dice vectors, sacrifice,
+Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects
 tampering without rerolling. After terminal evolution, the aggregate action
 completion boundary refills every empty positive-capacity site with its printed
@@ -107,7 +115,7 @@ Bandit force, then runs the existing bounded Supremacy evaluation.
 ## Boundaries
 
 Legality and projection share Campaign rule queries. HTTP and Scala.js accept
-only the actor's selected site and choices; authenticated routes derive the
+only the actor's selected target set and choices; authenticated routes derive the
 actor and never accept dice. Pending state and controls are viewer-scoped to
 the actor. Finite Exile warbands are preserved by moving existing pieces only.
 No migration layer, Forge, Imperial
@@ -115,7 +123,7 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 ## Deferred work
 
-- optional additional same-ruler sites and multi-site force/loss allocation;
+- multi-site defender-loss and conquest-placement allocation;
 - conquest against another player;
 - further optional attacker plans and all defender battle-plan selection;
 - non-deterministic sacrifice/loss choices where multiple legal assignments

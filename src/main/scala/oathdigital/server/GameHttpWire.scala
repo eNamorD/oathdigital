@@ -212,6 +212,8 @@ object GameHttpWire {
             "minimum" -> action.minimum,
             "maximum" -> action.maximum,
             "autoActivate" -> action.autoActivate,
+            "requiredTargets" -> ujson.Arr.from(
+              action.requiredTargets.map(encodeBoardTarget)),
             "formation" -> action.formation.fold[ujson.Value](ujson.Null) { formation =>
               ujson.Obj(
                 "minimumForce" -> formation.minimumForce,
@@ -257,7 +259,9 @@ object GameHttpWire {
             "canAddDice" -> recover.canAddDice, "canStop" -> recover.canStop)
         },
         "campaign" -> projection.campaign.fold[ujson.Value](ujson.Null) { campaign =>
-          ujson.Obj("decisionId" -> campaign.decisionId, "siteId" -> campaign.siteId,
+          ujson.Obj("decisionId" -> campaign.decisionId,
+            "targetSiteIds" -> ujson.Arr.from(
+              campaign.targetSiteIds.map(ujson.Str(_))),
             "force" -> campaign.force,
             "plansFinished" -> campaign.plansFinished,
             "planChoices" -> ujson.Arr.from(campaign.planChoices.map { choice =>
@@ -422,13 +426,22 @@ object GameHttpWire {
       } yield GameCommand.StopRecover(PlayerId(p), DecisionId(d))
       case "beginCampaignConquest" => for {
         _ <- exactFields(obj,
-          Set("type", "playerId", "targetSiteId", "attackDiceCount"), path)
+          Set("type", "playerId", "targetSiteIds", "attackDiceCount"), path)
         player <- stringField(obj, "playerId", path)
-        site <- stringField(obj, "targetSiteId", path)
+        sitesValue <- field(obj, "targetSiteIds", path)
+        siteValues <- arrayValue(sitesValue, s"$path.targetSiteIds")
+        sites <- siteValues.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[SiteId]]](Right(Vector.empty)) {
+            case (result, (value, index)) => result.flatMap(existing => value match {
+              case ujson.Str(site) => Right(existing :+ SiteId(site))
+              case _ => Left(HttpInputError(
+                s"$path.targetSiteIds[$index]", "expected a string"))
+            })
+          }
         countValue <- field(obj, "attackDiceCount", path)
         count <- nonNegativeInt(countValue, s"$path.attackDiceCount")
       } yield GameCommand.BeginCampaignConquest(
-        PlayerId(player), SiteId(site), count)
+        PlayerId(player), sites, count)
       case "chooseCampaignPlan" => for {
         _ <- exactFields(obj, Set("type", "playerId", "decisionId", "source"), path)
         player <- stringField(obj, "playerId", path)

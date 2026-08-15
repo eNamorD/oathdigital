@@ -393,8 +393,10 @@ object ServerModeUi {
         val selection = boardSelectionState.flatMap(_.activeAction)
         if (boardFormationState.nonEmpty) {
           val formation = boardFormationState.get
-          val targetLabel = formation.action.candidates.find(
-            _.target == formation.target).fold(formation.target.stableKey)(_.label)
+          val targetLabel = formation.targets.map { target =>
+            formation.action.candidates.find(_.target == target)
+              .fold(target.stableKey)(_.label)
+          }.mkString(", ")
           panel.appendChild(text("h2", "", "Form Campaign force"))
           panel.appendChild(text("p", "campaign-formation-target",
             s"Target: $targetLabel"))
@@ -461,7 +463,7 @@ object ServerModeUi {
             val confirm = button("Confirm selection", "confirm-board-selection")
             confirm.disabled = !controlsAvailable ||
               !boardSelectionState.exists(_.canConfirm)
-            confirm.onclick = _ => boardSelectionState.flatMap(_.confirm)
+            confirm.onclick = _ => boardSelectionState.flatMap(_.confirmResult)
               .foreach(handleBoardSelection)
             panel.appendChild(confirm)
           }
@@ -1181,9 +1183,11 @@ object ServerModeUi {
         Some(GameCommand.PlacePawn(playerId, site))
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.Travel(playerId, site))
-      case ("campaign-conquest", Vector(BoardTargetRef.Site(site))) =>
-        Option.when(attackDiceCount > 0)(
-          GameCommand.CampaignConquest(playerId, site, attackDiceCount))
+      case ("campaign-conquest", sites) if sites.nonEmpty &&
+          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
+        Some(GameCommand.CampaignConquest(playerId, sites.collect {
+          case BoardTargetRef.Site(site) => site
+        }, attackDiceCount))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
@@ -1195,9 +1199,12 @@ object ServerModeUi {
 
   private[frontend] def commandForFormation(formation: BoardTargetFormationState,
       playerId: String): Option[GameCommand] =
-    (formation.action.actionKind, formation.target) match {
-      case ("campaign-conquest", BoardTargetRef.Site(site)) =>
-        Some(GameCommand.CampaignConquest(playerId, site, formation.force))
+    (formation.action.actionKind, formation.targets) match {
+      case ("campaign-conquest", sites) if sites.nonEmpty &&
+          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
+        Some(GameCommand.CampaignConquest(playerId, sites.collect {
+          case BoardTargetRef.Site(site) => site
+        }, formation.force))
       case _ => None
     }
 

@@ -26,9 +26,11 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
     assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:a"), BoardTargetRef.Site("site:b")),
-      "red", 4), None)
+      "red", 4), Some(GameCommand.CampaignConquest("red",
+        Vector("site:a", "site:b"), 4)))
     assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
-      Vector(BoardTargetRef.Site("site:b")), "red", 0), None)
+      Vector(BoardTargetRef.Site("site:b")), "red", 0),
+      Some(GameCommand.CampaignConquest("red", "site:b", 0)))
   }
 
   test("selection copy exposes details and non-color cardinality instructions") {
@@ -48,7 +50,7 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.actionLabel("trade-secret"), "Trade for secrets")
   }
 
-  test("bounded Campaign uses the generic single-site action label") {
+  test("Campaign uses the generic board-target action label") {
     assertEquals(ServerModeUi.actionLabel("campaign-conquest"), "Campaign")
     val skip = CampaignPlanChoice("skip", None, None, None, None,
       "Use no battle plan", None, 0, 0, "Roll normally")
@@ -81,7 +83,7 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.commandForFormation(formation, "red"),
       Some(GameCommand.CampaignConquest("red", "site:b", 2)))
     assertEquals(ServerModeUi.commandForFormation(formation.copy(
-      target = BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+      targets = Vector(BoardTargetRef.PlayerRelic("red", "R1"))), "red"), None)
     val empty = formation.copy(force = 0)
     assertEquals(ServerModeUi.campaignFormationSummary(empty),
       "Committed force: 0. Board warbands remaining: 4. " +

@@ -45,8 +45,13 @@ object GameCommand {
       extends GameCommand
   final case class StopRecover(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
-  final case class BeginCampaignConquest(playerId: PlayerId, targetSiteId: SiteId,
+  final case class BeginCampaignConquest(playerId: PlayerId, targetSiteIds: Vector[SiteId],
       attackDiceCount: Int) extends GameCommand
+  object BeginCampaignConquest {
+    def apply(playerId: PlayerId, targetSiteId: SiteId,
+        attackDiceCount: Int): BeginCampaignConquest =
+      new BeginCampaignConquest(playerId, Vector(targetSiteId), attackDiceCount)
+  }
   final case class ChooseCampaignPlan(playerId: PlayerId, decision: DecisionId,
       source: PendingProcedure.CampaignPlanSource) extends GameCommand
   final case class FinishCampaignPlans(playerId: PlayerId, decision: DecisionId)
@@ -372,9 +377,9 @@ final class GameApplicationService(
           defenseDicePort.rollTwo()))
       case GameCommand.StopRecover(playerId, decision) =>
         rules.handle(state, RecoverCommand.Stop(playerId, decision))
-      case GameCommand.BeginCampaignConquest(playerId, target, count) =>
+      case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
-          DecisionId(s"campaign-$nextSequence"), target, count))
+          DecisionId(s"campaign-$nextSequence"), targets, count))
       case GameCommand.ChooseCampaignPlan(playerId, decision, source) =>
         rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision, source))
       case GameCommand.FinishCampaignPlans(playerId, decision) =>
@@ -385,7 +390,8 @@ final class GameApplicationService(
       case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
         case OathState.Ready(ready) => ready.game.current.pending match {
           case Some(c: PendingProcedure.Campaign) =>
-            val defenseCount = CampaignRules.siteDefinition(catalog, c.site).map(_.defense).getOrElse(0)
+            val defenseCount = c.targetSites.flatMap(
+              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum
             rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
               campaignDicePort.rollDefense(defenseCount)))
           case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
