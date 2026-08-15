@@ -17,16 +17,16 @@ slice, proceeds through independently reviewable milestones:
 1. **Multi-site targeting.** Keep the pawn site mandatory, add optional legal
    sites ruled by the same defender, reuse typed multi-target selection, and
    validate the complete target set authoritatively.
-2. **Multi-site force and loss allocation.** Represent the battle-wide force
-   and resolve any required allocation of losses or removals across the chosen
-   sites through replayable typed decisions.
-3. **Multi-site conquest placement.** Allocate surviving warbands among
+2. **Multi-site conquest placement.** Resolve every targeted site's defeated
+   forces atomically, then allocate surviving attacker warbands among
    conquered sites while preserving finite pieces, site rule, refill timing,
-   and the single completed-action Supremacy boundary.
-4. **Player defenders and battle plans.** Add player-defender procedure and
+   and the single completed-action Supremacy boundary. Model losing-force
+   resolution as a typed, replaceable step: powers may change the number
+   killed, move losing warbands elsewhere, or skip the default loss entirely.
+3. **Player defenders and battle plans.** Add player-defender procedure and
    incrementally support remaining attacker and defender plans without
    bypassing typed rule discovery.
-5. **Raid and displaced-holder decisions.** Add Raid outcomes and the
+4. **Raid and displaced-holder decisions.** Add Raid outcomes and the
    displaced-Oathkeeper tied-recipient decision as explicit pending choices.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
