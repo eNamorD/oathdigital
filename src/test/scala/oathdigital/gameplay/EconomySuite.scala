@@ -139,8 +139,9 @@ class EconomySuite extends munit.FunSuite {
     assert(own.legalMusters.nonEmpty)
     assert(own.legalTrades.nonEmpty)
     assertEquals(own.boardTargetActions.map(_.actionKind).toSet,
-      Set("travel", "muster", "trade-favor", "trade-secret"))
-    val economy = own.boardTargetActions.filterNot(_.actionKind == "travel")
+      Set("travel", "campaign-conquest", "muster", "trade-favor", "trade-secret"))
+    val economy = own.boardTargetActions.filterNot(action =>
+      action.actionKind == "travel" || action.actionKind == "campaign-conquest")
     assert(economy.flatMap(_.candidates).forall(_.target.isInstanceOf[
       oathdigital.application.BoardTargetRefProjection.SiteCard]))
     assert(economy.flatMap(_.candidates).forall(_.details.size == 2))

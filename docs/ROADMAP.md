@@ -12,10 +12,11 @@ No item is currently assigned.
 ## Next
 
 **Campaign expansion**, building on the verified single-site bandit Conquest
-slice. Remaining work is player defenders, optional additional same-ruler
-sites, accessible partial-force browser selection (the engine/API already
-accept partial force), executable battle plans, multi-site loss/placement, Raid
-outcomes, and the displaced-Oathkeeper tie decision.
+slice. Next, add a typed optional battle-plan choice and recorded resolution,
+then implement a small audited set of modifiers and costs. Player defenders,
+optional additional same-ruler sites, accessible partial-force browser
+selection (the engine/API already accept partial force), multi-site
+loss/placement, Raid outcomes, and the displaced-Oathkeeper tie decision follow.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -41,6 +42,14 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign expansion prerequisite — typed power boundary.** All eight
+  Campaign timing windows are explicit, accessible powers are discovered and
+  ordered by stable source and exact handler ID, and faceup `Vow of Peace` is
+  the sole safely executable mandatory handler. Facedown passive text is
+  inactive. Optional plans and relevant unimplemented effects reject with
+  their source identity until a choice, cost, and recorded-resolution contract
+  exists; no printed option is inferred or auto-selected.
 
 - [x] **Bounded Campaign — single-site bandit Conquest.** Fixed unaltered,
   all-Exile games can spend 2 Supply to attack the mandatory pawn-site bandits
@@ -126,7 +135,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 243 JVM tests, 73 Scala.js tests, the Scala.js
+The combined milestone passes 250 JVM tests, 73 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

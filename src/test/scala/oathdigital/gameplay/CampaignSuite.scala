@@ -109,6 +109,93 @@ class CampaignSuite extends munit.FunSuite {
       .left.toOption.get.isInstanceOf[UnsupportedCampaignState])
   }
 
+  test("faceup Vow of Peace is an exact-ID Campaign block") {
+    val (ready, player, site) = campaignReady
+    val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
+    val blocked = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(advisers = Vector(DenizenState(DenizenId(vow.id.value),
+          Orientation.FaceUp, Tokens.empty)))))))
+    val error = CampaignRules.validateStart(catalog, blocked, player.player, site, 1)
+      .left.toOption.get
+    assert(error.isInstanceOf[CampaignUnavailable])
+    assert(error.toString.contains("Vow of Peace"))
+  }
+
+  test("facedown Vow of Peace has no active pre-Campaign restriction") {
+    val (ready, player, site) = campaignReady
+    val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(advisers = Vector(DenizenState(DenizenId(vow.id.value),
+          Orientation.FaceDown, Tokens.empty)))))))
+    assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
+  }
+
+  test("Bag of Siegeworks is relevant to bandit-site defense dice and rejects") {
+    val (ready, player, site) = campaignReady
+    val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(relics = Vector(RelicState(RelicId(bag.id.value),
+          Orientation.FaceUp, Tokens.empty)))))))
+    val error = CampaignRules.validateStart(catalog, state, player.player, site, 1)
+      .left.toOption.get.toString
+    assert(error.contains("relic.bag-of-siegeworks"))
+    assert(error.contains(s"relic:${player.player.value}:${bag.id.value}"))
+  }
+
+  test("audited exact-ID bandit classifications remain conservative") {
+    import CampaignRules.HandlerSupport
+    val definitions =
+      catalog.denizens.flatMap(d => d.handlers.map(_ -> d.rulesText)) ++
+        catalog.relics.flatMap(r => r.handlers.map(_ -> r.rulesText))
+    val byHandler = definitions.toMap
+    val irrelevant = Set(
+      "denizen.bear-traps", "denizen.extra-provisions",
+      "denizen.gleaming-armor", "denizen.herald", "denizen.insect-swarm",
+      "denizen.military-parade", "denizen.pledge-of-defense",
+      "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
+      "denizen.true-names", "denizen.watchdog", "denizen.wrestlers",
+      "relic.bandit-standard", "relic.fearsome-shield", "relic.sticky-fire",
+      "relic.obsidian-cage", "relic.the-grand-scepter")
+    irrelevant.foreach { id =>
+      assertEquals(CampaignRules.classify(id, byHandler(id)),
+        HandlerSupport.IrrelevantToBanditConquest, id)
+    }
+    Set("denizen.peace-envoy", "relic.bag-of-siegeworks",
+      "relic.keeping-banner").foreach { id =>
+      assert(CampaignRules.classify(id, byHandler(id))
+        .isInstanceOf[HandlerSupport.Blocked], id)
+    }
+  }
+
+  test("bandit-irrelevant defender power does not block bounded Conquest") {
+    val (ready, player, site) = campaignReady
+    val honors = catalog.denizens.find(_.handlers.contains("denizen.extra-provisions")).get
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(advisers = Vector(DenizenState(DenizenId(honors.id.value),
+          Orientation.FaceUp, Tokens.empty)))))))
+    assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
+  }
+
+  test("unknown relevant handler rejects with stable handler and source identity") {
+    val (ready, player, site) = campaignReady
+    val original = catalog.denizens.head
+    val changed = catalog.copy(denizens = catalog.denizens.updated(0,
+      original.copy(handlers = Vector("denizen.future-plan"),
+        rulesText = "+2 [attack-die]")))
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player != player.player) p else
+        p.copy(advisers = Vector(DenizenState(DenizenId(original.id.value),
+          Orientation.FaceDown, Tokens.empty)))))))
+    val error = CampaignRules.validateStart(changed, state, player.player, site, 1)
+      .left.toOption.get.toString
+    assert(error.contains("denizen.future-plan"))
+    assert(error.contains(s"adviser:${player.player.value}:denizen:${original.id.value}"))
+  }
+
   test("relevant denizen at another actor-ruled site fails explicitly") {
     val (ready, player, target) = campaignReady
     val remote = ready.game.current.map.inPlay.find(_ != target).get

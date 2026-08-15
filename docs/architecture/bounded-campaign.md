@@ -2,24 +2,41 @@
 
 This slice implements the smallest coherent first-game Campaign procedure:
 single-site Conquest against bandits at the acting Exile's pawn site, with
-fixed unaltered Foundations and no relevant battle-plan or Campaign powers.
+fixed unaltered Foundations and a typed boundary for relevant Campaign powers.
 Full multi-site Conquest and Raid remain out of scope.
 
-## Boundary and blocker
+## Typed rule pipeline and inventory
 
-The catalog identifies printed powers, but the runtime has no executable
-Campaign or battle-plan handlers. Raid also needs facedown-card dispossession,
-relic/banner transfers, favor burning, and a typed defender relocation choice.
-Those dependencies prevent full Campaign from failing safely and replaying
-deterministically. This slice therefore rejects any active relevant Campaign or
-battle-plan power instead of ignoring it, and exposes no Raid command.
+Campaign rule discovery is exact-ID based and ordered by handler priority,
+stable source identity, and handler ID. It checks all actor advisers, faceup
+held relics, the target, and every actor-ruled site. Facedown advisers remain
+discoverable for conservative classification, but their passive powers are not
+active and are not treated as revealable before Campaign begins. The resolver
+models the printed windows explicitly: target
+and force formation; attacker battle plans; attack roll and skull losses;
+attacker sacrifice; defender battle plans and roll; outcome; conquest
+placement; and remaining end, victory, and defeat effects.
 
-The unsupported-power guard checks every actor adviser, including facedown
-denizens that could reveal a battle plan; faceup held relics; all denizens and
-edifices at the target and every site the actor rules. Site access is derived
-through `SiteRule`; corrupt lineage-to-ruler mappings reject the action rather
-than being treated as harmless. This deliberately conservative scan remains
-until typed Campaign handlers can classify and execute relevant powers.
+The source-verified inventory for this boundary is:
+
+- safely executable now: the mandatory `denizen.vow-of-peace` Campaign block
+  at target and force formation;
+- blocked by missing decisions or data: every optional attacker battle plan,
+  including otherwise simple modifiers such as Outriders and Brass Army;
+  rerolls, costs, directional `±` choices, conditional pools, discard/bury,
+  favor-bank rewards, and remaining victory/defeat/end effects;
+- irrelevant to bandit Conquest: defender-only and Raid-only powers,
+  player-defender interactions, and Imperial effects. Bag of Siegeworks,
+  Weeping Banner, and Peace Envoy are not in this class: each can change this
+  boundary and therefore rejects pending typed resolution.
+
+No printed battle plan is auto-selected. Even a mechanically beneficial plan
+is optional printed behavior, so executing it without an audited choice would
+fabricate a rule. Blocked rules report exact handler and stable source identity.
+Mountain/Plains Campaign effects also remain blocked. Raid still needs
+facedown-card dispossession, relic/banner transfers, favor burning, and a typed
+defender relocation choice. Site access is derived through `SiteRule`; corrupt
+lineage-to-ruler mappings reject instead of being treated as harmless.
 
 ## Authoritative procedure
 
@@ -70,7 +87,7 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 - optional additional same-ruler sites and multi-site force/loss allocation;
 - conquest against another player;
 - partial-force selection in the browser (the engine/API already support it);
-- executable attacker/defender battle plans and explicit timing decisions;
+- typed optional attacker/defender battle-plan selection and resolution;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;
 - Raid targets, theft/discard/burn effects, banner rules, and relocation;

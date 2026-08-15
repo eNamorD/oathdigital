@@ -1,7 +1,9 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{CampaignTimingWindow, GameStateUpdates, OathLifecycle,
+  RuleActivation, RuleOutcome, RuleQueryContext, RuleSourceRef, TypedRuleHandler,
+  RuleRegistry}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.OathContinue._
@@ -146,6 +148,64 @@ object Campaign {
 }
 
 object CampaignRules {
+  /** Classification is deliberately exact-ID based. A reviewed catalog handler
+    * is not executable merely because its printed text contains a keyword.
+    */
+  sealed trait HandlerSupport extends Product with Serializable
+  object HandlerSupport {
+    final case class Executable(window: CampaignTimingWindow) extends HandlerSupport
+    final case class Blocked(reason: String) extends HandlerSupport
+    case object IrrelevantToBanditConquest extends HandlerSupport
+  }
+
+  final case class DiscoveredCampaignRule(
+      activation: RuleActivation,
+      support: HandlerSupport,
+      facedown: Boolean
+  )
+
+  private val vowOfPeace = new TypedRuleHandler {
+    def resolve(activation: RuleActivation, context: RuleQueryContext): RuleOutcome =
+      context match {
+        case _: RuleQueryContext.Campaign =>
+          RuleOutcome.Block(CampaignUnavailable("Vow of Peace prevents its ruler from campaigning"))
+        case _ => RuleOutcome.Allow
+      }
+  }
+
+  private val registry = RuleRegistry(
+    "denizen.vow-of-peace" -> vowOfPeace
+  )
+
+  private val executable: Map[String, CampaignTimingWindow] = Map(
+    "denizen.vow-of-peace" -> CampaignTimingWindow.TargetAndForceFormation
+  )
+
+  // These reviewed powers cannot affect a single-site Conquest against bandits.
+  private val irrelevant: Set[String] = Set(
+    "denizen.bear-traps", "denizen.extra-provisions",
+    "denizen.gleaming-armor", "denizen.herald", "denizen.insect-swarm",
+    "denizen.military-parade", "denizen.pledge-of-defense",
+    "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
+    "denizen.true-names", "denizen.watchdog", "denizen.wrestlers",
+    "relic.bandit-standard", "relic.fearsome-shield",
+    "relic.sticky-fire", "relic.obsidian-cage",
+    "relic.the-grand-scepter"
+  )
+
+  private def textRelevant(text: String): Boolean = {
+    val lower = text.toLowerCase
+    Vector("campaign", "battle plan", "attack-die", "defense-die", "skull",
+      "sword", "victorious", "defeated").exists(lower.contains)
+  }
+
+  private[gameplay] def classify(handlerId: String, rulesText: String): HandlerSupport =
+    executable.get(handlerId).map(HandlerSupport.Executable)
+      .orElse(Option.when(irrelevant(handlerId))(HandlerSupport.IrrelevantToBanditConquest))
+      .getOrElse(if (textRelevant(rulesText)) HandlerSupport.Blocked(
+        "requires an unmodeled Campaign decision or effect")
+      else HandlerSupport.IrrelevantToBanditConquest)
+
   def siteDefinition(catalog: ExecutableCatalog, site: SiteId) =
     catalog.sites.find(_.id == site)
 
@@ -192,27 +252,6 @@ object CampaignRules {
       else if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Campaign is limited to the all-Exile first game")
       else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active))) Some("active legacy Campaign powers are not supported")
       else None
-    val textRelevant = (text: String) => {
-      val lower = text.toLowerCase
-      Vector("campaign", "battle plan", "attack-die", "defense-die", "skull", "sword", "victorious", "defeated").exists(lower.contains)
-    }
-    // Facedown advisers may reveal battle plans during Campaign, so orientation
-    // does not make a potentially relevant denizen safe for this bounded slice.
-    val adviserRelevant = player.advisers.collect { case d: DenizenState => d.id }
-      .exists(id => catalog.denizens.find(_.id.value == id.value).exists(d => textRelevant(d.rulesText)))
-    val relicRelevant = player.relics.filter(_.orientation == Orientation.FaceUp)
-      .exists(r => catalog.relics.find(_.id.value == r.id.value).exists(d => textRelevant(d.rulesText)))
-    def relevantSite(siteId: SiteId): Boolean = game.current.map.sites(siteId).denizens.exists {
-      case d: DenizenState =>
-        catalog.denizens.find(_.id.value == d.id.value).exists(x => textRelevant(x.rulesText))
-      case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value).exists { x =>
-        val face = if (e.side == EdificeSide.Intact) x.intact else x.ruined
-        textRelevant(face.rulesText)
-      }
-      case _ => false
-    } || siteDefinition(catalog, siteId).exists(_.handlers.exists { handler =>
-      handler.endsWith(".mountain") || handler.endsWith(".plains")
-    })
     val ruledSites = game.current.map.inPlay.foldLeft[
       Either[SiteRuleError, Vector[SiteId]]](Right(Vector.empty)) {
       case (Right(acc), siteId) =>
@@ -224,13 +263,77 @@ object CampaignRules {
     ruledSites.left.map(error => UnsupportedCampaignState(
       s"cannot resolve Campaign access because site rule is corrupt: $error"))
       .flatMap { ruled =>
-        val accessibleSiteRelevant = (site +: ruled).distinct.exists(relevantSite)
-        baseOrRelevant(unsupportedBase,
-          adviserRelevant || relicRelevant || accessibleSiteRelevant)
+        val discovered = discover(catalog, ready, playerId, site, ruled)
+        unsupportedBase.map(UnsupportedCampaignState).toLeft(()).flatMap { _ =>
+          discovered.sortBy(r => (r.activation.priority,
+            r.activation.source.stableKey, r.activation.handlerId)).foldLeft[
+              Either[OathViolation, Unit]](Right(())) {
+            case (failure @ Left(_), _) => failure
+            case (Right(_), rule) => rule.support match {
+              case HandlerSupport.IrrelevantToBanditConquest => Right(())
+              case HandlerSupport.Blocked(reason) => Left(UnsupportedCampaignState(
+                s"Campaign handler '${rule.activation.handlerId}' at ${rule.activation.source.stableKey} is blocked: $reason"))
+              case HandlerSupport.Executable(_) if rule.facedown => Right(())
+              case HandlerSupport.Executable(window) =>
+                registry.resolve(Vector(rule.activation), RuleQueryContext.Campaign(
+                  ready, player, site, window)).head.outcome match {
+                  case RuleOutcome.Allow => Right(())
+                  case RuleOutcome.Block(violation) => Left(violation)
+                  case RuleOutcome.UnsupportedRelevantRule(id) => Left(UnsupportedCampaignState(
+                    s"Campaign handler '$id' is not registered"))
+                  case other => Left(UnsupportedCampaignState(
+                    s"Campaign handler '${rule.activation.handlerId}' produced unsupported outcome $other"))
+                }
+            }
+          }
+        }
       }
   }
 
-  private def baseOrRelevant(base: Option[String], relevant: Boolean) =
-    base.orElse(Option.when(relevant)("a relevant Campaign or battle-plan power has no executable handler"))
-      .map(UnsupportedCampaignState).toLeft(())
+  private[gameplay] def discover(catalog: ExecutableCatalog, ready: ReadyGame,
+      playerId: PlayerId, target: SiteId, ruled: Vector[SiteId])
+      : Vector[DiscoveredCampaignRule] = {
+    val player = ready.game.current.players.find(_.player == playerId).get
+    val advisers = player.advisers.collect { case d: DenizenState =>
+      catalog.denizens.find(_.id.value == d.id.value).toVector.flatMap { definition =>
+        definition.handlers.map(id => DiscoveredCampaignRule(
+          RuleActivation(RuleSourceRef.Adviser(playerId, d.id), id, 100),
+          classify(id, definition.rulesText), d.orientation == Orientation.FaceDown))
+      }
+    }.flatten
+    val relics = player.relics.filter(_.orientation == Orientation.FaceUp).flatMap { relic =>
+      catalog.relics.find(_.id.value == relic.id.value).toVector.flatMap { definition =>
+        definition.handlers.map(id => DiscoveredCampaignRule(
+          RuleActivation(RuleSourceRef.Relic(playerId, relic.id), id, 200),
+          classify(id, definition.rulesText), facedown = false))
+      }
+    }
+    val siteRules = (target +: ruled).distinct.flatMap { siteId =>
+      val printedSite = siteDefinition(catalog, siteId).toVector.flatMap(_.handlers)
+        .filter(id => id.endsWith(".mountain") || id.endsWith(".plains"))
+        .map(id => DiscoveredCampaignRule(
+          RuleActivation(RuleSourceRef.Site(siteId), id, 250),
+          HandlerSupport.Blocked("printed site Campaign defense is not executable"),
+          facedown = false))
+      printedSite ++ ready.game.current.map.sites(siteId).denizens.flatMap {
+        case d: DenizenState => catalog.denizens.find(_.id.value == d.id.value).toVector.flatMap { definition =>
+          definition.handlers.map(id => DiscoveredCampaignRule(
+            RuleActivation(RuleSourceRef.SiteCard(siteId, d.id), id, 300),
+            classify(id, definition.rulesText), d.orientation == Orientation.FaceDown))
+        }
+        case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value).toVector.flatMap { definition =>
+          val face = if (e.side == EdificeSide.Intact) definition.intact else definition.ruined
+          face.handlers.map(id => DiscoveredCampaignRule(
+            RuleActivation(RuleSourceRef.Edifice(siteId, e.id), id, 400),
+            classify(id, face.rulesText), facedown = false))
+        }
+        case _ => Vector.empty
+      }
+    }
+    (advisers ++ relics ++ siteRules).filter(rule => rule.support match {
+      case HandlerSupport.Blocked(_) => true
+      case HandlerSupport.Executable(_) => true
+      case HandlerSupport.IrrelevantToBanditConquest => false
+    })
+  }
 }
