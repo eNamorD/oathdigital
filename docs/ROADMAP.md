@@ -12,9 +12,22 @@ No item is currently assigned.
 ## Next
 
 **Campaign expansion**, building on the verified single-site bandit Conquest
-slice. Next, add optional same-ruler Conquest sites and the required multi-site
-force, loss, and placement decisions. Player defenders, more attacker and
-defender plans, Raid outcomes, and the displaced-Oathkeeper tie decision follow.
+slice, proceeds through independently reviewable milestones:
+
+1. **Multi-site targeting.** Keep the pawn site mandatory, add optional legal
+   sites ruled by the same defender, reuse typed multi-target selection, and
+   validate the complete target set authoritatively.
+2. **Multi-site force and loss allocation.** Represent the battle-wide force
+   and resolve any required allocation of losses or removals across the chosen
+   sites through replayable typed decisions.
+3. **Multi-site conquest placement.** Allocate surviving warbands among
+   conquered sites while preserving finite pieces, site rule, refill timing,
+   and the single completed-action Supremacy boundary.
+4. **Player defenders and battle plans.** Add player-defender procedure and
+   incrementally support remaining attacker and defender plans without
+   bypassing typed rule discovery.
+5. **Raid and displaced-holder decisions.** Add Raid outcomes and the
+   displaced-Oathkeeper tied-recipient decision as explicit pending choices.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -83,8 +96,8 @@ reachable and its rule/modifier interactions meaningfully legal.
   replay validation, scoped HTTP/Scala.js controls, persistence/reload, and the
   shared bandit-refill-then-Supremacy boundary are tested. Relevant unsupported
   Campaign/battle-plan powers across the actor's full access reject explicitly.
-  The browser labels and commits all board warbands; authoritative engine/API
-  partial-force support is retained for later UI work. Player defenders,
+  The browser exposes the authoritative `0..available` force range and requires
+  explicit formation confirmation. Player defenders,
   additional targets, Raid, and executable battle plans remain deferred; see
   `docs/architecture/bounded-campaign.md`.
 
