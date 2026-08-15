@@ -48,7 +48,9 @@ object GameCommand {
   final case class BeginCampaignConquest(playerId: PlayerId, targetSiteId: SiteId,
       attackDiceCount: Int) extends GameCommand
   final case class ChooseCampaignPlan(playerId: PlayerId, decision: DecisionId,
-      source: Option[PendingProcedure.CampaignPlanSource]) extends GameCommand
+      source: PendingProcedure.CampaignPlanSource) extends GameCommand
+  final case class FinishCampaignPlans(playerId: PlayerId, decision: DecisionId)
+      extends GameCommand
   final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
@@ -374,10 +376,11 @@ final class GameApplicationService(
         rules.handle(state, CampaignCommand.Start(playerId,
           DecisionId(s"campaign-$nextSequence"), target, count))
       case GameCommand.ChooseCampaignPlan(playerId, decision, source) =>
-        Campaign.prepareChoosePlan(catalog, state, playerId, decision,
-          source).flatMap { force =>
-          rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision,
-            source, campaignDicePort.rollAttack(force)))
+        rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision, source))
+      case GameCommand.FinishCampaignPlans(playerId, decision) =>
+        Campaign.prepareFinishPlans(catalog, state, playerId, decision).flatMap { count =>
+          rules.handle(state, CampaignCommand.FinishPlans(playerId, decision,
+            campaignDicePort.rollAttack(count)))
         }
       case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
         case OathState.Ready(ready) => ready.game.current.pending match {

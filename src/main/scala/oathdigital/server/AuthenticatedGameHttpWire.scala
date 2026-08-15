@@ -33,8 +33,9 @@ object GameIntent {
   ) extends GameIntent
   final case class ChooseCampaignPlan(
       decision: DecisionId,
-      source: Option[PendingProcedure.CampaignPlanSource]
+      source: PendingProcedure.CampaignPlanSource
   ) extends GameIntent
+  final case class FinishCampaignPlans(decision: DecisionId) extends GameIntent
   final case class ChooseCampaignSacrifice(
       decision: DecisionId,
       count: Int
@@ -218,7 +219,12 @@ object AuthenticatedGameHttpWire {
         decision <- stringField(obj, "decisionId", "$.intent")
         sourceValue <- field(obj, "source", "$.intent")
         source <- decodeCampaignPlanSource(sourceValue, "$.intent.source")
-      } yield GameIntent.ChooseCampaignPlan(DecisionId(decision), source)
+        selected <- source.toRight(HttpInputError("$.intent.source", "plan source is required"))
+      } yield GameIntent.ChooseCampaignPlan(DecisionId(decision), selected)
+      case "finishCampaignPlans" => for {
+        _ <- exactFields(obj, Set("type", "decisionId"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+      } yield GameIntent.FinishCampaignPlans(DecisionId(decision))
       case "chooseCampaignSacrifice" => for {
         _ <- exactFields(obj, Set("type", "decisionId", "count"), "$.intent")
         decision <- stringField(obj, "decisionId", "$.intent")
@@ -328,6 +334,12 @@ object AuthenticatedGameHttpWire {
           card <- stringField(obj, "cardId", path)
         } yield Some(PendingProcedure.CampaignPlanSource.SiteCard(
           SiteId(site), DenizenId(card)))
+        case "relic" => for {
+          _ <- exactFields(obj, Set("kind", "playerId", "cardId"), path)
+          player <- stringField(obj, "playerId", path)
+          card <- stringField(obj, "cardId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.Relic(
+          PlayerId(player), RelicId(card)))
         case other => Left(HttpInputError(s"$path.kind",
           s"unknown Campaign plan source '$other'"))
       }

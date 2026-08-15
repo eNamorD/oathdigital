@@ -463,9 +463,12 @@ object ServerModeUi {
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
         panel.appendChild(text("h2", "", "Campaign"))
-        if (!campaign.planChosen) {
+        if (!campaign.plansFinished) {
           panel.appendChild(text("p", "campaign-instruction",
-            "Choose an attacker battle plan, or roll without one."))
+            "Choose battle plans in order, then finish and roll."))
+          if (campaign.selectedPlans.nonEmpty) panel.appendChild(text("p",
+            "campaign-selected-plans", campaignSelectedPlansLabel(
+              campaign.selectedPlans)))
           campaign.planChoices.foreach { choice =>
             val choose = button(campaignPlanButtonLabel(choice), "campaign-plan")
             choose.title = choice.mechanicalResult
@@ -474,6 +477,13 @@ object ServerModeUi {
               selectedPlayer, campaign.decisionId, choice))
             panel.appendChild(choose)
           }
+          val finishLabel = if (campaign.selectedPlans.isEmpty)
+            "Roll without battle plans" else "Finish plans and roll"
+          val finish = button(finishLabel, "campaign-finish-plans")
+          finish.disabled = !controlsAvailable
+          finish.onclick = _ => submit(GameCommand.FinishCampaignPlans(
+            selectedPlayer, campaign.decisionId))
+          panel.appendChild(finish)
         } else {
           panel.appendChild(text("p", "campaign-results",
             s"Attack dice: ${campaign.attackDice.mkString(", ")} · " +
@@ -1065,10 +1075,16 @@ object ServerModeUi {
   private[frontend] def campaignPlanButtonLabel(choice: CampaignPlanChoice): String = {
     val cost = Vector(
       Option.when(choice.favorCost > 0)(s"${choice.favorCost} Favor"),
-      Option.when(choice.secretCost > 0)(s"${choice.secretCost} Secret")
+      Option.when(choice.secretCost > 0)(s"Place ${choice.secretCost} Secret")
     ).flatten.mkString(", ")
     if (cost.isEmpty) choice.label else s"${choice.label} ($cost)"
   }
+
+  private[frontend] def campaignSelectedPlansLabel(
+      plans: Vector[CampaignPlanChoice]): String =
+    plans.zipWithIndex.map { case (plan, index) =>
+      s"${index + 1}. ${plan.label}"
+    }.mkString("Selected: ", " · ", "")
 
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =

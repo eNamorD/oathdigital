@@ -57,6 +57,13 @@ class ServerModeUiSuite extends FunSuite {
       "Ignore all attack-roll skull losses")
     assertEquals(ServerModeUi.campaignPlanButtonLabel(skip), "Use no battle plan")
     assertEquals(ServerModeUi.campaignPlanButtonLabel(outriders), "Outriders")
+    val brass = CampaignPlanChoice("relic", Some("relic:red:R25"), Some("red"),
+      None, Some("R25"), "Brass Army", Some("relic.brass-army"), 0, 1,
+      "Add 4 attack dice")
+    assertEquals(ServerModeUi.campaignPlanButtonLabel(brass),
+      "Brass Army (Place 1 Secret)")
+    assertEquals(ServerModeUi.campaignSelectedPlansLabel(Vector(brass, outriders)),
+      "Selected: 1. Brass Army · 2. Outriders")
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

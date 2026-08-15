@@ -47,22 +47,22 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val declared = service.handle("campaign-rng-validation", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 2)).toOption.get
     val decision = DecisionId(s"campaign-${act.nextSequence}")
-    val invalid = Some(PendingProcedure.CampaignPlanSource.Adviser(active,
-      DenizenId("not-outriders")))
+    val invalid = PendingProcedure.CampaignPlanSource.Adviser(active,
+      DenizenId("not-outriders"))
 
     assert(service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.ChooseCampaignPlan(other, decision, None)).isLeft)
+      GameCommand.FinishCampaignPlans(other, decision)).isLeft)
     assert(service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.ChooseCampaignPlan(active, DecisionId("stale"), None)).isLeft)
+      GameCommand.FinishCampaignPlans(active, DecisionId("stale"))).isLeft)
     assert(service.handle("campaign-rng-validation", declared.nextSequence,
       GameCommand.ChooseCampaignPlan(active, decision, invalid)).isLeft)
     assertEquals(attackRolls, Vector.empty)
 
     val chosen = service.handle("campaign-rng-validation", declared.nextSequence,
-      GameCommand.ChooseCampaignPlan(active, decision, None)).toOption.get
+      GameCommand.FinishCampaignPlans(active, decision)).toOption.get
     assertEquals(attackRolls, Vector(2))
     assert(service.handle("campaign-rng-validation", chosen.nextSequence,
-      GameCommand.ChooseCampaignPlan(active, decision, None)).isLeft)
+      GameCommand.FinishCampaignPlans(active, decision)).isLeft)
     assertEquals(attackRolls, Vector(2))
   }
 
@@ -90,9 +90,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).toOption.get
     assert(started.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignStarted])
     val chosen = service.handle("campaign-persist", started.nextSequence,
-      GameCommand.ChooseCampaignPlan(active,
-        DecisionId(s"campaign-${act.nextSequence}"), None)).toOption.get
-    assert(chosen.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignPlanChosen])
+      GameCommand.FinishCampaignPlans(active,
+        DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
+    assert(chosen.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignPlansFinished])
     val reloaded = new GameApplicationService(catalog, repository,
       campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
     assertEquals(reloaded.state, chosen.state)

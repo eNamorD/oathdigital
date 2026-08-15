@@ -186,13 +186,13 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(decoded.candidates.map(_.target),
       Vector(BoardTargetRef.Site("site:b")))
 
-    val pending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"planChosen":true,"planChoices":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
+    val pending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
     val pendingJson = projectionJson(sequence = 18, choices = false)
       .replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$pending")
     assertEquals(GameJson.decodeProjection(pendingJson).toOption.get.campaign,
       Some(CampaignState("campaign-17", "site:b", 3,
-        planChosen = true, Vector.empty,
+        plansFinished = true, Vector.empty, Vector.empty,
         Vector("two-swords", "skull"), 2, 1, 2, None, Vector.empty,
         None, None, 0)))
 
@@ -206,25 +206,46 @@ class HttpGameClientSuite extends FunSuite {
     assert(placement.contains("\"type\":\"placeCampaignForce\""))
     assert(placement.contains("\"count\":0"))
 
-    val planPending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"planChosen":false,"planChoices":[{"kind":"skip","sourceKey":null,"playerId":null,"siteId":null,"cardId":null,"label":"Use no battle plan","handlerId":null,"favorCost":0,"secretCost":0,"mechanicalResult":"Roll normally"},{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
+    val planPending = """{"decisionId":"campaign-17","siteId":"site:b","force":3,"plansFinished":false,"planChoices":[{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"selectedPlans":[],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
     val planState = GameJson.decodeProjection(projectionJson(sequence = 18,
       choices = false).replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$planPending"))
       .toOption.get.campaign.get
-    assertEquals(planState.planChoices.map(_.kind), Vector("skip", "adviser"))
+    assertEquals(planState.planChoices.map(_.kind), Vector("adviser"))
+    val adviserJson = """{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}"""
+    val duplicateSelected = planPending.replace("\"selectedPlans\":[]",
+      s"\"selectedPlans\":[$adviserJson,$adviserJson]")
+    assert(GameJson.decodeProjection(projectionJson(sequence = 18,
+      choices = false).replace("\"pendingCardDecision\":null",
+        s"\"pendingCardDecision\":null,\"campaign\":$duplicateSelected")).isLeft)
+    val selectedAndAvailable = planPending.replace("\"selectedPlans\":[]",
+      s"\"selectedPlans\":[$adviserJson]")
+    assert(GameJson.decodeProjection(projectionJson(sequence = 18,
+      choices = false).replace("\"pendingCardDecision\":null",
+        s"\"pendingCardDecision\":null,\"campaign\":$selectedAndAvailable")).isLeft)
     val choosePlan = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
-      "red-exile", "campaign-17", planState.planChoices(1)))
+      "red-exile", "campaign-17", planState.planChoices.head))
     assert(choosePlan.contains("\"type\":\"chooseCampaignPlan\""))
     assert(choosePlan.contains("\"kind\":\"adviser\""))
     assert(choosePlan.contains("\"cardId\":\"143\""))
     assert(!choosePlan.contains("denizen.outriders"))
-    val skipPlan = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
-      "red-exile", "campaign-17", planState.planChoices.head))
-    assert(skipPlan.contains("\"source\":null"))
-
+    val finishPlans = GameJson.encodeCommand(18, GameCommand.FinishCampaignPlans(
+      "red-exile", "campaign-17"))
+    assert(finishPlans.contains("\"type\":\"finishCampaignPlans\""))
     def projectionWithPlan(value: String) = projectionJson(sequence = 18,
       choices = false).replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$value")
+    val brassPending = planPending.replace(
+      "{\"kind\":\"adviser\",\"sourceKey\":\"adviser:red-exile:denizen:143\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"143\",\"label\":\"Outriders\",\"handlerId\":\"denizen.outriders\",\"favorCost\":0,\"secretCost\":0,\"mechanicalResult\":\"Ignore all attack-roll skull losses\"}",
+      "{\"kind\":\"relic\",\"sourceKey\":\"relic:red-exile:R25\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"R25\",\"label\":\"Brass Army\",\"handlerId\":\"relic.brass-army\",\"favorCost\":0,\"secretCost\":1,\"mechanicalResult\":\"Add 4 attack dice\"}")
+    val brassChoice = GameJson.decodeProjection(projectionWithPlan(brassPending))
+      .toOption.get.campaign.get.planChoices.head
+    val brassCommand = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
+      "red-exile", "campaign-17", brassChoice))
+    assert(brassCommand.contains("\"kind\":\"relic\""))
+    assert(brassCommand.contains("\"cardId\":\"R25\""))
+    assert(!brassCommand.contains("relic.brass-army"))
+
     val unknownKind = planPending.replace("\"kind\":\"adviser\"",
       "\"kind\":\"future-plan\"")
     assert(GameJson.decodeProjection(projectionWithPlan(unknownKind))

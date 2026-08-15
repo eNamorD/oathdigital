@@ -18,11 +18,14 @@ class GameEventWireSuite extends munit.FunSuite {
       OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),
         SiteId("site"), 2, 2),
       OathEvent.CampaignPlanChosen(PlayerId("red"), DecisionId("campaign-1"),
-        Some(PendingProcedure.CampaignPlanSource.Adviser(PlayerId("red"),
-          DenizenId("143"))), Some("denizen.outriders"), 0, 0,
-        revealed = true, ignoreAttackSkulls = true,
-        Vector(AttackDieFace.HollowSword, AttackDieFace.TwoSwordsSkull),
-        attack = 2, skullLosses = 0),
+        PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
+          RelicId("R25")), "relic.brass-army", 0, 1,
+        revealed = false, ignoreAttackSkulls = false,
+        addedAttackDice = 4),
+      OathEvent.CampaignPlansFinished(PlayerId("red"), DecisionId("campaign-1"),
+        Vector(PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
+          RelicId("R25"))), addedAttackDice = 4, ignoreAttackSkulls = false,
+        Vector.fill(6)(AttackDieFace.OneSword), attack = 6, skullLosses = 0),
       OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
         1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
       OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
@@ -32,11 +35,15 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
       .toOption.get
     val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(5)(7))
+    assertEquals(decoded.map(_.formatVersion), Vector.fill(6)(7))
     assertEquals(decoded.map(_.event), events)
     val tampered = ujson.read(encoded).arr
-    tampered(1)("payload")("attackDice")(0) = "unknown-face"
+    tampered(2)("payload")("attackDice")(0) = "unknown-face"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+    val duplicate = ujson.read(encoded).arr
+    val source = duplicate(2)("payload")("orderedSources")(0)
+    duplicate(2)("payload")("orderedSources") = ujson.Arr(source, source)
+    assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
   }
 
   test("v7 Recover events round-trip exact dice costs and chosen relic") {

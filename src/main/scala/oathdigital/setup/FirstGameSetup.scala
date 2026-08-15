@@ -134,9 +134,15 @@ object OathEvent {
   ) extends OathEvent
   final case class CampaignPlanChosen(
       playerId: PlayerId, decision: DecisionId,
-      source: Option[PendingProcedure.CampaignPlanSource],
-      handlerId: Option[String], favorCost: Int, secretCost: Int,
+      source: PendingProcedure.CampaignPlanSource,
+      handlerId: String, favorCost: Int, secretCost: Int,
       revealed: Boolean, ignoreAttackSkulls: Boolean,
+      addedAttackDice: Int
+  ) extends OathEvent
+  final case class CampaignPlansFinished(
+      playerId: PlayerId, decision: DecisionId,
+      orderedSources: Vector[PendingProcedure.CampaignPlanSource],
+      addedAttackDice: Int, ignoreAttackSkulls: Boolean,
       attackDice: Vector[AttackDieFace], attack: Int, skullLosses: Int
   ) extends OathEvent
   final case class CampaignSacrificed(
@@ -520,7 +526,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
-          _: CampaignStarted | _: CampaignPlanChosen | _: CampaignSacrificed | _: CampaignConquered |
+          _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("Recover requires the gameplay evolution"))
       case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>

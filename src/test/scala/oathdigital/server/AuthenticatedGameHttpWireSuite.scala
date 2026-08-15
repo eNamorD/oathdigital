@@ -1,13 +1,14 @@
 package oathdigital.server
 
 import oathdigital.model.{DenizenId, EconomyTargetRef, EdificeId, PendingProcedure,
-  PlayerId}
+  PlayerId, RelicId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
   test("authenticated Campaign intents are actor-free and exclude dice outcomes") {
     val begin = """{"expectedNextSequence":30,"intent":{"type":"beginCampaignConquest","targetSiteId":"site:a","attackDiceCount":3}}"""
     val sacrifice = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignSacrifice","decisionId":"campaign-30","count":1}}"""
     val plan = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignPlan","decisionId":"campaign-30","source":{"kind":"adviser","playerId":"p2","cardId":"143"}}}"""
+    val finish = """{"expectedNextSequence":32,"intent":{"type":"finishCampaignPlans","decisionId":"campaign-30"}}"""
     val place = """{"expectedNextSequence":32,"intent":{"type":"placeCampaignForce","decisionId":"campaign-30","count":2}}"""
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
       GameIntent.BeginCampaignConquest(oathdigital.model.SiteId("site:a"), 3))
@@ -16,11 +17,20 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
         oathdigital.model.DecisionId("campaign-30"), 1))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(plan).toOption.get.intent,
       GameIntent.ChooseCampaignPlan(oathdigital.model.DecisionId("campaign-30"),
-        Some(PendingProcedure.CampaignPlanSource.Adviser(PlayerId("p2"),
-          DenizenId("143")))))
+        PendingProcedure.CampaignPlanSource.Adviser(PlayerId("p2"),
+          DenizenId("143"))))
+    val relicPlan = plan.replace("\"kind\":\"adviser\"",
+      "\"kind\":\"relic\"").replace("\"cardId\":\"143\"",
+      "\"cardId\":\"R25\"")
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(relicPlan).toOption.get.intent,
+      GameIntent.ChooseCampaignPlan(oathdigital.model.DecisionId("campaign-30"),
+        PendingProcedure.CampaignPlanSource.Relic(PlayerId("p2"),
+          RelicId("R25"))))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(place).toOption.get.intent,
       GameIntent.PlaceCampaignForce(
         oathdigital.model.DecisionId("campaign-30"), 2))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(finish).toOption.get.intent,
+      GameIntent.FinishCampaignPlans(oathdigital.model.DecisionId("campaign-30")))
     val tampered = ujson.read(sacrifice).obj
     tampered("intent").obj("defenseDice") = ujson.Arr("doubler")
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(tampered))

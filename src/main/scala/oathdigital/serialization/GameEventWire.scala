@@ -50,6 +50,7 @@ object GameEventWire {
   val RelicRecoveredType = "gameplay.relic-recovered"
   val CampaignStartedType = "gameplay.campaign-started"
   val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
+  val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
   val CampaignSacrificedType = "gameplay.campaign-sacrificed"
   val CampaignConqueredType = "gameplay.campaign-conquered"
   val BanditsRefilledType = "gameplay.bandits-refilled"
@@ -272,6 +273,7 @@ object GameEventWire {
       case _: RelicRecovered => RelicRecoveredType
       case _: CampaignStarted => CampaignStartedType
       case _: CampaignPlanChosen => CampaignPlanChosenType
+      case _: CampaignPlansFinished => CampaignPlansFinishedType
       case _: CampaignSacrificed => CampaignSacrificedType
       case _: CampaignConquered => CampaignConqueredType
       case _: BanditsRefilled => BanditsRefilledType
@@ -286,7 +288,7 @@ object GameEventWire {
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
     case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
-        _: CampaignStarted | _: CampaignPlanChosen | _: CampaignSacrificed | _: CampaignConquered |
+        _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
         _: BanditsRefilled => RecoverFormatVersion
     case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
       RecoverFormatVersion
@@ -378,12 +380,18 @@ object GameEventWire {
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent, "force" -> force)
       case CampaignPlanChosen(player, decision, source, handler, favor, secret,
-          revealed, ignoreSkulls, dice, attack, skulls) => ujson.Obj(
+          revealed, ignoreSkulls, addedDice) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
-        "source" -> source.fold[ujson.Value](ujson.Null)(encodeCampaignPlanSource),
-        "handlerId" -> handler.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+        "source" -> encodeCampaignPlanSource(source),
+        "handlerId" -> handler,
         "favorCost" -> favor, "secretCost" -> secret, "revealed" -> revealed,
         "ignoreAttackSkulls" -> ignoreSkulls,
+        "addedAttackDice" -> addedDice)
+      case CampaignPlansFinished(player, decision, sources, addedDice,
+          ignoreSkulls, dice, attack, skulls) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "orderedSources" -> ujson.Arr.from(sources.map(encodeCampaignPlanSource)),
+        "addedAttackDice" -> addedDice, "ignoreAttackSkulls" -> ignoreSkulls,
         "attackDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeAttackFace(d)))),
         "attack" -> attack, "skullLosses" -> skulls)
       case CampaignSacrificed(player, decision, sacrificed, dice, attack,
@@ -556,20 +564,27 @@ object GameEventWire {
           DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
           spent, force)
         case CampaignPlanChosenType => for {
-          source <- payload("source") match {
-            case ujson.Null => Right(None)
-            case value => decodeCampaignPlanSource(value, s"$path.source").map(Some(_))
-          }
+          source <- decodeCampaignPlanSource(payload("source"), s"$path.source")
           favor <- safeIntField(payload.obj, "favorCost", path)
           secret <- safeIntField(payload.obj, "secretCost", path)
+          addedDice <- safeIntField(payload.obj, "addedAttackDice", path)
+        } yield CampaignPlanChosen(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), source,
+          payload("handlerId").str,
+          favor, secret, payload("revealed").bool,
+          payload("ignoreAttackSkulls").bool, addedDice)
+        case CampaignPlansFinishedType => for {
+          sources <- traverse(payload("orderedSources").arr.toVector)(v =>
+            decodeCampaignPlanSource(v, s"$path.orderedSources"))
+          _ <- Either.cond(sources.distinct.size == sources.size, (),
+            InvalidValue(s"$path.orderedSources", "duplicate Campaign plan source"))
+          addedDice <- safeIntField(payload.obj, "addedAttackDice", path)
           attack <- safeIntField(payload.obj, "attack", path)
           skulls <- safeIntField(payload.obj, "skullLosses", path)
           dice <- traverse(payload("attackDice").arr.toVector)(v =>
             decodeAttackFace(v.str, s"$path.attackDice"))
-        } yield CampaignPlanChosen(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), source,
-          payload("handlerId") match { case ujson.Null => None; case v => Some(v.str) },
-          favor, secret, payload("revealed").bool,
+        } yield CampaignPlansFinished(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), sources, addedDice,
           payload("ignoreAttackSkulls").bool, dice, attack, skulls)
         case CampaignSacrificedType => for {
           sacrificed <- safeIntField(payload.obj, "sacrificed", path)
@@ -620,6 +635,7 @@ object GameEventWire {
       if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
           eventType == RelicRecoveredType || eventType == CampaignStartedType ||
           eventType == CampaignPlanChosenType ||
+          eventType == CampaignPlansFinishedType ||
           eventType == CampaignSacrificedType || eventType == CampaignConqueredType ||
           eventType == BanditsRefilledType ||
           eventType == OathkeeperChangedType ||
@@ -896,6 +912,8 @@ object GameEventWire {
       "kind" -> "adviser", "playerId" -> player.value, "cardId" -> id.value)
     case PendingProcedure.CampaignPlanSource.SiteCard(site, id) => ujson.Obj(
       "kind" -> "site-card", "siteId" -> site.value, "cardId" -> id.value)
+    case PendingProcedure.CampaignPlanSource.Relic(player, id) => ujson.Obj(
+      "kind" -> "relic", "playerId" -> player.value, "cardId" -> id.value)
   }
 
   private def decodeCampaignPlanSource(value: ujson.Value, path: String)
@@ -905,6 +923,8 @@ object GameEventWire {
         PlayerId(value("playerId").str), DenizenId(value("cardId").str)))
       case "site-card" => Right(PendingProcedure.CampaignPlanSource.SiteCard(
         SiteId(value("siteId").str), DenizenId(value("cardId").str)))
+      case "relic" => Right(PendingProcedure.CampaignPlanSource.Relic(
+        PlayerId(value("playerId").str), RelicId(value("cardId").str)))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown Campaign plan source '$other'"))
     } catch { case NonFatal(error) => Left(InvalidValue(path,

@@ -3,7 +3,7 @@ package oathdigital.server
 import oathdigital.application.{CardDecisionResolution, GameCommand, GameProjection,
   OathkeeperProjection}
 import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId,
-  PendingProcedure, PlayerId}
+  PendingProcedure, PlayerId, RelicId}
 import oathdigital.serialization.{
   GameEventWire
 }
@@ -21,6 +21,8 @@ class GameHttpWireSuite extends munit.FunSuite {
         "cardId" -> "143")))
     val place = commandRequest(ujson.Obj("type" -> "placeCampaignForce",
       "playerId" -> "p2", "decisionId" -> "campaign-8", "count" -> 2))
+    val finish = commandRequest(ujson.Obj("type" -> "finishCampaignPlans",
+      "playerId" -> "p2", "decisionId" -> "campaign-8"))
     assertEquals(GameHttpWire.decodeCommand(begin).toOption.get.command,
       GameCommand.BeginCampaignConquest(PlayerId("p2"),
         oathdigital.model.SiteId("site:a"), 3))
@@ -29,11 +31,21 @@ class GameHttpWireSuite extends munit.FunSuite {
         DecisionId("campaign-8"), 1))
     assertEquals(GameHttpWire.decodeCommand(plan).toOption.get.command,
       GameCommand.ChooseCampaignPlan(PlayerId("p2"), DecisionId("campaign-8"),
-        Some(PendingProcedure.CampaignPlanSource.Adviser(PlayerId("p2"),
-          DenizenId("143")))))
+        PendingProcedure.CampaignPlanSource.Adviser(PlayerId("p2"),
+          DenizenId("143"))))
+    val relicPlan = commandRequest(ujson.Obj("type" -> "chooseCampaignPlan",
+      "playerId" -> "p2", "decisionId" -> "campaign-8",
+      "source" -> ujson.Obj("kind" -> "relic", "playerId" -> "p2",
+        "cardId" -> "R25")))
+    assertEquals(GameHttpWire.decodeCommand(relicPlan).toOption.get.command,
+      GameCommand.ChooseCampaignPlan(PlayerId("p2"), DecisionId("campaign-8"),
+        PendingProcedure.CampaignPlanSource.Relic(PlayerId("p2"),
+          RelicId("R25"))))
     assertEquals(GameHttpWire.decodeCommand(place).toOption.get.command,
       GameCommand.PlaceCampaignForce(PlayerId("p2"),
         DecisionId("campaign-8"), 2))
+    assertEquals(GameHttpWire.decodeCommand(finish).toOption.get.command,
+      GameCommand.FinishCampaignPlans(PlayerId("p2"), DecisionId("campaign-8")))
   }
 
   test("projection exposes public scoped Oathkeeper and victory status") {

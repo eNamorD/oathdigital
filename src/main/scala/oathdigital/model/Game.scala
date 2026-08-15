@@ -124,15 +124,20 @@ object PendingProcedure {
         extends CampaignPlanSource {
       def stableKey: String = s"site-card:${siteId.value}:denizen:${id.value}"
     }
+    final case class Relic(playerId: PlayerId, id: RelicId)
+        extends CampaignPlanSource {
+      def stableKey: String = s"relic:${playerId.value}:${id.value}"
+    }
   }
 
   final case class CampaignPlanResolution(
-      source: Option[CampaignPlanSource],
-      handlerId: Option[String],
+      source: CampaignPlanSource,
+      handlerId: String,
       favorCost: Int,
       secretCost: Int,
       revealed: Boolean,
-      ignoreAttackSkulls: Boolean
+      ignoreAttackSkulls: Boolean,
+      addedAttackDice: Int
   )
 
   final case class Search(
@@ -149,10 +154,11 @@ object PendingProcedure {
       actor: PlayerId,
       site: SiteId,
       force: Int,
+      plans: Vector[CampaignPlanResolution],
+      plansFinished: Boolean,
       attackDice: Vector[AttackDieFace],
       attack: Int,
       skullLosses: Int,
-      plan: Option[CampaignPlanResolution],
       sacrificed: Option[Int],
       defenseDice: Vector[DefenseDieFace],
       defense: Option[Int],

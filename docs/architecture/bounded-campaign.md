@@ -21,10 +21,10 @@ The source-verified inventory for this boundary is:
 
 - safely executable now: the mandatory `denizen.vow-of-peace` Campaign block
   at target and force formation, and optional attacker plan
-  `denizen.outriders` (“Ignore all skulls you roll”) at the attacker battle-plan
+  `denizen.outriders` (“Ignore all skulls you roll”) and the paid
+  `relic.brass-army` (`[secret] +4 [attack-die]`) at the attacker battle-plan
   window;
-- blocked by missing decisions or data: every optional attacker battle plan,
-  including otherwise simple pool modifiers such as Brass Army;
+- blocked by missing decisions or data: every other optional attacker battle plan;
   rerolls, costs, directional `±` choices, conditional pools, discard/bury,
   favor-bank rewards, and remaining victory/defeat/end effects;
 - irrelevant to bandit Conquest: defender-only and Raid-only powers,
@@ -32,12 +32,15 @@ The source-verified inventory for this boundary is:
   Weeping Banner, and Peace Envoy are not in this class: each can change this
   boundary and therefore rejects pending typed resolution.
 
-No printed battle plan is auto-selected. The actor receives an authoritative
-choice containing explicit skip and each accessible Outriders source. Selecting
-a facedown Outriders adviser or site card records and applies its reveal. The
-recorded choice includes the stable source, exact handler, zero costs, reveal
-fact, and `ignoreAttackSkulls` result; the following physical attack faces are
-also recorded, and replay derives zero skull losses without rerolling. Choices
+No printed battle plan is auto-selected. The actor receives an authoritative,
+ordered multi-plan decision containing each unused accessible Outriders or
+Brass Army source plus an explicit finish-and-roll control. Each distinct
+source may be selected once. Selecting a plan records and applies its cost or
+reveal without rolling, keeps the decision open, and removes that source from
+the unused choices. The finish event records the complete selected source order,
+aggregate `ignoreAttackSkulls` result, added attack-die count, and physical
+attack faces. Replay validates every selection in order and rejects duplicate,
+substituted, stale, or reordered sources. Choices and selected order
 are projected only to the actor, while public and other-player projections show
 only that Campaign is waiting. Blocked rules report exact handler and stable
 source identity.
@@ -60,7 +63,15 @@ site target through the reusable board-target protocol. The application service
 supplies recorded attack and defense dice; clients never supply randomness.
 Declaration first commits force and Supply and creates the pending attacker-plan
 decision. Attack dice are prepared only after the server revalidates the chosen
-source (or explicit skip), so the printed plan window precedes randomness.
+sources and the explicit finish request, so the complete printed plan window
+precedes the single randomness request. Finishing with no selections is skip.
+Brass Army is offered only when held faceup, empty, unused, and payable with one faceup
+secret. Selection places that secret on the relic and rolls exactly four extra
+attack dice when the actor finishes. Those dice do not increase physical force or later loss,
+sacrifice, survival, or placement limits.
+When Outriders was also selected, all skull losses are ignored and every skull
+die retains its swords. Without Outriders, skull dice beyond the physical force
+cannot kill a warband and contribute no swords.
 
 Defender dice equal the site's printed defense. Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
@@ -90,7 +101,7 @@ Legality and projection share Campaign rule queries. HTTP and Scala.js accept
 only the actor's selected site and choices; authenticated routes derive the
 actor and never accept dice. Pending state and controls are viewer-scoped to
 the actor. Finite Exile warbands are preserved by moving existing pieces only.
-No event-version bump, migration layer, Forge, Imperial
+No migration layer, Forge, Imperial
 Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 ## Deferred work

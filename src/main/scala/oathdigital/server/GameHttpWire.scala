@@ -252,8 +252,19 @@ object GameHttpWire {
         "campaign" -> projection.campaign.fold[ujson.Value](ujson.Null) { campaign =>
           ujson.Obj("decisionId" -> campaign.decisionId, "siteId" -> campaign.siteId,
             "force" -> campaign.force,
-            "planChosen" -> campaign.planChosen,
+            "plansFinished" -> campaign.plansFinished,
             "planChoices" -> ujson.Arr.from(campaign.planChoices.map { choice =>
+              ujson.Obj("kind" -> choice.kind,
+                "sourceKey" -> choice.sourceKey.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                "playerId" -> choice.playerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                "siteId" -> choice.siteId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                "cardId" -> choice.cardId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                "label" -> choice.label,
+                "handlerId" -> choice.handlerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+                "favorCost" -> choice.favorCost, "secretCost" -> choice.secretCost,
+                "mechanicalResult" -> choice.mechanicalResult)
+            }),
+            "selectedPlans" -> ujson.Arr.from(campaign.selectedPlans.map { choice =>
               ujson.Obj("kind" -> choice.kind,
                 "sourceKey" -> choice.sourceKey.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
                 "playerId" -> choice.playerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
@@ -417,8 +428,14 @@ object GameHttpWire {
         decision <- stringField(obj, "decisionId", path)
         sourceValue <- field(obj, "source", path)
         source <- decodeCampaignPlanSource(sourceValue, s"$path.source")
+        selected <- source.toRight(HttpInputError(s"$path.source", "plan source is required"))
       } yield GameCommand.ChooseCampaignPlan(PlayerId(player),
-        DecisionId(decision), source)
+        DecisionId(decision), selected)
+      case "finishCampaignPlans" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId"), path)
+        player <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+      } yield GameCommand.FinishCampaignPlans(PlayerId(player), DecisionId(decision))
       case "chooseCampaignSacrifice" => for {
         _ <- exactFields(obj, Set("type", "playerId", "decisionId", "count"), path)
         player <- stringField(obj, "playerId", path)
@@ -552,6 +569,12 @@ object GameHttpWire {
           card <- stringField(obj, "cardId", path)
         } yield Some(PendingProcedure.CampaignPlanSource.SiteCard(
           SiteId(site), DenizenId(card)))
+        case "relic" => for {
+          _ <- exactFields(obj, Set("kind", "playerId", "cardId"), path)
+          player <- stringField(obj, "playerId", path)
+          card <- stringField(obj, "cardId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.Relic(
+          PlayerId(player), RelicId(card)))
         case other => Left(HttpInputError(s"$path.kind",
           s"unknown Campaign plan source '$other'"))
       }
