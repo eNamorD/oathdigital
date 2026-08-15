@@ -54,10 +54,18 @@ lineage-to-ruler mappings reject instead of being treated as harmless.
 Campaign costs 2 Supply. The active Exile must be in Act, have a pawn at a site
 ruled by bandits, and have at least one board warband. The authoritative engine
 and HTTP contracts accept a positive attack-die count no greater than the
-actor's board warbands; that count is the force. The current browser
-deliberately uses the bounded formation “commit all board warbands” and labels
-that choice before confirmation. Selecting a partial force in the browser is
-deferred.
+actor's board warbands; that count is the force. The private action projection
+publishes the current legal force minimum and maximum, available board warbands,
+and Supply cost alongside the mandatory target. After target selection, the
+browser holds a local formation draft and presents labelled decrement,
+increment, and direct-value buttons. It reports committed force, remaining board
+warbands, attack dice before plans, and cost. Only the explicit Confirm Campaign
+control submits; Back and Cancel produce no authoritative state change.
+Formation drafts are keyed to game, viewer, sequence, action, candidate, and
+projected formation facts, and are discarded on any change, conflict, cancel,
+or submission. These bounds improve the interaction only: command handling and
+replay still revalidate actor, phase, target, Supply, pending state, current
+warbands, and submitted force.
 The pawn site is the mandatory and only target. The player confirms that typed
 site target through the reusable board-target protocol. The application service
 supplies recorded attack and defense dice; clients never supply randomness.
@@ -108,7 +116,6 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 - optional additional same-ruler sites and multi-site force/loss allocation;
 - conquest against another player;
-- partial-force selection in the browser (the engine/API already support it);
 - further optional attacker plans and all defender battle-plan selection;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;

@@ -23,6 +23,7 @@ object ServerModeUi {
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
+    var boardFormationState = Option.empty[BoardTargetFormationState]
     var cardDecisionState = Option.empty[CardDecisionState]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
@@ -76,6 +77,10 @@ object ServerModeUi {
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
             displayed.boardTargetActions))
+          boardFormationState = BoardTargetFormationState.reconcile(
+            boardFormationState,
+            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
+            displayed.boardTargetActions)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -97,6 +102,7 @@ object ServerModeUi {
               retainedNotice
             ) =>
           boardSelectionState = None
+          boardFormationState = None
           cardDecisionState = None
           polling.foreach(_.stop())
           projection = Some(displayed)
@@ -129,6 +135,7 @@ object ServerModeUi {
       gameId = id.trim
       projection = None
       boardSelectionState = None
+      boardFormationState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -149,6 +156,7 @@ object ServerModeUi {
       selectedPlayer = bootstrap.firstPlayer
       projection = None
       boardSelectionState = None
+      boardFormationState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -207,6 +215,7 @@ object ServerModeUi {
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
               boardSelectionState = None
+              boardFormationState = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
                 refreshed => accept(request, refreshed, Some(stale))
@@ -226,6 +235,9 @@ object ServerModeUi {
           boardSelectionState = None
           submit(command)
         }
+      case BoardSelectionResult.Form(state) =>
+        boardFormationState = Some(state)
+        render()
     }
 
     def controls(): dom.Element = {
@@ -379,7 +391,60 @@ object ServerModeUi {
       }
       if (showActActionControls(value, presentation)) {
         val selection = boardSelectionState.flatMap(_.activeAction)
-        if (selection.nonEmpty) {
+        if (boardFormationState.nonEmpty) {
+          val formation = boardFormationState.get
+          val targetLabel = formation.action.candidates.find(
+            _.target == formation.target).fold(formation.target.stableKey)(_.label)
+          panel.appendChild(text("h2", "", "Form Campaign force"))
+          panel.appendChild(text("p", "campaign-formation-target",
+            s"Target: $targetLabel"))
+          val summary = text("p", "campaign-formation-summary",
+            campaignFormationSummary(formation))
+          summary.setAttribute("aria-live", "polite")
+          panel.appendChild(summary)
+          val decrease = button("Decrease committed force", "campaign-force-decrease")
+          decrease.setAttribute("aria-label", campaignForceAdjustmentLabel(increase = false))
+          decrease.disabled = !controlsAvailable || formation.force <= formation.minimumForce
+          decrease.onclick = _ => {
+            boardFormationState = boardFormationState.map(_.decrement); render()
+          }
+          panel.appendChild(decrease)
+          (formation.minimumForce to formation.maximumForce).foreach { count =>
+            val choice = button(count.toString, "campaign-force-choice")
+            choice.setAttribute("aria-label", campaignForceChoiceLabel(count))
+            choice.setAttribute("aria-pressed", (formation.force == count).toString)
+            choice.disabled = !controlsAvailable
+            choice.onclick = _ => {
+              boardFormationState = boardFormationState.map(_.choose(count)); render()
+            }
+            panel.appendChild(choice)
+          }
+          val increase = button("Increase committed force", "campaign-force-increase")
+          increase.setAttribute("aria-label", campaignForceAdjustmentLabel(increase = true))
+          increase.disabled = !controlsAvailable || formation.force >= formation.maximumForce
+          increase.onclick = _ => {
+            boardFormationState = boardFormationState.map(_.increment); render()
+          }
+          panel.appendChild(increase)
+          val confirm = button("Confirm Campaign", "campaign-force-confirm")
+          confirm.disabled = !controlsAvailable
+          confirm.onclick = _ => {
+            boardFormationState = None
+            boardSelectionState = None
+            commandForFormation(formation, selectedPlayer).foreach(submit)
+          }
+          panel.appendChild(confirm)
+          val back = button("Back to target selection", "campaign-force-back")
+          back.onclick = _ => { boardFormationState = None; render() }
+          panel.appendChild(back)
+          val cancel = button("Cancel Campaign", "campaign-force-cancel")
+          cancel.onclick = _ => {
+            boardFormationState = None
+            boardSelectionState = boardSelectionState.map(_.cancel)
+            render()
+          }
+          panel.appendChild(cancel)
+        } else if (selection.nonEmpty) {
           val action = selection.get
           panel.appendChild(text("p", "selection-instruction", action.prompt))
           panel.appendChild(text("p", "selection-cardinality",
@@ -1086,6 +1151,18 @@ object ServerModeUi {
       s"${index + 1}. ${plan.label}"
     }.mkString("Selected: ", " · ", "")
 
+  private[frontend] def campaignFormationSummary(
+      formation: BoardTargetFormationState): String =
+    s"Committed force: ${formation.force}. Board warbands remaining: " +
+      s"${formation.remainingWarbands}. Attack dice before plans: " +
+      s"${formation.attackDiceBeforePlans}. Cost: ${formation.supplyCost} Supply."
+
+  private[frontend] def campaignForceChoiceLabel(force: Int): String =
+    s"Commit $force warbands"
+
+  private[frontend] def campaignForceAdjustmentLabel(increase: Boolean): String =
+    if (increase) "Increase committed force" else "Decrease committed force"
+
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
     Vector("site", if (candidate) "board-target" else "site-readonly",
@@ -1113,6 +1190,14 @@ object ServerModeUi {
         Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "favor"))
       case ("trade-secret", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "secret"))
+      case _ => None
+    }
+
+  private[frontend] def commandForFormation(formation: BoardTargetFormationState,
+      playerId: String): Option[GameCommand] =
+    (formation.action.actionKind, formation.target) match {
+      case ("campaign-conquest", BoardTargetRef.Site(site)) =>
+        Some(GameCommand.CampaignConquest(playerId, site, formation.force))
       case _ => None
     }
 

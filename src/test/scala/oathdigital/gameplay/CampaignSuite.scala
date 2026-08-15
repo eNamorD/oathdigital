@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.application.{BoardTargetRefProjection, GameProjector, LoadedGame}
-import oathdigital.gameplay.actions.{CampaignCommand, CampaignRules}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupFixture._
@@ -64,7 +64,57 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(action.candidates.map(_.target),
       Vector(BoardTargetRefProjection.Site(site.value)))
     assertEquals(action.candidates.head.details,
-      Vector("2 Supply", s"Commit all ${player.board.warbands} board warbands"))
+      Vector("2 Supply", s"Choose 1 to ${player.board.warbands} board warbands"))
+    assertEquals(action.formation, Some(
+      oathdigital.application.BoardTargetFormationProjection(
+        1, player.board.warbands, player.board.warbands, 2)))
+    val hidden = new GameProjector(catalog).projectPublic("campaign",
+      LoadedGame(Ready(ready), 1))
+    assertEquals(hidden.boardTargetActions, Vector.empty)
+
+    val reduced = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      players = ready.game.current.players.map(p => if (p.player == player.player)
+        p.copy(board = p.board.copy(warbands = 2)) else p))))
+    val changed = new GameProjector(catalog).project("campaign",
+      LoadedGame(Ready(reduced), 2), player.player).boardTargetActions
+      .find(_.actionKind == "campaign-conquest").flatMap(_.formation).get
+    assertEquals(changed.maximumForce -> changed.availableWarbands, 2 -> 2)
+  }
+
+  test("Campaign projection requires current force and full Supply cost") {
+    val (ready, player, site) = campaignReady
+    def withResources(warbands: Int, supply: Int): ReadyGame =
+      ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+        players = ready.game.current.players.map(p => if (p.player == player.player)
+          p.copy(board = p.board.copy(warbands = warbands,
+            supply = SupplyTrack(supply))) else p))))
+    def campaignAction(state: ReadyGame) = new GameProjector(catalog)
+      .project("campaign-resources", LoadedGame(Ready(state), 2), player.player)
+      .boardTargetActions.find(_.actionKind == "campaign-conquest")
+
+    Vector(0 -> Campaign.SupplyCost, 1 -> 0, 1 -> 1).foreach {
+      case (warbands, supply) =>
+        val state = withResources(warbands, supply)
+        assertEquals(CampaignRules.legalTargets(catalog, state, player.player),
+          Vector.empty)
+        assertEquals(campaignAction(state), None)
+    }
+
+    val exact = withResources(Campaign.MinimumForce, Campaign.SupplyCost)
+    assertEquals(CampaignRules.legalTargets(catalog, exact, player.player),
+      Vector(site))
+    val formation = campaignAction(exact).flatMap(_.formation).get
+    assertEquals(formation, oathdigital.application.BoardTargetFormationProjection(
+      Campaign.MinimumForce, Campaign.MinimumForce, Campaign.MinimumForce,
+      Campaign.SupplyCost))
+  }
+
+  test("formation projection rejects malformed authoritative bounds") {
+    import oathdigital.application.BoardTargetFormationProjection
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(0, 1, 1, 2))
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(2, 1, 2, 2))
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 2, 1, 2))
+    intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 1, 1, -1))
   }
 
   test("staged conquest records cost dice sacrifice and explicit placement") {
@@ -91,6 +141,19 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(after.game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(player.lineage), 1))
     assertEquals(after.game.current.pending, None)
+  }
+
+  test("explicit projected maximum preserves the prior all-warband path") {
+    val (ready, player, site) = campaignReady
+    val maximum = player.board.warbands
+    val started = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
+      DecisionId("campaign-maximum"), site, maximum)).toOption.get
+    val Ready(after) = started.state: @unchecked
+    assertEquals(after.game.current.pending.collect {
+      case campaign: PendingProcedure.Campaign => campaign.force
+    }, Some(maximum))
+    assertEquals(after.game.current.players.find(_.player == player.player).get
+      .board.warbands, 0)
   }
 
   test("defeat kills half surviving force and replay rejects tampering") {

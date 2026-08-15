@@ -64,6 +64,24 @@ class ServerModeUiSuite extends FunSuite {
       "Brass Army (Place 1 Secret)")
     assertEquals(ServerModeUi.campaignSelectedPlansLabel(Vector(brass, outriders)),
       "Selected: 1. Brass Army · 2. Outriders")
+    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
+      false, Vector(BoardTargetCandidate(BoardTargetRef.Site("site:b"),
+        "Site B", Vector.empty)), Some(BoardTargetFormation(1, 4, 4, 2)))
+    val formation = BoardTargetFormationState(
+      BoardSelectionContext("game", "red", 7), action,
+      BoardTargetRef.Site("site:b"), 2)
+    assertEquals(ServerModeUi.campaignFormationSummary(formation),
+      "Committed force: 2. Board warbands remaining: 2. " +
+        "Attack dice before plans: 2. Cost: 2 Supply.")
+    assertEquals(ServerModeUi.campaignForceChoiceLabel(2), "Commit 2 warbands")
+    assertEquals(ServerModeUi.campaignForceAdjustmentLabel(increase = false),
+      "Decrease committed force")
+    assertEquals(ServerModeUi.campaignForceAdjustmentLabel(increase = true),
+      "Increase committed force")
+    assertEquals(ServerModeUi.commandForFormation(formation, "red"),
+      Some(GameCommand.CampaignConquest("red", "site:b", 2)))
+    assertEquals(ServerModeUi.commandForFormation(formation.copy(
+      target = BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

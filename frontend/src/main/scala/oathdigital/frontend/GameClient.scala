@@ -142,9 +142,13 @@ object BoardTargetRef {
 }
 final case class BoardTargetCandidate(
     target: BoardTargetRef, label: String, details: Vector[String])
+final case class BoardTargetFormation(
+    minimumForce: Int, maximumForce: Int, availableWarbands: Int,
+    supplyCost: Int)
 final case class BoardTargetAction(
     actionKind: String, prompt: String, minimum: Int, maximum: Int,
-    autoActivate: Boolean, candidates: Vector[BoardTargetCandidate])
+    autoActivate: Boolean, candidates: Vector[BoardTargetCandidate],
+    formation: Option[BoardTargetFormation] = None)
 final case class CardResolution(kind: String, orientation: Option[String],
     replacementRequired: Boolean, replacementTargets: Vector[CardDetails])
 final case class PendingCardDecision(
@@ -788,6 +792,21 @@ object GameJson {
             minimum <- int(item, "minimum", path)
             maximum <- int(item, "maximum", path)
             auto <- bool(item, "autoActivate", path)
+            formation <- optionalField(item, "formation").flatMap {
+              case None => Right(None)
+              case Some(value) if value == null => Right(None)
+              case Some(value) => objectValue(value, s"$path.formation").flatMap { obj =>
+                for {
+                  min <- int(obj, "minimumForce", s"$path.formation")
+                  max <- int(obj, "maximumForce", s"$path.formation")
+                  warbands <- int(obj, "availableWarbands", s"$path.formation")
+                  cost <- int(obj, "supplyCost", s"$path.formation")
+                  _ <- Either.cond(min >= 1 && max >= min && max <= warbands && cost >= 0,
+                    (), GameClientFailure.DecodeFailure(s"$path.formation",
+                      "invalid board-target formation bounds"))
+                } yield Some(BoardTargetFormation(min, max, warbands, cost))
+              }
+            }
             candidates <- array(item, "candidates", path).flatMap(
               traverse(_, "candidates") { (candidate, candidatePath) => for {
                 targetValue <- field(candidate, "target", candidatePath)
@@ -803,7 +822,7 @@ object GameJson {
               GameClientFailure.DecodeFailure(s"$path.candidates",
                 "duplicate target reference"))
           } yield BoardTargetAction(kind, prompt, minimum, maximum, auto,
-            candidates) })
+            candidates, formation) })
         pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)

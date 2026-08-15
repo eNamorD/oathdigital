@@ -12,11 +12,9 @@ No item is currently assigned.
 ## Next
 
 **Campaign expansion**, building on the verified single-site bandit Conquest
-slice. Next, expand Conquest targeting and force formation: expose accessible
-partial-force selection in the browser, then add optional same-ruler sites and
-the required multi-site force/loss/placement decisions. Player defenders, more
-attacker and defender plans, Raid outcomes, and the displaced-Oathkeeper tie
-decision follow.
+slice. Next, add optional same-ruler Conquest sites and the required multi-site
+force, loss, and placement decisions. Player defenders, more attacker and
+defender plans, Raid outcomes, and the displaced-Oathkeeper tie decision follow.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -42,6 +40,14 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign expansion — partial-force formation UI.** Selecting the
+  mandatory pawn-site target now opens a local, projection-backed formation
+  step with server-authored force bounds, available warbands, Supply cost, and
+  pre-plan dice. Accessible direct/decrement/increment controls require an
+  explicit confirmation; Back and Cancel remain local. Stale context clears
+  formation, inactive viewers receive none, and zero-warband or unaffordable
+  Campaigns project no action. Command validation and replay retain authority.
 
 - [x] **Campaign expansion — ordered plans and Brass Army.** The attacker may
   use distinct accessible plans once each in an authoritative chosen order,
@@ -153,7 +159,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 256 JVM tests, 73 Scala.js tests, the Scala.js
+The combined milestone passes 259 JVM tests, 75 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

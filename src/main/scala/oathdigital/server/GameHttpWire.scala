@@ -212,6 +212,13 @@ object GameHttpWire {
             "minimum" -> action.minimum,
             "maximum" -> action.maximum,
             "autoActivate" -> action.autoActivate,
+            "formation" -> action.formation.fold[ujson.Value](ujson.Null) { formation =>
+              ujson.Obj(
+                "minimumForce" -> formation.minimumForce,
+                "maximumForce" -> formation.maximumForce,
+                "availableWarbands" -> formation.availableWarbands,
+                "supplyCost" -> formation.supplyCost)
+            },
             "candidates" -> ujson.Arr.from(action.candidates.map { candidate =>
               ujson.Obj("target" -> encodeBoardTarget(candidate.target),
                 "label" -> candidate.label,

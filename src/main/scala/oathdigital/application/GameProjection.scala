@@ -102,13 +102,27 @@ final case class BoardTargetCandidateProjection(
     label: String,
     details: Vector[String] = Vector.empty
 )
+final case class BoardTargetFormationProjection(
+    minimumForce: Int,
+    maximumForce: Int,
+    availableWarbands: Int,
+    supplyCost: Int
+) {
+  require(minimumForce >= 1, "formation minimum must be positive")
+  require(maximumForce >= minimumForce,
+    "formation maximum must include minimum")
+  require(maximumForce <= availableWarbands,
+    "formation maximum cannot exceed available warbands")
+  require(supplyCost >= 0, "formation Supply cost must be non-negative")
+}
 final case class BoardTargetActionProjection(
     actionKind: String,
     prompt: String,
     minimum: Int,
     maximum: Int,
     autoActivate: Boolean,
-    candidates: Vector[BoardTargetCandidateProjection]
+    candidates: Vector[BoardTargetCandidateProjection],
+    formation: Option[BoardTargetFormationProjection] = None
 ) {
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")
@@ -563,7 +577,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
       BoardTargetCandidateProjection(BoardTargetRefProjection.Site(siteId.value),
         siteNames.getOrElse(siteId, safeLabel(siteId.value)),
         Vector(s"${oathdigital.gameplay.actions.Campaign.SupplyCost} Supply",
-          s"Commit all ${player.board.warbands} board warbands"))
+          s"Choose 1 to ${player.board.warbands} board warbands"))
     }
     val favor = trades.filter(_.resource == oathdigital.setup.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,
@@ -573,7 +587,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     Vector(
       selection("travel", "Choose a Travel destination", travel),
-      selection("campaign-conquest", "Choose the mandatory Conquest site", campaign),
+      selection("campaign-conquest", "Choose the mandatory Conquest site", campaign,
+        Option.when(campaign.nonEmpty)(BoardTargetFormationProjection(
+          oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
+          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost))),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)
@@ -581,9 +598,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
   }
 
   private def selection(kind: String, prompt: String,
-      candidates: Vector[BoardTargetCandidateProjection]) =
+      candidates: Vector[BoardTargetCandidateProjection],
+      formation: Option[BoardTargetFormationProjection] = None) =
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(
-      kind, prompt, 1, 1, autoActivate = false, candidates))
+      kind, prompt, 1, 1, autoActivate = false, candidates, formation))
 
   private def economyCandidate(target: EconomyTargetRef,
       source: oathdigital.gameplay.RuleSourceRef, details: Vector[String]) = {

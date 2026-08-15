@@ -72,4 +72,36 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       BoardTargetRef.PlayerRelic("red", "d1"))
     assertEquals(refs.map(_.stableKey).distinct.size, refs.size)
   }
+
+  test("formation follows target choice and enforces projected force bounds") {
+    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
+      autoActivate = false, Vector(siteA),
+      Some(BoardTargetFormation(1, 4, 4, 2)))
+    val active = BoardTargetSelectionState.reconcile(None, context,
+      Vector(action)).activate(action.actionKind)
+    val formation = active.choose(siteA.target)
+      .asInstanceOf[BoardSelectionResult.Form].state
+    assertEquals(formation.force, 4)
+    assertEquals(formation.decrement.force, 3)
+    assertEquals(formation.choose(2).force, 2)
+    assertEquals(formation.choose(0), formation)
+    assertEquals(formation.increment, formation)
+    assertEquals(formation.remainingWarbands, 0)
+    assertEquals(formation.attackDiceBeforePlans, 4)
+    assertEquals(formation.supplyCost, 2)
+  }
+
+  test("formation clears on context candidates or projected facts changes") {
+    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
+      false, Vector(siteA), Some(BoardTargetFormation(1, 4, 4, 2)))
+    val formation = BoardTargetFormationState(context, action, siteA.target, 2)
+    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
+      Vector(action)), Some(formation))
+    assertEquals(BoardTargetFormationState.reconcile(Some(formation),
+      context.copy(sequence = 5), Vector(action)), None)
+    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
+      Vector(action.copy(candidates = Vector(siteB)))), None)
+    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
+      Vector(action.copy(formation = Some(BoardTargetFormation(1, 3, 3, 2))))), None)
+  }
 }

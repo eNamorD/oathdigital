@@ -9,6 +9,34 @@ private[frontend] object BoardSelectionResult {
       extends BoardSelectionResult
   final case class Submit(action: BoardTargetAction,
       targets: Vector[BoardTargetRef]) extends BoardSelectionResult
+  final case class Form(state: BoardTargetFormationState)
+      extends BoardSelectionResult
+}
+
+private[frontend] final case class BoardTargetFormationState(
+    context: BoardSelectionContext,
+    action: BoardTargetAction,
+    target: BoardTargetRef,
+    force: Int
+) {
+  private def facts = action.formation.get
+  def minimumForce: Int = facts.minimumForce
+  def maximumForce: Int = facts.maximumForce
+  def availableWarbands: Int = facts.availableWarbands
+  def supplyCost: Int = facts.supplyCost
+  def remainingWarbands: Int = availableWarbands - force
+  def attackDiceBeforePlans: Int = force
+  def decrement: BoardTargetFormationState = copy(force = math.max(minimumForce, force - 1))
+  def increment: BoardTargetFormationState = copy(force = math.min(maximumForce, force + 1))
+  def choose(value: Int): BoardTargetFormationState =
+    if (value >= minimumForce && value <= maximumForce) copy(force = value) else this
+}
+private[frontend] object BoardTargetFormationState {
+  def reconcile(previous: Option[BoardTargetFormationState],
+      context: BoardSelectionContext, actions: Vector[BoardTargetAction]) =
+    previous.filter(state => state.context == context &&
+      actions.contains(state.action) && state.action.candidates.exists(
+        _.target == state.target))
 }
 
 private[frontend] final case class BoardTargetSelectionState(
@@ -32,6 +60,10 @@ private[frontend] final case class BoardTargetSelectionState(
   }
 
   def choose(target: BoardTargetRef): BoardSelectionResult = activeAction match {
+    case Some(action) if action.candidates.exists(_.target == target) &&
+        action.maximum == 1 && action.formation.nonEmpty =>
+      BoardSelectionResult.Form(BoardTargetFormationState(context, action, target,
+        action.formation.get.maximumForce))
     case Some(action) if action.candidates.exists(_.target == target) &&
         action.maximum == 1 => BoardSelectionResult.Submit(action, Vector(target))
     case Some(action) if action.candidates.exists(_.target == target) =>

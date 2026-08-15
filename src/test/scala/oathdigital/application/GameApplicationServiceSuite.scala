@@ -44,6 +44,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       LoadedGame(act.state, act.nextSequence), active).boardTargetActions
       .find(_.actionKind == "campaign-conquest").get.candidates.head.target
       .asInstanceOf[BoardTargetRefProjection.Site].siteId
+    val beforeInvalid = repository.load("campaign-rng-validation").toOption.flatten.get
+      .records
+    assert(service.handle("campaign-rng-validation", act.nextSequence,
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).isLeft)
+    assert(service.handle("campaign-rng-validation", act.nextSequence,
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 999)).isLeft)
+    assert(service.handle("campaign-rng-validation", act.nextSequence - 1,
+      GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).isLeft)
+    assertEquals(repository.load("campaign-rng-validation").toOption.flatten.get.records,
+      beforeInvalid)
+    assertEquals(attackRolls, Vector.empty)
     val declared = service.handle("campaign-rng-validation", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 2)).toOption.get
     val decision = DecisionId(s"campaign-${act.nextSequence}")
@@ -88,7 +99,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .get.candidates.head.target.asInstanceOf[BoardTargetRefProjection.Site].siteId
     val started = service.handle("campaign-persist", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 1)).toOption.get
-    assert(started.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignStarted])
+    val startEvent = started.events.head.asInstanceOf[
+      oathdigital.setup.OathEvent.CampaignStarted]
+    assertEquals(startEvent.force, 1)
+    val Ready(afterPartial) = started.state: @unchecked
+    assertEquals(afterPartial.game.current.players.find(_.player == active).get
+      .board.warbands,
+      ready.game.current.players.find(_.player == active).get.board.warbands - 1)
     val chosen = service.handle("campaign-persist", started.nextSequence,
       GameCommand.FinishCampaignPlans(active,
         DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
