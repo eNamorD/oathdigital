@@ -130,12 +130,14 @@ object OathEvent {
   ) extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
+      defender: CampaignDefender,
       supplySpent: Int, force: Int
   ) extends OathEvent
   object CampaignStarted {
     def apply(playerId: PlayerId, decision: DecisionId, siteId: SiteId,
         supplySpent: Int, force: Int): CampaignStarted =
-      new CampaignStarted(playerId, decision, Vector(siteId), supplySpent, force)
+      new CampaignStarted(playerId, decision, Vector(siteId),
+        CampaignDefender.Bandits, supplySpent, force)
   }
   final case class CampaignPlanChosen(
       playerId: PlayerId, decision: DecisionId,

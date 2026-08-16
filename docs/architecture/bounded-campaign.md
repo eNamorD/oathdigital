@@ -4,7 +4,7 @@ This design began as the smallest coherent first-game Campaign procedure and
 now includes authoritative multi-site target declaration for Conquest against
 bandits, with fixed unaltered Foundations and a typed boundary for relevant
 Campaign powers. Multi-site loss and placement allocation are complete for
-bandit defenders; Raid remains out of scope.
+bandit and player defenders; Raid remains out of scope.
 
 ## Typed rule pipeline and inventory
 
@@ -28,8 +28,9 @@ The source-verified inventory for this boundary is:
 - blocked by missing decisions or data: every other optional attacker battle plan;
   rerolls, costs, directional `±` choices, conditional pools, discard/bury,
   favor-bank rewards, and remaining victory/defeat/end effects;
-- irrelevant to bandit Conquest: defender-only and Raid-only powers,
-  player-defender interactions, and Imperial effects. Bag of Siegeworks,
+- irrelevant to the implemented result: Raid-only powers and Imperial effects.
+  Player-defender powers are discovered and block until their choice window is
+  implemented. Bag of Siegeworks,
   Weeping Banner, and Peace Envoy are not in this class: each can change this
   boundary and therefore rejects pending typed resolution.
 
@@ -89,8 +90,9 @@ When Outriders was also selected, all skull losses are ignored and every skull
 die retains its swords. Without Outriders, skull dice beyond the physical force
 cannot kill a warband and contribute no swords.
 
-Defender dice equal the sum of the targeted sites' printed defense; bandit
-forces at all targets likewise contribute to defense. Attack faces record hollow
+Defender dice equal the sum of the targeted sites' printed defense; bandit or
+player forces at all targets likewise contribute to defense. A player defender
+holding the Oathkeeper/Usurper title adds its mandatory defense die. Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
 pair. A skull removes one force warband, and its two swords count only when that
 loss can be paid. Defense faces use the existing blank/shield/doubler
@@ -98,7 +100,7 @@ vocabulary. Before the defense roll, the actor explicitly chooses how many
 surviving force warbands to sacrifice for one attack each. Attack must strictly
 exceed defense.
 
-On victory against bandits, all warbands at every targeted site are removed and
+On victory, all warbands at every targeted site are removed and
 the actor allocates zero or more surviving force warbands across the complete
 ordered target set. Every target appears exactly once in the submitted
 allocation, including zero allocations; the total cannot exceed the surviving
@@ -111,15 +113,21 @@ state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
 
 Defender loss is resolved through a registered, stable-ID policy seam. The
-current policy emits and applies one ordered `Remove` effect for all bandit
-warbands at each target. Replay resolves the recorded policy again and verifies
+default policy emits and applies ordered `Remove` effects at every target.
+Bandits lose them all. A player defender loses half the aggregate targeted
+force, rounded down, and the policy records returning every survivor to that
+player's board before attacker placement. Replay resolves the recorded policy again and verifies
 its complete effect vector before applying it. The effect vocabulary also
 represents preservation, relocation, and replacement; placement cannot
 overwrite a force that the selected policy leaves at a target. These dormant
 forms provide the mechanical boundary for future powers, but no such printed
-power is inferred or activated by this slice. Player-defender and attacking
-force losses must use this same policy/result direction when those procedures
-are expanded rather than embedding another fixed “kill half” calculation.
+power is inferred or activated by this slice.
+
+The mandatory pawn-site ruler is the typed Campaign defender. Every optional
+site must have that same ruler. Relevant powers across a player defender's
+advisers, relics, and ruled sites are discovered conservatively; because this
+baseline has no defender choice or optional battle-plan window, such a handler
+blocks the Campaign instead of being ignored. The defender receives no controls.
 
 Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects
@@ -141,7 +149,6 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 ## Deferred work
 
-- conquest against another player;
 - further optional attacker plans and all defender battle-plan selection;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;

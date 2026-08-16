@@ -36,23 +36,40 @@ trait CampaignLosingForceResolver {
       : Either[OathViolation, Vector[CampaignLosingForceEffect]]
 }
 object CampaignLosingForceResolver {
-  val removeAllBandits: CampaignLosingForceResolver =
+  val default: CampaignLosingForceResolver =
     new CampaignLosingForceResolver {
-      val id = "campaign.loss.remove-all-bandits"
-      def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign) =
-        campaign.targetSites.foldLeft[
+      val id = "campaign.loss.default-defeated-force"
+      def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign) = {
+        val removed = campaign.targetSites.foldLeft[
           Either[OathViolation, Vector[CampaignLosingForceEffect]]](
           Right(Vector.empty)) { (result, siteId) => result.flatMap { effects =>
             ready.game.current.map.sites.get(siteId).toRight(
               SiteNotInPlay(siteId)).flatMap(_.forces match {
-                case SiteForces.Occupied(ForceKind.Bandit, count) if count > 0 =>
+                case SiteForces.Occupied(force, count) if count > 0 =>
                   Right(effects :+ CampaignLosingForceEffect.Remove(
-                    siteId, ForceKind.Bandit, count))
+                    siteId, force, count))
                 case other => Left(CampaignOutcomeMismatch(
                   s"target '${siteId.value}' has unsupported losing force $other"))
               })
           }}
+        removed.map { effects => campaign.defender match {
+          case CampaignDefender.Bandits => effects
+          case CampaignDefender.Player(player) =>
+            val total = effects.collect {
+              case CampaignLosingForceEffect.Remove(_, _, count) => count
+            }.sum
+            val returned = total - total / 2
+            if (returned == 0) effects else effects :+
+              CampaignLosingForceEffect.ReturnToBoard(
+                campaign.targetSites.head, player,
+                effects.collectFirst {
+                  case CampaignLosingForceEffect.Remove(_, force, _) => force
+                }.get, returned)
+        }}
+      }
     }
+
+  val removeAllBandits: CampaignLosingForceResolver = default
 }
 
 final case class CampaignLosingForceRegistry(
@@ -68,8 +85,8 @@ final case class CampaignLosingForceRegistry(
 }
 object CampaignLosingForceRegistry {
   val default: CampaignLosingForceRegistry = CampaignLosingForceRegistry(
-    CampaignLosingForceResolver.removeAllBandits,
-    Vector(CampaignLosingForceResolver.removeAllBandits))
+    CampaignLosingForceResolver.default,
+    Vector(CampaignLosingForceResolver.default))
 }
 
 object Campaign {
@@ -99,9 +116,9 @@ object Campaign {
       : Either[OathViolation, OathTransition] = command match {
     case CampaignCommand.Start(player, decision, sites, force) =>
       OathLifecycle.validateAct(state, player).flatMap { ready =>
-        CampaignRules.validateStart(catalog, ready, player, sites, force).flatMap { _ =>
+        CampaignRules.validateStart(catalog, ready, player, sites, force).flatMap { defender =>
           transition(catalog, state, Vector(CampaignStarted(player, decision, sites,
-            SupplyCost, force)), AwaitingCampaignPlan(player, decision))
+            defender, SupplyCost, force)), AwaitingCampaignPlan(player, decision))
         }
       }
     case CampaignCommand.ChoosePlan(player, decision, source) => state match {
@@ -137,7 +154,8 @@ object Campaign {
         .flatMap { pending =>
           val attack = pending.attack + count
           val defense = DefenseDieFace.score(dice) +
-            pending.targetSites.map(CampaignRules.banditForce(ready, _)).sum
+            CampaignRules.defenderForce(ready, pending.targetSites) +
+            CampaignRules.titleDefense(pending, ready)
           transition(catalog, state, Vector(CampaignSacrificed(player, decision,
             count, dice, attack, defense, pending.skullLosses, attack > defense)),
             if (attack > defense) AwaitingCampaignPlacement(player, decision)
@@ -185,7 +203,10 @@ object Campaign {
       : Either[OathViolation, OathState] = event match {
     case e: CampaignStarted => OathLifecycle.validateAct(state, e.playerId).flatMap { ready =>
       for {
-        _ <- CampaignRules.validateStart(catalog, ready, e.playerId, e.targetSites, e.force)
+        defender <- CampaignRules.validateStart(catalog, ready, e.playerId,
+          e.targetSites, e.force)
+        _ <- Either.cond(defender == e.defender, (), CampaignOutcomeMismatch(
+          "recorded Campaign defender is invalid"))
         _ <- if (e.supplySpent == SupplyCost) Right(()) else Left(CampaignOutcomeMismatch("recorded Supply cost is invalid"))
       } yield {
         val current = ready.game.current
@@ -194,6 +215,7 @@ object Campaign {
             p.copy(board = p.board.copy(warbands = p.board.warbands - e.force,
               supply = SupplyTrack(p.board.supply.supply - SupplyCost)))),
           pending = Some(PendingProcedure.Campaign(e.decision, e.playerId, e.targetSites,
+            e.defender,
             e.force, Vector.empty, plansFinished = false, Vector.empty, 0, 0,
             None, Vector.empty, None, None)))))
       }
@@ -275,13 +297,15 @@ object Campaign {
         requireFinished = true, requireResolved = false).flatMap { c =>
         val remaining = c.force - c.skullLosses
         val expectedAttack = c.attack + e.sacrificed
-        val expectedDefense = DefenseDieFace.score(e.defenseDice) +
-          c.targetSites.map(CampaignRules.banditForce(ready, _)).sum
+          val expectedDefense = DefenseDieFace.score(e.defenseDice) +
+          CampaignRules.defenderForce(ready, c.targetSites) +
+          CampaignRules.titleDefense(c, ready)
         for {
           _ <- if (e.sacrificed >= 0 && e.sacrificed <= remaining) Right(()) else Left(CampaignOutcomeMismatch("sacrifice exceeds surviving force"))
           _ <- if (e.skullLosses == c.skullLosses) Right(()) else Left(CampaignOutcomeMismatch("recorded skull losses are invalid"))
           defenseDiceCount = c.targetSites.flatMap(
-            CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum
+            CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
+            CampaignRules.titleDefenseDice(c, ready)
           _ <- if (e.defenseDice.size == defenseDiceCount) Right(()) else Left(CampaignOutcomeMismatch("defense dice count is invalid"))
           _ <- if (e.attack == expectedAttack && e.defense == expectedDefense && e.victorious == (expectedAttack > expectedDefense)) Right(())
             else Left(CampaignOutcomeMismatch("recorded battle outcome is invalid"))
@@ -325,9 +349,10 @@ object Campaign {
         else if (e.allocations.map(_.count).sum > surviving)
           Left(CampaignOutcomeMismatch("placed force exceeds survivors"))
         else applyLosingForces(ready.game.current.map.sites,
+            ready.game.current.players,
             e.losingForces).flatMap { resolvedSites =>
           val blockedPlacement = e.allocations.exists(allocation =>
-            allocation.count > 0 && resolvedSites(allocation.site).forces !=
+            allocation.count > 0 && resolvedSites._1(allocation.site).forces !=
               SiteForces.Empty)
           if (blockedPlacement) Left(CampaignOutcomeMismatch(
             "force can be placed only at a cleared Campaign target"))
@@ -335,14 +360,14 @@ object Campaign {
           val current = ready.game.current
           val player = current.players.find(_.player == e.playerId).get
           val placed = e.allocations.map(_.count).sum
-          val sites = e.allocations.foldLeft(resolvedSites) {
+          val sites = e.allocations.foldLeft(resolvedSites._1) {
             case (updated, CampaignForceAllocation(siteId, count)) =>
               if (count == 0) updated else updated.updated(siteId,
                 updated(siteId).copy(forces = SiteForces.Occupied(
                   ForceKind.Exile(player.lineage), count)))
           }
           Right(Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-            players = current.players.map(p => if (p.player != e.playerId) p else
+            players = resolvedSites._2.map(p => if (p.player != e.playerId) p else
               p.copy(board = p.board.copy(warbands =
                 p.board.warbands + surviving - placed))),
             map = current.map.copy(sites = sites),
@@ -365,10 +390,13 @@ object Campaign {
       .map(OathTransition(_, events, continue))
 
   private def applyLosingForces(initial: Map[SiteId, SiteState],
+      initialPlayers: Vector[PlayerState],
       effects: Vector[CampaignLosingForceEffect])
-      : Either[OathViolation, Map[SiteId, SiteState]] =
-    effects.foldLeft[Either[OathViolation, Map[SiteId, SiteState]]](
-      Right(initial)) { (result, effect) => result.flatMap { sites =>
+      : Either[OathViolation, (Map[SiteId, SiteState], Vector[PlayerState])] =
+    effects.foldLeft[Either[OathViolation,
+      (Map[SiteId, SiteState], Vector[PlayerState])]](
+      Right(initial -> initialPlayers)) { (result, effect) => result.flatMap {
+        case (sites, players) =>
         def source(force: ForceKind, count: Int) = sites.get(effect.site)
           .toRight(SiteNotInPlay(effect.site)).flatMap { site =>
             Either.cond(site.forces == SiteForces.Occupied(force, count), site,
@@ -378,9 +406,9 @@ object Campaign {
         effect match {
           case CampaignLosingForceEffect.Remove(site, force, count) =>
             source(force, count).map(value => sites.updated(site,
-              value.copy(forces = SiteForces.Empty)))
+              value.copy(forces = SiteForces.Empty)) -> players)
           case CampaignLosingForceEffect.Preserve(_, force, count) =>
-            source(force, count).map(_ => sites)
+            source(force, count).map(_ => sites -> players)
           case CampaignLosingForceEffect.Relocate(site, destination, force, count) =>
             for {
               from <- source(force, count)
@@ -394,19 +422,28 @@ object Campaign {
                   "relocated losing force cannot join a different force"))
               }
             } yield sites.updated(site, from.copy(forces = SiteForces.Empty))
-              .updated(destination, to.copy(forces = moved))
+              .updated(destination, to.copy(forces = moved)) -> players
           case CampaignLosingForceEffect.Replace(site, force, count,
               replacement, replacementCount) => source(force, count).map { value =>
             val next = replacement.fold[SiteForces](SiteForces.Empty)(kind =>
               SiteForces.Occupied(kind, replacementCount))
-            sites.updated(site, value.copy(forces = next))
+            sites.updated(site, value.copy(forces = next)) -> players
           }
+          case CampaignLosingForceEffect.ReturnToBoard(_, player, force, count) =>
+            players.find(_.player == player).toRight(CampaignOutcomeMismatch(
+              "losing-force return references an unknown player")).flatMap { owner =>
+              Either.cond(force == ForceKind.Exile(owner.lineage), (),
+                CampaignOutcomeMismatch("returned force does not belong to player"))
+              .map(_ => sites -> players.map(p => if (p.player != player) p else
+                p.copy(board = p.board.copy(warbands = p.board.warbands + count))))
+            }
       }}}
 }
 
 object CampaignRules {
   def validateStart(catalog: ExecutableCatalog, ready: ReadyGame,
-      playerId: PlayerId, site: SiteId, force: Int): Either[OathViolation, Unit] =
+      playerId: PlayerId, site: SiteId, force: Int)
+      : Either[OathViolation, CampaignDefender] =
     validateStart(catalog, ready, playerId, Vector(site), force)
 
   /** Classification is deliberately exact-ID based. A reviewed catalog handler
@@ -472,10 +509,20 @@ object CampaignRules {
   def siteDefinition(catalog: ExecutableCatalog, site: SiteId) =
     catalog.sites.find(_.id == site)
 
-  def banditForce(ready: ReadyGame, site: SiteId): Int =
-    ready.game.current.map.sites.get(site).collect {
-      case SiteState(SiteForces.Occupied(ForceKind.Bandit, count), _, _, _) => count
-    }.getOrElse(0)
+  def defenderForce(ready: ReadyGame, sites: Vector[SiteId]): Int =
+    sites.flatMap(ready.game.current.map.sites.get).map(_.forces match {
+      case SiteForces.Occupied(_, count) => count
+      case SiteForces.Empty => 0
+    }).sum
+
+  def titleDefenseDice(campaign: PendingProcedure.Campaign,
+      ready: ReadyGame): Int = campaign.defender match {
+    case CampaignDefender.Player(player)
+        if ready.game.current.title.holder.contains(player) => 1
+    case _ => 0
+  }
+  def titleDefense(campaign: PendingProcedure.Campaign,
+      ready: ReadyGame): Int = 0
 
   private[gameplay] def attackResult(dice: Vector[AttackDieFace], force: Int,
       ignoreSkulls: Boolean): (Int, Int) = {
@@ -599,16 +646,17 @@ object CampaignRules {
   def legalTargets(catalog: ExecutableCatalog, ready: ReadyGame, playerId: PlayerId)
       : Vector[SiteId] = ready.game.current.players.find(_.player == playerId).toVector
     .filter(hasCampaignSupply).flatMap(_.pawnSite).flatMap { pawn =>
+      val defender = defenderAt(ready, pawn).toOption
       val candidates = pawn +: ready.game.current.map.inPlay.filter(_ != pawn).filter(
-        site => isBanditSite(ready, site))
-      if (!isBanditSite(ready, pawn) ||
+        site => defenderAt(ready, site).toOption == defender)
+      if (defender.isEmpty ||
           validateSupported(catalog, ready, playerId, Vector(pawn)).isLeft) Vector.empty
       else candidates.filter(site => site == pawn ||
         validateSupported(catalog, ready, playerId, Vector(pawn, site)).isRight)
     }
 
   def validateStart(catalog: ExecutableCatalog, ready: ReadyGame, playerId: PlayerId,
-      sites: Vector[SiteId], force: Int): Either[OathViolation, Unit] = {
+      sites: Vector[SiteId], force: Int): Either[OathViolation, CampaignDefender] = {
     val current = ready.game.current
     val player = current.players.find(_.player == playerId).get
     for {
@@ -620,13 +668,13 @@ object CampaignRules {
       canonical = pawn +: current.map.inPlay.filter(site => site != pawn && sites.contains(site))
       _ <- Either.cond(sites == canonical, (),
         CampaignUnavailable("Conquest targets must use canonical map order"))
+      defender <- defenderAt(ready, pawn)
+      _ <- Either.cond(defender != CampaignDefender.Player(playerId), (),
+        CampaignUnavailable("a player cannot Conquest their own sites"))
       _ <- sites.foldLeft[Either[OathViolation, Unit]](Right(())) {
-        case (result, site) => result.flatMap(_ => current.map.sites.get(site)
-          .toRight(SiteNotInPlay(site)).flatMap(target => target.forces match {
-            case SiteForces.Occupied(ForceKind.Bandit, _) => Right(())
-            case _ => Left(CampaignUnavailable(
-              "bounded Conquest supports bandit-ruled sites only"))
-          }))
+        case (result, site) => result.flatMap(_ => defenderAt(ready, site)
+          .flatMap(actual => Either.cond(actual == defender, (),
+            CampaignUnavailable("all Conquest sites need the same defender"))))
       }
       _ <- sites.foldLeft[Either[OathViolation, Unit]](Right(())) {
         case (result, site) => result.flatMap(_ => Either.cond(
@@ -637,14 +685,36 @@ object CampaignRules {
       _ <- if (player.board.supply.supply >= Campaign.SupplyCost) Right(()) else Left(InsufficientSupply(Campaign.SupplyCost, player.board.supply.supply))
       _ <- if (force >= Campaign.MinimumForce && force <= player.board.warbands) Right(()) else Left(CampaignUnavailable("attack force must be between zero and board warbands"))
       _ <- validateSupported(catalog, ready, playerId, sites)
-    } yield ()
+      _ <- defender match {
+        case CampaignDefender.Player(player) =>
+          validateDefenderSupported(catalog, ready, player, sites.head)
+        case CampaignDefender.Bandits => Right(())
+      }
+    } yield defender
   }
 
-  private def isBanditSite(ready: ReadyGame, site: SiteId): Boolean =
-    ready.game.current.map.sites.get(site).exists(_.forces match {
-      case SiteForces.Occupied(ForceKind.Bandit, _) => true
-      case _ => false
-    })
+  private def validateDefenderSupported(catalog: ExecutableCatalog,
+      ready: ReadyGame, defender: PlayerId, target: SiteId)
+      : Either[OathViolation, Unit] = {
+    val relevant = accessibleRules(catalog, ready, defender, target)
+    relevant.headOption.toLeft(()).left.map { rule =>
+      CampaignUnavailable("player-defender battle plan or Campaign power " +
+        s"'${rule.activation.handlerId}' is not supported")
+    }
+  }
+
+  def defenderAt(ready: ReadyGame, site: SiteId)
+      : Either[OathViolation, CampaignDefender] =
+    ready.game.current.map.sites.get(site).toRight(SiteNotInPlay(site)).flatMap(
+      value => SiteRule.ruler(value.forces, ready.game.current.players)
+        .left.map(error => CampaignUnavailable(error.toString)).flatMap {
+          case SiteRuler.Bandits => Right(CampaignDefender.Bandits)
+          case SiteRuler.Player(player) => Right(CampaignDefender.Player(player))
+          case SiteRuler.Empire => Left(CampaignUnavailable(
+            "Imperial Conquest defenders are not supported"))
+          case SiteRuler.Unruled => Left(CampaignUnavailable(
+            "Conquest requires a ruled pawn site"))
+        })
 
   private[gameplay] def passAllowsTarget(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, pawn: SiteId, target: SiteId): Boolean = {

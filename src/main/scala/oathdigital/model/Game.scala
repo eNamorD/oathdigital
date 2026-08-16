@@ -119,6 +119,11 @@ final case class CampaignForceAllocation(site: SiteId, count: Int) {
 sealed trait CampaignLosingForceEffect extends Product with Serializable {
   def site: SiteId
 }
+sealed trait CampaignDefender extends Product with Serializable
+object CampaignDefender {
+  case object Bandits extends CampaignDefender
+  final case class Player(playerId: PlayerId) extends CampaignDefender
+}
 object CampaignLosingForceEffect {
   final case class Remove(site: SiteId, force: ForceKind, count: Int)
       extends CampaignLosingForceEffect {
@@ -140,6 +145,11 @@ object CampaignLosingForceEffect {
     require(replacementCount >= 0, "replacement force must be non-negative")
     require(replacementForce.nonEmpty == (replacementCount > 0),
       "replacement force and count must agree")
+  }
+  final case class ReturnToBoard(site: SiteId, player: PlayerId,
+      force: ForceKind, count: Int)
+      extends CampaignLosingForceEffect {
+    require(count > 0, "returned Campaign force must be positive")
   }
 }
 object PendingProcedure {
@@ -184,6 +194,7 @@ object PendingProcedure {
       decision: DecisionId,
       actor: PlayerId,
       targetSites: Vector[SiteId],
+      defender: CampaignDefender,
       force: Int,
       plans: Vector[CampaignPlanResolution],
       plansFinished: Boolean,

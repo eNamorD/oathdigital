@@ -269,6 +269,11 @@ object GameHttpWire {
           ujson.Obj("decisionId" -> campaign.decisionId,
             "targetSiteIds" -> ujson.Arr.from(
               campaign.targetSiteIds.map(ujson.Str(_))),
+            "defenderKind" -> campaign.defenderKind,
+            "defenderPlayerId" -> campaign.defenderPlayerId.fold[ujson.Value](
+              ujson.Null)(ujson.Str(_)),
+            "defenderForce" -> campaign.defenderForce,
+            "defenseDiceCount" -> campaign.defenseDiceCount,
             "force" -> campaign.force,
             "plansFinished" -> campaign.plansFinished,
             "planChoices" -> ujson.Arr.from(campaign.planChoices.map { choice =>

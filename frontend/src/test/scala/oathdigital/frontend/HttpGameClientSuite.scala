@@ -204,7 +204,7 @@ class HttpGameClientSuite extends FunSuite {
       Vector(BoardTargetRef.Site("site:b")))
     assertEquals(decoded.formation, Some(BoardTargetFormation(0, 3, 3, 2)))
 
-    val pending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
+    val pending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"defenderKind":"player","defenderPlayerId":"blue-exile","defenderForce":3,"defenseDiceCount":2,"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
     val pendingJson = projectionJson(sequence = 18, choices = false)
       .replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$pending")
@@ -215,7 +215,9 @@ class HttpGameClientSuite extends FunSuite {
         plansFinished = true, Vector.empty, Vector.empty,
         Vector("two-swords", "skull"), 2, 1, 2, None, Vector.empty,
         None, None, 0).copy(placementTargets =
-          Vector(CampaignPlacementTarget("site:b", "Site B")))))
+          Vector(CampaignPlacementTarget("site:b", "Site B")),
+          defenderKind = "player", defenderPlayerId = Some("blue-exile"),
+          defenderForce = 3, defenseDiceCount = 2)))
 
     val sacrifice = GameJson.encodeCommand(18,
       GameCommand.ChooseCampaignSacrifice("red-exile", "campaign-17", 1))

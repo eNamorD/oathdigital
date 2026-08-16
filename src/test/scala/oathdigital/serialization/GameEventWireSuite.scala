@@ -276,7 +276,9 @@ class GameEventWireSuite extends munit.FunSuite {
       CampaignLosingForceEffect.Relocate(SiteId("b"), SiteId("c"),
         ForceKind.Exile(LineageId("red")), 3),
       CampaignLosingForceEffect.Replace(SiteId("d"), ForceKind.Imperial, 1,
-        Some(ForceKind.Bandit), 2))
+        Some(ForceKind.Bandit), 2),
+      CampaignLosingForceEffect.ReturnToBoard(SiteId("d"), PlayerId("red"),
+        ForceKind.Exile(LineageId("red")), 1))
     val event = OathEvent.CampaignConquered(PlayerId("red"),
       DecisionId("campaign-effects"), "campaign.loss.synthetic", effects,
       Vector(CampaignForceAllocation(SiteId("a"), 0)))

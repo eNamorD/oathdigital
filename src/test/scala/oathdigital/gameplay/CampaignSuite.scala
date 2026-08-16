@@ -758,4 +758,122 @@ class CampaignSuite extends munit.FunSuite {
       player.player, id, Vector(CampaignForceAllocation(site, 1))))
       .left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
   }
+
+  test("player-defender Conquest requires one ruler and aggregates title defense") {
+    val (base, attacker, pawn) = campaignReady
+    val defender = base.game.current.players.find(_.player != attacker.player).get
+    val other = CampaignRules.legalTargets(catalog, base, attacker.player)(1)
+    val sites = Vector(pawn, other)
+    val targetStates = sites.zip(Vector(1, 2)).foldLeft(
+      base.game.current.map.sites) { case (all, (site, count)) =>
+      all.updated(site, all(site).copy(forces = SiteForces.Occupied(
+        ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
+    }
+    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+      title = OathkeeperState(Some(defender.player), TitleSide.Oathkeeper),
+      players = base.game.current.players.map {
+        case p if p.player == attacker.player =>
+          p.copy(board = p.board.copy(warbands = 4))
+        case p if p.player == defender.player =>
+          p.copy(board = p.board.copy(warbands = 10), advisers = Vector.empty,
+            relics = Vector.empty)
+        case p => p
+      }, map = base.game.current.map.copy(sites = targetStates))))
+    assertEquals(CampaignRules.validateStart(catalog, state, attacker.player,
+      sites, 4), Right(CampaignDefender.Player(defender.player)))
+    assertEquals(CampaignRules.defenderForce(state, sites), 3)
+    val started = rules.handle(Ready(state), CampaignCommand.Start(attacker.player,
+      DecisionId("campaign-player"), sites, 4)).toOption.get
+    val Ready(afterStart) = started.state: @unchecked
+    val pending = afterStart.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(pending.defender, CampaignDefender.Player(defender.player))
+    assertEquals(CampaignRules.titleDefenseDice(pending, afterStart), 1)
+    val projected = new GameProjector(catalog).project("player-defender",
+      LoadedGame(started.state, 4), attacker.player).campaign.get
+    assertEquals(projected.defenderKind -> projected.defenderPlayerId,
+      "player" -> Some(defender.player.value))
+    assertEquals(projected.defenderForce -> projected.defenseDiceCount,
+      3 -> (sites.flatMap(CampaignRules.siteDefinition(catalog, _))
+        .map(_.defense).sum + 1))
+    assertEquals(new GameProjector(catalog).project("player-defender",
+      LoadedGame(started.state, 4), defender.player).campaign, None)
+
+    val mixed = state.copy(game = state.game.copy(current =
+      state.game.current.copy(map = state.game.current.map.copy(sites =
+        state.game.current.map.sites.updated(other,
+          state.game.current.map.sites(other).copy(forces =
+            SiteForces.Occupied(ForceKind.Bandit, 2)))))))
+    assert(CampaignRules.validateStart(catalog, mixed, attacker.player,
+      sites, 4).isLeft)
+  }
+
+  test("player-defender victory kills half returns survivors and places atomically") {
+    val (base, attacker, pawn) = campaignReady
+    val defender = base.game.current.players.find(_.player != attacker.player).get
+    val other = CampaignRules.legalTargets(catalog, base, attacker.player)(1)
+    val sites = Vector(pawn, other)
+    val targetStates = sites.zip(Vector(1, 2)).foldLeft(
+      base.game.current.map.sites) { case (all, (site, count)) =>
+      all.updated(site, all(site).copy(forces = SiteForces.Occupied(
+        ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
+    }
+    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map {
+        case p if p.player == attacker.player =>
+          p.copy(board = p.board.copy(warbands = 4))
+        case p if p.player == defender.player =>
+          p.copy(board = p.board.copy(warbands = 10), advisers = Vector.empty,
+            relics = Vector.empty)
+        case p => p
+      }, map = base.game.current.map.copy(sites = targetStates))))
+    val id = DecisionId("campaign-player-resolution")
+    val lossId = DecisionId("campaign-player-attacker-loss")
+    val lossStarted = rules.handle(Ready(state), CampaignCommand.Start(
+      attacker.player, lossId, sites, 0)).toOption.get
+    val lossPlanned = rules.handle(lossStarted.state, CampaignCommand.FinishPlans(
+      attacker.player, lossId, Vector.empty)).toOption.get
+    val lossDice = sites.flatMap(site => Vector.fill(
+      catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
+    val lost = rules.handle(lossPlanned.state, CampaignCommand.Sacrifice(
+      attacker.player, lossId, 0, lossDice)).toOption.get
+    val Ready(afterLoss) = lost.state: @unchecked
+    assertEquals(sites.map(afterLoss.game.current.map.sites(_).forces),
+      sites.map(state.game.current.map.sites(_).forces))
+    assertEquals(afterLoss.game.current.players.find(_.player == defender.player)
+      .get.board.warbands, 10)
+
+    val declared = rules.handle(Ready(state), CampaignCommand.Start(
+      attacker.player, id, sites, 4)).toOption.get
+    val planned = rules.handle(declared.state, CampaignCommand.FinishPlans(
+      attacker.player, id, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
+    val defenseDice = sites.flatMap(site => Vector.fill(
+      catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
+    val won = rules.handle(planned.state, CampaignCommand.Sacrifice(
+      attacker.player, id, 0, defenseDice)).toOption.get
+    val completed = rules.handle(won.state, CampaignCommand.Place(attacker.player,
+      id, Vector(CampaignForceAllocation(pawn, 1),
+        CampaignForceAllocation(other, 1)))).toOption.get
+    val conquered = completed.events.head.asInstanceOf[CampaignConquered]
+    assertEquals(conquered.losingForces.collect {
+      case CampaignLosingForceEffect.ReturnToBoard(_, player, _, count) =>
+        player -> count
+    }, Vector(defender.player -> 2))
+    val Ready(after) = completed.state: @unchecked
+    assertEquals(after.game.current.players.find(_.player == defender.player).get
+      .board.warbands, 12)
+    assertEquals(sites.map(after.game.current.map.sites(_).forces), Vector(
+      SiteForces.Occupied(ForceKind.Exile(attacker.lineage), 1),
+      SiteForces.Occupied(ForceKind.Exile(attacker.lineage), 1)))
+    assertEquals(after.game.current.players.find(_.player == attacker.player).get
+      .board.warbands, 2)
+    assertEquals(rules.evolve(won.state, conquered).isRight, true)
+    val tampered = conquered.copy(losingForces = conquered.losingForces.map {
+      case value: CampaignLosingForceEffect.ReturnToBoard =>
+        value.copy(count = value.count + 1)
+      case other => other
+    })
+    assert(rules.evolve(won.state, tampered).left.toOption.get
+      .isInstanceOf[CampaignOutcomeMismatch])
+  }
 }

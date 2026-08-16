@@ -200,7 +200,9 @@ final case class CampaignState(decisionId: String, targetSiteIds: Vector[String]
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
-    placementTargets: Vector[CampaignPlacementTarget])
+    placementTargets: Vector[CampaignPlacementTarget],
+    defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
+    defenderForce: Int = 0, defenseDiceCount: Int = 0)
 final case class CampaignPlacementTarget(siteId: String, label: String)
 object CampaignState {
   def apply(decisionId: String, siteId: String, force: Int,
@@ -212,7 +214,7 @@ object CampaignState {
     new CampaignState(decisionId, Vector(siteId), force, plansFinished,
       planChoices, selectedPlans, attackDice, attack, skullLosses, maxSacrifice,
       sacrificed, defenseDice, defense, victorious, maxPlacement,
-      Vector(CampaignPlacementTarget(siteId, siteId)))
+      Vector(CampaignPlacementTarget(siteId, siteId)), "bandits", None, 0, 0)
 }
 final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
     playerId: Option[String], siteId: Option[String], cardId: Option[String],
@@ -980,11 +982,29 @@ object GameJson {
             _ <- Either.cond(placementTargets.map(_.siteId) == sites, (),
               GameClientFailure.DecodeFailure("$.campaign.placementTargets",
                 "placement targets must match Campaign targets in order"))
+            defenderKind <- optionalField(obj, "defenderKind").flatMap {
+              case None => Right("bandits")
+              case Some(_) => string(obj, "defenderKind", "$.campaign")
+            }
+            defenderPlayer <- optionalField(obj, "defenderPlayerId").flatMap {
+              case None => Right(None)
+              case Some(value) if value == null => Right(None)
+              case Some(_) => string(obj, "defenderPlayerId", "$.campaign").map(Some(_))
+            }
+            defenderForce <- optionalField(obj, "defenderForce").flatMap {
+              case None => Right(0)
+              case Some(_) => int(obj, "defenderForce", "$.campaign")
+            }
+            defenseDiceCount <- optionalField(obj, "defenseDiceCount").flatMap {
+              case None => Right(0)
+              case Some(_) => int(obj, "defenseDiceCount", "$.campaign")
+            }
           } yield Some(CampaignState(id, sites, force, plansFinished, planChoices,
             selectedPlans,
             attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,
-            victorious, maximumPlacement, placementTargets)) }
+            victorious, maximumPlacement, placementTargets, defenderKind,
+            defenderPlayer, defenderForce, defenseDiceCount)) }
         }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)

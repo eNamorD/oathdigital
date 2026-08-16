@@ -166,7 +166,9 @@ final case class CampaignProjection(
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
-    placementTargets: Vector[CampaignPlacementTargetProjection])
+    placementTargets: Vector[CampaignPlacementTargetProjection],
+    defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
+    defenderForce: Int = 0, defenseDiceCount: Int = 0)
 final case class CampaignPlacementTargetProjection(siteId: String, label: String)
 final case class CampaignPlanChoiceProjection(
     kind: String, sourceKey: Option[String], playerId: Option[String],
@@ -443,7 +445,16 @@ final class GameProjector(catalog: ExecutableCatalog) {
               c.defense, c.victorious,
               remaining - c.sacrificed.getOrElse(0),
               c.targetSites.map(site => CampaignPlacementTargetProjection(
-                site.value, siteNames.getOrElse(site, safeLabel(site.value)))))
+                site.value, siteNames.getOrElse(site, safeLabel(site.value)))),
+              c.defender match {
+                case CampaignDefender.Bandits => "bandits"
+                case _: CampaignDefender.Player => "player"
+              }, c.defender match {
+                case CampaignDefender.Player(player) => Some(player.value)
+                case _ => None
+              }, CampaignRules.defenderForce(value, c.targetSites),
+              c.targetSites.flatMap(CampaignRules.siteDefinition(catalog, _))
+                .map(_.defense).sum + CampaignRules.titleDefenseDice(c, value))
         }
         val oathkeeperRecipient = current.pending.collect {
           case p: PendingProcedure.OathkeeperRecipient

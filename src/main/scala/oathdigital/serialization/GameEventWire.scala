@@ -384,9 +384,14 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
-      case CampaignStarted(player, decision, sites, spent, force) => ujson.Obj(
+      case CampaignStarted(player, decision, sites, defender, spent, force) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "targetSiteIds" -> ujson.Arr.from(sites.map(site => ujson.Str(site.value))),
+        "defender" -> (defender match {
+          case CampaignDefender.Bandits => ujson.Obj("kind" -> "bandits")
+          case CampaignDefender.Player(id) => ujson.Obj(
+            "kind" -> "player", "playerId" -> id.value)
+        }),
         "supplySpent" -> spent, "force" -> force)
       case CampaignPlanChosen(player, decision, source, handler, favor, secret,
           revealed, ignoreSkulls, addedDice) => ujson.Obj(
@@ -585,9 +590,16 @@ object GameEventWire {
           force <- safeIntField(payload.obj, "force", path)
           sites <- traverse(payload("targetSiteIds").arr.toVector)(value =>
             Right(SiteId(value.str)))
+          defender <- payload("defender")("kind").str match {
+            case "bandits" => Right(CampaignDefender.Bandits)
+            case "player" => Right(CampaignDefender.Player(
+              PlayerId(payload("defender")("playerId").str)))
+            case other => Left(InvalidValue(s"$path.defender.kind",
+              s"unknown Campaign defender '$other'"))
+          }
         } yield CampaignStarted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), sites,
-          spent, force)
+          defender, spent, force)
         case CampaignPlanChosenType => for {
           source <- decodeCampaignPlanSource(payload("source"), s"$path.source")
           favor <- safeIntField(payload.obj, "favorCost", path)
@@ -944,12 +956,14 @@ object GameEventWire {
         case CampaignLosingForceEffect.Preserve(_, force, _) => force
         case CampaignLosingForceEffect.Relocate(_, _, force, _) => force
         case CampaignLosingForceEffect.Replace(_, force, _, _, _) => force
+        case CampaignLosingForceEffect.ReturnToBoard(_, _, force, _) => force
       }),
       "count" -> (effect match {
         case CampaignLosingForceEffect.Remove(_, _, count) => count
         case CampaignLosingForceEffect.Preserve(_, _, count) => count
         case CampaignLosingForceEffect.Relocate(_, _, _, count) => count
         case CampaignLosingForceEffect.Replace(_, _, count, _, _) => count
+        case CampaignLosingForceEffect.ReturnToBoard(_, _, _, count) => count
       }))
     effect match {
       case _: CampaignLosingForceEffect.Remove => base("kind") = "remove"
@@ -962,6 +976,9 @@ object GameEventWire {
         base("replacementForce") = replacement.map(encodeForceKind)
           .getOrElse(ujson.Null)
         base("replacementCount") = count
+      case CampaignLosingForceEffect.ReturnToBoard(_, player, _, _) =>
+        base("kind") = "return-to-board"
+        base("playerId") = player.value
     }
     base
   }
@@ -998,6 +1015,9 @@ object GameEventWire {
               "replacement force and count must agree"))
         } yield CampaignLosingForceEffect.Replace(site, force, count,
           replacement, replacementCount)
+        case "return-to-board" => stringField(obj, "playerId", path).map(
+          player => CampaignLosingForceEffect.ReturnToBoard(site,
+            PlayerId(player), force, count))
         case other => Left(InvalidValue(s"$path.kind",
           s"unknown losing-force effect '$other'"))
       }
