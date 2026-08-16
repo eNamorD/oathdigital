@@ -76,6 +76,11 @@ final class OathRules(catalog: ExecutableCatalog)
       }
     }
 
+  def chooseOathkeeperRecipient(state: OathState, actor: PlayerId,
+      decision: DecisionId, recipient: PlayerId) =
+    StateBasedEvaluation.chooseRecipient(
+      catalog, state, actor, decision, recipient)
+
   override def evolve(
       state: OathState,
       event: OathEvent
@@ -100,6 +105,10 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
       case event: OathkeeperChanged => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: OathkeeperRecipientChoiceStarted =>
+        StateBasedEvaluation.evolve(catalog, state, event)
+      case event: OathkeeperRecipientChosen =>
+        StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
       case setupEvent => setup.evolve(state, setupEvent)
@@ -120,6 +129,8 @@ final class OathRules(catalog: ExecutableCatalog)
         transition.copy(state = next, events = transition.events :+ event,
           continue = event match {
             case UsurperVictory(winner) => OathContinue.GameFinished(winner)
+            case OathkeeperRecipientChoiceStarted(actor, decision, _) =>
+              OathContinue.AwaitingOathkeeperRecipient(actor, decision)
             case _ => transition.continue
           })
       }

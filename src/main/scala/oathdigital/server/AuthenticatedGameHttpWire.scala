@@ -46,8 +46,10 @@ object GameIntent {
   ) extends GameIntent
   final case class PlaceCampaignForce(
       decision: DecisionId,
-      count: Int
+      allocations: Vector[CampaignForceAllocation]
   ) extends GameIntent
+  final case class ChooseOathkeeperRecipient(
+      decision: DecisionId, recipient: PlayerId) extends GameIntent
   final case class CompleteSearch(
       decision: DecisionId,
       kept: WorldCardId,
@@ -245,11 +247,31 @@ object AuthenticatedGameHttpWire {
         count <- nonNegativeInt(countValue, "$.intent.count")
       } yield GameIntent.ChooseCampaignSacrifice(DecisionId(decision), count)
       case "placeCampaignForce" => for {
-        _ <- exactFields(obj, Set("type", "decisionId", "count"), "$.intent")
+        _ <- exactFields(obj, Set("type", "decisionId", "allocations"), "$.intent")
         decision <- stringField(obj, "decisionId", "$.intent")
-        countValue <- field(obj, "count", "$.intent")
-        count <- nonNegativeInt(countValue, "$.intent.count")
-      } yield GameIntent.PlaceCampaignForce(DecisionId(decision), count)
+        values <- field(obj, "allocations", "$.intent").flatMap(
+          arrayValue(_, "$.intent.allocations"))
+        allocations <- values.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[CampaignForceAllocation]]](
+          Right(Vector.empty)) { case (result, (value, index)) =>
+            val itemPath = s"$$.intent.allocations[$index]"
+            result.flatMap(existing => objectValue(value, itemPath).flatMap { item =>
+              for {
+                _ <- exactFields(item, Set("siteId", "count"), itemPath)
+                site <- stringField(item, "siteId", itemPath)
+                countValue <- field(item, "count", itemPath)
+                count <- nonNegativeInt(countValue, s"$itemPath.count")
+              } yield existing :+ CampaignForceAllocation(SiteId(site), count)
+            })
+          }
+      } yield GameIntent.PlaceCampaignForce(DecisionId(decision), allocations)
+      case "chooseOathkeeperRecipient" => for {
+        _ <- exactFields(obj,
+          Set("type", "decisionId", "recipientPlayerId"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        recipient <- stringField(obj, "recipientPlayerId", "$.intent")
+      } yield GameIntent.ChooseOathkeeperRecipient(
+        DecisionId(decision), PlayerId(recipient))
       case "resolveCardDecision" =>
         exactFields(obj, Set("type", "decisionId", "resolution"), "$.intent")
           .flatMap { _ => for {

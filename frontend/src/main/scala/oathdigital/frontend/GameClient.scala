@@ -188,7 +188,8 @@ final case class GameProjection(
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoard] = Vector.empty,
-    oathkeeper: Option[OathkeeperStatus] = None
+    oathkeeper: Option[OathkeeperStatus] = None,
+    oathkeeperRecipient: Option[OathkeeperRecipientDecision] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -198,7 +199,9 @@ final case class CampaignState(decisionId: String, targetSiteIds: Vector[String]
     selectedPlans: Vector[CampaignPlanChoice],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
-    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
+    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
+    placementTargets: Vector[CampaignPlacementTarget])
+final case class CampaignPlacementTarget(siteId: String, label: String)
 object CampaignState {
   def apply(decisionId: String, siteId: String, force: Int,
       plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
@@ -208,7 +211,8 @@ object CampaignState {
       victorious: Option[Boolean], maxPlacement: Int): CampaignState =
     new CampaignState(decisionId, Vector(siteId), force, plansFinished,
       planChoices, selectedPlans, attackDice, attack, skullLosses, maxSacrifice,
-      sacrificed, defenseDice, defense, victorious, maxPlacement)
+      sacrificed, defenseDice, defense, victorious, maxPlacement,
+      Vector(CampaignPlacementTarget(siteId, siteId)))
 }
 final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
     playerId: Option[String], siteId: Option[String], cardId: Option[String],
@@ -216,6 +220,8 @@ final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
     mechanicalResult: String)
 final case class OathkeeperStatus(goal: String, holderPlayerId: Option[String],
     side: String, usurperLimited: Boolean, winnerPlayerId: Option[String])
+final case class OathkeeperRecipientDecision(decisionId: String,
+    actorPlayerId: String, candidatePlayerIds: Vector[String])
 
 sealed trait GameCommand
 object GameCommand {
@@ -245,7 +251,9 @@ object GameCommand {
   final case class ChooseCampaignSacrifice(playerId: String, decisionId: String,
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: String, decisionId: String,
-      count: Int) extends GameCommand
+      allocations: Vector[CampaignPlacement]) extends GameCommand
+  final case class ChooseOathkeeperRecipient(playerId: String,
+      decisionId: String, recipientPlayerId: String) extends GameCommand
   final case class Muster(playerId: String, target: EconomyTarget) extends GameCommand
   final case class Trade(playerId: String, target: EconomyTarget, resource: String)
       extends GameCommand
@@ -494,9 +502,16 @@ object GameJson {
       case GameCommand.ChooseCampaignSacrifice(player, decision, count) =>
         js.Dynamic.literal(`type` = "chooseCampaignSacrifice",
           playerId = player, decisionId = decision, count = count)
-      case GameCommand.PlaceCampaignForce(player, decision, count) =>
+      case GameCommand.PlaceCampaignForce(player, decision, allocations) =>
         js.Dynamic.literal(`type` = "placeCampaignForce",
-          playerId = player, decisionId = decision, count = count)
+          playerId = player, decisionId = decision,
+          allocations = js.Array(allocations.map(allocation =>
+            js.Dynamic.literal(siteId = allocation.siteId,
+              count = allocation.count)): _*))
+      case GameCommand.ChooseOathkeeperRecipient(player, decision, recipient) =>
+        js.Dynamic.literal(`type` = "chooseOathkeeperRecipient",
+          playerId = player, decisionId = decision,
+          recipientPlayerId = recipient)
       case GameCommand.Muster(player, target) =>
         js.Dynamic.literal(`type` = "muster", playerId = player,
           target = js.Dynamic.literal(kind = target.kind, id = target.id))
@@ -728,6 +743,23 @@ object GameJson {
             winner <- optionalString(obj, "winnerPlayerId", "$.oathkeeper")
           } yield Some(OathkeeperStatus(goal, holder, side, limited, winner)) }
         }
+        oathkeeperRecipient <- optionalField(root, "oathkeeperRecipient").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value,
+            "$.oathkeeperRecipient").flatMap { obj => for {
+              decision <- string(obj, "decisionId", "$.oathkeeperRecipient")
+              actor <- string(obj, "actorPlayerId", "$.oathkeeperRecipient")
+              candidates <- stringArray(obj, "candidatePlayerIds",
+                "$.oathkeeperRecipient")
+              _ <- Either.cond(candidates.nonEmpty &&
+                candidates.distinct.size == candidates.size, (),
+                GameClientFailure.DecodeFailure(
+                  "$.oathkeeperRecipient.candidatePlayerIds",
+                  "expected distinct recipient candidates"))
+            } yield Some(OathkeeperRecipientDecision(
+              decision, actor, candidates)) }
+        }
         resources <- optionalField(root, "activePlayerResources").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -938,11 +970,21 @@ object GameJson {
               case Some(_) => bool(obj, "victorious", "$.campaign").map(Some(_))
             }
             maximumPlacement <- int(obj, "maxPlacement", "$.campaign")
+            placementTargets <- array(obj, "placementTargets", "$.campaign")
+              .flatMap(traverse(_, "campaign.placementTargets") {
+                (target, path) => for {
+                  site <- string(target, "siteId", path)
+                  label <- string(target, "label", path)
+                } yield CampaignPlacementTarget(site, label)
+              })
+            _ <- Either.cond(placementTargets.map(_.siteId) == sites, (),
+              GameClientFailure.DecodeFailure("$.campaign.placementTargets",
+                "placement targets must match Campaign targets in order"))
           } yield Some(CampaignState(id, sites, force, plansFinished, planChoices,
             selectedPlans,
             attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,
-            victorious, maximumPlacement)) }
+            victorious, maximumPlacement, placementTargets)) }
         }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)
@@ -1004,7 +1046,8 @@ object GameJson {
         worldDeckCount,
         worldDeckTop,
         boards,
-        oathkeeper
+        oathkeeper,
+        oathkeeperRecipient
       )
     }
   }

@@ -59,7 +59,9 @@ object GameCommand {
   final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
-      count: Int) extends GameCommand
+      allocations: Vector[CampaignForceAllocation]) extends GameCommand
+  final case class ChooseOathkeeperRecipient(playerId: PlayerId,
+      decision: DecisionId, recipient: PlayerId) extends GameCommand
   /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class CompleteSearch(
       playerId: PlayerId,
@@ -400,8 +402,10 @@ final class GameApplicationService(
         case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
           count, Vector.empty))
       }
-      case GameCommand.PlaceCampaignForce(playerId, decision, count) =>
-        rules.handle(state, CampaignCommand.Place(playerId, decision, count))
+      case GameCommand.PlaceCampaignForce(playerId, decision, allocations) =>
+        rules.handle(state, CampaignCommand.Place(playerId, decision, allocations))
+      case GameCommand.ChooseOathkeeperRecipient(playerId, decision, recipient) =>
+        rules.chooseOathkeeperRecipient(state, playerId, decision, recipient)
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
         rules.handle(state, SearchCommand.Complete(

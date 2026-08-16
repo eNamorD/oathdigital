@@ -156,7 +156,9 @@ object OathEvent {
       skullLosses: Int, victorious: Boolean
   ) extends OathEvent
   final case class CampaignConquered(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId, placed: Int
+      playerId: PlayerId, decision: DecisionId,
+      losingForces: Vector[CampaignLosingForceEffect],
+      allocations: Vector[CampaignForceAllocation]
   ) extends OathEvent
   final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
   final case class RestStarted(playerId: PlayerId) extends OathEvent
@@ -170,6 +172,12 @@ object OathEvent {
       usurperLimited: Boolean
   ) extends OathEvent
   final case class OathkeeperChanged(holder: Option[PlayerId]) extends OathEvent
+  final case class OathkeeperRecipientChoiceStarted(
+      actor: PlayerId, decision: DecisionId, candidates: Vector[PlayerId])
+      extends OathEvent
+  final case class OathkeeperRecipientChosen(
+      actor: PlayerId, decision: DecisionId, recipient: PlayerId)
+      extends OathEvent
   final case class UsurperFlipped(playerId: PlayerId) extends OathEvent
   final case class UsurperVictory(playerId: PlayerId) extends OathEvent
 }
@@ -211,6 +219,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingCampaignPlacement(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingOathkeeperRecipient(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class GameFinished(winner: PlayerId) extends OathContinue
 }
 
@@ -534,7 +544,9 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("Recover requires the gameplay evolution"))
-      case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
+      case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
+          _: OathkeeperRecipientChosen | _: UsurperFlipped |
+          _: UsurperVictory =>
         Left(InvalidEventOrder("state-based checks require gameplay evolution"))
     }
 

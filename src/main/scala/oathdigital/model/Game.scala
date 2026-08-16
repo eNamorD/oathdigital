@@ -111,6 +111,20 @@ object ChronicleTask {
 sealed trait PendingProcedure extends Product with Serializable {
   def decision: DecisionId
 }
+
+final case class CampaignForceAllocation(site: SiteId, count: Int) {
+  require(count >= 0, "Campaign allocation must be non-negative")
+}
+
+sealed trait CampaignLosingForceEffect extends Product with Serializable {
+  def site: SiteId
+}
+object CampaignLosingForceEffect {
+  final case class Remove(site: SiteId, force: ForceKind, count: Int)
+      extends CampaignLosingForceEffect {
+    require(count > 0, "removed Campaign force must be positive")
+  }
+}
 object PendingProcedure {
   sealed trait CampaignPlanSource extends Product with Serializable {
     def stableKey: String
@@ -173,6 +187,12 @@ object PendingProcedure {
       rolls: Vector[Vector[DefenseDieFace]],
       supplySpent: Int,
       successful: Boolean
+  ) extends PendingProcedure
+
+  final case class OathkeeperRecipient(
+      decision: DecisionId,
+      actor: PlayerId,
+      candidates: Vector[PlayerId]
   ) extends PendingProcedure
 
   final case class Negotiation(

@@ -20,7 +20,10 @@ class GameHttpWireSuite extends munit.FunSuite {
       "source" -> ujson.Obj("kind" -> "adviser", "playerId" -> "p2",
         "cardId" -> "143")))
     val place = commandRequest(ujson.Obj("type" -> "placeCampaignForce",
-      "playerId" -> "p2", "decisionId" -> "campaign-8", "count" -> 2))
+      "playerId" -> "p2", "decisionId" -> "campaign-8",
+      "allocations" -> ujson.Arr(
+        ujson.Obj("siteId" -> "site:a", "count" -> 2),
+        ujson.Obj("siteId" -> "site:b", "count" -> 0))))
     val finish = commandRequest(ujson.Obj("type" -> "finishCampaignPlans",
       "playerId" -> "p2", "decisionId" -> "campaign-8"))
     assertEquals(GameHttpWire.decodeCommand(begin).toOption.get.command,
@@ -44,7 +47,11 @@ class GameHttpWireSuite extends munit.FunSuite {
           RelicId("R25"))))
     assertEquals(GameHttpWire.decodeCommand(place).toOption.get.command,
       GameCommand.PlaceCampaignForce(PlayerId("p2"),
-        DecisionId("campaign-8"), 2))
+        DecisionId("campaign-8"), Vector(
+          oathdigital.model.CampaignForceAllocation(
+            oathdigital.model.SiteId("site:a"), 2),
+          oathdigital.model.CampaignForceAllocation(
+            oathdigital.model.SiteId("site:b"), 0))))
     assertEquals(GameHttpWire.decodeCommand(finish).toOption.get.command,
       GameCommand.FinishCampaignPlans(PlayerId("p2"), DecisionId("campaign-8")))
   }

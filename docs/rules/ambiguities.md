@@ -27,8 +27,8 @@ These are not claimed errors in the rulebook. They are places where an implement
    tie. CR p. 16 then supplies title-specific exceptions: a current holder in
    the highest tie retains it; if the holder is displaced by multiple tied
    leaders, that holder chooses the recipient. The current bounded evaluator
-   implements the deterministic first two cases and rejects the last until a
-   Campaign-era holder-choice procedure exists. This is not a generic tie
+   implements all three cases; the last creates a durable choice visible and
+   actionable only by the displaced holder. This is not a generic tie
    resolver; legacy, Vision exhaustion, era, and other ties remain unresolved
    in their own contexts (CR pp. 16, 19, 36-37).
 8. **First game exception.** CR recommends ignoring "become Citizen" powers in the first game, wording this as a recommendation rather than a strict prohibition. Product rules need a configurable or explicit interpretation (CR p. 30; CR p. 34 uses similar guidance).

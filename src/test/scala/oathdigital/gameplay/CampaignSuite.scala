@@ -269,7 +269,8 @@ class CampaignSuite extends munit.FunSuite {
     val Ready(afterBattle) = battled.state: @unchecked
     assert(afterBattle.game.current.pending.exists(_.isInstanceOf[PendingProcedure.Campaign]))
     val conquered = rules.handle(battled.state,
-      CampaignCommand.Place(player.player, id, 1)).toOption.get
+      CampaignCommand.Place(player.player, id,
+        Vector(CampaignForceAllocation(site, 1)))).toOption.get
     val Ready(after) = conquered.state: @unchecked
     assertEquals(after.game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(player.lineage), 1))
@@ -634,7 +635,8 @@ class CampaignSuite extends munit.FunSuite {
     val won = rules.handle(started.state, CampaignCommand.Sacrifice(
       player.player, id, 0, defenseDice)).toOption.get
     val completed = rules.handle(won.state,
-      CampaignCommand.Place(player.player, id, 0)).toOption.get
+      CampaignCommand.Place(player.player, id,
+        Vector(CampaignForceAllocation(site, 0)))).toOption.get
     assert(completed.events.exists(_.isInstanceOf[BanditsRefilled]))
     val Ready(after) = completed.state: @unchecked
     assertEquals(after.game.current.map.sites(site).forces,
@@ -642,5 +644,84 @@ class CampaignSuite extends munit.FunSuite {
         catalog.sites.find(_.id == site).get.capacity))
     val refill = completed.events.collectFirst { case e: BanditsRefilled => e }.get
     assert(rules.evolve(won.state, refill.copy(sites = Vector(site -> 99))).isLeft)
+  }
+
+  test("multi-site conquest removes every losing force and allocates atomically") {
+    val (ready, player, pawn) = campaignReady
+    val other = CampaignRules.legalTargets(catalog, ready, player.player)(1)
+    val targets = Vector(pawn, other)
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      map = ready.game.current.map.copy(sites = targets.foldLeft(
+        ready.game.current.map.sites)((sites, site) => sites.updated(site,
+          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))))))))
+    val id = DecisionId("campaign-multi-resolution")
+    val started = rules.handle(Ready(state), CampaignCommand.Start(player.player,
+      id, targets, 3)).toOption.get
+    val planned = rules.handle(started.state, CampaignCommand.FinishPlans(
+      player.player, id, Vector.fill(3)(AttackDieFace.OneSword))).toOption.get
+    val defenseDice = targets.flatMap(site => Vector.fill(
+      catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
+    val won = rules.handle(planned.state, CampaignCommand.Sacrifice(player.player,
+      id, 0, defenseDice)).toOption.get
+    val zero = rules.handle(won.state, CampaignCommand.Place(player.player, id,
+      targets.map(CampaignForceAllocation(_, 0)))).toOption.get
+    assertEquals(zero.events.head.asInstanceOf[CampaignConquered]
+      .allocations.map(_.count), Vector(0, 0))
+    val allocations = Vector(CampaignForceAllocation(pawn, 1),
+      CampaignForceAllocation(other, 1))
+    val completed = rules.handle(won.state, CampaignCommand.Place(player.player,
+      id, allocations)).toOption.get
+    val conquered = completed.events.head.asInstanceOf[CampaignConquered]
+    assertEquals(conquered.allocations, allocations)
+    assertEquals(conquered.losingForces.map(_.site), targets)
+    assertEquals(conquered.losingForces.collect {
+      case CampaignLosingForceEffect.Remove(_, ForceKind.Bandit, count) => count
+    }.sum, 2)
+    val atomic = rules.evolve(won.state, conquered).toOption.get
+      .asInstanceOf[Ready].value
+    assertEquals(atomic.game.current.map.sites(pawn).forces,
+      SiteForces.Occupied(ForceKind.Exile(player.lineage), 1))
+    assertEquals(atomic.game.current.map.sites(other).forces,
+      SiteForces.Occupied(ForceKind.Exile(player.lineage), 1))
+    val boardAfter = atomic.game.current.players.find(
+      _.player == player.player).get.board.warbands
+    assertEquals(boardAfter + allocations.map(_.count).sum,
+      player.board.warbands)
+    assertEquals(boardAfter, 1)
+  }
+
+  test("multi-site placement validates canonical complete finite allocations") {
+    val (ready, player, pawn) = campaignReady
+    val other = CampaignRules.legalTargets(catalog, ready, player.player)(1)
+    val targets = Vector(pawn, other)
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      map = ready.game.current.map.copy(sites = targets.foldLeft(
+        ready.game.current.map.sites)((sites, site) => sites.updated(site,
+          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))))))))
+    val id = DecisionId("campaign-allocation-validation")
+    val started = rules.handle(Ready(state), CampaignCommand.Start(player.player,
+      id, targets, 3)).toOption.get
+    val planned = rules.handle(started.state, CampaignCommand.FinishPlans(
+      player.player, id, Vector.fill(3)(AttackDieFace.TwoSwordsSkull))).toOption.get
+    val defenseDice = targets.flatMap(site => Vector.fill(
+      catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
+    val won = rules.handle(planned.state, CampaignCommand.Sacrifice(player.player,
+      id, 0, defenseDice)).toOption.get
+    def rejects(values: Vector[CampaignForceAllocation]): Unit =
+      assert(rules.handle(won.state, CampaignCommand.Place(player.player, id,
+        values)).left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
+    rejects(Vector(CampaignForceAllocation(pawn, 0)))
+    rejects(Vector(CampaignForceAllocation(other, 0),
+      CampaignForceAllocation(pawn, 0)))
+    rejects(Vector(CampaignForceAllocation(pawn, 0),
+      CampaignForceAllocation(pawn, 0)))
+    rejects(Vector(CampaignForceAllocation(pawn, 0),
+      CampaignForceAllocation(SiteId("foreign"), 0)))
+    rejects(Vector(CampaignForceAllocation(pawn, 1),
+      CampaignForceAllocation(other, 1)))
+    val zero = rules.handle(won.state, CampaignCommand.Place(player.player, id,
+      targets.map(CampaignForceAllocation(_, 0)))).toOption.get
+    assertEquals(zero.events.count(_.isInstanceOf[CampaignConquered]), 1)
+    assertEquals(zero.events.count(_.isInstanceOf[BanditsRefilled]), 1)
   }
 }

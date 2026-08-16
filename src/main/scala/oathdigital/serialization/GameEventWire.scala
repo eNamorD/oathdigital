@@ -55,6 +55,10 @@ object GameEventWire {
   val CampaignConqueredType = "gameplay.campaign-conquered"
   val BanditsRefilledType = "gameplay.bandits-refilled"
   val OathkeeperChangedType = "gameplay.oathkeeper-changed"
+  val OathkeeperRecipientChoiceStartedType =
+    "gameplay.oathkeeper-recipient-choice-started"
+  val OathkeeperRecipientChosenType =
+    "gameplay.oathkeeper-recipient-chosen"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
 
@@ -278,6 +282,9 @@ object GameEventWire {
       case _: CampaignConquered => CampaignConqueredType
       case _: BanditsRefilled => BanditsRefilledType
       case _: OathkeeperChanged => OathkeeperChangedType
+      case _: OathkeeperRecipientChoiceStarted =>
+        OathkeeperRecipientChoiceStartedType
+      case _: OathkeeperRecipientChosen => OathkeeperRecipientChosenType
       case _: UsurperFlipped => UsurperFlippedType
       case _: UsurperVictory => UsurperVictoryType
     }
@@ -290,7 +297,8 @@ object GameEventWire {
     case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
         _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
         _: BanditsRefilled => RecoverFormatVersion
-    case _: OathkeeperChanged | _: UsurperFlipped | _: UsurperVictory =>
+    case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
+        _: OathkeeperRecipientChosen | _: UsurperFlipped | _: UsurperVictory =>
       RecoverFormatVersion
     case _ => FormatVersion
   }
@@ -402,15 +410,34 @@ object GameEventWire {
         "defenseDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeDefenseFace(d)))),
         "attack" -> attack, "defense" -> defense, "skullLosses" -> skulls,
         "victorious" -> victorious)
-      case CampaignConquered(player, decision, site, placed) => ujson.Obj(
+      case CampaignConquered(player, decision, losses, allocations) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
-        "siteId" -> site.value, "placed" -> placed)
+        "losingForces" -> ujson.Arr.from(losses.map {
+          case CampaignLosingForceEffect.Remove(site, ForceKind.Bandit, count) =>
+            ujson.Obj("kind" -> "remove-bandits", "siteId" -> site.value,
+              "count" -> count)
+          case other => throw new IllegalArgumentException(
+            s"unsupported Campaign losing-force effect $other")
+        }),
+        "allocations" -> ujson.Arr.from(allocations.map { allocation =>
+          ujson.Obj("siteId" -> allocation.site.value,
+            "count" -> allocation.count)
+        }))
       case BanditsRefilled(sites) => ujson.Obj("sites" -> ujson.Arr.from(
         sites.map { case (site, count) =>
           ujson.Obj("siteId" -> site.value, "count" -> count)
         }))
       case OathkeeperChanged(holder) => ujson.Obj(
         "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)))
+      case OathkeeperRecipientChoiceStarted(actor, decision, candidates) =>
+        ujson.Obj("actorPlayerId" -> actor.value,
+          "decisionId" -> decision.value,
+          "candidatePlayerIds" -> ujson.Arr.from(
+            candidates.map(p => ujson.Str(p.value))))
+      case OathkeeperRecipientChosen(actor, decision, recipient) =>
+        ujson.Obj("actorPlayerId" -> actor.value,
+          "decisionId" -> decision.value,
+          "recipientPlayerId" -> recipient.value)
       case UsurperFlipped(player) => ujson.Obj("playerId" -> player.value)
       case UsurperVictory(player) => ujson.Obj("playerId" -> player.value)
     }
@@ -600,9 +627,24 @@ object GameEventWire {
           DecisionId(payload("decisionId").str), sacrificed, dice, attack,
           defense, skulls, payload("victorious").bool)
         case CampaignConqueredType => for {
-          placed <- safeIntField(payload.obj, "placed", path)
+          losses <- traverse(payload("losingForces").arr.toVector) { value =>
+            val effectPath = s"$path.losingForces"
+            for {
+              _ <- Either.cond(value("kind").str == "remove-bandits", (),
+                InvalidValue(s"$effectPath.kind", "unknown losing-force effect"))
+              count <- safeIntField(value.obj, "count", effectPath)
+              _ <- Either.cond(count > 0, (), InvalidValue(
+                s"$effectPath.count", "expected a positive integer"))
+            } yield CampaignLosingForceEffect.Remove(
+              SiteId(value("siteId").str), ForceKind.Bandit, count)
+          }
+          allocations <- traverse(payload("allocations").arr.toVector) { value =>
+            val allocationPath = s"$path.allocations"
+            safeIntField(value.obj, "count", allocationPath).map(count =>
+              CampaignForceAllocation(SiteId(value("siteId").str), count))
+          }
         } yield CampaignConquered(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str), placed)
+          DecisionId(payload("decisionId").str), losses, allocations)
         case BanditsRefilledType => for {
           sites <- traverse(payload("sites").arr.toVector) { value => for {
             count <- safeIntField(value.obj, "count", s"$path.sites")
@@ -613,6 +655,17 @@ object GameEventWire {
             case ujson.Null => Right(OathkeeperChanged(None))
             case value => Right(OathkeeperChanged(Some(PlayerId(value.str))))
           }
+        case OathkeeperRecipientChoiceStartedType =>
+          Right(OathkeeperRecipientChoiceStarted(
+            PlayerId(payload("actorPlayerId").str),
+            DecisionId(payload("decisionId").str),
+            payload("candidatePlayerIds").arr.toVector.map(value =>
+              PlayerId(value.str))))
+        case OathkeeperRecipientChosenType =>
+          Right(OathkeeperRecipientChosen(
+            PlayerId(payload("actorPlayerId").str),
+            DecisionId(payload("decisionId").str),
+            PlayerId(payload("recipientPlayerId").str)))
         case UsurperFlippedType =>
           Right(UsurperFlipped(PlayerId(payload("playerId").str)))
         case UsurperVictoryType =>
@@ -642,6 +695,8 @@ object GameEventWire {
           eventType == CampaignSacrificedType || eventType == CampaignConqueredType ||
           eventType == BanditsRefilledType ||
           eventType == OathkeeperChangedType ||
+          eventType == OathkeeperRecipientChoiceStartedType ||
+          eventType == OathkeeperRecipientChosenType ||
           eventType == UsurperFlippedType || eventType == UsurperVictoryType)
         RecoverFormatVersion
       else if (eventType == MusteredType || eventType == TradedType)

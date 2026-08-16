@@ -1,5 +1,6 @@
 package oathdigital.gameplay
 
+import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.TravelCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
@@ -65,13 +66,37 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     assertEquals(StateBasedEvaluation.afterAction(Ready(retained)), Right(None))
   }
 
-  test("F7 leaves the displaced-holder choice explicit") {
+  test("F7 records and resolves a displaced-holder tie choice") {
     val players = execute(setup)._1.asInstanceOf[Ready].value.game.current.players
       .map(_.player)
     val state = prepared(Vector(Some(players(0)), Some(players(1))),
       holder = Some(players(2)))
-    assert(StateBasedEvaluation.afterAction(Ready(state)).left.toOption.get
-      .isInstanceOf[UnsupportedOathkeeperTie])
+    val started = StateBasedEvaluation.afterAction(Ready(state)).toOption.get.get
+      .asInstanceOf[OathkeeperRecipientChoiceStarted]
+    assertEquals(started.actor, players(2))
+    assertEquals(started.candidates, Vector(players(0), players(1)))
+    val pending = rules.evolve(Ready(state), started).toOption.get
+    val projector = new GameProjector(catalog)
+    assertEquals(projector.project("tie", LoadedGame(pending, 10), players(2))
+      .oathkeeperRecipient.map(_.candidatePlayerIds),
+      Some(started.candidates.map(_.value)))
+    assertEquals(projector.project("tie", LoadedGame(pending, 10), players(0))
+      .oathkeeperRecipient, None)
+    assertEquals(projector.projectPublic("tie", LoadedGame(pending, 10))
+      .oathkeeperRecipient, None)
+    assert(rules.chooseOathkeeperRecipient(pending, players(0), started.decision,
+      players(0)).left.toOption.get.isInstanceOf[WrongPlayer])
+    assert(rules.chooseOathkeeperRecipient(pending, players(2), started.decision,
+      players(2)).isLeft)
+    val chosen = rules.chooseOathkeeperRecipient(pending, players(2),
+      started.decision, players(1)).toOption.get
+    assertEquals(chosen.events,
+      Vector(OathkeeperRecipientChosen(players(2), started.decision, players(1))))
+    val Ready(after) = chosen.state: @unchecked
+    assertEquals(after.game.current.title,
+      OathkeeperState(Some(players(1)), TitleSide.Oathkeeper))
+    assertEquals(after.game.current.pending, None)
+    assertEquals(rules.evolve(pending, chosen.events.head), Right(chosen.state))
   }
 
   test("round four releases limiter and retained Usurper wins next Wake") {

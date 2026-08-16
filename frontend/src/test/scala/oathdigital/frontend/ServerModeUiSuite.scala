@@ -92,6 +92,38 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignConquest("red", "site:b", 0)))
   }
 
+  test("Campaign placement distributes locally and clears stale context") {
+    val context = BoardSelectionContext("game", "red", 9)
+    val targets = Vector(CampaignPlacementTarget("site:a", "Site A"),
+      CampaignPlacementTarget("site:b", "Site B"))
+    val campaign = CampaignState(decisionId = "campaign-9",
+      targetSiteIds = Vector("site:a", "site:b"), force = 3,
+      plansFinished = true, planChoices = Vector.empty,
+      selectedPlans = Vector.empty, attackDice = Vector.empty, attack = 3,
+      skullLosses = 0, maxSacrifice = 3, sacrificed = Some(0),
+      defenseDice = Vector.empty, defense = Some(0), victorious = Some(true),
+      maxPlacement = 3, placementTargets = targets)
+    val initial = CampaignPlacementState.reconcile(None, context,
+      Some(campaign)).get
+    assertEquals(initial.allocations,
+      Vector(CampaignPlacement("site:a", 0), CampaignPlacement("site:b", 0)))
+    val distributed = initial.increment("site:a").increment("site:a")
+      .increment("site:b").increment("site:b")
+    assertEquals(distributed.total -> distributed.remaining, 3 -> 0)
+    assertEquals(distributed.count("site:a") -> distributed.count("site:b"),
+      2 -> 1)
+    assertEquals(distributed.decrement("site:a").remaining, 1)
+    assertEquals(distributed.reset.total, 0)
+    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
+      Some(campaign)), Some(distributed))
+    assertEquals(CampaignPlacementState.reconcile(Some(distributed),
+      context.copy(sequence = 10), Some(campaign)).get.total, 0)
+    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
+      Some(campaign.copy(decisionId = "campaign-new"))).get.total, 0)
+    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
+      Some(campaign.copy(victorious = Some(false)))), None)
+  }
+
   test("site forces retain accessible labels counts and stable color classes") {
     val cases = Vector(
       SiteForces("exile", 2, "player", Some("red-exile"),

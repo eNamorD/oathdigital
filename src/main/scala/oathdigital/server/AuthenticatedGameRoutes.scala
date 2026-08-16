@@ -88,8 +88,10 @@ final class AuthenticatedGameGateway(
             actor.finishCampaignPlans(decision)
           case GameIntent.ChooseCampaignSacrifice(decision, count) =>
             actor.chooseCampaignSacrifice(decision, count)
-          case GameIntent.PlaceCampaignForce(decision, count) =>
-            actor.placeCampaignForce(decision, count)
+          case GameIntent.PlaceCampaignForce(decision, allocations) =>
+            actor.placeCampaignForce(decision, allocations)
+          case GameIntent.ChooseOathkeeperRecipient(decision, recipient) =>
+            actor.chooseOathkeeperRecipient(decision, recipient)
             case GameIntent.CompleteSearch(decision, kept, discarded, placement) =>
               actor.completeSearch(decision, kept, discarded, placement)
             case GameIntent.ResolveCardDecision(decision, resolution) =>

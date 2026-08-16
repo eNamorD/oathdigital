@@ -7,7 +7,8 @@ import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEn
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
 import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
-  UsurperVictory}
+  UsurperVictory, OathkeeperRecipientChoiceStarted,
+  OathkeeperRecipientChosen}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
@@ -29,7 +30,9 @@ class GameEventWireSuite extends munit.FunSuite {
       OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
         1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
       OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
-        SiteId("site"), 1),
+        Vector(CampaignLosingForceEffect.Remove(SiteId("site"),
+          ForceKind.Bandit, 2)),
+        Vector(CampaignForceAllocation(SiteId("site"), 1))),
       OathEvent.BanditsRefilled(Vector(SiteId("empty") -> 2)))
     val encoded = GameEventWire.encodeStream("campaign", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
@@ -323,12 +326,16 @@ class GameEventWireSuite extends munit.FunSuite {
     val events = Vector[OathEvent](
       OathkeeperChanged(Some(PlayerId("p2"))),
       UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")))
+      UsurperVictory(PlayerId("p2")),
+      OathkeeperRecipientChoiceStarted(PlayerId("p3"), DecisionId("oath-1"),
+        Vector(PlayerId("p1"), PlayerId("p2"))),
+      OathkeeperRecipientChosen(PlayerId("p3"), DecisionId("oath-1"),
+        PlayerId("p2")))
     val encoded = events.zipWithIndex.map { case (event, index) =>
       GameEventWire.encodeEvent("oath", catalogRef, 20L + index, event)
         .toOption.get
     }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(7, 7, 7))
+    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(5)(7))
     assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
       events)
     val noHolder = GameEventWire.encodeEvent("oath", catalogRef, 23L,

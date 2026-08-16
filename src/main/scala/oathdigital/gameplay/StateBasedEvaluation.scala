@@ -42,19 +42,46 @@ object StateBasedEvaluation {
       val maximum = counts.values.maxOption.getOrElse(0)
       val leaders = counts.collect { case (player, count)
           if maximum > 0 && count == maximum => player }.toSet
-      val wanted = current.title.holder match {
-        case Some(holder) if leaders(holder) => Right(Some(holder))
-        case Some(_) if leaders.size > 1 => Left(UnsupportedOathkeeperTie(
-          "a displaced Oathkeeper must choose among tied Supremacy leaders"))
-        case _ if leaders.size == 1 => Right(leaders.headOption)
-        case _ => Right(None)
-      }
-      wanted.map { holder =>
-        // Retaining the same holder also retains the physical title side.
-        // Only a holder change flips a transferred title back to Oathkeeper.
-        Option.when(current.title.holder != holder)(OathkeeperChanged(holder))
+      current.title.holder match {
+        case Some(holder) if leaders(holder) => Right(None)
+        case Some(holder) if leaders.size > 1 =>
+          val candidates = current.players.map(_.player).filter(leaders)
+          val decision = DecisionId(s"oathkeeper-recipient-${current.tracks.round}-" +
+            s"${current.turn.activePlayer.value}-${holder.value}-" +
+            candidates.map(_.value).mkString("-"))
+          Right(Some(OathkeeperRecipientChoiceStarted(
+            holder, decision, candidates)))
+        case _ if leaders.size == 1 => Right(Some(OathkeeperChanged(
+          leaders.headOption)))
+        case Some(_) => Right(Some(OathkeeperChanged(None)))
+        case None => Right(None)
       }
     }
+
+  def chooseRecipient(catalog: ExecutableCatalog, state: OathState,
+      actor: PlayerId, decision: DecisionId,
+      recipient: PlayerId): Either[OathViolation, OathTransition] = state match {
+    case Ready(ready) => ready.game.current.pending match {
+      case Some(p: PendingProcedure.OathkeeperRecipient) if p.actor != actor =>
+        Left(WrongPlayer(p.actor, actor))
+      case Some(p: PendingProcedure.OathkeeperRecipient)
+          if p.decision != decision => Left(InvalidEventOrder(
+            "Oathkeeper recipient decision does not match"))
+      case Some(p: PendingProcedure.OathkeeperRecipient)
+          if !p.candidates.contains(recipient) => Left(InvalidEventOrder(
+            "Oathkeeper recipient is not an authorized tied leader"))
+      case Some(p: PendingProcedure.OathkeeperRecipient) =>
+        val event = OathkeeperRecipientChosen(actor, decision, recipient)
+        evolve(catalog, state, event).map(next => OathTransition(next,
+          Vector(event), OathContinue.ActActionSelection(
+            ready.game.current.turn.activePlayer)))
+      case Some(_) => Left(InvalidEventOrder(
+        "another procedure is pending"))
+      case None => Left(InvalidEventOrder(
+        "no Oathkeeper recipient decision is pending"))
+    }
+    case _ => Left(GameNotStarted)
+  }
 
   def atWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).map { ready =>
@@ -89,6 +116,28 @@ object StateBasedEvaluation {
           case expected => Left(InvalidEventOrder(
             s"Oathkeeper evaluation mismatch: expected $expected, recorded $recorded"))
         }
+      case recorded: OathkeeperRecipientChoiceStarted =>
+        afterAction(state).flatMap {
+          case Some(expected: OathkeeperRecipientChoiceStarted)
+              if expected == recorded => update(state)(current => current.copy(
+                pending = Some(PendingProcedure.OathkeeperRecipient(
+                  recorded.decision, recorded.actor, recorded.candidates))))
+          case expected => Left(InvalidEventOrder(
+            s"Oathkeeper recipient decision mismatch: expected $expected, recorded $recorded"))
+        }
+      case recorded: OathkeeperRecipientChosen => state match {
+        case Ready(ready) => ready.game.current.pending match {
+          case Some(p: PendingProcedure.OathkeeperRecipient)
+              if p.actor == recorded.actor && p.decision == recorded.decision &&
+                p.candidates.contains(recorded.recipient) =>
+            update(state)(current => current.copy(
+              title = OathkeeperState(Some(recorded.recipient),
+                TitleSide.Oathkeeper), pending = None))
+          case _ => Left(InvalidEventOrder(
+            "recorded Oathkeeper recipient choice is stale or unauthorized"))
+        }
+        case _ => Left(GameNotStarted)
+      }
       case recorded: UsurperFlipped =>
         atWake(state).flatMap {
           case Some(expected: UsurperFlipped) if expected == recorded =>

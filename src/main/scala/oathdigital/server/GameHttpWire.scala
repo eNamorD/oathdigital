@@ -162,6 +162,13 @@ object GameHttpWire {
             "side" -> oath.side, "usurperLimited" -> oath.usurperLimited,
             "winnerPlayerId" -> oath.winnerPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)))
         },
+        "oathkeeperRecipient" -> projection.oathkeeperRecipient.fold[
+          ujson.Value](ujson.Null) { decision =>
+          ujson.Obj("decisionId" -> decision.decisionId,
+            "actorPlayerId" -> decision.actorPlayerId,
+            "candidatePlayerIds" -> ujson.Arr.from(
+              decision.candidatePlayerIds.map(ujson.Str(_))))
+        },
         "worldDeckCount" -> projection.worldDeckCount,
         "worldDeckTopCardKind" -> projection.worldDeckTopCardKind.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
         "activePlayerResources" -> projection.activePlayerResources.fold[
@@ -293,7 +300,10 @@ object GameHttpWire {
             "defenseDice" -> ujson.Arr.from(campaign.defenseDice.map(ujson.Str(_))),
             "defense" -> campaign.defense.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
             "victorious" -> campaign.victorious.fold[ujson.Value](ujson.Null)(ujson.Bool(_)),
-            "maxPlacement" -> campaign.maxPlacement)
+            "maxPlacement" -> campaign.maxPlacement,
+            "placementTargets" -> ujson.Arr.from(
+              campaign.placementTargets.map(target => ujson.Obj(
+                "siteId" -> target.siteId, "label" -> target.label))))
         },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
@@ -465,13 +475,35 @@ object GameHttpWire {
       } yield GameCommand.ChooseCampaignSacrifice(
         PlayerId(player), DecisionId(decision), count)
       case "placeCampaignForce" => for {
-        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "count"), path)
+        _ <- exactFields(obj,
+          Set("type", "playerId", "decisionId", "allocations"), path)
         player <- stringField(obj, "playerId", path)
         decision <- stringField(obj, "decisionId", path)
-        countValue <- field(obj, "count", path)
-        count <- nonNegativeInt(countValue, s"$path.count")
+        values <- field(obj, "allocations", path).flatMap(
+          arrayValue(_, s"$path.allocations"))
+        allocations <- values.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[CampaignForceAllocation]]](
+          Right(Vector.empty)) { case (result, (value, index)) =>
+            val itemPath = s"$path.allocations[$index]"
+            result.flatMap(existing => objectValue(value, itemPath).flatMap { item =>
+              for {
+                _ <- exactFields(item, Set("siteId", "count"), itemPath)
+                site <- stringField(item, "siteId", itemPath)
+                countValue <- field(item, "count", itemPath)
+                count <- nonNegativeInt(countValue, s"$itemPath.count")
+              } yield existing :+ CampaignForceAllocation(SiteId(site), count)
+            })
+          }
       } yield GameCommand.PlaceCampaignForce(
-        PlayerId(player), DecisionId(decision), count)
+        PlayerId(player), DecisionId(decision), allocations)
+      case "chooseOathkeeperRecipient" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId",
+          "recipientPlayerId"), path)
+        player <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+        recipient <- stringField(obj, "recipientPlayerId", path)
+      } yield GameCommand.ChooseOathkeeperRecipient(
+        PlayerId(player), DecisionId(decision), PlayerId(recipient))
       case "completeSearch" =>
         Left(HttpInputError(s"$path.type", "use resolveCardDecision"))
       case "resolveCardDecision" =>

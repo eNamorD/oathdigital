@@ -24,6 +24,7 @@ object ServerModeUi {
     var polling = Option.empty[SnapshotPollingCoordinator]
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
     var boardFormationState = Option.empty[BoardTargetFormationState]
+    var campaignPlacementState = Option.empty[CampaignPlacementState]
     var cardDecisionState = Option.empty[CardDecisionState]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
@@ -81,6 +82,10 @@ object ServerModeUi {
             boardFormationState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
             displayed.boardTargetActions)
+          campaignPlacementState = CampaignPlacementState.reconcile(
+            campaignPlacementState,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.campaign)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -103,6 +108,7 @@ object ServerModeUi {
             ) =>
           boardSelectionState = None
           boardFormationState = None
+          campaignPlacementState = None
           cardDecisionState = None
           polling.foreach(_.stop())
           projection = Some(displayed)
@@ -136,6 +142,7 @@ object ServerModeUi {
       projection = None
       boardSelectionState = None
       boardFormationState = None
+      campaignPlacementState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -157,6 +164,7 @@ object ServerModeUi {
       projection = None
       boardSelectionState = None
       boardFormationState = None
+      campaignPlacementState = None
       cardDecisionState = None
       rawEvents = Vector.empty
       rawHistorySequence = None
@@ -216,6 +224,7 @@ object ServerModeUi {
                 if coordinator.accepts(request) =>
               boardSelectionState = None
               boardFormationState = None
+              campaignPlacementState = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
                 refreshed => accept(request, refreshed, Some(stale))
@@ -571,17 +580,72 @@ object ServerModeUi {
             s"Defense dice: ${campaign.defenseDice.mkString(", ")} · " +
               s"${campaign.defense.getOrElse(0)} defense · $outcome"))
           if (campaign.victorious.contains(true)) {
+            val placement = campaignPlacementState.getOrElse(
+              CampaignPlacementState.reconcile(None,
+                BoardSelectionContext(value.gameId, selectedPlayer,
+                  value.nextSequence), Some(campaign)).get)
             panel.appendChild(text("p", "campaign-instruction",
-              "Choose warbands to place at the conquered site."))
-            (0 to campaign.maxPlacement).foreach { count =>
-              val place = button(s"Place $count", "campaign-place")
-              place.disabled = !controlsAvailable
-              place.onclick = _ => submit(GameCommand.PlaceCampaignForce(
-                selectedPlayer, campaign.decisionId, count))
-              panel.appendChild(place)
+              "Allocate surviving warbands among conquered sites."))
+            placement.targets.foreach { target =>
+              val row = element("div", "campaign-placement-row")
+              row.appendChild(text("span", "campaign-placement-site",
+                target.label))
+              val decrease = button(s"Remove one from ${target.label}",
+                "campaign-placement-decrease")
+              decrease.disabled = !controlsAvailable ||
+                placement.count(target.siteId) == 0
+              decrease.onclick = _ => {
+                campaignPlacementState = campaignPlacementState.map(
+                  _.decrement(target.siteId)); render()
+              }
+              row.appendChild(decrease)
+              row.appendChild(text("span", "campaign-placement-count",
+                placement.count(target.siteId).toString))
+              val increase = button(s"Add one to ${target.label}",
+                "campaign-placement-increase")
+              increase.disabled = !controlsAvailable || placement.remaining == 0
+              increase.onclick = _ => {
+                campaignPlacementState = campaignPlacementState.map(
+                  _.increment(target.siteId)); render()
+              }
+              row.appendChild(increase)
+              panel.appendChild(row)
             }
+            panel.appendChild(text("p", "campaign-placement-summary",
+              s"Placed: ${placement.total} · Remaining: ${placement.remaining}"))
+            val confirm = button("Confirm placement",
+              "campaign-placement-confirm")
+            confirm.disabled = !controlsAvailable
+            confirm.onclick = _ => {
+              campaignPlacementState = None
+              submit(GameCommand.PlaceCampaignForce(selectedPlayer,
+                campaign.decisionId, placement.allocations))
+            }
+            panel.appendChild(confirm)
+            val back = button("Back", "campaign-placement-back")
+            back.disabled = !controlsAvailable || placement.total == 0
+            back.onclick = _ => {
+              campaignPlacementState = campaignPlacementState.map(_.reset)
+              render()
+            }
+            panel.appendChild(back)
           }
         }
+        }
+      }
+      value.oathkeeperRecipient.filter(decision =>
+        decision.actorPlayerId == selectedPlayer).foreach { decision =>
+        panel.appendChild(text("h2", "", "Choose the Oathkeeper"))
+        panel.appendChild(text("p", "campaign-instruction",
+          "Choose which tied leader receives the Oathkeeper title."))
+        decision.candidatePlayerIds.foreach { candidate =>
+          val label = value.players.find(_.playerId == candidate)
+            .map(_.displayName).getOrElse(candidate)
+          val choose = button(label, "oathkeeper-recipient-choice")
+          choose.disabled = !controlsAvailable
+          choose.onclick = _ => submit(GameCommand.ChooseOathkeeperRecipient(
+            selectedPlayer, decision.decisionId, candidate))
+          panel.appendChild(choose)
         }
       }
       if (value.phase == "rest" && presentation.showGameplayControls) {

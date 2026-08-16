@@ -25,8 +25,32 @@ object CampaignCommand {
       attackDice: Vector[AttackDieFace]) extends CampaignCommand
   final case class Sacrifice(playerId: PlayerId, decision: DecisionId, count: Int,
       defenseDice: Vector[DefenseDieFace]) extends CampaignCommand
-  final case class Place(playerId: PlayerId, decision: DecisionId, count: Int)
+  final case class Place(playerId: PlayerId, decision: DecisionId,
+      allocations: Vector[CampaignForceAllocation])
       extends CampaignCommand
+}
+
+trait CampaignLosingForceResolver {
+  def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign)
+      : Either[OathViolation, Vector[CampaignLosingForceEffect]]
+}
+object CampaignLosingForceResolver {
+  val removeAllBandits: CampaignLosingForceResolver =
+    new CampaignLosingForceResolver {
+      def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign) =
+        campaign.targetSites.foldLeft[
+          Either[OathViolation, Vector[CampaignLosingForceEffect]]](
+          Right(Vector.empty)) { (result, siteId) => result.flatMap { effects =>
+            ready.game.current.map.sites.get(siteId).toRight(
+              SiteNotInPlay(siteId)).flatMap(_.forces match {
+                case SiteForces.Occupied(ForceKind.Bandit, count) if count > 0 =>
+                  Right(effects :+ CampaignLosingForceEffect.Remove(
+                    siteId, ForceKind.Bandit, count))
+                case other => Left(CampaignOutcomeMismatch(
+                  s"target '${siteId.value}' has unsupported losing force $other"))
+              })
+          }}
+    }
 }
 
 object Campaign {
@@ -97,10 +121,11 @@ object Campaign {
         }
       case _ => Left(GameNotStarted)
     }
-    case CampaignCommand.Place(player, decision, count) => state match {
+    case CampaignCommand.Place(player, decision, allocations) => state match {
       case Ready(ready) => validatePending(ready, player, decision, requireResolved = true)
-        .flatMap(p => transition(catalog, state, Vector(CampaignConquered(
-          player, decision, p.targetSites.head, count)), ActActionSelection(player)))
+        .flatMap(p => CampaignLosingForceResolver.removeAllBandits.resolve(ready, p)
+          .flatMap(losses => transition(catalog, state, Vector(CampaignConquered(
+            player, decision, losses, allocations)), ActActionSelection(player))))
       case _ => Left(GameNotStarted)
     }
   }
@@ -251,19 +276,39 @@ object Campaign {
       case Ready(ready) => validatePending(ready, e.playerId, e.decision,
         requireFinished = true, requireResolved = true).flatMap { c =>
         val surviving = c.force - c.skullLosses - c.sacrificed.get
-        if (e.siteId != c.targetSites.head) Left(CampaignOutcomeMismatch("conquest site does not match the mandatory target"))
-        else if (e.placed < 0 || e.placed > surviving) Left(CampaignOutcomeMismatch("placed force exceeds survivors"))
+        val allocationSites = e.allocations.map(_.site)
+        val canonicalAllocations = c.targetSites.map(site => CampaignForceAllocation(
+          site, e.allocations.find(_.site == site).map(_.count).getOrElse(0)))
+        CampaignLosingForceResolver.removeAllBandits.resolve(ready, c).flatMap {
+          expectedLosses =>
+        if (e.losingForces != expectedLosses) Left(CampaignOutcomeMismatch(
+          "recorded losing-force resolution is invalid"))
+        else if (allocationSites.distinct.size != allocationSites.size ||
+            allocationSites.exists(site => !c.targetSites.contains(site)))
+          Left(CampaignOutcomeMismatch(
+            "placement sites must be unique Campaign targets"))
+        else if (e.allocations != canonicalAllocations)
+          Left(CampaignOutcomeMismatch(
+            "placements must include every target in canonical order"))
+        else if (e.allocations.map(_.count).sum > surviving)
+          Left(CampaignOutcomeMismatch("placed force exceeds survivors"))
         else {
           val current = ready.game.current
           val player = current.players.find(_.player == e.playerId).get
-          val site = current.map.sites(c.targetSites.head)
-          val forces: SiteForces = if (e.placed == 0) SiteForces.Empty else
-            SiteForces.Occupied(ForceKind.Exile(player.lineage), e.placed)
+          val placed = e.allocations.map(_.count).sum
+          val sites = e.allocations.foldLeft(current.map.sites) {
+            case (updated, CampaignForceAllocation(siteId, count)) =>
+              val forces: SiteForces = if (count == 0) SiteForces.Empty else
+                SiteForces.Occupied(ForceKind.Exile(player.lineage), count)
+              updated.updated(siteId, updated(siteId).copy(forces = forces))
+          }
           Right(Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
             players = current.players.map(p => if (p.player != e.playerId) p else
-              p.copy(board = p.board.copy(warbands = p.board.warbands + surviving - e.placed))),
-            map = current.map.copy(sites = current.map.sites.updated(c.targetSites.head, site.copy(forces = forces))),
+              p.copy(board = p.board.copy(warbands =
+                p.board.warbands + surviving - placed))),
+            map = current.map.copy(sites = sites),
             pending = None))))
+        }
         }
       }
       case _ => Left(GameNotStarted)

@@ -3,8 +3,8 @@
 This design began as the smallest coherent first-game Campaign procedure and
 now includes authoritative multi-site target declaration for Conquest against
 bandits, with fixed unaltered Foundations and a typed boundary for relevant
-Campaign powers. Multi-site loss and placement allocation and Raid remain out
-of scope.
+Campaign powers. Multi-site loss and placement allocation are complete for
+bandit defenders; Raid remains out of scope.
 
 ## Typed rule pipeline and inventory
 
@@ -98,19 +98,32 @@ vocabulary. Before the defense roll, the actor explicitly chooses how many
 surviving force warbands to sacrifice for one attack each. Attack must strictly
 exceed defense.
 
-On victory against bandits, all defending site warbands are removed and the
-actor explicitly chooses how many surviving force warbands to place at the
-site; unplaced force returns to the board. On defeat, the attacker loses half
+On victory against bandits, all warbands at every targeted site are removed and
+the actor allocates zero or more surviving force warbands across the complete
+ordered target set. Every target appears exactly once in the submitted
+allocation, including zero allocations; the total cannot exceed the surviving
+force, and unplaced force returns to the board. The browser keeps this draft
+local, reports allocated and remaining totals, and submits one atomic command.
+On defeat, the attacker loses half
 its surviving force rounded down and returns the remainder to its board; the
 bandits remain. Supply and committed pieces are validated against the preceding
 state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
 
+Defender loss is resolved through a typed policy seam. The current policy emits
+one ordered `Remove` effect for all bandit warbands at each target. Future
+handlers may replace that policy with typed kill-count changes, relocation,
+replacement, or skipping the loss step; none of those powers is inferred or
+implemented by this slice.
+
 Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects
 tampering without rerolling. After terminal evolution, the aggregate action
 completion boundary refills every empty positive-capacity site with its printed
-Bandit force, then runs the existing bounded Supremacy evaluation.
+Bandit force once after the entire placement, then runs the existing bounded
+Supremacy evaluation once. If this displaces the current Oathkeeper into a tie,
+the former holder receives a durable, owner-authorized recipient decision;
+selection is replay-validated before normal Act controls resume.
 
 ## Boundaries
 
@@ -123,10 +136,8 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 ## Deferred work
 
-- multi-site defender-loss and conquest-placement allocation;
 - conquest against another player;
 - further optional attacker plans and all defender battle-plan selection;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;
 - Raid targets, theft/discard/burn effects, banner rules, and relocation;
-- displaced-Oathkeeper tied-recipient choice.

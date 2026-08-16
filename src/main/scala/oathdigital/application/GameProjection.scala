@@ -165,7 +165,9 @@ final case class CampaignProjection(
     selectedPlans: Vector[CampaignPlanChoiceProjection],
     attackDice: Vector[String], attack: Int, skullLosses: Int,
     maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
-    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int)
+    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
+    placementTargets: Vector[CampaignPlacementTargetProjection])
+final case class CampaignPlacementTargetProjection(siteId: String, label: String)
 final case class CampaignPlanChoiceProjection(
     kind: String, sourceKey: Option[String], playerId: Option[String],
     siteId: Option[String], cardId: Option[String], label: String,
@@ -174,6 +176,9 @@ final case class CampaignPlanChoiceProjection(
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String])
+final case class OathkeeperRecipientProjection(
+    decisionId: String, actorPlayerId: String,
+    candidatePlayerIds: Vector[String])
 final case class PlayerBoardProjection(
     playerId: String,
     warbands: Int,
@@ -214,7 +219,8 @@ final case class GameProjection(
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
-    oathkeeper: Option[OathkeeperProjection] = None
+    oathkeeper: Option[OathkeeperProjection] = None,
+    oathkeeperRecipient: Option[OathkeeperRecipientProjection] = None
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -322,9 +328,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val active = current.players.find(
           _.player == current.turn.activePlayer).get
         val site = active.pawnSite.flatMap(current.map.sites.get)
-        val controls =
-          if (current.result.nonEmpty || !requestingPlayer.contains(active.player)) Vector.empty
+        val controls = if (current.result.nonEmpty) Vector.empty
           else current.pending match {
+            case Some(p: PendingProcedure.OathkeeperRecipient)
+                if requestingPlayer.contains(p.actor) =>
+              Vector("chooseOathkeeperRecipient")
+            case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
+            case _ if !requestingPlayer.contains(active.player) => Vector.empty
             case Some(r: PendingProcedure.Recover) if !r.successful =>
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
                 Some("stopRecover")).flatten
@@ -431,7 +441,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
               c.attackDice.map(attackFaceName), c.attack, c.skullLosses,
               remaining, c.sacrificed, c.defenseDice.map(defenseFaceName),
               c.defense, c.victorious,
-              remaining - c.sacrificed.getOrElse(0))
+              remaining - c.sacrificed.getOrElse(0),
+              c.targetSites.map(site => CampaignPlacementTargetProjection(
+                site.value, siteNames.getOrElse(site, safeLabel(site.value)))))
+        }
+        val oathkeeperRecipient = current.pending.collect {
+          case p: PendingProcedure.OathkeeperRecipient
+              if requestingPlayer.contains(p.actor) =>
+            OathkeeperRecipientProjection(p.decision.value, p.actor.value,
+              p.candidates.map(_.value))
         }
         GameProjection(
           gameId,
@@ -448,6 +466,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.plansFinished => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
             case Some(_: PendingProcedure.Campaign) => "campaign-waiting"
+            case Some(_: PendingProcedure.OathkeeperRecipient)
+                if oathkeeperRecipient.nonEmpty => "oathkeeper-recipient"
+            case Some(_: PendingProcedure.OathkeeperRecipient) =>
+              "oathkeeper-recipient-waiting"
             case _ => current.turn.phase match {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
@@ -557,8 +579,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             current.title.side match {
               case TitleSide.Oathkeeper => "oathkeeper"
               case TitleSide.Usurper => "usurper"
-            }, current.tracks.usurperLimited, current.result.map(_.winner.value)))
-        )
+            }, current.tracks.usurperLimited, current.result.map(_.winner.value))),
+          oathkeeperRecipient = oathkeeperRecipient)
     }
 
   private def economyLabel(target: EconomyTargetRef): String = target match {

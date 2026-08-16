@@ -19,6 +19,22 @@ class HttpGameClientSuite extends FunSuite {
       Some("red-exile"), "usurper", usurperLimited = false,
       Some("red-exile"))))
   }
+  test("scoped Oathkeeper recipient decision decodes and encodes its choice") {
+    val json = projectionJson(sequence = 31, phase = "oathkeeper-recipient",
+      ready = true, choices = false).replace(
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null,\"oathkeeperRecipient\":{" +
+        "\"decisionId\":\"oath-31\",\"actorPlayerId\":\"red-exile\"," +
+        "\"candidatePlayerIds\":[\"blue-exile\",\"yellow-exile\"]}")
+    assertEquals(GameJson.decodeProjection(json).toOption.get.oathkeeperRecipient,
+      Some(OathkeeperRecipientDecision("oath-31", "red-exile",
+        Vector("blue-exile", "yellow-exile"))))
+    val encoded = GameJson.encodeCommand(31,
+      GameCommand.ChooseOathkeeperRecipient("red-exile", "oath-31",
+        "blue-exile"))
+    assert(encoded.contains("\"type\":\"chooseOathkeeperRecipient\""))
+    assert(encoded.contains("\"recipientPlayerId\":\"blue-exile\""))
+  }
   test("Recover commands encode decisions and private relic resolution") {
     assert(GameJson.encodeCommand(20, GameCommand.BeginRecover("red"))
       .contains("\"type\":\"beginRecover\""))
@@ -188,7 +204,7 @@ class HttpGameClientSuite extends FunSuite {
       Vector(BoardTargetRef.Site("site:b")))
     assertEquals(decoded.formation, Some(BoardTargetFormation(0, 3, 3, 2)))
 
-    val pending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
+    val pending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":true,"planChoices":[],"selectedPlans":[],"attackDice":["two-swords","skull"],"attack":2,"skullLosses":1,"maxSacrifice":2,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":0}"""
     val pendingJson = projectionJson(sequence = 18, choices = false)
       .replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$pending")
@@ -198,7 +214,8 @@ class HttpGameClientSuite extends FunSuite {
       Some(CampaignState("campaign-17", "site:b", 3,
         plansFinished = true, Vector.empty, Vector.empty,
         Vector("two-swords", "skull"), 2, 1, 2, None, Vector.empty,
-        None, None, 0)))
+        None, None, 0).copy(placementTargets =
+          Vector(CampaignPlacementTarget("site:b", "Site B")))))
 
     val sacrifice = GameJson.encodeCommand(18,
       GameCommand.ChooseCampaignSacrifice("red-exile", "campaign-17", 1))
@@ -206,11 +223,12 @@ class HttpGameClientSuite extends FunSuite {
     assert(sacrifice.contains("\"decisionId\":\"campaign-17\""))
     assert(sacrifice.contains("\"count\":1"))
     val placement = GameJson.encodeCommand(20,
-      GameCommand.PlaceCampaignForce("red-exile", "campaign-17", 0))
+      GameCommand.PlaceCampaignForce("red-exile", "campaign-17",
+        Vector(CampaignPlacement("site:a", 0))))
     assert(placement.contains("\"type\":\"placeCampaignForce\""))
     assert(placement.contains("\"count\":0"))
 
-    val planPending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"force":3,"plansFinished":false,"planChoices":[{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"selectedPlans":[],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
+    val planPending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":false,"planChoices":[{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"selectedPlans":[],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
     val planState = GameJson.decodeProjection(projectionJson(sequence = 18,
       choices = false).replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$planPending"))

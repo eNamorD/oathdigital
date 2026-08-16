@@ -97,8 +97,12 @@ final case class AuthorizedPlayer private (
     GameCommand.ChooseCampaignPlan(access.playerId, decision, source)
   def finishCampaignPlans(decision: DecisionId): GameCommand =
     GameCommand.FinishCampaignPlans(access.playerId, decision)
-  def placeCampaignForce(decision: DecisionId, count: Int): GameCommand =
-    GameCommand.PlaceCampaignForce(access.playerId, decision, count)
+  def placeCampaignForce(decision: DecisionId,
+      allocations: Vector[CampaignForceAllocation]): GameCommand =
+    GameCommand.PlaceCampaignForce(access.playerId, decision, allocations)
+  def chooseOathkeeperRecipient(decision: DecisionId,
+      recipient: PlayerId): GameCommand =
+    GameCommand.ChooseOathkeeperRecipient(access.playerId, decision, recipient)
 
   def completeSearch(decision: DecisionId, kept: WorldCardId,
       discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =

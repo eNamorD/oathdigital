@@ -9,7 +9,7 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
     val sacrifice = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignSacrifice","decisionId":"campaign-30","count":1}}"""
     val plan = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignPlan","decisionId":"campaign-30","source":{"kind":"adviser","playerId":"p2","cardId":"143"}}}"""
     val finish = """{"expectedNextSequence":32,"intent":{"type":"finishCampaignPlans","decisionId":"campaign-30"}}"""
-    val place = """{"expectedNextSequence":32,"intent":{"type":"placeCampaignForce","decisionId":"campaign-30","count":2}}"""
+    val place = """{"expectedNextSequence":32,"intent":{"type":"placeCampaignForce","decisionId":"campaign-30","allocations":[{"siteId":"site:a","count":2},{"siteId":"site:b","count":0}]}}"""
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
       GameIntent.BeginCampaignConquest(Vector(oathdigital.model.SiteId("site:a"),
         oathdigital.model.SiteId("site:b")), 3))
@@ -29,7 +29,11 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
           RelicId("R25"))))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(place).toOption.get.intent,
       GameIntent.PlaceCampaignForce(
-        oathdigital.model.DecisionId("campaign-30"), 2))
+        oathdigital.model.DecisionId("campaign-30"), Vector(
+          oathdigital.model.CampaignForceAllocation(
+            oathdigital.model.SiteId("site:a"), 2),
+          oathdigital.model.CampaignForceAllocation(
+            oathdigital.model.SiteId("site:b"), 0))))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(finish).toOption.get.intent,
       GameIntent.FinishCampaignPlans(oathdigital.model.DecisionId("campaign-30")))
     val tampered = ujson.read(sacrifice).obj
@@ -50,6 +54,19 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
       assertEquals(AuthenticatedGameHttpWire.decodeCommand(json)
         .left.toOption.get.path, "$.intent.attackDiceCount")
     }
+  }
+
+  test("authenticated Campaign placement requires exact non-negative allocations") {
+    def decode(allocations: ujson.Value) = AuthenticatedGameHttpWire.decodeCommand(
+      ujson.write(ujson.Obj("expectedNextSequence" -> 32,
+        "intent" -> ujson.Obj("type" -> "placeCampaignForce",
+          "decisionId" -> "campaign-30", "allocations" -> allocations))))
+    assert(decode(ujson.Arr(ujson.Obj("siteId" -> "site:a",
+      "count" -> -1))).isLeft)
+    assert(decode(ujson.Arr(ujson.Obj("siteId" -> "site:a"))).isLeft)
+    assert(decode(ujson.Arr(ujson.Obj("siteId" -> "site:a", "count" -> 0,
+      "extra" -> true))).isLeft)
+    assert(decode(ujson.Str("site:a")).isLeft)
   }
 
   test("authenticated Recover intents and private relic choice are actor-free") {
