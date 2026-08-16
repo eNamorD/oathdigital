@@ -11,23 +11,15 @@ No item is currently assigned.
 
 ## Next
 
-**Campaign expansion**, building on the verified single-site bandit Conquest
-slice, proceeds through independently reviewable milestones:
+**Campaign expansion** continues with player defenders and battle plans:
 
-1. **Multi-site targeting.** Keep the pawn site mandatory, add optional legal
-   sites ruled by the same defender, reuse typed multi-target selection, and
-   validate the complete target set authoritatively.
-2. **Multi-site conquest placement.** Resolve every targeted site's defeated
-   forces atomically, then allocate surviving attacker warbands among
-   conquered sites while preserving finite pieces, site rule, refill timing,
-   and the single completed-action Supremacy boundary. Model losing-force
-   resolution as a typed, replaceable step: powers may change the number
-   killed, move losing warbands elsewhere, or skip the default loss entirely.
-3. **Player defenders and battle plans.** Add player-defender procedure and
-   incrementally support remaining attacker and defender plans without
-   bypassing typed rule discovery.
-4. **Raid and displaced-holder decisions.** Add Raid outcomes and the
-   displaced-Oathkeeper tied-recipient decision as explicit pending choices.
+1. Add the player-defender Conquest baseline using the completed multi-site
+   target, loss-policy, and placement contracts.
+2. Add a defender-controlled plan stage and deterministic bandit plans before
+   attack randomness.
+3. Implement remaining attacker and defender plans in small mechanics-based
+   families without bypassing typed rule discovery.
+4. Add Raid declaration, outcomes, and ordered resolution decisions.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -53,6 +45,17 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign expansion — complete multi-site bandit Conquest.** The pawn
+  site is mandatory and any legal same-ruler sites may be selected in canonical
+  order, subject to Pass. One battle aggregates their defense and bandit force;
+  victory resolves every target atomically and distributes surviving attackers
+  through a replay-validated per-site allocation. A registered stable-ID loss
+  policy emits applied remove/preserve/relocate/replace effects, prevents
+  placement over uncleared forces, and provides the extension seam for powers
+  that modify or replace losing-force behavior. Refill and Supremacy run once
+  after complete placement; a displaced Oathkeeper chooses among tied leaders
+  through a durable owner-scoped decision.
 
 - [x] **Campaign expansion — partial-force formation UI.** Selecting the
   mandatory pawn-site target now opens a local, projection-backed formation
@@ -173,7 +176,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 261 JVM tests, 76 Scala.js tests, the Scala.js
+The combined milestone passes 268 JVM tests, 79 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

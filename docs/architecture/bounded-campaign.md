@@ -110,11 +110,16 @@ bandits remain. Supply and committed pieces are validated against the preceding
 state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
 
-Defender loss is resolved through a typed policy seam. The current policy emits
-one ordered `Remove` effect for all bandit warbands at each target. Future
-handlers may replace that policy with typed kill-count changes, relocation,
-replacement, or skipping the loss step; none of those powers is inferred or
-implemented by this slice.
+Defender loss is resolved through a registered, stable-ID policy seam. The
+current policy emits and applies one ordered `Remove` effect for all bandit
+warbands at each target. Replay resolves the recorded policy again and verifies
+its complete effect vector before applying it. The effect vocabulary also
+represents preservation, relocation, and replacement; placement cannot
+overwrite a force that the selected policy leaves at a target. These dormant
+forms provide the mechanical boundary for future powers, but no such printed
+power is inferred or activated by this slice. Player-defender and attacking
+force losses must use this same policy/result direction when those procedures
+are expanded rather than embedding another fixed “kill half” calculation.
 
 Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects

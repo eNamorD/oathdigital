@@ -1,6 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.gameplay.actions.CampaignLosingForceResolver
 import oathdigital.setup._
 import oathdigital.model._
 import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
@@ -30,6 +31,7 @@ class GameEventWireSuite extends munit.FunSuite {
       OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
         1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
       OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
+        CampaignLosingForceResolver.removeAllBandits.id,
         Vector(CampaignLosingForceEffect.Remove(SiteId("site"),
           ForceKind.Bandit, 2)),
         Vector(CampaignForceAllocation(SiteId("site"), 1))),
@@ -266,6 +268,21 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.sequence), Vector(41L, 42L))
     assertEquals(decoded.map(_.event), events)
+  }
+
+  test("Campaign losing-force policy effects round-trip without narrowing") {
+    val effects = Vector[CampaignLosingForceEffect](
+      CampaignLosingForceEffect.Preserve(SiteId("a"), ForceKind.Bandit, 2),
+      CampaignLosingForceEffect.Relocate(SiteId("b"), SiteId("c"),
+        ForceKind.Exile(LineageId("red")), 3),
+      CampaignLosingForceEffect.Replace(SiteId("d"), ForceKind.Imperial, 1,
+        Some(ForceKind.Bandit), 2))
+    val event = OathEvent.CampaignConquered(PlayerId("red"),
+      DecisionId("campaign-effects"), "campaign.loss.synthetic", effects,
+      Vector(CampaignForceAllocation(SiteId("a"), 0)))
+    val encoded = GameEventWire.encodeEvent("campaign", catalogRef, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
   }
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {

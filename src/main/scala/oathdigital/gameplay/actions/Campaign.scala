@@ -31,12 +31,14 @@ object CampaignCommand {
 }
 
 trait CampaignLosingForceResolver {
+  def id: String
   def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign)
       : Either[OathViolation, Vector[CampaignLosingForceEffect]]
 }
 object CampaignLosingForceResolver {
   val removeAllBandits: CampaignLosingForceResolver =
     new CampaignLosingForceResolver {
+      val id = "campaign.loss.remove-all-bandits"
       def resolve(ready: ReadyGame, campaign: PendingProcedure.Campaign) =
         campaign.targetSites.foldLeft[
           Either[OathViolation, Vector[CampaignLosingForceEffect]]](
@@ -51,6 +53,23 @@ object CampaignLosingForceResolver {
               })
           }}
     }
+}
+
+final case class CampaignLosingForceRegistry(
+    selected: CampaignLosingForceResolver,
+    resolvers: Vector[CampaignLosingForceResolver]
+) {
+  require(resolvers.map(_.id).distinct.size == resolvers.size,
+    "Campaign losing-force policy IDs must be unique")
+  require(resolvers.exists(_.id == selected.id),
+    "selected Campaign losing-force policy must be registered")
+  def byId(id: String): Option[CampaignLosingForceResolver] =
+    resolvers.find(_.id == id)
+}
+object CampaignLosingForceRegistry {
+  val default: CampaignLosingForceRegistry = CampaignLosingForceRegistry(
+    CampaignLosingForceResolver.removeAllBandits,
+    Vector(CampaignLosingForceResolver.removeAllBandits))
 }
 
 object Campaign {
@@ -72,6 +91,11 @@ object Campaign {
   }
 
   def handle(catalog: ExecutableCatalog, state: OathState, command: CampaignCommand)
+      : Either[OathViolation, OathTransition] =
+    handle(catalog, state, command, CampaignLosingForceRegistry.default)
+
+  private[gameplay] def handle(catalog: ExecutableCatalog, state: OathState,
+      command: CampaignCommand, losingForceRegistry: CampaignLosingForceRegistry)
       : Either[OathViolation, OathTransition] = command match {
     case CampaignCommand.Start(player, decision, sites, force) =>
       OathLifecycle.validateAct(state, player).flatMap { ready =>
@@ -123,9 +147,10 @@ object Campaign {
     }
     case CampaignCommand.Place(player, decision, allocations) => state match {
       case Ready(ready) => validatePending(ready, player, decision, requireResolved = true)
-        .flatMap(p => CampaignLosingForceResolver.removeAllBandits.resolve(ready, p)
+        .flatMap(p => losingForceRegistry.selected.resolve(ready, p)
           .flatMap(losses => transition(catalog, state, Vector(CampaignConquered(
-            player, decision, losses, allocations)), ActActionSelection(player))))
+            player, decision, losingForceRegistry.selected.id, losses,
+            allocations)), ActActionSelection(player), losingForceRegistry)))
       case _ => Left(GameNotStarted)
     }
   }
@@ -152,6 +177,11 @@ object Campaign {
   }
 
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
+      : Either[OathViolation, OathState] =
+    evolve(catalog, state, event, CampaignLosingForceRegistry.default)
+
+  private[gameplay] def evolve(catalog: ExecutableCatalog, state: OathState,
+      event: OathEvent, losingForceRegistry: CampaignLosingForceRegistry)
       : Either[OathViolation, OathState] = event match {
     case e: CampaignStarted => OathLifecycle.validateAct(state, e.playerId).flatMap { ready =>
       for {
@@ -279,7 +309,9 @@ object Campaign {
         val allocationSites = e.allocations.map(_.site)
         val canonicalAllocations = c.targetSites.map(site => CampaignForceAllocation(
           site, e.allocations.find(_.site == site).map(_.count).getOrElse(0)))
-        CampaignLosingForceResolver.removeAllBandits.resolve(ready, c).flatMap {
+        losingForceRegistry.byId(e.losingForcePolicyId).toRight(
+          CampaignOutcomeMismatch("unknown losing-force policy")).flatMap(
+          _.resolve(ready, c)).flatMap {
           expectedLosses =>
         if (e.losingForces != expectedLosses) Left(CampaignOutcomeMismatch(
           "recorded losing-force resolution is invalid"))
@@ -292,15 +324,22 @@ object Campaign {
             "placements must include every target in canonical order"))
         else if (e.allocations.map(_.count).sum > surviving)
           Left(CampaignOutcomeMismatch("placed force exceeds survivors"))
-        else {
+        else applyLosingForces(ready.game.current.map.sites,
+            e.losingForces).flatMap { resolvedSites =>
+          val blockedPlacement = e.allocations.exists(allocation =>
+            allocation.count > 0 && resolvedSites(allocation.site).forces !=
+              SiteForces.Empty)
+          if (blockedPlacement) Left(CampaignOutcomeMismatch(
+            "force can be placed only at a cleared Campaign target"))
+          else {
           val current = ready.game.current
           val player = current.players.find(_.player == e.playerId).get
           val placed = e.allocations.map(_.count).sum
-          val sites = e.allocations.foldLeft(current.map.sites) {
+          val sites = e.allocations.foldLeft(resolvedSites) {
             case (updated, CampaignForceAllocation(siteId, count)) =>
-              val forces: SiteForces = if (count == 0) SiteForces.Empty else
-                SiteForces.Occupied(ForceKind.Exile(player.lineage), count)
-              updated.updated(siteId, updated(siteId).copy(forces = forces))
+              if (count == 0) updated else updated.updated(siteId,
+                updated(siteId).copy(forces = SiteForces.Occupied(
+                  ForceKind.Exile(player.lineage), count)))
           }
           Right(Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
             players = current.players.map(p => if (p.player != e.playerId) p else
@@ -308,6 +347,7 @@ object Campaign {
                 p.board.warbands + surviving - placed))),
             map = current.map.copy(sites = sites),
             pending = None))))
+          }
         }
         }
       }
@@ -317,9 +357,51 @@ object Campaign {
   }
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
-      events: Vector[OathEvent], continue: OathContinue) =
+      events: Vector[OathEvent], continue: OathContinue,
+      losingForceRegistry: CampaignLosingForceRegistry =
+        CampaignLosingForceRegistry.default) =
     events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (s, e) => s.flatMap(evolve(catalog, _, e))).map(OathTransition(_, events, continue))
+      (s, e) => s.flatMap(evolve(catalog, _, e, losingForceRegistry)))
+      .map(OathTransition(_, events, continue))
+
+  private def applyLosingForces(initial: Map[SiteId, SiteState],
+      effects: Vector[CampaignLosingForceEffect])
+      : Either[OathViolation, Map[SiteId, SiteState]] =
+    effects.foldLeft[Either[OathViolation, Map[SiteId, SiteState]]](
+      Right(initial)) { (result, effect) => result.flatMap { sites =>
+        def source(force: ForceKind, count: Int) = sites.get(effect.site)
+          .toRight(SiteNotInPlay(effect.site)).flatMap { site =>
+            Either.cond(site.forces == SiteForces.Occupied(force, count), site,
+              CampaignOutcomeMismatch(
+                s"losing force at '${effect.site.value}' changed"))
+          }
+        effect match {
+          case CampaignLosingForceEffect.Remove(site, force, count) =>
+            source(force, count).map(value => sites.updated(site,
+              value.copy(forces = SiteForces.Empty)))
+          case CampaignLosingForceEffect.Preserve(_, force, count) =>
+            source(force, count).map(_ => sites)
+          case CampaignLosingForceEffect.Relocate(site, destination, force, count) =>
+            for {
+              from <- source(force, count)
+              to <- sites.get(destination).toRight(SiteNotInPlay(destination))
+              moved <- to.forces match {
+                case SiteForces.Empty => Right(SiteForces.Occupied(force, count))
+                case SiteForces.Occupied(existing, existingCount)
+                    if existing == force =>
+                  Right(SiteForces.Occupied(force, existingCount + count))
+                case _ => Left(CampaignOutcomeMismatch(
+                  "relocated losing force cannot join a different force"))
+              }
+            } yield sites.updated(site, from.copy(forces = SiteForces.Empty))
+              .updated(destination, to.copy(forces = moved))
+          case CampaignLosingForceEffect.Replace(site, force, count,
+              replacement, replacementCount) => source(force, count).map { value =>
+            val next = replacement.fold[SiteForces](SiteForces.Empty)(kind =>
+              SiteForces.Occupied(kind, replacementCount))
+            sites.updated(site, value.copy(forces = next))
+          }
+      }}}
 }
 
 object CampaignRules {

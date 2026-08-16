@@ -410,15 +410,10 @@ object GameEventWire {
         "defenseDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeDefenseFace(d)))),
         "attack" -> attack, "defense" -> defense, "skullLosses" -> skulls,
         "victorious" -> victorious)
-      case CampaignConquered(player, decision, losses, allocations) => ujson.Obj(
+      case CampaignConquered(player, decision, policyId, losses, allocations) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
-        "losingForces" -> ujson.Arr.from(losses.map {
-          case CampaignLosingForceEffect.Remove(site, ForceKind.Bandit, count) =>
-            ujson.Obj("kind" -> "remove-bandits", "siteId" -> site.value,
-              "count" -> count)
-          case other => throw new IllegalArgumentException(
-            s"unsupported Campaign losing-force effect $other")
-        }),
+        "losingForcePolicyId" -> policyId,
+        "losingForces" -> ujson.Arr.from(losses.map(encodeLosingForceEffect)),
         "allocations" -> ujson.Arr.from(allocations.map { allocation =>
           ujson.Obj("siteId" -> allocation.site.value,
             "count" -> allocation.count)
@@ -627,24 +622,16 @@ object GameEventWire {
           DecisionId(payload("decisionId").str), sacrificed, dice, attack,
           defense, skulls, payload("victorious").bool)
         case CampaignConqueredType => for {
-          losses <- traverse(payload("losingForces").arr.toVector) { value =>
-            val effectPath = s"$path.losingForces"
-            for {
-              _ <- Either.cond(value("kind").str == "remove-bandits", (),
-                InvalidValue(s"$effectPath.kind", "unknown losing-force effect"))
-              count <- safeIntField(value.obj, "count", effectPath)
-              _ <- Either.cond(count > 0, (), InvalidValue(
-                s"$effectPath.count", "expected a positive integer"))
-            } yield CampaignLosingForceEffect.Remove(
-              SiteId(value("siteId").str), ForceKind.Bandit, count)
-          }
+          losses <- traverse(payload("losingForces").arr.toVector)(value =>
+            decodeLosingForceEffect(value, s"$path.losingForces"))
           allocations <- traverse(payload("allocations").arr.toVector) { value =>
             val allocationPath = s"$path.allocations"
             safeIntField(value.obj, "count", allocationPath).map(count =>
               CampaignForceAllocation(SiteId(value("siteId").str), count))
           }
         } yield CampaignConquered(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), losses, allocations)
+          DecisionId(payload("decisionId").str),
+          payload("losingForcePolicyId").str, losses, allocations)
         case BanditsRefilledType => for {
           sites <- traverse(payload("sites").arr.toVector) { value => for {
             count <- safeIntField(value.obj, "count", s"$path.sites")
@@ -930,6 +917,93 @@ object GameEventWire {
 
   private def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
+
+  private def encodeForceKind(force: ForceKind): ujson.Value = force match {
+    case ForceKind.Bandit => ujson.Obj("kind" -> "bandit")
+    case ForceKind.Imperial => ujson.Obj("kind" -> "imperial")
+    case ForceKind.Exile(lineage) => ujson.Obj(
+      "kind" -> "exile", "lineageId" -> lineage.value)
+  }
+
+  private def decodeForceKind(value: ujson.Value, path: String)
+      : Either[WireError, ForceKind] = try value("kind").str match {
+    case "bandit" => Right(ForceKind.Bandit)
+    case "imperial" => Right(ForceKind.Imperial)
+    case "exile" => Right(ForceKind.Exile(LineageId(value("lineageId").str)))
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown force kind '$other'"))
+  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid force kind"))) }
+
+  private def encodeLosingForceEffect(
+      effect: CampaignLosingForceEffect): ujson.Value = {
+    val base = ujson.Obj(
+      "siteId" -> effect.site.value,
+      "force" -> encodeForceKind(effect match {
+        case CampaignLosingForceEffect.Remove(_, force, _) => force
+        case CampaignLosingForceEffect.Preserve(_, force, _) => force
+        case CampaignLosingForceEffect.Relocate(_, _, force, _) => force
+        case CampaignLosingForceEffect.Replace(_, force, _, _, _) => force
+      }),
+      "count" -> (effect match {
+        case CampaignLosingForceEffect.Remove(_, _, count) => count
+        case CampaignLosingForceEffect.Preserve(_, _, count) => count
+        case CampaignLosingForceEffect.Relocate(_, _, _, count) => count
+        case CampaignLosingForceEffect.Replace(_, _, count, _, _) => count
+      }))
+    effect match {
+      case _: CampaignLosingForceEffect.Remove => base("kind") = "remove"
+      case _: CampaignLosingForceEffect.Preserve => base("kind") = "preserve"
+      case CampaignLosingForceEffect.Relocate(_, destination, _, _) =>
+        base("kind") = "relocate"
+        base("destinationSiteId") = destination.value
+      case CampaignLosingForceEffect.Replace(_, _, _, replacement, count) =>
+        base("kind") = "replace"
+        base("replacementForce") = replacement.map(encodeForceKind)
+          .getOrElse(ujson.Null)
+        base("replacementCount") = count
+    }
+    base
+  }
+
+  private def decodeLosingForceEffect(value: ujson.Value, path: String)
+      : Either[WireError, CampaignLosingForceEffect] = try {
+    val obj = value.obj
+    for {
+      kind <- stringField(obj, "kind", path)
+      site <- stringField(obj, "siteId", path).map(SiteId(_))
+      forceValue <- requiredField(obj, "force", path)
+      force <- decodeForceKind(forceValue, s"$path.force")
+      count <- safeIntField(obj, "count", path)
+      _ <- Either.cond(count > 0, (), InvalidValue(
+        s"$path.count", "expected a positive integer"))
+      effect <- kind match {
+        case "remove" => Right(CampaignLosingForceEffect.Remove(site, force, count))
+        case "preserve" => Right(CampaignLosingForceEffect.Preserve(site, force, count))
+        case "relocate" => stringField(obj, "destinationSiteId", path).flatMap {
+          destination => Either.cond(destination != site.value,
+            CampaignLosingForceEffect.Relocate(site, SiteId(destination), force, count),
+            InvalidValue(s"$path.destinationSiteId",
+              "relocation requires a different site"))
+        }
+        case "replace" => for {
+          replacementCount <- safeIntField(obj, "replacementCount", path)
+          replacementValue <- requiredField(obj, "replacementForce", path)
+          replacement <- replacementValue match {
+            case ujson.Null => Right(None)
+            case other => decodeForceKind(other, s"$path.replacementForce").map(Some(_))
+          }
+          _ <- Either.cond(replacement.nonEmpty == (replacementCount > 0), (),
+            InvalidValue(s"$path.replacementForce",
+              "replacement force and count must agree"))
+        } yield CampaignLosingForceEffect.Replace(site, force, count,
+          replacement, replacementCount)
+        case other => Left(InvalidValue(s"$path.kind",
+          s"unknown losing-force effect '$other'"))
+      }
+    } yield effect
+  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid losing-force effect"))) }
 
   private def encodeDefenseFace(face: DefenseDieFace): String = face match {
     case DefenseDieFace.Blank => "blank"

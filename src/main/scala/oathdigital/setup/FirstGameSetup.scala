@@ -157,6 +157,7 @@ object OathEvent {
   ) extends OathEvent
   final case class CampaignConquered(
       playerId: PlayerId, decision: DecisionId,
+      losingForcePolicyId: String,
       losingForces: Vector[CampaignLosingForceEffect],
       allocations: Vector[CampaignForceAllocation]
   ) extends OathEvent

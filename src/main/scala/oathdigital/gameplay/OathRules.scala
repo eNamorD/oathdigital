@@ -2,7 +2,9 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, Economy, EconomyCommand, Recover, RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
+  CampaignLosingForceRegistry, Economy, EconomyCommand, Recover,
+  RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
@@ -11,7 +13,9 @@ import oathdigital.setup.OathState._
 import oathdigital.setup.OathViolation._
 
 /** Deterministic aggregate boundary for setup and gameplay routing. */
-final class OathRules(catalog: ExecutableCatalog)
+final class OathRules(catalog: ExecutableCatalog,
+    campaignLosingForceRegistry: CampaignLosingForceRegistry =
+      CampaignLosingForceRegistry.default)
     extends EventEvolution[OathState, OathEvent, OathViolation] {
   private val setup = new FirstGameSetupRules(catalog)
 
@@ -56,7 +60,8 @@ final class OathRules(catalog: ExecutableCatalog)
 
   def handle(state: OathState, command: CampaignCommand)
       : Either[OathViolation, OathTransition] =
-    Campaign.handle(catalog, state, command).flatMap { transition =>
+    Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
+      .flatMap { transition =>
       command match {
         case _: CampaignCommand.Place => completeAction(transition)
         case _: CampaignCommand.Sacrifice if (transition.state match {
@@ -96,11 +101,16 @@ final class OathRules(catalog: ExecutableCatalog)
       case event: RecoverRolled => Recover.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
-      case event: CampaignStarted => Campaign.evolve(catalog, state, event)
-      case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event)
-      case event: CampaignPlansFinished => Campaign.evolve(catalog, state, event)
-      case event: CampaignSacrificed => Campaign.evolve(catalog, state, event)
-      case event: CampaignConquered => Campaign.evolve(catalog, state, event)
+      case event: CampaignStarted => Campaign.evolve(catalog, state, event,
+        campaignLosingForceRegistry)
+      case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event,
+        campaignLosingForceRegistry)
+      case event: CampaignPlansFinished => Campaign.evolve(catalog, state, event,
+        campaignLosingForceRegistry)
+      case event: CampaignSacrificed => Campaign.evolve(catalog, state, event,
+        campaignLosingForceRegistry)
+      case event: CampaignConquered => Campaign.evolve(catalog, state, event,
+        campaignLosingForceRegistry)
       case event: RestStarted => Rest.evolve(catalog, state, event)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)

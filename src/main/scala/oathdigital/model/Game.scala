@@ -124,6 +124,23 @@ object CampaignLosingForceEffect {
       extends CampaignLosingForceEffect {
     require(count > 0, "removed Campaign force must be positive")
   }
+  final case class Preserve(site: SiteId, force: ForceKind, count: Int)
+      extends CampaignLosingForceEffect {
+    require(count > 0, "preserved Campaign force must be positive")
+  }
+  final case class Relocate(site: SiteId, destination: SiteId,
+      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
+    require(site != destination, "Campaign relocation needs a different site")
+    require(count > 0, "relocated Campaign force must be positive")
+  }
+  final case class Replace(site: SiteId, force: ForceKind, count: Int,
+      replacementForce: Option[ForceKind], replacementCount: Int)
+      extends CampaignLosingForceEffect {
+    require(count > 0, "replaced Campaign force must be positive")
+    require(replacementCount >= 0, "replacement force must be non-negative")
+    require(replacementForce.nonEmpty == (replacementCount > 0),
+      "replacement force and count must agree")
+  }
 }
 object PendingProcedure {
   sealed trait CampaignPlanSource extends Product with Serializable {

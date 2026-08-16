@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.application.{BoardTargetRefProjection, GameProjector, LoadedGame}
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignLosingForceRegistry,
+  CampaignLosingForceResolver, CampaignRules}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupFixture._
@@ -723,5 +724,38 @@ class CampaignSuite extends munit.FunSuite {
       targets.map(CampaignForceAllocation(_, 0)))).toOption.get
     assertEquals(zero.events.count(_.isInstanceOf[CampaignConquered]), 1)
     assertEquals(zero.events.count(_.isInstanceOf[BanditsRefilled]), 1)
+  }
+
+  test("typed losing-force policy controls evolution and blocks occupied placement") {
+    val (ready, player, site) = campaignReady
+    val id = DecisionId("campaign-preserved-loser")
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.TwoSwordsSkull))
+    val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
+      DefenseDieFace.Blank)
+    val won = rules.handle(started.state, CampaignCommand.Sacrifice(
+      player.player, id, 0, defenseDice)).toOption.get
+    val preserve = new CampaignLosingForceResolver {
+      val id = "campaign.loss.test-preserve"
+      def resolve(state: ReadyGame, campaign: PendingProcedure.Campaign) =
+        Right(campaign.targetSites.map(target => {
+          val SiteForces.Occupied(force, count) =
+            state.game.current.map.sites(target).forces: @unchecked
+          CampaignLosingForceEffect.Preserve(target, force, count)
+        }))
+    }
+    val registry = CampaignLosingForceRegistry(preserve, Vector(preserve))
+    val alternateRules = new OathRules(catalog, registry)
+    val zero = alternateRules.handle(won.state, CampaignCommand.Place(
+      player.player, id, Vector(CampaignForceAllocation(site, 0))))
+      .toOption.get
+    val event = zero.events.head.asInstanceOf[CampaignConquered]
+    assertEquals(event.losingForcePolicyId, preserve.id)
+    val Ready(after) = zero.state: @unchecked
+    assertEquals(after.game.current.map.sites(site).forces,
+      ready.game.current.map.sites(site).forces)
+    assert(alternateRules.handle(won.state, CampaignCommand.Place(
+      player.player, id, Vector(CampaignForceAllocation(site, 1))))
+      .left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
   }
 }
