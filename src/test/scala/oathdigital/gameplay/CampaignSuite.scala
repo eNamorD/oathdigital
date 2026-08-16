@@ -307,10 +307,21 @@ class CampaignSuite extends munit.FunSuite {
       .isInstanceOf[CampaignOutcomeMismatch])
     val defeated = rules.handle(started.state, CampaignCommand.Sacrifice(
       player.player, id, 0, defenseDice)).toOption.get
+    val event = defeated.events.head.asInstanceOf[CampaignSacrificed]
+    assertEquals(event.losingForcePolicyId,
+      Some(CampaignLosingForceResolver.default.id))
+    assertEquals(event.losingForces.collect {
+      case CampaignLosingForceEffect.KillCommitted(_, _, _, count) => count
+    }, Vector(1))
     val Ready(after) = defeated.state: @unchecked
     assertEquals(after.game.current.pending, None)
     assertEquals(after.game.current.players.find(_.player == player.player).get
       .board.warbands, player.board.warbands - 1)
+    assert(rules.evolve(started.state, event.copy(losingForces =
+      event.losingForces.collect {
+        case value: CampaignLosingForceEffect.ReturnToBoard =>
+          value.copy(count = value.count + 1)
+      })).isLeft)
   }
 
   test("relevant facedown adviser fails explicitly") {
@@ -759,7 +770,40 @@ class CampaignSuite extends munit.FunSuite {
       .left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
   }
 
-  test("player-defender Conquest requires one ruler and aggregates title defense") {
+  test("alternate attacker-loss policy can preserve the complete committed force") {
+    val (ready, player, site) = campaignReady
+    val id = DecisionId("campaign-preserve-attacker")
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.HollowSword))
+    val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
+      DefenseDieFace.TwoShields)
+    val preserve = new CampaignLosingForceResolver {
+      val id = "campaign.loss.test-preserve-attacker"
+      def resolve(state: ReadyGame, campaign: PendingProcedure.Campaign) =
+        CampaignLosingForceResolver.default.resolve(state, campaign)
+      override def resolveAttackerDefeat(state: ReadyGame,
+          campaign: PendingProcedure.Campaign, surviving: Int) = {
+        val owner = state.game.current.players.find(
+          _.player == campaign.actor).get
+        Right(Vector(CampaignLosingForceEffect.PreserveCommitted(
+          campaign.targetSites.head, campaign.actor,
+          ForceKind.Exile(owner.lineage), surviving)))
+      }
+    }
+    val alternate = new OathRules(catalog,
+      CampaignLosingForceRegistry(preserve, Vector(preserve)))
+    val defeated = alternate.handle(started.state, CampaignCommand.Sacrifice(
+      player.player, id, 0, defenseDice)).toOption.get
+    val event = defeated.events.head.asInstanceOf[CampaignSacrificed]
+    assertEquals(event.losingForcePolicyId, Some(preserve.id))
+    val Ready(after) = defeated.state: @unchecked
+    assertEquals(after.game.current.players.find(_.player == player.player).get
+      .board.warbands, player.board.warbands)
+    assertEquals(alternate.evolve(started.state, event), Right(defeated.state))
+    assert(rules.evolve(started.state, event).isLeft)
+  }
+
+  test("player-defender Conquest aggregates force and blocks title battle plans") {
     val (base, attacker, pawn) = campaignReady
     val defender = base.game.current.players.find(_.player != attacker.player).get
     val other = CampaignRules.legalTargets(catalog, base, attacker.player)(1)
@@ -770,7 +814,7 @@ class CampaignSuite extends munit.FunSuite {
         ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
     }
     val state = base.copy(game = base.game.copy(current = base.game.current.copy(
-      title = OathkeeperState(Some(defender.player), TitleSide.Oathkeeper),
+      title = OathkeeperState(None, TitleSide.Oathkeeper),
       players = base.game.current.players.map {
         case p if p.player == attacker.player =>
           p.copy(board = p.board.copy(warbands = 4))
@@ -788,16 +832,24 @@ class CampaignSuite extends munit.FunSuite {
     val pending = afterStart.game.current.pending.get
       .asInstanceOf[PendingProcedure.Campaign]
     assertEquals(pending.defender, CampaignDefender.Player(defender.player))
-    assertEquals(CampaignRules.titleDefenseDice(pending, afterStart), 1)
     val projected = new GameProjector(catalog).project("player-defender",
       LoadedGame(started.state, 4), attacker.player).campaign.get
     assertEquals(projected.defenderKind -> projected.defenderPlayerId,
       "player" -> Some(defender.player.value))
     assertEquals(projected.defenderForce -> projected.defenseDiceCount,
       3 -> (sites.flatMap(CampaignRules.siteDefinition(catalog, _))
-        .map(_.defense).sum + 1))
+        .map(_.defense).sum))
     assertEquals(new GameProjector(catalog).project("player-defender",
       LoadedGame(started.state, 4), defender.player).campaign, None)
+    Vector(TitleSide.Oathkeeper, TitleSide.Usurper).foreach { side =>
+      val titled = state.copy(game = state.game.copy(current =
+        state.game.current.copy(title = OathkeeperState(
+          Some(defender.player), side))))
+      val violation = CampaignRules.validateStart(catalog, titled,
+        attacker.player, sites, 4).left.toOption.get
+      assert(violation.isInstanceOf[CampaignUnavailable])
+      assert(violation.toString.contains("title defender battle plan"))
+    }
 
     val mixed = state.copy(game = state.game.copy(current =
       state.game.current.copy(map = state.game.current.map.copy(sites =

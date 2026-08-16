@@ -151,6 +151,18 @@ object CampaignLosingForceEffect {
       extends CampaignLosingForceEffect {
     require(count > 0, "returned Campaign force must be positive")
   }
+  final case class KillCommitted(site: SiteId, player: PlayerId,
+      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
+    require(count > 0, "killed committed Campaign force must be positive")
+  }
+  final case class RelocateCommitted(site: SiteId, player: PlayerId,
+      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
+    require(count > 0, "relocated committed Campaign force must be positive")
+  }
+  final case class PreserveCommitted(site: SiteId, player: PlayerId,
+      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
+    require(count > 0, "preserved committed Campaign force must be positive")
+  }
 }
 object PendingProcedure {
   sealed trait CampaignPlanSource extends Product with Serializable {

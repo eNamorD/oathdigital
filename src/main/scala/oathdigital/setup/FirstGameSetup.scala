@@ -155,7 +155,9 @@ object OathEvent {
   final case class CampaignSacrificed(
       playerId: PlayerId, decision: DecisionId, sacrificed: Int,
       defenseDice: Vector[DefenseDieFace], attack: Int, defense: Int,
-      skullLosses: Int, victorious: Boolean
+      skullLosses: Int, victorious: Boolean,
+      losingForcePolicyId: Option[String] = None,
+      losingForces: Vector[CampaignLosingForceEffect] = Vector.empty
   ) extends OathEvent
   final case class CampaignConquered(
       playerId: PlayerId, decision: DecisionId,

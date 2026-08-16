@@ -91,8 +91,10 @@ die retains its swords. Without Outriders, skull dice beyond the physical force
 cannot kill a warband and contribute no swords.
 
 Defender dice equal the sum of the targeted sites' printed defense; bandit or
-player forces at all targets likewise contribute to defense. A player defender
-holding the Oathkeeper/Usurper title adds its mandatory defense die. Attack faces record hollow
+player forces at all targets likewise contribute to defense. The title is an
+optional defender battle plan (Oathkeeper adds one die; Usurper adds two), so a
+titled player defender currently blocks until defender-plan choices exist.
+Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
 pair. A skull removes one force warband, and its two swords count only when that
 loss can be paid. Defense faces use the existing blank/shield/doubler
@@ -106,8 +108,8 @@ ordered target set. Every target appears exactly once in the submitted
 allocation, including zero allocations; the total cannot exceed the surviving
 force, and unplaced force returns to the board. The browser keeps this draft
 local, reports allocated and remaining totals, and submits one atomic command.
-On defeat, the attacker loses half
-its surviving force rounded down and returns the remainder to its board; the
+On defeat, the default registered policy kills half the attacker's surviving
+force rounded down and returns the remainder to its board; the
 bandits remain. Supply and committed pieces are validated against the preceding
 state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
@@ -122,6 +124,12 @@ represents preservation, relocation, and replacement; placement cannot
 overwrite a force that the selected policy leaves at a target. These dormant
 forms provide the mechanical boundary for future powers, but no such printed
 power is inferred or activated by this slice.
+
+Attacker defeat uses the same stable-ID policy/result path. Its committed-force
+effects explicitly record killed, returned, preserved, or site-relocated pieces;
+replay resolves the selected policy and validates complete disposition before
+changing the board. Thus alternate loss rules do not require rewriting the
+terminal Campaign evolution.
 
 The mandatory pawn-site ruler is the typed Campaign defender. Every optional
 site must have that same ruler. Relevant powers across a player defender's

@@ -454,7 +454,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 case _ => None
               }, CampaignRules.defenderForce(value, c.targetSites),
               c.targetSites.flatMap(CampaignRules.siteDefinition(catalog, _))
-                .map(_.defense).sum + CampaignRules.titleDefenseDice(c, value))
+                .map(_.defense).sum)
         }
         val oathkeeperRecipient = current.pending.collect {
           case p: PendingProcedure.OathkeeperRecipient

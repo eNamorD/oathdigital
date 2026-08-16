@@ -409,12 +409,14 @@ object GameEventWire {
         "attackDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeAttackFace(d)))),
         "attack" -> attack, "skullLosses" -> skulls)
       case CampaignSacrificed(player, decision, sacrificed, dice, attack,
-          defense, skulls, victorious) => ujson.Obj(
+          defense, skulls, victorious, policyId, losses) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "sacrificed" -> sacrificed,
         "defenseDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeDefenseFace(d)))),
         "attack" -> attack, "defense" -> defense, "skullLosses" -> skulls,
-        "victorious" -> victorious)
+        "victorious" -> victorious,
+        "losingForcePolicyId" -> policyId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+        "losingForces" -> ujson.Arr.from(losses.map(encodeLosingForceEffect)))
       case CampaignConquered(player, decision, policyId, losses, allocations) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "losingForcePolicyId" -> policyId,
@@ -630,9 +632,15 @@ object GameEventWire {
           skulls <- safeIntField(payload.obj, "skullLosses", path)
           dice <- traverse(payload("defenseDice").arr.toVector)(v =>
             decodeDefenseFace(v.str, s"$path.defenseDice"))
+          policyId = payload("losingForcePolicyId") match {
+            case ujson.Null => None
+            case value => Some(value.str)
+          }
+          losses <- traverse(payload("losingForces").arr.toVector)(value =>
+            decodeLosingForceEffect(value, s"$path.losingForces"))
         } yield CampaignSacrificed(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), sacrificed, dice, attack,
-          defense, skulls, payload("victorious").bool)
+          defense, skulls, payload("victorious").bool, policyId, losses)
         case CampaignConqueredType => for {
           losses <- traverse(payload("losingForces").arr.toVector)(value =>
             decodeLosingForceEffect(value, s"$path.losingForces"))
@@ -957,6 +965,9 @@ object GameEventWire {
         case CampaignLosingForceEffect.Relocate(_, _, force, _) => force
         case CampaignLosingForceEffect.Replace(_, force, _, _, _) => force
         case CampaignLosingForceEffect.ReturnToBoard(_, _, force, _) => force
+        case CampaignLosingForceEffect.KillCommitted(_, _, force, _) => force
+        case CampaignLosingForceEffect.RelocateCommitted(_, _, force, _) => force
+        case CampaignLosingForceEffect.PreserveCommitted(_, _, force, _) => force
       }),
       "count" -> (effect match {
         case CampaignLosingForceEffect.Remove(_, _, count) => count
@@ -964,6 +975,9 @@ object GameEventWire {
         case CampaignLosingForceEffect.Relocate(_, _, _, count) => count
         case CampaignLosingForceEffect.Replace(_, _, count, _, _) => count
         case CampaignLosingForceEffect.ReturnToBoard(_, _, _, count) => count
+        case CampaignLosingForceEffect.KillCommitted(_, _, _, count) => count
+        case CampaignLosingForceEffect.RelocateCommitted(_, _, _, count) => count
+        case CampaignLosingForceEffect.PreserveCommitted(_, _, _, count) => count
       }))
     effect match {
       case _: CampaignLosingForceEffect.Remove => base("kind") = "remove"
@@ -978,6 +992,15 @@ object GameEventWire {
         base("replacementCount") = count
       case CampaignLosingForceEffect.ReturnToBoard(_, player, _, _) =>
         base("kind") = "return-to-board"
+        base("playerId") = player.value
+      case CampaignLosingForceEffect.KillCommitted(_, player, _, _) =>
+        base("kind") = "kill-committed"
+        base("playerId") = player.value
+      case CampaignLosingForceEffect.RelocateCommitted(_, player, _, _) =>
+        base("kind") = "relocate-committed"
+        base("playerId") = player.value
+      case CampaignLosingForceEffect.PreserveCommitted(_, player, _, _) =>
+        base("kind") = "preserve-committed"
         base("playerId") = player.value
     }
     base
@@ -1017,6 +1040,15 @@ object GameEventWire {
           replacement, replacementCount)
         case "return-to-board" => stringField(obj, "playerId", path).map(
           player => CampaignLosingForceEffect.ReturnToBoard(site,
+            PlayerId(player), force, count))
+        case "kill-committed" => stringField(obj, "playerId", path).map(
+          player => CampaignLosingForceEffect.KillCommitted(site,
+            PlayerId(player), force, count))
+        case "relocate-committed" => stringField(obj, "playerId", path).map(
+          player => CampaignLosingForceEffect.RelocateCommitted(site,
+            PlayerId(player), force, count))
+        case "preserve-committed" => stringField(obj, "playerId", path).map(
+          player => CampaignLosingForceEffect.PreserveCommitted(site,
             PlayerId(player), force, count))
         case other => Left(InvalidValue(s"$path.kind",
           s"unknown losing-force effect '$other'"))

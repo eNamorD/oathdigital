@@ -393,8 +393,7 @@ final class GameApplicationService(
         case OathState.Ready(ready) => ready.game.current.pending match {
           case Some(c: PendingProcedure.Campaign) =>
             val defenseCount = c.targetSites.flatMap(
-              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
-              CampaignRules.titleDefenseDice(c, ready)
+              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum
             rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
               campaignDicePort.rollDefense(defenseCount)))
           case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
