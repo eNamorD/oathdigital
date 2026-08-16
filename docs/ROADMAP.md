@@ -7,7 +7,11 @@ been reviewed.
 
 ## Now
 
-No item is currently assigned.
+**Campaign expansion — player-defender Conquest baseline** is active. Extend
+the completed multi-site procedure from Bandits to an Exile defender while
+retaining authoritative target, force, loss-policy, placement, replay, and
+viewer-scoped decision boundaries. Defender battle plans remain the following
+milestone.
 
 ## Next
 
