@@ -69,7 +69,9 @@ The current effect vocabulary covers attack/defense pool additions, source
 reveal, and ignored attack skulls. Typed extension forms reserve explicit
 boundaries for result transforms, losing-force policy replacement, and a
 suspended decision. These forms are not interpreted scripts: a registered
-handler and a window-specific reducer must still implement each behavior.
+handler and a window-specific executor must still implement each behavior;
+until then, selecting or replaying one rejects explicitly rather than silently
+dropping the effect.
 
 Player-defender decisions are authorized to the defender independently of the
 active turn. Bandits have no UI: a stable policy uses every applicable

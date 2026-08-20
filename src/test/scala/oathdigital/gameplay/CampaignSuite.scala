@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.application.{BoardTargetRefProjection, GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignLosingForceRegistry,
-  CampaignLosingForceResolver, CampaignRules}
+  CampaignLosingForceResolver, CampaignPlanEffects, CampaignRules}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupFixture._
@@ -53,6 +53,15 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(CampaignRules.attackResult(
       Vector.fill(6)(AttackDieFace.TwoSwordsSkull), force = 2,
       ignoreSkulls = true), 12 -> 0)
+  }
+
+  test("unimplemented Campaign plan extension effects fail explicitly") {
+    val effects = Vector[PendingProcedure.CampaignPlanEffect](
+      PendingProcedure.CampaignPlanEffect.TransformAttackResult("future-transform"),
+      PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy("future-policy"),
+      PendingProcedure.CampaignPlanEffect.Suspend("future-choice"))
+    effects.foreach(effect => assert(
+      CampaignPlanEffects.validateExecutable(Vector(effect)).isLeft, effect.toString))
   }
 
   test("legality and projection agree on mandatory bandit origin") {
@@ -922,6 +931,8 @@ class CampaignSuite extends munit.FunSuite {
       val Ready(afterTitle) = resolved.state: @unchecked
       assertEquals(CampaignRules.defensePlanDice(afterTitle.game.current.pending.get
         .asInstanceOf[PendingProcedure.Campaign]), bonus)
+      assertEquals(new GameProjector(catalog).project("titled-defender",
+        LoadedGame(resolved.state, 6), defender.player).campaign, None)
     }
 
     val outriders = catalog.denizens.find(

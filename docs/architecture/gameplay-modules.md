@@ -75,7 +75,9 @@ groups small powers. Generic options carry stable source and handler identity,
 decision ownership, typed costs, and typed effects. The Campaign-specific
 effect vocabulary supports pool changes, reveals and skull handling, with typed
 extension points for result transforms, loss-policy replacement, and suspended
-decisions; it is not a universal card scripting language.
+decisions. Reserved extensions reject until a matching executor is registered;
+they are not silently ignored and do not form a universal card scripting
+language.
 
 Projection renders these server-authored options, and replay re-resolves the
 registered handler before comparing source, side, ordering, costs, reveals and

@@ -42,6 +42,22 @@ trait CampaignPlanHandler {
 }
 
 object CampaignPlanEffects {
+  /** Extension effects are part of the durable vocabulary so later handlers can
+    * model them without changing the event shape. Until an executor is wired
+    * into Campaign, reject them explicitly instead of silently ignoring them.
+    */
+  def validateExecutable(effects: Vector[CampaignPlanEffect])
+      : Either[OathViolation, Unit] = effects.collectFirst {
+    case CampaignPlanEffect.TransformAttackResult(id) =>
+      s"attack-result transform '$id'"
+    case CampaignPlanEffect.ReplaceLosingForcePolicy(id) =>
+      s"losing-force policy '$id'"
+    case CampaignPlanEffect.Suspend(kind) =>
+      s"suspended decision '$kind'"
+  }.fold[Either[OathViolation, Unit]](Right(()))(effect =>
+    Left(CampaignPlanUnavailable(
+      s"Campaign plan effect $effect has no registered executor")))
+
   def attackDice(effects: Vector[CampaignPlanEffect]): Int = effects.collect {
     case CampaignPlanEffect.AddAttackDice(count) => count
   }.sum
@@ -110,13 +126,15 @@ object CampaignPlanRegistry {
       activations: Vector[RuleActivation]): Either[OathViolation, CampaignPlanResolution] =
     options(context, activations).find(_.source == selected).toRight(
       CampaignPlanUnavailable(s"Campaign plan source '${selected.stableKey}' is stale, inaccessible, or unsupported"))
-      .map(o => CampaignPlanResolution(o.source, o.handlerId, o.side, o.costs, o.effects))
+      .flatMap(o => CampaignPlanEffects.validateExecutable(o.effects).map(_ =>
+        CampaignPlanResolution(o.source, o.handlerId, o.side, o.costs, o.effects)))
 
   def validate(context: CampaignPlanContext,
       resolution: CampaignPlanResolution): Either[OathViolation, Unit] =
     byId.get(resolution.handlerId).toRight(CampaignOutcomeMismatch(
       s"unknown Campaign plan handler '${resolution.handlerId}'"))
       .flatMap(_.validateRecorded(context, resolution))
+      .flatMap(_ => CampaignPlanEffects.validateExecutable(resolution.effects))
 
   /** Bandits have no decision owner. They use every applicable cost-free,
     * choice-free registered defender plan in stable order. Any effect that
@@ -128,12 +146,12 @@ object CampaignPlanRegistry {
     val available = options(context, activations)
     available.foldLeft[Either[OathViolation, Vector[CampaignPlanResolution]]](
       Right(Vector.empty)) { (result, option) => result.flatMap { accepted =>
-        if (option.costs.nonEmpty || option.effects.exists(
-            _.isInstanceOf[CampaignPlanEffect.Suspend]))
+        if (option.costs.nonEmpty)
           Left(CampaignPlanUnavailable(
             s"bandit plan '${option.handlerId}' is not deterministic"))
-        else Right(accepted :+ CampaignPlanResolution(option.source,
-          option.handlerId, option.side, option.costs, option.effects))
+        else CampaignPlanEffects.validateExecutable(option.effects).map(_ =>
+          accepted :+ CampaignPlanResolution(option.source,
+            option.handlerId, option.side, option.costs, option.effects))
       }}
   }
 }

@@ -7,15 +7,11 @@ been reviewed.
 
 ## Now
 
-**Campaign plan architecture and defender stage** is active. Replace the
-bounded Outriders/Brass Army branches with registered generic plan options,
-costs, effects, presentation, and replay validation; then use that permanent
-boundary for defender-controlled plans, the title plan, and deterministic
-bandit plans.
+No item is currently assigned.
 
 ## Next
 
-**Campaign expansion** continues with player defenders and battle plans:
+**Campaign expansion** continues with battle plans and Raid:
 
 1. Implement remaining attacker and defender plans in small mechanics-based
    families without bypassing typed rule discovery.
@@ -45,6 +41,15 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign plan architecture and defender stage.** Campaign now
+  orchestrates attacker and defender plan windows through registered handlers
+  with stable source identity, typed costs/effects, generic projection, and
+  replay validation. Outriders, Brass Army, the Oathkeeper/Usurper defense
+  bonus, and deterministic Watchdog use that boundary without component IDs in
+  Campaign or projection. Player defenders act during their own scoped window;
+  their procedure view is redacted again once that window closes. Reserved
+  extension effects reject explicitly until a matching executor exists.
 
 - [x] **Campaign expansion — player-defender Conquest baseline.** The mandatory
   target's ruler is recorded as a typed player defender and every optional
@@ -187,7 +192,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 271 JVM tests, 79 Scala.js tests, the Scala.js
+The combined milestone passes 273 JVM tests, 79 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

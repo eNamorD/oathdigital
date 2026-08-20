@@ -415,7 +415,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
         }
         val campaignProjection = current.pending.collect {
           case c: PendingProcedure.Campaign if requestingPlayer.exists(player =>
-              player == c.actor || player == CampaignRules.planDecisionOwner(c)) =>
+              player == c.actor || (!c.defenderPlansFinished &&
+                player == CampaignRules.planDecisionOwner(c))) =>
             val remaining = c.force - c.skullLosses
             def sourceFields(source: PendingProcedure.CampaignPlanSource) = source match {
               case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
