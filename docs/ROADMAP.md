@@ -7,17 +7,19 @@ been reviewed.
 
 ## Now
 
-No item is currently assigned.
+**Campaign plan architecture and defender stage** is active. Replace the
+bounded Outriders/Brass Army branches with registered generic plan options,
+costs, effects, presentation, and replay validation; then use that permanent
+boundary for defender-controlled plans, the title plan, and deterministic
+bandit plans.
 
 ## Next
 
 **Campaign expansion** continues with player defenders and battle plans:
 
-1. Add a defender-controlled plan stage and deterministic bandit plans before
-   attack randomness.
-2. Implement remaining attacker and defender plans in small mechanics-based
+1. Implement remaining attacker and defender plans in small mechanics-based
    families without bypassing typed rule discovery.
-3. Add Raid declaration, outcomes, and ordered resolution decisions.
+2. Add Raid declaration, outcomes, and ordered resolution decisions.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
