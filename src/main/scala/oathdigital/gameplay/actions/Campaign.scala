@@ -117,11 +117,16 @@ object Campaign {
     */
   def prepareFinishPlans(catalog: ExecutableCatalog, state: OathState,
       player: PlayerId, decision: DecisionId)
-      : Either[OathViolation, Int] = state match {
-    case Ready(ready) => validatePending(ready, player, decision,
-      requireFinished = false, requireResolved = false).flatMap { pending =>
-      CampaignRules.validateSelectedPlans(catalog, ready, pending)
-        .map(plans => pending.force + plans.map(_.addedAttackDice).sum)
+      : Either[OathViolation, Option[Int]] = state match {
+    case Ready(ready) => validatePlanPending(ready, player, decision).flatMap { pending =>
+      CampaignRules.validateSelectedPlans(catalog, ready, pending).flatMap { plans =>
+        val rollNow = pending.attackerPlansFinished || pending.defender == CampaignDefender.Bandits
+        val automatic = if (pending.defender == CampaignDefender.Bandits)
+          CampaignRules.deterministicBanditPlans(catalog, ready, pending)
+        else Right(Vector.empty)
+        automatic.map(auto => Option.when(rollNow)(pending.force +
+          CampaignPlanEffects.attackDice((plans ++ auto).flatMap(_.effects))))
+      }
     }
     case _ => Left(GameNotStarted)
   }
@@ -141,28 +146,62 @@ object Campaign {
         }
       }
     case CampaignCommand.ChoosePlan(player, decision, source) => state match {
-      case Ready(ready) => validatePending(ready, player, decision, requireFinished = false,
-          requireResolved = false).flatMap { pending =>
+      case Ready(ready) => validatePlanPending(ready, player, decision).flatMap { pending =>
         CampaignRules.validatePlanChoice(catalog, ready, pending, source).flatMap { choice =>
           transition(catalog, state, Vector(CampaignPlanChosen(player, decision,
-            choice.source, choice.handlerId, choice.favorCost, choice.secretCost,
-            choice.revealed, choice.ignoreAttackSkulls, choice.addedAttackDice)),
+            choice.source, choice.handlerId, choice.side, choice.costs, choice.effects)),
             AwaitingCampaignPlan(player, decision))
         }
       }
       case _ => Left(GameNotStarted)
     }
     case CampaignCommand.FinishPlans(player, decision, dice) => state match {
-      case Ready(ready) => validatePending(ready, player, decision,
-          requireFinished = false, requireResolved = false).flatMap { pending =>
+      case Ready(ready) => validatePlanPending(ready, player, decision).flatMap { pending =>
         CampaignRules.validateSelectedPlans(catalog, ready, pending).flatMap { plans =>
-          val ignoreSkulls = plans.exists(_.ignoreAttackSkulls)
-          val addedDice = plans.map(_.addedAttackDice).sum
-          val (attack, skulls) = CampaignRules.attackResult(
-            dice, pending.force, ignoreSkulls)
-          transition(catalog, state, Vector(CampaignPlansFinished(player, decision,
-            plans.map(_.source), addedDice, ignoreSkulls, dice, attack, skulls)),
-            AwaitingCampaignSacrifice(player, decision))
+          val side = CampaignRules.currentPlanSide(pending)
+          val sidePlans = plans.filter(_.side == side)
+          if (side == PendingProcedure.CampaignPlanSide.Attacker &&
+              pending.defender.isInstanceOf[CampaignDefender.Player])
+            transition(catalog, state, Vector(CampaignPlansFinished(player, decision,
+              side, sidePlans.map(_.source), sidePlans.map(_.handlerId),
+              sidePlans.flatMap(_.effects),
+              Vector.empty, 0, 0)), AwaitingCampaignPlan(
+                pending.defender.asInstanceOf[CampaignDefender.Player].playerId, decision))
+          else {
+            val banditPlans = if (pending.defender == CampaignDefender.Bandits &&
+              side == PendingProcedure.CampaignPlanSide.Attacker)
+              CampaignRules.deterministicBanditPlans(catalog, ready, pending)
+            else Right(Vector.empty)
+            banditPlans.flatMap { automatic =>
+              val allPlans = plans ++ automatic
+              val allEffects = allPlans.flatMap(_.effects)
+              val expectedDice = pending.force + CampaignPlanEffects.attackDice(allEffects)
+              if (dice.size != expectedDice) Left(CampaignOutcomeMismatch(
+                "attack dice count is invalid"))
+              else {
+                val (attack, skulls) = CampaignRules.attackResult(dice, pending.force,
+                  CampaignPlanEffects.ignoreAttackSkulls(allEffects))
+                val events = if (pending.defender == CampaignDefender.Bandits)
+                  Vector(
+                    CampaignPlansFinished(player, decision,
+                      PendingProcedure.CampaignPlanSide.Attacker,
+                      sidePlans.map(_.source), sidePlans.map(_.handlerId),
+                      sidePlans.flatMap(_.effects),
+                      Vector.empty, 0, 0),
+                    CampaignPlansFinished(player, decision,
+                      PendingProcedure.CampaignPlanSide.Defender,
+                      automatic.map(_.source), automatic.map(_.handlerId),
+                      automatic.flatMap(_.effects), dice,
+                      attack, skulls))
+                else Vector(CampaignPlansFinished(player, decision, side,
+                  sidePlans.map(_.source), sidePlans.map(_.handlerId),
+                  sidePlans.flatMap(_.effects), dice,
+                  attack, skulls))
+                transition(catalog, state, events,
+                  AwaitingCampaignSacrifice(pending.actor, decision))
+              }
+            }
+          }
         }
       }
       case _ => Left(GameNotStarted)
@@ -207,10 +246,10 @@ object Campaign {
     else current.pending match {
       case Some(c: PendingProcedure.Campaign) if c.actor != player => Left(WrongPlayer(c.actor, player))
       case Some(c: PendingProcedure.Campaign) if c.decision != decision => Left(CampaignDecisionMismatch(c.decision, decision))
-      case Some(c: PendingProcedure.Campaign) if requireFinished && !c.plansFinished =>
-        Left(CampaignOutcomeMismatch("Campaign is awaiting attacker battle plans"))
-      case Some(c: PendingProcedure.Campaign) if !requireFinished && c.plansFinished =>
-        Left(CampaignOutcomeMismatch("Campaign attacker battle plans are finished"))
+      case Some(c: PendingProcedure.Campaign) if requireFinished && !c.defenderPlansFinished =>
+        Left(CampaignOutcomeMismatch("Campaign is awaiting battle plans"))
+      case Some(c: PendingProcedure.Campaign) if !requireFinished && c.defenderPlansFinished =>
+        Left(CampaignOutcomeMismatch("Campaign battle plans are finished"))
       case Some(c: PendingProcedure.Campaign) if requireResolved && !c.victorious.contains(true) => Left(CampaignOutcomeMismatch("Campaign is not awaiting conquest placement"))
       case Some(c: PendingProcedure.Campaign) if !requireResolved && c.victorious.nonEmpty => Left(CampaignOutcomeMismatch("Campaign battle is already resolved"))
       case Some(c: PendingProcedure.Campaign) => Right(c)
@@ -218,6 +257,20 @@ object Campaign {
       case None => Left(InvalidEventOrder("no Campaign procedure is pending"))
     }
   }
+
+  private def validatePlanPending(ready: ReadyGame, player: PlayerId,
+      decision: DecisionId): Either[OathViolation, PendingProcedure.Campaign] =
+    ready.game.current.pending match {
+      case Some(c: PendingProcedure.Campaign) if c.decision != decision =>
+        Left(CampaignDecisionMismatch(c.decision, decision))
+      case Some(c: PendingProcedure.Campaign) if c.defenderPlansFinished =>
+        Left(CampaignOutcomeMismatch("Campaign battle plans are finished"))
+      case Some(c: PendingProcedure.Campaign) =>
+        val owner = CampaignRules.planDecisionOwner(c)
+        Either.cond(player == owner, c, WrongPlayer(owner, player))
+      case Some(other) => Left(PendingProcedureBlocksAction(other.decision))
+      case None => Left(InvalidEventOrder("no Campaign procedure is pending"))
+    }
 
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
       : Either[OathViolation, OathState] =
@@ -241,50 +294,54 @@ object Campaign {
               supply = SupplyTrack(p.board.supply.supply - SupplyCost)))),
           pending = Some(PendingProcedure.Campaign(e.decision, e.playerId, e.targetSites,
             e.defender,
-            e.force, Vector.empty, plansFinished = false, Vector.empty, 0, 0,
+            e.force, Vector.empty, attackerPlansFinished = false,
+            defenderPlansFinished = false, Vector.empty, 0, 0,
             None, Vector.empty, None, None)))))
       }
     }
     case e: CampaignPlanChosen => state match {
-      case Ready(ready) => validatePending(ready, e.playerId, e.decision,
-        requireFinished = false, requireResolved = false).flatMap { c =>
+      case Ready(ready) => validatePlanPending(ready, e.playerId, e.decision).flatMap { c =>
         for {
           expected <- CampaignRules.validatePlanChoice(catalog, ready, c, e.source)
           _ <- if (e.handlerId == expected.handlerId &&
-            e.favorCost == expected.favorCost && e.secretCost == expected.secretCost &&
-            e.revealed == expected.revealed &&
-            e.ignoreAttackSkulls == expected.ignoreAttackSkulls &&
-            e.addedAttackDice == expected.addedAttackDice) Right(())
+            e.side == expected.side && e.costs == expected.costs &&
+            e.effects == expected.effects) Right(())
             else Left(CampaignOutcomeMismatch("recorded attacker plan result is invalid"))
         } yield {
           val resolution = PendingProcedure.CampaignPlanResolution(e.source,
-            e.handlerId, e.favorCost, e.secretCost, e.revealed,
-            e.ignoreAttackSkulls, e.addedAttackDice)
+            e.handlerId, e.side, e.costs, e.effects)
+          val favorCost = CampaignPlanEffects.favorCost(e.costs)
+          val secretCost = CampaignPlanEffects.secretCost(e.costs)
+          val revealed = CampaignPlanEffects.revealed(e.effects)
           val current = ready.game.current
           Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
             players = current.players.map { p =>
               if (p.player != e.playerId) p
               else p.copy(
-                board = p.board.copy(favor = p.board.favor - e.favorCost,
-                  faceUpSecrets = p.board.faceUpSecrets - e.secretCost),
+                board = p.board.copy(favor = p.board.favor - favorCost,
+                  faceUpSecrets = p.board.faceUpSecrets - secretCost),
                 advisers = p.advisers.map {
-                  case d: DenizenState if e.revealed && e.source ==
+                  case d: DenizenState if e.source ==
                     PendingProcedure.CampaignPlanSource.Adviser(e.playerId, d.id) =>
-                    d.copy(orientation = Orientation.FaceUp)
+                    d.copy(orientation = if (revealed) Orientation.FaceUp else d.orientation,
+                      tokens = Tokens(d.tokens.favor + favorCost,
+                        d.tokens.secrets + secretCost))
                   case other => other
                 },
                 relics = p.relics.map {
                   case r if e.source == PendingProcedure.CampaignPlanSource.Relic(
                     e.playerId, r.id) => r.copy(tokens = Tokens(
-                      r.tokens.favor + e.favorCost, r.tokens.secrets + e.secretCost))
+                      r.tokens.favor + favorCost, r.tokens.secrets + secretCost))
                   case other => other
                 })
             },
             map = current.map.copy(sites = current.map.sites.map {
               case (siteId, site) => siteId -> site.copy(denizens = site.denizens.map {
-                case d: DenizenState if e.revealed && e.source ==
+                case d: DenizenState if e.source ==
                     PendingProcedure.CampaignPlanSource.SiteCard(siteId, d.id) =>
-                  d.copy(orientation = Orientation.FaceUp)
+                  d.copy(orientation = if (revealed) Orientation.FaceUp else d.orientation,
+                    tokens = Tokens(d.tokens.favor + favorCost,
+                      d.tokens.secrets + secretCost))
                 case other => other
               })
             }),
@@ -294,26 +351,38 @@ object Campaign {
       case _ => Left(GameNotStarted)
     }
     case e: CampaignPlansFinished => state match {
-      case Ready(ready) => validatePending(ready, e.playerId, e.decision,
-        requireFinished = false, requireResolved = false).flatMap { c =>
+      case Ready(ready) => validatePlanPending(ready, e.playerId, e.decision).flatMap { c =>
         for {
           expected <- CampaignRules.validateSelectedPlans(catalog, ready, c)
-          expectedSources = expected.map(_.source)
-          expectedAdded = expected.map(_.addedAttackDice).sum
-          expectedIgnore = expected.exists(_.ignoreAttackSkulls)
+          expectedSide = CampaignRules.currentPlanSide(c)
+          automatic <- if (expectedSide == PendingProcedure.CampaignPlanSide.Defender &&
+              c.defender == CampaignDefender.Bandits)
+            CampaignRules.deterministicBanditPlans(catalog, ready, c)
+            else Right(Vector.empty)
+          expectedPlans = expected.filter(_.side == expectedSide) ++ automatic
+          expectedSources = expectedPlans.map(_.source)
+          expectedEffects = expectedPlans.flatMap(_.effects)
           _ <- Either.cond(e.orderedSources == expectedSources &&
-            e.addedAttackDice == expectedAdded &&
-            e.ignoreAttackSkulls == expectedIgnore, (),
+            e.orderedHandlerIds == expectedPlans.map(_.handlerId) &&
+            e.side == expectedSide && e.effects == expectedEffects, (),
             CampaignOutcomeMismatch("recorded attacker plan order or result is invalid"))
-          _ <- Either.cond(e.attackDice.size == c.force + expectedAdded, (),
+          allEffects = (expected ++ automatic).flatMap(_.effects)
+          rollsNow = expectedSide == PendingProcedure.CampaignPlanSide.Defender
+          _ <- Either.cond(!rollsNow || e.attackDice.size == c.force +
+            CampaignPlanEffects.attackDice(allEffects), (),
             CampaignOutcomeMismatch("attack dice count is invalid"))
           expectedResult = CampaignRules.attackResult(
-            e.attackDice, c.force, expectedIgnore)
-          _ <- Either.cond((e.attack, e.skullLosses) == expectedResult, (),
+            e.attackDice, c.force, CampaignPlanEffects.ignoreAttackSkulls(allEffects))
+          _ <- Either.cond(!rollsNow || (e.attack, e.skullLosses) == expectedResult, (),
             CampaignOutcomeMismatch("recorded attack roll result is invalid"))
         } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-          pending = Some(c.copy(plansFinished = true, attackDice = e.attackDice,
-            attack = e.attack, skullLosses = e.skullLosses)))))
+          pending = Some(c.copy(
+            attackerPlansFinished = c.attackerPlansFinished ||
+              e.side == PendingProcedure.CampaignPlanSide.Attacker,
+            defenderPlansFinished = c.defenderPlansFinished || rollsNow,
+            plans = c.plans ++ automatic,
+            attackDice = e.attackDice, attack = e.attack,
+            skullLosses = e.skullLosses)))))
       }
       case _ => Left(GameNotStarted)
     }
@@ -328,7 +397,8 @@ object Campaign {
           _ <- if (e.sacrificed >= 0 && e.sacrificed <= remaining) Right(()) else Left(CampaignOutcomeMismatch("sacrifice exceeds surviving force"))
           _ <- if (e.skullLosses == c.skullLosses) Right(()) else Left(CampaignOutcomeMismatch("recorded skull losses are invalid"))
           defenseDiceCount = c.targetSites.flatMap(
-            CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum
+            CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
+            CampaignRules.defensePlanDice(c)
           _ <- if (e.defenseDice.size == defenseDiceCount) Right(()) else Left(CampaignOutcomeMismatch("defense dice count is invalid"))
           _ <- if (e.attack == expectedAttack && e.defense == expectedDefense && e.victorious == (expectedAttack > expectedDefense)) Right(())
             else Left(CampaignOutcomeMismatch("recorded battle outcome is invalid"))
@@ -527,6 +597,22 @@ object Campaign {
 }
 
 object CampaignRules {
+  def currentPlanSide(campaign: PendingProcedure.Campaign)
+      : PendingProcedure.CampaignPlanSide =
+    if (!campaign.attackerPlansFinished) PendingProcedure.CampaignPlanSide.Attacker
+    else PendingProcedure.CampaignPlanSide.Defender
+
+  def planDecisionOwner(campaign: PendingProcedure.Campaign): PlayerId =
+    currentPlanSide(campaign) match {
+      case PendingProcedure.CampaignPlanSide.Attacker => campaign.actor
+      case PendingProcedure.CampaignPlanSide.Defender => campaign.defender match {
+        case CampaignDefender.Player(player) => player
+        case CampaignDefender.Bandits => campaign.actor
+      }
+    }
+
+  def defensePlanDice(campaign: PendingProcedure.Campaign): Int =
+    CampaignPlanEffects.defenseDice(campaign.plans.flatMap(_.effects))
   def validateStart(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, site: SiteId, force: Int)
       : Either[OathViolation, CampaignDefender] =
@@ -562,9 +648,7 @@ object CampaignRules {
   )
 
   private val executable: Map[String, CampaignTimingWindow] = Map(
-    "denizen.vow-of-peace" -> CampaignTimingWindow.TargetAndForceFormation,
-    "denizen.outriders" -> CampaignTimingWindow.AttackerBattlePlans,
-    "relic.brass-army" -> CampaignTimingWindow.AttackerBattlePlans
+    "denizen.vow-of-peace" -> CampaignTimingWindow.TargetAndForceFormation
   )
 
   // These reviewed powers cannot affect a single-site Conquest against bandits.
@@ -573,7 +657,7 @@ object CampaignRules {
     "denizen.gleaming-armor", "denizen.herald", "denizen.insect-swarm",
     "denizen.military-parade", "denizen.pledge-of-defense",
     "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
-    "denizen.true-names", "denizen.watchdog", "denizen.wrestlers",
+    "denizen.true-names", "denizen.wrestlers",
     "relic.bandit-standard", "relic.fearsome-shield",
     "relic.sticky-fire", "relic.obsidian-cage",
     "relic.the-grand-scepter"
@@ -586,7 +670,8 @@ object CampaignRules {
   }
 
   private[gameplay] def classify(handlerId: String, rulesText: String): HandlerSupport =
-    executable.get(handlerId).map(HandlerSupport.Executable)
+    executable.get(handlerId).orElse(CampaignPlanRegistry.windowFor(handlerId))
+      .map(HandlerSupport.Executable)
       .orElse(Option.when(irrelevant(handlerId))(HandlerSupport.IrrelevantToBanditConquest))
       .getOrElse(if (textRelevant(rulesText)) HandlerSupport.Blocked(
         "requires an unmodeled Campaign decision or effect")
@@ -615,26 +700,36 @@ object CampaignRules {
   def legalPlanChoices(catalog: ExecutableCatalog, ready: ReadyGame,
       campaign: PendingProcedure.Campaign)
       : Vector[PendingProcedure.CampaignPlanSource] = {
-    if (campaign.plansFinished) Vector.empty
-    else accessibleRules(catalog, ready, campaign.actor,
+    if (campaign.defenderPlansFinished) Vector.empty
+    else planOptions(catalog, ready, campaign).map(_.source)
+  }
+
+  def planOptions(catalog: ExecutableCatalog, ready: ReadyGame,
+      campaign: PendingProcedure.Campaign): Vector[CampaignPlanOption] = {
+    val side = currentPlanSide(campaign)
+    val owner = planDecisionOwner(campaign)
+    val activations = accessibleRules(catalog, ready, owner,
       campaign.targetSites.head).collect {
+      case DiscoveredCampaignRule(a, HandlerSupport.Executable(window), _)
+          if (side == PendingProcedure.CampaignPlanSide.Attacker &&
+              window == CampaignTimingWindow.AttackerBattlePlans) ||
+             (side == PendingProcedure.CampaignPlanSide.Defender &&
+              window == CampaignTimingWindow.DefenderBattlePlansAndRoll) => a
+    }
+    CampaignPlanRegistry.options(CampaignPlanContext(catalog, ready, campaign,
+      side, owner), activations).filterNot(o => campaign.plans.exists(_.source == o.source))
+  }
+
+  def deterministicBanditPlans(catalog: ExecutableCatalog, ready: ReadyGame,
+      campaign: PendingProcedure.Campaign)
+      : Either[OathViolation, Vector[PendingProcedure.CampaignPlanResolution]] = {
+    val activations = banditRules(catalog, ready).collect {
       case DiscoveredCampaignRule(activation, HandlerSupport.Executable(
-          CampaignTimingWindow.AttackerBattlePlans), _) if
-          Set("denizen.outriders", "relic.brass-army")(activation.handlerId) => activation.source match {
-        case RuleSourceRef.Adviser(player, id: DenizenId) =>
-          Some(PendingProcedure.CampaignPlanSource.Adviser(player, id))
-        case RuleSourceRef.SiteCard(site, id: DenizenId) =>
-          Some(PendingProcedure.CampaignPlanSource.SiteCard(site, id))
-        case RuleSourceRef.Relic(player, id) =>
-          ready.game.current.players.find(_.player == player).flatMap { owner =>
-            owner.relics.find(_.id == id).filter(relic =>
-              relic.tokens.isEmpty && owner.board.faceUpSecrets >= 1).map(_ =>
-              PendingProcedure.CampaignPlanSource.Relic(player, id))
-          }
-        case _ => None
-      }
-    }.flatten.distinct.filterNot(source => campaign.plans.exists(_.source == source))
-      .sortBy(_.stableKey)
+          CampaignTimingWindow.DefenderBattlePlansAndRoll), facedown)
+          if !facedown => activation
+    }
+    CampaignPlanRegistry.deterministicBandit(CampaignPlanContext(catalog, ready,
+      campaign, PendingProcedure.CampaignPlanSide.Defender, campaign.actor), activations)
   }
 
   def validatePlanChoice(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -643,34 +738,14 @@ object CampaignRules {
       : Either[OathViolation, PendingProcedure.CampaignPlanResolution] = {
     if (campaign.plans.exists(_.source == selected)) Left(CampaignPlanUnavailable(
       s"Campaign plan source '${selected.stableKey}' was already used"))
-    else if (legalPlanChoices(catalog, ready, campaign).contains(selected))
-      selected match {
-        case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
-          val revealed = ready.game.current.players.find(_.player == player).toVector
-            .flatMap(_.advisers).collectFirst {
-              case d: DenizenState if d.id == id => d.orientation == Orientation.FaceDown
-            }.getOrElse(false)
-          Right(PendingProcedure.CampaignPlanResolution(selected,
-            "denizen.outriders", 0, 0, revealed, true, 0))
-        case PendingProcedure.CampaignPlanSource.SiteCard(site, id) =>
-          val revealed = ready.game.current.map.sites.get(site).toVector.flatMap(_.denizens)
-            .collectFirst {
-              case d: DenizenState if d.id == id => d.orientation == Orientation.FaceDown
-            }.getOrElse(false)
-          Right(PendingProcedure.CampaignPlanResolution(selected,
-            "denizen.outriders", 0, 0, revealed, true, 0))
-        case PendingProcedure.CampaignPlanSource.Relic(player, id) =>
-          val owner = ready.game.current.players.find(_.player == player).get
-          val relic = owner.relics.find(_.id == id).get
-          if (owner.board.faceUpSecrets < 1)
-            Left(InsufficientSecrets(1, owner.board.faceUpSecrets))
-          else if (!relic.tokens.isEmpty)
-            Left(CampaignPlanUnavailable("Brass Army must be empty to receive its cost"))
-          else Right(PendingProcedure.CampaignPlanResolution(selected,
-            "relic.brass-army", 0, 1, false, false, 4))
-      }
-    else Left(CampaignPlanUnavailable(
-      s"Campaign plan source '${selected.stableKey}' is stale, inaccessible, or unsupported"))
+    else {
+      val side = currentPlanSide(campaign)
+      val owner = planDecisionOwner(campaign)
+      val activations = accessibleRules(catalog, ready, owner,
+        campaign.targetSites.head).map(_.activation)
+      CampaignPlanRegistry.resolve(CampaignPlanContext(catalog, ready, campaign,
+        side, owner), selected, activations)
+    }
   }
 
   def validateSelectedPlans(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -682,41 +757,15 @@ object CampaignRules {
     else campaign.plans.foldLeft[
       Either[OathViolation, Vector[PendingProcedure.CampaignPlanResolution]]](
       Right(Vector.empty)) { (result, plan) => result.flatMap { accepted =>
-        val valid = plan.handlerId match {
-          case "denizen.outriders" =>
-            plan.favorCost == 0 && plan.secretCost == 0 &&
-              plan.ignoreAttackSkulls && plan.addedAttackDice == 0 &&
-              (plan.source match {
-                case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
-                  player == campaign.actor && ready.game.current.players
-                    .find(_.player == player).exists(_.advisers.exists {
-                      case d: DenizenState => d.id == id &&
-                        d.orientation == Orientation.FaceUp
-                      case _ => false
-                    })
-                case PendingProcedure.CampaignPlanSource.SiteCard(site, id) =>
-                  ready.game.current.map.sites.get(site).exists(_.denizens.exists {
-                    case d: DenizenState => d.id == id &&
-                      d.orientation == Orientation.FaceUp
-                    case _ => false
-                  })
-                case _ => false
-              })
-          case "relic.brass-army" =>
-            !plan.revealed && plan.favorCost == 0 && plan.secretCost == 1 &&
-              !plan.ignoreAttackSkulls && plan.addedAttackDice == 4 &&
-              (plan.source match {
-                case PendingProcedure.CampaignPlanSource.Relic(player, id) =>
-                  player == campaign.actor && ready.game.current.players
-                    .find(_.player == player).exists(_.relics.exists(r =>
-                      r.id == id && r.orientation == Orientation.FaceUp &&
-                        r.tokens == Tokens(0, 1)))
-                case _ => false
-              })
-          case _ => false
+        val owner = plan.side match {
+          case PendingProcedure.CampaignPlanSide.Attacker => campaign.actor
+          case PendingProcedure.CampaignPlanSide.Defender => campaign.defender match {
+            case CampaignDefender.Player(player) => player
+            case CampaignDefender.Bandits => campaign.actor
+          }
         }
-        Either.cond(valid, accepted :+ plan, CampaignOutcomeMismatch(
-          s"recorded Campaign plan '${plan.source.stableKey}' is invalid"))
+        CampaignPlanRegistry.validate(CampaignPlanContext(catalog, ready,
+          campaign, plan.side, owner), plan).map(_ => accepted :+ plan)
       }}
   }
 
@@ -766,7 +815,8 @@ object CampaignRules {
       _ <- defender match {
         case CampaignDefender.Player(player) =>
           validateDefenderSupported(catalog, ready, player, sites.head)
-        case CampaignDefender.Bandits => Right(())
+        case CampaignDefender.Bandits => validateBanditDefenderSupported(
+          catalog, ready, playerId, sites, force)
       }
     } yield defender
   }
@@ -774,10 +824,7 @@ object CampaignRules {
   private def validateDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, defender: PlayerId, target: SiteId)
       : Either[OathViolation, Unit] = {
-    if (ready.game.current.title.holder.contains(defender))
-      Left(CampaignUnavailable(
-        s"${ready.game.current.title.side} title defender battle plan is not supported"))
-    else {
+    {
       val relevant = accessibleRules(catalog, ready, defender, target).filter {
         case DiscoveredCampaignRule(_, HandlerSupport.Blocked(_), _) => true
         case _ => false
@@ -786,6 +833,39 @@ object CampaignRules {
         CampaignUnavailable("player-defender battle plan or Campaign power " +
           s"'${rule.activation.handlerId}' is not supported")
       }
+    }
+  }
+
+  private def banditRules(catalog: ExecutableCatalog, ready: ReadyGame)
+      : Vector[DiscoveredCampaignRule] = ready.game.current.map.inPlay.filter(site =>
+    defenderAt(ready, site).contains(CampaignDefender.Bandits)).flatMap { site =>
+      ready.game.current.map.sites(site).denizens.flatMap {
+        case d: DenizenState => catalog.denizens.find(_.id.value == d.id.value).toVector
+          .flatMap(definition => definition.handlers.map(id => DiscoveredCampaignRule(
+            RuleActivation(RuleSourceRef.SiteCard(site, d.id), id, 300),
+            classify(id, definition.rulesText),
+            d.orientation == Orientation.FaceDown)))
+        case _ => Vector.empty
+      }
+    }
+
+  private def validateBanditDefenderSupported(catalog: ExecutableCatalog,
+      ready: ReadyGame, attacker: PlayerId, sites: Vector[SiteId], force: Int)
+      : Either[OathViolation, Unit] = {
+    val relevant = banditRules(catalog, ready).filter {
+      case DiscoveredCampaignRule(_, HandlerSupport.Blocked(_), _) => true
+      case DiscoveredCampaignRule(_, HandlerSupport.Executable(
+          CampaignTimingWindow.DefenderBattlePlansAndRoll), facedown) => facedown
+      case _ => false
+    }
+    relevant.headOption.toLeft(()).left.map(rule => CampaignUnavailable(
+      s"bandit battle plan '${rule.activation.handlerId}' at " +
+        s"${rule.activation.source.stableKey} is not deterministic")).flatMap { _ =>
+      val context = PendingProcedure.Campaign(DecisionId("bandit-validation"),
+        attacker, sites, CampaignDefender.Bandits, force, Vector.empty,
+        attackerPlansFinished = true, defenderPlansFinished = false,
+        Vector.empty, 0, 0, None, Vector.empty, None, None)
+      deterministicBanditPlans(catalog, ready, context).map(_ => ())
     }
   }
 
@@ -854,6 +934,8 @@ object CampaignRules {
                 s"Campaign handler '${rule.activation.handlerId}' at ${rule.activation.source.stableKey} is blocked: $reason"))
               case HandlerSupport.Executable(CampaignTimingWindow.AttackerBattlePlans) =>
                 Right(())
+              case HandlerSupport.Executable(CampaignTimingWindow.DefenderBattlePlansAndRoll) =>
+                Right(())
               case HandlerSupport.Executable(_) if rule.facedown => Right(())
               case HandlerSupport.Executable(window) =>
                 registry.resolve(Vector(rule.activation), RuleQueryContext.Campaign(
@@ -918,7 +1000,7 @@ object CampaignRules {
     })
   }
 
-  private def accessibleRules(catalog: ExecutableCatalog, ready: ReadyGame,
+  private[gameplay] def accessibleRules(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, target: SiteId): Vector[DiscoveredCampaignRule] = {
     val ruled = ready.game.current.map.inPlay.filter { siteId =>
       SiteRule.ruledBy(ready.game.current.map.sites(siteId).forces,

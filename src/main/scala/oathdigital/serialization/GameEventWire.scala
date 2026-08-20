@@ -393,19 +393,20 @@ object GameEventWire {
             "kind" -> "player", "playerId" -> id.value)
         }),
         "supplySpent" -> spent, "force" -> force)
-      case CampaignPlanChosen(player, decision, source, handler, favor, secret,
-          revealed, ignoreSkulls, addedDice) => ujson.Obj(
+      case CampaignPlanChosen(player, decision, source, handler, side, costs,
+          effects) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "source" -> encodeCampaignPlanSource(source),
-        "handlerId" -> handler,
-        "favorCost" -> favor, "secretCost" -> secret, "revealed" -> revealed,
-        "ignoreAttackSkulls" -> ignoreSkulls,
-        "addedAttackDice" -> addedDice)
-      case CampaignPlansFinished(player, decision, sources, addedDice,
-          ignoreSkulls, dice, attack, skulls) => ujson.Obj(
+        "handlerId" -> handler, "side" -> encodeCampaignPlanSide(side),
+        "costs" -> ujson.Arr.from(costs.map(encodeCampaignPlanCost)),
+        "effects" -> ujson.Arr.from(effects.map(encodeCampaignPlanEffect)))
+      case CampaignPlansFinished(player, decision, side, sources, handlerIds, effects,
+          dice, attack, skulls) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
+        "side" -> encodeCampaignPlanSide(side),
         "orderedSources" -> ujson.Arr.from(sources.map(encodeCampaignPlanSource)),
-        "addedAttackDice" -> addedDice, "ignoreAttackSkulls" -> ignoreSkulls,
+        "orderedHandlerIds" -> ujson.Arr.from(handlerIds.map(ujson.Str(_))),
+        "effects" -> ujson.Arr.from(effects.map(encodeCampaignPlanEffect)),
         "attackDice" -> ujson.Arr.from(dice.map(d => ujson.Str(encodeAttackFace(d)))),
         "attack" -> attack, "skullLosses" -> skulls)
       case CampaignSacrificed(player, decision, sacrificed, dice, attack,
@@ -604,27 +605,32 @@ object GameEventWire {
           defender, spent, force)
         case CampaignPlanChosenType => for {
           source <- decodeCampaignPlanSource(payload("source"), s"$path.source")
-          favor <- safeIntField(payload.obj, "favorCost", path)
-          secret <- safeIntField(payload.obj, "secretCost", path)
-          addedDice <- safeIntField(payload.obj, "addedAttackDice", path)
+          side <- decodeCampaignPlanSide(payload("side"), s"$path.side")
+          costs <- traverse(payload("costs").arr.toVector)(v =>
+            decodeCampaignPlanCost(v, s"$path.costs"))
+          effects <- traverse(payload("effects").arr.toVector)(v =>
+            decodeCampaignPlanEffect(v, s"$path.effects"))
         } yield CampaignPlanChosen(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), source,
-          payload("handlerId").str,
-          favor, secret, payload("revealed").bool,
-          payload("ignoreAttackSkulls").bool, addedDice)
+          payload("handlerId").str, side, costs, effects)
         case CampaignPlansFinishedType => for {
+          side <- decodeCampaignPlanSide(payload("side"), s"$path.side")
           sources <- traverse(payload("orderedSources").arr.toVector)(v =>
             decodeCampaignPlanSource(v, s"$path.orderedSources"))
           _ <- Either.cond(sources.distinct.size == sources.size, (),
             InvalidValue(s"$path.orderedSources", "duplicate Campaign plan source"))
-          addedDice <- safeIntField(payload.obj, "addedAttackDice", path)
+          handlerIds = payload("orderedHandlerIds").arr.toVector.map(_.str)
+          _ <- Either.cond(handlerIds.size == sources.size, (), InvalidValue(
+            s"$path.orderedHandlerIds", "handler IDs must match Campaign plan sources"))
+          effects <- traverse(payload("effects").arr.toVector)(v =>
+            decodeCampaignPlanEffect(v, s"$path.effects"))
           attack <- safeIntField(payload.obj, "attack", path)
           skulls <- safeIntField(payload.obj, "skullLosses", path)
           dice <- traverse(payload("attackDice").arr.toVector)(v =>
             decodeAttackFace(v.str, s"$path.attackDice"))
         } yield CampaignPlansFinished(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), sources, addedDice,
-          payload("ignoreAttackSkulls").bool, dice, attack, skulls)
+          DecisionId(payload("decisionId").str), side, sources, handlerIds,
+          effects, dice, attack, skulls)
         case CampaignSacrificedType => for {
           sacrificed <- safeIntField(payload.obj, "sacrificed", path)
           attack <- safeIntField(payload.obj, "attack", path)
@@ -1098,6 +1104,8 @@ object GameEventWire {
       "kind" -> "site-card", "siteId" -> site.value, "cardId" -> id.value)
     case PendingProcedure.CampaignPlanSource.Relic(player, id) => ujson.Obj(
       "kind" -> "relic", "playerId" -> player.value, "cardId" -> id.value)
+    case PendingProcedure.CampaignPlanSource.Title(player) => ujson.Obj(
+      "kind" -> "title", "playerId" -> player.value)
   }
 
   private def decodeCampaignPlanSource(value: ujson.Value, path: String)
@@ -1109,10 +1117,51 @@ object GameEventWire {
         SiteId(value("siteId").str), DenizenId(value("cardId").str)))
       case "relic" => Right(PendingProcedure.CampaignPlanSource.Relic(
         PlayerId(value("playerId").str), RelicId(value("cardId").str)))
+      case "title" => Right(PendingProcedure.CampaignPlanSource.Title(
+        PlayerId(value("playerId").str)))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown Campaign plan source '$other'"))
     } catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid Campaign plan source"))) }
+
+  private def encodeCampaignPlanSide(side: PendingProcedure.CampaignPlanSide) =
+    ujson.Str(side match {
+      case PendingProcedure.CampaignPlanSide.Attacker => "attacker"
+      case PendingProcedure.CampaignPlanSide.Defender => "defender"
+    })
+  private def decodeCampaignPlanSide(value: ujson.Value, path: String) = value.str match {
+    case "attacker" => Right(PendingProcedure.CampaignPlanSide.Attacker)
+    case "defender" => Right(PendingProcedure.CampaignPlanSide.Defender)
+    case other => Left(InvalidValue(path, s"unknown Campaign plan side '$other'"))
+  }
+  private def encodeCampaignPlanCost(cost: PendingProcedure.CampaignPlanCost) = cost match {
+    case PendingProcedure.CampaignPlanCost.Favor(n) => ujson.Obj("kind" -> "favor", "count" -> n)
+    case PendingProcedure.CampaignPlanCost.Secret(n) => ujson.Obj("kind" -> "secret", "count" -> n)
+  }
+  private def decodeCampaignPlanCost(value: ujson.Value, path: String) = value("kind").str match {
+    case "favor" => Right(PendingProcedure.CampaignPlanCost.Favor(value("count").num.toInt))
+    case "secret" => Right(PendingProcedure.CampaignPlanCost.Secret(value("count").num.toInt))
+    case other => Left(InvalidValue(path, s"unknown Campaign plan cost '$other'"))
+  }
+  private def encodeCampaignPlanEffect(effect: PendingProcedure.CampaignPlanEffect) = effect match {
+    case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => ujson.Obj("kind" -> "add-attack-dice", "count" -> n)
+    case PendingProcedure.CampaignPlanEffect.AddDefenseDice(n) => ujson.Obj("kind" -> "add-defense-dice", "count" -> n)
+    case PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls => ujson.Obj("kind" -> "ignore-attack-skulls")
+    case PendingProcedure.CampaignPlanEffect.RevealSource => ujson.Obj("kind" -> "reveal-source")
+    case PendingProcedure.CampaignPlanEffect.TransformAttackResult(id) => ujson.Obj("kind" -> "transform-attack-result", "handlerId" -> id)
+    case PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(id) => ujson.Obj("kind" -> "replace-losing-force-policy", "policyId" -> id)
+    case PendingProcedure.CampaignPlanEffect.Suspend(kind) => ujson.Obj("kind" -> "suspend", "decisionKind" -> kind)
+  }
+  private def decodeCampaignPlanEffect(value: ujson.Value, path: String) = value("kind").str match {
+    case "add-attack-dice" => Right(PendingProcedure.CampaignPlanEffect.AddAttackDice(value("count").num.toInt))
+    case "add-defense-dice" => Right(PendingProcedure.CampaignPlanEffect.AddDefenseDice(value("count").num.toInt))
+    case "ignore-attack-skulls" => Right(PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls)
+    case "reveal-source" => Right(PendingProcedure.CampaignPlanEffect.RevealSource)
+    case "transform-attack-result" => Right(PendingProcedure.CampaignPlanEffect.TransformAttackResult(value("handlerId").str))
+    case "replace-losing-force-policy" => Right(PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(value("policyId").str))
+    case "suspend" => Right(PendingProcedure.CampaignPlanEffect.Suspend(value("decisionKind").str))
+    case other => Left(InvalidValue(path, s"unknown Campaign plan effect '$other'"))
+  }
 
   private def decodeWorldCard(value: ujson.Value, path: String)
       : Either[WireError, WorldCardId] = try value("kind").str match {

@@ -375,6 +375,10 @@ object AuthenticatedGameHttpWire {
           card <- stringField(obj, "cardId", path)
         } yield Some(PendingProcedure.CampaignPlanSource.Relic(
           PlayerId(player), RelicId(card)))
+        case "title" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          player <- stringField(obj, "playerId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.Title(PlayerId(player)))
         case other => Left(HttpInputError(s"$path.kind",
           s"unknown Campaign plan source '$other'"))
       }

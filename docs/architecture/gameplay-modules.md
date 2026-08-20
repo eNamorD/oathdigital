@@ -26,6 +26,7 @@ oathdigital/gameplay/
     Search.scala
     Economy.scala
     Campaign.scala
+    CampaignPlans.scala
     Recover.scala
 ```
 
@@ -66,6 +67,22 @@ than an automatic split.
 
 Campaign and Recover should receive separate modules only when their implemented
 procedures justify those boundaries.
+
+`Campaign.scala` owns the printed Campaign stages and invariants, but it does
+not know individual battle-plan IDs, costs, labels, or mechanics.
+`CampaignPlans.scala` owns registered, side/window-scoped plan handlers and
+groups small powers. Generic options carry stable source and handler identity,
+decision ownership, typed costs, and typed effects. The Campaign-specific
+effect vocabulary supports pool changes, reveals and skull handling, with typed
+extension points for result transforms, loss-policy replacement, and suspended
+decisions; it is not a universal card scripting language.
+
+Projection renders these server-authored options, and replay re-resolves the
+registered handler before comparing source, side, ordering, costs, reveals and
+effects. A player defender owns their plan decision even while the attacker is
+the active player. Bandits use applicable plans only when they are cost-free
+and choice-free, in stable order; other relevant bandit plans block
+conservatively.
 
 ### Shared rule resolution
 

@@ -269,6 +269,18 @@ class HttpGameClientSuite extends FunSuite {
     assert(brassCommand.contains("\"kind\":\"relic\""))
     assert(brassCommand.contains("\"cardId\":\"R25\""))
     assert(!brassCommand.contains("relic.brass-army"))
+    val titlePending = planPending
+      .replace("\"force\":3", "\"force\":3,\"planSide\":\"defender\",\"decisionOwnerPlayerId\":\"blue-exile\"")
+      .replace(adviserJson,
+        """{"kind":"title","sourceKey":"title:blue-exile","playerId":"blue-exile","siteId":null,"cardId":null,"label":"Oathkeeper","handlerId":"title.oathkeeper-defense","favorCost":0,"secretCost":0,"mechanicalResult":"Add 1 defense die"}""")
+    val titleState = GameJson.decodeProjection(projectionWithPlan(titlePending))
+      .toOption.get.campaign.get
+    assertEquals(titleState.planSide -> titleState.decisionOwnerPlayerId,
+      "defender" -> Some("blue-exile"))
+    val titleCommand = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
+      "blue-exile", "campaign-17", titleState.planChoices.head))
+    assert(titleCommand.contains("\"kind\":\"title\""))
+    assert(!titleCommand.contains("title.oathkeeper-defense"))
 
     val unknownKind = planPending.replace("\"kind\":\"adviser\"",
       "\"kind\":\"future-plan\"")

@@ -274,6 +274,9 @@ object GameHttpWire {
               ujson.Null)(ujson.Str(_)),
             "defenderForce" -> campaign.defenderForce,
             "defenseDiceCount" -> campaign.defenseDiceCount,
+            "planSide" -> campaign.planSide,
+            "decisionOwnerPlayerId" -> campaign.decisionOwnerPlayerId.fold[ujson.Value](
+              ujson.Null)(ujson.Str(_)),
             "force" -> campaign.force,
             "plansFinished" -> campaign.plansFinished,
             "planChoices" -> ujson.Arr.from(campaign.planChoices.map { choice =>
@@ -632,6 +635,10 @@ object GameHttpWire {
           card <- stringField(obj, "cardId", path)
         } yield Some(PendingProcedure.CampaignPlanSource.Relic(
           PlayerId(player), RelicId(card)))
+        case "title" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          player <- stringField(obj, "playerId", path)
+        } yield Some(PendingProcedure.CampaignPlanSource.Title(PlayerId(player)))
         case other => Left(HttpInputError(s"$path.kind",
           s"unknown Campaign plan source '$other'"))
       }

@@ -54,3 +54,25 @@ suit, cost, yield, component limits, and resource movement.
 The target reference carries an explicit denizen/edifice kind through projection,
 HTTP, commands, and events. Edifice activation uses handlers from its current
 intact or ruined face; a non-relevant ruined face remains a legal base target.
+
+## Campaign plans
+
+Campaign uses a narrower registered contract in
+`gameplay/actions/CampaignPlans.scala`. A handler is scoped to attacker or
+defender timing and authors a generic option containing its stable source,
+decision owner, label, typed costs, and typed effects. Campaign itself advances
+the printed windows and reduces those effects; it does not switch on component
+IDs. Replay re-resolves each handler and compares the full ordered result before
+applying costs or rolls.
+
+The current effect vocabulary covers attack/defense pool additions, source
+reveal, and ignored attack skulls. Typed extension forms reserve explicit
+boundaries for result transforms, losing-force policy replacement, and a
+suspended decision. These forms are not interpreted scripts: a registered
+handler and a window-specific reducer must still implement each behavior.
+
+Player-defender decisions are authorized to the defender independently of the
+active turn. Bandits have no UI: a stable policy uses every applicable
+cost-free, choice-free defender option in registry order. Paid, choice-bearing,
+unknown, or otherwise unsupported relevant plans block rather than being
+guessed.

@@ -24,26 +24,25 @@ The source-verified inventory for this boundary is:
   at target and force formation, and optional attacker plan
   `denizen.outriders` (“Ignore all skulls you roll”) and the paid
   `relic.brass-army` (`[secret] +4 [attack-die]`) at the attacker battle-plan
-  window;
+  window; the title defender plan (+1 die, or +2 on its Usurper side); and
+  cost-free, choice-free bandit `denizen.watchdog` where applicable;
 - blocked by missing decisions or data: every other optional attacker battle plan;
   rerolls, costs, directional `±` choices, conditional pools, discard/bury,
   favor-bank rewards, and remaining victory/defeat/end effects;
 - irrelevant to the implemented result: Raid-only powers and Imperial effects.
-  Player-defender powers are discovered and block until their choice window is
-  implemented. Bag of Siegeworks,
+  Other player-defender powers are discovered and block until their handlers
+  are implemented. Bag of Siegeworks,
   Weeping Banner, and Peace Envoy are not in this class: each can change this
   boundary and therefore rejects pending typed resolution.
 
-No printed battle plan is auto-selected. The actor receives an authoritative,
-ordered multi-plan decision containing each unused accessible Outriders or
-Brass Army source plus an explicit finish-and-roll control. Each distinct
+The attacker receives an authoritative, ordered multi-plan decision containing
+each unused accessible registered source plus an explicit finish control. Each distinct
 source may be selected once. Selecting a plan records and applies its cost or
 reveal without rolling, keeps the decision open, and removes that source from
-the unused choices. The finish event records the complete selected source order,
-aggregate `ignoreAttackSkulls` result, added attack-die count, and physical
-attack faces. Replay validates every selection in order and rejects duplicate,
+the unused choices. Events record the complete selected source order and typed
+cost/effect vectors. Replay re-resolves every handler and rejects duplicate,
 substituted, stale, or reordered sources. Choices and selected order
-are projected only to the actor, while public and other-player projections show
+are projected only to the current decision owner, while public and other-player projections show
 only that Campaign is waiting. Blocked rules report exact handler and stable
 source identity.
 Mountain/Plains Campaign effects also remain blocked. Raid still needs
@@ -79,9 +78,9 @@ event, projection, and replay path. The player confirms those typed site targets
 through the reusable board-target protocol. The application service
 supplies recorded attack and defense dice; clients never supply randomness.
 Declaration first commits force and Supply and creates the pending attacker-plan
-decision. Attack dice are prepared only after the server revalidates the chosen
-sources and the explicit finish request, so the complete printed plan window
-precedes the single randomness request. Finishing with no selections is skip.
+decision. A player defender receives an independently authorized plan window
+after the attacker finishes. Attack dice are prepared only after both windows
+finish and the server revalidates all choices. Finishing with no selections is skip.
 Brass Army is offered only when held faceup, empty, unused, and payable with one faceup
 secret. Selection places that secret on the relic and rolls exactly four extra
 attack dice when the actor finishes. Those dice do not increase physical force or later loss,
@@ -90,10 +89,12 @@ When Outriders was also selected, all skull losses are ignored and every skull
 die retains its swords. Without Outriders, skull dice beyond the physical force
 cannot kill a warband and contribute no swords.
 
-Defender dice equal the sum of the targeted sites' printed defense; bandit or
-player forces at all targets likewise contribute to defense. The title is an
-optional defender battle plan (Oathkeeper adds one die; Usurper adds two), so a
-titled player defender currently blocks until defender-plan choices exist.
+Defender dice equal the targeted sites' printed defense plus resolved defender
+plan effects; bandit or player forces at all targets likewise contribute to
+defense. The title is an optional registered defender battle plan: Oathkeeper
+adds one die and Usurper adds two. Bandits automatically use every applicable
+registered plan only when it is cost-free and choice-free; Watchdog is the
+first such handler. Other relevant bandit plans block conservatively.
 Attack faces record hollow
 swords, swords, and the skull-plus-two-swords face. Hollow swords score one per
 pair. A skull removes one force warband, and its two swords count only when that
@@ -135,9 +136,9 @@ The mandatory pawn-site ruler is the typed Campaign defender. Every optional
 site must have that same ruler. Powers across a player defender's advisers,
 relics, and ruled sites are classified in defender context: known attacker-only
 handlers do not block merely because the defender rules them, while unknown or
-defender-relevant effects reject conservatively. Because this baseline has no
-defender choice window, the title battle plan also blocks. Projection and
-command handling share these checks, and the defender receives no controls.
+defender-relevant effects reject conservatively. Projection and command
+handling share these checks. During the defender window, the defender receives
+owner-only controls while the active attacker receives a waiting state.
 
 Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects
@@ -151,15 +152,15 @@ selection is replay-validated before normal Act controls resume.
 ## Boundaries
 
 Legality and projection share Campaign rule queries. HTTP and Scala.js accept
-only the actor's selected target set and choices; authenticated routes derive the
+only the decision owner's selected target set and choices; authenticated routes derive the
 actor and never accept dice. Pending state and controls are viewer-scoped to
-the actor. Finite Exile warbands are preserved by moving existing pieces only.
+that owner. Finite Exile warbands are preserved by moving existing pieces only.
 No migration layer, Forge, Imperial
 Campaign, Vision, Chronicle, or general power interpreter is introduced.
 
 ## Deferred work
 
-- further optional attacker plans and all defender battle-plan selection;
+- further optional attacker, defender, and deterministic bandit plan families;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;
 - Raid targets, theft/discard/burn effects, banner rules, and relocation;

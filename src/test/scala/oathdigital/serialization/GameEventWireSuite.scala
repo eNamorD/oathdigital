@@ -21,13 +21,20 @@ class GameEventWireSuite extends munit.FunSuite {
         SiteId("site"), 2, 2),
       OathEvent.CampaignPlanChosen(PlayerId("red"), DecisionId("campaign-1"),
         PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25")), "relic.brass-army", 0, 1,
-        revealed = false, ignoreAttackSkulls = false,
-        addedAttackDice = 4),
+          RelicId("R25")), "relic.brass-army",
+        PendingProcedure.CampaignPlanSide.Attacker,
+        Vector(PendingProcedure.CampaignPlanCost.Secret(1)),
+        Vector(PendingProcedure.CampaignPlanEffect.AddAttackDice(4))),
       OathEvent.CampaignPlansFinished(PlayerId("red"), DecisionId("campaign-1"),
+        PendingProcedure.CampaignPlanSide.Attacker,
         Vector(PendingProcedure.CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25"))), addedAttackDice = 4, ignoreAttackSkulls = false,
+          RelicId("R25"))), Vector("relic.brass-army"),
+        Vector(PendingProcedure.CampaignPlanEffect.AddAttackDice(4)),
         Vector.fill(6)(AttackDieFace.OneSword), attack = 6, skullLosses = 0),
+      OathEvent.CampaignPlanChosen(PlayerId("blue"), DecisionId("campaign-1"),
+        PendingProcedure.CampaignPlanSource.Title(PlayerId("blue")),
+        "title.oathkeeper-defense", PendingProcedure.CampaignPlanSide.Defender,
+        Vector.empty, Vector(PendingProcedure.CampaignPlanEffect.AddDefenseDice(1))),
       OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
         1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
       OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
@@ -40,7 +47,7 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
       .toOption.get
     val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(6)(7))
+    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(7))
     assertEquals(decoded.map(_.event), events)
     val tampered = ujson.read(encoded).arr
     tampered(2)("payload")("attackDice")(0) = "unknown-face"

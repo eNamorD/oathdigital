@@ -27,6 +27,10 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
       GameIntent.ChooseCampaignPlan(oathdigital.model.DecisionId("campaign-30"),
         PendingProcedure.CampaignPlanSource.Relic(PlayerId("p2"),
           RelicId("R25"))))
+    val titlePlan = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignPlan","decisionId":"campaign-30","source":{"kind":"title","playerId":"p3"}}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(titlePlan).toOption.get.intent,
+      GameIntent.ChooseCampaignPlan(oathdigital.model.DecisionId("campaign-30"),
+        PendingProcedure.CampaignPlanSource.Title(PlayerId("p3"))))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(place).toOption.get.intent,
       GameIntent.PlaceCampaignForce(
         oathdigital.model.DecisionId("campaign-30"), Vector(

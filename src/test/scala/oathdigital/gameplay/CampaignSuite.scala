@@ -401,8 +401,10 @@ class CampaignSuite extends munit.FunSuite {
       .left.toOption.get
     assert(error.isInstanceOf[CampaignPlanUnavailable])
     val tampered = CampaignPlansFinished(player.player,
-      DecisionId("campaign-stale-plan"), Vector.empty, 0,
-      ignoreAttackSkulls = true, Vector(AttackDieFace.TwoSwordsSkull),
+      DecisionId("campaign-stale-plan"), PendingProcedure.CampaignPlanSide.Attacker,
+      Vector.empty, Vector.empty,
+      Vector(PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls),
+      Vector(AttackDieFace.TwoSwordsSkull),
       attack = 2, skullLosses = 0)
     assert(rules.evolve(declared.state, tampered).left.toOption.get
       .isInstanceOf[CampaignOutcomeMismatch])
@@ -450,8 +452,9 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(afterActor.relics.head.tokens, Tokens(0, 1))
     assertEquals(after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign].attack, 6)
 
-    assert(rules.evolve(declared.state, event.copy(addedAttackDice = 3)).isLeft)
-    val finishEvent = finished.events.head.asInstanceOf[CampaignPlansFinished]
+    assert(rules.evolve(declared.state, event.copy(effects = Vector(
+      PendingProcedure.CampaignPlanEffect.AddAttackDice(3)))).isLeft)
+    val finishEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
     assert(rules.evolve(selected.state, finishEvent.copy(
       attackDice = dice.dropRight(1), attack = 5)).isLeft)
   }
@@ -523,14 +526,15 @@ class CampaignSuite extends munit.FunSuite {
         val dice = Vector.fill(6)(AttackDieFace.TwoSwordsSkull)
         val finished = rules.handle(selected.state, CampaignCommand.FinishPlans(
           player.player, decision, dice)).toOption.get
-        val finishEvent = finished.events.head.asInstanceOf[CampaignPlansFinished]
-        assertEquals(finishEvent.orderedSources, order)
-        assertEquals(finishEvent.addedAttackDice, 4)
-        assertEquals(finishEvent.ignoreAttackSkulls, true)
-        assertEquals(finishEvent.attack, 12)
-        assertEquals(finishEvent.skullLosses, 0)
+        val attackerEvent = finished.events.head.asInstanceOf[CampaignPlansFinished]
+        val rollEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
+        assertEquals(attackerEvent.orderedSources, order)
+        assertEquals(attackerEvent.addedAttackDice, 4)
+        assertEquals(attackerEvent.ignoreAttackSkulls, true)
+        assertEquals(rollEvent.attack, 12)
+        assertEquals(rollEvent.skullLosses, 0)
         assert(rules.evolve(selected.state,
-          finishEvent.copy(orderedSources = order.reverse)).isLeft)
+          attackerEvent.copy(orderedSources = order.reverse)).isLeft)
     }
   }
 
@@ -568,7 +572,7 @@ class CampaignSuite extends munit.FunSuite {
       "denizen.gleaming-armor", "denizen.herald", "denizen.insect-swarm",
       "denizen.military-parade", "denizen.pledge-of-defense",
       "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
-      "denizen.true-names", "denizen.watchdog", "denizen.wrestlers",
+      "denizen.true-names", "denizen.wrestlers",
       "relic.bandit-standard", "relic.fearsome-shield", "relic.sticky-fire",
       "relic.obsidian-cage", "relic.the-grand-scepter")
     irrelevant.foreach { id =>
@@ -590,6 +594,43 @@ class CampaignSuite extends munit.FunSuite {
         p.copy(advisers = Vector(DenizenState(DenizenId(honors.id.value),
           Orientation.FaceUp, Tokens.empty)))))))
     assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
+  }
+
+  test("bandits deterministically use applicable cost-free defender plans") {
+    val (base, player, _) = campaignReady
+    val site = base.game.current.map.inPlay.find(id =>
+      base.game.current.map.regionOf(id).contains(Region.Cradle) &&
+        catalog.sites.find(_.id == id).exists(_.handlers.forall(h =>
+          !h.endsWith(".mountain") && !h.endsWith(".plains")))).get
+    val watchdog = catalog.denizens.find(_.handlers.contains(
+      "denizen.watchdog")).get
+    val target = base.game.current.map.sites(site).copy(
+      forces = SiteForces.Occupied(ForceKind.Bandit, 1),
+      denizens = Vector(DenizenState(DenizenId(watchdog.id.value),
+        Orientation.FaceUp, Tokens.empty)))
+    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player != player.player) p
+        else p.copy(pawnSite = Some(site))),
+      map = base.game.current.map.copy(sites =
+        base.game.current.map.sites.updated(site, target)))))
+    val decision = DecisionId("campaign-bandit-watchdog")
+    val started = rules.handle(Ready(state), CampaignCommand.Start(
+      player.player, decision, site, 1)).toOption.get
+    val finished = rules.handle(started.state, CampaignCommand.FinishPlans(
+      player.player, decision, Vector(AttackDieFace.HollowSword))).toOption.get
+    val defenderEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
+    assertEquals(defenderEvent.side, PendingProcedure.CampaignPlanSide.Defender)
+    assertEquals(defenderEvent.orderedSources,
+      Vector(PendingProcedure.CampaignPlanSource.SiteCard(site,
+        DenizenId(watchdog.id.value))))
+    assertEquals(defenderEvent.effects,
+      Vector(PendingProcedure.CampaignPlanEffect.AddDefenseDice(1)))
+    val Ready(after) = finished.state: @unchecked
+    val pending = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(CampaignRules.defensePlanDice(pending), 1)
+    val afterAttackerEvent = rules.evolve(started.state, finished.events.head).toOption.get
+    assert(rules.evolve(afterAttackerEvent, defenderEvent.copy(
+      effects = Vector.empty)).isLeft)
   }
 
   test("unknown relevant handler rejects with stable handler and source identity") {
@@ -803,7 +844,7 @@ class CampaignSuite extends munit.FunSuite {
     assert(rules.evolve(started.state, event).isLeft)
   }
 
-  test("player-defender Conquest aggregates force and blocks title battle plans") {
+  test("player-defender Conquest aggregates force and resolves title plans") {
     val (base, attacker, pawn) = campaignReady
     val defender = base.game.current.players.find(_.player != attacker.player).get
     val other = CampaignRules.legalTargets(catalog, base, attacker.player)(1)
@@ -841,19 +882,46 @@ class CampaignSuite extends munit.FunSuite {
         .map(_.defense).sum))
     assertEquals(new GameProjector(catalog).project("player-defender",
       LoadedGame(started.state, 4), defender.player).campaign, None)
-    Vector(TitleSide.Oathkeeper, TitleSide.Usurper).foreach { side =>
+    Vector(TitleSide.Oathkeeper -> 1, TitleSide.Usurper -> 2).foreach { case (side, bonus) =>
       val titled = state.copy(game = state.game.copy(current =
         state.game.current.copy(title = OathkeeperState(
           Some(defender.player), side))))
-      val violation = CampaignRules.validateStart(catalog, titled,
-        attacker.player, sites, 4).left.toOption.get
-      assert(violation.isInstanceOf[CampaignUnavailable])
-      assert(violation.toString.contains("title defender battle plan"))
-      assertEquals(CampaignRules.legalTargets(catalog, titled,
-        attacker.player), Vector.empty)
-      assertEquals(new GameProjector(catalog).project("titled-defender",
+      assertEquals(CampaignRules.validateStart(catalog, titled,
+        attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
+      assert(CampaignRules.legalTargets(catalog, titled, attacker.player).nonEmpty)
+      assert(new GameProjector(catalog).project("titled-defender",
         LoadedGame(Ready(titled), 4), attacker.player).boardTargetActions
-        .exists(_.actionKind == "campaign-conquest"), false)
+        .exists(_.actionKind == "campaign-conquest"))
+      val titleStarted = rules.handle(Ready(titled), CampaignCommand.Start(
+        attacker.player, DecisionId(s"title-$side"), sites, 4)).toOption.get
+      val attackerDone = rules.handle(titleStarted.state, CampaignCommand.FinishPlans(
+        attacker.player, DecisionId(s"title-$side"), Vector.empty)).toOption.get
+      val Ready(awaitingDefender) = attackerDone.state: @unchecked
+      assertEquals(awaitingDefender.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Campaign].attackDice, Vector.empty)
+      assert(rules.handle(attackerDone.state, CampaignCommand.FinishPlans(
+        attacker.player, DecisionId(s"title-$side"), Vector.empty)).isLeft)
+      val defenderView = new GameProjector(catalog).project("titled-defender",
+        LoadedGame(attackerDone.state, 5), defender.player).campaign.get
+      assertEquals(defenderView.decisionOwnerPlayerId, Some(defender.player.value))
+      assertEquals(defenderView.planChoices.map(_.mechanicalResult),
+        Vector(s"Add $bonus defense ${if (bonus == 1) "die" else "dice"}"))
+      val titleSource = PendingProcedure.CampaignPlanSource.Title(defender.player)
+      assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
+        attacker.player, DecisionId(s"title-$side"), titleSource)).isLeft)
+      assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
+        defender.player, DecisionId("stale-title"), titleSource)).isLeft)
+      val chosen = rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
+        defender.player, DecisionId(s"title-$side"), titleSource)).toOption.get
+      val titleEvent = chosen.events.head.asInstanceOf[CampaignPlanChosen]
+      assert(rules.evolve(attackerDone.state, titleEvent.copy(effects = Vector(
+        PendingProcedure.CampaignPlanEffect.AddDefenseDice(bonus + 1)))).isLeft)
+      val resolved = rules.handle(chosen.state, CampaignCommand.FinishPlans(
+        defender.player, DecisionId(s"title-$side"),
+        Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
+      val Ready(afterTitle) = resolved.state: @unchecked
+      assertEquals(CampaignRules.defensePlanDice(afterTitle.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Campaign]), bonus)
     }
 
     val outriders = catalog.denizens.find(
@@ -924,9 +992,11 @@ class CampaignSuite extends munit.FunSuite {
       attacker.player, lossId, sites, 0)).toOption.get
     val lossPlanned = rules.handle(lossStarted.state, CampaignCommand.FinishPlans(
       attacker.player, lossId, Vector.empty)).toOption.get
+    val lossRolled = rules.handle(lossPlanned.state, CampaignCommand.FinishPlans(
+      defender.player, lossId, Vector.empty)).toOption.get
     val lossDice = sites.flatMap(site => Vector.fill(
       catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
-    val lost = rules.handle(lossPlanned.state, CampaignCommand.Sacrifice(
+    val lost = rules.handle(lossRolled.state, CampaignCommand.Sacrifice(
       attacker.player, lossId, 0, lossDice)).toOption.get
     val Ready(afterLoss) = lost.state: @unchecked
     assertEquals(sites.map(afterLoss.game.current.map.sites(_).forces),
@@ -937,10 +1007,12 @@ class CampaignSuite extends munit.FunSuite {
     val declared = rules.handle(Ready(state), CampaignCommand.Start(
       attacker.player, id, sites, 4)).toOption.get
     val planned = rules.handle(declared.state, CampaignCommand.FinishPlans(
-      attacker.player, id, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
+      attacker.player, id, Vector.empty)).toOption.get
+    val rolled = rules.handle(planned.state, CampaignCommand.FinishPlans(
+      defender.player, id, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
     val defenseDice = sites.flatMap(site => Vector.fill(
       catalog.sites.find(_.id == site).get.defense)(DefenseDieFace.Blank))
-    val won = rules.handle(planned.state, CampaignCommand.Sacrifice(
+    val won = rules.handle(rolled.state, CampaignCommand.Sacrifice(
       attacker.player, id, 0, defenseDice)).toOption.get
     val completed = rules.handle(won.state, CampaignCommand.Place(attacker.player,
       id, Vector(CampaignForceAllocation(pawn, 1),

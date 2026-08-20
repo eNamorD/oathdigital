@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{CampaignRules, Economy, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{CampaignPlanOption, CampaignRules, Economy, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -168,7 +168,8 @@ final case class CampaignProjection(
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
     placementTargets: Vector[CampaignPlacementTargetProjection],
     defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
-    defenderForce: Int = 0, defenseDiceCount: Int = 0)
+    defenderForce: Int = 0, defenseDiceCount: Int = 0,
+    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None)
 final case class CampaignPlacementTargetProjection(siteId: String, label: String)
 final case class CampaignPlanChoiceProjection(
     kind: String, sourceKey: Option[String], playerId: Option[String],
@@ -336,6 +337,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 if requestingPlayer.contains(p.actor) =>
               Vector("chooseOathkeeperRecipient")
             case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
+            case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
+                requestingPlayer.contains(CampaignRules.planDecisionOwner(c)) =>
+              Vector("chooseCampaignPlan", "finishCampaignPlans")
             case _ if !requestingPlayer.contains(active.player) => Vector.empty
             case Some(r: PendingProcedure.Recover) if !r.successful =>
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
@@ -343,8 +347,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Recover) => Vector.empty
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
               Vector("placeCampaignForce")
-            case Some(c: PendingProcedure.Campaign) if !c.plansFinished =>
-              Vector("chooseCampaignPlan", "finishCampaignPlans")
+            case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished => Vector.empty
             case Some(_: PendingProcedure.Campaign) => Vector("chooseCampaignSacrifice")
             case Some(_) => Vector.empty
             case None => current.turn.phase match {
@@ -411,34 +414,58 @@ final class GameProjector(catalog: ExecutableCatalog) {
               remaining, !r.successful && remaining > 0, !r.successful)
         }
         val campaignProjection = current.pending.collect {
-          case c: PendingProcedure.Campaign if requestingPlayer.contains(c.actor) =>
+          case c: PendingProcedure.Campaign if requestingPlayer.exists(player =>
+              player == c.actor || player == CampaignRules.planDecisionOwner(c)) =>
             val remaining = c.force - c.skullLosses
-            def planProjection(source: PendingProcedure.CampaignPlanSource) = source match {
+            def sourceFields(source: PendingProcedure.CampaignPlanSource) = source match {
               case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
-                CampaignPlanChoiceProjection("adviser", Some(
-                  PendingProcedure.CampaignPlanSource.Adviser(player, id).stableKey),
-                  Some(player.value), None, Some(id.value),
-                  denizenNames.getOrElse(id, "Outriders"), Some("denizen.outriders"),
-                  0, 0, "Ignore all attack-roll skull losses")
-              case PendingProcedure.CampaignPlanSource.SiteCard(site, id) =>
-                CampaignPlanChoiceProjection("site-card", Some(
-                  PendingProcedure.CampaignPlanSource.SiteCard(site, id).stableKey),
-                  None, Some(site.value), Some(id.value),
-                  denizenNames.getOrElse(id, "Outriders"), Some("denizen.outriders"),
-                  0, 0, "Ignore all attack-roll skull losses")
+                ("adviser", Some(player.value), None, Some(id.value),
+                  denizenNames.getOrElse(id, safeLabel(id.value)))
+              case PendingProcedure.CampaignPlanSource.SiteCard(sourceSite, id) =>
+                ("site-card", None, Some(sourceSite.value), Some(id.value),
+                  denizenNames.getOrElse(id, safeLabel(id.value)))
               case PendingProcedure.CampaignPlanSource.Relic(player, id) =>
-                CampaignPlanChoiceProjection("relic", Some(
-                  PendingProcedure.CampaignPlanSource.Relic(player, id).stableKey),
-                  Some(player.value), None, Some(id.value), "Brass Army",
-                  Some("relic.brass-army"), 0, 1, "Add 4 attack dice")
+                ("relic", Some(player.value), None, Some(id.value),
+                  catalog.relics.find(_.id.value == id.value).map(_.name).getOrElse(safeLabel(id.value)))
+              case PendingProcedure.CampaignPlanSource.Title(player) =>
+                ("title", Some(player.value), None, None,
+                  current.title.side.toString)
             }
-            val planChoices = CampaignRules.legalPlanChoices(catalog, value, c)
-              .map(planProjection)
-            val selectedPlans = c.plans.map(plan =>
-              planProjection(plan.source).copy(favorCost = plan.favorCost,
-                secretCost = plan.secretCost))
+            def costs(costs: Vector[PendingProcedure.CampaignPlanCost]) = (
+              costs.collect { case PendingProcedure.CampaignPlanCost.Favor(n) => n }.sum,
+              costs.collect { case PendingProcedure.CampaignPlanCost.Secret(n) => n }.sum)
+            def effects(effects: Vector[PendingProcedure.CampaignPlanEffect]) =
+              effects.map {
+                case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => s"Add $n attack dice"
+                case PendingProcedure.CampaignPlanEffect.AddDefenseDice(n) => s"Add $n defense dice"
+                case PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls => "Ignore attack-roll skull losses"
+                case PendingProcedure.CampaignPlanEffect.RevealSource => "Reveal this card"
+                case PendingProcedure.CampaignPlanEffect.TransformAttackResult(id) => s"Transform attack result ($id)"
+                case PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(id) => s"Replace losing-force policy ($id)"
+                case PendingProcedure.CampaignPlanEffect.Suspend(kind) => s"Requires $kind decision"
+              }.mkString("; ")
+            def optionProjection(option: CampaignPlanOption) = {
+              val (kind, player, site, card, _) = sourceFields(option.source)
+              val (favor, secret) = costs(option.costs)
+              CampaignPlanChoiceProjection(kind, Some(option.source.stableKey), player,
+                site, card, option.label, Some(option.handlerId), favor, secret,
+                option.description)
+            }
+            def resolutionProjection(plan: PendingProcedure.CampaignPlanResolution) = {
+              val (kind, player, site, card, label) = sourceFields(plan.source)
+              val (favor, secret) = costs(plan.costs)
+              CampaignPlanChoiceProjection(kind, Some(plan.source.stableKey), player,
+                site, card, label, Some(plan.handlerId), favor, secret,
+                effects(plan.effects))
+            }
+            val isDecisionOwner = requestingPlayer.contains(CampaignRules.planDecisionOwner(c))
+            val planChoices = if (isDecisionOwner)
+              CampaignRules.planOptions(catalog, value, c).map(optionProjection)
+            else Vector.empty
+            val selectedPlans = c.plans.filter(plan => plan.side ==
+              CampaignRules.currentPlanSide(c)).map(resolutionProjection)
             CampaignProjection(c.decision.value, c.targetSites.map(_.value), c.force,
-              c.plansFinished, if (c.plansFinished) Vector.empty else planChoices,
+              c.defenderPlansFinished, if (c.defenderPlansFinished) Vector.empty else planChoices,
               selectedPlans,
               c.attackDice.map(attackFaceName), c.attack, c.skullLosses,
               remaining, c.sacrificed, c.defenseDice.map(defenseFaceName),
@@ -454,7 +481,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 case _ => None
               }, CampaignRules.defenderForce(value, c.targetSites),
               c.targetSites.flatMap(CampaignRules.siteDefinition(catalog, _))
-                .map(_.defense).sum)
+                .map(_.defense).sum + CampaignRules.defensePlanDice(c),
+              CampaignRules.currentPlanSide(c).toString.toLowerCase,
+              Option.when(!c.defenderPlansFinished)(CampaignRules.planDecisionOwner(c).value))
         }
         val oathkeeperRecipient = current.pending.collect {
           case p: PendingProcedure.OathkeeperRecipient
@@ -474,7 +503,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Recover) if recoverProjection.nonEmpty => "recover-rolling"
             case Some(_: PendingProcedure.Recover) => "recover-waiting"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.exists(_.victorious.contains(true)) => "campaign-placement"
-            case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.plansFinished => "campaign-plan"
+            case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.defenderPlansFinished => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
             case Some(_: PendingProcedure.Campaign) => "campaign-waiting"
             case Some(_: PendingProcedure.OathkeeperRecipient)

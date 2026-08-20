@@ -202,7 +202,8 @@ final case class CampaignState(decisionId: String, targetSiteIds: Vector[String]
     defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
     placementTargets: Vector[CampaignPlacementTarget],
     defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
-    defenderForce: Int = 0, defenseDiceCount: Int = 0)
+    defenderForce: Int = 0, defenseDiceCount: Int = 0,
+    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None)
 final case class CampaignPlacementTarget(siteId: String, label: String)
 object CampaignState {
   def apply(decisionId: String, siteId: String, force: Int,
@@ -495,6 +496,8 @@ object GameJson {
             siteId = choice.siteId.get, cardId = choice.cardId.get)
           case "relic" => js.Dynamic.literal(kind = "relic",
             playerId = choice.playerId.get, cardId = choice.cardId.get)
+          case "title" => js.Dynamic.literal(kind = "title",
+            playerId = choice.playerId.get)
         }
         js.Dynamic.literal(`type` = "chooseCampaignPlan", playerId = player,
           decisionId = decision, source = source)
@@ -999,12 +1002,21 @@ object GameJson {
               case None => Right(0)
               case Some(_) => int(obj, "defenseDiceCount", "$.campaign")
             }
+            planSide <- optionalField(obj, "planSide").flatMap {
+              case None => Right("attacker")
+              case Some(_) => string(obj, "planSide", "$.campaign")
+            }
+            decisionOwner <- optionalField(obj, "decisionOwnerPlayerId").flatMap {
+              case None => Right(None)
+              case Some(value) if value == null => Right(None)
+              case Some(_) => string(obj, "decisionOwnerPlayerId", "$.campaign").map(Some(_))
+            }
           } yield Some(CampaignState(id, sites, force, plansFinished, planChoices,
             selectedPlans,
             attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,
             victorious, maximumPlacement, placementTargets, defenderKind,
-            defenderPlayer, defenderForce, defenseDiceCount)) }
+            defenderPlayer, defenderForce, defenseDiceCount, planSide, decisionOwner)) }
         }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)
@@ -1305,6 +1317,8 @@ object GameJson {
         choice.siteId.nonEmpty && choice.cardId.nonEmpty
       case "relic" => choice.sourceKey.nonEmpty && choice.playerId.nonEmpty &&
         choice.siteId.isEmpty && choice.cardId.nonEmpty
+      case "title" => choice.sourceKey.nonEmpty && choice.playerId.nonEmpty &&
+        choice.siteId.isEmpty && choice.cardId.isEmpty
       case _ => false
     }
     Either.cond(valid, choice, GameClientFailure.DecodeFailure(path,

@@ -541,7 +541,7 @@ object ServerModeUi {
         panel.appendChild(text("h2", "", "Campaign"))
         if (!campaign.plansFinished) {
           panel.appendChild(text("p", "campaign-instruction",
-            "Choose battle plans in order, then finish and roll."))
+            s"Choose ${campaign.planSide} battle plans in order, then finish."))
           if (campaign.selectedPlans.nonEmpty) panel.appendChild(text("p",
             "campaign-selected-plans", campaignSelectedPlansLabel(
               campaign.selectedPlans)))
@@ -553,8 +553,10 @@ object ServerModeUi {
               selectedPlayer, campaign.decisionId, choice))
             panel.appendChild(choose)
           }
-          val finishLabel = if (campaign.selectedPlans.isEmpty)
-            "Roll without battle plans" else "Finish plans and roll"
+          val rollsNow = campaign.planSide == "defender" || campaign.defenderKind == "bandits"
+          val finishLabel = if (!rollsNow) "Finish attacker plans"
+            else if (campaign.selectedPlans.isEmpty) "Roll without battle plans"
+            else "Finish plans and roll"
           val finish = button(finishLabel, "campaign-finish-plans")
           finish.disabled = !controlsAvailable
           finish.onclick = _ => submit(GameCommand.FinishCampaignPlans(
@@ -1167,8 +1169,10 @@ object ServerModeUi {
   private[frontend] def viewerPresentation(
       value: GameProjection,
       playerId: String
-  ): ViewerPresentation =
-    value.activeParticipantId match {
+  ): ViewerPresentation = {
+    val controllingPlayer = value.campaign.filter(!_.plansFinished)
+      .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
+    controllingPlayer match {
       case Some(activePlayerId) if activePlayerId != playerId =>
         ViewerPresentation(
           showGameplayControls = false,
@@ -1181,6 +1185,7 @@ object ServerModeUi {
         waitingForDisplayName = None
       )
     }
+  }
 
   private[frontend] def showActActionControls(
       value: GameProjection,

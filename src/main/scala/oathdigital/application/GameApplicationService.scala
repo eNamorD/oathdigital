@@ -387,13 +387,14 @@ final class GameApplicationService(
       case GameCommand.FinishCampaignPlans(playerId, decision) =>
         Campaign.prepareFinishPlans(catalog, state, playerId, decision).flatMap { count =>
           rules.handle(state, CampaignCommand.FinishPlans(playerId, decision,
-            campaignDicePort.rollAttack(count)))
+            count.fold(Vector.empty[AttackDieFace])(campaignDicePort.rollAttack)))
         }
       case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
         case OathState.Ready(ready) => ready.game.current.pending match {
           case Some(c: PendingProcedure.Campaign) =>
             val defenseCount = c.targetSites.flatMap(
-              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum
+              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
+              CampaignRules.defensePlanDice(c)
             rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
               campaignDicePort.rollDefense(defenseCount)))
           case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
