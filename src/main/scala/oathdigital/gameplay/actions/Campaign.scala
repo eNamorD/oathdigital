@@ -726,10 +726,11 @@ object CampaignRules {
       val defender = defenderAt(ready, pawn).toOption
       val candidates = pawn +: ready.game.current.map.inPlay.filter(_ != pawn).filter(
         site => defenderAt(ready, site).toOption == defender)
-      if (defender.isEmpty ||
-          validateSupported(catalog, ready, playerId, Vector(pawn)).isLeft) Vector.empty
+      if (defender.isEmpty || validateStart(catalog, ready, playerId,
+          Vector(pawn), Campaign.MinimumForce).isLeft) Vector.empty
       else candidates.filter(site => site == pawn ||
-        validateSupported(catalog, ready, playerId, Vector(pawn, site)).isRight)
+        validateStart(catalog, ready, playerId,
+          Vector(pawn, site), Campaign.MinimumForce).isRight)
     }
 
   def validateStart(catalog: ExecutableCatalog, ready: ReadyGame, playerId: PlayerId,
@@ -777,10 +778,13 @@ object CampaignRules {
       Left(CampaignUnavailable(
         s"${ready.game.current.title.side} title defender battle plan is not supported"))
     else {
-      val relevant = accessibleRules(catalog, ready, defender, target)
+      val relevant = accessibleRules(catalog, ready, defender, target).filter {
+        case DiscoveredCampaignRule(_, HandlerSupport.Blocked(_), _) => true
+        case _ => false
+      }
       relevant.headOption.toLeft(()).left.map { rule =>
-      CampaignUnavailable("player-defender battle plan or Campaign power " +
-        s"'${rule.activation.handlerId}' is not supported")
+        CampaignUnavailable("player-defender battle plan or Campaign power " +
+          s"'${rule.activation.handlerId}' is not supported")
       }
     }
   }

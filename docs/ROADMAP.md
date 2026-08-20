@@ -7,23 +7,17 @@ been reviewed.
 
 ## Now
 
-**Campaign expansion — player-defender Conquest baseline** is active. Extend
-the completed multi-site procedure from Bandits to an Exile defender while
-retaining authoritative target, force, loss-policy, placement, replay, and
-viewer-scoped decision boundaries. Defender battle plans remain the following
-milestone.
+No item is currently assigned.
 
 ## Next
 
 **Campaign expansion** continues with player defenders and battle plans:
 
-1. Add the player-defender Conquest baseline using the completed multi-site
-   target, loss-policy, and placement contracts.
-2. Add a defender-controlled plan stage and deterministic bandit plans before
+1. Add a defender-controlled plan stage and deterministic bandit plans before
    attack randomness.
-3. Implement remaining attacker and defender plans in small mechanics-based
+2. Implement remaining attacker and defender plans in small mechanics-based
    families without bypassing typed rule discovery.
-4. Add Raid declaration, outcomes, and ordered resolution decisions.
+3. Add Raid declaration, outcomes, and ordered resolution decisions.
 
 **Forge** follows Campaign, when conquest can make player-ruled sites
 reachable and its rule/modifier interactions meaningfully legal.
@@ -49,6 +43,17 @@ reachable and its rule/modifier interactions meaningfully legal.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Campaign expansion — player-defender Conquest baseline.** The mandatory
+  target's ruler is recorded as a typed player defender and every optional
+  target must share that ruler. Defense aggregates public target forces;
+  victory removes the complete defending force, kills half rounded down,
+  returns survivors to the defender board, and reuses atomic attacker
+  placement. Both attacker and defender losses use registered, replay-validated
+  disposition policies. Titled defenders and unknown defender-relevant powers
+  block until their decision windows exist, while known attacker-only powers do
+  not block defense. Projection and command legality share the complete check;
+  no facedown information or defender controls are exposed.
 
 - [x] **Campaign expansion — complete multi-site bandit Conquest.** The pawn
   site is mandatory and any legal same-ruler sites may be selected in canonical
@@ -180,7 +185,7 @@ reachable and its rule/modifier interactions meaningfully legal.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 268 JVM tests, 79 Scala.js tests, the Scala.js
+The combined milestone passes 271 JVM tests, 79 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.

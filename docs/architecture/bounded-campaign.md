@@ -132,10 +132,12 @@ changing the board. Thus alternate loss rules do not require rewriting the
 terminal Campaign evolution.
 
 The mandatory pawn-site ruler is the typed Campaign defender. Every optional
-site must have that same ruler. Relevant powers across a player defender's
-advisers, relics, and ruled sites are discovered conservatively; because this
-baseline has no defender choice or optional battle-plan window, such a handler
-blocks the Campaign instead of being ignored. The defender receives no controls.
+site must have that same ruler. Powers across a player defender's advisers,
+relics, and ruled sites are classified in defender context: known attacker-only
+handlers do not block merely because the defender rules them, while unknown or
+defender-relevant effects reject conservatively. Because this baseline has no
+defender choice window, the title battle plan also blocks. Projection and
+command handling share these checks, and the defender receives no controls.
 
 Typed staged events record the ordered target set, force, cost, both dice vectors, sacrifice,
 losses, outcome, and placement. Replay recalculates every field and rejects

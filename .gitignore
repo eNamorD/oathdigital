@@ -1,6 +1,10 @@
 .bsp/
+.bloop/
 .metals/
+.vscode/
 .tooling/cache/
+project/metals.sbt
+project/project/
 project/target/
 target/
 var/

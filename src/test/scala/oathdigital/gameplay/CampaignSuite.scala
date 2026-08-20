@@ -849,7 +849,46 @@ class CampaignSuite extends munit.FunSuite {
         attacker.player, sites, 4).left.toOption.get
       assert(violation.isInstanceOf[CampaignUnavailable])
       assert(violation.toString.contains("title defender battle plan"))
+      assertEquals(CampaignRules.legalTargets(catalog, titled,
+        attacker.player), Vector.empty)
+      assertEquals(new GameProjector(catalog).project("titled-defender",
+        LoadedGame(Ready(titled), 4), attacker.player).boardTargetActions
+        .exists(_.actionKind == "campaign-conquest"), false)
     }
+
+    val outriders = catalog.denizens.find(
+      _.handlers.contains("denizen.outriders")).get
+    val vow = catalog.denizens.find(
+      _.handlers.contains("denizen.vow-of-peace")).get
+    val brass = catalog.relics.find(
+      _.handlers.contains("relic.brass-army")).get
+    val attackerOnly = state.copy(game = state.game.copy(current =
+      state.game.current.copy(players = state.game.current.players.map {
+        case p if p.player == defender.player => p.copy(
+          advisers = Vector(outriders, vow).map(card => DenizenState(
+            DenizenId(card.id.value), Orientation.FaceUp, Tokens.empty)),
+          relics = Vector(RelicState(RelicId(brass.id.value),
+            Orientation.FaceUp, Tokens.empty)))
+        case p => p
+      })))
+    assertEquals(CampaignRules.validateStart(catalog, attackerOnly,
+      attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
+
+    val original = catalog.denizens.head
+    val changedCatalog = catalog.copy(denizens = catalog.denizens.updated(0,
+      original.copy(handlers = Vector("denizen.future-defender-plan"),
+        rulesText = "+2 [defense-die]")))
+    val unsupported = state.copy(game = state.game.copy(current =
+      state.game.current.copy(players = state.game.current.players.map {
+        case p if p.player == defender.player => p.copy(advisers = Vector(
+          DenizenState(DenizenId(original.id.value), Orientation.FaceUp,
+            Tokens.empty)))
+        case p => p
+      })))
+    assert(CampaignRules.validateStart(changedCatalog, unsupported,
+      attacker.player, sites, 4).isLeft)
+    assertEquals(CampaignRules.legalTargets(changedCatalog, unsupported,
+      attacker.player), Vector.empty)
 
     val mixed = state.copy(game = state.game.copy(current =
       state.game.current.copy(map = state.game.current.map.copy(sites =
