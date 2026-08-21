@@ -7,10 +7,7 @@ been reviewed.
 
 ## Now
 
-**Phase 1 - Forge** is active. Implement the complete unmodified base action:
-site rule and Forge-icon requirements, exactly three empty denizens, projected
-resource distribution, server-owned relic draw, facedown transfer, replay, and
-private UI.
+No item is currently assigned.
 
 ## Next
 
@@ -22,7 +19,7 @@ campaign-continuity rules.
 1. [x] Complete Campaign Raid without expanding the battle-plan catalog: targets,
    defense, losses, transfers, private-card disposal, favor burn, pawn
    relocation, and terminal windows.
-2. [ ] Implement Forge.
+2. [x] Implement Forge.
 3. Implement banners and Challenge, including base banner resource movement.
 4. Implement the core minor actions: play/discard a facedown adviser,
    reveal/peek at relics, and move warbands between board and a ruled pawn
@@ -119,6 +116,15 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 1 - Bounded Forge.** A ruling Exile at a printed Forge site can
+  spend 1 Supply, assign the exact printed favor/secret multiset one apiece to
+  three empty denizens, and take the authoritative relic-deck top facedown.
+  Stable typed assignments, finite favor banks, owner-only projection,
+  pre-port command validation, durable replay facts, authenticated/development
+  transport, persistence/reload, and accessible stale-safe Scala.js controls
+  are tested. The audited current component vocabulary has no base Forge
+  modifier; changed or unknown active handler vocabularies block explicitly.
 
 - [x] **Phase 1 - Complete base Campaign Raid.** Raid has typed canonical pawn,
   relic, and banner targets; player-owned plan windows; recorded dice, losses,
@@ -279,7 +285,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 285 JVM tests, 82 Scala.js tests, the Scala.js
+The combined milestone passes 295 JVM tests, 84 Scala.js tests, the Scala.js
 linker, runtime-catalog validation, and a persisted three-player browser smoke
 test through Take Wealth, End Wake, Act selection, responsive site rendering,
 reload reconstruction, and disconnect/reconnect recovery.
