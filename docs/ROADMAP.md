@@ -7,9 +7,7 @@ been reviewed.
 
 ## Now
 
-**Phase 1 - Core minor actions** is active in the implementation task. It covers
-the printed base procedures for facedown advisers, relic inspection, and moving
-warbands between a player board and the ruled site containing their pawn.
+No item is currently assigned.
 
 ## Next
 
@@ -23,9 +21,9 @@ campaign-continuity rules.
    relocation, and terminal windows.
 2. [x] Implement Forge.
 3. [x] Implement banners and Challenge, including base banner resource movement.
-4. Implement the core minor actions: play/discard a facedown adviser,
-   reveal/peek at relics, and move warbands between board and a ruled pawn
-   site.
+4. [x] Implement the core minor actions: play/discard a facedown adviser,
+   reveal/peek at relics, withdraw warbands from the pawn's site while leaving
+   one, and deploy board warbands to that site when the player rules it.
 5. Implement ordinary all-Exile Negotiation as an atomic, consented favor/relic
    exchange. Citizenship remains deferred with the Empire.
 
@@ -118,6 +116,17 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 1 - Core minor actions.** During Act, players can play or discard
+  a facedown adviser as if searched, privately inspect relics at their site,
+  reveal a held facedown relic, and move legal quantities of their warbands to
+  or from their pawn's site for 0 Supply. Commands and replay enforce card
+  restrictions, Homeland replacement, site-play favor, regional discards,
+  private relic knowledge, site rule, and the final-warband limit. Conspiracy
+  and relevant printed modifiers reject through an audited transitional power
+  registry until Phase 3. Authenticated transport, owner redaction, persistence
+  and reopen, action-boundary evaluation, and accessible Scala.js controls are
+  covered.
 
 - [x] **Phase 1 - Bounded banners and Challenge.** The fixed Mob and Wandering
   Flame faces now support typed public holder/resource state, the common
