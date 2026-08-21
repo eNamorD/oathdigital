@@ -15,6 +15,26 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("v9 banner events preserve ordered ribbon and replacement facts") {
+    val events = Vector[OathEvent](
+      OathEvent.BannerChallengeStarted(PlayerId("red"), DecisionId("challenge-9"),
+        Banner.PeoplesFavor, Some(PlayerId("blue")), 3, 1,
+        Vector(Suit.Order), Vector.empty),
+      OathEvent.BannerRibbonChoiceMade(PlayerId("red"), DecisionId("challenge-9"),
+        Banner.PeoplesFavor, Some(Suit.Beast), None,
+        Vector(Suit.Arcane), Vector.empty),
+      OathEvent.BannerChallengeCompleted(PlayerId("red"), DecisionId("challenge-9"),
+        Banner.PeoplesFavor, Some(PlayerId("blue")), 3, 4,
+        Vector(Suit.Order, Suit.Beast, Suit.Arcane), Vector.empty, 0),
+      OathEvent.BannerResourcePlaced(PlayerId("red"), Banner.PeoplesFavor, 2))
+    val encoded = GameEventWire.encodeStream("banners", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
+      Vector.fill(4)(9))
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
   test("v8 Forge events round trip exact targets resources and relic top") {
     val site = SiteId("site:forge")
     val targets = Vector("1", "2", "3").map(id =>

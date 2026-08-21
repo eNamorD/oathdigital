@@ -136,6 +136,24 @@ object OathEvent {
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,
       assignments: Vector[ForgeResourceAssignment], relicId: RelicId
   ) extends OathEvent
+  final case class BannerChallengeStarted(
+      playerId: PlayerId, decision: DecisionId, banner: Banner,
+      priorHolder: Option[PlayerId], priorResources: Int, supplySpent: Int,
+      automaticFavorReturns: Vector[Suit] = Vector.empty,
+      automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
+  final case class BannerRibbonChoiceMade(
+      playerId: PlayerId, decision: DecisionId, banner: Banner,
+      favorBank: Option[Suit], secretSite: Option[SiteId],
+      automaticFavorReturns: Vector[Suit] = Vector.empty,
+      automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
+  final case class BannerChallengeCompleted(
+      playerId: PlayerId, decision: DecisionId, banner: Banner,
+      priorHolder: Option[PlayerId], priorResources: Int,
+      placedResources: Int, favorReturnOrder: Vector[Suit],
+      secretSiteOrder: Vector[SiteId], secretsReturnedToHolder: Int)
+      extends OathEvent
+  final case class BannerResourcePlaced(
+      playerId: PlayerId, banner: Banner, amount: Int) extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,
@@ -270,6 +288,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingForgeAssignment(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingBannerDecision(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)
@@ -374,6 +394,11 @@ object OathViolation {
   final case class ForgeDecisionMismatch(expected: DecisionId, actual: DecisionId)
       extends OathViolation
   final case class ForgeOutcomeMismatch(detail: String) extends OathViolation
+  final case class UnsupportedBannerState(reason: String) extends OathViolation
+  final case class ChallengeUnavailable(detail: String) extends OathViolation
+  final case class ChallengeDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class ChallengeOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
   final case class RestOutcomeMismatch(detail: String)
@@ -606,6 +631,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
           _: ForgeStarted | _: ForgeCompleted |
+          _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
+          _: BannerChallengeCompleted | _: BannerResourcePlaced |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>

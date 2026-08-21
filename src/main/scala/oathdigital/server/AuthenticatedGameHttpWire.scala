@@ -28,6 +28,11 @@ object GameIntent {
   case object BeginForge extends GameIntent
   final case class CompleteForge(decision: DecisionId,
       assignments: Vector[ForgeResourceAssignment]) extends GameIntent
+  final case class BeginChallenge(banner: Banner) extends GameIntent
+  final case class ChooseChallengeFavorBank(decision: DecisionId, suit: Suit) extends GameIntent
+  final case class ChooseChallengeSecretSite(decision: DecisionId, site: SiteId) extends GameIntent
+  final case class CompleteChallenge(decision: DecisionId, amount: Int) extends GameIntent
+  final case class PlaceBannerResource(banner: Banner, amount: Int) extends GameIntent
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class BeginCampaignConquest(
@@ -234,6 +239,33 @@ object AuthenticatedGameHttpWire {
           } yield ForgeResourceAssignment(SiteDenizenTarget(SiteId(site), DenizenId(denizen)), resource)
         }
       } yield GameIntent.CompleteForge(DecisionId(decision), assignments)
+      case "beginChallenge" => for {
+        _ <- exactFields(obj, Set("type", "banner"), "$.intent")
+        key <- stringField(obj, "banner", "$.intent")
+        banner <- Banner.fromKey(key).toRight(HttpInputError("$.intent.banner", "unknown banner"))
+      } yield GameIntent.BeginChallenge(banner)
+      case "chooseChallengeFavorBank" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "suit"), "$.intent")
+        d <- stringField(obj, "decisionId", "$.intent")
+        key <- stringField(obj, "suit", "$.intent")
+        suit <- Suit.all.find(_.key == key).toRight(HttpInputError("$.intent.suit", "unknown suit"))
+      } yield GameIntent.ChooseChallengeFavorBank(DecisionId(d), suit)
+      case "chooseChallengeSecretSite" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "siteId"), "$.intent")
+        d <- stringField(obj, "decisionId", "$.intent")
+        site <- stringField(obj, "siteId", "$.intent")
+      } yield GameIntent.ChooseChallengeSecretSite(DecisionId(d), SiteId(site))
+      case "completeChallenge" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "amount"), "$.intent")
+        d <- stringField(obj, "decisionId", "$.intent")
+        amount <- field(obj, "amount", "$.intent").flatMap(v => nonNegativeInt(v, "$.intent.amount"))
+      } yield GameIntent.CompleteChallenge(DecisionId(d), amount)
+      case "placeBannerResource" => for {
+        _ <- exactFields(obj, Set("type", "banner", "amount"), "$.intent")
+        key <- stringField(obj, "banner", "$.intent")
+        banner <- Banner.fromKey(key).toRight(HttpInputError("$.intent.banner", "unknown banner"))
+        amount <- field(obj, "amount", "$.intent").flatMap(v => nonNegativeInt(v, "$.intent.amount"))
+      } yield GameIntent.PlaceBannerResource(banner, amount)
       case "addRecoverDice" =>
         exactFields(obj, Set("type", "decisionId"), "$.intent")
           .flatMap(_ => stringField(obj, "decisionId", "$.intent"))

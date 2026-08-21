@@ -1100,15 +1100,8 @@ object CampaignRules {
   }
 
   private[gameplay] def returnBannerFavor(banks: Map[Suit, Int], amount: Int)
-      : Map[Suit, Int] = {
-    val (_, returned) = (0 until amount).foldLeft(banks -> Map.empty[Suit, Int]) {
-      case ((current, result), _) =>
-        val suit = Suit.all.minBy(s => (current.getOrElse(s, 0), Suit.all.indexOf(s)))
-        current.updated(suit, current.getOrElse(suit, 0) + 1) ->
-          result.updated(suit, result.getOrElse(suit, 0) + 1)
-    }
-    returned
-  }
+      : Map[Suit, Int] = BannerRules.raidFavorReturn(banks, amount)
+        .groupBy(identity).view.mapValues(_.size).toMap
 
   private def validateDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, defender: PlayerId, target: SiteId)

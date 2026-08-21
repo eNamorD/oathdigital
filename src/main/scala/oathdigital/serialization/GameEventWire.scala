@@ -32,6 +32,7 @@ object GameEventWire {
   val EconomyFormatVersion: Int = 6
   val RecoverFormatVersion: Int = 7
   val ForgeFormatVersion: Int = 8
+  val BannerFormatVersion: Int = 9
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -51,6 +52,10 @@ object GameEventWire {
   val RelicRecoveredType = "gameplay.relic-recovered"
   val ForgeStartedType = "gameplay.forge-started"
   val ForgeCompletedType = "gameplay.forge-completed"
+  val BannerChallengeStartedType = "gameplay.banner-challenge-started"
+  val BannerRibbonChoiceMadeType = "gameplay.banner-ribbon-choice-made"
+  val BannerChallengeCompletedType = "gameplay.banner-challenge-completed"
+  val BannerResourcePlacedType = "gameplay.banner-resource-placed"
   val CampaignStartedType = "gameplay.campaign-started"
   val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
   val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
@@ -166,7 +171,7 @@ object GameEventWire {
             if (version == FormatVersion || version == GameplayFormatVersion ||
                 version == SearchFormatVersion || version == RestFormatVersion ||
                 version == EconomyFormatVersion || version == RecoverFormatVersion ||
-                version == ForgeFormatVersion)
+                version == ForgeFormatVersion || version == BannerFormatVersion)
               Right(())
             else
               Left(
@@ -283,6 +288,10 @@ object GameEventWire {
       case _: RelicRecovered => RelicRecoveredType
       case _: ForgeStarted => ForgeStartedType
       case _: ForgeCompleted => ForgeCompletedType
+      case _: BannerChallengeStarted => BannerChallengeStartedType
+      case _: BannerRibbonChoiceMade => BannerRibbonChoiceMadeType
+      case _: BannerChallengeCompleted => BannerChallengeCompletedType
+      case _: BannerResourcePlaced => BannerResourcePlacedType
       case _: CampaignStarted => CampaignStartedType
       case _: CampaignPlanChosen => CampaignPlanChosenType
       case _: CampaignPlansFinished => CampaignPlansFinishedType
@@ -300,6 +309,8 @@ object GameEventWire {
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
+        _: BannerChallengeCompleted | _: BannerResourcePlaced => BannerFormatVersion
     case _: ForgeStarted | _: ForgeCompleted => ForgeFormatVersion
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
     case _: Mustered | _: Traded => EconomyFormatVersion
@@ -408,6 +419,32 @@ object GameEventWire {
           "siteId" -> a.target.siteId.value,
           "denizenId" -> a.target.denizenId.value,
           "resource" -> a.resource.key))))
+      case BannerChallengeStarted(player, decision, banner, holder, prior, spent,
+          favor, sites) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "banner" -> banner.key,
+        "priorHolderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)),
+        "priorResources" -> prior, "supplySpent" -> spent,
+        "automaticFavorReturns" -> ujson.Arr.from(favor.map(s => ujson.Str(s.key))),
+        "automaticSecretSites" -> ujson.Arr.from(sites.map(s => ujson.Str(s.value))))
+      case BannerRibbonChoiceMade(player, decision, banner, bank, site, favor, sites) =>
+        ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
+          "banner" -> banner.key,
+          "favorBank" -> bank.fold[ujson.Value](ujson.Null)(s => ujson.Str(s.key)),
+          "secretSiteId" -> site.fold[ujson.Value](ujson.Null)(s => ujson.Str(s.value)),
+          "automaticFavorReturns" -> ujson.Arr.from(favor.map(s => ujson.Str(s.key))),
+          "automaticSecretSites" -> ujson.Arr.from(sites.map(s => ujson.Str(s.value))))
+      case BannerChallengeCompleted(player, decision, banner, holder, prior,
+          placed, favor, sites, returned) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "banner" -> banner.key,
+        "priorHolderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p => ujson.Str(p.value)),
+        "priorResources" -> prior, "placedResources" -> placed,
+        "favorReturnOrder" -> ujson.Arr.from(favor.map(s => ujson.Str(s.key))),
+        "secretSiteOrder" -> ujson.Arr.from(sites.map(s => ujson.Str(s.value))),
+        "secretsReturnedToHolder" -> returned)
+      case BannerResourcePlaced(player, banner, amount) => ujson.Obj(
+        "playerId" -> player.value, "banner" -> banner.key, "amount" -> amount)
       case CampaignStarted(player, decision, sites, defender, spent, force,
           kind, raidTargets) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -659,6 +696,54 @@ object GameEventWire {
         } yield ForgeCompleted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
           assignments, RelicId(payload("relicId").str))
+        case BannerChallengeStartedType => for {
+          banner <- decodeBanner(payload("banner").str, s"$path.banner")
+          prior <- safeIntField(payload.obj, "priorResources", path)
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
+            decodeSuit(v.str, s"$path.automaticFavorReturns"))
+          sites = payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str))
+          holder = payload("priorHolderPlayerId") match {
+            case ujson.Null => None
+            case value => Some(PlayerId(value.str))
+          }
+        } yield BannerChallengeStarted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), banner, holder, prior, spent,
+          favor, sites)
+        case BannerRibbonChoiceMadeType => for {
+          banner <- decodeBanner(payload("banner").str, s"$path.banner")
+          favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
+            decodeSuit(v.str, s"$path.automaticFavorReturns"))
+          bank <- payload("favorBank") match {
+            case ujson.Null => Right(None)
+            case value => decodeSuit(value.str, s"$path.favorBank").map(Some(_))
+          }
+          site = payload("secretSiteId") match {
+            case ujson.Null => None
+            case value => Some(SiteId(value.str))
+          }
+          sites = payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str))
+        } yield BannerRibbonChoiceMade(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), banner, bank, site, favor, sites)
+        case BannerChallengeCompletedType => for {
+          banner <- decodeBanner(payload("banner").str, s"$path.banner")
+          prior <- safeIntField(payload.obj, "priorResources", path)
+          placed <- safeIntField(payload.obj, "placedResources", path)
+          returned <- safeIntField(payload.obj, "secretsReturnedToHolder", path)
+          favor <- traverse(payload("favorReturnOrder").arr.toVector)(v =>
+            decodeSuit(v.str, s"$path.favorReturnOrder"))
+          sites = payload("secretSiteOrder").arr.toVector.map(v => SiteId(v.str))
+          holder = payload("priorHolderPlayerId") match {
+            case ujson.Null => None
+            case value => Some(PlayerId(value.str))
+          }
+        } yield BannerChallengeCompleted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), banner, holder, prior, placed,
+          favor, sites, returned)
+        case BannerResourcePlacedType => for {
+          banner <- decodeBanner(payload("banner").str, s"$path.banner")
+          amount <- safeIntField(payload.obj, "amount", path)
+        } yield BannerResourcePlaced(PlayerId(payload("playerId").str), banner, amount)
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
@@ -815,7 +900,11 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == ForgeStartedType || eventType == ForgeCompletedType)
+      if (eventType == BannerChallengeStartedType ||
+          eventType == BannerRibbonChoiceMadeType ||
+          eventType == BannerChallengeCompletedType ||
+          eventType == BannerResourcePlacedType) BannerFormatVersion
+      else if (eventType == ForgeStartedType || eventType == ForgeCompletedType)
         ForgeFormatVersion
       else if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
           eventType == RelicRecoveredType || eventType == CampaignStartedType ||
@@ -845,6 +934,9 @@ object GameEventWire {
       s"event type '$eventType' requires format version $expected"
     ))
   }
+
+  private def decodeBanner(value: String, path: String): Either[WireError, Banner] =
+    Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))
 
   private def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(

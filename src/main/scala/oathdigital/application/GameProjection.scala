@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{CampaignPlanOption, CampaignRules, Economy, ForgeRules, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -167,6 +167,12 @@ final case class ForgeAssignmentTargetProjection(
 final case class ForgeProjection(
     decisionId: String, actorPlayerId: String, favor: Int, secrets: Int,
     targets: Vector[ForgeAssignmentTargetProjection])
+final case class BannerProjection(key: String, face: String,
+    holderPlayerId: Option[String], resources: Int)
+final case class ChallengeProjection(decisionId: String, actorPlayerId: String,
+    banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
+    legalFavorBanks: Vector[String], legalSecretSiteIds: Vector[String],
+    minimumPlacement: Int, maximumPlacement: Int)
 final case class CampaignProjection(
     decisionId: String, targetSiteIds: Vector[String], force: Int,
     plansFinished: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],
@@ -238,6 +244,8 @@ final case class GameProjection(
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
     oathkeeper: Option[OathkeeperProjection] = None,
     oathkeeperRecipient: Option[OathkeeperRecipientProjection] = None
+    ,banners: Vector[BannerProjection] = Vector.empty
+    ,challenge: Option[ChallengeProjection] = None
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -363,6 +371,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 Some("stopRecover")).flatten
             case Some(_: PendingProcedure.Recover) => Vector.empty
             case Some(_: PendingProcedure.Forge) => Vector("completeForge")
+            case Some(c: PendingProcedure.Challenge) if requestingPlayer.contains(c.actor) =>
+              if (c.remainingRibbonResources == 0) Vector("completeChallenge")
+              else c.banner match {
+                case Banner.PeoplesFavor => Vector("chooseChallengeFavorBank")
+                case Banner.DarkestSecret => Vector("chooseChallengeSecretSite")
+              }
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
               Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
                 else "placeCampaignForce")
@@ -379,7 +393,11 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     "beginRecover"),
                   Option.when(active.pawnSite.exists(siteId =>
                     ForgeRules.validate(catalog, value, active, siteId).isRight))(
-                    "beginForge")
+                    "beginForge"),
+                  Option.when(ChallengeRules.legal(catalog, value, active.player).nonEmpty)(
+                    "beginChallenge"),
+                  Option.when(Banner.all.exists(b => BannerRules.holder(current, b).contains(active.player) &&
+                    BannerRules.playerResources(active, b) > 0))("placeBannerResource")
                 ).flatten
               case Phase.Rest => Vector("finishRest")
               case Phase.Wake =>
@@ -441,6 +459,18 @@ final class GameProjector(catalog: ExecutableCatalog) {
               f.cost.secrets, f.eligibleTargets.map(t =>
                 ForgeAssignmentTargetProjection(t.siteId.value, t.denizenId.value,
                   denizenNames.getOrElse(t.denizenId, safeLabel(t.denizenId.value)))))
+        }
+        val challengeProjection = current.pending.collect {
+          case c: PendingProcedure.Challenge if requestingPlayer.contains(c.actor) =>
+            val actor = current.players.find(_.player == c.actor).get
+            val banks = BannerRules.addFavor(value.support.favorBanks, c.favorReturned)
+            val legalBanks = if (c.banner == Banner.PeoplesFavor && c.remainingRibbonResources > 0)
+              BannerRules.leastFavorBanks(banks).map(_.key) else Vector.empty
+            val legalSites = if (c.banner == Banner.DarkestSecret && c.remainingRibbonResources > 0)
+              BannerRules.leastSites(current, c.secretsPlaced).map(_.value) else Vector.empty
+            ChallengeProjection(c.decision.value, c.actor.value, c.banner.key,
+              c.priorHolder.map(_.value), c.priorResources, legalBanks, legalSites,
+              c.priorResources + 1, BannerRules.playerResources(actor, c.banner))
         }
         val campaignProjection = current.pending.collect {
           case c: PendingProcedure.Campaign if requestingPlayer.exists(player =>
@@ -540,6 +570,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Recover) => "recover-waiting"
             case Some(_: PendingProcedure.Forge) if forgeProjection.nonEmpty => "forge-assignment"
             case Some(_: PendingProcedure.Forge) => "forge-waiting"
+            case Some(_: PendingProcedure.Challenge) if challengeProjection.nonEmpty => "challenge-decision"
+            case Some(_: PendingProcedure.Challenge) => "challenge-waiting"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.exists(_.victorious.contains(true)) => "campaign-placement"
             case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.defenderPlansFinished => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
@@ -665,6 +697,14 @@ final class GameProjector(catalog: ExecutableCatalog) {
             }, current.tracks.usurperLimited, current.result.map(_.winner.value))),
           oathkeeperRecipient = oathkeeperRecipient,
           campaignRaidRelocation = campaignRaidRelocation)
+          .copy(banners = Vector(
+            BannerProjection("peoples-favor", current.banners.peoplesFavor.active match {
+              case PeoplesFavorFace.Mob => "mob"; case PeoplesFavorFace.GrandCouncil => "grand-council"
+            }, current.banners.peoplesFavor.holder.map(_.value), current.banners.peoplesFavor.favor),
+            BannerProjection("darkest-secret", current.banners.darkestSecret.active match {
+              case DarkestSecretFace.WanderingFlame => "wandering-flame"; case DarkestSecretFace.Festival => "festival"
+            }, current.banners.darkestSecret.holder.map(_.value), current.banners.darkestSecret.secrets)),
+            challenge = challengeProjection)
     }
 
   private def economyLabel(target: EconomyTargetRef): String = target match {
@@ -719,6 +759,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
     val secret = trades.filter(_.resource == oathdigital.setup.TradeResource.Secret)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
+    val challenges = ChallengeRules.legal(catalog, ready, player.player).map { banner =>
+      val holder = BannerRules.holder(ready.game.current, banner)
+      BoardTargetCandidateProjection(
+        BoardTargetRefProjection.PlayerBanner(holder.map(_.value).getOrElse("shared-bank"), banner.key),
+        safeLabel(banner.key), Vector("1 Supply",
+          s"Currently ${BannerRules.resources(ready.game.current, banner)} resources"))
+    }
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites", campaign,
@@ -733,6 +780,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
           player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
         minimum = Option.when(raid.nonEmpty)(1).getOrElse(0), maximum = raid.size,
         requiredTargets = raid.headOption.map(_.target).toVector),
+      selection("challenge", "Choose a banner to Challenge", challenges),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)

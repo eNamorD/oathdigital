@@ -332,6 +332,20 @@ object GameHttpWire {
             "legalSiteIds" -> ujson.Arr.from(
               relocation.legalSiteIds.map(ujson.Str(_))))
         },
+        "banners" -> ujson.Arr.from(projection.banners.map(b => ujson.Obj(
+          "banner" -> b.key, "face" -> b.face,
+          "holderPlayerId" -> b.holderPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+          "resources" -> b.resources))),
+        "challenge" -> projection.challenge.fold[ujson.Value](ujson.Null) { c =>
+          ujson.Obj("decisionId" -> c.decisionId, "actorPlayerId" -> c.actorPlayerId,
+            "banner" -> c.banner,
+            "priorHolderPlayerId" -> c.priorHolderPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+            "priorResources" -> c.priorResources,
+            "legalFavorBanks" -> ujson.Arr.from(c.legalFavorBanks.map(ujson.Str(_))),
+            "legalSecretSiteIds" -> ujson.Arr.from(c.legalSecretSiteIds.map(ujson.Str(_))),
+            "minimumPlacement" -> c.minimumPlacement,
+            "maximumPlacement" -> c.maximumPlacement)
+        },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -484,6 +498,34 @@ object GameHttpWire {
           } yield ForgeResourceAssignment(SiteDenizenTarget(SiteId(site), DenizenId(denizen)), resource)
         }
       } yield GameCommand.CompleteForge(PlayerId(p), DecisionId(decision), assignments)
+      case "beginChallenge" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "banner"), path)
+        p <- stringField(obj, "playerId", path)
+        key <- stringField(obj, "banner", path)
+        banner <- Banner.fromKey(key).toRight(HttpInputError(s"$path.banner", "unknown banner"))
+      } yield GameCommand.BeginChallenge(PlayerId(p), banner)
+      case "chooseChallengeFavorBank" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "suit"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+        key <- stringField(obj, "suit", path)
+        suit <- Suit.all.find(_.key == key).toRight(HttpInputError(s"$path.suit", "unknown suit"))
+      } yield GameCommand.ChooseChallengeFavorBank(PlayerId(p), DecisionId(d), suit)
+      case "chooseChallengeSecretSite" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "siteId"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+        site <- stringField(obj, "siteId", path)
+      } yield GameCommand.ChooseChallengeSecretSite(PlayerId(p), DecisionId(d), SiteId(site))
+      case "completeChallenge" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "amount"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+        amount <- field(obj, "amount", path).flatMap(v => nonNegativeInt(v, s"$path.amount"))
+      } yield GameCommand.CompleteChallenge(PlayerId(p), DecisionId(d), amount)
+      case "placeBannerResource" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "banner", "amount"), path)
+        p <- stringField(obj, "playerId", path); key <- stringField(obj, "banner", path)
+        banner <- Banner.fromKey(key).toRight(HttpInputError(s"$path.banner", "unknown banner"))
+        amount <- field(obj, "amount", path).flatMap(v => nonNegativeInt(v, s"$path.amount"))
+      } yield GameCommand.PlaceBannerResource(PlayerId(p), banner, amount)
       case "addRecoverDice" => for {
         p <- stringField(obj, "playerId", path)
         d <- stringField(obj, "decisionId", path)

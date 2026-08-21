@@ -81,6 +81,15 @@ final class AuthenticatedGameGateway(
           case GameIntent.BeginForge => actor.beginForge
           case GameIntent.CompleteForge(decision, assignments) =>
             actor.completeForge(decision, assignments)
+          case GameIntent.BeginChallenge(banner) => actor.beginChallenge(banner)
+          case GameIntent.ChooseChallengeFavorBank(decision, suit) =>
+            actor.chooseChallengeFavorBank(decision, suit)
+          case GameIntent.ChooseChallengeSecretSite(decision, site) =>
+            actor.chooseChallengeSecretSite(decision, site)
+          case GameIntent.CompleteChallenge(decision, amount) =>
+            actor.completeChallenge(decision, amount)
+          case GameIntent.PlaceBannerResource(banner, amount) =>
+            actor.placeBannerResource(banner, amount)
           case GameIntent.AddRecoverDice(decision) => actor.addRecoverDice(decision)
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteIds, attackDiceCount) =>

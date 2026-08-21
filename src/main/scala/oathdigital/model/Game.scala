@@ -371,6 +371,18 @@ object PendingProcedure {
       "Forge requires exactly three distinct denizen targets")
   }
 
+  /** Owner-scoped, replay-stable continuation of the printed banner procedure. */
+  final case class Challenge(
+      decision: DecisionId,
+      actor: PlayerId,
+      banner: Banner,
+      priorHolder: Option[PlayerId],
+      priorResources: Int,
+      remainingRibbonResources: Int,
+      favorReturned: Vector[Suit] = Vector.empty,
+      secretsPlaced: Vector[SiteId] = Vector.empty
+  ) extends PendingProcedure
+
   final case class OathkeeperRecipient(
       decision: DecisionId,
       actor: PlayerId,

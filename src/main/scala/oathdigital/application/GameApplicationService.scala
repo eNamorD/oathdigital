@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
@@ -44,6 +44,15 @@ object GameCommand {
   final case class BeginForge(playerId: PlayerId) extends GameCommand
   final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
       assignments: Vector[ForgeResourceAssignment]) extends GameCommand
+  final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
+  final case class ChooseChallengeFavorBank(playerId: PlayerId, decision: DecisionId,
+      suit: Suit) extends GameCommand
+  final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
+      site: SiteId) extends GameCommand
+  final case class CompleteChallenge(playerId: PlayerId, decision: DecisionId,
+      amount: Int) extends GameCommand
+  final case class PlaceBannerResource(playerId: PlayerId, banner: Banner,
+      amount: Int) extends GameCommand
   final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class StopRecover(playerId: PlayerId, decision: DecisionId)
@@ -404,6 +413,17 @@ final class GameApplicationService(
                 assignments, relic)))
         case _ => Left(OathViolation.GameNotStarted)
       }
+      case GameCommand.BeginChallenge(playerId, banner) =>
+        rules.handle(state, ChallengeCommand.Begin(playerId,
+          DecisionId(s"challenge-$nextSequence"), banner))
+      case GameCommand.ChooseChallengeFavorBank(playerId, decision, suit) =>
+        rules.handle(state, ChallengeCommand.ChooseFavorBank(playerId, decision, suit))
+      case GameCommand.ChooseChallengeSecretSite(playerId, decision, site) =>
+        rules.handle(state, ChallengeCommand.ChooseSecretSite(playerId, decision, site))
+      case GameCommand.CompleteChallenge(playerId, decision, amount) =>
+        rules.handle(state, ChallengeCommand.Complete(playerId, decision, amount))
+      case GameCommand.PlaceBannerResource(playerId, banner, amount) =>
+        rules.handle(state, ChallengeCommand.PlaceResource(playerId, banner, amount))
       case GameCommand.AddRecoverDice(playerId, decision) =>
         rules.handle(state, RecoverCommand.Roll(playerId, decision,
           defenseDicePort.rollTwo()))

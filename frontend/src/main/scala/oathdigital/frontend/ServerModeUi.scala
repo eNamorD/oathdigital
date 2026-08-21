@@ -520,6 +520,21 @@ object ServerModeUi {
             forge.onclick = _ => submit(GameCommand.BeginForge(selectedPlayer))
             panel.appendChild(forge)
           }
+          if (value.legalControls.contains("placeBannerResource")) {
+            value.banners.filter(_.holderPlayerId.contains(selectedPlayer)).foreach { banner =>
+              val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+              label.textContent = s"Add to ${actionLabel(banner.banner)} "
+              val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+              amount.`type` = "number"; amount.min = "1"; amount.value = "1"
+              amount.setAttribute("aria-label", s"Resources to add to ${actionLabel(banner.banner)}")
+              label.appendChild(amount); panel.appendChild(label)
+              val place = button("Place resources (0 Supply)", "banner-place-resource")
+              place.disabled = !controlsAvailable
+              place.onclick = _ => submit(GameCommand.PlaceBannerResource(
+                selectedPlayer, banner.banner, amount.value.toInt))
+              panel.appendChild(place)
+            }
+          }
           value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
             val control = button(actionLabel(action.actionKind),
               s"act-action target-action action-${action.actionKind}")
@@ -592,6 +607,38 @@ object ServerModeUi {
         confirm.onclick = _ => forgeAssignmentState.flatMap(
           _.command(selectedPlayer)).foreach(submit)
         panel.appendChild(confirm)
+      }
+      value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
+        panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
+        challenge.legalFavorBanks.foreach { suit =>
+          val choose = button(s"Return favor to $suit", "challenge-favor-bank")
+          choose.disabled = !controlsAvailable
+          choose.onclick = _ => submit(GameCommand.ChooseChallengeFavorBank(
+            selectedPlayer, challenge.decisionId, suit))
+          panel.appendChild(choose)
+        }
+        challenge.legalSecretSiteIds.foreach { site =>
+          val choose = button(s"Place secret at $site", "challenge-secret-site")
+          choose.disabled = !controlsAvailable
+          choose.onclick = _ => submit(GameCommand.ChooseChallengeSecretSite(
+            selectedPlayer, challenge.decisionId, site))
+          panel.appendChild(choose)
+        }
+        if (challenge.legalFavorBanks.isEmpty && challenge.legalSecretSiteIds.isEmpty) {
+          val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+          label.textContent = "Resources to place "
+          val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+          amount.`type` = "number"; amount.min = challenge.minimumPlacement.toString
+          amount.max = challenge.maximumPlacement.toString
+          amount.value = challenge.minimumPlacement.toString
+          amount.setAttribute("aria-label", "Banner replacement resources")
+          label.appendChild(amount); panel.appendChild(label)
+          val complete = button("Take banner", "challenge-complete")
+          complete.disabled = !controlsAvailable || challenge.minimumPlacement > challenge.maximumPlacement
+          complete.onclick = _ => submit(GameCommand.CompleteChallenge(selectedPlayer,
+            challenge.decisionId, amount.value.toInt))
+          panel.appendChild(complete)
+        }
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
         panel.appendChild(text("h2", "", "Campaign"))
@@ -1266,6 +1313,9 @@ object ServerModeUi {
     case "travel" => "Travel"
     case "campaign-conquest" => "Campaign"
     case "campaign-raid" => "Raid"
+    case "challenge" => "Challenge"
+    case "peoples-favor" => "People's Favor"
+    case "darkest-secret" => "Darkest Secret"
     case "muster" => "Muster"
     case "trade-favor" => "Trade for favor"
     case "trade-secret" => "Trade for secrets"
@@ -1335,6 +1385,8 @@ object ServerModeUi {
                 _: BoardTargetRef.PlayerBanner => true
             case _ => false
           } => Some(GameCommand.CampaignRaid(playerId, targets, attackDiceCount))
+      case ("challenge", Vector(BoardTargetRef.PlayerBanner(_, banner))) =>
+        Some(GameCommand.BeginChallenge(playerId, banner))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>

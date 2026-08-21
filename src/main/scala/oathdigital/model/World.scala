@@ -215,6 +215,14 @@ final case class BannersState(
     darkestSecret: DarkestSecretState
 )
 
+sealed trait Banner extends Product with Serializable { def key: String }
+object Banner {
+  case object PeoplesFavor extends Banner { val key = "peoples-favor" }
+  case object DarkestSecret extends Banner { val key = "darkest-secret" }
+  val all: Vector[Banner] = Vector(PeoplesFavor, DarkestSecret)
+  def fromKey(key: String): Option[Banner] = all.find(_.key == key)
+}
+
 sealed trait FoundationNumber extends Product with Serializable {
   def value: Int
 }

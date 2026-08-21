@@ -167,6 +167,12 @@ final case class PendingCardDecision(
 final case class ForgeTarget(siteId: String, denizenId: String, label: String)
 final case class ForgeState(decisionId: String, actorPlayerId: String,
     favor: Int, secrets: Int, targets: Vector[ForgeTarget])
+final case class BannerState(banner: String, face: String,
+    holderPlayerId: Option[String], resources: Int)
+final case class ChallengeState(decisionId: String, actorPlayerId: String,
+    banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
+    legalFavorBanks: Vector[String], legalSecretSiteIds: Vector[String],
+    minimumPlacement: Int, maximumPlacement: Int)
 final case class PlayerBoard(
     playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
     faceDownSecrets: Int, supply: Int, pawnSiteId: Option[String],
@@ -201,7 +207,9 @@ final case class GameProjection(
     oathkeeper: Option[OathkeeperStatus] = None,
     oathkeeperRecipient: Option[OathkeeperRecipientDecision] = None,
     campaignRaidRelocation: Option[CampaignRaidRelocation] = None,
-    forge: Option[ForgeState] = None
+    forge: Option[ForgeState] = None,
+    banners: Vector[BannerState] = Vector.empty,
+    challenge: Option[ChallengeState] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -285,6 +293,15 @@ object GameCommand {
   final case class BeginForge(playerId: String) extends GameCommand
   final case class CompleteForge(playerId: String, decisionId: String,
       assignments: Vector[(ForgeTarget, String)]) extends GameCommand
+  final case class BeginChallenge(playerId: String, banner: String) extends GameCommand
+  final case class ChooseChallengeFavorBank(playerId: String, decisionId: String,
+      suit: String) extends GameCommand
+  final case class ChooseChallengeSecretSite(playerId: String, decisionId: String,
+      siteId: String) extends GameCommand
+  final case class CompleteChallenge(playerId: String, decisionId: String,
+      amount: Int) extends GameCommand
+  final case class PlaceBannerResource(playerId: String, banner: String,
+      amount: Int) extends GameCommand
   final case class AddRecoverDice(playerId: String, decisionId: String) extends GameCommand
   final case class StopRecover(playerId: String, decisionId: String) extends GameCommand
   final case class CompleteSearch(
@@ -579,6 +596,20 @@ object GameJson {
               siteId = target.siteId, denizenId = target.denizenId,
               resource = resource)
           }: _*))
+      case GameCommand.BeginChallenge(player, banner) =>
+        js.Dynamic.literal(`type` = "beginChallenge", playerId = player, banner = banner)
+      case GameCommand.ChooseChallengeFavorBank(player, decision, suit) =>
+        js.Dynamic.literal(`type` = "chooseChallengeFavorBank", playerId = player,
+          decisionId = decision, suit = suit)
+      case GameCommand.ChooseChallengeSecretSite(player, decision, site) =>
+        js.Dynamic.literal(`type` = "chooseChallengeSecretSite", playerId = player,
+          decisionId = decision, siteId = site)
+      case GameCommand.CompleteChallenge(player, decision, amount) =>
+        js.Dynamic.literal(`type` = "completeChallenge", playerId = player,
+          decisionId = decision, amount = amount)
+      case GameCommand.PlaceBannerResource(player, banner, amount) =>
+        js.Dynamic.literal(`type` = "placeBannerResource", playerId = player,
+          banner = banner, amount = amount)
       case GameCommand.AddRecoverDice(player, decision) =>
         js.Dynamic.literal(`type` = "addRecoverDice", playerId = player,
           decisionId = decision)
@@ -1007,6 +1038,33 @@ object GameJson {
               } yield ForgeTarget(site, denizen, label) })
           } yield Some(ForgeState(id, actor, favor, secrets, targets)) }
         }
+        banners <- optionalField(root, "banners").flatMap {
+          case None => Right(Vector.empty)
+          case Some(_) => array(root, "banners", "$").flatMap(traverse(_, "banners") {
+            (value, path) => for {
+              banner <- string(value, "banner", path)
+              face <- string(value, "face", path)
+              holder <- optionalString(value, "holderPlayerId", path)
+              resources <- int(value, "resources", path)
+            } yield BannerState(banner, face, holder, resources)
+          })
+        }
+        challenge <- optionalField(root, "challenge").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.challenge").flatMap { obj => for {
+            id <- string(obj, "decisionId", "$.challenge")
+            actor <- string(obj, "actorPlayerId", "$.challenge")
+            banner <- string(obj, "banner", "$.challenge")
+            holder <- optionalString(obj, "priorHolderPlayerId", "$.challenge")
+            prior <- int(obj, "priorResources", "$.challenge")
+            banks <- stringArray(obj, "legalFavorBanks", "$.challenge")
+            sites <- stringArray(obj, "legalSecretSiteIds", "$.challenge")
+            minimum <- int(obj, "minimumPlacement", "$.challenge")
+            maximum <- int(obj, "maximumPlacement", "$.challenge")
+          } yield Some(ChallengeState(id, actor, banner, holder, prior, banks,
+            sites, minimum, maximum)) }
+        }
         campaign <- optionalField(root, "campaign").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -1179,7 +1237,9 @@ object GameJson {
         oathkeeper,
         oathkeeperRecipient,
         campaignRaidRelocation,
-        forge
+        forge,
+        banners,
+        challenge
       )
     }
   }
