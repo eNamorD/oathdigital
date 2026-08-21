@@ -19,6 +19,8 @@ object CampaignCommand {
     def apply(playerId: PlayerId, decision: DecisionId, siteId: SiteId,
         force: Int): Start = new Start(playerId, decision, Vector(siteId), force)
   }
+  final case class StartRaid(playerId: PlayerId, decision: DecisionId,
+      targets: Vector[CampaignRaidTarget], force: Int) extends CampaignCommand
   final case class ChoosePlan(playerId: PlayerId, decision: DecisionId,
       source: PendingProcedure.CampaignPlanSource) extends CampaignCommand
   final case class FinishPlans(playerId: PlayerId, decision: DecisionId,
@@ -28,6 +30,8 @@ object CampaignCommand {
   final case class Place(playerId: PlayerId, decision: DecisionId,
       allocations: Vector[CampaignForceAllocation])
       extends CampaignCommand
+  final case class RelocateRaidPawn(playerId: PlayerId, decision: DecisionId,
+      destination: SiteId) extends CampaignCommand
 }
 
 trait CampaignLosingForceResolver {
@@ -39,6 +43,14 @@ trait CampaignLosingForceResolver {
       : Either[OathViolation, Vector[CampaignLosingForceEffect]] =
     Left(CampaignOutcomeMismatch(
       s"losing-force policy '$id' does not resolve attacker defeat"))
+  def resolveRaidDefenderDefeat(ready: ReadyGame,
+      campaign: PendingProcedure.Campaign): Either[OathViolation, CampaignRaidBoardLoss] =
+    campaign.defender match {
+      case CampaignDefender.Player(player) =>
+        val total = ready.game.current.players.find(_.player == player).get.board.warbands
+        Right(CampaignRaidBoardLoss(player, total / 2, total - total / 2))
+      case _ => Left(CampaignOutcomeMismatch("a Raid requires a player defender"))
+    }
 }
 object CampaignLosingForceResolver {
   val default: CampaignLosingForceResolver =
@@ -145,6 +157,14 @@ object Campaign {
             defender, SupplyCost, force)), AwaitingCampaignPlan(player, decision))
         }
       }
+    case CampaignCommand.StartRaid(player, decision, targets, force) =>
+      OathLifecycle.validateAct(state, player).flatMap { ready =>
+        CampaignRules.validateRaidStart(catalog, ready, player, targets, force).flatMap { defender =>
+          transition(catalog, state, Vector(CampaignStarted(player, decision,
+            Vector.empty, defender, SupplyCost, force, CampaignKind.Raid, targets)),
+            AwaitingCampaignPlan(player, decision))
+        }
+      }
     case CampaignCommand.ChoosePlan(player, decision, source) => state match {
       case Ready(ready) => validatePlanPending(ready, player, decision).flatMap { pending =>
         CampaignRules.validatePlanChoice(catalog, ready, pending, source).flatMap { choice =>
@@ -211,8 +231,7 @@ object Campaign {
         requireFinished = true, requireResolved = false)
         .flatMap { pending =>
           val attack = pending.attack + count
-          val defense = DefenseDieFace.score(dice) +
-            CampaignRules.defenderForce(ready, pending.targetSites)
+          val defense = DefenseDieFace.score(dice) + CampaignRules.defenderForce(ready, pending)
           val victorious = attack > defense
           val surviving = pending.force - pending.skullLosses - count
           val losses = if (victorious) Right(Vector.empty) else
@@ -222,7 +241,10 @@ object Campaign {
             Vector(CampaignSacrificed(player, decision, count, dice, attack,
               defense, pending.skullLosses, victorious,
               Option.when(!victorious)(losingForceRegistry.selected.id), result)),
-            if (victorious) AwaitingCampaignPlacement(player, decision)
+            if (victorious) pending.kind match {
+              case CampaignKind.Conquest => AwaitingCampaignPlacement(player, decision)
+              case CampaignKind.Raid => AwaitingCampaignRaidRelocation(player, decision)
+            }
             else ActActionSelection(player), losingForceRegistry))
         }
       case _ => Left(GameNotStarted)
@@ -235,6 +257,49 @@ object Campaign {
             allocations)), ActActionSelection(player), losingForceRegistry)))
       case _ => Left(GameNotStarted)
     }
+    case CampaignCommand.RelocateRaidPawn(player, decision, destination) => state match {
+      case Ready(ready) => ready.game.current.pending match {
+        case Some(c: PendingProcedure.Campaign) if c.actor == player &&
+            c.decision == decision && c.kind == CampaignKind.Raid &&
+            c.victorious.contains(true) =>
+          resolveRaidVictory(ready, c, losingForceRegistry).flatMap { event =>
+            val defender = c.defender.asInstanceOf[CampaignDefender.Player].playerId
+            val origin = ready.game.current.players.find(_.player == defender).get.pawnSite.get
+            val legal = CampaignRules.legalRaidRelocationSites(ready, defender)
+            Either.cond(legal.contains(destination), (), CampaignOutcomeMismatch(
+              "Raid pawn destination is not legal")).flatMap(_ => transition(catalog, state,
+              Vector(event, CampaignRaidPawnRelocated(player, decision, defender,
+                origin, destination)), ActActionSelection(player), losingForceRegistry))
+          }
+        case Some(c: PendingProcedure.Campaign) => Left(CampaignOutcomeMismatch(
+          "Campaign is not awaiting Raid pawn relocation"))
+        case Some(other) => Left(PendingProcedureBlocksAction(other.decision))
+        case None => Left(InvalidEventOrder("no Raid relocation is pending"))
+      }
+      case _ => Left(GameNotStarted)
+    }
+  }
+
+  private def resolveRaidVictory(ready: ReadyGame, c: PendingProcedure.Campaign,
+      registry: CampaignLosingForceRegistry): Either[OathViolation, CampaignRaided] = {
+    val defenderId = c.defender.asInstanceOf[CampaignDefender.Player].playerId
+    val defender = ready.game.current.players.find(_.player == defenderId).get
+    val relics = c.raidTargets.collect { case CampaignRaidTarget.Relic(_, id) => id }
+    val banners = c.raidTargets.collect { case CampaignRaidTarget.Banner(_, id) => id }
+    val advisers = defender.advisers.collect {
+      case d: DenizenState if d.orientation == Orientation.FaceDown => d.id: CardId
+      case v: VisionState if v.orientation == Orientation.FaceDown => v.id: CardId
+    }
+    val facedownRelics = defender.relics.collect {
+      case r if r.orientation == Orientation.FaceDown => r.id
+    }
+    val returned = if (banners.contains(CampaignBanner.PeoplesFavor))
+      CampaignRules.returnBannerFavor(ready.support.favorBanks,
+        ready.game.current.banners.peoplesFavor.favor)
+    else Map.empty[Suit, Int]
+    registry.selected.resolveRaidDefenderDefeat(ready, c).map(loss => CampaignRaided(
+      c.actor, c.decision, registry.selected.id, loss, relics, banners,
+      advisers, facedownRelics, defender.board.favor / 2, returned))
   }
 
   private def validatePending(ready: ReadyGame, player: PlayerId,
@@ -281,8 +346,12 @@ object Campaign {
       : Either[OathViolation, OathState] = event match {
     case e: CampaignStarted => OathLifecycle.validateAct(state, e.playerId).flatMap { ready =>
       for {
-        defender <- CampaignRules.validateStart(catalog, ready, e.playerId,
-          e.targetSites, e.force)
+        defender <- e.kind match {
+          case CampaignKind.Conquest => CampaignRules.validateStart(catalog, ready,
+            e.playerId, e.targetSites, e.force)
+          case CampaignKind.Raid => CampaignRules.validateRaidStart(catalog, ready,
+            e.playerId, e.raidTargets, e.force)
+        }
         _ <- Either.cond(defender == e.defender, (), CampaignOutcomeMismatch(
           "recorded Campaign defender is invalid"))
         _ <- if (e.supplySpent == SupplyCost) Right(()) else Left(CampaignOutcomeMismatch("recorded Supply cost is invalid"))
@@ -296,7 +365,7 @@ object Campaign {
             e.defender,
             e.force, Vector.empty, attackerPlansFinished = false,
             defenderPlansFinished = false, Vector.empty, 0, 0,
-            None, Vector.empty, None, None)))))
+            None, Vector.empty, None, None, e.kind, e.raidTargets)))))
       }
     }
     case e: CampaignPlanChosen => state match {
@@ -392,13 +461,11 @@ object Campaign {
         val remaining = c.force - c.skullLosses
         val expectedAttack = c.attack + e.sacrificed
         val expectedDefense = DefenseDieFace.score(e.defenseDice) +
-          CampaignRules.defenderForce(ready, c.targetSites)
+          CampaignRules.defenderForce(ready, c)
         for {
           _ <- if (e.sacrificed >= 0 && e.sacrificed <= remaining) Right(()) else Left(CampaignOutcomeMismatch("sacrifice exceeds surviving force"))
           _ <- if (e.skullLosses == c.skullLosses) Right(()) else Left(CampaignOutcomeMismatch("recorded skull losses are invalid"))
-          defenseDiceCount = c.targetSites.flatMap(
-            CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
-            CampaignRules.defensePlanDice(c)
+          defenseDiceCount = CampaignRules.defenseDiceCount(catalog, ready, c)
           _ <- if (e.defenseDice.size == defenseDiceCount) Right(()) else Left(CampaignOutcomeMismatch("defense dice count is invalid"))
           _ <- if (e.attack == expectedAttack && e.defense == expectedDefense && e.victorious == (expectedAttack > expectedDefense)) Right(())
             else Left(CampaignOutcomeMismatch("recorded battle outcome is invalid"))
@@ -479,6 +546,70 @@ object Campaign {
           }
         }
         }
+      }
+      case _ => Left(GameNotStarted)
+    }
+    case e: CampaignRaided => state match {
+      case Ready(ready) => validatePending(ready, e.playerId, e.decision,
+        requireFinished = true, requireResolved = true).flatMap { c =>
+        Either.cond(c.kind == CampaignKind.Raid, (), CampaignOutcomeMismatch(
+          "Raid resolution recorded for a Conquest")).flatMap { _ =>
+          resolveRaidVictory(ready, c, losingForceRegistry).flatMap { expected =>
+            Either.cond(e == expected, (), CampaignOutcomeMismatch(
+              "recorded Raid resolution is invalid")).map { _ =>
+              val current = ready.game.current
+              val defenderId = c.defender.asInstanceOf[CampaignDefender.Player].playerId
+              val defender = current.players.find(_.player == defenderId).get
+              val taken = defender.relics.filter(r => e.takenRelics.contains(r.id))
+              val players = current.players.map {
+                case p if p.player == c.actor => p.copy(relics = p.relics ++ taken.map(
+                  _.copy(orientation = Orientation.FaceUp)))
+                case p if p.player == defenderId => p.copy(
+                  board = p.board.copy(favor = p.board.favor - e.favorBurned,
+                    warbands = e.defenderLoss.returned),
+                  advisers = p.advisers.filterNot(a => e.discardedAdvisers.contains(a.id)),
+                  relics = p.relics.filterNot(r => e.takenRelics.contains(r.id) ||
+                    e.discardedRelics.contains(r.id)))
+                case p => p
+              }
+              val banners = current.banners.copy(
+                peoplesFavor = if (e.takenBanners.contains(CampaignBanner.PeoplesFavor))
+                  current.banners.peoplesFavor.copy(holder = Some(c.actor), favor = 0)
+                else current.banners.peoplesFavor,
+                darkestSecret = if (e.takenBanners.contains(CampaignBanner.DarkestSecret))
+                  current.banners.darkestSecret.copy(holder = Some(c.actor), secrets = 0)
+                else current.banners.darkestSecret)
+              val origin = defender.pawnSite.get
+              val relocation = PendingProcedure.CampaignRaidRelocation(c.decision,
+                c.actor, defenderId, origin,
+                CampaignRules.legalRaidRelocationSites(ready, defenderId))
+              val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
+                banners = banners, pending = Some(relocation)))
+              Ready(updated.copy(support = updated.support.copy(favorBanks =
+                e.bannerFavorReturned.foldLeft(updated.support.favorBanks) {
+                  case (banks, (suit, amount)) => banks.updated(suit,
+                    banks.getOrElse(suit, 0) + amount)
+                })))
+            }
+          }
+        }
+      }
+      case _ => Left(GameNotStarted)
+    }
+    case e: CampaignRaidPawnRelocated => state match {
+      case Ready(ready) => ready.game.current.pending match {
+        case Some(c: PendingProcedure.CampaignRaidRelocation) if
+            c.actor == e.playerId && c.decision == e.decision &&
+            c.defender == e.defender =>
+          val owner = ready.game.current.players.find(_.player == e.defender).get
+          Either.cond(owner.pawnSite.contains(e.origin) &&
+            c.origin == e.origin && c.legalSites.contains(e.destination), (),
+            CampaignOutcomeMismatch("recorded Raid pawn relocation is invalid")).map { _ =>
+            Ready(GameStateUpdates.updateCurrent(ready)(current => current.copy(
+              players = current.players.map(p => if (p.player != e.defender) p else
+                p.copy(pawnSite = Some(e.destination))), pending = None)))
+          }
+        case _ => Left(CampaignOutcomeMismatch("Raid relocation is not pending"))
       }
       case _ => Left(GameNotStarted)
     }
@@ -686,6 +817,39 @@ object CampaignRules {
       case SiteForces.Empty => 0
     }).sum
 
+  def defenderForce(ready: ReadyGame, campaign: PendingProcedure.Campaign): Int =
+    campaign.kind match {
+      case CampaignKind.Conquest => defenderForce(ready, campaign.targetSites)
+      case CampaignKind.Raid => campaign.defender match {
+        case CampaignDefender.Player(player) => ready.game.current.players
+          .find(_.player == player).map(_.board.warbands).getOrElse(0)
+        case CampaignDefender.Bandits => 0
+      }
+    }
+
+  def defenseDiceCount(catalog: ExecutableCatalog, ready: ReadyGame,
+      campaign: PendingProcedure.Campaign): Int = {
+    val printed = campaign.kind match {
+      case CampaignKind.Conquest => campaign.targetSites.flatMap(
+        siteDefinition(catalog, _)).map(_.defense).sum
+      case CampaignKind.Raid => campaign.raidTargets.map {
+        case _: CampaignRaidTarget.Pawn => 2
+        case CampaignRaidTarget.Relic(_, relic) => catalog.relics
+          .find(_.id.value == relic.value).map(_.defense).getOrElse(0)
+        case CampaignRaidTarget.Banner(_, CampaignBanner.PeoplesFavor) => 1
+        case CampaignRaidTarget.Banner(_, CampaignBanner.DarkestSecret) => 2
+      }.sum
+    }
+    printed + defensePlanDice(campaign)
+  }
+
+  private def campaignSite(ready: ReadyGame,
+      campaign: PendingProcedure.Campaign): SiteId = campaign.kind match {
+    case CampaignKind.Conquest => campaign.targetSites.head
+    case CampaignKind.Raid => ready.game.current.players.find(
+      _.player == campaign.actor).flatMap(_.pawnSite).get
+  }
+
   private[gameplay] def attackResult(dice: Vector[AttackDieFace], force: Int,
       ignoreSkulls: Boolean): (Int, Int) = {
     val rolledSkulls = AttackDieFace.skulls(dice)
@@ -709,7 +873,7 @@ object CampaignRules {
     val side = currentPlanSide(campaign)
     val owner = planDecisionOwner(campaign)
     val activations = accessibleRules(catalog, ready, owner,
-      campaign.targetSites.head).collect {
+      campaignSite(ready, campaign)).collect {
       case DiscoveredCampaignRule(a, HandlerSupport.Executable(window), _)
           if (side == PendingProcedure.CampaignPlanSide.Attacker &&
               window == CampaignTimingWindow.AttackerBattlePlans) ||
@@ -742,7 +906,7 @@ object CampaignRules {
       val side = currentPlanSide(campaign)
       val owner = planDecisionOwner(campaign)
       val activations = accessibleRules(catalog, ready, owner,
-        campaign.targetSites.head).map(_.activation)
+        campaignSite(ready, campaign)).map(_.activation)
       CampaignPlanRegistry.resolve(CampaignPlanContext(catalog, ready, campaign,
         side, owner), selected, activations)
     }
@@ -819,6 +983,79 @@ object CampaignRules {
           catalog, ready, playerId, sites, force)
       }
     } yield defender
+  }
+
+  def legalRaidTargets(catalog: ExecutableCatalog, ready: ReadyGame,
+      playerId: PlayerId): Vector[CampaignRaidTarget] = {
+    val current = ready.game.current
+    current.players.find(_.player == playerId).flatMap(_.pawnSite).toVector.flatMap { site =>
+      current.players.filter(p => p.player != playerId && p.pawnSite.contains(site)).flatMap {
+        defender =>
+          val targets = Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(defender.player)) ++
+            defender.relics.filter(_.orientation == Orientation.FaceUp).map(r =>
+              CampaignRaidTarget.Relic(defender.player, r.id)) ++
+            Vector(
+              Option.when(current.banners.peoplesFavor.holder.contains(defender.player))(
+                CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor)),
+              Option.when(current.banners.darkestSecret.holder.contains(defender.player))(
+                CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
+            ).flatten
+          Option.when(validateRaidStart(catalog, ready, playerId,
+            Vector(targets.head), Campaign.MinimumForce).isRight)(targets).toVector.flatten
+      }
+    }
+  }
+
+  def validateRaidStart(catalog: ExecutableCatalog, ready: ReadyGame,
+      playerId: PlayerId, targets: Vector[CampaignRaidTarget], force: Int)
+      : Either[OathViolation, CampaignDefender] = {
+    val current = ready.game.current
+    val attacker = current.players.find(_.player == playerId).get
+    for {
+      site <- attacker.pawnSite.toRight(PawnSiteMissing(playerId))
+      _ <- Either.cond(CampaignRaidTarget.isCanonical(targets), (),
+        CampaignUnavailable("Raid targets must be distinct and in canonical pawn-first order"))
+      defenderId = targets.head.playerId
+      defender <- current.players.find(_.player == defenderId).toRight(
+        CampaignUnavailable("Raid defender is not in the game"))
+      _ <- Either.cond(defenderId != playerId && defender.pawnSite.contains(site), (),
+        CampaignUnavailable("Raid requires a co-located enemy pawn"))
+      legal = legalRaidTargetsUnchecked(current, defender)
+      _ <- Either.cond(targets.forall(legal.contains), (),
+        CampaignUnavailable("Raid targets must be the defender's faceup relics or held banners"))
+      _ <- Either.cond(attacker.board.supply.supply >= Campaign.SupplyCost, (),
+        InsufficientSupply(Campaign.SupplyCost, attacker.board.supply.supply))
+      _ <- Either.cond(force >= Campaign.MinimumForce && force <= attacker.board.warbands, (),
+        CampaignUnavailable("attack force must be between zero and board warbands"))
+      _ <- validateSupported(catalog, ready, playerId, Vector(site))
+      _ <- validateDefenderSupported(catalog, ready, defenderId, site)
+    } yield CampaignDefender.Player(defenderId)
+  }
+
+  private def legalRaidTargetsUnchecked(current: CurrentGameState,
+      defender: PlayerState): Vector[CampaignRaidTarget] =
+    Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(defender.player)) ++
+      defender.relics.filter(_.orientation == Orientation.FaceUp).map(r =>
+        CampaignRaidTarget.Relic(defender.player, r.id)) ++ Vector(
+        Option.when(current.banners.peoplesFavor.holder.contains(defender.player))(
+          CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor)),
+        Option.when(current.banners.darkestSecret.holder.contains(defender.player))(
+          CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))).flatten
+
+  def legalRaidRelocationSites(ready: ReadyGame, defender: PlayerId): Vector[SiteId] = {
+    val origin = ready.game.current.players.find(_.player == defender).flatMap(_.pawnSite)
+    ready.game.current.map.inPlay.filterNot(site => origin.contains(site))
+  }
+
+  private[gameplay] def returnBannerFavor(banks: Map[Suit, Int], amount: Int)
+      : Map[Suit, Int] = {
+    val (_, returned) = (0 until amount).foldLeft(banks -> Map.empty[Suit, Int]) {
+      case ((current, result), _) =>
+        val suit = Suit.all.minBy(s => (current.getOrElse(s, 0), Suit.all.indexOf(s)))
+        current.updated(suit, current.getOrElse(suit, 0) + 1) ->
+          result.updated(suit, result.getOrElse(suit, 0) + 1)
+    }
+    returned
   }
 
   private def validateDefenderSupported(catalog: ExecutableCatalog,

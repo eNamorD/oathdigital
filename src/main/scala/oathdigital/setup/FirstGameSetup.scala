@@ -189,6 +189,21 @@ object OathEvent {
       losingForces: Vector[CampaignLosingForceEffect],
       allocations: Vector[CampaignForceAllocation]
   ) extends OathEvent
+  final case class CampaignRaided(
+      playerId: PlayerId, decision: DecisionId,
+      losingForcePolicyId: String,
+      defenderLoss: CampaignRaidBoardLoss,
+      takenRelics: Vector[RelicId],
+      takenBanners: Vector[CampaignBanner],
+      discardedAdvisers: Vector[CardId],
+      discardedRelics: Vector[RelicId],
+      favorBurned: Int,
+      bannerFavorReturned: Map[Suit, Int]
+  ) extends OathEvent
+  final case class CampaignRaidPawnRelocated(
+      playerId: PlayerId, decision: DecisionId,
+      defender: PlayerId, origin: SiteId, destination: SiteId
+  ) extends OathEvent
   final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
   final case class RestStarted(playerId: PlayerId) extends OathEvent
   final case class RestCompleted(
@@ -248,6 +263,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingCampaignPlacement(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingCampaignRaidRelocation(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingOathkeeperRecipient(playerId: PlayerId,
       decision: DecisionId) extends OathContinue
   final case class GameFinished(winner: PlayerId) extends OathContinue
@@ -571,6 +588,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
+          _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("Recover requires the gameplay evolution"))
       case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |

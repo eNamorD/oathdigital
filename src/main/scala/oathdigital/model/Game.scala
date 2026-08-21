@@ -219,6 +219,10 @@ object CampaignLosingForceEffect {
     require(count > 0, "preserved committed Campaign force must be positive")
   }
 }
+final case class CampaignRaidBoardLoss(playerId: PlayerId, killed: Int,
+    returned: Int) {
+  require(killed >= 0 && returned >= 0, "Raid board losses must be non-negative")
+}
 object PendingProcedure {
   sealed trait CampaignPlanSide extends Product with Serializable
   object CampaignPlanSide {
@@ -318,6 +322,18 @@ object PendingProcedure {
       case CampaignKind.Raid => targetSites.isEmpty &&
         CampaignRaidTarget.isCanonical(raidTargets)
     }, "Campaign targets must match their kind and canonical order")
+  }
+
+  final case class CampaignRaidRelocation(
+      decision: DecisionId,
+      actor: PlayerId,
+      defender: PlayerId,
+      origin: SiteId,
+      legalSites: Vector[SiteId]
+  ) extends PendingProcedure {
+    require(legalSites.nonEmpty && !legalSites.contains(origin) &&
+      legalSites.distinct.size == legalSites.size,
+      "Raid relocation sites must be distinct and exclude the origin")
   }
 
   final case class Recover(

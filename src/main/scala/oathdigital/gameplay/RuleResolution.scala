@@ -86,12 +86,15 @@ object CampaignTimingWindow {
   case object DefenderBattlePlansAndRoll extends CampaignTimingWindow { val order = 4 }
   case object Outcome extends CampaignTimingWindow { val order = 5 }
   case object ConquestPlacement extends CampaignTimingWindow { val order = 6 }
-  case object RemainingEndVictoryDefeatEffects extends CampaignTimingWindow { val order = 7 }
+  case object RaidResolution extends CampaignTimingWindow { val order = 7 }
+  case object RaidPawnRelocation extends CampaignTimingWindow { val order = 8 }
+  case object RemainingEndVictoryDefeatEffects extends CampaignTimingWindow { val order = 9 }
 
   val ordered: Vector[CampaignTimingWindow] = Vector(
     TargetAndForceFormation, AttackerBattlePlans, AttackRollAndSkullLosses,
     AttackerSacrifice, DefenderBattlePlansAndRoll, Outcome,
-    ConquestPlacement, RemainingEndVictoryDefeatEffects)
+    ConquestPlacement, RaidResolution, RaidPawnRelocation,
+    RemainingEndVictoryDefeatEffects)
 }
 
 final case class RuleActivation(

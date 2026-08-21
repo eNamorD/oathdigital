@@ -41,6 +41,94 @@ class CampaignSuite extends munit.FunSuite {
     (ready, moved, siteId)
   }
 
+  private def raidReady: (ReadyGame, PlayerState, PlayerState, SiteId, RelicId) = {
+    val (base, attacker0, site) = campaignReady
+    val defender0 = base.game.current.players.find(_.player != attacker0.player).get
+    val relic = RelicId(catalog.relics.head.id.value)
+    val attacker = attacker0.copy(board = attacker0.board.copy(warbands = 4))
+    val defender = defender0.copy(pawnSite = Some(site),
+      board = defender0.board.copy(warbands = 5, favor = 5), advisers = Vector.empty,
+      relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty)))
+    val current = base.game.current.copy(players = base.game.current.players.map {
+      case p if p.player == attacker.player => attacker
+      case p if p.player == defender.player => defender
+      case p => p
+    }, banners = base.game.current.banners.copy(
+      peoplesFavor = base.game.current.banners.peoplesFavor.copy(
+        holder = Some(defender.player), favor = 3)))
+    (base.copy(game = base.game.copy(current = current)), attacker, defender, site, relic)
+  }
+
+  test("Raid targets require the co-located pawn and preserve canonical order") {
+    val (ready, attacker, defender, _, relic) = raidReady
+    val pawn = CampaignRaidTarget.Pawn(defender.player)
+    val relicTarget = CampaignRaidTarget.Relic(defender.player, relic)
+    val banner = CampaignRaidTarget.Banner(defender.player,
+      CampaignBanner.PeoplesFavor)
+    assertEquals(CampaignRules.legalRaidTargets(catalog, ready, attacker.player),
+      Vector(pawn, relicTarget, banner))
+    assertEquals(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
+      Vector(pawn), 0), Right(CampaignDefender.Player(defender.player)))
+    assert(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
+      Vector(pawn, banner, relicTarget), 0).isLeft)
+    assert(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
+      Vector(relicTarget), 0).isLeft)
+  }
+
+  test("Raid defense uses pawn and targeted printed defense plus board force") {
+    val (ready, attacker, defender, _, relic) = raidReady
+    val targets = Vector[CampaignRaidTarget](
+      CampaignRaidTarget.Pawn(defender.player),
+      CampaignRaidTarget.Relic(defender.player, relic),
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor))
+    val campaign = PendingProcedure.Campaign(DecisionId("raid-pool"), attacker.player,
+      Vector.empty, CampaignDefender.Player(defender.player), 4, Vector.empty,
+      attackerPlansFinished = true, defenderPlansFinished = true, Vector.empty,
+      0, 0, None, Vector.empty, None, None, CampaignKind.Raid, targets)
+    assertEquals(CampaignRules.defenderForce(ready, campaign), 5)
+    assertEquals(CampaignRules.defenseDiceCount(catalog, ready, campaign),
+      2 + catalog.relics.find(_.id.value == relic.value).get.defense + 1)
+  }
+
+  test("successful Raid durably resolves losses and relocates without Travel") {
+    val (ready, attacker, defender, origin, relic) = raidReady
+    val decision = DecisionId("raid-resolution")
+    val targets = Vector[CampaignRaidTarget](
+      CampaignRaidTarget.Pawn(defender.player),
+      CampaignRaidTarget.Relic(defender.player, relic),
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor))
+    val started = rules.handle(Ready(ready), CampaignCommand.StartRaid(
+      attacker.player, decision, targets, 4)).toOption.get
+    val attackerDone = rules.handle(started.state, CampaignCommand.FinishPlans(
+      attacker.player, decision, Vector.empty)).toOption.get
+    val defenderDone = rules.handle(attackerDone.state, CampaignCommand.FinishPlans(
+      defender.player, decision, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
+    val won = rules.handle(defenderDone.state, CampaignCommand.Sacrifice(
+      attacker.player, decision, 2, Vector.fill(
+        2 + catalog.relics.find(_.id.value == relic.value).get.defense + 1)(
+        DefenseDieFace.Blank))).toOption.get
+    val destination = ready.game.current.map.inPlay.find(_ != origin).get
+    val completed = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
+      attacker.player, decision, destination)).toOption.get
+    assertEquals(completed.events.map(_.getClass.getSimpleName),
+      Vector("CampaignRaided", "CampaignRaidPawnRelocated"))
+    val Ready(after) = completed.state: @unchecked
+    val nextAttacker = after.game.current.players.find(_.player == attacker.player).get
+    val nextDefender = after.game.current.players.find(_.player == defender.player).get
+    assert(nextAttacker.relics.exists(_.id == relic))
+    assertEquals(nextDefender.board.warbands, 3)
+    assertEquals(nextDefender.board.favor, 3)
+    assertEquals(nextDefender.pawnSite, Some(destination))
+    assertEquals(after.game.current.pending, None)
+    val replayed = completed.events.foldLeft[Either[OathViolation, OathState]](
+      Right(won.state))((state, event) => state.flatMap(rules.evolve(_, event)))
+    assertEquals(replayed, Right(completed.state))
+    val raided = completed.events.head.asInstanceOf[CampaignRaided]
+    assert(rules.evolve(won.state, raided.copy(favorBurned =
+      raided.favorBurned + 1)).isLeft)
+    assertEquals(raided.bannerFavorReturned.values.sum, 3)
+  }
+
   test("attack faces implement hollow pairs and skull swords") {
     assertEquals(AttackDieFace.score(Vector(AttackDieFace.HollowSword,
       AttackDieFace.HollowSword, AttackDieFace.HollowSword,
