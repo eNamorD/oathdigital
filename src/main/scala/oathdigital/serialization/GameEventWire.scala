@@ -434,7 +434,7 @@ object GameEventWire {
             "count" -> allocation.count)
         }))
       case CampaignRaided(player, decision, policyId, loss, relics, banners,
-          advisers, discardedRelics, burned, returned) => ujson.Obj(
+          advisers, discardedRelics, burned, returned, darkestSecretBurned) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "losingForcePolicyId" -> policyId,
         "defenderLoss" -> ujson.Obj("playerId" -> loss.playerId.value,
@@ -448,6 +448,7 @@ object GameEventWire {
         }),
         "discardedRelics" -> ujson.Arr.from(discardedRelics.map(r => ujson.Str(r.value))),
         "favorBurned" -> burned,
+        "darkestSecretBurned" -> darkestSecretBurned,
         "bannerFavorReturned" -> ujson.Obj.from(returned.toVector.sortBy(_._1.key)
           .map { case (suit, amount) => suit.key -> ujson.Num(amount) }))
       case CampaignRaidPawnRelocated(player, decision, defender, origin, destination) =>
@@ -707,6 +708,7 @@ object GameEventWire {
             decodeWorldCard(value, s"$path.discardedAdvisers"))
           discardedRelics = payload("discardedRelics").arr.toVector.map(v => RelicId(v.str))
           burned <- safeIntField(payload.obj, "favorBurned", path)
+          darkestSecretBurned <- safeIntField(payload.obj, "darkestSecretBurned", path)
           favorEntries <- traverse(payload("bannerFavorReturned").obj.toVector) {
             case (key, value) => Suit.all.find(_.key == key).toRight(InvalidValue(
               s"$path.bannerFavorReturned.$key", "unknown suit")).flatMap(suit =>
@@ -716,7 +718,7 @@ object GameEventWire {
           DecisionId(payload("decisionId").str), payload("losingForcePolicyId").str,
           CampaignRaidBoardLoss(PlayerId(payload("defenderLoss")("playerId").str),
             killed, returnedCount), relics, banners, advisers,
-          discardedRelics, burned, favorEntries.toMap)
+          discardedRelics, burned, favorEntries.toMap, darkestSecretBurned)
         case CampaignRaidPawnRelocatedType => Right(CampaignRaidPawnRelocated(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
           PlayerId(payload("defenderPlayerId").str), SiteId(payload("originSiteId").str),

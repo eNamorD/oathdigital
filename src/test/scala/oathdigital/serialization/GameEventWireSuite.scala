@@ -53,7 +53,7 @@ class GameEventWireSuite extends munit.FunSuite {
         CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
         Vector(RelicId("R1")), Vector(CampaignBanner.PeoplesFavor),
         Vector(DenizenId("D1"), VisionId("V1")), Vector(RelicId("R2")),
-        favorBurned = 2, Map(Suit.Order -> 2)),
+        favorBurned = 2, Map(Suit.Order -> 2), darkestSecretBurned = 3),
       OathEvent.CampaignRaidPawnRelocated(PlayerId("red"), DecisionId("raid-1"),
         PlayerId("blue"), SiteId("S1"), SiteId("S2")))
     val encoded = GameEventWire.encodeStream("raid", catalogRef,
@@ -63,6 +63,14 @@ class GameEventWireSuite extends munit.FunSuite {
     val tampered = ujson.read(encoded).arr
     tampered.head("payload")("takenBanners")(0) = "unknown"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+
+    val negativeBurn = ujson.read(encoded).arr
+    negativeBurn.head("payload")("darkestSecretBurned") = -1
+    assert(GameEventWire.decodeStream(ujson.write(negativeBurn)).isLeft)
+
+    val fractionalBurn = ujson.read(encoded).arr
+    fractionalBurn.head("payload")("darkestSecretBurned") = 1.5
+    assert(GameEventWire.decodeStream(ujson.write(fractionalBurn)).isLeft)
   }
 
   test("current pre-release Campaign events round-trip exact dice and choices") {
