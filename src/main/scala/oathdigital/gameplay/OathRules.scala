@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Economy, EconomyCommand, Recover,
+  CampaignLosingForceRegistry, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
   RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
@@ -58,6 +58,15 @@ final class OathRules(catalog: ExecutableCatalog,
       }
     }
 
+  def handle(state: OathState, command: ForgeCommand)
+      : Either[OathViolation, OathTransition] =
+    Forge.handle(catalog, state, command).flatMap { transition =>
+      command match {
+        case _: ForgeCommand.Complete => completeAction(transition)
+        case _ => Right(transition)
+      }
+    }
+
   def handle(state: OathState, command: CampaignCommand)
       : Either[OathViolation, OathTransition] =
     Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
@@ -101,6 +110,8 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: RecoverRolled => Recover.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
+      case event: ForgeStarted => Forge.evolve(catalog, state, event)
+      case event: ForgeCompleted => Forge.evolve(catalog, state, event)
       case event: CampaignStarted => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
       case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event,

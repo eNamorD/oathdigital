@@ -81,6 +81,10 @@ final case class AuthorizedPlayer private (
     GameCommand.BeginSearch(access.playerId, source)
 
   def beginRecover: GameCommand = GameCommand.BeginRecover(access.playerId)
+  def beginForge: GameCommand = GameCommand.BeginForge(access.playerId)
+  def completeForge(decision: DecisionId,
+      assignments: Vector[ForgeResourceAssignment]): GameCommand =
+    GameCommand.CompleteForge(access.playerId, decision, assignments)
   def addRecoverDice(decision: DecisionId): GameCommand =
     GameCommand.AddRecoverDice(access.playerId, decision)
   def stopRecover(decision: DecisionId): GameCommand =

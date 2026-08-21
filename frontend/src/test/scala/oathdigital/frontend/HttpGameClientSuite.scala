@@ -47,6 +47,15 @@ class HttpGameClientSuite extends FunSuite {
     assert(take.contains("\"kind\":\"take-facedown-relic\""))
     assert(take.contains("\"relicId\":\"relic:R1\""))
   }
+  test("Forge commands encode stable assignment targets without relic identity") {
+    val target = ForgeTarget("site:a", "denizen:1", "One")
+    assert(GameJson.encodeCommand(20, GameCommand.BeginForge("red"))
+      .contains("\"type\":\"beginForge\""))
+    val completed = GameJson.encodeCommand(21, GameCommand.CompleteForge(
+      "red", "forge-20", Vector(target -> "favor")))
+    assert(completed.contains("\"denizenId\":\"denizen:1\""))
+    assert(!completed.contains("relicId"))
+  }
   test("Rest commands encode current sequence and actor") {
     val begin = GameJson.encodeCommand(12L, GameCommand.BeginRest("red-exile"))
     val finish = GameJson.encodeCommand(13L, GameCommand.FinishRest("red-exile"))

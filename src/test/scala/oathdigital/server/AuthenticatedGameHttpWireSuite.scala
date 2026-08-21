@@ -108,6 +108,21 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
     spoofed("intent").obj("playerId") = "other"
     assert(AuthenticatedGameHttpWire.decodeCommand(ujson.write(spoofed)).isLeft)
   }
+  test("authenticated Forge intents carry only typed assignments") {
+    val begin = """{"expectedNextSequence":20,"intent":{"type":"beginForge"}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      GameIntent.BeginForge)
+    val complete = """{"expectedNextSequence":21,"intent":{"type":"completeForge","decisionId":"forge-20","assignments":[{"siteId":"site:a","denizenId":"denizen:1","resource":"favor"},{"siteId":"site:a","denizenId":"denizen:2","resource":"secret"},{"siteId":"site:a","denizenId":"denizen:3","resource":"favor"}]}}"""
+    val intent = AuthenticatedGameHttpWire.decodeCommand(complete).toOption.get.intent
+      .asInstanceOf[GameIntent.CompleteForge]
+    assertEquals(intent.assignments.map(_.resource), Vector(
+      oathdigital.model.ForgeResource.Favor,
+      oathdigital.model.ForgeResource.Secret,
+      oathdigital.model.ForgeResource.Favor))
+    val spoofed = ujson.read(complete).obj
+    spoofed("intent").obj("relicId") = "relic:spoofed"
+    assert(AuthenticatedGameHttpWire.decodeCommand(ujson.write(spoofed)).isLeft)
+  }
   test("generic authenticated card decision is actor-free") {
     val valid = """{"expectedNextSequence":2,"intent":{"type":"resolveCardDecision","decisionId":"setup-adviser-0-p2","resolution":{"kind":"starting-adviser","adviserId":"denizen:a"}}}"""
     assert(AuthenticatedGameHttpWire.decodeCommand(valid).toOption.get.intent

@@ -164,6 +164,9 @@ final case class PendingCardDecision(
     instructions: Vector[String], cards: Vector[CardDetails], keepMinimum: Int,
     keepMaximum: Int, orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolution]])
+final case class ForgeTarget(siteId: String, denizenId: String, label: String)
+final case class ForgeState(decisionId: String, actorPlayerId: String,
+    favor: Int, secrets: Int, targets: Vector[ForgeTarget])
 final case class PlayerBoard(
     playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
     faceDownSecrets: Int, supply: Int, pawnSiteId: Option[String],
@@ -197,7 +200,8 @@ final case class GameProjection(
     playerBoards: Vector[PlayerBoard] = Vector.empty,
     oathkeeper: Option[OathkeeperStatus] = None,
     oathkeeperRecipient: Option[OathkeeperRecipientDecision] = None,
-    campaignRaidRelocation: Option[CampaignRaidRelocation] = None
+    campaignRaidRelocation: Option[CampaignRaidRelocation] = None,
+    forge: Option[ForgeState] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -278,6 +282,9 @@ object GameCommand {
   final case class BeginSearch(playerId: String, source: String, region: Option[String])
       extends GameCommand
   final case class BeginRecover(playerId: String) extends GameCommand
+  final case class BeginForge(playerId: String) extends GameCommand
+  final case class CompleteForge(playerId: String, decisionId: String,
+      assignments: Vector[(ForgeTarget, String)]) extends GameCommand
   final case class AddRecoverDice(playerId: String, decisionId: String) extends GameCommand
   final case class StopRecover(playerId: String, decisionId: String) extends GameCommand
   final case class CompleteSearch(
@@ -563,6 +570,15 @@ object GameJson {
         value
       case GameCommand.BeginRecover(player) =>
         js.Dynamic.literal(`type` = "beginRecover", playerId = player)
+      case GameCommand.BeginForge(player) =>
+        js.Dynamic.literal(`type` = "beginForge", playerId = player)
+      case GameCommand.CompleteForge(player, decision, assignments) =>
+        js.Dynamic.literal(`type` = "completeForge", playerId = player,
+          decisionId = decision, assignments = js.Array(assignments.map {
+            case (target, resource) => js.Dynamic.literal(
+              siteId = target.siteId, denizenId = target.denizenId,
+              resource = resource)
+          }: _*))
       case GameCommand.AddRecoverDice(player, decision) =>
         js.Dynamic.literal(`type` = "addRecoverDice", playerId = player,
           decisionId = decision)
@@ -975,6 +991,22 @@ object GameJson {
           } yield Some(RecoverState(id, dice, shields, difficulty, spent,
             remaining, add, stop)) }
         }
+        forge <- optionalField(root, "forge").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.forge").flatMap { obj => for {
+            id <- string(obj, "decisionId", "$.forge")
+            actor <- string(obj, "actorPlayerId", "$.forge")
+            favor <- int(obj, "favor", "$.forge")
+            secrets <- int(obj, "secrets", "$.forge")
+            targets <- array(obj, "targets", "$.forge").flatMap(
+              traverse(_, "forge.targets") { (target, path) => for {
+                site <- string(target, "siteId", path)
+                denizen <- string(target, "denizenId", path)
+                label <- string(target, "label", path)
+              } yield ForgeTarget(site, denizen, label) })
+          } yield Some(ForgeState(id, actor, favor, secrets, targets)) }
+        }
         campaign <- optionalField(root, "campaign").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -1146,7 +1178,8 @@ object GameJson {
         boards,
         oathkeeper,
         oathkeeperRecipient,
-        campaignRaidRelocation
+        campaignRaidRelocation,
+        forge
       )
     }
   }

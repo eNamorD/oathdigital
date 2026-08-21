@@ -128,6 +128,14 @@ object OathEvent {
   final case class RelicRecovered(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId, relicId: RelicId
   ) extends OathEvent
+  final case class ForgeStarted(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      targets: Vector[SiteDenizenTarget], cost: Tokens, supplySpent: Int
+  ) extends OathEvent
+  final case class ForgeCompleted(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      assignments: Vector[ForgeResourceAssignment], relicId: RelicId
+  ) extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,
@@ -260,6 +268,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingForgeAssignment(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)
@@ -359,6 +369,11 @@ object OathViolation {
   final case class CampaignPlanUnavailable(detail: String) extends OathViolation
   final case class CampaignOutcomeMismatch(detail: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
+  final case class UnsupportedForgeState(reason: String) extends OathViolation
+  final case class ForgeUnavailable(detail: String) extends OathViolation
+  final case class ForgeDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class ForgeOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
   final case class RestOutcomeMismatch(detail: String)
@@ -590,6 +605,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
+          _: ForgeStarted | _: ForgeCompleted |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>

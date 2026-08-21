@@ -25,6 +25,9 @@ object GameIntent {
       extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
   case object BeginRecover extends GameIntent
+  case object BeginForge extends GameIntent
+  final case class CompleteForge(decision: DecisionId,
+      assignments: Vector[ForgeResourceAssignment]) extends GameIntent
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class BeginCampaignConquest(
@@ -209,6 +212,28 @@ object AuthenticatedGameHttpWire {
         Left(HttpInputError("$.intent.type", "use resolveCardDecision"))
       case "beginRecover" =>
         exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.BeginRecover)
+      case "beginForge" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.BeginForge)
+      case "completeForge" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "assignments"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        values <- field(obj, "assignments", "$.intent").flatMap(arrayValue(_, "$.intent.assignments"))
+        assignments <- traverse(values.zipWithIndex) { case (value, index) =>
+          val p = s"$$.intent.assignments[$index]"
+          for {
+            a <- objectValue(value, p)
+            _ <- exactFields(a, Set("siteId", "denizenId", "resource"), p)
+            site <- stringField(a, "siteId", p)
+            denizen <- stringField(a, "denizenId", p)
+            resourceName <- stringField(a, "resource", p)
+            resource <- resourceName match {
+              case "favor" => Right(ForgeResource.Favor)
+              case "secret" => Right(ForgeResource.Secret)
+              case other => Left(HttpInputError(s"$p.resource", s"unknown Forge resource '$other'"))
+            }
+          } yield ForgeResourceAssignment(SiteDenizenTarget(SiteId(site), DenizenId(denizen)), resource)
+        }
+      } yield GameIntent.CompleteForge(DecisionId(decision), assignments)
       case "addRecoverDice" =>
         exactFields(obj, Set("type", "decisionId"), "$.intent")
           .flatMap(_ => stringField(obj, "decisionId", "$.intent"))

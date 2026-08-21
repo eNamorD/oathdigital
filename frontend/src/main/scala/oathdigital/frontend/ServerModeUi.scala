@@ -509,6 +509,12 @@ object ServerModeUi {
             recover.onclick = _ => submit(GameCommand.BeginRecover(selectedPlayer))
             panel.appendChild(recover)
           }
+          if (value.legalControls.contains("beginForge")) {
+            val forge = button("Forge (1 Supply)", "act-action forge-action")
+            forge.disabled = !controlsAvailable
+            forge.onclick = _ => submit(GameCommand.BeginForge(selectedPlayer))
+            panel.appendChild(forge)
+          }
           value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
             val control = button(actionLabel(action.actionKind),
               s"act-action target-action action-${action.actionKind}")
@@ -550,6 +556,38 @@ object ServerModeUi {
             selectedPlayer, recover.decisionId))
           panel.appendChild(stop)
         }
+      }
+      value.forge.filter(_ => presentation.showGameplayControls).foreach { forge =>
+        panel.appendChild(text("h2", "", "Forge a relic"))
+        panel.appendChild(text("p", "forge-instruction",
+          s"Assign ${forge.favor} favor and ${forge.secrets} secrets, one resource per denizen."))
+        val defaults = Vector.fill(forge.favor)("favor") ++
+          Vector.fill(forge.secrets)("secret")
+        val selected = scala.collection.mutable.ArrayBuffer.from(defaults)
+        val confirm = button("Complete Forge", "forge-complete")
+        forge.targets.zipWithIndex.foreach { case (target, index) =>
+          val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+          label.textContent = target.label + " "
+          val select = dom.document.createElement("select").asInstanceOf[dom.html.Select]
+          select.setAttribute("aria-label", s"Resource for ${target.label}")
+          Vector("favor", "secret").foreach { resource =>
+            val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
+            option.value = resource; option.text = resource.capitalize
+            option.selected = selected(index) == resource
+            select.appendChild(option)
+          }
+          select.onchange = _ => {
+            selected(index) = select.value
+            confirm.disabled = !controlsAvailable ||
+              selected.count(_ == "favor") != forge.favor ||
+              selected.count(_ == "secret") != forge.secrets
+          }
+          label.appendChild(select); panel.appendChild(label)
+        }
+        confirm.disabled = !controlsAvailable
+        confirm.onclick = _ => submit(GameCommand.CompleteForge(selectedPlayer,
+          forge.decisionId, forge.targets.zip(selected.toVector)))
+        panel.appendChild(confirm)
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
         panel.appendChild(text("h2", "", "Campaign"))

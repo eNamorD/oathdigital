@@ -31,6 +31,7 @@ object GameEventWire {
   val RestFormatVersion: Int = 5
   val EconomyFormatVersion: Int = 6
   val RecoverFormatVersion: Int = 7
+  val ForgeFormatVersion: Int = 8
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -48,6 +49,8 @@ object GameEventWire {
   val RecoverRolledType = "gameplay.recover-rolled"
   val RecoverStoppedType = "gameplay.recover-stopped"
   val RelicRecoveredType = "gameplay.relic-recovered"
+  val ForgeStartedType = "gameplay.forge-started"
+  val ForgeCompletedType = "gameplay.forge-completed"
   val CampaignStartedType = "gameplay.campaign-started"
   val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
   val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
@@ -162,7 +165,8 @@ object GameEventWire {
           _ <-
             if (version == FormatVersion || version == GameplayFormatVersion ||
                 version == SearchFormatVersion || version == RestFormatVersion ||
-                version == EconomyFormatVersion || version == RecoverFormatVersion)
+                version == EconomyFormatVersion || version == RecoverFormatVersion ||
+                version == ForgeFormatVersion)
               Right(())
             else
               Left(
@@ -277,6 +281,8 @@ object GameEventWire {
       case _: RecoverRolled => RecoverRolledType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
+      case _: ForgeStarted => ForgeStartedType
+      case _: ForgeCompleted => ForgeCompletedType
       case _: CampaignStarted => CampaignStartedType
       case _: CampaignPlanChosen => CampaignPlanChosenType
       case _: CampaignPlansFinished => CampaignPlansFinishedType
@@ -294,6 +300,7 @@ object GameEventWire {
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: ForgeStarted | _: ForgeCompleted => ForgeFormatVersion
     case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
     case _: Mustered | _: Traded => EconomyFormatVersion
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
@@ -388,6 +395,19 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
+      case ForgeStarted(player, decision, site, targets, cost, spent) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "supplySpent" -> spent,
+        "cost" -> ujson.Obj("favor" -> cost.favor, "secrets" -> cost.secrets),
+        "targets" -> ujson.Arr.from(targets.map(t => ujson.Obj(
+          "siteId" -> t.siteId.value, "denizenId" -> t.denizenId.value))))
+      case ForgeCompleted(player, decision, site, assignments, relic) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "relicId" -> relic.value,
+        "assignments" -> ujson.Arr.from(assignments.map(a => ujson.Obj(
+          "siteId" -> a.target.siteId.value,
+          "denizenId" -> a.target.denizenId.value,
+          "resource" -> a.resource.key))))
       case CampaignStarted(player, decision, sites, defender, spent, force,
           kind, raidTargets) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -617,6 +637,28 @@ object GameEventWire {
         case RelicRecoveredType => Right(RelicRecovered(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
           SiteId(payload("siteId").str), RelicId(payload("relicId").str)))
+        case ForgeStartedType => for {
+          spent <- safeIntField(payload.obj, "supplySpent", path)
+          favor <- safeIntField(payload("cost").obj, "favor", s"$path.cost")
+          secrets <- safeIntField(payload("cost").obj, "secrets", s"$path.cost")
+          targets <- traverse(payload("targets").arr.toVector)(v => Right(
+            SiteDenizenTarget(SiteId(v("siteId").str), DenizenId(v("denizenId").str))))
+        } yield ForgeStarted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          targets, Tokens(favor, secrets), spent)
+        case ForgeCompletedType => for {
+          assignments <- traverse(payload("assignments").arr.toVector) { v =>
+            val resource = v("resource").str match {
+              case "favor" => Right(ForgeResource.Favor)
+              case "secret" => Right(ForgeResource.Secret)
+              case other => Left(InvalidValue(s"$path.assignments.resource", s"unknown Forge resource $other"))
+            }
+            resource.map(r => ForgeResourceAssignment(
+              SiteDenizenTarget(SiteId(v("siteId").str), DenizenId(v("denizenId").str)), r))
+          }
+        } yield ForgeCompleted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          assignments, RelicId(payload("relicId").str))
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
@@ -773,7 +815,9 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
+      if (eventType == ForgeStartedType || eventType == ForgeCompletedType)
+        ForgeFormatVersion
+      else if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
           eventType == RelicRecoveredType || eventType == CampaignStartedType ||
           eventType == CampaignPlanChosenType ||
           eventType == CampaignPlansFinishedType ||

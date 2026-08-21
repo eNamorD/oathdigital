@@ -15,6 +15,26 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("v8 Forge events round trip exact targets resources and relic top") {
+    val site = SiteId("site:forge")
+    val targets = Vector("1", "2", "3").map(id =>
+      SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
+    val assignments = targets.zip(Vector(ForgeResource.Favor,
+      ForgeResource.Secret, ForgeResource.Favor)).map {
+        case (target, resource) => ForgeResourceAssignment(target, resource) }
+    val events = Vector[OathEvent](
+      OathEvent.ForgeStarted(PlayerId("red"), DecisionId("forge-8"), site,
+        targets, Tokens(2, 1), 1),
+      OathEvent.ForgeCompleted(PlayerId("red"), DecisionId("forge-8"), site,
+        assignments, RelicId("relic:top")))
+    val encoded = GameEventWire.encodeStream("forge", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
+      Vector(8, 8))
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
   test("Campaign Raid targets have stable canonical keys and round trip") {
     val defender = PlayerId("blue")
     val targets = Vector[CampaignRaidTarget](

@@ -78,6 +78,9 @@ final class AuthenticatedGameGateway(
           case GameIntent.Trade(denizen, resource) => actor.trade(denizen, resource)
           case GameIntent.BeginSearch(source) => actor.beginSearch(source)
           case GameIntent.BeginRecover => actor.beginRecover
+          case GameIntent.BeginForge => actor.beginForge
+          case GameIntent.CompleteForge(decision, assignments) =>
+            actor.completeForge(decision, assignments)
           case GameIntent.AddRecoverDice(decision) => actor.addRecoverDice(decision)
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteIds, attackDiceCount) =>

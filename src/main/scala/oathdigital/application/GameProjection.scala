@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{CampaignPlanOption, CampaignRules, Economy, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{CampaignPlanOption, CampaignRules, Economy, ForgeRules, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -162,6 +162,11 @@ final case class RecoverProjection(
     decisionId: String, dice: Vector[String], shields: Int,
     difficulty: Int, supplySpent: Int, supplyRemaining: Int,
     canAddDice: Boolean, canStop: Boolean)
+final case class ForgeAssignmentTargetProjection(
+    siteId: String, denizenId: String, label: String)
+final case class ForgeProjection(
+    decisionId: String, actorPlayerId: String, favor: Int, secrets: Int,
+    targets: Vector[ForgeAssignmentTargetProjection])
 final case class CampaignProjection(
     decisionId: String, targetSiteIds: Vector[String], force: Int,
     plansFinished: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],
@@ -225,6 +230,7 @@ final case class GameProjection(
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     recover: Option[RecoverProjection] = None,
+    forge: Option[ForgeProjection] = None,
     campaign: Option[CampaignProjection] = None,
     campaignRaidRelocation: Option[CampaignRaidRelocationProjection] = None,
     worldDeckCount: Int = 0,
@@ -356,6 +362,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
                 Some("stopRecover")).flatten
             case Some(_: PendingProcedure.Recover) => Vector.empty
+            case Some(_: PendingProcedure.Forge) => Vector("completeForge")
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
               Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
                 else "placeCampaignForce")
@@ -369,7 +376,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     "beginRest"),
                   Option.when(active.pawnSite.exists(siteId =>
                     RecoverRules.validate(catalog, value, active, siteId).isRight))(
-                    "beginRecover")
+                    "beginRecover"),
+                  Option.when(active.pawnSite.exists(siteId =>
+                    ForgeRules.validate(catalog, value, active, siteId).isRight))(
+                    "beginForge")
                 ).flatten
               case Phase.Rest => Vector("finishRest")
               case Phase.Wake =>
@@ -424,6 +434,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
             RecoverProjection(r.decision.value, r.rolls.flatten.map(defenseFaceName),
               RecoverRules.score(r.rolls.flatten), r.difficulty, r.supplySpent,
               remaining, !r.successful && remaining > 0, !r.successful)
+        }
+        val forgeProjection = current.pending.collect {
+          case f: PendingProcedure.Forge if requestingPlayer.contains(f.actor) =>
+            ForgeProjection(f.decision.value, f.actor.value, f.cost.favor,
+              f.cost.secrets, f.eligibleTargets.map(t =>
+                ForgeAssignmentTargetProjection(t.siteId.value, t.denizenId.value,
+                  denizenNames.getOrElse(t.denizenId, safeLabel(t.denizenId.value)))))
         }
         val campaignProjection = current.pending.collect {
           case c: PendingProcedure.Campaign if requestingPlayer.exists(player =>
@@ -521,6 +538,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(r: PendingProcedure.Recover) if requestingPlayer.contains(r.actor) && r.successful => "recover-relic-decision"
             case Some(_: PendingProcedure.Recover) if recoverProjection.nonEmpty => "recover-rolling"
             case Some(_: PendingProcedure.Recover) => "recover-waiting"
+            case Some(_: PendingProcedure.Forge) if forgeProjection.nonEmpty => "forge-assignment"
+            case Some(_: PendingProcedure.Forge) => "forge-waiting"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.exists(_.victorious.contains(true)) => "campaign-placement"
             case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.defenderPlansFinished => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
@@ -632,6 +651,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             else Vector.empty,
           pendingCardDecision = pendingDecision,
           recover = recoverProjection,
+          forge = forgeProjection,
           campaign = campaignProjection,
           worldDeckCount = current.commonCards.worldDeck.size,
           // Card backs/types are public; the World Deck top is its head.

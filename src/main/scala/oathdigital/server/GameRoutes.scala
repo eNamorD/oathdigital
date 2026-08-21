@@ -258,6 +258,8 @@ final class GameRoutes(
       case GameCommand.Trade(playerId, _, _) => Some(playerId.value)
       case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
       case GameCommand.BeginRecover(playerId) => Some(playerId.value)
+      case GameCommand.BeginForge(playerId) => Some(playerId.value)
+      case GameCommand.CompleteForge(playerId, _, _) => Some(playerId.value)
       case GameCommand.AddRecoverDice(playerId, _) => Some(playerId.value)
       case GameCommand.StopRecover(playerId, _) => Some(playerId.value)
       case GameCommand.BeginCampaignConquest(playerId, _, _) => Some(playerId.value)

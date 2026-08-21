@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  EconomyCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
+  EconomyCommand, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -41,6 +41,9 @@ object GameCommand {
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
   final case class BeginRecover(playerId: PlayerId) extends GameCommand
+  final case class BeginForge(playerId: PlayerId) extends GameCommand
+  final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
+      assignments: Vector[ForgeResourceAssignment]) extends GameCommand
   final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class StopRecover(playerId: PlayerId, decision: DecisionId)
@@ -141,6 +144,17 @@ trait SearchDrawPort {
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
 }
+
+trait RelicDrawPort {
+  def prepare(ready: oathdigital.setup.ReadyGame): Either[OathViolation, RelicId]
+}
+object RelicDrawPort {
+  val authoritative: RelicDrawPort = new RelicDrawPort {
+    def prepare(ready: oathdigital.setup.ReadyGame) =
+      ready.game.current.commonCards.relicDeck.headOption
+        .toRight(OathViolation.ForgeUnavailable("relic deck is empty"))
+  }
+}
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
     def prepare(ready: oathdigital.setup.ReadyGame, source: SearchSource,
@@ -199,6 +213,7 @@ final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
+    relicDrawPort: RelicDrawPort = RelicDrawPort.authoritative,
     defenseDicePort: DefenseDicePort = DefenseDicePort.random,
     campaignDicePort: CampaignDicePort = CampaignDicePort.random
 ) {
@@ -378,6 +393,15 @@ final class GameApplicationService(
       case GameCommand.BeginRecover(playerId) =>
         rules.handle(state, RecoverCommand.Roll(playerId,
           DecisionId(s"recover-$nextSequence"), defenseDicePort.rollTwo()))
+      case GameCommand.BeginForge(playerId) =>
+        rules.handle(state, ForgeCommand.Begin(playerId,
+          DecisionId(s"forge-$nextSequence")))
+      case GameCommand.CompleteForge(playerId, decision, assignments) => state match {
+        case OathState.Ready(ready) => relicDrawPort.prepare(ready).flatMap(relic =>
+          rules.handle(state, ForgeCommand.Complete(playerId, decision,
+            assignments, relic)))
+        case _ => Left(OathViolation.GameNotStarted)
+      }
       case GameCommand.AddRecoverDice(playerId, decision) =>
         rules.handle(state, RecoverCommand.Roll(playerId, decision,
           defenseDicePort.rollTwo()))

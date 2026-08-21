@@ -265,6 +265,14 @@ object GameHttpWire {
             "supplyRemaining" -> recover.supplyRemaining,
             "canAddDice" -> recover.canAddDice, "canStop" -> recover.canStop)
         },
+        "forge" -> projection.forge.fold[ujson.Value](ujson.Null) { forge =>
+          ujson.Obj("decisionId" -> forge.decisionId,
+            "actorPlayerId" -> forge.actorPlayerId,
+            "favor" -> forge.favor, "secrets" -> forge.secrets,
+            "targets" -> ujson.Arr.from(forge.targets.map(t => ujson.Obj(
+              "siteId" -> t.siteId, "denizenId" -> t.denizenId,
+              "label" -> t.label))))
+        },
         "campaign" -> projection.campaign.fold[ujson.Value](ujson.Null) { campaign =>
           ujson.Obj("decisionId" -> campaign.decisionId,
             "kind" -> campaign.kind,
@@ -450,6 +458,27 @@ object GameHttpWire {
         } yield GameCommand.BeginSearch(PlayerId(player), source)
       case "beginRecover" =>
         stringField(obj, "playerId", path).map(p => GameCommand.BeginRecover(PlayerId(p)))
+      case "beginForge" =>
+        stringField(obj, "playerId", path).map(p => GameCommand.BeginForge(PlayerId(p)))
+      case "completeForge" => for {
+        p <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+        values <- field(obj, "assignments", path).flatMap(arrayValue(_, s"$path.assignments"))
+        assignments <- traverse(values.zipWithIndex) { case (value, index) =>
+          val pth = s"$path.assignments[$index]"
+          for {
+            a <- objectValue(value, pth)
+            site <- stringField(a, "siteId", pth)
+            denizen <- stringField(a, "denizenId", pth)
+            name <- stringField(a, "resource", pth)
+            resource <- name match {
+              case "favor" => Right(ForgeResource.Favor)
+              case "secret" => Right(ForgeResource.Secret)
+              case other => Left(HttpInputError(s"$pth.resource", s"unknown Forge resource '$other'"))
+            }
+          } yield ForgeResourceAssignment(SiteDenizenTarget(SiteId(site), DenizenId(denizen)), resource)
+        }
+      } yield GameCommand.CompleteForge(PlayerId(p), DecisionId(decision), assignments)
       case "addRecoverDice" => for {
         p <- stringField(obj, "playerId", path)
         d <- stringField(obj, "decisionId", path)
