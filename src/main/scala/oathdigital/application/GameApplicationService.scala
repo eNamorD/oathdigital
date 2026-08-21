@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  EconomyCommand, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
+  EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -397,9 +397,11 @@ final class GameApplicationService(
         rules.handle(state, ForgeCommand.Begin(playerId,
           DecisionId(s"forge-$nextSequence")))
       case GameCommand.CompleteForge(playerId, decision, assignments) => state match {
-        case OathState.Ready(ready) => relicDrawPort.prepare(ready).flatMap(relic =>
-          rules.handle(state, ForgeCommand.Complete(playerId, decision,
-            assignments, relic)))
+        case OathState.Ready(ready) =>
+          Forge.prepareComplete(catalog, state, playerId, decision, assignments)
+            .flatMap(_ => relicDrawPort.prepare(ready)).flatMap(relic =>
+              rules.handle(state, ForgeCommand.Complete(playerId, decision,
+                assignments, relic)))
         case _ => Left(OathViolation.GameNotStarted)
       }
       case GameCommand.AddRecoverDice(playerId, decision) =>

@@ -3,7 +3,7 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.model._
-import oathdigital.gameplay.actions.CampaignRules
+import oathdigital.gameplay.actions.{CampaignRules, SearchRules}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
@@ -19,6 +19,129 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("Forge persists private pending and completed state and prepares relic once") {
+    val repository = new InMemoryEventStreamRepository
+    var prepared = 0
+    val relicPort = new RelicDrawPort {
+      def prepare(ready: ReadyGame) = {
+        prepared += 1
+        ready.game.current.commonCards.relicDeck.headOption
+          .toRight(oathdigital.setup.OathViolation.ForgeUnavailable("empty"))
+      }
+    }
+    val dice = new CampaignDicePort {
+      def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
+      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+    }
+    val forgeSite = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
+      !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val forgePlan = plan.copy(orderedSites = forgeSite +:
+      plan.orderedSites.filterNot(_ == forgeSite))
+    val service = new GameApplicationService(catalog, repository,
+      relicDrawPort = relicPort, campaignDicePort = dice)
+    val gameId = "game-forge-persistence"
+    var accepted = service.handle(gameId, 0L, GameCommand.Begin(forgePlan)).toOption.get
+    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
+    order.zipWithIndex.foreach { case (playerId, index) =>
+      val destination = if (index == 0) forgeSite else forgePlan.orderedSites(index)
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.PlacePawn(playerId, destination)).toOption.get
+      val participantIndex = forgePlan.participants.indexWhere(_.playerId == playerId)
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.ChooseAdviser(playerId,
+          forgePlan.denizenOrder(6 + participantIndex * 3))).toOption.get
+    }
+    val actor = PlayerId("p2")
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val campaignDecision = DecisionId(s"campaign-${accepted.nextSequence}")
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.BeginCampaignConquest(actor, forgeSite, 3)).toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.FinishCampaignPlans(actor, campaignDecision)).toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.ChooseCampaignSacrifice(actor, campaignDecision, 2)).toOption.get
+    val Ready(won) = accepted.state: @unchecked
+    won.game.current.pending.collect { case c: PendingProcedure.Campaign => c }
+      .foreach { campaign =>
+        accepted = service.handle(gameId, accepted.nextSequence,
+          GameCommand.PlaceCampaignForce(actor, campaignDecision,
+            Vector(CampaignForceAllocation(forgeSite,
+              campaign.force - campaign.skullLosses -
+                campaign.sacrificed.getOrElse(0))))).toOption.get
+      }
+
+    def searchOne(): Unit = {
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.BeginSearch(actor, SearchSource.WorldDeck)).toOption.get
+      val Ready(pendingReady) = accepted.state: @unchecked
+      val pending = pendingReady.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Search]
+      val kept = pending.drawn.find(card => SearchRules.legalPlacements(
+        catalog, pendingReady, pending, card).contains(SearchPlacement.Site(None))).get
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.CompleteSearch(actor, pending.decision, kept,
+          pending.drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get
+    }
+    searchOne(); searchOne()
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.BeginRest(actor)).toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.FinishRest(actor)).toOption.get
+    Vector(PlayerId("p3"), PlayerId("p1")).foreach { player =>
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.EndWake(player)).toOption.get
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.BeginRest(player)).toOption.get
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.FinishRest(player)).toOption.get
+    }
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    searchOne()
+    val begun = service.handle(gameId, accepted.nextSequence,
+      GameCommand.BeginForge(actor)).fold(error => fail(error.toString), identity)
+    val reloadedService = new GameApplicationService(catalog, repository,
+      relicDrawPort = relicPort, campaignDicePort = dice)
+    val pendingLoaded = reloadedService.load(gameId).toOption.flatten.get
+    assertEquals(pendingLoaded.state, begun.state)
+    val Ready(forgeReady) = pendingLoaded.state: @unchecked
+    val pending = forgeReady.game.current.pending.get.asInstanceOf[PendingProcedure.Forge]
+    val other = forgeReady.game.current.players.find(_.player != actor).get.player
+    val projector = new GameProjector(catalog)
+    assert(projector.project(gameId, pendingLoaded, actor).forge.nonEmpty)
+    assertEquals(projector.project(gameId, pendingLoaded, other).forge, None)
+    assertEquals(projector.projectPublic(gameId, pendingLoaded).forge, None)
+    val resources = Vector.fill(pending.cost.favor)(ForgeResource.Favor) ++
+      Vector.fill(pending.cost.secrets)(ForgeResource.Secret)
+    val assignments = pending.eligibleTargets.zip(resources).map {
+      case (target, resource) => ForgeResourceAssignment(target, resource) }
+    val beforeRejected = repository.load(gameId).toOption.flatten.get.records
+    Vector[GameCommand](
+      GameCommand.CompleteForge(actor, DecisionId("stale"), assignments),
+      GameCommand.CompleteForge(other, pending.decision, assignments),
+      GameCommand.CompleteForge(actor, pending.decision,
+        assignments.updated(1, assignments.head)),
+      GameCommand.CompleteForge(actor, pending.decision,
+        assignments.map(_.copy(resource = ForgeResource.Secret)))
+    ).foreach(command => assert(reloadedService.handle(gameId,
+      begun.nextSequence, command).isLeft))
+    assertEquals(prepared, 0)
+    assertEquals(repository.load(gameId).toOption.flatten.get.records, beforeRejected)
+    val relic = forgeReady.game.current.commonCards.relicDeck.head
+    val completed = reloadedService.handle(gameId, begun.nextSequence,
+      GameCommand.CompleteForge(actor, pending.decision, assignments)).toOption.get
+    assertEquals(prepared, 1)
+    val completedLoaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(completedLoaded.state, completed.state)
+    val otherJson = GameHttpWire.encodeProjection(
+      projector.project(gameId, completedLoaded, other))
+    val publicJson = GameHttpWire.encodeProjection(
+      projector.projectPublic(gameId, completedLoaded))
+    assert(!otherJson.contains(relic.value))
+    assert(!publicJson.contains(relic.value))
+  }
   private def safeCampaignSite: SiteId = catalog.sites.find(site =>
     site.handlers.forall(h => !h.endsWith(".mountain") &&
       !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id

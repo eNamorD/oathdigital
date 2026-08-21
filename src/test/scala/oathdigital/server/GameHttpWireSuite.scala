@@ -9,6 +9,22 @@ import oathdigital.serialization.{
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("development Forge commands retain actor and exclude relic identity") {
+    val begin = commandRequest(ujson.Obj("type" -> "beginForge",
+      "playerId" -> "p2"))
+    assertEquals(GameHttpWire.decodeCommand(begin).toOption.get.command,
+      GameCommand.BeginForge(PlayerId("p2")))
+    val complete = commandRequest(ujson.Obj("type" -> "completeForge",
+      "playerId" -> "p2", "decisionId" -> "forge-8",
+      "assignments" -> ujson.Arr(
+        ujson.Obj("siteId" -> "site:a", "denizenId" -> "denizen:1",
+          "resource" -> "favor"))))
+    assert(GameHttpWire.decodeCommand(complete).toOption.get.command
+      .isInstanceOf[GameCommand.CompleteForge])
+    val spoofed = ujson.read(complete).obj
+    spoofed("command").obj("relicId") = "relic:spoofed"
+    assert(GameHttpWire.decodeCommand(ujson.write(spoofed)).isLeft)
+  }
   test("development Campaign commands retain explicit selector actor") {
     val begin = commandRequest(ujson.Obj("type" -> "beginCampaignConquest",
       "playerId" -> "p2", "targetSiteIds" -> ujson.Arr("site:a", "site:b"),

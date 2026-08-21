@@ -459,8 +459,12 @@ object GameHttpWire {
       case "beginRecover" =>
         stringField(obj, "playerId", path).map(p => GameCommand.BeginRecover(PlayerId(p)))
       case "beginForge" =>
-        stringField(obj, "playerId", path).map(p => GameCommand.BeginForge(PlayerId(p)))
+        exactFields(obj, Set("type", "playerId"), path)
+          .flatMap(_ => stringField(obj, "playerId", path))
+          .map(p => GameCommand.BeginForge(PlayerId(p)))
       case "completeForge" => for {
+        _ <- exactFields(obj,
+          Set("type", "playerId", "decisionId", "assignments"), path)
         p <- stringField(obj, "playerId", path)
         decision <- stringField(obj, "decisionId", path)
         values <- field(obj, "assignments", path).flatMap(arrayValue(_, s"$path.assignments"))
@@ -468,6 +472,7 @@ object GameHttpWire {
           val pth = s"$path.assignments[$index]"
           for {
             a <- objectValue(value, pth)
+            _ <- exactFields(a, Set("siteId", "denizenId", "resource"), pth)
             site <- stringField(a, "siteId", pth)
             denizen <- stringField(a, "denizenId", pth)
             name <- stringField(a, "resource", pth)

@@ -86,6 +86,21 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       assertEquals(get(client, base + "?playerId=p2", Some(p2User.value))
         .statusCode(), 400)
 
+      val actorDerivedForge = post(client, base + "/commands", p2User.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+          "intent" -> ujson.Obj("type" -> "beginForge"))))
+      assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
+      val spoofedForgeActor = post(client, base + "/commands", p2User.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+          "intent" -> ujson.Obj("type" -> "beginForge", "playerId" -> "p3"))))
+      assertEquals(spoofedForgeActor.statusCode(), 400)
+      val spoofedRelic = post(client, base + "/commands", p2User.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+          "intent" -> ujson.Obj("type" -> "completeForge",
+            "decisionId" -> "forge-1", "assignments" -> ujson.Arr(),
+            "relicId" -> "relic:spoofed"))))
+      assertEquals(spoofedRelic.statusCode(), 400)
+
       val pawn = post(client, base + "/commands", p2User.value,
         intentBody(1L, "placePawn", "siteId", sites.head.value))
       assertEquals(pawn.statusCode(), 200, pawn.body())

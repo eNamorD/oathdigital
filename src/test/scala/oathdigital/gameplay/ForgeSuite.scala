@@ -42,6 +42,7 @@ class ForgeSuite extends munit.FunSuite {
       Some(targets.map(t => t.siteId.value -> t.denizenId.value)))
     assertEquals(waiting.forge, None)
     assertEquals(waiting.phase, "forge-waiting")
+    assertEquals(waiting.legalControls, Vector.empty)
     val Ready(afterStart) = started.state: @unchecked
     assertEquals(afterStart.game.current.players.find(_.player == actor.player).get.board.supply.supply,
       actor.board.supply.supply - 1)
@@ -128,5 +129,17 @@ class ForgeSuite extends munit.FunSuite {
       ForgeCommand.Begin(actor.player, id)).toOption.get
     assert(rules.handle(depletedStart.state,
       ForgeCommand.Complete(actor.player, id, assignments, relic)).isLeft)
+  }
+
+  test("unknown active handler outside the audited vocabulary blocks safely") {
+    val (ready, actor, site, targets, _) = forgeable
+    val active = targets.head.denizenId
+    val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
+      if (definition.id.value != active.value) definition
+      else definition.copy(handlers = definition.handlers :+
+        "denizen.future-forge-interaction")
+    })
+    assert(ForgeRules.validate(altered, ready, actor, site).left.toOption.get
+      .isInstanceOf[UnsupportedForgeState])
   }
 }

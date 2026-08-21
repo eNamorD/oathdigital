@@ -4,6 +4,33 @@ import munit.FunSuite
 import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
+  test("Forge assignment state enforces cardinality and resets stale context") {
+    val context = BoardSelectionContext("game", "red", 9)
+    val targets = Vector("1", "2", "3").map(id =>
+      ForgeTarget("site:a", s"denizen:$id", s"Denizen $id"))
+    val forge = ForgeState("forge-9", "red", 2, 1, targets)
+    val initial = ForgeAssignmentState.reconcile(None, context, Some(forge)).get
+    assertEquals(initial.assignments, Vector("favor", "favor", "secret"))
+    assert(initial.canConfirm)
+    assertEquals(initial.command("red"), Some(GameCommand.CompleteForge(
+      "red", "forge-9", targets.zip(initial.assignments))))
+    val invalid = initial.choose(2, "favor")
+    assert(!invalid.canConfirm)
+    assertEquals(invalid.command("red"), None)
+    val repaired = invalid.choose(0, "secret")
+    assert(repaired.canConfirm)
+    assertEquals(repaired.assignments.count(_ == "favor") ->
+      repaired.assignments.count(_ == "secret"), 2 -> 1)
+    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
+      Some(forge)), Some(repaired))
+    assertEquals(ForgeAssignmentState.reconcile(Some(repaired),
+      context.copy(sequence = 10), Some(forge)).get.assignments,
+      initial.assignments)
+    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
+      Some(forge.copy(decisionId = "forge-new"))).get.assignments,
+      initial.assignments)
+    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context, None), None)
+  }
   test("selection actions map only authorized single target shapes to commands") {
     def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
       false, Vector.empty)

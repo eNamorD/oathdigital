@@ -25,6 +25,7 @@ object ServerModeUi {
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
     var boardFormationState = Option.empty[BoardTargetFormationState]
     var campaignPlacementState = Option.empty[CampaignPlacementState]
+    var forgeAssignmentState = Option.empty[ForgeAssignmentState]
     var cardDecisionState = Option.empty[CardDecisionState]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
@@ -86,6 +87,10 @@ object ServerModeUi {
             campaignPlacementState,
             BoardSelectionContext(gameId, selectedPlayer,
               displayed.nextSequence), displayed.campaign)
+          forgeAssignmentState = ForgeAssignmentState.reconcile(
+            forgeAssignmentState,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.forge)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -561,9 +566,6 @@ object ServerModeUi {
         panel.appendChild(text("h2", "", "Forge a relic"))
         panel.appendChild(text("p", "forge-instruction",
           s"Assign ${forge.favor} favor and ${forge.secrets} secrets, one resource per denizen."))
-        val defaults = Vector.fill(forge.favor)("favor") ++
-          Vector.fill(forge.secrets)("secret")
-        val selected = scala.collection.mutable.ArrayBuffer.from(defaults)
         val confirm = button("Complete Forge", "forge-complete")
         forge.targets.zipWithIndex.foreach { case (target, index) =>
           val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
@@ -573,20 +575,22 @@ object ServerModeUi {
           Vector("favor", "secret").foreach { resource =>
             val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
             option.value = resource; option.text = resource.capitalize
-            option.selected = selected(index) == resource
+            option.selected = forgeAssignmentState.exists(
+              _.assignments(index) == resource)
             select.appendChild(option)
           }
           select.onchange = _ => {
-            selected(index) = select.value
+            forgeAssignmentState = forgeAssignmentState.map(
+              _.choose(index, select.value))
             confirm.disabled = !controlsAvailable ||
-              selected.count(_ == "favor") != forge.favor ||
-              selected.count(_ == "secret") != forge.secrets
+              !forgeAssignmentState.exists(_.canConfirm)
           }
           label.appendChild(select); panel.appendChild(label)
         }
-        confirm.disabled = !controlsAvailable
-        confirm.onclick = _ => submit(GameCommand.CompleteForge(selectedPlayer,
-          forge.decisionId, forge.targets.zip(selected.toVector)))
+        confirm.disabled = !controlsAvailable ||
+          !forgeAssignmentState.exists(_.canConfirm)
+        confirm.onclick = _ => forgeAssignmentState.flatMap(
+          _.command(selectedPlayer)).foreach(submit)
         panel.appendChild(confirm)
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>

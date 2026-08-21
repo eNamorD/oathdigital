@@ -21,6 +21,9 @@ Search draw and Recover dice ports. Owner-scoped projection exposes the pending
 assignment; other players see only a waiting phase, and player-board projection
 continues to hide facedown relic identity.
 
-This milestone implements only the printed base procedure. Active catalog
-handlers whose durable typed identifier declares Forge relevance block with
-`UnsupportedForgeState`; Forge never interprets component `rulesText`.
+This milestone implements only the printed base procedure. The complete
+pre-release handler vocabulary was audited and has no component that modifies
+the base Forge procedure. Forge pins the exact audited handler-vocabulary
+fingerprint; any added or changed vocabulary makes active component handlers
+block with `UnsupportedForgeState` until the catalog is explicitly re-audited.
+Forge never interprets component `rulesText`.

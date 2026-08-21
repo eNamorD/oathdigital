@@ -19,6 +19,18 @@ object ForgeCommand {
 }
 
 object Forge {
+  /** Validates every non-random completion fact before the application asks
+    * its server-owned relic preparation port for the authoritative deck top.
+    */
+  def prepareComplete(catalog: ExecutableCatalog, state: OathState,
+      player: PlayerId, decision: DecisionId,
+      assignments: Vector[ForgeResourceAssignment])
+      : Either[OathViolation, Unit] = state match {
+    case Ready(ready) => validateCompletion(catalog, ready, player, decision,
+      assignments).map(_ => ())
+    case _ => Left(GameNotStarted)
+  }
+
   def handle(catalog: ExecutableCatalog, state: OathState,
       command: ForgeCommand): Either[OathViolation, OathTransition] = command match {
     case ForgeCommand.Begin(player, decision) => for {
@@ -31,13 +43,51 @@ object Forge {
         AwaitingForgeAssignment(player, decision))
     } yield next
     case ForgeCommand.Complete(player, decision, assignments, relic) => state match {
-      case Ready(ready) => validatePending(ready, player, decision).flatMap { pending =>
+      case Ready(ready) => validateCompletion(catalog, ready, player, decision,
+          assignments).flatMap { case (pending, _) =>
         transition(catalog, state, Vector(ForgeCompleted(player, decision,
           pending.site, assignments, relic)), ActActionSelection(player))
       }
       case _ => Left(GameNotStarted)
     }
   }
+
+  private def validateCompletion(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId, decision: DecisionId,
+      assignments: Vector[ForgeResourceAssignment])
+      : Either[OathViolation, (PendingProcedure.Forge, Map[Suit, Int])] =
+    validatePending(ready, player, decision).flatMap { f =>
+      val expectedResources = Vector.fill(f.cost.favor)(ForgeResource.Favor) ++
+        Vector.fill(f.cost.secrets)(ForgeResource.Secret)
+      val actualTargets = assignments.map(_.target)
+      val favorBySuit = assignments.collect {
+        case a if a.resource == ForgeResource.Favor =>
+          catalog.denizens.find(_.id.value == a.target.denizenId.value)
+            .flatMap(d => Suit.all.find(_.key == d.suit.value))
+            .toRight(ForgeOutcomeMismatch(
+              s"no catalog suit for ${a.target.denizenId.value}"))
+      }.foldLeft[Either[OathViolation, Map[Suit, Int]]](Right(Map.empty)) {
+        case (acc, next) => for {
+          counts <- acc
+          suit <- next
+        } yield counts.updated(suit, counts.getOrElse(suit, 0) + 1)
+      }
+      for {
+        _ <- Either.cond(assignments.size == 3 && actualTargets.distinct.size == 3,
+          (), ForgeOutcomeMismatch("assign exactly one resource to each of three distinct denizens"))
+        _ <- Either.cond(actualTargets.toSet == f.eligibleTargets.toSet,
+          (), ForgeOutcomeMismatch("assignment targets are stale or ineligible"))
+        _ <- Either.cond(assignments.map(_.resource).sortBy(_.key) ==
+          expectedResources.sortBy(_.key), (), ForgeOutcomeMismatch(
+          "assignments do not match the printed Forge resources"))
+        favorNeeded <- favorBySuit
+        _ <- favorNeeded.toVector.foldLeft[Either[OathViolation, Unit]](Right(())) {
+          case (result, (suit, needed)) => result.flatMap(_ => Either.cond(
+            ready.support.favorBanks.getOrElse(suit, 0) >= needed, (),
+            ForgeUnavailable(s"$suit favor bank lacks $needed favor")))
+        }
+      } yield f -> favorNeeded
+    }
 
   private def validatePending(ready: ReadyGame, player: PlayerId,
       decision: DecisionId): Either[OathViolation, PendingProcedure.Forge] = {
@@ -71,39 +121,13 @@ object Forge {
           e.targets, e.cost, e.supplySpent)))
     })
     case e: ForgeCompleted => state match {
-      case Ready(ready) => validatePending(ready, e.playerId, e.decision).flatMap { f =>
+      case Ready(ready) => validateCompletion(catalog, ready, e.playerId,
+          e.decision, e.assignments).flatMap { case (f, favorNeeded) =>
         val current = ready.game.current
-        val expectedResources = Vector.fill(f.cost.favor)(ForgeResource.Favor) ++
-          Vector.fill(f.cost.secrets)(ForgeResource.Secret)
-        val actualTargets = e.assignments.map(_.target)
-        val favorBySuit = e.assignments.collect {
-          case a if a.resource == ForgeResource.Favor =>
-            catalog.denizens.find(_.id.value == a.target.denizenId.value)
-              .flatMap(d => Suit.all.find(_.key == d.suit.value))
-              .toRight(ForgeOutcomeMismatch(
-                s"no catalog suit for ${a.target.denizenId.value}"))
-        }.foldLeft[Either[OathViolation, Map[Suit, Int]]](Right(Map.empty)) {
-          case (acc, next) => for {
-            counts <- acc
-            suit <- next
-          } yield counts.updated(suit, counts.getOrElse(suit, 0) + 1)
-        }
         for {
           _ <- Either.cond(e.siteId == f.site, (), ForgeOutcomeMismatch("recorded Forge site changed"))
-          _ <- Either.cond(e.assignments.size == 3 && actualTargets.distinct.size == 3,
-            (), ForgeOutcomeMismatch("assign exactly one resource to each of three distinct denizens"))
-          _ <- Either.cond(actualTargets.toSet == f.eligibleTargets.toSet,
-            (), ForgeOutcomeMismatch("assignment targets are stale or ineligible"))
-          _ <- Either.cond(e.assignments.map(_.resource).sortBy(_.key) == expectedResources.sortBy(_.key),
-            (), ForgeOutcomeMismatch("assignments do not match the printed Forge resources"))
           _ <- Either.cond(current.commonCards.relicDeck.headOption.contains(e.relicId),
             (), ForgeOutcomeMismatch("recorded relic is not the authoritative deck top"))
-          favorNeeded <- favorBySuit
-          _ <- favorNeeded.toVector.foldLeft[Either[OathViolation, Unit]](Right(())) {
-            case (result, (suit, needed)) => result.flatMap(_ =>
-              Either.cond(ready.support.favorBanks.getOrElse(suit, 0) >= needed,
-                (), ForgeUnavailable(s"$suit favor bank lacks $needed favor")))
-          }
           site <- current.map.sites.get(f.site).toRight(SiteNotInPlay(f.site))
         } yield {
           val byId = e.assignments.map(a => a.target.denizenId -> a.resource).toMap
@@ -142,36 +166,56 @@ object Forge {
 }
 
 object ForgeRules {
-  private def forgeHandlers(ids: Vector[String]): Vector[String] =
-    ids.filter(id => id.split("[.-]").contains("forge"))
+  /** The complete pre-release component corpus was audited against CR p.25 / NF
+    * p.14 and contains no handler that changes the base Forge procedure. The
+    * exact handler vocabulary is pinned: an added/changed handler makes active
+    * component powers conservative blockers until explicitly re-audited.
+    */
+  private val AuditedIrrelevantHandlerFingerprint =
+    "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97"
+
+  private def handlerFingerprint(catalog: ExecutableCatalog): String = {
+    val ids = catalog.denizens.flatMap(_.handlers) ++
+      catalog.relics.flatMap(_.handlers) ++ catalog.legacies.flatMap(_.handlers) ++
+      catalog.sites.flatMap(_.handlers) ++ catalog.edifices.flatMap(e =>
+        e.intact.handlers ++ e.ruined.handlers)
+    val bytes = java.security.MessageDigest.getInstance("SHA-256")
+      .digest(ids.distinct.sorted.mkString("\n").getBytes("UTF-8"))
+    bytes.map(b => f"${b & 0xff}%02x").mkString
+  }
+
+  private def unauditedActive(ids: Vector[String], catalogAudited: Boolean) =
+    ids.nonEmpty && !catalogAudited
 
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerState,
       siteId: SiteId): Either[OathViolation, (Vector[SiteDenizenTarget], Tokens)] = {
     val game = ready.game
     val definition = catalog.sites.find(_.id == siteId)
     val site = game.current.map.sites.get(siteId)
+    val catalogAudited = handlerFingerprint(catalog) ==
+      AuditedIrrelevantHandlerFingerprint
     val blocked =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Forge is limited to the exile-only first game")
       else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Forge")
       else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active))) Some("active legacy Forge modifiers are not supported")
-      else if (definition.exists(d => forgeHandlers(d.handlers).nonEmpty)) Some("site Forge handlers are not implemented")
+      else if (definition.exists(d => unauditedActive(d.handlers, catalogAudited))) Some("unaudited site Forge handler is not implemented")
       else if (player.advisers.exists {
         case d: DenizenState if d.orientation == Orientation.FaceUp =>
           catalog.denizens.find(_.id.value == d.id.value)
-            .exists(x => forgeHandlers(x.handlers).nonEmpty)
+            .exists(x => unauditedActive(x.handlers, catalogAudited))
         case _ => false
       }) Some("active adviser Forge handlers are not implemented")
       else if (player.relics.exists(r => r.orientation == Orientation.FaceUp &&
           catalog.relics.find(_.id.value == r.id.value)
-            .exists(x => forgeHandlers(x.handlers).nonEmpty)))
+            .exists(x => unauditedActive(x.handlers, catalogAudited))))
         Some("active relic Forge handlers are not implemented")
       else if (site.exists(_.denizens.exists {
         case d: DenizenState if d.orientation == Orientation.FaceUp =>
           catalog.denizens.find(_.id.value == d.id.value)
-            .exists(x => forgeHandlers(x.handlers).nonEmpty)
+            .exists(x => unauditedActive(x.handlers, catalogAudited))
         case e: EdificeState if e.side == EdificeSide.Intact =>
           catalog.edifices.find(_.id.value == e.id.value)
-            .exists(x => forgeHandlers(x.intact.handlers).nonEmpty)
+            .exists(x => unauditedActive(x.intact.handlers, catalogAudited))
         case _ => false
       })) Some("active site-card Forge handlers are not implemented")
       else None
