@@ -20,7 +20,7 @@ campaign-continuity rules.
    defense, losses, transfers, private-card disposal, favor burn, pawn
    relocation, and terminal windows.
 2. [x] Implement Forge.
-3. Implement banners and Challenge, including base banner resource movement.
+3. [x] Implement banners and Challenge, including base banner resource movement.
 4. Implement the core minor actions: play/discard a facedown adviser,
    reveal/peek at relics, and move warbands between board and a ruled pawn
    site.
@@ -116,6 +116,17 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 1 - Bounded banners and Challenge.** The fixed Mob and Wandering
+  Flame faces now support typed public holder/resource state, the common
+  zero-Supply action for adding faceup favor or secrets, and a 1-Supply
+  Challenge with strict eligibility, co-location, atomic transfer, and
+  authoritative replay. People's Favor distributes deterministically to the
+  least-stocked bank with leftmost ties; Wandering Flame exposes only its
+  genuine least-site tie choices to the challenger. Projection, authenticated
+  transport, persistence/reopen, and Scala.js controls preserve decision
+  ownership. Altered banner faces and their additional powers remain deferred
+  to the powers phase.
 
 - [x] **Phase 1 - Bounded Forge.** A ruling Exile at a printed Forge site can
   spend 1 Supply, assign the exact printed favor/secret multiset one apiece to
