@@ -292,6 +292,44 @@ class HttpGameClientSuite extends FunSuite {
       .left.toOption.get.isInstanceOf[GameClientFailure.DecodeFailure])
   }
 
+  test("Raid targets and owner relocation use typed wire shapes") {
+    val targets = Vector[BoardTargetRef](BoardTargetRef.PlayerPawn("blue-exile"),
+      BoardTargetRef.PlayerRelic("blue-exile", "R03"),
+      BoardTargetRef.PlayerBanner("blue-exile", "peoples-favor"))
+    val encoded = GameJson.encodeCommand(24,
+      GameCommand.CampaignRaid("red-exile", targets, 2))
+    assert(encoded.contains("\"type\":\"beginCampaignRaid\""))
+    assert(encoded.contains("\"kind\":\"pawn\""))
+    assert(encoded.contains("\"kind\":\"relic\""))
+    assert(encoded.contains("\"relicId\":\"R03\""))
+    assert(encoded.contains("\"kind\":\"peoples-favor\""))
+    assert(encoded.contains("\"attackDiceCount\":2"))
+
+    val relocation = GameJson.encodeCommand(25,
+      GameCommand.RelocateCampaignRaidPawn("red-exile", "raid-24", "site:c"))
+    assert(relocation.contains("\"type\":\"relocateCampaignRaidPawn\""))
+    assert(relocation.contains("\"decisionId\":\"raid-24\""))
+    assert(relocation.contains("\"destinationSiteId\":\"site:c\""))
+
+    val action = """[{"actionKind":"campaign-raid","prompt":"Raid Blue","minimum":1,"maximum":3,"autoActivate":false,"requiredTargets":[{"kind":"player-pawn","playerId":"blue-exile"}],"formation":{"minimumForce":0,"maximumForce":2,"availableWarbands":2,"supplyCost":2},"candidates":[{"target":{"kind":"player-pawn","playerId":"blue-exile"},"label":"Blue pawn","details":[]},{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"R03"},"label":"Relic","details":[]},{"target":{"kind":"player-banner","playerId":"blue-exile","banner":"peoples-favor"},"label":"People's Favor","details":[]}]}]"""
+    val relocationProjection = """{"decisionId":"raid-24","actorPlayerId":"red-exile","defenderPlayerId":"blue-exile","originSiteId":"site:b","legalSiteIds":["site:a","site:c"]}"""
+    val json = projectionJson(sequence = 24, choices = false)
+      .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$action")
+      .replace("\"pendingCardDecision\":null",
+        s"\"pendingCardDecision\":null,\"campaignRaidRelocation\":$relocationProjection")
+    val decoded = GameJson.decodeProjection(json)
+    assert(decoded.isRight, decoded.left.toOption.toString)
+    assertEquals(decoded.toOption.get.boardTargetActions.head.candidates.map(_.target),
+      targets)
+    assertEquals(decoded.toOption.get.campaignRaidRelocation,
+      Some(CampaignRaidRelocation("raid-24", "red-exile", "blue-exile",
+        "site:b", Vector("site:a", "site:c"))))
+
+    val hidden = GameJson.decodeProjection(projectionJson(sequence = 24,
+      choices = false)).toOption.get
+    assertEquals(hidden.campaignRaidRelocation, None)
+  }
+
   test("typed board-target actions decode sites cards advisers relics and reject malformed refs") {
     val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"requiredTargets":[],"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)

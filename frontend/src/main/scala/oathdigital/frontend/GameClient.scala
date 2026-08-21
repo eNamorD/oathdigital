@@ -139,6 +139,13 @@ object BoardTargetRef {
       extends BoardTargetRef {
     def stableKey: String = s"player-relic:$playerId:$relicId"
   }
+  final case class PlayerPawn(playerId: String) extends BoardTargetRef {
+    def stableKey: String = s"player-pawn:$playerId"
+  }
+  final case class PlayerBanner(playerId: String, banner: String)
+      extends BoardTargetRef {
+    def stableKey: String = s"player-banner:$playerId:$banner"
+  }
 }
 final case class BoardTargetCandidate(
     target: BoardTargetRef, label: String, details: Vector[String])
@@ -189,7 +196,8 @@ final case class GameProjection(
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoard] = Vector.empty,
     oathkeeper: Option[OathkeeperStatus] = None,
-    oathkeeperRecipient: Option[OathkeeperRecipientDecision] = None
+    oathkeeperRecipient: Option[OathkeeperRecipientDecision] = None,
+    campaignRaidRelocation: Option[CampaignRaidRelocation] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -203,7 +211,10 @@ final case class CampaignState(decisionId: String, targetSiteIds: Vector[String]
     placementTargets: Vector[CampaignPlacementTarget],
     defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
     defenderForce: Int = 0, defenseDiceCount: Int = 0,
-    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None)
+    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None,
+    kind: String = "conquest", raidTargets: Vector[String] = Vector.empty)
+final case class CampaignRaidRelocation(decisionId: String, actorPlayerId: String,
+    defenderPlayerId: String, originSiteId: String, legalSiteIds: Vector[String])
 final case class CampaignPlacementTarget(siteId: String, label: String)
 object CampaignState {
   def apply(decisionId: String, siteId: String, force: Int,
@@ -247,6 +258,8 @@ object GameCommand {
         attackDiceCount: Int): CampaignConquest =
       new CampaignConquest(playerId, Vector(targetSiteId), attackDiceCount)
   }
+  final case class CampaignRaid(playerId: String, targets: Vector[BoardTargetRef],
+      attackDiceCount: Int) extends GameCommand
   final case class ChooseCampaignPlan(playerId: String, decisionId: String,
       choice: CampaignPlanChoice) extends GameCommand
   final case class FinishCampaignPlans(playerId: String, decisionId: String)
@@ -255,6 +268,8 @@ object GameCommand {
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: String, decisionId: String,
       allocations: Vector[CampaignPlacement]) extends GameCommand
+  final case class RelocateCampaignRaidPawn(playerId: String, decisionId: String,
+      destinationSiteId: String) extends GameCommand
   final case class ChooseOathkeeperRecipient(playerId: String,
       decisionId: String, recipientPlayerId: String) extends GameCommand
   final case class Muster(playerId: String, target: EconomyTarget) extends GameCommand
@@ -488,6 +503,19 @@ object GameJson {
           targetSiteIds = js.Array(targets: _*),
           attackDiceCount = count
         )
+      case GameCommand.CampaignRaid(player, targets, count) =>
+        val encodedTargets = targets.map {
+          case BoardTargetRef.PlayerPawn(id) =>
+            js.Dynamic.literal(kind = "pawn", playerId = id)
+          case BoardTargetRef.PlayerRelic(id, relic) =>
+            js.Dynamic.literal(kind = "relic", playerId = id, relicId = relic)
+          case BoardTargetRef.PlayerBanner(id, banner) =>
+            js.Dynamic.literal(kind = banner, playerId = id)
+          case target => throw new IllegalArgumentException(
+            s"unsupported Campaign Raid target ${target.stableKey}")
+        }
+        js.Dynamic.literal(`type` = "beginCampaignRaid", playerId = player,
+          targets = js.Array(encodedTargets: _*), attackDiceCount = count)
       case GameCommand.ChooseCampaignPlan(player, decision, choice) =>
         val source: js.Any = choice.kind match {
           case "adviser" => js.Dynamic.literal(kind = "adviser",
@@ -513,6 +541,10 @@ object GameJson {
           allocations = js.Array(allocations.map(allocation =>
             js.Dynamic.literal(siteId = allocation.siteId,
               count = allocation.count)): _*))
+      case GameCommand.RelocateCampaignRaidPawn(player, decision, destination) =>
+        js.Dynamic.literal(`type` = "relocateCampaignRaidPawn",
+          playerId = player, decisionId = decision,
+          destinationSiteId = destination)
       case GameCommand.ChooseOathkeeperRecipient(player, decision, recipient) =>
         js.Dynamic.literal(`type` = "chooseOathkeeperRecipient",
           playerId = player, decisionId = decision,
@@ -948,10 +980,24 @@ object GameJson {
           case Some(value) if value == null => Right(None)
           case Some(value) => objectValue(value, "$.campaign").flatMap { obj => for {
             id <- string(obj, "decisionId", "$.campaign")
+            kind <- optionalField(obj, "kind").flatMap {
+              case None => Right("conquest")
+              case Some(_) => string(obj, "kind", "$.campaign")
+            }
+            raidTargets <- optionalField(obj, "raidTargets").flatMap {
+              case None => Right(Vector.empty)
+              case Some(_) => stringArray(obj, "raidTargets", "$.campaign")
+            }
             sites <- stringArray(obj, "targetSiteIds", "$.campaign")
-            _ <- Either.cond(sites.nonEmpty && sites.distinct.size == sites.size,
+            _ <- Either.cond(kind == "raid" ||
+              (sites.nonEmpty && sites.distinct.size == sites.size),
               (), GameClientFailure.DecodeFailure("$.campaign.targetSiteIds",
                 "Campaign targets must be non-empty and distinct"))
+            _ <- Either.cond(kind == "conquest" ||
+              (sites.isEmpty && raidTargets.nonEmpty &&
+                raidTargets.distinct.size == raidTargets.size), (),
+              GameClientFailure.DecodeFailure("$.campaign.raidTargets",
+                "Raid targets must be non-empty and distinct"))
             force <- int(obj, "force", "$.campaign")
             plansFinished <- bool(obj, "plansFinished", "$.campaign")
             planChoices <- decodeCampaignPlanChoices(obj, "planChoices")
@@ -982,7 +1028,8 @@ object GameJson {
                   label <- string(target, "label", path)
                 } yield CampaignPlacementTarget(site, label)
               })
-            _ <- Either.cond(placementTargets.map(_.siteId) == sites, (),
+            _ <- Either.cond(kind == "raid" ||
+              placementTargets.map(_.siteId) == sites, (),
               GameClientFailure.DecodeFailure("$.campaign.placementTargets",
                 "placement targets must match Campaign targets in order"))
             defenderKind <- optionalField(obj, "defenderKind").flatMap {
@@ -1016,7 +1063,26 @@ object GameJson {
             attackDice, attack,
             skulls, maximumSacrifice, sacrificed, defenseDice, defense,
             victorious, maximumPlacement, placementTargets, defenderKind,
-            defenderPlayer, defenderForce, defenseDiceCount, planSide, decisionOwner)) }
+            defenderPlayer, defenderForce, defenseDiceCount, planSide, decisionOwner,
+            kind, raidTargets)) }
+        }
+        campaignRaidRelocation <- optionalField(root, "campaignRaidRelocation").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.campaignRaidRelocation").flatMap {
+            obj => for {
+              decision <- string(obj, "decisionId", "$.campaignRaidRelocation")
+              actor <- string(obj, "actorPlayerId", "$.campaignRaidRelocation")
+              defender <- string(obj, "defenderPlayerId", "$.campaignRaidRelocation")
+              origin <- string(obj, "originSiteId", "$.campaignRaidRelocation")
+              legal <- stringArray(obj, "legalSiteIds", "$.campaignRaidRelocation")
+              _ <- Either.cond(legal.distinct.size == legal.size && !legal.contains(origin),
+                (), GameClientFailure.DecodeFailure(
+                  "$.campaignRaidRelocation.legalSiteIds",
+                  "relocation sites must be distinct and exclude the origin"))
+            } yield Some(CampaignRaidRelocation(decision, actor, defender,
+              origin, legal))
+          }
         }
         worldDeckCount <- optionalField(root, "worldDeckCount").flatMap {
           case None => Right(0)
@@ -1079,7 +1145,8 @@ object GameJson {
         worldDeckTop,
         boards,
         oathkeeper,
-        oathkeeperRecipient
+        oathkeeperRecipient,
+        campaignRaidRelocation
       )
     }
   }
@@ -1169,6 +1236,15 @@ object GameJson {
         player <- string(obj, "playerId", path)
         relic <- string(obj, "relicId", path)
       } yield BoardTargetRef.PlayerRelic(player, relic)
+      case "player-pawn" => string(obj, "playerId", path)
+        .map(BoardTargetRef.PlayerPawn)
+      case "player-banner" => for {
+        player <- string(obj, "playerId", path)
+        banner <- string(obj, "banner", path)
+        _ <- Either.cond(Set("peoples-favor", "darkest-secret").contains(banner),
+          (), GameClientFailure.DecodeFailure(s"$path.banner",
+            "expected peoples-favor or darkest-secret"))
+      } yield BoardTargetRef.PlayerBanner(player, banner)
       case other => Left(GameClientFailure.DecodeFailure(s"$path.kind",
         s"unsupported board target kind '$other'"))
     }

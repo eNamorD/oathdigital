@@ -476,6 +476,20 @@ object ServerModeUi {
               .foreach(handleBoardSelection)
             panel.appendChild(confirm)
           }
+          action.candidates.filter(candidate => candidate.target match {
+            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerBanner => true
+            case _ => false
+          }).foreach { candidate =>
+            val choose = button(candidateButtonLabel(candidate),
+              "board-target-control raid-target-control")
+            choose.setAttribute("data-target-ref", candidate.target.stableKey)
+            choose.setAttribute("aria-pressed", boardSelectionState.exists(
+              _.selected(candidate.target)).toString)
+            choose.disabled = !controlsAvailable
+            choose.onclick = _ => boardSelectionState.foreach(state =>
+              handleBoardSelection(state.choose(candidate.target)))
+            panel.appendChild(choose)
+          }
         } else {
           value.legalSearchSources.foreach { source =>
             val label = source.kind match {
@@ -633,6 +647,20 @@ object ServerModeUi {
             panel.appendChild(back)
           }
         }
+        }
+      }
+      value.campaignRaidRelocation.filter(decision =>
+        decision.actorPlayerId == selectedPlayer &&
+          presentation.showGameplayControls).foreach { decision =>
+        panel.appendChild(text("h2", "", "Relocate defender pawn"))
+        panel.appendChild(text("p", "campaign-instruction",
+          "Choose another legal site for the defender pawn."))
+        raidRelocationCommands(decision, selectedPlayer).foreach { command =>
+          val site = command.destinationSiteId
+          val choose = button(siteLabel(value, site), "campaign-raid-relocation")
+          choose.disabled = !controlsAvailable
+          choose.onclick = _ => submit(command)
+          panel.appendChild(choose)
         }
       }
       value.oathkeeperRecipient.filter(decision =>
@@ -1195,6 +1223,7 @@ object ServerModeUi {
   private[frontend] def actionLabel(kind: String): String = kind match {
     case "travel" => "Travel"
     case "campaign-conquest" => "Campaign"
+    case "campaign-raid" => "Raid"
     case "muster" => "Muster"
     case "trade-favor" => "Trade for favor"
     case "trade-secret" => "Trade for secrets"
@@ -1257,6 +1286,13 @@ object ServerModeUi {
         Some(GameCommand.CampaignConquest(playerId, sites.collect {
           case BoardTargetRef.Site(site) => site
         }, attackDiceCount))
+      case ("campaign-raid", targets) if targets.nonEmpty &&
+          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
+          targets.forall {
+            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
+                _: BoardTargetRef.PlayerBanner => true
+            case _ => false
+          } => Some(GameCommand.CampaignRaid(playerId, targets, attackDiceCount))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
@@ -1274,8 +1310,22 @@ object ServerModeUi {
         Some(GameCommand.CampaignConquest(playerId, sites.collect {
           case BoardTargetRef.Site(site) => site
         }, formation.force))
+      case ("campaign-raid", targets) if targets.nonEmpty &&
+          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
+          targets.forall {
+            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
+                _: BoardTargetRef.PlayerBanner => true
+            case _ => false
+          } => Some(GameCommand.CampaignRaid(playerId, targets, formation.force))
       case _ => None
     }
+
+  private[frontend] def raidRelocationCommands(
+      decision: CampaignRaidRelocation,
+      playerId: String): Vector[GameCommand.RelocateCampaignRaidPawn] =
+    if (decision.actorPlayerId != playerId) Vector.empty
+    else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
+      playerId, decision.decisionId, site))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,

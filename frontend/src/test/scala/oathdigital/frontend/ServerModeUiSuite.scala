@@ -31,6 +31,15 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red", 0),
       Some(GameCommand.CampaignConquest("red", "site:b", 0)))
+    val raidTargets = Vector[BoardTargetRef](
+      BoardTargetRef.PlayerPawn("blue"),
+      BoardTargetRef.PlayerRelic("blue", "R03"),
+      BoardTargetRef.PlayerBanner("blue", "peoples-favor"))
+    assertEquals(ServerModeUi.commandForSelection(action("campaign-raid"),
+      raidTargets, "red", 2),
+      Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
+    assertEquals(ServerModeUi.commandForSelection(action("campaign-raid"),
+      raidTargets.tail, "red", 2), None)
   }
 
   test("selection copy exposes details and non-color cardinality instructions") {
@@ -52,6 +61,7 @@ class ServerModeUiSuite extends FunSuite {
 
   test("Campaign uses the generic board-target action label") {
     assertEquals(ServerModeUi.actionLabel("campaign-conquest"), "Campaign")
+    assertEquals(ServerModeUi.actionLabel("campaign-raid"), "Raid")
     val skip = CampaignPlanChoice("skip", None, None, None, None,
       "Use no battle plan", None, 0, 0, "Roll normally")
     val outriders = CampaignPlanChoice("adviser", Some("source"), Some("red"),
@@ -90,6 +100,11 @@ class ServerModeUiSuite extends FunSuite {
         "Attack dice before plans: 0. Cost: 2 Supply.")
     assertEquals(ServerModeUi.commandForFormation(empty, "red"),
       Some(GameCommand.CampaignConquest("red", "site:b", 0)))
+    val raid = formation.copy(action = action.copy(actionKind = "campaign-raid"),
+      targets = Vector(BoardTargetRef.PlayerPawn("blue"),
+        BoardTargetRef.PlayerBanner("blue", "darkest-secret")))
+    assertEquals(ServerModeUi.commandForFormation(raid, "red"),
+      Some(GameCommand.CampaignRaid("red", raid.targets, 2)))
   }
 
   test("Campaign placement distributes locally and clears stale context") {
@@ -122,6 +137,15 @@ class ServerModeUiSuite extends FunSuite {
       Some(campaign.copy(decisionId = "campaign-new"))).get.total, 0)
     assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
       Some(campaign.copy(victorious = Some(false)))), None)
+  }
+
+  test("Raid relocation commands are scoped to the attacking owner") {
+    val decision = CampaignRaidRelocation("raid-9", "red", "blue", "site:a",
+      Vector("site:b", "site:c"))
+    assertEquals(ServerModeUi.raidRelocationCommands(decision, "red"), Vector(
+      GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:b"),
+      GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:c")))
+    assertEquals(ServerModeUi.raidRelocationCommands(decision, "blue"), Vector.empty)
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

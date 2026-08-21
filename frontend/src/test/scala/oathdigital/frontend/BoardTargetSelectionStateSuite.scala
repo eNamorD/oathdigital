@@ -81,13 +81,40 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       Set.empty[String])
   }
 
-  test("adviser relic and site-card target refs have stable distinct keys") {
+  test("card pawn and banner target refs have stable distinct keys") {
     val refs = Vector[BoardTargetRef](
       BoardTargetRef.SiteCard("site", "denizen", "d1"),
       BoardTargetRef.SiteCard("site", "edifice", "d1"),
       BoardTargetRef.PlayerAdviser("red", "d1"),
-      BoardTargetRef.PlayerRelic("red", "d1"))
+      BoardTargetRef.PlayerRelic("red", "d1"),
+      BoardTargetRef.PlayerPawn("red"),
+      BoardTargetRef.PlayerBanner("red", "peoples-favor"),
+      BoardTargetRef.PlayerBanner("red", "darkest-secret"))
     assertEquals(refs.map(_.stableKey).distinct.size, refs.size)
+  }
+
+  test("Raid keeps the defender pawn selected and confirms canonical targets") {
+    val pawn = BoardTargetCandidate(BoardTargetRef.PlayerPawn("blue"),
+      "Blue pawn", Vector("Mandatory"))
+    val relic = BoardTargetCandidate(BoardTargetRef.PlayerRelic("blue", "R03"),
+      "Relic", Vector.empty)
+    val banner = BoardTargetCandidate(
+      BoardTargetRef.PlayerBanner("blue", "peoples-favor"),
+      "People's Favor", Vector.empty)
+    val action = BoardTargetAction("campaign-raid", "Raid Blue", 1, 3,
+      autoActivate = false, Vector(pawn, relic, banner),
+      Some(BoardTargetFormation(0, 3, 3, 2)), Vector(pawn.target))
+    val active = BoardTargetSelectionState.reconcile(None, context,
+      Vector(action)).activate(action.actionKind)
+    val afterPawn = active.choose(pawn.target)
+      .asInstanceOf[BoardSelectionResult.Updated].state
+    assert(afterPawn.selected(pawn.target))
+    val selected = afterPawn.choose(banner.target)
+      .asInstanceOf[BoardSelectionResult.Updated].state.choose(relic.target)
+      .asInstanceOf[BoardSelectionResult.Updated].state
+    val formation = selected.confirmResult.get
+      .asInstanceOf[BoardSelectionResult.Form].state
+    assertEquals(formation.targets, Vector(pawn.target, relic.target, banner.target))
   }
 
   test("formation follows target choice and enforces projected force bounds") {
