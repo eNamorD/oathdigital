@@ -5,6 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
   RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
+import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
@@ -75,6 +76,10 @@ final class OathRules(catalog: ExecutableCatalog,
       case _ => Right(transition)
     }}
 
+  def handle(state: OathState, command: MinorActionCommand)
+      : Either[OathViolation, OathTransition] =
+    MinorActions.handle(catalog, state, command).flatMap(completeAction)
+
   def handle(state: OathState, command: CampaignCommand)
       : Either[OathViolation, OathTransition] =
     Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
@@ -124,6 +129,11 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: BannerRibbonChoiceMade => Challenge.evolve(catalog, state, event)
       case event: BannerChallengeCompleted => Challenge.evolve(catalog, state, event)
       case event: BannerResourcePlaced => Challenge.evolve(catalog, state, event)
+      case event: FacedownAdviserDiscarded => MinorActions.evolve(catalog, state, event)
+      case event: FacedownAdviserPlayed => MinorActions.evolve(catalog, state, event)
+      case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
+      case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
+      case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
       case event: CampaignStarted => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
       case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event,

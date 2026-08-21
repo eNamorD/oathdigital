@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -35,7 +35,8 @@ final case class SiteCardProjection(
     cardId: String,
     label: String,
     details: Option[CardDetailsProjection] = None)
-final case class SiteRelicsProjection(facedownCount: Int)
+final case class SiteRelicsProjection(facedownCount: Int,
+    knownRelics: Vector[CardDetailsProjection] = Vector.empty)
 final case class ForgeCostProjection(favor: Int, secrets: Int)
 final case class SiteForcesProjection(
     forceKind: String,
@@ -212,6 +213,11 @@ final case class PlayerBoardProjection(
     relics: Vector[CardDetailsProjection],
     revealedVision: Option[CardDetailsProjection]
 )
+final case class MinorAdviserProjection(card: CardDetailsProjection,
+    placements: Vector[CardResolutionProjection])
+final case class MinorActionsProjection(advisers: Vector[MinorAdviserProjection],
+    canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetailsProjection],
+    siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
 
 final case class GameProjection(
     gameId: String,
@@ -246,6 +252,7 @@ final case class GameProjection(
     oathkeeperRecipient: Option[OathkeeperRecipientProjection] = None
     ,banners: Vector[BannerProjection] = Vector.empty
     ,challenge: Option[ChallengeProjection] = None
+    ,minorActions: Option[MinorActionsProjection] = None
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -394,7 +401,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
                   Option.when(ChallengeRules.legal(catalog, value, active.player).nonEmpty)(
                     "beginChallenge"),
                   Option.when(Banner.all.exists(b => BannerRules.holder(current, b).contains(active.player) &&
-                    BannerRules.playerResources(active, b) > 0))("placeBannerResource")
+                    BannerRules.playerResources(active, b) > 0))("placeBannerResource"),
+                  Option.when(active.advisers.exists(adviserOrientation(_) == Orientation.FaceDown))(
+                    "facedownAdviserMinorAction"),
+                  Option.when(active.pawnSite.flatMap(current.map.sites.get).exists(_.relics.nonEmpty))(
+                    "peekSiteRelics"),
+                  Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(
+                    "revealOwnedRelic"),
+                  Option.when(minorActionsProjection(value, active).maxBoardToSite > 0 ||
+                    minorActionsProjection(value, active).maxSiteToBoard > 0)("moveWarbands")
                 ).flatten
               case Phase.Rest => Vector("finishRest")
               case Phase.Wake =>
@@ -589,13 +604,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
           Vector(
             region("cradle", value.game.current.map.cradle,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Cradle), Some(value)),
+              value.game.current.commonCards.discard(Region.Cradle), Some(value), requestingPlayer),
             region("provinces", value.game.current.map.provinces,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Provinces), Some(value)),
+              value.game.current.commonCards.discard(Region.Provinces), Some(value), requestingPlayer),
             region("hinterland", value.game.current.map.hinterland,
               value.game.current.map.sites,
-              value.game.current.commonCards.discard(Region.Hinterland), Some(value))
+              value.game.current.commonCards.discard(Region.Hinterland), Some(value), requestingPlayer)
           ),
           value.game.current.players.flatMap(player =>
             player.pawnSite.map(site =>
@@ -620,7 +635,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
           actionFamilies =
             if (current.result.isEmpty && current.turn.phase == Phase.Act)
               Vector("Search", "Travel", "Campaign", "Muster", "Trade",
-                "Forge", "Recover", "Challenge")
+                "Forge", "Recover", "Challenge", "Minor Actions")
             else Vector.empty,
           legalTravelDestinations =
             if (requestingPlayer.contains(active.player) &&
@@ -698,8 +713,42 @@ final class GameProjector(catalog: ExecutableCatalog) {
             BannerProjection("darkest-secret", current.banners.darkestSecret.active match {
               case DarkestSecretFace.WanderingFlame => "wandering-flame"; case DarkestSecretFace.Festival => "festival"
             }, current.banners.darkestSecret.holder.map(_.value), current.banners.darkestSecret.secrets)),
-            challenge = challengeProjection)
+            challenge = challengeProjection,
+            minorActions = Option.when(requestingPlayer.contains(active.player) &&
+              current.turn.phase == Phase.Act && current.pending.isEmpty)(
+              minorActionsProjection(value, active)))
     }
+
+  private def minorActionsProjection(ready: ReadyGame,
+      active: PlayerState): MinorActionsProjection = {
+    val current = ready.game.current
+    val facedown = active.advisers.collect {
+      case d: DenizenState if d.orientation == Orientation.FaceDown => d.id: WorldCardId
+      case v: VisionState if v.orientation == Orientation.FaceDown => v.id: WorldCardId
+    }
+    val atSite = active.pawnSite.flatMap(current.map.sites.get)
+    val ruled = atSite.exists(site => SiteRule.ruledBy(site.forces,
+      current.players, active.player).getOrElse(false))
+    val siteWarbands = atSite.flatMap(_.forces match {
+      case SiteForces.Occupied(ForceKind.Exile(lineage), count)
+          if lineage == active.lineage => Some(count)
+      case _ => None
+    }).getOrElse(0)
+    MinorActionsProjection(facedown.map { id =>
+      MinorAdviserProjection(cardDetails(id, Some(Orientation.FaceDown), hidden = false),
+        MinorActions.legalAdviserPlacements(catalog, ready, active.player, id).map {
+          case SearchPlacement.Adviser(_, _) => CardResolutionProjection("play-adviser")
+          case SearchPlacement.Site(replace) => CardResolutionProjection("play-site",
+            replacementRequired = replace.nonEmpty,
+            replacementTargets = replace.toVector.map(card => cardDetails(card,
+              Some(Orientation.FaceUp), hidden = false)))
+          case _ => CardResolutionProjection("discard")
+        } :+ CardResolutionProjection("discard"))
+    }, atSite.exists(_.relics.nonEmpty), active.relics.filter(
+      _.orientation == Orientation.FaceDown).map(r => cardDetails(r.id,
+      Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),
+      if (ruled) active.board.warbands else 0, math.max(0, siteWarbands - 1))
+  }
 
   private def economyLabel(target: EconomyTargetRef): String = target match {
     case EconomyTargetRef.Denizen(id) =>
@@ -832,12 +881,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
       sites: Vector[SiteId],
       states: Map[SiteId, SiteState] = Map.empty,
       discard: Vector[CardId] = Vector.empty,
-      ready: Option[ReadyGame] = None
+      ready: Option[ReadyGame] = None,
+      viewer: Option[PlayerId] = None
   ): SetupRegionProjection =
     SetupRegionProjection(
       id,
       sites.map(site =>
-        siteProjection(site, states.get(site), ready)),
+        siteProjection(site, states.get(site), ready, viewer)),
       discard.size,
       // Regional discards are faceup public piles; the final element is top.
       discard.lastOption.map(cardKind)
@@ -846,7 +896,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
   private def siteProjection(
       siteId: SiteId,
       state: Option[SiteState],
-      ready: Option[ReadyGame]
+      ready: Option[ReadyGame],
+      viewer: Option[PlayerId] = None
   ): SetupSiteProjection = {
     val definition = siteDefinitions.get(siteId)
     SetupSiteProjection(
@@ -885,7 +936,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
       // Site relics are facedown (CR pp. 6, 25; NF p. 14). Public and
       // player projections expose only their count; recovery's peek does not
       // yet have an authorized private projection boundary.
-      SiteRelicsProjection(state.fold(0)(_.relics.size)),
+      SiteRelicsProjection(state.fold(0)(_.relics.size), for {
+        game <- ready.toVector
+        player <- viewer.toVector
+        known <- game.support.relicKnowledge.getOrElse(player, Map.empty)
+          .getOrElse(siteId, Vector.empty)
+        relic <- state.toVector.flatMap(_.relics).filter(_.id == known)
+      } yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
       definition.fold(0)(_.defense),
       definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(site.recoverDifficulty).flatten),
       definition.flatMap(_.forgeRequirements).map(tokens =>

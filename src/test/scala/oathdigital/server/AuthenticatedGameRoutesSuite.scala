@@ -111,6 +111,14 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
           "intent" -> ujson.Obj("type" -> "beginChallenge",
             "banner" -> "peoples-favor", "playerId" -> "p3"))))
       assertEquals(spoofedChallengeActor.statusCode(), 400)
+      val actorDerivedMinor = post(client, base + "/commands", p2User.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+          "intent" -> ujson.Obj("type" -> "peekSiteRelics"))))
+      assertEquals(actorDerivedMinor.statusCode(), 422, actorDerivedMinor.body())
+      val spoofedMinorActor = post(client, base + "/commands", p2User.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+          "intent" -> ujson.Obj("type" -> "peekSiteRelics", "playerId" -> "p3"))))
+      assertEquals(spoofedMinorActor.statusCode(), 400)
 
       val pawn = post(client, base + "/commands", p2User.value,
         intentBody(1L, "placePawn", "siteId", sites.head.value))

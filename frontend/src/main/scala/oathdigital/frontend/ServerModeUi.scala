@@ -535,6 +535,55 @@ object ServerModeUi {
               panel.appendChild(place)
             }
           }
+          value.minorActions.foreach { minor =>
+            if (minor.advisers.nonEmpty) {
+              panel.appendChild(text("h2", "", "Facedown advisers"))
+              minor.advisers.foreach { adviser =>
+                adviser.placements.foreach { placement =>
+                  val label = placement.kind match {
+                    case "discard" => s"Discard ${adviser.card.name}"
+                    case "play-adviser" => s"Play ${adviser.card.name} as adviser"
+                    case "play-site" if placement.replacement.nonEmpty =>
+                      s"Play ${adviser.card.name}; discard ${placement.replacement.get.name}"
+                    case _ => s"Play ${adviser.card.name} at your site"
+                  }
+                  val control = button(label, s"minor-adviser-${placement.kind}")
+                  control.disabled = !controlsAvailable
+                  control.onclick = _ => minorAdviserCommand(
+                    adviser, placement, selectedPlayer).foreach(submit)
+                  panel.appendChild(control)
+                }
+              }
+            }
+            if (minor.canPeekSiteRelics) {
+              val peek = button("Peek at relics at your site", "minor-peek-relics")
+              peek.disabled = !controlsAvailable
+              peek.onclick = _ => submit(GameCommand.PeekSiteRelics(selectedPlayer))
+              panel.appendChild(peek)
+            }
+            minor.facedownRelics.foreach { relic =>
+              val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
+              reveal.disabled = !controlsAvailable
+              reveal.onclick = _ => submit(GameCommand.RevealOwnedRelic(
+                selectedPlayer, relic.cardId))
+              panel.appendChild(reveal)
+            }
+            Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
+              .filter(_._2 > 0).foreach { case (toSite, maximum) =>
+                val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
+                label.textContent = if (toSite) "Warbands board to site "
+                  else "Warbands site to board "
+                val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+                amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
+                amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
+                label.appendChild(amount); panel.appendChild(label)
+                val move = button("Move warbands", "minor-move-warband")
+                move.disabled = !controlsAvailable
+                move.onclick = _ => submit(GameCommand.MoveWarbands(
+                  selectedPlayer, toSite, amount.value.toInt))
+                panel.appendChild(move)
+              }
+          }
           value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
             val control = button(actionLabel(action.actionKind),
               s"act-action target-action action-${action.actionKind}")
@@ -1460,6 +1509,18 @@ object ServerModeUi {
     node.setAttribute("data-player-id", playerId)
     node
   }
+
+  private[frontend] def minorAdviserCommand(adviser: MinorAdviser,
+      placement: MinorAdviserPlacement, playerId: String): Option[GameCommand] =
+    placement.kind match {
+      case "discard" => Some(GameCommand.DiscardFacedownAdviser(
+        playerId, adviser.card))
+      case "play-adviser" => Some(GameCommand.PlayFacedownAdviser(
+        playerId, adviser.card, "adviser-face-up"))
+      case "play-site" => Some(GameCommand.PlayFacedownAdviser(
+        playerId, adviser.card, "site", placement.replacement))
+      case _ => None
+    }
 
   private def playerDisplayName(
       value: GameProjection,

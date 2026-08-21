@@ -34,7 +34,8 @@ object FirstGameFoundationProfile {
 final case class FirstGameSupportState(
     foundationProfile: FirstGameFoundationProfile,
     favorBanks: Map[Suit, Int],
-    firstPlayer: PlayerId
+    firstPlayer: PlayerId,
+    relicKnowledge: Map[PlayerId, Map[SiteId, Vector[RelicId]]] = Map.empty
 )
 
 final case class ReadyGame(
@@ -153,6 +154,21 @@ object OathEvent {
       extends OathEvent
   final case class BannerResourcePlaced(
       playerId: PlayerId, banner: Banner, amount: Int) extends OathEvent
+  final case class FacedownAdviserDiscarded(
+      playerId: PlayerId, adviserId: WorldCardId, destination: Region)
+      extends OathEvent
+  final case class FacedownAdviserPlayed(
+      playerId: PlayerId, adviserId: WorldCardId, placement: SearchPlacement,
+      favorGained: Int, discardedWorld: Vector[WorldCardId],
+      discardedEdifices: Vector[EdificeId]) extends OathEvent
+  final case class SiteRelicsPeeked(
+      playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
+      extends OathEvent
+  final case class OwnedRelicRevealed(playerId: PlayerId, relicId: RelicId)
+      extends OathEvent
+  final case class WarbandsMoved(
+      playerId: PlayerId, siteId: SiteId, toSite: Boolean, amount: Int,
+      priorBoardWarbands: Int, priorSiteWarbands: Int) extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,
@@ -372,6 +388,12 @@ object OathViolation {
   final case class UnknownWorldCard(id: WorldCardId)
       extends OathViolation
   final case class InvalidSearchPlacement(detail: String)
+      extends OathViolation
+  final case class MinorActionUnavailable(detail: String)
+      extends OathViolation
+  final case class MinorActionOutcomeMismatch(detail: String)
+      extends OathViolation
+  final case class UnsupportedMinorActionRule(source: CardId, handlers: Vector[String])
       extends OathViolation
   final case class LockedAdviserCannotBeDiscarded(id: CardId)
       extends OathViolation
@@ -632,6 +654,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           _: ForgeStarted | _: ForgeCompleted |
           _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
+          _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
+          _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>

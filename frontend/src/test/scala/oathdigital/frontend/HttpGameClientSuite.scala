@@ -6,6 +6,27 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class HttpGameClientSuite extends FunSuite {
+  test("minor actions decode private state and encode typed controls") {
+    val card = """{"cardId":"42","cardKind":"denizen","name":"Scout","suit":"nomad","restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":null,"defense":null,"hidden":false}"""
+    val relic = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
+    val minor = s"""{"advisers":[{"card":$card,"placements":[{"kind":"play-adviser","orientation":null,"replacementRequired":false,"replacementTargets":[]},{"kind":"discard","orientation":null,"replacementRequired":false,"replacementTargets":[]}]}],"canPeekSiteRelics":true,"facedownRelics":[$relic],"siteId":"site:a","maxBoardToSite":3,"maxSiteToBoard":2}"""
+    val json = projectionJson(sequence = 40, phase = "act-action-selection",
+      ready = true, completed = true, choices = false).replace(
+      "\"pendingCardDecision\":null",
+      s"\"pendingCardDecision\":null,\"minorActions\":$minor")
+    val decoded = GameJson.decodeProjection(json).toOption.get
+    assertEquals(decoded.minorActions.map(_.maxSiteToBoard), Some(2))
+    val adviser = decoded.minorActions.get.advisers.head.card
+    assert(GameJson.encodeCommand(40, GameCommand.DiscardFacedownAdviser(
+      "red-exile", adviser)).contains("discardFacedownAdviser"))
+    assert(GameJson.encodeCommand(40, GameCommand.PlayFacedownAdviser(
+      "red-exile", adviser, "adviser-face-up")).contains("adviser-face-up"))
+    assert(GameJson.encodeCommand(40, GameCommand.PeekSiteRelics(
+      "red-exile")).contains("peekSiteRelics"))
+    assert(GameJson.encodeCommand(40, GameCommand.MoveWarbands(
+      "red-exile", toSite = false, 2)).contains("\"amount\":2"))
+  }
+
   test("Challenge projection decodes owner choices and commands omit PF tie controls") {
     val json = projectionJson(sequence = 21, phase = "challenge-decision",
       ready = true, completed = true, choices = false).replace(

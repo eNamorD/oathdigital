@@ -19,6 +19,24 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("minor adviser action persists and reloads through authoritative replay") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val setup = execute(service, "game-minor-replay")
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
+      .asInstanceOf[WorldCardId]
+    val act = service.handle("game-minor-replay", setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val discarded = service.handle("game-minor-replay", act.nextSequence,
+      GameCommand.DiscardFacedownAdviser(actor, adviser)).toOption.get
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load("game-minor-replay").toOption.flatten.get
+    assertEquals(reloaded.state, discarded.state)
+    assertEquals(reloaded.nextSequence, discarded.nextSequence)
+  }
+
   test("Challenge persists owner-only pending state and reloads deterministic Mob completion") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
@@ -627,8 +645,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector("beginRest"))
-    assertEquals(act.actionFamilies.size, 8)
+    assertEquals(act.legalControls, Vector("beginRest", "facedownAdviserMinorAction"))
+    assertEquals(act.actionFamilies.size, 9)
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
     val travel = act.boardTargetActions.find(_.actionKind == "travel").get
     assertEquals(travel.minimum -> travel.maximum, 1 -> 1)

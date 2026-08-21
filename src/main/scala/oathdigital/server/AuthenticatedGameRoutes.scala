@@ -88,6 +88,14 @@ final class AuthenticatedGameGateway(
             actor.completeChallenge(decision, amount)
           case GameIntent.PlaceBannerResource(banner, amount) =>
             actor.placeBannerResource(banner, amount)
+          case GameIntent.DiscardFacedownAdviser(adviser) =>
+            actor.discardFacedownAdviser(adviser)
+          case GameIntent.PlayFacedownAdviser(adviser, placement) =>
+            actor.playFacedownAdviser(adviser, placement)
+          case GameIntent.PeekSiteRelics => actor.peekSiteRelics
+          case GameIntent.RevealOwnedRelic(relic) => actor.revealOwnedRelic(relic)
+          case GameIntent.MoveWarbands(toSite, amount) =>
+            actor.moveWarbands(toSite, amount)
           case GameIntent.AddRecoverDice(decision) => actor.addRecoverDice(decision)
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteIds, attackDiceCount) =>

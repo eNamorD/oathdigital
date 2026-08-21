@@ -32,6 +32,12 @@ object GameIntent {
   final case class ChooseChallengeSecretSite(decision: DecisionId, site: SiteId) extends GameIntent
   final case class CompleteChallenge(decision: DecisionId, amount: Int) extends GameIntent
   final case class PlaceBannerResource(banner: Banner, amount: Int) extends GameIntent
+  final case class DiscardFacedownAdviser(adviser: WorldCardId) extends GameIntent
+  final case class PlayFacedownAdviser(adviser: WorldCardId,
+      placement: SearchPlacement) extends GameIntent
+  case object PeekSiteRelics extends GameIntent
+  final case class RevealOwnedRelic(relic: RelicId) extends GameIntent
+  final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class BeginCampaignConquest(
@@ -259,6 +265,33 @@ object AuthenticatedGameHttpWire {
         banner <- Banner.fromKey(key).toRight(HttpInputError("$.intent.banner", "unknown banner"))
         amount <- field(obj, "amount", "$.intent").flatMap(v => nonNegativeInt(v, "$.intent.amount"))
       } yield GameIntent.PlaceBannerResource(banner, amount)
+      case "discardFacedownAdviser" => for {
+        _ <- exactFields(obj, Set("type", "adviser"), "$.intent")
+        value <- field(obj, "adviser", "$.intent")
+        adviser <- decodeWorldCard(value, "$.intent.adviser")
+      } yield GameIntent.DiscardFacedownAdviser(adviser)
+      case "playFacedownAdviser" => for {
+        _ <- exactFields(obj, Set("type", "adviser", "placement"), "$.intent")
+        adviserValue <- field(obj, "adviser", "$.intent")
+        adviser <- decodeWorldCard(adviserValue, "$.intent.adviser")
+        placementValue <- field(obj, "placement", "$.intent")
+        placement <- decodePlacement(placementValue, "$.intent.placement")
+      } yield GameIntent.PlayFacedownAdviser(adviser, placement)
+      case "peekSiteRelics" =>
+        exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.PeekSiteRelics)
+      case "revealOwnedRelic" =>
+        exactFields(obj, Set("type", "relicId"), "$.intent")
+          .flatMap(_ => stringField(obj, "relicId", "$.intent"))
+          .map(id => GameIntent.RevealOwnedRelic(RelicId(id)))
+      case "moveWarbands" => for {
+        _ <- exactFields(obj, Set("type", "toSite", "amount"), "$.intent")
+        toSite <- field(obj, "toSite", "$.intent").flatMap {
+          case ujson.Bool(value) => Right(value)
+          case _ => Left(HttpInputError("$.intent.toSite", "expected boolean"))
+        }
+        amount <- field(obj, "amount", "$.intent")
+          .flatMap(value => nonNegativeInt(value, "$.intent.amount"))
+      } yield GameIntent.MoveWarbands(toSite, amount)
       case "addRecoverDice" =>
         exactFields(obj, Set("type", "decisionId"), "$.intent")
           .flatMap(_ => stringField(obj, "decisionId", "$.intent"))

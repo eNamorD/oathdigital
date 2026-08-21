@@ -137,7 +137,9 @@ object GameHttpWire {
                   )
                 }),
                 "relics" -> ujson.Obj(
-                  "facedownCount" -> site.relics.facedownCount
+                  "facedownCount" -> site.relics.facedownCount,
+                  "knownRelics" -> ujson.Arr.from(
+                    site.relics.knownRelics.map(encodeCardDetails))
                 )
               )
             })
@@ -345,6 +347,15 @@ object GameHttpWire {
             "minimumPlacement" -> c.minimumPlacement,
             "maximumPlacement" -> c.maximumPlacement)
         },
+        "minorActions" -> projection.minorActions.fold[ujson.Value](ujson.Null) { minor =>
+          ujson.Obj(
+            "advisers" -> ujson.Arr.from(minor.advisers.map(encodeMinorAdviser)),
+            "canPeekSiteRelics" -> minor.canPeekSiteRelics,
+            "facedownRelics" -> ujson.Arr.from(minor.facedownRelics.map(encodeCardDetails)),
+            "siteId" -> minor.siteId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+            "maxBoardToSite" -> minor.maxBoardToSite,
+            "maxSiteToBoard" -> minor.maxSiteToBoard)
+        },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -368,6 +379,17 @@ object GameHttpWire {
       "relicValue" -> card.relicValue.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
       "defense" -> card.defense.fold[ujson.Value](ujson.Null)(ujson.Num(_)),
       "hidden" -> card.hidden)
+
+  private def encodeMinorAdviser(
+      adviser: oathdigital.application.MinorAdviserProjection): ujson.Obj =
+    ujson.Obj("card" -> encodeCardDetails(adviser.card),
+      "placements" -> ujson.Arr.from(adviser.placements.map { placement =>
+        ujson.Obj("kind" -> placement.kind,
+          "orientation" -> placement.orientation.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+          "replacementRequired" -> placement.replacementRequired,
+          "replacementTargets" -> ujson.Arr.from(
+            placement.replacementTargets.map(encodeCardDetails)))
+      }))
 
   private def encodeBoardTarget(
       target: oathdigital.application.BoardTargetRefProjection
@@ -519,6 +541,38 @@ object GameHttpWire {
         banner <- Banner.fromKey(key).toRight(HttpInputError(s"$path.banner", "unknown banner"))
         amount <- field(obj, "amount", path).flatMap(v => nonNegativeInt(v, s"$path.amount"))
       } yield GameCommand.PlaceBannerResource(PlayerId(p), banner, amount)
+      case "discardFacedownAdviser" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "adviser"), path)
+        p <- stringField(obj, "playerId", path)
+        value <- field(obj, "adviser", path)
+        adviser <- decodeWorldCard(value, s"$path.adviser")
+      } yield GameCommand.DiscardFacedownAdviser(PlayerId(p), adviser)
+      case "playFacedownAdviser" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "adviser", "placement"), path)
+        p <- stringField(obj, "playerId", path)
+        value <- field(obj, "adviser", path)
+        adviser <- decodeWorldCard(value, s"$path.adviser")
+        placementValue <- field(obj, "placement", path)
+        placement <- decodePlacement(placementValue, s"$path.placement")
+      } yield GameCommand.PlayFacedownAdviser(PlayerId(p), adviser, placement)
+      case "peekSiteRelics" =>
+        exactFields(obj, Set("type", "playerId"), path)
+          .flatMap(_ => stringField(obj, "playerId", path))
+          .map(p => GameCommand.PeekSiteRelics(PlayerId(p)))
+      case "revealOwnedRelic" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "relicId"), path)
+        p <- stringField(obj, "playerId", path)
+        relic <- stringField(obj, "relicId", path)
+      } yield GameCommand.RevealOwnedRelic(PlayerId(p), RelicId(relic))
+      case "moveWarbands" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "toSite", "amount"), path)
+        p <- stringField(obj, "playerId", path)
+        toSite <- field(obj, "toSite", path).flatMap {
+          case ujson.Bool(value) => Right(value)
+          case _ => Left(HttpInputError(s"$path.toSite", "expected boolean"))
+        }
+        amount <- field(obj, "amount", path).flatMap(v => nonNegativeInt(v, s"$path.amount"))
+      } yield GameCommand.MoveWarbands(PlayerId(p), toSite, amount)
       case "addRecoverDice" => for {
         p <- stringField(obj, "playerId", path)
         d <- stringField(obj, "decisionId", path)

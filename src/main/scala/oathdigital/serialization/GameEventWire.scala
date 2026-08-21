@@ -33,6 +33,7 @@ object GameEventWire {
   val RecoverFormatVersion: Int = 7
   val ForgeFormatVersion: Int = 8
   val BannerFormatVersion: Int = 9
+  val MinorActionFormatVersion: Int = 10
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -56,6 +57,11 @@ object GameEventWire {
   val BannerRibbonChoiceMadeType = "gameplay.banner-ribbon-choice-made"
   val BannerChallengeCompletedType = "gameplay.banner-challenge-completed"
   val BannerResourcePlacedType = "gameplay.banner-resource-placed"
+  val FacedownAdviserDiscardedType = "gameplay.facedown-adviser-discarded"
+  val FacedownAdviserPlayedType = "gameplay.facedown-adviser-played"
+  val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
+  val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"
+  val WarbandsMovedType = "gameplay.warbands-moved"
   val CampaignStartedType = "gameplay.campaign-started"
   val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
   val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
@@ -171,7 +177,8 @@ object GameEventWire {
             if (version == FormatVersion || version == GameplayFormatVersion ||
                 version == SearchFormatVersion || version == RestFormatVersion ||
                 version == EconomyFormatVersion || version == RecoverFormatVersion ||
-                version == ForgeFormatVersion || version == BannerFormatVersion)
+                version == ForgeFormatVersion || version == BannerFormatVersion ||
+                version == MinorActionFormatVersion)
               Right(())
             else
               Left(
@@ -292,6 +299,11 @@ object GameEventWire {
       case _: BannerRibbonChoiceMade => BannerRibbonChoiceMadeType
       case _: BannerChallengeCompleted => BannerChallengeCompletedType
       case _: BannerResourcePlaced => BannerResourcePlacedType
+      case _: FacedownAdviserDiscarded => FacedownAdviserDiscardedType
+      case _: FacedownAdviserPlayed => FacedownAdviserPlayedType
+      case _: SiteRelicsPeeked => SiteRelicsPeekedType
+      case _: OwnedRelicRevealed => OwnedRelicRevealedType
+      case _: WarbandsMoved => WarbandsMovedType
       case _: CampaignStarted => CampaignStartedType
       case _: CampaignPlanChosen => CampaignPlanChosenType
       case _: CampaignPlansFinished => CampaignPlansFinishedType
@@ -309,6 +321,9 @@ object GameEventWire {
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
+        _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved =>
+      MinorActionFormatVersion
     case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
         _: BannerChallengeCompleted | _: BannerResourcePlaced => BannerFormatVersion
     case _: ForgeStarted | _: ForgeCompleted => ForgeFormatVersion
@@ -443,6 +458,23 @@ object GameEventWire {
         "secretsReturnedToHolder" -> returned)
       case BannerResourcePlaced(player, banner, amount) => ujson.Obj(
         "playerId" -> player.value, "banner" -> banner.key, "amount" -> amount)
+      case FacedownAdviserDiscarded(player, adviser, destination) =>
+        ujson.Obj("playerId" -> player.value, "adviser" -> encodeWorldCard(adviser),
+          "destination" -> destination.key)
+      case FacedownAdviserPlayed(player, adviser, placement, favor, world, edifices) =>
+        ujson.Obj("playerId" -> player.value, "adviser" -> encodeWorldCard(adviser),
+          "placement" -> encodeSearchPlacement(placement), "favorGained" -> favor,
+          "discardedWorld" -> ujson.Arr.from(world.map(encodeWorldCard)),
+          "discardedEdifices" -> ujson.Arr.from(edifices.map(e => ujson.Str(e.value))))
+      case SiteRelicsPeeked(player, site, relics) =>
+        ujson.Obj("playerId" -> player.value, "siteId" -> site.value,
+          "relics" -> ujson.Arr.from(relics.map(r => ujson.Str(r.value))))
+      case OwnedRelicRevealed(player, relic) =>
+        ujson.Obj("playerId" -> player.value, "relicId" -> relic.value)
+      case WarbandsMoved(player, site, toSite, amount, board, atSite) =>
+        ujson.Obj("playerId" -> player.value, "siteId" -> site.value,
+          "toSite" -> toSite, "amount" -> amount,
+          "priorBoardWarbands" -> board, "priorSiteWarbands" -> atSite)
       case CampaignStarted(player, decision, sites, defender, spent, force,
           kind, raidTargets) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -733,6 +765,32 @@ object GameEventWire {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           amount <- safeIntField(payload.obj, "amount", path)
         } yield BannerResourcePlaced(PlayerId(payload("playerId").str), banner, amount)
+        case FacedownAdviserDiscardedType => for {
+          adviser <- decodeWorldCard(payload("adviser"), s"$path.adviser")
+          destination <- decodeRegion(payload("destination").str, s"$path.destination")
+        } yield FacedownAdviserDiscarded(PlayerId(payload("playerId").str),
+          adviser, destination)
+        case FacedownAdviserPlayedType => for {
+          adviser <- decodeWorldCard(payload("adviser"), s"$path.adviser")
+          placement <- decodeSearchPlacement(payload("placement"), s"$path.placement")
+          favor <- safeIntField(payload.obj, "favorGained", path)
+          world <- traverse(payload("discardedWorld").arr.toVector)(value =>
+            decodeWorldCard(value, s"$path.discardedWorld"))
+          edifices = payload("discardedEdifices").arr.toVector.map(value =>
+            EdificeId(value.str))
+        } yield FacedownAdviserPlayed(PlayerId(payload("playerId").str), adviser,
+          placement, favor, world, edifices)
+        case SiteRelicsPeekedType => Right(SiteRelicsPeeked(
+          PlayerId(payload("playerId").str), SiteId(payload("siteId").str),
+          payload("relics").arr.toVector.map(value => RelicId(value.str))))
+        case OwnedRelicRevealedType => Right(OwnedRelicRevealed(
+          PlayerId(payload("playerId").str), RelicId(payload("relicId").str)))
+        case WarbandsMovedType => for {
+          amount <- safeIntField(payload.obj, "amount", path)
+          board <- safeIntField(payload.obj, "priorBoardWarbands", path)
+          atSite <- safeIntField(payload.obj, "priorSiteWarbands", path)
+        } yield WarbandsMoved(PlayerId(payload("playerId").str),
+          SiteId(payload("siteId").str), payload("toSite").bool, amount, board, atSite)
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
@@ -889,7 +947,12 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == BannerChallengeStartedType ||
+      if (eventType == FacedownAdviserDiscardedType ||
+          eventType == FacedownAdviserPlayedType ||
+          eventType == SiteRelicsPeekedType ||
+          eventType == OwnedRelicRevealedType ||
+          eventType == WarbandsMovedType) MinorActionFormatVersion
+      else if (eventType == BannerChallengeStartedType ||
           eventType == BannerRibbonChoiceMadeType ||
           eventType == BannerChallengeCompletedType ||
           eventType == BannerResourcePlacedType) BannerFormatVersion

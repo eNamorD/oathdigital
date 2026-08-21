@@ -90,6 +90,23 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.actionLabel("peoples-favor"), "People's Favor")
   }
 
+  test("minor adviser controls map only projected typed placements") {
+    val card = CardDetails("D1", "denizen", "The Adviser")
+    val replacement = CardDetails("D2", "denizen", "The Old Denizen")
+    val adviser = MinorAdviser(card, Vector.empty)
+    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+      MinorAdviserPlacement("discard"), "red"),
+      Some(GameCommand.DiscardFacedownAdviser("red", card)))
+    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+      MinorAdviserPlacement("play-adviser"), "red"),
+      Some(GameCommand.PlayFacedownAdviser("red", card, "adviser-face-up")))
+    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+      MinorAdviserPlacement("play-site", Some(replacement)), "red"),
+      Some(GameCommand.PlayFacedownAdviser("red", card, "site", Some(replacement))))
+    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+      MinorAdviserPlacement("unsupported"), "red"), None)
+  }
+
   test("selection copy exposes details and non-color cardinality instructions") {
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector.empty)

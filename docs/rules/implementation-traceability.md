@@ -2,6 +2,12 @@
 
 Last reviewed: 2026-08-09
 
+## Core minor actions
+
+- Combined Rulebook p. 27: Act-phase, 0-Supply facedown adviser play/discard, relic peek/reveal, and warband movement use the typed `MinorActions` boundary. Only board-to-site movement requires rule; site-to-board movement must leave the last actor warband.
+- Combined Rulebook pp. 20 and 28: adviser play enforces faceup Search placement restrictions, Homeland replacement, next-region discard, and normal site-play favor. Unsupported printed `When Played` powers block by audited handler identity.
+- New Foundations p. 14: held relics remain facedown until revealed. Site peeks are durable owner-private knowledge while each exact relic remains at that site.
+
 This matrix maps the source-cited rules knowledge layer to executable behavior
 and tests. It is a project-management aid, not a second rules reference. Read
 the cited summary and source page before implementing a row. Update a row only

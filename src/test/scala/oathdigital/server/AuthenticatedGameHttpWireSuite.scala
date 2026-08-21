@@ -1,9 +1,31 @@
 package oathdigital.server
 
 import oathdigital.model.{Banner, CampaignBanner, CampaignRaidTarget, DecisionId, DenizenId,
-  EconomyTargetRef, EdificeId, PendingProcedure, PlayerId, RelicId, SiteId}
+  EconomyTargetRef, EdificeId, Orientation, PendingProcedure, PlayerId, RelicId,
+  SearchPlacement, SiteId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated minor-action intents are actor-free and typed") {
+    val discard = """{"expectedNextSequence":40,"intent":{"type":"discardFacedownAdviser","adviser":{"kind":"denizen","id":"42"}}}"""
+    val play = """{"expectedNextSequence":41,"intent":{"type":"playFacedownAdviser","adviser":{"kind":"denizen","id":"42"},"placement":{"kind":"adviser-face-up"}}}"""
+    val peek = """{"expectedNextSequence":42,"intent":{"type":"peekSiteRelics"}}"""
+    val reveal = """{"expectedNextSequence":43,"intent":{"type":"revealOwnedRelic","relicId":"R1"}}"""
+    val move = """{"expectedNextSequence":44,"intent":{"type":"moveWarbands","toSite":true,"amount":2}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(discard).toOption.get.intent,
+      GameIntent.DiscardFacedownAdviser(DenizenId("42")))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(play).toOption.get.intent,
+      GameIntent.PlayFacedownAdviser(DenizenId("42"),
+        SearchPlacement.Adviser(Orientation.FaceUp, None)))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(peek).toOption.get.intent,
+      GameIntent.PeekSiteRelics)
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(reveal).toOption.get.intent,
+      GameIntent.RevealOwnedRelic(RelicId("R1")))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(move).toOption.get.intent,
+      GameIntent.MoveWarbands(toSite = true, 2))
+    assert(AuthenticatedGameHttpWire.decodeCommand(move.replace(
+      "\"toSite\"", "\"playerId\":\"spoof\",\"toSite\"")).isLeft)
+  }
+
   test("authenticated Challenge intents are actor-free and PF has no tie-choice intent") {
     val begin = """{"expectedNextSequence":20,"intent":{"type":"beginChallenge","banner":"peoples-favor"}}"""
     val site = """{"expectedNextSequence":21,"intent":{"type":"chooseChallengeSecretSite","decisionId":"challenge-20","siteId":"site:a"}}"""

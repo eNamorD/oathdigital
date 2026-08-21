@@ -5,6 +5,7 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
+import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -51,6 +52,15 @@ object GameCommand {
       amount: Int) extends GameCommand
   final case class PlaceBannerResource(playerId: PlayerId, banner: Banner,
       amount: Int) extends GameCommand
+  final case class DiscardFacedownAdviser(playerId: PlayerId, adviser: WorldCardId)
+      extends GameCommand
+  final case class PlayFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
+      placement: SearchPlacement) extends GameCommand
+  final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
+  final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
+      extends GameCommand
+  final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
+      extends GameCommand
   final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class StopRecover(playerId: PlayerId, decision: DecisionId)
@@ -420,6 +430,17 @@ final class GameApplicationService(
         rules.handle(state, ChallengeCommand.Complete(playerId, decision, amount))
       case GameCommand.PlaceBannerResource(playerId, banner, amount) =>
         rules.handle(state, ChallengeCommand.PlaceResource(playerId, banner, amount))
+      case GameCommand.DiscardFacedownAdviser(playerId, adviser) =>
+        rules.handle(state, MinorActionCommand.DiscardFacedownAdviser(playerId, adviser))
+      case GameCommand.PlayFacedownAdviser(playerId, adviser, placement) =>
+        rules.handle(state, MinorActionCommand.PlayFacedownAdviser(
+          playerId, adviser, placement))
+      case GameCommand.PeekSiteRelics(playerId) =>
+        rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
+      case GameCommand.RevealOwnedRelic(playerId, relic) =>
+        rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
+      case GameCommand.MoveWarbands(playerId, toSite, amount) =>
+        rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
       case GameCommand.AddRecoverDice(playerId, decision) =>
         rules.handle(state, RecoverCommand.Roll(playerId, decision,
           defenseDicePort.rollTwo()))

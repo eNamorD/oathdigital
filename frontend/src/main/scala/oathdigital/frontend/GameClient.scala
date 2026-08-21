@@ -72,7 +72,8 @@ final case class CardDetails(
     hidden: Boolean = false)
 final case class GameSiteCard(denizenId: String, label: String,
     details: Option[CardDetails] = None)
-final case class GameSiteRelics(facedownCount: Int)
+final case class GameSiteRelics(facedownCount: Int,
+    knownRelics: Vector[CardDetails] = Vector.empty)
 final case class ForgeCost(favor: Int, secrets: Int)
 final case class SiteForces(
     forceKind: String,
@@ -173,6 +174,13 @@ final case class ChallengeState(decisionId: String, actorPlayerId: String,
     banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
     legalSecretSiteIds: Vector[String],
     minimumPlacement: Int, maximumPlacement: Int)
+final case class MinorAdviserPlacement(kind: String,
+    replacement: Option[CardDetails] = None)
+final case class MinorAdviser(card: CardDetails,
+    placements: Vector[MinorAdviserPlacement])
+final case class MinorActionsState(advisers: Vector[MinorAdviser],
+    canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetails],
+    siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
 final case class PlayerBoard(
     playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
     faceDownSecrets: Int, supply: Int, pawnSiteId: Option[String],
@@ -209,7 +217,8 @@ final case class GameProjection(
     campaignRaidRelocation: Option[CampaignRaidRelocation] = None,
     forge: Option[ForgeState] = None,
     banners: Vector[BannerState] = Vector.empty,
-    challenge: Option[ChallengeState] = None
+    challenge: Option[ChallengeState] = None,
+    minorActions: Option[MinorActionsState] = None
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -300,6 +309,14 @@ object GameCommand {
       amount: Int) extends GameCommand
   final case class PlaceBannerResource(playerId: String, banner: String,
       amount: Int) extends GameCommand
+  final case class DiscardFacedownAdviser(playerId: String, adviser: CardDetails)
+      extends GameCommand
+  final case class PlayFacedownAdviser(playerId: String, adviser: CardDetails,
+      placement: String, replacement: Option[CardDetails] = None) extends GameCommand
+  final case class PeekSiteRelics(playerId: String) extends GameCommand
+  final case class RevealOwnedRelic(playerId: String, relicId: String) extends GameCommand
+  final case class MoveWarbands(playerId: String, toSite: Boolean, amount: Int)
+      extends GameCommand
   final case class AddRecoverDice(playerId: String, decisionId: String) extends GameCommand
   final case class StopRecover(playerId: String, decisionId: String) extends GameCommand
   final case class CompleteSearch(
@@ -605,6 +622,23 @@ object GameJson {
       case GameCommand.PlaceBannerResource(player, banner, amount) =>
         js.Dynamic.literal(`type` = "placeBannerResource", playerId = player,
           banner = banner, amount = amount)
+      case GameCommand.DiscardFacedownAdviser(player, adviser) =>
+        js.Dynamic.literal(`type` = "discardFacedownAdviser", playerId = player,
+          adviser = js.Dynamic.literal(kind = adviser.cardKind, id = adviser.cardId))
+      case GameCommand.PlayFacedownAdviser(player, adviser, placement, replacement) =>
+        val placementValue = js.Dynamic.literal(kind = placement)
+        replacement.foreach(card => placementValue.updateDynamic("replace")(
+          js.Dynamic.literal(kind = card.cardKind, id = card.cardId)))
+        js.Dynamic.literal(`type` = "playFacedownAdviser", playerId = player,
+          adviser = js.Dynamic.literal(kind = adviser.cardKind, id = adviser.cardId),
+          placement = placementValue)
+      case GameCommand.PeekSiteRelics(player) =>
+        js.Dynamic.literal(`type` = "peekSiteRelics", playerId = player)
+      case GameCommand.RevealOwnedRelic(player, relic) =>
+        js.Dynamic.literal(`type` = "revealOwnedRelic", playerId = player, relicId = relic)
+      case GameCommand.MoveWarbands(player, toSite, amount) =>
+        js.Dynamic.literal(`type` = "moveWarbands", playerId = player,
+          toSite = toSite, amount = amount)
       case GameCommand.AddRecoverDice(player, decision) =>
         js.Dynamic.literal(`type` = "addRecoverDice", playerId = player,
           decisionId = decision)
@@ -717,6 +751,12 @@ object GameJson {
                       "facedownCount",
                       s"$sitePath.relics"
                     )
+                    knownRelics <- optionalField(relicsObject, "knownRelics").flatMap {
+                      case None => Right(Vector.empty)
+                      case Some(_) => array(relicsObject, "knownRelics",
+                        s"$sitePath.relics").flatMap(traverse(_, "knownRelics")(
+                        (card, cardPath) => cardDetails(card, cardPath)))
+                    }
                     defense <- optionalField(site, "defense").flatMap {
                       case None => Right(0)
                       case Some(_) => int(site, "defense", sitePath)
@@ -791,7 +831,7 @@ object GameJson {
                     denizenCapacity,
                     relicCapacity,
                     denizens,
-                    GameSiteRelics(facedownCount),
+                    GameSiteRelics(facedownCount, knownRelics),
                     defense,
                     recover,
                     forge,
@@ -1059,6 +1099,39 @@ object GameJson {
           } yield Some(ChallengeState(id, actor, banner, holder, prior,
             sites, minimum, maximum)) }
         }
+        minorActions <- optionalField(root, "minorActions").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.minorActions").flatMap { obj => for {
+            advisers <- array(obj, "advisers", "$.minorActions").flatMap(
+              traverse(_, "minorActions.advisers") { (entry, path) => for {
+                cardValue <- field(entry, "card", path)
+                card <- cardDetails(cardValue, s"$path.card")
+                placements <- array(entry, "placements", path).flatMap(
+                  traverse(_, "placements") { (placement, placementPath) => for {
+                    kind <- string(placement, "kind", placementPath)
+                    replacements <- array(placement, "replacementTargets", placementPath)
+                      .flatMap(traverse(_, "replacementTargets")(
+                        (target, targetPath) => cardDetails(target, targetPath)))
+                    _ <- Either.cond(replacements.size <= 1, (),
+                      GameClientFailure.DecodeFailure(placementPath,
+                        "minor adviser placement has at most one replacement"))
+                  } yield MinorAdviserPlacement(kind, replacements.headOption) })
+              } yield MinorAdviser(card, placements) })
+            canPeek <- field(obj, "canPeekSiteRelics", "$.minorActions").flatMap {
+              case value if js.typeOf(value) == "boolean" => Right(value.asInstanceOf[Boolean])
+              case _ => Left(GameClientFailure.DecodeFailure(
+                "$.minorActions.canPeekSiteRelics", "expected boolean"))
+            }
+            relics <- array(obj, "facedownRelics", "$.minorActions").flatMap(
+              traverse(_, "minorActions.facedownRelics")(
+                (card, path) => cardDetails(card, path)))
+            site <- optionalString(obj, "siteId", "$.minorActions")
+            toSite <- int(obj, "maxBoardToSite", "$.minorActions")
+            toBoard <- int(obj, "maxSiteToBoard", "$.minorActions")
+          } yield Some(MinorActionsState(advisers, canPeek, relics, site,
+            toSite, toBoard)) }
+        }
         campaign <- optionalField(root, "campaign").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -1233,7 +1306,8 @@ object GameJson {
         campaignRaidRelocation,
         forge,
         banners,
-        challenge
+        challenge,
+        minorActions
       )
     }
   }

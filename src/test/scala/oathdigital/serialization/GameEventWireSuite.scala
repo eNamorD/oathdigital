@@ -15,6 +15,26 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("v10 minor actions preserve private identities and prior force facts") {
+    val events = Vector[OathEvent](
+      OathEvent.FacedownAdviserDiscarded(PlayerId("red"), DenizenId("42"),
+        Region.Provinces),
+      OathEvent.FacedownAdviserPlayed(PlayerId("red"), DenizenId("43"),
+        SearchPlacement.Site(Some(DenizenId("44"))), 1,
+        Vector(DenizenId("44")), Vector.empty),
+      OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),
+        Vector(RelicId("R1"), RelicId("R2"))),
+      OathEvent.OwnedRelicRevealed(PlayerId("red"), RelicId("R3")),
+      OathEvent.WarbandsMoved(PlayerId("red"), SiteId("site:a"),
+        toSite = false, 2, 3, 4))
+    val encoded = GameEventWire.encodeStream("minor", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
+      Vector.fill(events.size)(10))
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
   test("v9 banner events preserve ordered ribbon and replacement facts") {
     val events = Vector[OathEvent](
       OathEvent.BannerChallengeStarted(PlayerId("red"), DecisionId("challenge-9"),

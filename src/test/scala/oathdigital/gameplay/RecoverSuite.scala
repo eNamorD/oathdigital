@@ -45,7 +45,8 @@ class RecoverSuite extends munit.FunSuite {
       "recover-controls", LoadedGame(Ready(ready), 1), player.player)
 
     assertEquals(projection.legalControls.toSet,
-      Set("beginRecover", "beginRest"))
+      Set("beginRecover", "beginRest", "facedownAdviserMinorAction",
+        "peekSiteRelics"))
   }
 
   test("each payment records two dice and stop returns to Act without revealing") {
