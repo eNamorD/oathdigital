@@ -116,6 +116,61 @@ final case class CampaignForceAllocation(site: SiteId, count: Int) {
   require(count >= 0, "Campaign allocation must be non-negative")
 }
 
+sealed trait CampaignKind extends Product with Serializable {
+  def key: String
+}
+object CampaignKind {
+  case object Conquest extends CampaignKind { val key = "conquest" }
+  case object Raid extends CampaignKind { val key = "raid" }
+}
+
+sealed trait CampaignBanner extends Product with Serializable {
+  def key: String
+  private[model] def order: Int
+}
+object CampaignBanner {
+  case object PeoplesFavor extends CampaignBanner {
+    val key = "peoples-favor"
+    private[model] val order = 0
+  }
+  case object DarkestSecret extends CampaignBanner {
+    val key = "darkest-secret"
+    private[model] val order = 1
+  }
+}
+
+sealed trait CampaignRaidTarget extends Product with Serializable {
+  def playerId: PlayerId
+  def stableKey: String
+  private[model] def canonicalOrder: (Int, String)
+}
+object CampaignRaidTarget {
+  final case class Pawn(playerId: PlayerId) extends CampaignRaidTarget {
+    def stableKey: String = s"pawn:${playerId.value}"
+    private[model] def canonicalOrder = 0 -> playerId.value
+  }
+  final case class Relic(playerId: PlayerId, relicId: RelicId)
+      extends CampaignRaidTarget {
+    def stableKey: String = s"relic:${playerId.value}:${relicId.value}"
+    private[model] def canonicalOrder = 1 -> s"${playerId.value}:${relicId.value}"
+  }
+  final case class Banner(playerId: PlayerId, banner: CampaignBanner)
+      extends CampaignRaidTarget {
+    def stableKey: String = s"banner:${playerId.value}:${banner.key}"
+    private[model] def canonicalOrder =
+      (2 + banner.order) -> playerId.value
+  }
+
+  def canonical(targets: Iterable[CampaignRaidTarget]): Vector[CampaignRaidTarget] =
+    targets.toVector.sortBy(_.canonicalOrder)
+
+  def isCanonical(targets: Vector[CampaignRaidTarget]): Boolean =
+    targets.nonEmpty && targets.head.isInstanceOf[Pawn] &&
+      targets.map(_.playerId).distinct.size == 1 &&
+      targets.map(_.stableKey).distinct.size == targets.size &&
+      canonical(targets) == targets
+}
+
 sealed trait CampaignLosingForceEffect extends Product with Serializable {
   def site: SiteId
 }
@@ -254,8 +309,16 @@ object PendingProcedure {
       sacrificed: Option[Int],
       defenseDice: Vector[DefenseDieFace],
       defense: Option[Int],
-      victorious: Option[Boolean]
-  ) extends PendingProcedure
+      victorious: Option[Boolean],
+      kind: CampaignKind = CampaignKind.Conquest,
+      raidTargets: Vector[CampaignRaidTarget] = Vector.empty
+  ) extends PendingProcedure {
+    require(kind match {
+      case CampaignKind.Conquest => targetSites.nonEmpty && raidTargets.isEmpty
+      case CampaignKind.Raid => targetSites.isEmpty &&
+        CampaignRaidTarget.isCanonical(raidTargets)
+    }, "Campaign targets must match their kind and canonical order")
+  }
 
   final case class Recover(
       decision: DecisionId,

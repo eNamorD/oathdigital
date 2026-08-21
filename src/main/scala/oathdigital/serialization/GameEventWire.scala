@@ -384,9 +384,12 @@ object GameEventWire {
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "relicId" -> relic.value)
-      case CampaignStarted(player, decision, sites, defender, spent, force) => ujson.Obj(
+      case CampaignStarted(player, decision, sites, defender, spent, force,
+          kind, raidTargets) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
+        "campaignKind" -> kind.key,
         "targetSiteIds" -> ujson.Arr.from(sites.map(site => ujson.Str(site.value))),
+        "raidTargets" -> ujson.Arr.from(raidTargets.map(encodeCampaignRaidTarget)),
         "defender" -> (defender match {
           case CampaignDefender.Bandits => ujson.Obj("kind" -> "bandits")
           case CampaignDefender.Player(id) => ujson.Obj(
@@ -591,8 +594,11 @@ object GameEventWire {
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
+          kind <- decodeCampaignKind(payload("campaignKind"), s"$path.campaignKind")
           sites <- traverse(payload("targetSiteIds").arr.toVector)(value =>
             Right(SiteId(value.str)))
+          raidTargets <- traverse(payload("raidTargets").arr.toVector)(value =>
+            decodeCampaignRaidTarget(value, s"$path.raidTargets"))
           defender <- payload("defender")("kind").str match {
             case "bandits" => Right(CampaignDefender.Bandits)
             case "player" => Right(CampaignDefender.Player(
@@ -602,7 +608,7 @@ object GameEventWire {
           }
         } yield CampaignStarted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), sites,
-          defender, spent, force)
+          defender, spent, force, kind, raidTargets)
         case CampaignPlanChosenType => for {
           source <- decodeCampaignPlanSource(payload("source"), s"$path.source")
           side <- decodeCampaignPlanSide(payload("side"), s"$path.side")
@@ -1095,6 +1101,44 @@ object GameEventWire {
     case value: DenizenId => ujson.Obj("kind" -> "denizen", "id" -> value.value)
     case value: VisionId => ujson.Obj("kind" -> "vision", "id" -> value.value)
   }
+
+  private def decodeCampaignKind(value: ujson.Value, path: String)
+      : Either[WireError, CampaignKind] = value.str match {
+    case "conquest" => Right(CampaignKind.Conquest)
+    case "raid" => Right(CampaignKind.Raid)
+    case other => Left(InvalidValue(path, s"unknown Campaign kind '$other'"))
+  }
+
+  private def encodeCampaignRaidTarget(target: CampaignRaidTarget): ujson.Value =
+    target match {
+      case CampaignRaidTarget.Pawn(player) => ujson.Obj(
+        "kind" -> "pawn", "playerId" -> player.value)
+      case CampaignRaidTarget.Relic(player, relic) => ujson.Obj(
+        "kind" -> "relic", "playerId" -> player.value,
+        "relicId" -> relic.value)
+      case CampaignRaidTarget.Banner(player, banner) => ujson.Obj(
+        "kind" -> "banner", "playerId" -> player.value,
+        "banner" -> banner.key)
+    }
+
+  private def decodeCampaignRaidTarget(value: ujson.Value, path: String)
+      : Either[WireError, CampaignRaidTarget] = try value("kind").str match {
+    case "pawn" => Right(CampaignRaidTarget.Pawn(
+      PlayerId(value("playerId").str)))
+    case "relic" => Right(CampaignRaidTarget.Relic(
+      PlayerId(value("playerId").str), RelicId(value("relicId").str)))
+    case "banner" => value("banner").str match {
+      case "peoples-favor" => Right(CampaignRaidTarget.Banner(
+        PlayerId(value("playerId").str), CampaignBanner.PeoplesFavor))
+      case "darkest-secret" => Right(CampaignRaidTarget.Banner(
+        PlayerId(value("playerId").str), CampaignBanner.DarkestSecret))
+      case other => Left(InvalidValue(s"$path.banner",
+        s"unknown Campaign banner '$other'"))
+    }
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown Campaign Raid target '$other'"))
+  } catch { case error: Exception => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid Campaign Raid target"))) }
 
   private def encodeCampaignPlanSource(
       source: PendingProcedure.CampaignPlanSource): ujson.Value = source match {

@@ -15,6 +15,37 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("Campaign Raid targets have stable canonical keys and round trip") {
+    val defender = PlayerId("blue")
+    val targets = Vector[CampaignRaidTarget](
+      CampaignRaidTarget.Pawn(defender),
+      CampaignRaidTarget.Relic(defender, RelicId("R03")),
+      CampaignRaidTarget.Relic(defender, RelicId("R12")),
+      CampaignRaidTarget.Banner(defender, CampaignBanner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender, CampaignBanner.DarkestSecret))
+    assertEquals(targets.map(_.stableKey), Vector(
+      "pawn:blue", "relic:blue:R03", "relic:blue:R12",
+      "banner:blue:peoples-favor", "banner:blue:darkest-secret"))
+    assertEquals(CampaignRaidTarget.canonical(targets.reverse), targets)
+
+    val event = OathEvent.CampaignStarted(PlayerId("red"),
+      DecisionId("raid-1"), Vector.empty, CampaignDefender.Player(defender),
+      supplySpent = 2, force = 3, CampaignKind.Raid, targets)
+    val encoded = GameEventWire.encodeStream("raid", catalogRef,
+      Vector(RecordedEvent(0, event))).toOption.get
+    val decoded = GameEventWire.decodeStream(encoded).toOption.get
+    assertEquals(decoded.map(_.event), Vector(event))
+
+    val wrongOrder = ujson.read(encoded).arr
+    wrongOrder.head("payload")("raidTargets") = ujson.Arr.from(
+      wrongOrder.head("payload")("raidTargets").arr.reverse)
+    assert(GameEventWire.decodeStream(ujson.write(wrongOrder)).isLeft)
+
+    val unknownBanner = ujson.read(encoded).arr
+    unknownBanner.head("payload")("raidTargets")(3)("banner") = "unknown"
+    assert(GameEventWire.decodeStream(ujson.write(unknownBanner)).isLeft)
+  }
+
   test("current pre-release Campaign events round-trip exact dice and choices") {
     val events = Vector[OathEvent](
       OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),

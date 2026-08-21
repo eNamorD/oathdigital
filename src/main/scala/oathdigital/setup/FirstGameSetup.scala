@@ -131,8 +131,16 @@ object OathEvent {
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,
-      supplySpent: Int, force: Int
-  ) extends OathEvent
+      supplySpent: Int, force: Int,
+      kind: CampaignKind = CampaignKind.Conquest,
+      raidTargets: Vector[CampaignRaidTarget] = Vector.empty
+  ) extends OathEvent {
+    require(kind match {
+      case CampaignKind.Conquest => targetSites.nonEmpty && raidTargets.isEmpty
+      case CampaignKind.Raid => targetSites.isEmpty &&
+        CampaignRaidTarget.isCanonical(raidTargets)
+    }, "CampaignStarted targets must match their kind and canonical order")
+  }
   object CampaignStarted {
     def apply(playerId: PlayerId, decision: DecisionId, siteId: SiteId,
         supplySpent: Int, force: Int): CampaignStarted =
