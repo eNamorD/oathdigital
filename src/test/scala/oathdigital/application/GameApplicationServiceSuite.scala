@@ -3,6 +3,7 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.model._
+import oathdigital.gameplay.actions.CampaignRules
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
@@ -18,6 +19,114 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  private def safeCampaignSite: SiteId = catalog.sites.find(site =>
+    site.handlers.forall(h => !h.endsWith(".mountain") &&
+      !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id
+
+  private val blankCampaignDice = new CampaignDicePort {
+    def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
+    def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
+  }
+
+  private def beginServiceRaid(service: GameApplicationService, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId, DecisionId, SiteId, Int) = {
+    val shared = safeCampaignSite
+    val otherSite = sites.find(_ != shared).get
+    val setup = execute(service, gameId, Vector(shared, shared, otherSite))
+    val Ready(ready) = setup.state: @unchecked
+    val attacker = ready.game.current.turn.activePlayer
+    val defender = ready.game.current.players.find(p => p.player != attacker &&
+      p.pawnSite.contains(shared)).get.player
+    val force = ready.game.current.players.find(_.player == attacker).get.board.warbands
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(attacker)).toOption.get
+    val targets = Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(defender))
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.BeginCampaignRaid(attacker, targets, force)).toOption.get
+    (started, attacker, defender, DecisionId(s"campaign-${act.nextSequence}"),
+      shared, force)
+  }
+
+  test("Raid service owns randomness and rejects stale or spoofed decisions") {
+    val repository = new InMemoryEventStreamRepository
+    var attackRolls = Vector.empty[Int]
+    var defenseRolls = Vector.empty[Int]
+    val dice = new CampaignDicePort {
+      def rollAttack(count: Int) = {
+        attackRolls :+= count
+        Vector.fill(count)(AttackDieFace.OneSword)
+      }
+      def rollDefense(count: Int) = {
+        defenseRolls :+= count
+        Vector.fill(count)(DefenseDieFace.Blank)
+      }
+    }
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = dice)
+    val (started, attacker, defender, decision, origin, force) =
+      beginServiceRaid(service, "raid-service")
+    val before = repository.load("raid-service").toOption.flatten.get.records
+    assert(service.handle("raid-service", started.nextSequence,
+      GameCommand.FinishCampaignPlans(attacker, DecisionId("stale"))).isLeft)
+    assert(service.handle("raid-service", started.nextSequence,
+      GameCommand.FinishCampaignPlans(defender, decision)).isLeft)
+    assertEquals(attackRolls, Vector.empty)
+    assertEquals(repository.load("raid-service").toOption.flatten.get.records, before)
+
+    val attackerDone = service.handle("raid-service", started.nextSequence,
+      GameCommand.FinishCampaignPlans(attacker, decision)).toOption.get
+    assertEquals(attackRolls, Vector.empty)
+    val rolled = service.handle("raid-service", attackerDone.nextSequence,
+      GameCommand.FinishCampaignPlans(defender, decision)).toOption.get
+    assertEquals(attackRolls, Vector(force))
+    val Ready(rolledReady) = rolled.state: @unchecked
+    val pending = rolledReady.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Campaign]
+    val minimumSacrifice = math.max(0,
+      CampaignRules.defenderForce(rolledReady, pending) + 1 - pending.attack)
+    val won = service.handle("raid-service", rolled.nextSequence,
+      GameCommand.ChooseCampaignSacrifice(attacker, decision, minimumSacrifice))
+      .toOption.get
+    assertEquals(defenseRolls, Vector(2))
+    val destination = rolledReady.game.current.map.inPlay.find(_ != origin).get
+    val completed = service.handle("raid-service", won.nextSequence,
+      GameCommand.RelocateCampaignRaidPawn(attacker, decision, destination))
+      .toOption.get
+    val Ready(after) = completed.state: @unchecked
+    assertEquals(after.game.current.players.find(_.player == defender).get.pawnSite,
+      Some(destination))
+    assertEquals(after.game.current.pending, None)
+    assertEquals(new GameApplicationService(catalog, repository,
+      campaignDicePort = dice).load("raid-service").toOption.flatten.get.state,
+      completed.state)
+  }
+
+  test("Raid pending projection gives controls only to the current owner") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice)
+    val (started, attacker, defender, decision, _, _) =
+      beginServiceRaid(service, "raid-redaction")
+    val Ready(ready) = started.state: @unchecked
+    val observer = ready.game.current.players.map(_.player)
+      .find(id => id != attacker && id != defender).get
+    val projector = new GameProjector(catalog)
+    val loaded = LoadedGame(started.state, started.nextSequence)
+    val owner = projector.project("raid-redaction", loaded, attacker)
+    val other = projector.project("raid-redaction", loaded, observer)
+    val public = projector.projectPublic("raid-redaction", loaded)
+    assertEquals(owner.campaign.map(_.decisionId), Some(decision.value))
+    assert(owner.legalControls.contains("finishCampaignPlans"))
+    assertEquals(other.phase, "campaign-waiting")
+    assertEquals(other.campaign, None)
+    assertEquals(other.campaignRaidRelocation, None)
+    assertEquals(other.legalControls, Vector.empty)
+    assertEquals(public.campaign, None)
+    val defenderAdviserIds = ready.game.current.players.find(_.player == defender).get
+      .advisers.map(_.id.value)
+    val otherJson = GameHttpWire.encodeProjection(other)
+    defenderAdviserIds.foreach(id => assert(!otherJson.contains(id)))
+  }
   test("invalid Campaign plan requests consume no attack randomness") {
     val repository = new InMemoryEventStreamRepository
     var attackRolls = Vector.empty[Int]
@@ -769,5 +878,56 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       assertEquals(loaded.state, accepted.state)
       assertEquals(loaded.nextSequence, 8L)
     } finally reopened.close()
+  }
+
+
+  test("HSQL reopen preserves Raid pending and completed replay") {
+    val path = Files.createTempDirectory("oathdigital-raid-reopen-").resolve("journal")
+    val gameId = "game-hsql-raid"
+    val firstRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val (started, attacker, defender, decision, origin, force) = try {
+      beginServiceRaid(new GameApplicationService(catalog, firstRepository,
+        campaignDicePort = blankCampaignDice), gameId)
+    } finally firstRepository.close()
+
+    val secondRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val completed = try {
+      val service = new GameApplicationService(catalog, secondRepository,
+        campaignDicePort = blankCampaignDice)
+      assertEquals(service.load(gameId).toOption.flatten.get.state, started.state)
+      val attackerDone = service.handle(gameId, started.nextSequence,
+        GameCommand.FinishCampaignPlans(attacker, decision)).toOption.get
+      val rolled = service.handle(gameId, attackerDone.nextSequence,
+        GameCommand.FinishCampaignPlans(defender, decision)).toOption.get
+      val Ready(rolledReady) = rolled.state: @unchecked
+      val pending = rolledReady.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Campaign]
+      val sacrifice = math.max(0,
+        CampaignRules.defenderForce(rolledReady, pending) + 1 - pending.attack)
+      val won = service.handle(gameId, rolled.nextSequence,
+        GameCommand.ChooseCampaignSacrifice(attacker, decision, sacrifice))
+        .toOption.get
+      val destination = rolledReady.game.current.map.inPlay.find(_ != origin).get
+      service.handle(gameId, won.nextSequence,
+        GameCommand.RelocateCampaignRaidPawn(attacker, decision, destination))
+        .toOption.get
+    } finally secondRepository.close()
+
+    val thirdRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    try {
+      val loaded = new GameApplicationService(catalog, thirdRepository,
+        campaignDicePort = blankCampaignDice).load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, completed.state)
+      assertEquals(loaded.nextSequence, completed.nextSequence)
+      val Ready(after) = loaded.state: @unchecked
+      assertEquals(after.game.current.pending, None)
+      assertEquals(after.game.current.players.find(_.player == defender).get.pawnSite,
+        completed.state match {
+          case Ready(value) => value.game.current.players
+            .find(_.player == defender).get.pawnSite
+          case _ => fail("completed Raid must remain ready")
+        })
+      assert(force >= 0)
+    } finally thirdRepository.close()
   }
 }
