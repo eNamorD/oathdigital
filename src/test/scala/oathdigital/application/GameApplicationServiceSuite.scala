@@ -1058,7 +1058,10 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         campaignDicePort = blankCampaignDice), gameId)
     } finally firstRepository.close()
 
-    val secondRepository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val secondRepository = OwnedHsqldbEventStreamRepository.open(path).fold(
+      error => fail(s"failed to reopen pending Raid repository: $error"),
+      identity
+    )
     val completed = try {
       val service = new GameApplicationService(catalog, secondRepository,
         campaignDicePort = blankCampaignDice)

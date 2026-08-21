@@ -112,7 +112,10 @@ object HsqldbDatabaseOwner {
       source.setUsername("SA")
       source.setPassword("")
       source.setMaximumPoolSize(4)
-      source.setMinimumIdle(1)
+      // Do not let Hikari replace connections invalidated by SHUTDOWN while
+      // close() is still retiring the pool; a replacement can reopen the file
+      // and leave its heartbeat lock behind for the next owner.
+      source.setMinimumIdle(0)
       source.setConnectionTimeout(TimeUnit.SECONDS.toMillis(10))
       source.setPoolName("oathdigital-database")
       val probe = source.getConnection
