@@ -31,6 +31,8 @@ object GameIntent {
       targetSiteIds: Vector[SiteId],
       attackDiceCount: Int
   ) extends GameIntent
+  final case class BeginCampaignRaid(
+      targets: Vector[CampaignRaidTarget], attackDiceCount: Int) extends GameIntent
   object BeginCampaignConquest {
     def apply(targetSiteId: SiteId, attackDiceCount: Int): BeginCampaignConquest =
       new BeginCampaignConquest(Vector(targetSiteId), attackDiceCount)
@@ -48,6 +50,8 @@ object GameIntent {
       decision: DecisionId,
       allocations: Vector[CampaignForceAllocation]
   ) extends GameIntent
+  final case class RelocateCampaignRaidPawn(
+      decision: DecisionId, destinationSiteId: SiteId) extends GameIntent
   final case class ChooseOathkeeperRecipient(
       decision: DecisionId, recipient: PlayerId) extends GameIntent
   final case class CompleteSearch(
@@ -229,6 +233,18 @@ object AuthenticatedGameHttpWire {
         countValue <- field(obj, "attackDiceCount", "$.intent")
         count <- nonNegativeInt(countValue, "$.intent.attackDiceCount")
       } yield GameIntent.BeginCampaignConquest(sites, count)
+      case "beginCampaignRaid" => for {
+        _ <- exactFields(obj, Set("type", "targets", "attackDiceCount"), "$.intent")
+        values <- field(obj, "targets", "$.intent").flatMap(
+          arrayValue(_, "$.intent.targets"))
+        targets <- values.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[CampaignRaidTarget]]](Right(Vector.empty)) {
+          case (result, (value, index)) => result.flatMap(existing =>
+            decodeRaidTarget(value, s"$$.intent.targets[$index]").map(existing :+ _))
+        }
+        countValue <- field(obj, "attackDiceCount", "$.intent")
+        count <- nonNegativeInt(countValue, "$.intent.attackDiceCount")
+      } yield GameIntent.BeginCampaignRaid(targets, count)
       case "chooseCampaignPlan" => for {
         _ <- exactFields(obj, Set("type", "decisionId", "source"), "$.intent")
         decision <- stringField(obj, "decisionId", "$.intent")
@@ -265,6 +281,12 @@ object AuthenticatedGameHttpWire {
             })
           }
       } yield GameIntent.PlaceCampaignForce(DecisionId(decision), allocations)
+      case "relocateCampaignRaidPawn" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "destinationSiteId"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        destination <- stringField(obj, "destinationSiteId", "$.intent")
+      } yield GameIntent.RelocateCampaignRaidPawn(
+        DecisionId(decision), SiteId(destination))
       case "chooseOathkeeperRecipient" => for {
         _ <- exactFields(obj,
           Set("type", "decisionId", "recipientPlayerId"), "$.intent")
@@ -311,6 +333,31 @@ object AuthenticatedGameHttpWire {
       case other => Left(HttpInputError(s"$path.kind", s"unknown decision resolution '$other'"))
     }
   }
+
+  private def decodeRaidTarget(value: ujson.Value, path: String)
+      : Either[HttpInputError, CampaignRaidTarget] =
+    objectValue(value, path).flatMap { obj =>
+      stringField(obj, "kind", path).flatMap {
+        case "pawn" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          player <- stringField(obj, "playerId", path)
+        } yield CampaignRaidTarget.Pawn(PlayerId(player))
+        case "relic" => for {
+          _ <- exactFields(obj, Set("kind", "playerId", "relicId"), path)
+          player <- stringField(obj, "playerId", path)
+          relic <- stringField(obj, "relicId", path)
+        } yield CampaignRaidTarget.Relic(PlayerId(player), RelicId(relic))
+        case "peoples-favor" | "darkest-secret" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          kind <- stringField(obj, "kind", path)
+          player <- stringField(obj, "playerId", path)
+        } yield CampaignRaidTarget.Banner(PlayerId(player),
+          if (kind == "peoples-favor") CampaignBanner.PeoplesFavor
+          else CampaignBanner.DarkestSecret)
+        case other => Left(HttpInputError(s"$path.kind",
+          s"unknown Campaign Raid target '$other'"))
+      }
+    }
 
   private def exactFields(
       obj: ujson.Obj,

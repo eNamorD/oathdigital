@@ -585,7 +585,12 @@ object Campaign {
                 CampaignRules.legalRaidRelocationSites(ready, defenderId))
               val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
                 banners = banners, pending = Some(relocation)))
-              Ready(updated.copy(support = updated.support.copy(favorBanks =
+              Ready(updated.copy(
+                game = updated.game.copy(campaign = updated.game.campaign.copy(
+                  reliquary = updated.game.campaign.reliquary ++ e.discardedRelics,
+                  dispossessed = updated.game.campaign.dispossessed ++
+                    e.discardedAdvisers.collect { case id: WorldCardId => id })),
+                support = updated.support.copy(favorBanks =
                 e.bannerFavorReturned.foldLeft(updated.support.favorBanks) {
                   case (banks, (suit, amount)) => banks.updated(suit,
                     banks.getOrElse(suit, 0) + amount)

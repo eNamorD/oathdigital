@@ -47,8 +47,12 @@ class CampaignSuite extends munit.FunSuite {
     val relic = RelicId(catalog.relics.head.id.value)
     val attacker = attacker0.copy(board = attacker0.board.copy(warbands = 4))
     val defender = defender0.copy(pawnSite = Some(site),
-      board = defender0.board.copy(warbands = 5, favor = 5), advisers = Vector.empty,
-      relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty)))
+      board = defender0.board.copy(warbands = 5, favor = 5),
+      advisers = Vector(
+        DenizenState(DenizenId("raid-facedown-denizen"), Orientation.FaceDown, Tokens.empty),
+        VisionState(VisionId("raid-facedown-vision"), Orientation.FaceDown)),
+      relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty),
+        RelicState(RelicId("raid-facedown-relic"), Orientation.FaceDown, Tokens.empty)))
     val current = base.game.current.copy(players = base.game.current.players.map {
       case p if p.player == attacker.player => attacker
       case p if p.player == defender.player => defender
@@ -90,6 +94,24 @@ class CampaignSuite extends munit.FunSuite {
       2 + catalog.relics.find(_.id.value == relic.value).get.defense + 1)
   }
 
+  test("Raid target projection is canonical private and requires the pawn") {
+    val (ready, attacker, defender, _, relic) = raidReady
+    val projector = new GameProjector(catalog)
+    val own = projector.project("raid-targets", LoadedGame(Ready(ready), 4),
+      attacker.player)
+    val action = own.boardTargetActions.find(_.actionKind == "campaign-raid").get
+    assertEquals(action.requiredTargets,
+      Vector(BoardTargetRefProjection.PlayerPawn(defender.player.value)))
+    assertEquals(action.candidates.map(_.target), Vector(
+      BoardTargetRefProjection.PlayerPawn(defender.player.value),
+      BoardTargetRefProjection.PlayerRelic(defender.player.value, relic.value),
+      BoardTargetRefProjection.PlayerBanner(defender.player.value, "peoples-favor")))
+    assertEquals(projector.projectPublic("raid-targets",
+      LoadedGame(Ready(ready), 4)).boardTargetActions, Vector.empty)
+    assert(!projector.project("raid-targets", LoadedGame(Ready(ready), 4),
+      defender.player).legalControls.contains("beginCampaignRaid"))
+  }
+
   test("successful Raid durably resolves losses and relocates without Travel") {
     val (ready, attacker, defender, origin, relic) = raidReady
     val decision = DecisionId("raid-resolution")
@@ -119,6 +141,10 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(nextDefender.board.warbands, 3)
     assertEquals(nextDefender.board.favor, 3)
     assertEquals(nextDefender.pawnSite, Some(destination))
+    assertEquals(after.game.campaign.dispossessed.takeRight(2), Vector(
+      DenizenId("raid-facedown-denizen"), VisionId("raid-facedown-vision")))
+    assertEquals(after.game.campaign.reliquary.last,
+      RelicId("raid-facedown-relic"))
     assertEquals(after.game.current.pending, None)
     val replayed = completed.events.foldLeft[Either[OathViolation, OathState]](
       Right(won.state))((state, event) => state.flatMap(rules.evolve(_, event)))

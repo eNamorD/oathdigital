@@ -53,6 +53,8 @@ object GameEventWire {
   val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
   val CampaignSacrificedType = "gameplay.campaign-sacrificed"
   val CampaignConqueredType = "gameplay.campaign-conquered"
+  val CampaignRaidedType = "gameplay.campaign-raided"
+  val CampaignRaidPawnRelocatedType = "gameplay.campaign-raid-pawn-relocated"
   val BanditsRefilledType = "gameplay.bandits-refilled"
   val OathkeeperChangedType = "gameplay.oathkeeper-changed"
   val OathkeeperRecipientChoiceStartedType =
@@ -280,6 +282,8 @@ object GameEventWire {
       case _: CampaignPlansFinished => CampaignPlansFinishedType
       case _: CampaignSacrificed => CampaignSacrificedType
       case _: CampaignConquered => CampaignConqueredType
+      case _: CampaignRaided => CampaignRaidedType
+      case _: CampaignRaidPawnRelocated => CampaignRaidPawnRelocatedType
       case _: BanditsRefilled => BanditsRefilledType
       case _: OathkeeperChanged => OathkeeperChangedType
       case _: OathkeeperRecipientChoiceStarted =>
@@ -295,7 +299,7 @@ object GameEventWire {
     case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
     case _: RestStarted | _: RestCompleted => RestFormatVersion
     case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
-        _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
+        _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered | _: CampaignRaided | _: CampaignRaidPawnRelocated |
         _: BanditsRefilled => RecoverFormatVersion
     case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
         _: OathkeeperRecipientChosen | _: UsurperFlipped | _: UsurperVictory =>
@@ -429,6 +433,27 @@ object GameEventWire {
           ujson.Obj("siteId" -> allocation.site.value,
             "count" -> allocation.count)
         }))
+      case CampaignRaided(player, decision, policyId, loss, relics, banners,
+          advisers, discardedRelics, burned, returned) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "losingForcePolicyId" -> policyId,
+        "defenderLoss" -> ujson.Obj("playerId" -> loss.playerId.value,
+          "killed" -> loss.killed, "returned" -> loss.returned),
+        "takenRelics" -> ujson.Arr.from(relics.map(r => ujson.Str(r.value))),
+        "takenBanners" -> ujson.Arr.from(banners.map(b => ujson.Str(b.key))),
+        "discardedAdvisers" -> ujson.Arr.from(advisers.map {
+          case id: WorldCardId => encodeWorldCard(id)
+          case id => throw new IllegalArgumentException(
+            s"Raid adviser discard is not a world card: ${id.kind}")
+        }),
+        "discardedRelics" -> ujson.Arr.from(discardedRelics.map(r => ujson.Str(r.value))),
+        "favorBurned" -> burned,
+        "bannerFavorReturned" -> ujson.Obj.from(returned.toVector.sortBy(_._1.key)
+          .map { case (suit, amount) => suit.key -> ujson.Num(amount) }))
+      case CampaignRaidPawnRelocated(player, decision, defender, origin, destination) =>
+        ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
+          "defenderPlayerId" -> defender.value, "originSiteId" -> origin.value,
+          "destinationSiteId" -> destination.value)
       case BanditsRefilled(sites) => ujson.Obj("sites" -> ujson.Arr.from(
         sites.map { case (site, count) =>
           ujson.Obj("siteId" -> site.value, "count" -> count)
@@ -664,6 +689,38 @@ object GameEventWire {
         } yield CampaignConquered(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str),
           payload("losingForcePolicyId").str, losses, allocations)
+        case CampaignRaidedType => for {
+          killed <- safeIntField(payload("defenderLoss").obj, "killed",
+            s"$path.defenderLoss")
+          returnedCount <- safeIntField(payload("defenderLoss").obj, "returned",
+            s"$path.defenderLoss")
+          relics = payload("takenRelics").arr.toVector.map(v => RelicId(v.str))
+          banners <- traverse(payload("takenBanners").arr.toVector) { value =>
+            value.str match {
+              case "peoples-favor" => Right(CampaignBanner.PeoplesFavor)
+              case "darkest-secret" => Right(CampaignBanner.DarkestSecret)
+              case other => Left(InvalidValue(s"$path.takenBanners",
+                s"unknown Campaign banner '$other'"))
+            }
+          }
+          advisers <- traverse(payload("discardedAdvisers").arr.toVector)(value =>
+            decodeWorldCard(value, s"$path.discardedAdvisers"))
+          discardedRelics = payload("discardedRelics").arr.toVector.map(v => RelicId(v.str))
+          burned <- safeIntField(payload.obj, "favorBurned", path)
+          favorEntries <- traverse(payload("bannerFavorReturned").obj.toVector) {
+            case (key, value) => Suit.all.find(_.key == key).toRight(InvalidValue(
+              s"$path.bannerFavorReturned.$key", "unknown suit")).flatMap(suit =>
+              safeInt(value, s"$path.bannerFavorReturned.$key").map(suit -> _))
+          }
+        } yield CampaignRaided(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), payload("losingForcePolicyId").str,
+          CampaignRaidBoardLoss(PlayerId(payload("defenderLoss")("playerId").str),
+            killed, returnedCount), relics, banners, advisers,
+          discardedRelics, burned, favorEntries.toMap)
+        case CampaignRaidPawnRelocatedType => Right(CampaignRaidPawnRelocated(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
+          PlayerId(payload("defenderPlayerId").str), SiteId(payload("originSiteId").str),
+          SiteId(payload("destinationSiteId").str)))
         case BanditsRefilledType => for {
           sites <- traverse(payload("sites").arr.toVector) { value => for {
             count <- safeIntField(value.obj, "count", s"$path.sites")
@@ -712,6 +769,7 @@ object GameEventWire {
           eventType == CampaignPlanChosenType ||
           eventType == CampaignPlansFinishedType ||
           eventType == CampaignSacrificedType || eventType == CampaignConqueredType ||
+          eventType == CampaignRaidedType || eventType == CampaignRaidPawnRelocatedType ||
           eventType == BanditsRefilledType ||
           eventType == OathkeeperChangedType ||
           eventType == OathkeeperRecipientChoiceStartedType ||

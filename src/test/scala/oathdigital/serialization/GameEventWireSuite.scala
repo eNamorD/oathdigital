@@ -46,6 +46,25 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decodeStream(ujson.write(unknownBanner)).isLeft)
   }
 
+  test("Raid resolution and relocation round trip hidden disposals exactly") {
+    val events = Vector[OathEvent](
+      OathEvent.CampaignRaided(PlayerId("red"), DecisionId("raid-1"),
+        CampaignLosingForceResolver.default.id,
+        CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
+        Vector(RelicId("R1")), Vector(CampaignBanner.PeoplesFavor),
+        Vector(DenizenId("D1"), VisionId("V1")), Vector(RelicId("R2")),
+        favorBurned = 2, Map(Suit.Order -> 2)),
+      OathEvent.CampaignRaidPawnRelocated(PlayerId("red"), DecisionId("raid-1"),
+        PlayerId("blue"), SiteId("S1"), SiteId("S2")))
+    val encoded = GameEventWire.encodeStream("raid", catalogRef,
+      events.zipWithIndex.map { case (event, i) => RecordedEvent(i.toLong, event) })
+      .toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+    val tampered = ujson.read(encoded).arr
+    tampered.head("payload")("takenBanners")(0) = "unknown"
+    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+  }
+
   test("current pre-release Campaign events round-trip exact dice and choices") {
     val events = Vector[OathEvent](
       OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),

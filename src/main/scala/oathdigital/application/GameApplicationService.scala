@@ -47,6 +47,8 @@ object GameCommand {
       extends GameCommand
   final case class BeginCampaignConquest(playerId: PlayerId, targetSiteIds: Vector[SiteId],
       attackDiceCount: Int) extends GameCommand
+  final case class BeginCampaignRaid(playerId: PlayerId,
+      targets: Vector[CampaignRaidTarget], attackDiceCount: Int) extends GameCommand
   object BeginCampaignConquest {
     def apply(playerId: PlayerId, targetSiteId: SiteId,
         attackDiceCount: Int): BeginCampaignConquest =
@@ -60,6 +62,8 @@ object GameCommand {
       count: Int) extends GameCommand
   final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
       allocations: Vector[CampaignForceAllocation]) extends GameCommand
+  final case class RelocateCampaignRaidPawn(playerId: PlayerId,
+      decision: DecisionId, destinationSiteId: SiteId) extends GameCommand
   final case class ChooseOathkeeperRecipient(playerId: PlayerId,
       decision: DecisionId, recipient: PlayerId) extends GameCommand
   /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
@@ -382,6 +386,9 @@ final class GameApplicationService(
       case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
           DecisionId(s"campaign-$nextSequence"), targets, count))
+      case GameCommand.BeginCampaignRaid(playerId, targets, count) =>
+        rules.handle(state, CampaignCommand.StartRaid(playerId,
+          DecisionId(s"campaign-$nextSequence"), targets, count))
       case GameCommand.ChooseCampaignPlan(playerId, decision, source) =>
         rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision, source))
       case GameCommand.FinishCampaignPlans(playerId, decision) =>
@@ -392,9 +399,7 @@ final class GameApplicationService(
       case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
         case OathState.Ready(ready) => ready.game.current.pending match {
           case Some(c: PendingProcedure.Campaign) =>
-            val defenseCount = c.targetSites.flatMap(
-              CampaignRules.siteDefinition(catalog, _)).map(_.defense).sum +
-              CampaignRules.defensePlanDice(c)
+            val defenseCount = CampaignRules.defenseDiceCount(catalog, ready, c)
             rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
               campaignDicePort.rollDefense(defenseCount)))
           case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
@@ -405,6 +410,9 @@ final class GameApplicationService(
       }
       case GameCommand.PlaceCampaignForce(playerId, decision, allocations) =>
         rules.handle(state, CampaignCommand.Place(playerId, decision, allocations))
+      case GameCommand.RelocateCampaignRaidPawn(playerId, decision, destination) =>
+        rules.handle(state, CampaignCommand.RelocateRaidPawn(
+          playerId, decision, destination))
       case GameCommand.ChooseOathkeeperRecipient(playerId, decision, recipient) =>
         rules.chooseOathkeeperRecipient(state, playerId, decision, recipient)
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,

@@ -82,6 +82,8 @@ final class AuthenticatedGameGateway(
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteIds, attackDiceCount) =>
             actor.beginCampaignConquest(targetSiteIds, attackDiceCount)
+          case GameIntent.BeginCampaignRaid(targets, attackDiceCount) =>
+            actor.beginCampaignRaid(targets, attackDiceCount)
           case GameIntent.ChooseCampaignPlan(decision, source) =>
             actor.chooseCampaignPlan(decision, source)
           case GameIntent.FinishCampaignPlans(decision) =>
@@ -90,6 +92,8 @@ final class AuthenticatedGameGateway(
             actor.chooseCampaignSacrifice(decision, count)
           case GameIntent.PlaceCampaignForce(decision, allocations) =>
             actor.placeCampaignForce(decision, allocations)
+          case GameIntent.RelocateCampaignRaidPawn(decision, destination) =>
+            actor.relocateCampaignRaidPawn(decision, destination)
           case GameIntent.ChooseOathkeeperRecipient(decision, recipient) =>
             actor.chooseOathkeeperRecipient(decision, recipient)
             case GameIntent.CompleteSearch(decision, kept, discarded, placement) =>

@@ -1,7 +1,7 @@
 package oathdigital.server
 
-import oathdigital.model.{DenizenId, EconomyTargetRef, EdificeId, PendingProcedure,
-  PlayerId, RelicId}
+import oathdigital.model.{CampaignBanner, CampaignRaidTarget, DenizenId,
+  EconomyTargetRef, EdificeId, PendingProcedure, PlayerId, RelicId, SiteId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
   test("authenticated Campaign intents are actor-free and exclude dice outcomes") {
@@ -58,6 +58,21 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
       assertEquals(AuthenticatedGameHttpWire.decodeCommand(json)
         .left.toOption.get.path, "$.intent.attackDiceCount")
     }
+  }
+
+  test("authenticated Raid intents preserve typed targets and relocation") {
+    val raid = """{"expectedNextSequence":40,"intent":{"type":"beginCampaignRaid","targets":[{"kind":"pawn","playerId":"p2"},{"kind":"relic","playerId":"p2","relicId":"R1"},{"kind":"peoples-favor","playerId":"p2"}],"attackDiceCount":2}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(raid).toOption.get.intent,
+      GameIntent.BeginCampaignRaid(Vector(
+        CampaignRaidTarget.Pawn(PlayerId("p2")),
+        CampaignRaidTarget.Relic(PlayerId("p2"), RelicId("R1")),
+        CampaignRaidTarget.Banner(PlayerId("p2"), CampaignBanner.PeoplesFavor)), 2))
+    val relocate = """{"expectedNextSequence":44,"intent":{"type":"relocateCampaignRaidPawn","decisionId":"campaign-40","destinationSiteId":"S3"}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(relocate).toOption.get.intent,
+      GameIntent.RelocateCampaignRaidPawn(
+        oathdigital.model.DecisionId("campaign-40"), SiteId("S3")))
+    assert(AuthenticatedGameHttpWire.decodeCommand(raid.replace(
+      "\"relicId\":\"R1\"", "\"relicId\":\"R1\",\"extra\":true")).isLeft)
   }
 
   test("authenticated Campaign placement requires exact non-negative allocations") {

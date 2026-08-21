@@ -3,7 +3,7 @@ package oathdigital.server
 import oathdigital.application.{CardDecisionResolution, GameCommand, GameProjection,
   OathkeeperProjection}
 import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId,
-  PendingProcedure, PlayerId, RelicId}
+  CampaignBanner, CampaignRaidTarget, PendingProcedure, PlayerId, RelicId, SiteId}
 import oathdigital.serialization.{
   GameEventWire
 }
@@ -54,6 +54,24 @@ class GameHttpWireSuite extends munit.FunSuite {
             oathdigital.model.SiteId("site:b"), 0))))
     assertEquals(GameHttpWire.decodeCommand(finish).toOption.get.command,
       GameCommand.FinishCampaignPlans(PlayerId("p2"), DecisionId("campaign-8")))
+  }
+
+  test("development Raid commands retain typed targets and actor") {
+    val raid = commandRequest(ujson.Obj("type" -> "beginCampaignRaid",
+      "playerId" -> "p1", "targets" -> ujson.Arr(
+        ujson.Obj("kind" -> "pawn", "playerId" -> "p2"),
+        ujson.Obj("kind" -> "darkest-secret", "playerId" -> "p2")),
+      "attackDiceCount" -> 1))
+    assertEquals(GameHttpWire.decodeCommand(raid).toOption.get.command,
+      GameCommand.BeginCampaignRaid(PlayerId("p1"), Vector(
+        CampaignRaidTarget.Pawn(PlayerId("p2")),
+        CampaignRaidTarget.Banner(PlayerId("p2"), CampaignBanner.DarkestSecret)), 1))
+    val relocate = commandRequest(ujson.Obj("type" -> "relocateCampaignRaidPawn",
+      "playerId" -> "p1", "decisionId" -> "campaign-9",
+      "destinationSiteId" -> "S4"))
+    assertEquals(GameHttpWire.decodeCommand(relocate).toOption.get.command,
+      GameCommand.RelocateCampaignRaidPawn(PlayerId("p1"),
+        DecisionId("campaign-9"), SiteId("S4")))
   }
 
   test("projection exposes public scoped Oathkeeper and victory status") {

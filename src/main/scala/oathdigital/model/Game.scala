@@ -51,7 +51,7 @@ final case class CampaignState(
     foundations: Map[FoundationNumber, FoundationState],
     lineages: Map[LineageId, LineageState],
     reliquary: Vector[RelicId],
-    dispossessed: Vector[DenizenId],
+    dispossessed: Vector[WorldCardId],
     suitedReserves: Map[Suit, Vector[DenizenId]],
     oathkeeperGoal: OathkeeperGoal,
     era: EraState

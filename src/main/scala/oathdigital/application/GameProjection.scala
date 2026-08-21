@@ -96,6 +96,9 @@ object BoardTargetRefProjection {
       extends BoardTargetRefProjection
   final case class PlayerRelic(playerId: String, relicId: String)
       extends BoardTargetRefProjection
+  final case class PlayerPawn(playerId: String) extends BoardTargetRefProjection
+  final case class PlayerBanner(playerId: String, banner: String)
+      extends BoardTargetRefProjection
 }
 final case class BoardTargetCandidateProjection(
     target: BoardTargetRefProjection,
@@ -169,8 +172,12 @@ final case class CampaignProjection(
     placementTargets: Vector[CampaignPlacementTargetProjection],
     defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
     defenderForce: Int = 0, defenseDiceCount: Int = 0,
-    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None)
+    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None,
+    kind: String = "conquest", raidTargets: Vector[String] = Vector.empty)
 final case class CampaignPlacementTargetProjection(siteId: String, label: String)
+final case class CampaignRaidRelocationProjection(
+    decisionId: String, actorPlayerId: String, defenderPlayerId: String,
+    originSiteId: String, legalSiteIds: Vector[String])
 final case class CampaignPlanChoiceProjection(
     kind: String, sourceKey: Option[String], playerId: Option[String],
     siteId: Option[String], cardId: Option[String], label: String,
@@ -219,6 +226,7 @@ final case class GameProjection(
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     recover: Option[RecoverProjection] = None,
     campaign: Option[CampaignProjection] = None,
+    campaignRaidRelocation: Option[CampaignRaidRelocationProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
@@ -340,13 +348,17 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
                 requestingPlayer.contains(CampaignRules.planDecisionOwner(c)) =>
               Vector("chooseCampaignPlan", "finishCampaignPlans")
+            case Some(r: PendingProcedure.CampaignRaidRelocation)
+                if requestingPlayer.contains(r.actor) =>
+              Vector("relocateCampaignRaidPawn")
             case _ if !requestingPlayer.contains(active.player) => Vector.empty
             case Some(r: PendingProcedure.Recover) if !r.successful =>
               Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
                 Some("stopRecover")).flatten
             case Some(_: PendingProcedure.Recover) => Vector.empty
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
-              Vector("placeCampaignForce")
+              Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
+                else "placeCampaignForce")
             case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished => Vector.empty
             case Some(_: PendingProcedure.Campaign) => Vector("chooseCampaignSacrifice")
             case Some(_) => Vector.empty
@@ -480,11 +492,17 @@ final class GameProjector(catalog: ExecutableCatalog) {
               }, c.defender match {
                 case CampaignDefender.Player(player) => Some(player.value)
                 case _ => None
-              }, CampaignRules.defenderForce(value, c.targetSites),
-              c.targetSites.flatMap(CampaignRules.siteDefinition(catalog, _))
-                .map(_.defense).sum + CampaignRules.defensePlanDice(c),
+              }, CampaignRules.defenderForce(value, c),
+              CampaignRules.defenseDiceCount(catalog, value, c),
               CampaignRules.currentPlanSide(c).toString.toLowerCase,
-              Option.when(!c.defenderPlansFinished)(CampaignRules.planDecisionOwner(c).value))
+              Option.when(!c.defenderPlansFinished)(CampaignRules.planDecisionOwner(c).value),
+              c.kind.key, c.raidTargets.map(_.stableKey))
+        }
+        val campaignRaidRelocation = current.pending.collect {
+          case r: PendingProcedure.CampaignRaidRelocation
+              if requestingPlayer.contains(r.actor) =>
+            CampaignRaidRelocationProjection(r.decision.value, r.actor.value,
+              r.defender.value, r.origin.value, r.legalSites.map(_.value))
         }
         val oathkeeperRecipient = current.pending.collect {
           case p: PendingProcedure.OathkeeperRecipient
@@ -507,6 +525,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(c: PendingProcedure.Campaign) if campaignProjection.nonEmpty && !c.defenderPlansFinished => "campaign-plan"
             case Some(_: PendingProcedure.Campaign) if campaignProjection.nonEmpty => "campaign-sacrifice"
             case Some(_: PendingProcedure.Campaign) => "campaign-waiting"
+            case Some(_: PendingProcedure.CampaignRaidRelocation)
+                if campaignRaidRelocation.nonEmpty => "campaign-raid-relocation"
+            case Some(_: PendingProcedure.CampaignRaidRelocation) =>
+              "campaign-raid-relocation-waiting"
             case Some(_: PendingProcedure.OathkeeperRecipient)
                 if oathkeeperRecipient.nonEmpty => "oathkeeper-recipient"
             case Some(_: PendingProcedure.OathkeeperRecipient) =>
@@ -621,7 +643,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
               case TitleSide.Oathkeeper => "oathkeeper"
               case TitleSide.Usurper => "usurper"
             }, current.tracks.usurperLimited, current.result.map(_.winner.value))),
-          oathkeeperRecipient = oathkeeperRecipient)
+          oathkeeperRecipient = oathkeeperRecipient,
+          campaignRaidRelocation = campaignRaidRelocation)
     }
 
   private def economyLabel(target: EconomyTargetRef): String = target match {
@@ -652,6 +675,24 @@ final class GameProjector(catalog: ExecutableCatalog) {
           s"Choose ${oathdigital.gameplay.actions.Campaign.MinimumForce} to " +
             s"${player.board.warbands} board warbands"))
     }
+    val raid = CampaignRules.legalRaidTargets(catalog, ready, player.player).map {
+      case target @ CampaignRaidTarget.Pawn(defender) =>
+        BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerPawn(defender.value),
+          s"${safeLabel(defender.value)} pawn", Vector("Required Raid target"))
+      case target @ CampaignRaidTarget.Relic(defender, relic) =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerRelic(defender.value, relic.value),
+          catalog.relics.find(_.id.value == relic.value).map(_.name)
+            .getOrElse(safeLabel(relic.value)))
+      case CampaignRaidTarget.Banner(defender, banner) =>
+        val key = banner match {
+          case CampaignBanner.PeoplesFavor => "peoples-favor"
+          case CampaignBanner.DarkestSecret => "darkest-secret"
+        }
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerBanner(defender.value, key),
+          safeLabel(key))
+    }
     val favor = trades.filter(_.resource == oathdigital.setup.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
@@ -666,6 +707,12 @@ final class GameProjector(catalog: ExecutableCatalog) {
           player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
         minimum = 1, maximum = campaign.size,
         requiredTargets = campaign.headOption.map(_.target).toVector),
+      selection("campaign-raid", "Choose Raid targets", raid,
+        Option.when(raid.nonEmpty)(BoardTargetFormationProjection(
+          oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
+          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
+        minimum = Option.when(raid.nonEmpty)(1).getOrElse(0), maximum = raid.size,
+        requiredTargets = raid.headOption.map(_.target).toVector),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)

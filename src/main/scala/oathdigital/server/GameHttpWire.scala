@@ -267,6 +267,8 @@ object GameHttpWire {
         },
         "campaign" -> projection.campaign.fold[ujson.Value](ujson.Null) { campaign =>
           ujson.Obj("decisionId" -> campaign.decisionId,
+            "kind" -> campaign.kind,
+            "raidTargets" -> ujson.Arr.from(campaign.raidTargets.map(ujson.Str(_))),
             "targetSiteIds" -> ujson.Arr.from(
               campaign.targetSiteIds.map(ujson.Str(_))),
             "defenderKind" -> campaign.defenderKind,
@@ -313,6 +315,15 @@ object GameHttpWire {
               campaign.placementTargets.map(target => ujson.Obj(
                 "siteId" -> target.siteId, "label" -> target.label))))
         },
+        "campaignRaidRelocation" -> projection.campaignRaidRelocation.fold[ujson.Value](
+          ujson.Null) { relocation =>
+          ujson.Obj("decisionId" -> relocation.decisionId,
+            "actorPlayerId" -> relocation.actorPlayerId,
+            "defenderPlayerId" -> relocation.defenderPlayerId,
+            "originSiteId" -> relocation.originSiteId,
+            "legalSiteIds" -> ujson.Arr.from(
+              relocation.legalSiteIds.map(ujson.Str(_))))
+        },
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -354,6 +365,11 @@ object GameHttpWire {
         playerId, relicId) =>
       ujson.Obj("kind" -> "player-relic", "playerId" -> playerId,
         "relicId" -> relicId)
+    case oathdigital.application.BoardTargetRefProjection.PlayerPawn(playerId) =>
+      ujson.Obj("kind" -> "player-pawn", "playerId" -> playerId)
+    case oathdigital.application.BoardTargetRefProjection.PlayerBanner(playerId, banner) =>
+      ujson.Obj("kind" -> "player-banner", "playerId" -> playerId,
+        "banner" -> banner)
   }
 
   def encodeError(code: String, message: String): String =
@@ -460,6 +476,19 @@ object GameHttpWire {
         count <- nonNegativeInt(countValue, s"$path.attackDiceCount")
       } yield GameCommand.BeginCampaignConquest(
         PlayerId(player), sites, count)
+      case "beginCampaignRaid" => for {
+        _ <- exactFields(obj,
+          Set("type", "playerId", "targets", "attackDiceCount"), path)
+        player <- stringField(obj, "playerId", path)
+        values <- field(obj, "targets", path).flatMap(arrayValue(_, s"$path.targets"))
+        targets <- values.zipWithIndex.foldLeft[
+          Either[HttpInputError, Vector[CampaignRaidTarget]]](Right(Vector.empty)) {
+          case (result, (value, index)) => result.flatMap(existing =>
+            decodeRaidTarget(value, s"$path.targets[$index]").map(existing :+ _))
+        }
+        countValue <- field(obj, "attackDiceCount", path)
+        count <- nonNegativeInt(countValue, s"$path.attackDiceCount")
+      } yield GameCommand.BeginCampaignRaid(PlayerId(player), targets, count)
       case "chooseCampaignPlan" => for {
         _ <- exactFields(obj, Set("type", "playerId", "decisionId", "source"), path)
         player <- stringField(obj, "playerId", path)
@@ -504,6 +533,14 @@ object GameHttpWire {
           }
       } yield GameCommand.PlaceCampaignForce(
         PlayerId(player), DecisionId(decision), allocations)
+      case "relocateCampaignRaidPawn" => for {
+        _ <- exactFields(obj,
+          Set("type", "playerId", "decisionId", "destinationSiteId"), path)
+        player <- stringField(obj, "playerId", path)
+        decision <- stringField(obj, "decisionId", path)
+        destination <- stringField(obj, "destinationSiteId", path)
+      } yield GameCommand.RelocateCampaignRaidPawn(PlayerId(player),
+        DecisionId(decision), SiteId(destination))
       case "chooseOathkeeperRecipient" => for {
         _ <- exactFields(obj, Set("type", "playerId", "decisionId",
           "recipientPlayerId"), path)
@@ -666,6 +703,31 @@ object GameHttpWire {
       }
     } yield card
   }
+
+  private def decodeRaidTarget(value: ujson.Value, path: String)
+      : Either[HttpInputError, CampaignRaidTarget] =
+    objectValue(value, path).flatMap { obj =>
+      stringField(obj, "kind", path).flatMap {
+        case "pawn" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          player <- stringField(obj, "playerId", path)
+        } yield CampaignRaidTarget.Pawn(PlayerId(player))
+        case "relic" => for {
+          _ <- exactFields(obj, Set("kind", "playerId", "relicId"), path)
+          player <- stringField(obj, "playerId", path)
+          relic <- stringField(obj, "relicId", path)
+        } yield CampaignRaidTarget.Relic(PlayerId(player), RelicId(relic))
+        case "peoples-favor" | "darkest-secret" => for {
+          _ <- exactFields(obj, Set("kind", "playerId"), path)
+          kind <- stringField(obj, "kind", path)
+          player <- stringField(obj, "playerId", path)
+        } yield CampaignRaidTarget.Banner(PlayerId(player),
+          if (kind == "peoples-favor") CampaignBanner.PeoplesFavor
+          else CampaignBanner.DarkestSecret)
+        case other => Left(HttpInputError(s"$path.kind",
+          s"unknown Campaign Raid target '$other'"))
+      }
+    }
 
   private def decodeCard(value: ujson.Value, path: String): Either[HttpInputError, CardId] =
     objectValue(value, path).flatMap { obj => for {

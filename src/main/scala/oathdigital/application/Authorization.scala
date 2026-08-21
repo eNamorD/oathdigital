@@ -90,6 +90,9 @@ final case class AuthorizedPlayer private (
       attackDiceCount: Int): GameCommand =
     GameCommand.BeginCampaignConquest(
       access.playerId, targetSiteIds, attackDiceCount)
+  def beginCampaignRaid(targets: Vector[CampaignRaidTarget],
+      attackDiceCount: Int): GameCommand =
+    GameCommand.BeginCampaignRaid(access.playerId, targets, attackDiceCount)
   def chooseCampaignSacrifice(decision: DecisionId, count: Int): GameCommand =
     GameCommand.ChooseCampaignSacrifice(access.playerId, decision, count)
   def chooseCampaignPlan(decision: DecisionId,
@@ -100,6 +103,9 @@ final case class AuthorizedPlayer private (
   def placeCampaignForce(decision: DecisionId,
       allocations: Vector[CampaignForceAllocation]): GameCommand =
     GameCommand.PlaceCampaignForce(access.playerId, decision, allocations)
+  def relocateCampaignRaidPawn(decision: DecisionId,
+      destination: SiteId): GameCommand =
+    GameCommand.RelocateCampaignRaidPawn(access.playerId, decision, destination)
   def chooseOathkeeperRecipient(decision: DecisionId,
       recipient: PlayerId): GameCommand =
     GameCommand.ChooseOathkeeperRecipient(access.playerId, decision, recipient)
