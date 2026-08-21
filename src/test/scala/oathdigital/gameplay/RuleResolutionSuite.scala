@@ -4,7 +4,7 @@ import oathdigital.model._
 
 class RuleResolutionSuite extends munit.FunSuite {
   test("Campaign timing windows preserve the printed procedure order") {
-    assertEquals(CampaignTimingWindow.ordered.map(_.order), (0 to 7).toVector)
+    assertEquals(CampaignTimingWindow.ordered.map(_.order), (0 to 9).toVector)
     assertEquals(CampaignTimingWindow.ordered, Vector(
       CampaignTimingWindow.TargetAndForceFormation,
       CampaignTimingWindow.AttackerBattlePlans,
@@ -13,6 +13,8 @@ class RuleResolutionSuite extends munit.FunSuite {
       CampaignTimingWindow.DefenderBattlePlansAndRoll,
       CampaignTimingWindow.Outcome,
       CampaignTimingWindow.ConquestPlacement,
+      CampaignTimingWindow.RaidResolution,
+      CampaignTimingWindow.RaidPawnRelocation,
       CampaignTimingWindow.RemainingEndVictoryDefeatEffects))
   }
   private object AllowHandler extends TypedRuleHandler {
