@@ -1,11 +1,15 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{MinorActionCommand, MinorActions}
+import oathdigital.gameplay.actions.{MinorActionCommand, MinorActionPowerSupport,
+  MinorActions}
+import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.OathEvent._
 import oathdigital.setup.OathState.Ready
+import oathdigital.setup.OathViolation.{UnsupportedMinorActionCatalogInventory,
+  UnsupportedMinorActionRule}
 
 class MinorActionsSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -130,5 +134,61 @@ class MinorActionsSuite extends munit.FunSuite {
         p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown, Tokens.empty))) else p))))
     assert(rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
       actor.player, powered, SearchPlacement.Adviser(Orientation.FaceUp, None))).isLeft)
+  }
+
+  test("Conspiracy play is an explicit unsupported power in command and replay") {
+    val (base, actor, _, _, _) = ready()
+    val conspiracy = MinorActionPowerSupport.Conspiracy
+    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = Vector(VisionState(conspiracy, Orientation.FaceDown))) else p))))
+    val command = MinorActionCommand.PlayFacedownAdviser(actor.player, conspiracy,
+      SearchPlacement.Adviser(Orientation.FaceUp, None))
+    assertEquals(rules.handle(Ready(modified), command).left.toOption,
+      Some(UnsupportedMinorActionRule(conspiracy, Vector("vision.conspiracy"))))
+    val tampered = FacedownAdviserPlayed(actor.player, conspiracy,
+      SearchPlacement.Adviser(Orientation.FaceUp, None), 0, Vector.empty, Vector.empty)
+    assertEquals(MinorActions.evolve(catalog, Ready(modified), tampered).left.toOption,
+      Some(UnsupportedMinorActionRule(conspiracy, Vector("vision.conspiracy"))))
+  }
+
+  test("locked restriction applies only faceup and does not prevent facedown discard") {
+    val (base, actor, _, _, _) = ready()
+    val locked = DenizenId(catalog.denizens.find(_.restrictions ==
+      oathdigital.catalog.CardRestrictions.LockedAdviserOnly).get.id.value)
+    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceDown, Tokens.empty))) else p))))
+    assert(rules.handle(Ready(modified),
+      MinorActionCommand.DiscardFacedownAdviser(actor.player, locked)).isRight)
+    val faceup = modified.copy(game = modified.game.copy(current = modified.game.current.copy(
+      players = modified.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p))))
+    assertEquals(MinorActions.legalAdviserPlacements(catalog, faceup, actor.player, locked),
+      Vector.empty)
+  }
+
+  test("valid setup history replays exactly through a completed minor action") {
+    val (setupState, setupEvents) = execute(setupRules)
+    val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
+    val adviser = setupState.asInstanceOf[Ready].value.game.current.players
+      .find(_.player == active).get.advisers.head.id.asInstanceOf[WorldCardId]
+    val act = rules.handle(setupState,
+      oathdigital.gameplay.phases.WakeCommand.EndWake(active)).toOption.get
+    val discarded = rules.handle(act.state,
+      MinorActionCommand.DiscardFacedownAdviser(active, adviser)).toOption.get
+    val events = setupEvents ++ act.events ++ discarded.events
+    val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {
+      case (event, index) => RecordedEvent(index.toLong, event)
+    }).toOption.get
+    assertEquals(replayed, discarded.state)
+  }
+
+  test("audited minor-action power inventory rejects changed handler vocabulary") {
+    val first = catalog.denizens.head
+    val changed = catalog.copy(denizens = first.copy(
+      handlers = first.handlers :+ "denizen.future-handler") +: catalog.denizens.tail)
+    assert(MinorActionPowerSupport.validateInventory(changed).left.toOption.exists(
+      _.isInstanceOf[UnsupportedMinorActionCatalogInventory]))
   }
 }

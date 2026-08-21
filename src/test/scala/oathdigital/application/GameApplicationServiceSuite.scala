@@ -1066,6 +1066,43 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
+  test("HSQL reopen preserves private minor-action relic knowledge") {
+    val path = Files.createTempDirectory("oathdigital-minor-reopen-").resolve("journal")
+    val gameId = "game-hsql-minor-relics"
+    val relicSite = catalog.sites.find(_.relicSlots > 0).get.id
+    val placementSites = relicSite +: sites.filterNot(_ == relicSite).take(7)
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val peeked = try {
+      val service = new GameApplicationService(catalog, first)
+      val setup = execute(service, gameId, placementSites)
+      val Ready(ready) = setup.state: @unchecked
+      val actor = ready.game.current.turn.activePlayer
+      val act = service.handle(gameId, setup.nextSequence,
+        GameCommand.EndWake(actor)).toOption.get
+      service.handle(gameId, act.nextSequence,
+        GameCommand.PeekSiteRelics(actor)).toOption.get
+    } finally first.close()
+
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
+      error => fail(s"failed to reopen minor-action repository: $error"), identity)
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, peeked.state)
+      val Ready(ready) = loaded.state: @unchecked
+      val actor = ready.game.current.turn.activePlayer
+      val other = ready.game.current.players.find(_.player != actor).get.player
+      val siteId = ready.game.current.players.find(_.player == actor).get.pawnSite.get
+      val projector = new GameProjector(catalog)
+      assert(projector.project(gameId, loaded, actor).world.flatMap(_.sites)
+        .find(_.siteId == siteId.value).get.relics.knownRelics.nonEmpty)
+      assertEquals(projector.project(gameId, loaded, other).world.flatMap(_.sites)
+        .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
+      assertEquals(projector.projectPublic(gameId, loaded).world.flatMap(_.sites)
+        .find(_.siteId == siteId.value).get.relics.knownRelics, Vector.empty)
+    } finally reopened.close()
+  }
+
 
   test("HSQL reopen preserves Raid pending and completed replay") {
     val path = Files.createTempDirectory("oathdigital-raid-reopen-").resolve("journal")

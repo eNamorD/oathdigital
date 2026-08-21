@@ -23,26 +23,6 @@ object MinorActionCommand {
 }
 
 object MinorActions {
-  // Audited printed When Played handlers in the fixed pre3 catalog. They are
-  // relevant at this exact timing and remain deferred rather than silently
-  // skipped. Other handlers do not modify the base placement procedure.
-  private val UnsupportedWhenPlayedHandlers = Set(
-    "denizen.dazzle", "denizen.revelation", "denizen.threatening-roar",
-    "denizen.animal-host", "denizen.a-small-favor", "denizen.key-to-the-city",
-    "denizen.charlatan", "denizen.blackmail", "denizen.dissent",
-    "denizen.false-prophet", "denizen.family-heirloom", "denizen.fabled-feast",
-    "denizen.salad-days", "denizen.the-gathering", "denizen.faithful-friend",
-    "denizen.great-herd", "denizen.pilgrimage", "denizen.twin-brother",
-    "denizen.garrison", "denizen.royal-tax", "denizen.bewitch",
-    "denizen.wizard-s-conclave", "denizen.long-lost-heir", "denizen.true-oath",
-    "denizen.autumn-wind", "denizen.shifting-fog", "denizen.royal-ambitions",
-    "denizen.riots", "denizen.bandit-chief", "denizen.reliquary-raid",
-    "denizen.bandit-prince", "denizen.a-round-of-ale", "denizen.favored-son",
-    "denizen.town-meeting", "denizen.ancient-pact", "denizen.search-party",
-    "denizen.call-for-help")
-  private val UnsupportedSearchModifierHandlers = Set(
-    "denizen.forced-labor", "denizen.hunting-party", "denizen.disciples",
-    "denizen.spinning-bee")
   def legalAdviserPlacements(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerId, adviser: WorldCardId): Vector[SearchPlacement] = {
     val replacements = ready.game.current.players.find(_.player == player)
@@ -216,10 +196,8 @@ object MinorActions {
     adviser match {
       case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
         .toRight(UnknownWorldCard(id)).flatMap { definition =>
-          val relevant = definition.handlers.filter(UnsupportedWhenPlayedHandlers)
-          if (relevant.nonEmpty)
-            Left(UnsupportedMinorActionRule(id, relevant))
-          else placement match {
+          MinorActionPowerSupport.validateAdviserPlay(catalog, id,
+            definition.handlers).flatMap(_ => placement match {
             case SearchPlacement.Adviser(Orientation.FaceUp, None) =>
               if (definition.restrictions == CardRestrictions.SiteOnly)
                 Left(InvalidSearchPlacement("site-only card cannot be played faceup as an adviser"))
@@ -234,11 +212,11 @@ object MinorActions {
                 id, definition.suit.value, replace)
             case _ => Left(InvalidSearchPlacement(
               "facedown adviser must be played faceup to advisers or the pawn's site"))
-          }
+          })
         }
       case id: VisionId =>
         if (!FirstGameRulesData.visions.contains(id)) Left(UnknownWorldCard(id))
-        else placement match {
+        else MinorActionPowerSupport.validateVisionPlay(catalog, id).flatMap(_ => placement match {
           case SearchPlacement.Adviser(Orientation.FaceUp, None) =>
             val replaced = actor.revealedVision.map(_.id: WorldCardId).toVector
             val next = updatePlayer(ready, actor.player)(_.copy(
@@ -247,7 +225,7 @@ object MinorActions {
             Right(PlayResult(appendWorldDiscards(next, actor, replaced), 0,
               replaced, Vector.empty))
           case _ => Left(InvalidSearchPlacement("a Vision can only be played faceup"))
-        }
+        })
     }
   }
 
@@ -325,8 +303,8 @@ object MinorActions {
     })
     active.iterator.flatMap { id =>
       catalog.denizens.find(_.id.value == id.value).toVector.flatMap { definition =>
-        val relevant = definition.handlers.filter(UnsupportedSearchModifierHandlers)
-        Option.when(relevant.nonEmpty)(UnsupportedMinorActionRule(id, relevant))
+        MinorActionPowerSupport.validateSearchModifier(catalog, id,
+          definition.handlers).left.toOption
       }
     }.toVector.headOption.toLeft(())
   }

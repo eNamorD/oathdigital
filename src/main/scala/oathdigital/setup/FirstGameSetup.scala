@@ -395,6 +395,8 @@ object OathViolation {
       extends OathViolation
   final case class UnsupportedMinorActionRule(source: CardId, handlers: Vector[String])
       extends OathViolation
+  final case class UnsupportedMinorActionCatalogInventory(expected: String, actual: String)
+      extends OathViolation
   final case class LockedAdviserCannotBeDiscarded(id: CardId)
       extends OathViolation
   final case class SearchCostMismatch(expected: Int, actual: Int)
