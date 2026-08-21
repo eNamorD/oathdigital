@@ -4,7 +4,8 @@ This design began as the smallest coherent first-game Campaign procedure and
 now includes authoritative multi-site target declaration for Conquest against
 bandits, with fixed unaltered Foundations and a typed boundary for relevant
 Campaign powers. Multi-site loss and placement allocation are complete for
-bandit and player defenders; Raid remains out of scope.
+bandit and player Conquest defenders, and the base Raid procedure is complete
+for player defenders.
 
 ## Typed rule pipeline and inventory
 
@@ -16,7 +17,9 @@ active and are not treated as revealable before Campaign begins. The resolver
 models the printed windows explicitly: target
 and force formation; attacker battle plans; attack roll and skull losses;
 attacker sacrifice; defender battle plans and roll; outcome; conquest
-placement; and remaining end, victory, and defeat effects.
+placement or Raid resolution and pawn relocation; and remaining end, victory,
+and defeat effects. The terminal windows are explicit even though their
+additional printed handlers remain deferred.
 
 The source-verified inventory for this boundary is:
 
@@ -29,8 +32,8 @@ The source-verified inventory for this boundary is:
 - blocked by missing decisions or data: every other optional attacker battle plan;
   rerolls, costs, directional `±` choices, conditional pools, discard/bury,
   favor-bank rewards, and remaining victory/defeat/end effects;
-- irrelevant to the implemented result: Raid-only powers and Imperial effects.
-  Other player-defender powers are discovered and block until their handlers
+- irrelevant to the implemented result: Imperial effects. Unsupported
+  Raid-specific and other player-defender powers are discovered and block until their handlers
   are implemented. Bag of Siegeworks,
   Weeping Banner, and Peace Envoy are not in this class: each can change this
   boundary and therefore rejects pending typed resolution.
@@ -45,15 +48,14 @@ substituted, stale, or reordered sources. Choices and selected order
 are projected only to the current decision owner, while public and other-player projections show
 only that Campaign is waiting. Blocked rules report exact handler and stable
 source identity.
-Mountain/Plains Campaign effects also remain blocked. Raid still needs
-facedown-card dispossession, relic/banner transfers, favor burning, and a typed
-defender relocation choice. Site access is derived through `SiteRule`; corrupt
+Mountain/Plains Campaign effects also remain blocked. Site access is derived through `SiteRule`; corrupt
 lineage-to-ruler mappings reject instead of being treated as harmless.
 
 ## Authoritative procedure
 
 Campaign costs 2 Supply. The active Exile must be in Act, have a pawn at a site
-ruled by bandits, and may gather from zero up to all warbands on their board.
+with a legal Conquest ruler or a co-located enemy pawn for Raid, and may gather
+from zero up to all warbands on their board.
 The authoritative engine and HTTP contracts accept that non-negative count as
 the force. The Empty Attack Pool rule therefore permits a zero-force Campaign.
 The private action projection
@@ -89,9 +91,17 @@ When Outriders was also selected, all skull losses are ignored and every skull
 die retains its swords. Without Outriders, skull dice beyond the physical force
 cannot kill a warband and contribute no swords.
 
+Raid instead persists a typed kind and a canonical pawn-first target vector.
+The co-located enemy pawn is mandatory; zero or more of that defender's faceup
+relics and held banners follow in stable relic/banner order. Declaration and
+replay reject missing pawn, duplicate, reordered, stale, facedown, foreign, or
+no-longer-held targets. Raid never targets the pawn's site.
+
 Defender dice equal the targeted sites' printed defense plus resolved defender
 plan effects; bandit or player forces at all targets likewise contribute to
-defense. The title is an optional registered defender battle plan: Oathkeeper
+defense. For Raid, the pawn contributes two dice, every targeted relic adds its
+printed defense, each targeted banner adds three dice, and the defender's board
+warbands are their force. The title is an optional registered defender battle plan: Oathkeeper
 adds one die and Usurper adds two. Bandits automatically use every applicable
 registered plan only when it is cost-free and choice-free; Watchdog is the
 first such handler. Other relevant bandit plans block conservatively.
@@ -114,6 +124,17 @@ force rounded down and returns the remainder to its board; the
 bandits remain. Supply and committed pieces are validated against the preceding
 state during replay. Zero forces are represented as
 `SiteForces.Empty`, never as an occupied zero-count force.
+
+On a successful Raid, the registered loss policy kills half the defender's
+board force rounded down and returns the remainder to that board. A durable
+Raid event then records and replay-validates the printed order: targeted faceup
+relics and banners transfer; People's Favor resources return one at a time to
+the least-filled, leftmost-on-tie favor bank and Darkest Secret resources burn;
+facedown advisers and relics are discarded; and half the defender's favor,
+rounded down, burns. The attacker then receives a typed owner-scoped pending
+procedure containing canonical legal destinations and relocates the defender's
+pawn to another site. This relocation is not Travel. Other viewers receive no
+hidden discarded identities or relocation controls.
 
 Defender loss is resolved through a registered, stable-ID policy seam. The
 default policy emits and applies ordered `Remove` effects at every target.
@@ -163,4 +184,5 @@ Campaign, Vision, Chronicle, or general power interpreter is introduced.
 - further optional attacker, defender, and deterministic bandit plan families;
 - non-deterministic sacrifice/loss choices where multiple legal assignments
   matter;
-- Raid targets, theft/discard/burn effects, banner rules, and relocation;
+- additional Raid, victory, defeat, and `At End` card-power handlers; the timing
+  windows exist structurally, but no behavior is inferred for them;

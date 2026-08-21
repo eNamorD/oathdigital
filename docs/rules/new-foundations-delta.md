@@ -32,7 +32,7 @@ This file records explicit change statements in the Welcome booklet. It is not a
 
 ## Actions
 
-- Campaign is split into **Conquest** (sites) and **Raid** (pawn plus faceup relics/banners); one campaign cannot target both categories. Raid no longer automatically targets the pawn's site and now discards all facedown adviser/relic cards on success (NF p. 13).
+- Campaign is split into **Conquest** (sites) and **Raid** (mandatory co-located enemy pawn plus any number, including zero, of its faceup relics/banners); one campaign cannot target both categories. Raid no longer targets the pawn's site, uses the defender's board warbands as its force, and discards all facedown adviser/relic cards on success (NF p. 13; complete order CR pp. 22-23).
 - Attacker sacrifices occur before defense roll. Facedown battle plans can be revealed during campaign and can still be lost to a successful raid (NF p. 13).
 - Muster yields 1 warband plus one per matching faceup adviser, instead of a flat 2 (NF p. 13).
 - Trading for secrets places one favor and burns one favor, instead of placing two favor; yield is unchanged (NF p. 13).
@@ -53,4 +53,3 @@ This file records explicit change statements in the Welcome booklet. It is not a
 - Conspiracy now directly takes a relic/banner from a co-located enemy, then returns to box; it can be discarded by raid (NF p. 16).
 - "Enemies cannot" persistent powers require timely enforcement; forgetting grants consent for that event (NF p. 16).
 - Empire rules were simplified; use CR pp. 34-35 for the normative version (NF p. 16).
-
