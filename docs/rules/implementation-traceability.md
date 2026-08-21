@@ -112,14 +112,16 @@ rows above. The remaining cross-cutting items are:
 
 ## Upcoming source-cited work
 
-1. **Chronicle Stars storage before the full Chronicle.** Use CR pp. 40-41.
-   Build on tested Atlas ordering to persist a completed fixture, then add
-   World/Beacon, Sun, and Throne once component/legacy data is available.
+1. **Complete the base Raid procedure.** Use CR pp. 22-23 and NF p. 13 for
+   target selection, hidden-card disposal, banner/relic transfer, favor burn,
+   pawn relocation, and terminal windows. The generic attacker/defender plan
+   boundary remains in place, but additional battle-plan families are deferred
+   until all base major and minor actions are working.
+2. **Complete the remaining base actions.** Forge, banners/Challenge, ordinary
+   minor actions, and all-Exile Negotiation precede more power handlers.
 
-Campaign expansion should proceed handler-first from the tested multi-site
-bandit/player Conquest baseline: implement defender choices and a small
-modifier/cost set next. Raid continues to wait for hidden-card disposal,
-banners, and relocation.
+Empire, Citizenship, Imperial endings, Chronicle storage, campaign continuity,
+and Era scoring are intentionally deferred until after the all-Exile alpha.
 
 ## Maintenance checklist
 

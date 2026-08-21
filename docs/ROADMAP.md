@@ -11,14 +11,87 @@ No item is currently assigned.
 
 ## Next
 
-**Campaign expansion** continues with battle plans and Raid:
+Work toward a playable all-Exile alpha before expanding into the Empire and
+campaign-continuity rules.
 
-1. Implement remaining attacker and defender plans in small mechanics-based
-   families without bypassing typed rule discovery.
-2. Add Raid declaration, outcomes, and ordered resolution decisions.
+### Phase 1 - Complete base actions
 
-**Forge** follows Campaign, when conquest can make player-ruled sites
-reachable and its rule/modifier interactions meaningfully legal.
+1. Complete Campaign Raid without expanding the battle-plan catalog: targets,
+   defense, losses, transfers, private-card disposal, favor burn, pawn
+   relocation, and terminal windows.
+2. Implement Forge.
+3. Implement banners and Challenge, including base banner resource movement.
+4. Implement the core minor actions: play/discard a facedown adviser,
+   reveal/peek at relics, and move warbands between board and a ruled pawn
+   site.
+5. Implement ordinary all-Exile Negotiation as an atomic, consented favor/relic
+   exchange. Citizenship remains deferred with the Empire.
+
+### Phase 2 - Complete all-Exile goals and endings
+
+1. Generalize Oathkeeper qualification beyond Supremacy.
+2. Implement Vision reveal, qualification, victory, and Conspiracy.
+3. Implement all-Exile round endings and War Exhaustion.
+4. Complete suspended-decision and action-boundary processing needed by these
+   procedures.
+
+### Phase 3 - Powers and battle plans
+
+Implement powers after their base procedures are stable, grouped by mechanics
+and timing rather than one file per card: legality and cost modifiers, resource
+and card movement, roll transforms, losing-force replacement, nested actions,
+phase/victory triggers, and then the remaining attacker, defender, and bandit
+battle plans. Add Foundation, Legacy, relic, edifice, banner, site, and Vision
+handlers through the same typed boundaries. Unknown relevant handlers continue
+to reject explicitly until implemented.
+
+### Phase 4 - Player-facing action history
+
+Add a human-readable action log similar to HRF's log, but derive it from
+authoritative event batches through a typed semantic formatter. Group related
+events into one player action, preserve stable sequence references for replay,
+color player labels, and distinguish major actions, minor actions, decisions,
+resource changes, rolls, and victory checks. Produce public and player-scoped
+projections so hidden draws, facedown identities, and private choices are never
+leaked. Keep the raw loopback development event log separate.
+
+### Phase 5 - All-Exile alpha readiness
+
+1. Produce a versioned server distribution with the optimized frontend bundled,
+   a documented launcher, and no local sbt/Node requirement.
+2. Support configurable bind address, port, public base URL, persistent database
+   path, and clean database initialization/migration.
+3. Replace development identity assumptions with a minimal safe alpha access
+   flow for hosts and invited seats; do not expose the loopback development shim
+   on a network.
+4. Verify two or more browsers on separate machines can create/join, reconnect,
+   reload persisted games, and complete representative multi-player turns over
+   a LAN. Document firewall and reverse-proxy/TLS requirements for Internet
+   hosting.
+5. Add health/startup diagnostics, actionable logs, graceful shutdown, backup
+   and restore guidance, browser-support expectations, and a clear alpha data
+   reset/upgrade policy.
+6. Publish a short host/player quick-start and run a packaged-build smoke test
+   from a clean environment before each alpha build.
+
+### Phase 6 - Empire and campaign continuity
+
+After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,
+Grand Scepter and Reliquary behavior, Citizenship through Negotiation,
+Successor goals, forced and self-exile, Imperial setup/turn/end rules, and the
+remaining production authentication work needed for broader hosting.
+
+Then implement the Chronicle and persistent campaign: generalized later-game
+setup, Atlas transitions, Chronicle tasks, world reconstruction, Reliquary
+changes, Foundation mutation, Legacy activation/scoring, Oathkeeper goal
+changes, era scoring, saved-campaign continuation, and campaign browsing.
+
+### Phase 7 - Gameplay completeness gate
+
+Audit every rulebook procedure and every runtime component handler against the
+traceability matrix; close remaining hidden-information, simultaneous-ordering,
+randomness, consent, and nested-action gaps; then run complete replay,
+persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 
 ## Later
 
@@ -29,12 +102,14 @@ reachable and its rule/modifier interactions meaningfully legal.
   - [ ] Add OIDC Authorization Code + PKCE, session issuance/rotation/logout,
     secure cookie-setting responses, and frontend login/session-expiry UX.
   - [ ] Add membership-management UX, rate limiting, audit logging, and the
-    final non-loopback deployment gate. Until then, keep development routes
-    loopback-only.
+    final production deployment gate. The alpha phase may add a narrower safe
+    invitation flow first; until then, keep development routes loopback-only.
 - [ ] **L3 — Licensed game assets with permanent visual fallbacks**
-- [ ] **L4 — Saved-game browser and replay navigation**
+- [ ] **L4 — Saved-game browser and replay navigation** (campaign-continuity
+  phase)
 - [ ] **L5 — Asynchronous accounts, invitations, and notifications**
-- [ ] **L6 — Incremental implementation of remaining phases and rules**
+- [ ] **L6 — Incremental implementation of remaining phases and rules** (tracked
+  in the phased sequence above)
 - [ ] **L7 — Incremental synchronization transport**
   - Replace complete-snapshot polling with conditional responses, projection
     deltas, long polling, SSE, or another push transport when scale or latency
