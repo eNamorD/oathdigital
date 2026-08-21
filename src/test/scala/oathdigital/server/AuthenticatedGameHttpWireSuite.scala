@@ -1,9 +1,25 @@
 package oathdigital.server
 
-import oathdigital.model.{CampaignBanner, CampaignRaidTarget, DenizenId,
+import oathdigital.model.{Banner, CampaignBanner, CampaignRaidTarget, DecisionId, DenizenId,
   EconomyTargetRef, EdificeId, PendingProcedure, PlayerId, RelicId, SiteId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated Challenge intents are actor-free and PF has no tie-choice intent") {
+    val begin = """{"expectedNextSequence":20,"intent":{"type":"beginChallenge","banner":"peoples-favor"}}"""
+    val site = """{"expectedNextSequence":21,"intent":{"type":"chooseChallengeSecretSite","decisionId":"challenge-20","siteId":"site:a"}}"""
+    val complete = """{"expectedNextSequence":22,"intent":{"type":"completeChallenge","decisionId":"challenge-20","amount":3}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      GameIntent.BeginChallenge(Banner.PeoplesFavor))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(site).toOption.get.intent,
+      GameIntent.ChooseChallengeSecretSite(DecisionId("challenge-20"), SiteId("site:a")))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(complete).toOption.get.intent,
+      GameIntent.CompleteChallenge(DecisionId("challenge-20"), 3))
+    assert(AuthenticatedGameHttpWire.decodeCommand(begin.replace(
+      "\"banner\"", "\"playerId\":\"spoof\",\"banner\"")).isLeft)
+    val removed = """{"expectedNextSequence":21,"intent":{"type":"chooseChallengeFavorBank","decisionId":"challenge-20","suit":"order"}}"""
+    assert(AuthenticatedGameHttpWire.decodeCommand(removed).isLeft)
+  }
+
   test("authenticated Campaign intents are actor-free and exclude dice outcomes") {
     val begin = """{"expectedNextSequence":30,"intent":{"type":"beginCampaignConquest","targetSiteIds":["site:a","site:b"],"attackDiceCount":3}}"""
     val sacrifice = """{"expectedNextSequence":31,"intent":{"type":"chooseCampaignSacrifice","decisionId":"campaign-30","count":1}}"""

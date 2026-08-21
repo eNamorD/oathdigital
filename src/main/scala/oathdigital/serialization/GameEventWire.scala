@@ -427,12 +427,10 @@ object GameEventWire {
         "priorResources" -> prior, "supplySpent" -> spent,
         "automaticFavorReturns" -> ujson.Arr.from(favor.map(s => ujson.Str(s.key))),
         "automaticSecretSites" -> ujson.Arr.from(sites.map(s => ujson.Str(s.value))))
-      case BannerRibbonChoiceMade(player, decision, banner, bank, site, favor, sites) =>
+      case BannerRibbonChoiceMade(player, decision, banner, site, sites) =>
         ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
           "banner" -> banner.key,
-          "favorBank" -> bank.fold[ujson.Value](ujson.Null)(s => ujson.Str(s.key)),
-          "secretSiteId" -> site.fold[ujson.Value](ujson.Null)(s => ujson.Str(s.value)),
-          "automaticFavorReturns" -> ujson.Arr.from(favor.map(s => ujson.Str(s.key))),
+          "secretSiteId" -> site.value,
           "automaticSecretSites" -> ujson.Arr.from(sites.map(s => ujson.Str(s.value))))
       case BannerChallengeCompleted(player, decision, banner, holder, prior,
           placed, favor, sites, returned) => ujson.Obj(
@@ -712,19 +710,10 @@ object GameEventWire {
           favor, sites)
         case BannerRibbonChoiceMadeType => for {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
-          favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
-            decodeSuit(v.str, s"$path.automaticFavorReturns"))
-          bank <- payload("favorBank") match {
-            case ujson.Null => Right(None)
-            case value => decodeSuit(value.str, s"$path.favorBank").map(Some(_))
-          }
-          site = payload("secretSiteId") match {
-            case ujson.Null => None
-            case value => Some(SiteId(value.str))
-          }
+          site = SiteId(payload("secretSiteId").str)
           sites = payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str))
         } yield BannerRibbonChoiceMade(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), banner, bank, site, favor, sites)
+          DecisionId(payload("decisionId").str), banner, site, sites)
         case BannerChallengeCompletedType => for {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           prior <- safeIntField(payload.obj, "priorResources", path)

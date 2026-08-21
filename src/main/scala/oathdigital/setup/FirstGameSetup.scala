@@ -143,8 +143,7 @@ object OathEvent {
       automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
   final case class BannerRibbonChoiceMade(
       playerId: PlayerId, decision: DecisionId, banner: Banner,
-      favorBank: Option[Suit], secretSite: Option[SiteId],
-      automaticFavorReturns: Vector[Suit] = Vector.empty,
+      secretSite: SiteId,
       automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
   final case class BannerChallengeCompleted(
       playerId: PlayerId, decision: DecisionId, banner: Banner,

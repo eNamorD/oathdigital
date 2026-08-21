@@ -610,21 +610,14 @@ object ServerModeUi {
       }
       value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
         panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
-        challenge.legalFavorBanks.foreach { suit =>
-          val choose = button(s"Return favor to $suit", "challenge-favor-bank")
-          choose.disabled = !controlsAvailable
-          choose.onclick = _ => submit(GameCommand.ChooseChallengeFavorBank(
-            selectedPlayer, challenge.decisionId, suit))
-          panel.appendChild(choose)
-        }
-        challenge.legalSecretSiteIds.foreach { site =>
+        challengeSiteCommands(challenge, selectedPlayer).foreach { command =>
+          val site = command.siteId
           val choose = button(s"Place secret at $site", "challenge-secret-site")
           choose.disabled = !controlsAvailable
-          choose.onclick = _ => submit(GameCommand.ChooseChallengeSecretSite(
-            selectedPlayer, challenge.decisionId, site))
+          choose.onclick = _ => submit(command)
           panel.appendChild(choose)
         }
-        if (challenge.legalFavorBanks.isEmpty && challenge.legalSecretSiteIds.isEmpty) {
+        if (challenge.legalSecretSiteIds.isEmpty) {
           val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
           label.textContent = "Resources to place "
           val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
@@ -635,8 +628,8 @@ object ServerModeUi {
           label.appendChild(amount); panel.appendChild(label)
           val complete = button("Take banner", "challenge-complete")
           complete.disabled = !controlsAvailable || challenge.minimumPlacement > challenge.maximumPlacement
-          complete.onclick = _ => submit(GameCommand.CompleteChallenge(selectedPlayer,
-            challenge.decisionId, amount.value.toInt))
+          complete.onclick = _ => completeChallengeCommand(challenge,
+            selectedPlayer, amount.value.toInt).foreach(submit)
           panel.appendChild(complete)
         }
       }
@@ -1420,6 +1413,19 @@ object ServerModeUi {
     if (decision.actorPlayerId != playerId) Vector.empty
     else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
       playerId, decision.decisionId, site))
+
+  private[frontend] def challengeSiteCommands(decision: ChallengeState,
+      playerId: String): Vector[GameCommand.ChooseChallengeSecretSite] =
+    if (decision.actorPlayerId != playerId) Vector.empty
+    else decision.legalSecretSiteIds.map(site =>
+      GameCommand.ChooseChallengeSecretSite(playerId, decision.decisionId, site))
+
+  private[frontend] def completeChallengeCommand(decision: ChallengeState,
+      playerId: String, amount: Int): Option[GameCommand.CompleteChallenge] =
+    Option.when(decision.actorPlayerId == playerId &&
+      decision.legalSecretSiteIds.isEmpty && amount >= decision.minimumPlacement &&
+      amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
+        playerId, decision.decisionId, amount))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,

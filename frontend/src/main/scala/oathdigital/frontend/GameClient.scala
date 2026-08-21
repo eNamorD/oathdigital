@@ -171,7 +171,7 @@ final case class BannerState(banner: String, face: String,
     holderPlayerId: Option[String], resources: Int)
 final case class ChallengeState(decisionId: String, actorPlayerId: String,
     banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
-    legalFavorBanks: Vector[String], legalSecretSiteIds: Vector[String],
+    legalSecretSiteIds: Vector[String],
     minimumPlacement: Int, maximumPlacement: Int)
 final case class PlayerBoard(
     playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
@@ -294,8 +294,6 @@ object GameCommand {
   final case class CompleteForge(playerId: String, decisionId: String,
       assignments: Vector[(ForgeTarget, String)]) extends GameCommand
   final case class BeginChallenge(playerId: String, banner: String) extends GameCommand
-  final case class ChooseChallengeFavorBank(playerId: String, decisionId: String,
-      suit: String) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: String, decisionId: String,
       siteId: String) extends GameCommand
   final case class CompleteChallenge(playerId: String, decisionId: String,
@@ -598,9 +596,6 @@ object GameJson {
           }: _*))
       case GameCommand.BeginChallenge(player, banner) =>
         js.Dynamic.literal(`type` = "beginChallenge", playerId = player, banner = banner)
-      case GameCommand.ChooseChallengeFavorBank(player, decision, suit) =>
-        js.Dynamic.literal(`type` = "chooseChallengeFavorBank", playerId = player,
-          decisionId = decision, suit = suit)
       case GameCommand.ChooseChallengeSecretSite(player, decision, site) =>
         js.Dynamic.literal(`type` = "chooseChallengeSecretSite", playerId = player,
           decisionId = decision, siteId = site)
@@ -1058,11 +1053,10 @@ object GameJson {
             banner <- string(obj, "banner", "$.challenge")
             holder <- optionalString(obj, "priorHolderPlayerId", "$.challenge")
             prior <- int(obj, "priorResources", "$.challenge")
-            banks <- stringArray(obj, "legalFavorBanks", "$.challenge")
             sites <- stringArray(obj, "legalSecretSiteIds", "$.challenge")
             minimum <- int(obj, "minimumPlacement", "$.challenge")
             maximum <- int(obj, "maximumPlacement", "$.challenge")
-          } yield Some(ChallengeState(id, actor, banner, holder, prior, banks,
+          } yield Some(ChallengeState(id, actor, banner, holder, prior,
             sites, minimum, maximum)) }
         }
         campaign <- optionalField(root, "campaign").flatMap {

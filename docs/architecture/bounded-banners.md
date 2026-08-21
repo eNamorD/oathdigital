@@ -6,10 +6,11 @@ The typed face identities remain in state, but altered faces and mutable
 Foundation selection are explicit unsupported boundaries.
 
 `BannerRules` owns holder/resource lookup, faceup-only comparison inputs,
-least-stocked favor banks and sites, and ordered resource distribution. Campaign
-Raid uses the same helper with its printed deterministic tie policy; Challenge
-creates owner-scoped decisions whenever the challenger must resolve a genuine
-tie. The aggregate never derives behavior from component `rulesText`.
+least-stocked favor banks and sites, and ordered resource distribution. Mob
+Challenge and Campaign Raid share the deterministic one-at-a-time favor helper,
+including the printed leftmost tied-bank rule. Only Wandering Flame site ties
+create owner-scoped decisions. The aggregate never derives behavior from
+component `rulesText`.
 
 Challenge begins as a normal Act major action and records the prior holder,
 prior resources, exact 1-Supply cost, and any forced ribbon prefix. Each tie

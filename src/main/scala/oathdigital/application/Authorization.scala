@@ -87,8 +87,6 @@ final case class AuthorizedPlayer private (
     GameCommand.CompleteForge(access.playerId, decision, assignments)
   def beginChallenge(banner: Banner): GameCommand =
     GameCommand.BeginChallenge(access.playerId, banner)
-  def chooseChallengeFavorBank(decision: DecisionId, suit: Suit): GameCommand =
-    GameCommand.ChooseChallengeFavorBank(access.playerId, decision, suit)
   def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =
     GameCommand.ChooseChallengeSecretSite(access.playerId, decision, site)
   def completeChallenge(decision: DecisionId, amount: Int): GameCommand =

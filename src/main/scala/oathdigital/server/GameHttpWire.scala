@@ -341,7 +341,6 @@ object GameHttpWire {
             "banner" -> c.banner,
             "priorHolderPlayerId" -> c.priorHolderPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
             "priorResources" -> c.priorResources,
-            "legalFavorBanks" -> ujson.Arr.from(c.legalFavorBanks.map(ujson.Str(_))),
             "legalSecretSiteIds" -> ujson.Arr.from(c.legalSecretSiteIds.map(ujson.Str(_))),
             "minimumPlacement" -> c.minimumPlacement,
             "maximumPlacement" -> c.maximumPlacement)
@@ -504,12 +503,6 @@ object GameHttpWire {
         key <- stringField(obj, "banner", path)
         banner <- Banner.fromKey(key).toRight(HttpInputError(s"$path.banner", "unknown banner"))
       } yield GameCommand.BeginChallenge(PlayerId(p), banner)
-      case "chooseChallengeFavorBank" => for {
-        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "suit"), path)
-        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
-        key <- stringField(obj, "suit", path)
-        suit <- Suit.all.find(_.key == key).toRight(HttpInputError(s"$path.suit", "unknown suit"))
-      } yield GameCommand.ChooseChallengeFavorBank(PlayerId(p), DecisionId(d), suit)
       case "chooseChallengeSecretSite" => for {
         _ <- exactFields(obj, Set("type", "playerId", "decisionId", "siteId"), path)
         p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)

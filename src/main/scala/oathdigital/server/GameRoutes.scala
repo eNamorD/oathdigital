@@ -261,7 +261,6 @@ final class GameRoutes(
       case GameCommand.BeginForge(playerId) => Some(playerId.value)
       case GameCommand.CompleteForge(playerId, _, _) => Some(playerId.value)
       case GameCommand.BeginChallenge(playerId, _) => Some(playerId.value)
-      case GameCommand.ChooseChallengeFavorBank(playerId, _, _) => Some(playerId.value)
       case GameCommand.ChooseChallengeSecretSite(playerId, _, _) => Some(playerId.value)
       case GameCommand.CompleteChallenge(playerId, _, _) => Some(playerId.value)
       case GameCommand.PlaceBannerResource(playerId, _, _) => Some(playerId.value)

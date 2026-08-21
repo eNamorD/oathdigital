@@ -13,8 +13,6 @@ sealed trait ChallengeCommand extends Product with Serializable
 object ChallengeCommand {
   final case class Begin(player: PlayerId, decision: DecisionId, banner: Banner)
       extends ChallengeCommand
-  final case class ChooseFavorBank(player: PlayerId, decision: DecisionId, suit: Suit)
-      extends ChallengeCommand
   final case class ChooseSecretSite(player: PlayerId, decision: DecisionId, site: SiteId)
       extends ChallengeCommand
   final case class Complete(player: PlayerId, decision: DecisionId, amount: Int)
@@ -23,8 +21,8 @@ object ChallengeCommand {
       extends ChallengeCommand
 }
 
-/** Shared printed banner invariants. Raid uses the deterministic leftmost policy;
-  * Challenge exposes genuine ties to its owner instead.
+/** Shared printed banner invariants. Mob and Raid both use the printed
+  * deterministic leftmost policy. Wandering Flame site ties belong to the player.
   */
 object BannerRules {
   def holder(current: CurrentGameState, banner: Banner): Option[PlayerId] = banner match {
@@ -53,14 +51,6 @@ object BannerRules {
     }
     val minimum = totals.map(_._2).min
     totals.collect { case (id, n) if n == minimum => id }
-  }
-  def automaticFavorPrefix(banks: Map[Suit, Int], remaining: Int): Vector[Suit] = {
-    def loop(now: Map[Suit, Int], left: Int, out: Vector[Suit]): Vector[Suit] =
-      if (left == 0) out else leastFavorBanks(now) match {
-        case Vector(one) => loop(addFavor(now, Vector(one)), left - 1, out :+ one)
-        case _ => out
-      }
-    loop(banks, remaining, Vector.empty)
   }
   def automaticSitePrefix(current: CurrentGameState, existing: Vector[SiteId],
       remaining: Int): Vector[SiteId] = {
@@ -94,29 +84,6 @@ object Challenge {
         banner, priorHolder, priorResources, initial._1.size, initial._2.size))
     } yield next
 
-    case ChallengeCommand.ChooseFavorBank(player, decision, suit) => state match {
-      case Ready(ready) => validatePending(ready, player, decision).flatMap { pending =>
-        for {
-          _ <- Either.cond(pending.banner == Banner.PeoplesFavor, (),
-            ChallengeOutcomeMismatch("favor-bank choice is for the wrong banner"))
-          banks = BannerRules.addFavor(ready.support.favorBanks, pending.favorReturned)
-          legal = BannerRules.leastFavorBanks(banks)
-          _ <- Either.cond(legal.size > 1 && legal.contains(suit), (),
-            ChallengeOutcomeMismatch("favor bank is not a current tied least-stocked bank"))
-          afterChoice = pending.favorReturned :+ suit
-          remaining = pending.remainingRibbonResources - 1
-          auto = BannerRules.automaticFavorPrefix(
-            BannerRules.addFavor(ready.support.favorBanks, afterChoice), remaining)
-          event = BannerRibbonChoiceMade(player, decision, pending.banner,
-            Some(suit), None, auto, Vector.empty)
-          next <- transition(catalog, state, Vector(event), continuation(player, decision,
-            pending.banner, pending.priorHolder, pending.priorResources,
-            pending.priorResources - remaining + auto.size, 0))
-        } yield next
-      }
-      case _ => Left(GameNotStarted)
-    }
-
     case ChallengeCommand.ChooseSecretSite(player, decision, site) => state match {
       case Ready(ready) => validatePending(ready, player, decision).flatMap { pending =>
         for {
@@ -128,8 +95,7 @@ object Challenge {
           placed = pending.secretsPlaced :+ site
           remaining = pending.remainingRibbonResources - 1
           auto = BannerRules.automaticSitePrefix(ready.game.current, placed, remaining)
-          event = BannerRibbonChoiceMade(player, decision, pending.banner,
-            None, Some(site), Vector.empty, auto)
+          event = BannerRibbonChoiceMade(player, decision, pending.banner, site, auto)
           next <- transition(catalog, state, Vector(event), continuation(player, decision,
             pending.banner, pending.priorHolder, pending.priorResources, 0,
             placed.size + auto.size))
@@ -183,7 +149,7 @@ object Challenge {
   private def initialAutomatic(ready: ReadyGame, banner: Banner,
       holder: Option[PlayerId], resources: Int): (Vector[Suit], Vector[SiteId]) = banner match {
     case Banner.PeoplesFavor =>
-      BannerRules.automaticFavorPrefix(ready.support.favorBanks, resources) -> Vector.empty
+      BannerRules.raidFavorReturn(ready.support.favorBanks, resources) -> Vector.empty
     case Banner.DarkestSecret =>
       val count = if (holder.isEmpty) resources else resources / 2
       Vector.empty -> BannerRules.automaticSitePrefix(ready.game.current, Vector.empty, count)
@@ -233,20 +199,10 @@ object Challenge {
 
     case e: BannerRibbonChoiceMade => state match {
       case Ready(ready) => validatePending(ready, e.playerId, e.decision).flatMap { p =>
-        if (p.banner == Banner.PeoplesFavor) for {
-          suit <- e.favorBank.toRight(ChallengeOutcomeMismatch("missing favor-bank choice"))
-          _ <- Either.cond(e.secretSite.isEmpty, (), ChallengeOutcomeMismatch("mixed ribbon choice kinds"))
-          banks = BannerRules.addFavor(ready.support.favorBanks, p.favorReturned)
-          _ <- Either.cond(BannerRules.leastFavorBanks(banks).size > 1 && BannerRules.leastFavorBanks(banks).contains(suit), (), ChallengeOutcomeMismatch("recorded favor tie choice is invalid"))
-          chosen = p.favorReturned :+ suit
-          expected = BannerRules.automaticFavorPrefix(BannerRules.addFavor(ready.support.favorBanks, chosen), p.remainingRibbonResources - 1)
-          _ <- Either.cond(expected == e.automaticFavorReturns, (), ChallengeOutcomeMismatch("recorded favor automatic suffix is invalid"))
-        } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(p.copy(
-          remainingRibbonResources = p.remainingRibbonResources - 1 - expected.size,
-          favorReturned = chosen ++ expected)))))
-        else for {
-          site <- e.secretSite.toRight(ChallengeOutcomeMismatch("missing secret-site choice"))
-          _ <- Either.cond(e.favorBank.isEmpty, (), ChallengeOutcomeMismatch("mixed ribbon choice kinds"))
+        for {
+          _ <- Either.cond(p.banner == Banner.DarkestSecret, (),
+            ChallengeOutcomeMismatch("only Wandering Flame has a ribbon choice"))
+          site = e.secretSite
           legal = BannerRules.leastSites(ready.game.current, p.secretsPlaced)
           _ <- Either.cond(legal.size > 1 && legal.contains(site), (), ChallengeOutcomeMismatch("recorded site tie choice is invalid"))
           chosen = p.secretsPlaced :+ site

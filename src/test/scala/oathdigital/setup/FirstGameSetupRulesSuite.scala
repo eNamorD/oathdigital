@@ -82,7 +82,7 @@ object FirstGameSetupFixture {
     order.zipWithIndex.foldLeft(started.state -> started.events) {
       case ((state, events), (playerId, index)) =>
         val placed = rules
-          .handle(state, PlacePawn(playerId, sites(index)))
+          .handle(state, PlacePawn(playerId, setupPlan.orderedSites(index)))
           .toOption
           .get
         val participantIndex =

@@ -45,8 +45,6 @@ object GameCommand {
   final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
       assignments: Vector[ForgeResourceAssignment]) extends GameCommand
   final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
-  final case class ChooseChallengeFavorBank(playerId: PlayerId, decision: DecisionId,
-      suit: Suit) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
       site: SiteId) extends GameCommand
   final case class CompleteChallenge(playerId: PlayerId, decision: DecisionId,
@@ -416,8 +414,6 @@ final class GameApplicationService(
       case GameCommand.BeginChallenge(playerId, banner) =>
         rules.handle(state, ChallengeCommand.Begin(playerId,
           DecisionId(s"challenge-$nextSequence"), banner))
-      case GameCommand.ChooseChallengeFavorBank(playerId, decision, suit) =>
-        rules.handle(state, ChallengeCommand.ChooseFavorBank(playerId, decision, suit))
       case GameCommand.ChooseChallengeSecretSite(playerId, decision, site) =>
         rules.handle(state, ChallengeCommand.ChooseSecretSite(playerId, decision, site))
       case GameCommand.CompleteChallenge(playerId, decision, amount) =>

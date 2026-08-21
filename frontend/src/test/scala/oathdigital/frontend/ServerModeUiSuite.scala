@@ -67,6 +67,27 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
     assertEquals(ServerModeUi.commandForSelection(action("campaign-raid"),
       raidTargets.tail, "red", 2), None)
+    assertEquals(ServerModeUi.commandForSelection(action("challenge"), Vector(
+      BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")), "red"),
+      Some(GameCommand.BeginChallenge("red", "peoples-favor")))
+  }
+
+  test("Challenge controls render only owner-authorized site or replacement commands") {
+    val sites = ChallengeState("challenge-9", "red", "darkest-secret", None,
+      3, Vector("site:a", "site:b"), 4, 6)
+    assertEquals(ServerModeUi.challengeSiteCommands(sites, "red"), Vector(
+      GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:a"),
+      GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:b")))
+    assertEquals(ServerModeUi.challengeSiteCommands(sites, "blue"), Vector.empty)
+    assertEquals(ServerModeUi.completeChallengeCommand(sites, "red", 4), None)
+    val replacement = sites.copy(banner = "peoples-favor",
+      legalSecretSiteIds = Vector.empty)
+    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "red", 4),
+      Some(GameCommand.CompleteChallenge("red", "challenge-9", 4)))
+    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "blue", 4), None)
+    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "red", 3), None)
+    assertEquals(ServerModeUi.actionLabel("challenge"), "Challenge")
+    assertEquals(ServerModeUi.actionLabel("peoples-favor"), "People's Favor")
   }
 
   test("selection copy exposes details and non-color cardinality instructions") {

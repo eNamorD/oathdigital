@@ -1,9 +1,11 @@
 package oathdigital.gameplay
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
+import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{BannerRules, ChallengeCommand, ChallengeRules}
 import oathdigital.model._
 import oathdigital.setup._
+import oathdigital.setup.OathEvent._
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.OathState.Ready
 
@@ -39,35 +41,49 @@ class ChallengeSuite extends munit.FunSuite {
       Banner.DarkestSecret).isLeft)
   }
 
-  test("People's Favor tie choices stay pending and replacement is atomic") {
+  test("People's Favor resolves every least-bank tie leftmost and proceeds to replacement") {
     val (base, actor) = ready(resources = 2)
     val id = DecisionId("challenge-favor")
     val started = rules.handle(Ready(base), ChallengeCommand.Begin(
       actor.player, id, Banner.PeoplesFavor)).toOption.get
     val Ready(pending0) = started.state: @unchecked
     assertEquals(pending0.game.current.banners.peoplesFavor.holder, None)
-    val choice1 = BannerRules.leastFavorBanks(pending0.support.favorBanks).head
-    val once = rules.handle(started.state, ChallengeCommand.ChooseFavorBank(
-      actor.player, id, choice1)).toOption.get
-    val Ready(pending1) = once.state: @unchecked
-    val challenge = pending1.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
-    val resolved = if (challenge.remainingRibbonResources == 0) once else {
-      val suit = BannerRules.leastFavorBanks(BannerRules.addFavor(
-        pending1.support.favorBanks, challenge.favorReturned)).head
-      rules.handle(once.state, ChallengeCommand.ChooseFavorBank(
-        actor.player, id, suit)).toOption.get
-    }
-    val completed = rules.handle(resolved.state, ChallengeCommand.Complete(
+    val challenge = pending0.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
+    assertEquals(challenge.remainingRibbonResources, 0)
+    val expectedOrder = BannerRules.raidFavorReturn(base.support.favorBanks, 2)
+    assertEquals(challenge.favorReturned, expectedOrder)
+    assertEquals(started.events.collectFirst {
+      case e: BannerChallengeStarted => e.automaticFavorReturns
+    }, Some(expectedOrder))
+    val completed = rules.handle(started.state, ChallengeCommand.Complete(
       actor.player, id, 3)).toOption.get
     val Ready(after) = completed.state: @unchecked
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor.player))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 3)
     assertEquals(after.game.current.players.find(_.player == actor.player).get.board.favor,
       actor.board.favor - 3)
-    val replayed = new EventReplayEngine(rules).replay(
-      (started.events ++ once.events ++ (if (resolved eq once) Vector.empty else resolved.events) ++
-        completed.events).zipWithIndex.map { case (e, i) => RecordedEvent(i.toLong, e) })
-    assert(replayed.isLeft) // setup-less gameplay streams are rejected at event zero.
+  }
+
+  test("valid setup history replays exactly through People's Favor completion") {
+    val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
+    val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
+    val replayPlan = plan.copy(orderedSites = orderedSites)
+    val (setupState, setupEvents) = execute(setup, replayPlan)
+    val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
+    val wealth = rules.handle(setupState,
+      oathdigital.gameplay.phases.WakeCommand.TakeWealth(active, WakeResource.Favor))
+      .toOption.get
+    val act = rules.handle(wealth.state,
+      oathdigital.gameplay.phases.WakeCommand.EndWake(active)).toOption.get
+    val started = rules.handle(act.state, ChallengeCommand.Begin(active,
+      DecisionId("replay-challenge"), Banner.PeoplesFavor)).toOption.get
+    val completed = rules.handle(started.state, ChallengeCommand.Complete(active,
+      DecisionId("replay-challenge"), 2)).toOption.get
+    val events = setupEvents ++ wealth.events ++ act.events ++ started.events ++ completed.events
+    val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {
+      case (event, index) => RecordedEvent(index.toLong, event)
+    }).toOption.get
+    assertEquals(replayed, completed.state)
   }
 
   test("base banner placement moves only faceup resources and costs no Supply") {
@@ -116,5 +132,25 @@ class ChallengeSuite extends munit.FunSuite {
     val Ready(pending) = started.state: @unchecked
     val procedure = pending.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
     assertEquals(procedure.secretsPlaced.size + procedure.remainingRibbonResources, 1)
+  }
+
+  test("pending Challenge projection and controls are owner-only") {
+    val (base, actor) = ready(resources = 3, banner = Banner.DarkestSecret)
+    val other = base.game.current.players.find(_.player != actor.player).get.player
+    val started = rules.handle(Ready(base), ChallengeCommand.Begin(actor.player,
+      DecisionId("private-challenge"), Banner.DarkestSecret)).toOption.get
+    val loaded = LoadedGame(started.state, 12)
+    val projector = new GameProjector(catalog)
+    val owner = projector.project("challenge", loaded, actor.player)
+    val waiting = projector.project("challenge", loaded, other)
+    val public = projector.projectPublic("challenge", loaded)
+    assert(owner.challenge.nonEmpty)
+    assert(owner.legalControls.forall(Set("chooseChallengeSecretSite",
+      "completeChallenge")))
+    assertEquals(waiting.challenge, None)
+    assertEquals(waiting.legalControls, Vector.empty)
+    assertEquals(waiting.phase, "challenge-waiting")
+    assertEquals(public.challenge, None)
+    assertEquals(public.legalControls, Vector.empty)
   }
 }

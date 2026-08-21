@@ -19,6 +19,51 @@ import oathdigital.setup.WakeResource
 import oathdigital.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("Challenge persists owner-only pending state and reloads deterministic Mob completion") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-challenge-persistence"
+    val wealthSite = catalog.sites.find(_.startingResources.favor > 0).get.id
+    val orderedSites = wealthSite +: sites.filterNot(_ == wealthSite).take(7)
+    val challengePlan = plan.copy(orderedSites = orderedSites)
+    var accepted = service.handle(gameId, 0L, GameCommand.Begin(challengePlan)).toOption.get
+    val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
+    order.zipWithIndex.foreach { case (playerId, index) =>
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.PlacePawn(playerId, challengePlan.orderedSites(index))).toOption.get
+      val participantIndex = challengePlan.participants.indexWhere(_.playerId == playerId)
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.ChooseAdviser(playerId,
+          challengePlan.denizenOrder(6 + participantIndex * 3))).toOption.get
+    }
+    val Ready(setupReady) = accepted.state: @unchecked
+    val actor = setupReady.game.current.turn.activePlayer
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.TakeWealth(actor, WakeResource.Favor)).toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    accepted = service.handle(gameId, accepted.nextSequence,
+      GameCommand.BeginChallenge(actor, Banner.PeoplesFavor)).toOption.get
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(reloaded.state, accepted.state)
+    val Ready(pendingReady) = reloaded.state: @unchecked
+    val pending = pendingReady.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Challenge]
+    assertEquals(pending.remainingRibbonResources, 0)
+    val other = pendingReady.game.current.players.find(_.player != actor).get.player
+    val projector = new GameProjector(catalog)
+    assertEquals(projector.project(gameId, reloaded, actor).legalControls,
+      Vector("completeChallenge"))
+    assertEquals(projector.project(gameId, reloaded, other).challenge, None)
+    val completed = new GameApplicationService(catalog, repository).handle(gameId,
+      reloaded.nextSequence, GameCommand.CompleteChallenge(actor,
+        pending.decision, 2)).toOption.get
+    val Ready(after) = completed.state: @unchecked
+    assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor))
+    assertEquals(after.game.current.banners.peoplesFavor.favor, 2)
+  }
+
   test("Forge persists private pending and completed state and prepares relic once") {
     val repository = new InMemoryEventStreamRepository
     var prepared = 0

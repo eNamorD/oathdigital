@@ -171,7 +171,7 @@ final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int)
 final case class ChallengeProjection(decisionId: String, actorPlayerId: String,
     banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
-    legalFavorBanks: Vector[String], legalSecretSiteIds: Vector[String],
+    legalSecretSiteIds: Vector[String],
     minimumPlacement: Int, maximumPlacement: Int)
 final case class CampaignProjection(
     decisionId: String, targetSiteIds: Vector[String], force: Int,
@@ -373,10 +373,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.Forge) => Vector("completeForge")
             case Some(c: PendingProcedure.Challenge) if requestingPlayer.contains(c.actor) =>
               if (c.remainingRibbonResources == 0) Vector("completeChallenge")
-              else c.banner match {
-                case Banner.PeoplesFavor => Vector("chooseChallengeFavorBank")
-                case Banner.DarkestSecret => Vector("chooseChallengeSecretSite")
-              }
+              else Vector("chooseChallengeSecretSite")
             case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
               Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
                 else "placeCampaignForce")
@@ -463,13 +460,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val challengeProjection = current.pending.collect {
           case c: PendingProcedure.Challenge if requestingPlayer.contains(c.actor) =>
             val actor = current.players.find(_.player == c.actor).get
-            val banks = BannerRules.addFavor(value.support.favorBanks, c.favorReturned)
-            val legalBanks = if (c.banner == Banner.PeoplesFavor && c.remainingRibbonResources > 0)
-              BannerRules.leastFavorBanks(banks).map(_.key) else Vector.empty
             val legalSites = if (c.banner == Banner.DarkestSecret && c.remainingRibbonResources > 0)
               BannerRules.leastSites(current, c.secretsPlaced).map(_.value) else Vector.empty
             ChallengeProjection(c.decision.value, c.actor.value, c.banner.key,
-              c.priorHolder.map(_.value), c.priorResources, legalBanks, legalSites,
+              c.priorHolder.map(_.value), c.priorResources, legalSites,
               c.priorResources + 1, BannerRules.playerResources(actor, c.banner))
         }
         val campaignProjection = current.pending.collect {
