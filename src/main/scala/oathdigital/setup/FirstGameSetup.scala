@@ -195,11 +195,13 @@ object OathEvent {
       defenderLoss: CampaignRaidBoardLoss,
       takenRelics: Vector[RelicId],
       takenBanners: Vector[CampaignBanner],
-      discardedAdvisers: Vector[CardId],
+      discardedAdvisers: Vector[WorldCardId],
+      adviserDiscardRegion: Region,
+      boxedConspiracy: Option[VisionId],
       discardedRelics: Vector[RelicId],
       favorBurned: Int,
       bannerFavorReturned: Map[Suit, Int],
-      darkestSecretBurned: Int = 0
+      darkestSecretBurned: Int
   ) extends OathEvent
   final case class CampaignRaidPawnRelocated(
       playerId: PlayerId, decision: DecisionId,

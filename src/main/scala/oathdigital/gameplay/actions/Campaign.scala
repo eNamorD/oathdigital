@@ -69,19 +69,22 @@ object CampaignLosingForceResolver {
                   s"target '${siteId.value}' has unsupported losing force $other"))
               })
           }}
-        removed.map { effects => campaign.defender match {
-          case CampaignDefender.Bandits => effects
+        removed.flatMap { effects => campaign.defender match {
+          case CampaignDefender.Bandits => Right(effects)
           case CampaignDefender.Player(player) =>
             val total = effects.collect {
               case CampaignLosingForceEffect.Remove(_, _, count) => count
             }.sum
             val returned = total - total / 2
-            if (returned == 0) effects else effects :+
-              CampaignLosingForceEffect.ReturnToBoard(
-                campaign.targetSites.head, player,
-                effects.collectFirst {
-                  case CampaignLosingForceEffect.Remove(_, force, _) => force
-                }.get, returned)
+            if (returned == 0) Right(effects)
+            else for {
+              site <- CampaignRules.campaignOrigin(ready, campaign)
+              force <- effects.collectFirst {
+                case CampaignLosingForceEffect.Remove(_, kind, _) => kind
+              }.toRight(CampaignOutcomeMismatch(
+                "player-defender Campaign loss has no removed force"))
+            } yield effects :+ CampaignLosingForceEffect.ReturnToBoard(
+              site, player, force, returned)
         }}
       }
       override def resolveAttackerDefeat(ready: ReadyGame,
@@ -91,12 +94,12 @@ object CampaignLosingForceResolver {
         val force = ForceKind.Exile(owner.lineage)
         val killed = surviving / 2
         val returned = surviving - killed
-        Right(Vector(
+        CampaignRules.campaignOrigin(ready, campaign).map { site => Vector(
           Option.when(killed > 0)(CampaignLosingForceEffect.KillCommitted(
-            campaign.targetSites.head, campaign.actor, force, killed)),
+            site, campaign.actor, force, killed)),
           Option.when(returned > 0)(CampaignLosingForceEffect.ReturnToBoard(
-            campaign.targetSites.head, campaign.actor, force, returned))
-        ).flatten)
+            site, campaign.actor, force, returned))
+        ).flatten }
       }
     }
 
@@ -286,10 +289,20 @@ object Campaign {
     val defender = ready.game.current.players.find(_.player == defenderId).get
     val relics = c.raidTargets.collect { case CampaignRaidTarget.Relic(_, id) => id }
     val banners = c.raidTargets.collect { case CampaignRaidTarget.Banner(_, id) => id }
+    val revealedPlans = c.plans.collect {
+      case plan if plan.effects.contains(
+          PendingProcedure.CampaignPlanEffect.RevealSource) => plan.source
+    }.toSet
     val advisers = defender.advisers.collect {
-      case d: DenizenState if d.orientation == Orientation.FaceDown => d.id: CardId
-      case v: VisionState if v.orientation == Orientation.FaceDown => v.id: CardId
+      case d: DenizenState if d.orientation == Orientation.FaceDown ||
+          revealedPlans(PendingProcedure.CampaignPlanSource.Adviser(defenderId, d.id)) =>
+        d.id: WorldCardId
+      case v: VisionState if v.orientation == Orientation.FaceDown => v.id: WorldCardId
     }
+    val conspiracy = advisers.collectFirst {
+      case id: VisionId if id == CampaignRules.Conspiracy => id
+    }
+    val ordinaryAdvisers = advisers.filterNot(id => conspiracy.contains(id))
     val facedownRelics = defender.relics.collect {
       case r if r.orientation == Orientation.FaceDown => r.id
     }
@@ -297,9 +310,16 @@ object Campaign {
       CampaignRules.returnBannerFavor(ready.support.favorBanks,
         ready.game.current.banners.peoplesFavor.favor)
     else Map.empty[Suit, Int]
-    registry.selected.resolveRaidDefenderDefeat(ready, c).map(loss => CampaignRaided(
-      c.actor, c.decision, registry.selected.id, loss, relics, banners,
-      advisers, facedownRelics, defender.board.favor / 2, returned))
+    for {
+      origin <- CampaignRules.campaignOrigin(ready, c)
+      region <- ready.game.current.map.regionOf(origin).toRight(
+        CampaignOutcomeMismatch("Raid origin has no region"))
+      loss <- registry.selected.resolveRaidDefenderDefeat(ready, c)
+    } yield CampaignRaided(c.actor, c.decision, registry.selected.id, loss,
+      relics, banners, ordinaryAdvisers, CampaignRules.nextRegion(region),
+      conspiracy, facedownRelics, defender.board.favor / 2, returned,
+      Option.when(banners.contains(CampaignBanner.DarkestSecret))(
+        ready.game.current.banners.darkestSecret.secrets).getOrElse(0))
   }
 
   private def validatePending(ready: ReadyGame, player: PlayerId,
@@ -567,7 +587,8 @@ object Campaign {
                 case p if p.player == defenderId => p.copy(
                   board = p.board.copy(favor = p.board.favor - e.favorBurned,
                     warbands = e.defenderLoss.returned),
-                  advisers = p.advisers.filterNot(a => e.discardedAdvisers.contains(a.id)),
+                  advisers = p.advisers.filterNot(a =>
+                    e.discardedAdvisers.contains(a.id) || e.boxedConspiracy.contains(a.id)),
                   relics = p.relics.filterNot(r => e.takenRelics.contains(r.id) ||
                     e.discardedRelics.contains(r.id)))
                 case p => p
@@ -584,12 +605,15 @@ object Campaign {
                 c.actor, defenderId, origin,
                 CampaignRules.legalRaidRelocationSites(ready, defenderId))
               val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
-                banners = banners, pending = Some(relocation)))
+                banners = banners,
+                commonCards = current.commonCards.copy(regionalDiscards =
+                  current.commonCards.regionalDiscards.updated(e.adviserDiscardRegion,
+                    current.commonCards.discard(e.adviserDiscardRegion) ++
+                      e.discardedAdvisers)),
+                pending = Some(relocation)))
               Ready(updated.copy(
                 game = updated.game.copy(campaign = updated.game.campaign.copy(
-                  reliquary = updated.game.campaign.reliquary ++ e.discardedRelics,
-                  dispossessed = updated.game.campaign.dispossessed ++
-                    e.discardedAdvisers.collect { case id: WorldCardId => id })),
+                  reliquary = updated.game.campaign.reliquary ++ e.discardedRelics)),
                 support = updated.support.copy(favorBanks =
                 e.bannerFavorReturned.foldLeft(updated.support.favorBanks) {
                   case (banks, (suit, amount)) => banks.updated(suit,
@@ -733,6 +757,14 @@ object Campaign {
 }
 
 object CampaignRules {
+  val Conspiracy: VisionId = VisionId("vision:conspiracy")
+
+  def nextRegion(region: Region): Region = region match {
+    case Region.Cradle => Region.Provinces
+    case Region.Provinces => Region.Hinterland
+    case Region.Hinterland => Region.Cradle
+  }
+
   def currentPlanSide(campaign: PendingProcedure.Campaign)
       : PendingProcedure.CampaignPlanSide =
     if (!campaign.attackerPlansFinished) PendingProcedure.CampaignPlanSide.Attacker
@@ -847,12 +879,27 @@ object CampaignRules {
     printed + defensePlanDice(campaign)
   }
 
-  private def campaignSite(ready: ReadyGame,
-      campaign: PendingProcedure.Campaign): SiteId = campaign.kind match {
-    case CampaignKind.Conquest => campaign.targetSites.head
-    case CampaignKind.Raid => ready.game.current.players.find(
-      _.player == campaign.actor).flatMap(_.pawnSite).get
-  }
+  private[gameplay] def campaignOrigin(ready: ReadyGame,
+      campaign: PendingProcedure.Campaign): Either[OathViolation, SiteId] =
+    campaign.kind match {
+      case CampaignKind.Conquest => campaign.targetSites.headOption.toRight(
+        CampaignOutcomeMismatch("Conquest has no mandatory origin target"))
+      case CampaignKind.Raid =>
+        val current = ready.game.current
+        for {
+          attacker <- current.players.find(_.player == campaign.actor).toRight(
+            CampaignOutcomeMismatch("Raid attacker is not in the game"))
+          site <- attacker.pawnSite.toRight(PawnSiteMissing(campaign.actor))
+          defender <- campaign.defender match {
+            case CampaignDefender.Player(player) => current.players
+              .find(_.player == player).toRight(CampaignOutcomeMismatch(
+                "Raid defender is not in the game"))
+            case _ => Left(CampaignOutcomeMismatch("Raid requires a player defender"))
+          }
+          _ <- Either.cond(defender.pawnSite.contains(site), (),
+            CampaignOutcomeMismatch("Raid pawns are no longer co-located"))
+        } yield site
+    }
 
   private[gameplay] def attackResult(dice: Vector[AttackDieFace], force: Int,
       ignoreSkulls: Boolean): (Int, Int) = {
@@ -876,8 +923,8 @@ object CampaignRules {
       campaign: PendingProcedure.Campaign): Vector[CampaignPlanOption] = {
     val side = currentPlanSide(campaign)
     val owner = planDecisionOwner(campaign)
-    val activations = accessibleRules(catalog, ready, owner,
-      campaignSite(ready, campaign)).collect {
+    val activations = campaignOrigin(ready, campaign).toOption.toVector.flatMap(
+      accessibleRules(catalog, ready, owner, _)).collect {
       case DiscoveredCampaignRule(a, HandlerSupport.Executable(window), _)
           if (side == PendingProcedure.CampaignPlanSide.Attacker &&
               window == CampaignTimingWindow.AttackerBattlePlans) ||
@@ -909,10 +956,11 @@ object CampaignRules {
     else {
       val side = currentPlanSide(campaign)
       val owner = planDecisionOwner(campaign)
-      val activations = accessibleRules(catalog, ready, owner,
-        campaignSite(ready, campaign)).map(_.activation)
-      CampaignPlanRegistry.resolve(CampaignPlanContext(catalog, ready, campaign,
-        side, owner), selected, activations)
+      campaignOrigin(ready, campaign).flatMap { site =>
+        val activations = accessibleRules(catalog, ready, owner, site).map(_.activation)
+        CampaignPlanRegistry.resolve(CampaignPlanContext(catalog, ready, campaign,
+          side, owner), selected, activations)
+      }
     }
   }
 

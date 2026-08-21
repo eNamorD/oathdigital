@@ -50,7 +50,8 @@ class CampaignSuite extends munit.FunSuite {
       board = defender0.board.copy(warbands = 5, favor = 5),
       advisers = Vector(
         DenizenState(DenizenId("raid-facedown-denizen"), Orientation.FaceDown, Tokens.empty),
-        VisionState(VisionId("raid-facedown-vision"), Orientation.FaceDown)),
+        VisionState(VisionId("raid-facedown-vision"), Orientation.FaceDown),
+        VisionState(CampaignRules.Conspiracy, Orientation.FaceDown)),
       relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty),
         RelicState(RelicId("raid-facedown-relic"), Orientation.FaceDown, Tokens.empty)))
     val current = base.game.current.copy(players = base.game.current.players.map {
@@ -59,7 +60,9 @@ class CampaignSuite extends munit.FunSuite {
       case p => p
     }, banners = base.game.current.banners.copy(
       peoplesFavor = base.game.current.banners.peoplesFavor.copy(
-        holder = Some(defender.player), favor = 3)))
+        holder = Some(defender.player), favor = 3),
+      darkestSecret = base.game.current.banners.darkestSecret.copy(
+        holder = Some(defender.player), secrets = 2)))
     (base.copy(game = base.game.copy(current = current)), attacker, defender, site, relic)
   }
 
@@ -70,7 +73,8 @@ class CampaignSuite extends munit.FunSuite {
     val banner = CampaignRaidTarget.Banner(defender.player,
       CampaignBanner.PeoplesFavor)
     assertEquals(CampaignRules.legalRaidTargets(catalog, ready, attacker.player),
-      Vector(pawn, relicTarget, banner))
+      Vector(pawn, relicTarget, banner,
+        CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret)))
     assertEquals(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
       Vector(pawn), 0), Right(CampaignDefender.Player(defender.player)))
     assert(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
@@ -84,14 +88,15 @@ class CampaignSuite extends munit.FunSuite {
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
       CampaignRaidTarget.Relic(defender.player, relic),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor))
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
     val campaign = PendingProcedure.Campaign(DecisionId("raid-pool"), attacker.player,
       Vector.empty, CampaignDefender.Player(defender.player), 4, Vector.empty,
       attackerPlansFinished = true, defenderPlansFinished = true, Vector.empty,
       0, 0, None, Vector.empty, None, None, CampaignKind.Raid, targets)
     assertEquals(CampaignRules.defenderForce(ready, campaign), 5)
     assertEquals(CampaignRules.defenseDiceCount(catalog, ready, campaign),
-      2 + catalog.relics.find(_.id.value == relic.value).get.defense + 3)
+      2 + catalog.relics.find(_.id.value == relic.value).get.defense + 6)
   }
 
   test("Raid target projection is canonical private and requires the pawn") {
@@ -105,7 +110,8 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(action.candidates.map(_.target), Vector(
       BoardTargetRefProjection.PlayerPawn(defender.player.value),
       BoardTargetRefProjection.PlayerRelic(defender.player.value, relic.value),
-      BoardTargetRefProjection.PlayerBanner(defender.player.value, "peoples-favor")))
+      BoardTargetRefProjection.PlayerBanner(defender.player.value, "peoples-favor"),
+      BoardTargetRefProjection.PlayerBanner(defender.player.value, "darkest-secret")))
     assertEquals(projector.projectPublic("raid-targets",
       LoadedGame(Ready(ready), 4)).boardTargetActions, Vector.empty)
     assert(!projector.project("raid-targets", LoadedGame(Ready(ready), 4),
@@ -118,7 +124,8 @@ class CampaignSuite extends munit.FunSuite {
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
       CampaignRaidTarget.Relic(defender.player, relic),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor))
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
     val started = rules.handle(Ready(ready), CampaignCommand.StartRaid(
       attacker.player, decision, targets, 4)).toOption.get
     val attackerDone = rules.handle(started.state, CampaignCommand.FinishPlans(
@@ -127,7 +134,7 @@ class CampaignSuite extends munit.FunSuite {
       defender.player, decision, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
     val won = rules.handle(defenderDone.state, CampaignCommand.Sacrifice(
       attacker.player, decision, 2, Vector.fill(
-        2 + catalog.relics.find(_.id.value == relic.value).get.defense + 3)(
+        2 + catalog.relics.find(_.id.value == relic.value).get.defense + 6)(
         DefenseDieFace.Blank))).toOption.get
     val destination = ready.game.current.map.inPlay.find(_ != origin).get
     val completed = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
@@ -141,8 +148,11 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(nextDefender.board.warbands, 3)
     assertEquals(nextDefender.board.favor, 3)
     assertEquals(nextDefender.pawnSite, Some(destination))
-    assertEquals(after.game.campaign.dispossessed.takeRight(2), Vector(
-      DenizenId("raid-facedown-denizen"), VisionId("raid-facedown-vision")))
+    val discardRegion = CampaignRules.nextRegion(
+      ready.game.current.map.regionOf(origin).get)
+    assertEquals(after.game.current.commonCards.discard(discardRegion).takeRight(2),
+      Vector(DenizenId("raid-facedown-denizen"), VisionId("raid-facedown-vision")))
+    assert(!after.game.campaign.dispossessed.contains(CampaignRules.Conspiracy))
     assertEquals(after.game.campaign.reliquary.last,
       RelicId("raid-facedown-relic"))
     assertEquals(after.game.current.pending, None)
@@ -153,6 +163,41 @@ class CampaignSuite extends munit.FunSuite {
     assert(rules.evolve(won.state, raided.copy(favorBurned =
       raided.favorBurned + 1)).isLeft)
     assertEquals(raided.bannerFavorReturned.values.sum, 3)
+    assertEquals(raided.darkestSecretBurned, 2)
+    assertEquals(raided.adviserDiscardRegion, discardRegion)
+    assertEquals(raided.boxedConspiracy, Some(CampaignRules.Conspiracy))
+    assert(rules.evolve(won.state, raided.copy(adviserDiscardRegion =
+      ready.game.current.map.regionOf(origin).get)).isLeft)
+    assert(rules.evolve(won.state, raided.copy(darkestSecretBurned = 1)).isLeft)
+  }
+
+  test("lost Raid anchors committed losses at the co-location site") {
+    val (ready, attacker, defender, origin, _) = raidReady
+    val decision = DecisionId("raid-defeat")
+    val targets = Vector[CampaignRaidTarget](CampaignRaidTarget.Pawn(defender.player))
+    val started = rules.handle(Ready(ready), CampaignCommand.StartRaid(
+      attacker.player, decision, targets, 4)).toOption.get
+    val attackerDone = rules.handle(started.state, CampaignCommand.FinishPlans(
+      attacker.player, decision, Vector.empty)).toOption.get
+    val rolled = rules.handle(attackerDone.state, CampaignCommand.FinishPlans(
+      defender.player, decision, Vector.fill(4)(AttackDieFace.HollowSword))).toOption.get
+    val defeated = rules.handle(rolled.state, CampaignCommand.Sacrifice(
+      attacker.player, decision, 0, Vector.fill(2)(DefenseDieFace.TwoShields)))
+      .toOption.get
+    val event = defeated.events.head.asInstanceOf[CampaignSacrificed]
+    assertEquals(event.victorious, false)
+    assertEquals(event.losingForces.map(_.site).distinct, Vector(origin))
+    val Ready(after) = defeated.state: @unchecked
+    assertEquals(after.game.current.players.find(_.player == attacker.player).get
+      .board.warbands, 2)
+    assertEquals(rules.evolve(rolled.state, event), Right(defeated.state))
+    val other = ready.game.current.map.inPlay.find(_ != origin).get
+    val tampered = event.copy(losingForces = event.losingForces.map {
+      case effect: CampaignLosingForceEffect.KillCommitted => effect.copy(site = other)
+      case effect: CampaignLosingForceEffect.ReturnToBoard => effect.copy(site = other)
+      case effect => effect
+    })
+    assert(rules.evolve(rolled.state, tampered).isLeft)
   }
 
   test("attack faces implement hollow pairs and skull swords") {
@@ -949,9 +994,9 @@ class CampaignSuite extends munit.FunSuite {
           campaign: PendingProcedure.Campaign, surviving: Int) = {
         val owner = state.game.current.players.find(
           _.player == campaign.actor).get
-        Right(Vector(CampaignLosingForceEffect.PreserveCommitted(
-          campaign.targetSites.head, campaign.actor,
-          ForceKind.Exile(owner.lineage), surviving)))
+        CampaignRules.campaignOrigin(state, campaign).map(site => Vector(
+          CampaignLosingForceEffect.PreserveCommitted(site, campaign.actor,
+            ForceKind.Exile(owner.lineage), surviving)))
       }
     }
     val alternate = new OathRules(catalog,

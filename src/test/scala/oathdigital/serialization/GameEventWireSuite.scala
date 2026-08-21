@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.actions.CampaignLosingForceResolver
+import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.setup._
 import oathdigital.model._
 import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
@@ -52,8 +52,10 @@ class GameEventWireSuite extends munit.FunSuite {
         CampaignLosingForceResolver.default.id,
         CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
         Vector(RelicId("R1")), Vector(CampaignBanner.PeoplesFavor),
-        Vector(DenizenId("D1"), VisionId("V1")), Vector(RelicId("R2")),
-        favorBurned = 2, Map(Suit.Order -> 2), darkestSecretBurned = 3),
+        Vector(DenizenId("D1"), VisionId("V1")), Region.Provinces,
+        Some(CampaignRules.Conspiracy), Vector(RelicId("R2")),
+        favorBurned = 2, bannerFavorReturned = Map(Suit.Order -> 2),
+        darkestSecretBurned = 3),
       OathEvent.CampaignRaidPawnRelocated(PlayerId("red"), DecisionId("raid-1"),
         PlayerId("blue"), SiteId("S1"), SiteId("S2")))
     val encoded = GameEventWire.encodeStream("raid", catalogRef,

@@ -129,9 +129,11 @@ On a successful Raid, the registered loss policy kills half the defender's
 board force rounded down and returns the remainder to that board. A durable
 Raid event then records and replay-validates the printed order: targeted faceup
 relics and banners transfer; People's Favor resources return one at a time to
-the least-filled, leftmost-on-tie favor bank and Darkest Secret resources burn;
-facedown advisers and relics are discarded; and half the defender's favor,
-rounded down, burns. The attacker then receives a typed owner-scoped pending
+the least-filled, leftmost-on-tie favor bank and the exact number of Darkest
+Secret resources burned is durable; ordinary facedown advisers append in board
+order to the Raid site's next-region discard pile, the Conspiracy returns to
+the box, facedown relics enter the Chronicle reliquary, and half the defender's
+favor, rounded down, burns. The attacker then receives a typed owner-scoped pending
 procedure containing canonical legal destinations and relocates the defender's
 pawn to another site. This relocation is not Travel. Other viewers receive no
 hidden discarded identities or relocation controls.
@@ -148,7 +150,10 @@ forms provide the mechanical boundary for future powers, but no such printed
 power is inferred or activated by this slice.
 
 Attacker defeat uses the same stable-ID policy/result path. Its committed-force
-effects explicitly record killed, returned, preserved, or site-relocated pieces;
+effects use a kind-aware, validated Campaign origin: the mandatory first site
+for Conquest and the co-located pawn site for Raid. Shared loss code does not
+index Conquest targets for Raid procedures.
+Effects explicitly record killed, returned, preserved, or site-relocated pieces;
 replay resolves the selected policy and validates complete disposition before
 changing the board. Thus alternate loss rules do not require rewriting the
 terminal Campaign evolution.

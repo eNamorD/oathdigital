@@ -434,18 +434,18 @@ object GameEventWire {
             "count" -> allocation.count)
         }))
       case CampaignRaided(player, decision, policyId, loss, relics, banners,
-          advisers, discardedRelics, burned, returned, darkestSecretBurned) => ujson.Obj(
+          advisers, adviserRegion, boxedConspiracy, discardedRelics, burned,
+          returned, darkestSecretBurned) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "losingForcePolicyId" -> policyId,
         "defenderLoss" -> ujson.Obj("playerId" -> loss.playerId.value,
           "killed" -> loss.killed, "returned" -> loss.returned),
         "takenRelics" -> ujson.Arr.from(relics.map(r => ujson.Str(r.value))),
         "takenBanners" -> ujson.Arr.from(banners.map(b => ujson.Str(b.key))),
-        "discardedAdvisers" -> ujson.Arr.from(advisers.map {
-          case id: WorldCardId => encodeWorldCard(id)
-          case id => throw new IllegalArgumentException(
-            s"Raid adviser discard is not a world card: ${id.kind}")
-        }),
+        "discardedAdvisers" -> ujson.Arr.from(advisers.map(encodeWorldCard)),
+        "adviserDiscardRegion" -> adviserRegion.key,
+        "boxedConspiracy" -> boxedConspiracy.fold[ujson.Value](ujson.Null)(id =>
+          ujson.Str(id.value)),
         "discardedRelics" -> ujson.Arr.from(discardedRelics.map(r => ujson.Str(r.value))),
         "favorBurned" -> burned,
         "darkestSecretBurned" -> darkestSecretBurned,
@@ -706,6 +706,12 @@ object GameEventWire {
           }
           advisers <- traverse(payload("discardedAdvisers").arr.toVector)(value =>
             decodeWorldCard(value, s"$path.discardedAdvisers"))
+          adviserRegion <- decodeRegion(payload("adviserDiscardRegion").str,
+            s"$path.adviserDiscardRegion")
+          boxedConspiracy = payload("boxedConspiracy") match {
+            case ujson.Null => None
+            case value => Some(VisionId(value.str))
+          }
           discardedRelics = payload("discardedRelics").arr.toVector.map(v => RelicId(v.str))
           burned <- safeIntField(payload.obj, "favorBurned", path)
           darkestSecretBurned <- safeIntField(payload.obj, "darkestSecretBurned", path)
@@ -717,8 +723,9 @@ object GameEventWire {
         } yield CampaignRaided(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), payload("losingForcePolicyId").str,
           CampaignRaidBoardLoss(PlayerId(payload("defenderLoss")("playerId").str),
-            killed, returnedCount), relics, banners, advisers,
-          discardedRelics, burned, favorEntries.toMap, darkestSecretBurned)
+            killed, returnedCount), relics, banners, advisers, adviserRegion,
+          boxedConspiracy, discardedRelics, burned, favorEntries.toMap,
+          darkestSecretBurned)
         case CampaignRaidPawnRelocatedType => Right(CampaignRaidPawnRelocated(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
           PlayerId(payload("defenderPlayerId").str), SiteId(payload("originSiteId").str),
