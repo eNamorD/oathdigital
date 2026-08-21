@@ -7,7 +7,9 @@ been reviewed.
 
 ## Now
 
-No item is currently assigned.
+**Phase 1 - Core minor actions** is active in the implementation task. It covers
+the printed base procedures for facedown advisers, relic inspection, and moving
+warbands between a player board and the ruled site containing their pawn.
 
 ## Next
 
