@@ -841,8 +841,7 @@ object CampaignRules {
         case _: CampaignRaidTarget.Pawn => 2
         case CampaignRaidTarget.Relic(_, relic) => catalog.relics
           .find(_.id.value == relic.value).map(_.defense).getOrElse(0)
-        case CampaignRaidTarget.Banner(_, CampaignBanner.PeoplesFavor) => 1
-        case CampaignRaidTarget.Banner(_, CampaignBanner.DarkestSecret) => 2
+        case CampaignRaidTarget.Banner(_, _) => 3
       }.sum
     }
     printed + defensePlanDice(campaign)

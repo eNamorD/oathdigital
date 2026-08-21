@@ -91,7 +91,7 @@ class CampaignSuite extends munit.FunSuite {
       0, 0, None, Vector.empty, None, None, CampaignKind.Raid, targets)
     assertEquals(CampaignRules.defenderForce(ready, campaign), 5)
     assertEquals(CampaignRules.defenseDiceCount(catalog, ready, campaign),
-      2 + catalog.relics.find(_.id.value == relic.value).get.defense + 1)
+      2 + catalog.relics.find(_.id.value == relic.value).get.defense + 3)
   }
 
   test("Raid target projection is canonical private and requires the pawn") {
@@ -127,7 +127,7 @@ class CampaignSuite extends munit.FunSuite {
       defender.player, decision, Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
     val won = rules.handle(defenderDone.state, CampaignCommand.Sacrifice(
       attacker.player, decision, 2, Vector.fill(
-        2 + catalog.relics.find(_.id.value == relic.value).get.defense + 1)(
+        2 + catalog.relics.find(_.id.value == relic.value).get.defense + 3)(
         DefenseDieFace.Blank))).toOption.get
     val destination = ready.game.current.map.inPlay.find(_ != origin).get
     val completed = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
