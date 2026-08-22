@@ -119,7 +119,13 @@ class CampaignSuite extends munit.FunSuite {
   }
 
   test("successful Raid durably resolves losses and relocates without Travel") {
-    val (ready, attacker, defender, origin, relic) = raidReady
+    val (ready0, attacker, defender, origin, relic) = raidReady
+    val refillSite = ready0.game.current.map.inPlay.find(_ != origin).get
+    val ready = ready0.copy(game = ready0.game.copy(current =
+      ready0.game.current.copy(map = ready0.game.current.map.copy(sites =
+        ready0.game.current.map.sites.updated(refillSite,
+          ready0.game.current.map.sites(refillSite).copy(
+            forces = SiteForces.Empty))))))
     val decision = DecisionId("raid-resolution")
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
@@ -136,11 +142,16 @@ class CampaignSuite extends munit.FunSuite {
       attacker.player, decision, 2, Vector.fill(
         2 + catalog.relics.find(_.id.value == relic.value).get.defense + 6)(
         DefenseDieFace.Blank))).toOption.get
-    val destination = ready.game.current.map.inPlay.find(_ != origin).get
+    val destination = refillSite
     val completed = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
       attacker.player, decision, destination)).toOption.get
-    assertEquals(completed.events.map(_.getClass.getSimpleName),
+    assertEquals(completed.events.take(2).map(_.getClass.getSimpleName),
       Vector("CampaignRaided", "CampaignRaidPawnRelocated"))
+    assert(completed.events.drop(2).exists(_.isInstanceOf[BanditsRefilled]),
+      "Raid relocation must enter the completed-action boundary")
+    assert(completed.events.count(_.isInstanceOf[BanditsRefilled]) <= 1)
+    assert(completed.events.count(e => e.isInstanceOf[OathkeeperChanged] ||
+      e.isInstanceOf[OathkeeperRecipientChoiceStarted]) <= 1)
     val Ready(after) = completed.state: @unchecked
     val nextAttacker = after.game.current.players.find(_.player == attacker.player).get
     val nextDefender = after.game.current.players.find(_.player == defender.player).get

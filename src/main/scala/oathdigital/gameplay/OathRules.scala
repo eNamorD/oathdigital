@@ -126,7 +126,8 @@ final class OathRules(catalog: ExecutableCatalog,
     Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
       .flatMap { transition =>
       command match {
-        case _: CampaignCommand.Place => completeAction(transition)
+        case _: CampaignCommand.Place | _: CampaignCommand.RelocateRaidPawn =>
+          completeAction(transition)
         case _: CampaignCommand.Sacrifice if (transition.state match {
           case Ready(ready) => ready.game.current.pending.isEmpty
           case _ => false
@@ -220,8 +221,18 @@ final class OathRules(catalog: ExecutableCatalog,
     }
 
   private def completeAction(transition: OathTransition) =
-    appendEvaluation(transition, StateBasedEvaluation.banditRefill(catalog, _))
-      .flatMap(appendEvaluation(_, StateBasedEvaluation.afterAction))
+    if (hasResult(transition.state)) Right(transition)
+    else appendEvaluation(transition,
+      StateBasedEvaluation.banditRefill(catalog, _))
+      .flatMap { afterRefill =>
+        if (hasResult(afterRefill.state)) Right(afterRefill)
+        else appendEvaluation(afterRefill, StateBasedEvaluation.afterAction)
+      }
+
+  private def hasResult(state: OathState): Boolean = state match {
+    case Ready(ready) => ready.game.current.result.nonEmpty
+    case _ => false
+  }
 
   private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] = {
     def append(current: OathTransition, event: OathEvent) =

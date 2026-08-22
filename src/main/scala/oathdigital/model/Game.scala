@@ -100,15 +100,6 @@ final case class GameTracks(
   require(visionsDrawn >= 0, "Visions Drawn must be non-negative")
 }
 
-sealed trait ChronicleTask extends Product with Serializable
-object ChronicleTask {
-  case object Sun extends ChronicleTask
-  case object Throne extends ChronicleTask
-  case object World extends ChronicleTask
-  case object Beacon extends ChronicleTask
-  case object Stars extends ChronicleTask
-}
-
 sealed trait PendingProcedure extends Product with Serializable {
   def decision: DecisionId
 }
@@ -448,11 +439,6 @@ object PendingProcedure {
       "Negotiation acceptances must belong to participants")
   }
 
-  final case class Chronicle(
-      decision: DecisionId,
-      task: ChronicleTask,
-      taskHolders: Map[ChronicleTask, PlayerId]
-  ) extends PendingProcedure
 }
 
 final case class NegotiationTransfer(

@@ -133,6 +133,16 @@ class VisionsSuite extends munit.FunSuite {
       case p: PendingProcedure.Conspiracy => p.awaitingTarget && p.decision == decision
       case _ => false
     })
+    val projector = new oathdigital.application.GameProjector(catalog)
+    val loaded = oathdigital.application.LoadedGame(completed.state, 11)
+    val owner = projector.project("searched-conspiracy", loaded, actor.player)
+    val hidden = projector.project("searched-conspiracy", loaded, enemy.player)
+    assertEquals(owner.legalControls, Vector("playConspiracy"))
+    assertEquals(owner.boardTargetActions.map(_.actionKind),
+      Vector("play-conspiracy"))
+    assertEquals(owner.boardTargetActions.head.decisionId, Some(decision.value))
+    assertEquals(hidden.legalControls, Vector.empty)
+    assertEquals(hidden.boardTargetActions, Vector.empty)
     val resolved = rules.handle(completed.state, VisionCommand.PlayConspiracy(
       actor.player, decision, Some(ConspiracyTargetRef.Banner(enemy.player,
         Banner.PeoplesFavor))))

@@ -392,7 +392,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
             case Some(p: PendingProcedure.Conspiracy)
                 if requestingPlayer.contains(p.actor) =>
-              Vector("chooseConspiracySecretSite")
+              Vector(if (p.awaitingTarget) "playConspiracy"
+                else "chooseConspiracySecretSite")
             case Some(_: PendingProcedure.Conspiracy) => Vector.empty
             case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
                 requestingPlayer.contains(CampaignRules.planDecisionOwner(c)) =>
@@ -734,7 +735,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             current.pending match {
               case Some(p: PendingProcedure.Conspiracy)
                   if requestingPlayer.contains(p.actor) =>
-                Vector(conspiracySecretSiteAction(value, p))
+                Vector(if (p.awaitingTarget) conspiracyTargetAction(value, p)
+                  else conspiracySecretSiteAction(value, p))
               case _ if requestingPlayer.contains(active.player) &&
                 current.turn.phase == Phase.Act && current.pending.isEmpty =>
                 boardTargetActions(value, active)
@@ -883,16 +885,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
       case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
       case _ => false
     }
-    val conspiracyTargets = Visions.legalTargetRefs(ready, player.player).map {
-      case ConspiracyTargetRef.RelicSlot(owner, slot) =>
-        BoardTargetCandidateProjection(
-          BoardTargetRefProjection.PlayerRelic(owner.value, slot.toString),
-          s"${safeLabel(owner.value)} facedown relic")
-      case ConspiracyTargetRef.Banner(owner, banner) =>
-        BoardTargetCandidateProjection(
-          BoardTargetRefProjection.PlayerBanner(owner.value, banner.key),
-          s"${safeLabel(owner.value)} ${safeLabel(banner.key)}")
-    }
+    val conspiracyTargets = conspiracyTargetCandidates(ready, player.player)
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites", campaign,
@@ -934,6 +927,33 @@ final class GameProjector(catalog: ExecutableCatalog) {
       "Choose a tied least-stocked site for the Darkest Secret",
       1, 1, autoActivate = true, sites, decisionId = Some(pending.decision.value))
   }
+
+  private def conspiracyTargetAction(ready: ReadyGame,
+      pending: PendingProcedure.Conspiracy): BoardTargetActionProjection = {
+    val targets = conspiracyTargetCandidates(ready, pending.actor)
+    BoardTargetActionProjection(
+      "play-conspiracy",
+      if (targets.isEmpty) "Play Conspiracy"
+      else "Choose an enemy asset for Conspiracy",
+      if (targets.isEmpty) 0 else 1,
+      if (targets.isEmpty) 0 else 1,
+      autoActivate = true,
+      targets,
+      decisionId = Some(pending.decision.value))
+  }
+
+  private def conspiracyTargetCandidates(ready: ReadyGame,
+      actor: PlayerId): Vector[BoardTargetCandidateProjection] =
+    Visions.legalTargetRefs(ready, actor).map {
+      case ConspiracyTargetRef.RelicSlot(owner, slot) =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerRelic(owner.value, slot.toString),
+          s"${safeLabel(owner.value)} facedown relic")
+      case ConspiracyTargetRef.Banner(owner, banner) =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerBanner(owner.value, banner.key),
+          s"${safeLabel(owner.value)} ${safeLabel(banner.key)}")
+    }
 
   private def selection(kind: String, prompt: String,
       candidates: Vector[BoardTargetCandidateProjection],
