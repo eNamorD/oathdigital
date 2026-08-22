@@ -7,9 +7,9 @@ been reviewed.
 
 ## Now
 
-**Phase 2 - Round endings and War Exhaustion** is active in a dedicated
-implementation task. It covers the fixed all-Exile end-of-round procedure,
-authoritative War Exhaustion, and terminal outcomes.
+No milestone is currently assigned. The next item is Phase 2's completion of
+suspended-decision and action-boundary processing for the supported all-Exile
+procedures.
 
 ## Next
 
@@ -33,7 +33,7 @@ campaign-continuity rules.
 
 1. [x] Generalize Oathkeeper qualification beyond Supremacy.
 2. [x] Implement Vision reveal, qualification, victory, and Conspiracy.
-3. Implement all-Exile round endings and War Exhaustion.
+3. [x] Implement all-Exile round endings and War Exhaustion.
 4. Complete suspended-decision and action-boundary processing needed by these
    procedures.
 
@@ -118,6 +118,17 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 2 - All-Exile round endings and War Exhaustion.** Final Rest now
+  enters an explicit authoritative round-end phase. Rounds 1–7 advance without
+  an end die, the Usurper Limiter leaves after round 3, and round 8 resolves
+  Usurper, then a goal-qualified Visionary after at least three Visions drawn,
+  then Oathkeeper, then a server-selected random player. Event v13 records
+  round advancement, victory cause, Vision, and the canonical random domain for
+  deterministic replay and tamper rejection. Persistence, public projection,
+  and the Scala.js victory display preserve the terminal outcome. Rest-related
+  handlers use an exact cross-family inventory audit; Empire endings, altered
+  banners/Foundations, executable Rest powers, and Chronicle remain deferred.
 
 - [x] **Phase 2 - Visions and Conspiracy.** Exiles can reveal any of the four
   true Visions through one authoritative direct/Search legality path, replace
