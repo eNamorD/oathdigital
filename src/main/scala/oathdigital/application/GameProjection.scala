@@ -380,7 +380,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
           else current.pending match {
             case Some(n: PendingProcedure.Negotiation)
                 if requestingPlayer.exists(n.participants.contains) =>
-              Vector("replaceNegotiationTerms", "acceptNegotiation", "declineNegotiation")
+              Vector("replaceNegotiationTerms", "declineNegotiation") ++
+                requestingPlayer.filter(oathdigital.gameplay.actions.Negotiation
+                  .canAccept(value, n, _)).map(_ => "acceptNegotiation")
             case Some(_: PendingProcedure.Negotiation) => Vector.empty
             case Some(p: PendingProcedure.OathkeeperRecipient)
                 if requestingPlayer.contains(p.actor) =>
@@ -1111,9 +1113,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
             val owner = ready.game.current.players.find(_.player == author).get
             NegotiationTransferProjection(author.value, transfer.recipient.value,
               transfer.favor, transfer.relics.size,
-              if (viewing == author) transfer.relics.flatMap(id => owner.relics
-                .find(_.id == id).map(r => cardDetails(r.id, Some(r.orientation), hidden = false)))
-              else Vector.empty)
+              transfer.relics.flatMap(id => owner.relics.find(_.id == id)).collect {
+                case relic if viewing == author || relic.orientation == Orientation.FaceUp =>
+                  cardDetails(relic.id, Some(relic.orientation), hidden = false)
+              })
           }
         }
         val disclosures = negotiation.participants.flatMap { author =>

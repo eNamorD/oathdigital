@@ -150,13 +150,19 @@ class NegotiationSuite extends munit.FunSuite {
   }
 
   test("decline applies nothing and stale or tampered completion is rejected") {
-    val (base, players, _, _, _) = ready()
-    val started = begin(base, Vector(players(1).player))
-    val declined = Negotiation.handle(catalog, started.state,
+    val (base, players, site, _, _) = ready()
+    val emptySite = base.game.current.map.inPlay.find(_ != site).get
+    val boundaryBase = base.copy(game = base.game.copy(current = base.game.current.copy(
+      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
+        emptySite, base.game.current.map.sites(emptySite).copy(forces = SiteForces.Empty))))))
+    val started = begin(boundaryBase, Vector(players(1).player))
+    val declined = rules.handle(started.state,
       NegotiationCommand.Decline(players(1).player, DecisionId("deal"))).toOption.get
     assertEquals(declined.state.asInstanceOf[Ready].value.game.current.pending, None)
     assertEquals(declined.state.asInstanceOf[Ready].value.game.current.players,
-      base.game.current.players)
+      boundaryBase.game.current.players)
+    assert(declined.events.exists(_.isInstanceOf[BanditsRefilled]),
+      "decline must complete the action boundary and run bandit refill")
     assert(Negotiation.evolve(catalog, started.state, NegotiationCompleted(
       players.head.player, DecisionId("deal"), Vector(players.head.player,
         players(1).player), Map.empty)).isLeft)
@@ -166,13 +172,97 @@ class NegotiationSuite extends munit.FunSuite {
 
   test("changed catalog handler inventory blocks Negotiation explicitly") {
     val (base, players, _, _, _) = ready()
-    val first = catalog.denizens.head
-    val changed = catalog.copy(denizens = first.copy(
-      handlers = first.handlers :+ "denizen.future-negotiation") +: catalog.denizens.tail)
+    val first = catalog.relics.head
+    val changed = catalog.copy(relics = first.copy(
+      handlers = first.handlers :+ "relic.future-negotiation") +: catalog.relics.tail)
     assert(Negotiation.handle(changed, Ready(base), NegotiationCommand.Begin(
       players.head.player, DecisionId("changed"), Vector(players(1).player)))
       .left.toOption.exists(_.isInstanceOf[
         oathdigital.setup.OathViolation.UnsupportedNegotiationCatalogInventory]))
+  }
+
+  test("accessible Negotiation edifices and held relics block with stable sources") {
+    val (base, players, site, _, _) = ready()
+    val edifice = EdificeId("E21")
+    val edificeSite = base.game.current.map.sites(site).copy(denizens =
+      Vector(EdificeState(edifice, EdificeSide.Intact, Tokens.empty)))
+    val withEdifice = base.copy(game = base.game.copy(current = base.game.current.copy(
+      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(site,
+        edificeSite)))))
+    assertEquals(Negotiation.handle(catalog, Ready(withEdifice), NegotiationCommand.Begin(
+      players.head.player, DecisionId("edifice"), Vector(players(1).player))).left.toOption,
+      Some(oathdigital.setup.OathViolation.UnsupportedNegotiationRule(
+        s"edifice:${site.value}:E21", "edifice.e21.intact")))
+
+    val scepter = RelicId("grand-scepter")
+    val withRelic = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == players(1).player)
+        p.copy(relics = p.relics :+ RelicState(scepter, Orientation.FaceUp, Tokens.empty))
+      else p))))
+    assertEquals(Negotiation.handle(catalog, Ready(withRelic), NegotiationCommand.Begin(
+      players.head.player, DecisionId("relic"), Vector(players(1).player))).left.toOption,
+      Some(oathdigital.setup.OathViolation.UnsupportedNegotiationRule(
+        s"relic:${players(1).player.value}:grand-scepter", "relic.the-grand-scepter")))
+  }
+
+  test("active Negotiation legacy blocks while separate Negotiation actions do not") {
+    val (base, players, _, _, _) = ready()
+    val highPriest = LegacyId("L21")
+    val lineage = base.game.campaign.lineages(players(1).lineage)
+    val campaign = base.game.campaign.copy(lineages = base.game.campaign.lineages.updated(
+      lineage.id, lineage.copy(legacies = Vector(LegacyState(highPriest, active = true)))))
+    val modified = base.copy(game = base.game.copy(campaign = campaign))
+    assertEquals(Negotiation.handle(catalog, Ready(modified), NegotiationCommand.Begin(
+      players.head.player, DecisionId("legacy"), Vector(players(1).player))).left.toOption,
+      Some(oathdigital.setup.OathViolation.UnsupportedNegotiationRule(
+        s"legacy:${lineage.id.value}:L21", "legacy.high-priest")))
+
+    val whisperingStone = RelicId("R34")
+    val separateAction = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == players(1).player)
+        p.copy(relics = p.relics :+ RelicState(
+          whisperingStone, Orientation.FaceUp, Tokens.empty)) else p))))
+    assert(Negotiation.handle(catalog, Ready(separateAction), NegotiationCommand.Begin(
+      players.head.player, DecisionId("separate-action"),
+      Vector(players(1).player))).isRight)
+  }
+
+  test("projection derives accept legality and preserves public faceup relic identity") {
+    val (base, players, _, actorRelic, _) = ready()
+    val faceup = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == players.head.player)
+        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp))) else p))))
+    val started = begin(faceup, Vector(players(1).player))
+    val projector = new oathdigital.application.GameProjector(catalog)
+    def projection(state: OathState, viewer: PlayerId) = projector.project(
+      "deal", oathdigital.application.LoadedGame(state, 2), viewer)
+    assert(!projection(started.state, players.head.player).legalControls
+      .contains("acceptNegotiation"))
+    val terms = NegotiationTerms(Vector(NegotiationTransfer(
+      players(1).player, 1, Vector(actorRelic))))
+    val changed = Negotiation.handle(catalog, started.state,
+      NegotiationCommand.ReplaceTerms(players.head.player, DecisionId("deal"), terms))
+      .toOption.get
+    val recipient = projection(changed.state, players(1).player)
+    assert(recipient.legalControls.contains("acceptNegotiation"))
+    assertEquals(recipient.negotiation.get.transfers.head.relics.map(_.cardId),
+      Vector(actorRelic.value))
+    val accepted = Negotiation.handle(catalog, changed.state,
+      NegotiationCommand.Accept(players(1).player, DecisionId("deal"))).toOption.get
+    assert(!projection(accepted.state, players(1).player).legalControls
+      .contains("acceptNegotiation"))
+
+    val Ready(changedReady) = changed.state: @unchecked
+    val pending = changedReady.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Negotiation]
+    val staleTerms = pending.terms.updated(players.head.player,
+      NegotiationTerms(Vector(NegotiationTransfer(
+        players(1).player, 99, Vector.empty))))
+    val invalidPending = pending.copy(terms = staleTerms)
+    val invalid = changedReady.copy(game = changedReady.game.copy(current =
+      changedReady.game.current.copy(pending = Some(invalidPending))))
+    assert(!projection(Ready(invalid), players.head.player).legalControls
+      .contains("acceptNegotiation"))
   }
 
   test("accessible When Negotiating handler blocks with stable source identity") {

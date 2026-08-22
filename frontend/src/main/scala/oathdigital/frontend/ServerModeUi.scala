@@ -710,6 +710,15 @@ object ServerModeUi {
               val check = dom.document.createElement("input").asInstanceOf[dom.html.Input]
               check.`type` = "checkbox"; check.setAttribute("aria-label",
                 s"Offer ${relic.name} to $recipient")
+              check.checked = negotiationRelicChecked(
+                deal, selectedPlayer, recipient, relic.cardId)
+              check.onchange = _ => if (check.checked) relics.foreach {
+                case (otherRecipient, otherRelic, otherCheck)
+                    if negotiationRelicCompetes(otherRecipient, otherRelic,
+                      recipient, relic.cardId) =>
+                  otherCheck.checked = false
+                case _ => ()
+              }
               panel.appendChild(check); panel.appendChild(text("span", "", s" ${relic.name} "))
               relics += ((recipient, relic.cardId, check))
             }
@@ -719,6 +728,8 @@ object ServerModeUi {
               val check = dom.document.createElement("input").asInstanceOf[dom.html.Input]
               check.`type` = "checkbox"; check.setAttribute("aria-label",
                 s"Promise $kind disclosure of ${card.name} to $recipient")
+              check.checked = negotiationDisclosureChecked(
+                deal, selectedPlayer, recipient, kind, card.cardId)
               panel.appendChild(check); panel.appendChild(text("span", "", s" Show ${card.name} "))
               disclosures += ((recipient, kind, card, check))
             }
@@ -739,7 +750,8 @@ object ServerModeUi {
           }
           panel.appendChild(save)
           val accept = button("Accept Current Deal", "negotiation-accept")
-          accept.disabled = !controlsAvailable
+          accept.disabled = !controlsAvailable ||
+            !value.legalControls.contains("acceptNegotiation")
           accept.onclick = _ => submit(GameCommand.AcceptNegotiation(
             selectedPlayer, deal.decisionId)); panel.appendChild(accept)
           val decline = button("End/Decline", "negotiation-decline")
@@ -1215,6 +1227,21 @@ object ServerModeUi {
   private def siteLabel(value: GameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
+
+  private[frontend] def negotiationRelicChecked(deal: NegotiationState,
+      author: String, recipient: String, relicId: String): Boolean =
+    deal.transfers.exists(t => t.authorPlayerId == author &&
+      t.recipientPlayerId == recipient && t.relics.exists(_.cardId == relicId))
+
+  private[frontend] def negotiationDisclosureChecked(deal: NegotiationState,
+      author: String, recipient: String, kind: String, cardId: String): Boolean =
+    deal.disclosures.exists(d => d.authorPlayerId == author &&
+      d.recipientPlayerId == recipient && d.kind == kind &&
+      d.card.exists(_.cardId == cardId))
+
+  private[frontend] def negotiationRelicCompetes(currentRecipient: String,
+      currentRelic: String, selectedRecipient: String, selectedRelic: String): Boolean =
+    currentRecipient != selectedRecipient && currentRelic == selectedRelic
 
   private[frontend] def siteDetails(site: GameSite,
       selection: Option[BoardTargetSelectionState] = None,

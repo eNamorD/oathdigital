@@ -4,6 +4,24 @@ import munit.FunSuite
 import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
+  test("Negotiation editor restores only authored relic and disclosure selections") {
+    val relic = CardDetails("R1", "relic", "Public Relic")
+    val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
+    val deal = NegotiationState("deal", "red", "S1", Vector("red", "blue", "yellow"),
+      Vector.empty, Vector(NegotiationTransferState("red", "blue", 0, 1,
+        Vector(relic))), Vector(NegotiationDisclosureState("red", "yellow",
+        "adviser", Some(adviser))), 3, Vector(relic), Vector(adviser), Vector.empty)
+    assert(ServerModeUi.negotiationRelicChecked(deal, "red", "blue", "R1"))
+    assert(!ServerModeUi.negotiationRelicChecked(deal, "red", "yellow", "R1"))
+    assert(ServerModeUi.negotiationDisclosureChecked(
+      deal, "red", "yellow", "adviser", "D1"))
+    assert(!ServerModeUi.negotiationDisclosureChecked(
+      deal, "blue", "yellow", "adviser", "D1"))
+    assert(ServerModeUi.negotiationRelicCompetes("blue", "R1", "yellow", "R1"))
+    assert(!ServerModeUi.negotiationRelicCompetes("blue", "R1", "blue", "R1"))
+    assert(!ServerModeUi.negotiationRelicCompetes("blue", "R2", "yellow", "R1"))
+  }
+
   test("Forge assignment state enforces cardinality and resets stale context") {
     val context = BoardSelectionContext("game", "red", 9)
     val targets = Vector("1", "2", "3").map(id =>

@@ -14,10 +14,103 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
+import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.actions.TravelCommand
+import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.persistence.HsqldbDatabaseOwner
+import oathdigital.serialization.GameEventWire
+import oathdigital.setup.{FirstGameSetupRules, OathState}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {
+  test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders") {
+    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](
+      Behaviors.empty, "authenticated-negotiation-route-test")
+    val blocking = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+    val database = HsqldbDatabaseOwner.open(Files.createTempDirectory(
+      "auth-negotiation-route-").resolve("database")).toOption.get
+    val identities = database.identities
+    val repository = new InMemoryEventStreamRepository
+    val gameId = "auth-negotiation-game"
+    val (setupState, setupEvents) = execute(new FirstGameSetupRules(catalog))
+    val OathState.Ready(ready) = setupState: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val other = ready.game.current.players.find(_.player != actor).get
+    val rules = new OathRules(catalog)
+    val act = rules.handle(setupState, WakeCommand.EndWake(actor)).toOption.get
+    val traveled = rules.handle(act.state, TravelCommand.Travel(
+      actor, other.pawnSite.get)).toOption.get
+    val allEvents = setupEvents ++ act.events ++ traveled.events
+    repository.seed(gameId, allEvents.zipWithIndex.map { case (event, index) =>
+      ujson.write(GameEventWire.encodeEvent(gameId, catalog.ref, index.toLong, event)
+        .toOption.get)
+    })
+    val ownerUser = UserId("negotiation-owner")
+    val actorUser = UserId("negotiation-actor")
+    val otherUser = UserId("negotiation-other")
+    val outsider = UserId("negotiation-outsider")
+    Vector(ownerUser, actorUser, otherUser, outsider).foreach(user =>
+      identities.createUser(user, user.value, 0L))
+    identities.createGame(gameId, ownerUser, 0L)
+    identities.addMembership(GameMembership(gameId, actorUser, Player,
+      Some(actor.value)), 0L)
+    identities.addMembership(GameMembership(gameId, otherUser, Player,
+      Some(other.player.value)), 0L)
+    val csrfDigest = CsrfTokenDigest.fromBytes(SensitiveTokenDigest.sha256("c" * 43))
+      .toOption.get
+    val authenticator = new HttpSessionAuthenticator {
+      override def authenticate(request: AkkaRequest) = Future.successful(
+        request.headers.find(_.name == "X-Test-User").map(header =>
+          Right(AuthenticatedHttpSession(AuthenticatedUser(UserId(header.value)),
+            csrfDigest))).getOrElse(Left(AuthenticationFailure.MissingCredential)))
+    }
+    val gateway = new AuthenticatedGameGateway(new GameApplicationService(catalog,
+      repository), new GameProjector(catalog),
+      new MembershipAuthorizationService(identities), identities,
+      new DevelopmentFirstGamePlanFactory(catalog))
+    val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
+      new AuthenticatedGameRoutes(authenticator,
+        new SameOriginCsrfProtection("http://127.0.0.1"), gateway, blocking).route),
+      10.seconds)
+    val base = s"http://127.0.0.1:${binding.localAddress.getPort}" +
+      s"/api/authenticated/first-games/$gameId"
+    val client = HttpClient.newHttpClient()
+    try {
+      var sequence = allEvents.size.toLong
+      val begin = post(client, base + "/commands", actorUser.value, ujson.write(
+        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
+          "type" -> "beginNegotiation", "participantPlayerIds" ->
+            ujson.Arr(other.player.value)))))
+      assertEquals(begin.statusCode(), 200, begin.body()); sequence += 1
+      val decision = ujson.read(begin.body())("negotiation")("decisionId").str
+      val outsiderAttempt = post(client, base + "/commands", outsider.value,
+        ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" ->
+          ujson.Obj("type" -> "declineNegotiation", "decisionId" -> decision))))
+      assertEquals(outsiderAttempt.statusCode(), 403)
+      val replace = post(client, base + "/commands", otherUser.value, ujson.write(
+        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
+          "type" -> "replaceNegotiationTerms", "decisionId" -> decision,
+          "terms" -> ujson.Obj("transfers" -> ujson.Arr(ujson.Obj(
+            "recipientPlayerId" -> actor.value, "favor" -> 1,
+            "relicIds" -> ujson.Arr())), "disclosures" -> ujson.Arr())))))
+      assertEquals(replace.statusCode(), 200, replace.body()); sequence += 1
+      val accept = post(client, base + "/commands", otherUser.value, ujson.write(
+        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
+          "type" -> "acceptNegotiation", "decisionId" -> decision))))
+      assertEquals(accept.statusCode(), 200, accept.body()); sequence += 1
+      val decline = post(client, base + "/commands", otherUser.value, ujson.write(
+        ujson.Obj("expectedNextSequence" -> ujson.Num(sequence.toDouble), "intent" -> ujson.Obj(
+          "type" -> "declineNegotiation", "decisionId" -> decision))))
+      assertEquals(decline.statusCode(), 200, decline.body())
+      assert(ujson.read(decline.body())("negotiation").isNull)
+    } finally {
+      Await.result(binding.terminate(5.seconds), 10.seconds)
+      system.terminate(); Await.result(system.whenTerminated, 10.seconds)
+      database.close()
+    }
+  }
+
   test("authenticated routes derive projection scope and command actor") {
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "authenticated-route-test")

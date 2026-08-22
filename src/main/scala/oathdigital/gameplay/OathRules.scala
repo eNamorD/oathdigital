@@ -88,6 +88,7 @@ final class OathRules(catalog: ExecutableCatalog,
         case Ready(ready) => ready.game.current.pending.isEmpty
         case _ => false
       }) => completeAction(transition)
+      case _: NegotiationCommand.Decline => completeAction(transition)
       case _ => Right(transition)
     }}
 

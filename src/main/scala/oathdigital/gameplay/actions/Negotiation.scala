@@ -225,6 +225,11 @@ object Negotiation {
     terms.values.exists(t => t.transfers.exists(x => x.favor > 0 || x.relics.nonEmpty) ||
       t.disclosures.nonEmpty)
 
+  def canAccept(ready: ReadyGame, current: PendingProcedure.Negotiation,
+      participant: PlayerId): Boolean =
+    current.participants.contains(participant) && !current.accepted(participant) &&
+      hasSubstance(current.terms) && validateAll(ready, current).isRight
+
   private def applyDeal(ready: ReadyGame,
       current: PendingProcedure.Negotiation): ReadyGame = {
     val outgoing = current.terms.toVector.flatMap { case (author, terms) =>
@@ -277,14 +282,27 @@ object Negotiation {
 
 object NegotiationPowerSupport {
   private val ExpectedInventory =
-    "e32d8c6e2816d07b7dddaa04c9446af80b2a3799534a102f6f00017f458f55a5"
+    "ebe0c1ad8fdc22834f96264b1036f6160e7072676ef1069bed447dd1a57e98d6"
   private val RelevantHandlers = Set("denizen.council-arbiter",
-    "denizen.deed-writer", "denizen.traveling-negotiator")
+    "denizen.deed-writer", "denizen.traveling-negotiator",
+    "edifice.e19.intact", "edifice.e19.ruined", "edifice.e21.intact",
+    "relic.the-grand-scepter", "legacy.high-priest")
 
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, site: SiteId,
       participants: Vector[PlayerId]): Either[OathViolation, Unit] = {
-    val canonical = catalog.denizens.sortBy(_.id.value).map(d =>
-      s"${d.id.value}|${d.handlers.sorted.mkString(",")}").mkString("\n")
+    val canonical = (
+      catalog.denizens.sortBy(_.id.value).map(d =>
+        s"denizen|${d.id.value}|${d.handlers.sorted.mkString(",")}") ++
+      catalog.relics.sortBy(_.id.value).map(r =>
+        s"relic|${r.id.value}|${r.handlers.sorted.mkString(",")}") ++
+      catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
+        s"edifice-intact|${e.id.value}|${e.intact.handlers.sorted.mkString(",")}",
+        s"edifice-ruined|${e.id.value}|${e.ruined.handlers.sorted.mkString(",")}")) ++
+      catalog.legacies.sortBy(_.id.value).map(l =>
+        s"legacy|${l.id.value}|${l.handlers.sorted.mkString(",")}") ++
+      catalog.sites.sortBy(_.id.value).map(s =>
+        s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}")
+    ).mkString("\n")
     val actual = MessageDigest.getInstance("SHA-256")
       .digest(canonical.getBytes(StandardCharsets.UTF_8))
       .map(byte => f"${byte & 0xff}%02x").mkString
@@ -304,12 +322,31 @@ object NegotiationPowerSupport {
       val siteSources = accessibleSites.flatMap(candidate =>
         ready.game.current.map.sites(candidate).denizens.collect {
           case d: DenizenState if d.orientation == Orientation.FaceUp =>
-            RuleSourceRef.SiteCard(candidate, d.id) -> d.id
+            RuleSourceRef.SiteCard(candidate, d.id) -> catalog.denizens
+              .find(_.id.value == d.id.value).toVector.flatMap(_.handlers)
+          case e: EdificeState => RuleSourceRef.Edifice(candidate, e.id) ->
+            catalog.edifices.find(_.id.value == e.id.value).toVector.flatMap { definition =>
+              e.side match {
+                case EdificeSide.Intact => definition.intact.handlers
+                case EdificeSide.Ruined => definition.ruined.handlers
+              }
+            }
         })
-      (adviserSources ++ siteSources).flatMap { case (source, id) =>
+      val adviserActivations = adviserSources.flatMap { case (source, id) =>
         catalog.denizens.find(_.id.value == id.value).toVector.flatMap(_.handlers)
-          .filter(RelevantHandlers).map(handler => RuleActivation(source, handler, 0))
-      }
+          .filter(RelevantHandlers).map(handler => RuleActivation(source, handler, 0)) }
+      val siteActivations = siteSources.flatMap { case (source, handlers) =>
+        handlers.filter(RelevantHandlers).map(handler => RuleActivation(source, handler, 0)) }
+      val relicActivations = player.relics.flatMap { relic => catalog.relics
+        .find(_.id.value == relic.id.value).toVector.flatMap(_.handlers)
+        .filter(RelevantHandlers).map(handler => RuleActivation(
+          RuleSourceRef.Relic(participant, relic.id), handler, 0)) }
+      val lineage = ready.game.campaign.lineages(player.lineage)
+      val legacyActivations = lineage.legacies.filter(_.active).flatMap { legacy =>
+        catalog.legacies.find(_.id.value == legacy.id.value).toVector.flatMap(_.handlers)
+          .filter(RelevantHandlers).map(handler => RuleActivation(
+            RuleSourceRef.Legacy(lineage.id, legacy.id), handler, 0)) }
+      adviserActivations ++ siteActivations ++ relicActivations ++ legacyActivations
     }.distinct
     val contextReady = participants.map(id => ready.game.current.players.find(_.player == id).get)
     activations.sortBy(a => (a.source.stableKey, a.handlerId)).iterator.flatMap { activation =>
