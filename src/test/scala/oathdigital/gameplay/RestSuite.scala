@@ -8,7 +8,7 @@ import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.OathEvent.{RestCompleted, RestStarted}
 import oathdigital.setup.OathState.Ready
 import oathdigital.setup.OathViolation.{RestOutcomeMismatch,
-  UnsupportedRoundEndRule}
+  UnsupportedRoundEndCatalogInventory, UnsupportedRoundEndRule}
 
 class RestSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -87,7 +87,7 @@ class RestSuite extends munit.FunSuite {
         Right(began.state))((next, recorded) => next.flatMap(rules.evolve(_, recorded)))
         .toOption.get
       if (player != order.last)
-        state = rules.handle(state, WakeCommand.EndWake(event.nextPlayerId))
+        state = rules.handle(state, WakeCommand.EndWake(event.postRestActivePlayerId))
           .toOption.get.state
     }
     val Ready(after) = state: @unchecked
@@ -96,91 +96,97 @@ class RestSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Wake)
   }
 
-  test("active legacy Rest powers fail explicitly") {
+  test("unrelated active powers and the end-die Arbiter legacy do not block") {
     val base = act
     val lineage = base.game.campaign.lineages.values.head
-    val unsupported = base.copy(game = base.game.copy(campaign =
+    val unrelated = catalog.denizens.find(d => !Set(
+      "denizen.vow-of-poverty", "denizen.naysayers",
+      "denizen.silver-tongue", "denizen.insomnia",
+      "denizen.vow-of-obedience").exists(d.handlers.contains)).get
+    val supported = base.copy(game = base.game.copy(campaign =
       base.game.campaign.copy(lineages = base.game.campaign.lineages.updated(
         lineage.id, lineage.copy(legacies = Vector(
-          LegacyState(LegacyId("active-rest"), active = true)))))))
-    val actor = unsupported.game.current.turn.activePlayer
-    val rejected = rules.handle(Ready(unsupported), RestCommand.Begin(actor))
-      .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
-    assert(rejected.sourceKey.contains("legacy:"))
-    assertEquals(rejected.handlerId, "catalog-missing")
-    val projection = new oathdigital.application.GameProjector(catalog).project(
-      "unsupported-rest",
-      oathdigital.application.LoadedGame(Ready(unsupported), 12L), actor)
-    assert(!projection.legalControls.contains("beginRest"))
+          LegacyState(LegacyId("L23"), active = true))))), current =
+      base.game.current.copy(players = base.game.current.players.map { player =>
+        if (player.player != base.game.current.turn.activePlayer) player
+        else player.copy(advisers = Vector(DenizenState(
+          DenizenId(unrelated.id.value), Orientation.FaceUp, Tokens.empty)))
+      })))
+    assert(rules.handle(Ready(supported), RestCommand.Begin(
+      supported.game.current.turn.activePlayer)).isRight)
   }
 
-  test("changed round-end handler inventory fails with stable source identity") {
+  test("each relevant Rest handler blocks with stable adviser and site identities") {
     val base = act
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
-    val adviser = actor.advisers.collectFirst { case d: DenizenState => d }.get
-      .copy(orientation = Orientation.FaceUp)
-    val changedCatalog = catalog.copy(denizens = catalog.denizens.map { definition =>
-      if (definition.id.value != adviser.id.value) definition
-      else definition.copy(handlers = Vector("changed.round-end"),
-        rulesText = "At end of round, change the result.")
-    })
-    val changedRules = new OathRules(changedCatalog)
-    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(adviser)) else p))))
-    val rejected = changedRules.handle(Ready(changed), RestCommand.Begin(actor.player))
-      .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
-    assertEquals(rejected.sourceKey,
-      s"adviser:${actor.player.value}:denizen:${adviser.id.value}")
-    assertEquals(rejected.handlerId, "changed.round-end")
-  }
-
-  test("site relic edifice banner and Foundation round-end families fail safely") {
-    val base = act
-    val actor = base.game.current.players.find(
-      _.player == base.game.current.turn.activePlayer).get
-    def rejection(c: oathdigital.catalog.ExecutableCatalog, ready: ReadyGame) =
-      new OathRules(c).handle(Ready(ready), RestCommand.Begin(actor.player))
+    val relevant = Set("denizen.vow-of-poverty", "denizen.naysayers",
+      "denizen.silver-tongue", "denizen.insomnia", "denizen.vow-of-obedience")
+    relevant.foreach { handler =>
+      val definition = catalog.denizens.find(_.handlers.contains(handler)).get
+      val adviser = DenizenState(DenizenId(definition.id.value),
+        Orientation.FaceUp, Tokens.empty)
+      val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+        players = base.game.current.players.map(p => if (p.player == actor.player)
+          p.copy(advisers = Vector(adviser)) else p))))
+      val rejected = rules.handle(Ready(state), RestCommand.Begin(actor.player))
         .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
-
-    val siteId = base.game.current.map.inPlay.head
-    val siteCatalog = catalog.copy(sites = catalog.sites.map(s =>
-      if (s.id != siteId) s else s.copy(handlers = s.handlers :+ "site.round-end")))
-    assertEquals(rejection(siteCatalog, base).sourceKey, s"site:${siteId.value}")
-
-    val relic = catalog.relics.head
-    val relicCatalog = catalog.copy(relics = catalog.relics.map(r =>
-      if (r.id != relic.id) r else r.copy(handlers = Vector("relic.victory"),
-        rulesText = "Win the game at end of round.")))
-    val withRelic = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(relics = Vector(RelicState(RelicId(relic.id.value),
-          Orientation.FaceUp, Tokens.empty))) else p))))
-    assert(rejection(relicCatalog, withRelic).sourceKey.startsWith("relic:"))
-
-    val edifice = catalog.edifices.head
-    val edificeCatalog = catalog.copy(edifices = catalog.edifices.map(e =>
-      if (e.id != edifice.id) e else e.copy(intact = e.intact.copy(
-        handlers = Vector("edifice.game-end"), rulesText = "At end of round."))))
-    val withEdifice = base.copy(game = base.game.copy(current = base.game.current.copy(
+      assertEquals(rejected.handlerId, handler)
+      assert(rejected.sourceKey.startsWith(s"adviser:${actor.player.value}:"))
+    }
+    val handler = "denizen.insomnia"
+    val definition = catalog.denizens.find(_.handlers.contains(handler)).get
+    val siteId = actor.pawnSite.get
+    val siteState = base.copy(game = base.game.copy(current = base.game.current.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
         siteId, base.game.current.map.sites(siteId).copy(denizens = Vector(
-          EdificeState(EdificeId(edifice.id.value), EdificeSide.Intact,
+          DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
             Tokens.empty))))))))
-    assert(rejection(edificeCatalog, withEdifice).sourceKey.startsWith("edifice:"))
+    val siteRejected = rules.handle(Ready(siteState), RestCommand.Begin(actor.player))
+      .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
+    assert(siteRejected.sourceKey.startsWith(s"site-card:${siteId.value}:"))
+  }
 
+  test("changed inventory in every catalog family fails before runtime discovery") {
+    val base = act
+    val actor = base.game.current.turn.activePlayer
+    def rejects(c: oathdigital.catalog.ExecutableCatalog) =
+      new OathRules(c).handle(Ready(base), RestCommand.Begin(actor))
+        .left.toOption.exists(_.isInstanceOf[UnsupportedRoundEndCatalogInventory])
+    val changed = Vector(
+      catalog.copy(denizens = catalog.denizens.updated(0,
+        catalog.denizens.head.copy(handlers = catalog.denizens.head.handlers :+ "changed"))),
+      catalog.copy(relics = catalog.relics.updated(0,
+        catalog.relics.head.copy(handlers = catalog.relics.head.handlers :+ "changed"))),
+      catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
+        intact = catalog.edifices.head.intact.copy(
+          handlers = catalog.edifices.head.intact.handlers :+ "changed")))),
+      catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
+        ruined = catalog.edifices.head.ruined.copy(
+          handlers = catalog.edifices.head.ruined.handlers :+ "changed")))),
+      catalog.copy(legacies = catalog.legacies.updated(0,
+        catalog.legacies.head.copy(handlers = catalog.legacies.head.handlers :+ "changed"))),
+      catalog.copy(sites = catalog.sites.updated(0,
+        catalog.sites.head.copy(handlers = catalog.sites.head.handlers :+ "changed"))))
+    assert(changed.forall(rejects))
+  }
+
+  test("altered banner and Foundation types fail with stable identities") {
+    val base = act
+    val actor = base.game.current.turn.activePlayer
+    def rejection(ready: ReadyGame) = rules.handle(Ready(ready),
+      RestCommand.Begin(actor)).left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
     val banner = base.copy(game = base.game.copy(current = base.game.current.copy(
       banners = base.game.current.banners.copy(peoplesFavor =
         base.game.current.banners.peoplesFavor.copy(
           active = PeoplesFavorFace.GrandCouncil)))))
-    assertEquals(rejection(catalog, banner).sourceKey, "banner:peoples-favor")
+    assertEquals(rejection(banner).sourceKey, "banner:peoples-favor")
 
     val number = base.game.campaign.foundations.keys.head
     val foundation = base.copy(game = base.game.copy(campaign =
       base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
         number, FoundationState(FoundationFace.Altered, Set.empty)))))
-    assertEquals(rejection(catalog, foundation).sourceKey,
+    assertEquals(rejection(foundation).sourceKey,
       s"foundation:${number.value}")
   }
 

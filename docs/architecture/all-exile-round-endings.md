@@ -17,8 +17,10 @@ At the end of round 8, do not begin another Wake and do not advance beyond the
 printed track. Resolve War Exhaustion in this strict order:
 
 1. If an Exile holds the Usurper title, that player wins.
-2. Otherwise, each Exile with a revealed Vision who meets its goal is eligible.
-   If several are eligible, use the printed Vision order: Conquest (most sites),
+2. Otherwise, once at least three Visions have been drawn, each Exile with a
+   revealed Vision who meets its goal is eligible. If fewer than three Visions
+   have been drawn, no Visionary is eligible. If several are eligible, use the
+   printed Vision order: Conquest (most sites),
    Rebellion (People's Favor), Sanctuary (most relics), then Faith (Darkest
    Secret).
 3. Otherwise, the Oathkeeper wins.
@@ -39,9 +41,13 @@ kind, Vision, candidate order, or an ineligible random winner.
 ## Bounded support and powers
 
 The slice accepts only fixed, unaltered Foundations and all-Exile lineages.
-Before Rest, it inventories active faceup advisers, site cards, edifices, held
-relics, and active Legacies for Rest, round-end, War Exhaustion, or win-changing
-handlers. An applicable unimplemented handler blocks with its stable source key
-and exact handler ID. Unknown active Legacy inventory also blocks. The fixed
-Mob and Wandering Flame banner faces and fixed Foundations have no additional
-round-end handler in this slice.
+Before Rest, a SHA-256 fingerprint pins the complete handler vocabulary for
+denizens, relics, both edifice faces, Legacies, and sites. Runtime discovery
+then compares active, accessible sources only against an explicit audited set
+of five relevant Rest handlers: `denizen.vow-of-poverty`,
+`denizen.naysayers`, `denizen.silver-tongue`, `denizen.insomnia`, and
+`denizen.vow-of-obedience`. An applicable unimplemented handler blocks with its
+stable source key and exact handler ID. Any changed catalog handler inventory
+blocks before discovery with the expected and actual fingerprints; mechanics
+are never inferred from rules text or handler-name fragments. The fixed Mob and
+Wandering Flame banner faces and fixed Foundations remain separate typed checks.

@@ -321,12 +321,12 @@ class GameEventWireSuite extends munit.FunSuite {
       WireError.WrongType("$.payload.returnedSecrets", "expected an integer"))
     reject("refreshedSupply", -1,
       WireError.InvalidValue("$.payload.refreshedSupply", safeRange))
-    reject("nextRound", Double.PositiveInfinity,
-      WireError.WrongType("$.payload.nextRound", "expected an integer"))
+    reject("completedRound", Double.PositiveInfinity,
+      WireError.WrongType("$.payload.completedRound", "expected an integer"))
     reject("returnedSecrets", GameEventWire.MaxSafeSequence.toDouble + 1,
       WireError.InvalidValue("$.payload.returnedSecrets", safeRange))
-    reject("nextRound", Int.MaxValue.toDouble + 1,
-      WireError.InvalidValue("$.payload.nextRound", intRange))
+    reject("completedRound", Int.MaxValue.toDouble + 1,
+      WireError.InvalidValue("$.payload.completedRound", intRange))
 
     val favor = restValue()
     favor("payload")("returnedFavor")("beast") =

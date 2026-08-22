@@ -436,15 +436,15 @@ object GameEventWire {
           "placement" -> encodeSearchPlacement(placement)
         )
       case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
-      case RestCompleted(playerId, favor, secrets, supply, next, round, limited) =>
+      case RestCompleted(playerId, favor, secrets, supply, active, round, limited) =>
         ujson.Obj(
           "playerId" -> playerId.value,
           "returnedFavor" -> ujson.Obj.from(favor.toVector.sortBy(_._1.key)
             .map { case (suit, amount) => suit.key -> ujson.Num(amount) }),
           "returnedSecrets" -> secrets,
           "refreshedSupply" -> supply,
-          "nextPlayerId" -> next.value,
-          "nextRound" -> round,
+          "postRestActivePlayerId" -> active.value,
+          "completedRound" -> round,
           "usurperLimited" -> limited
         )
       case RoundEnded(completed, next) => ujson.Obj(
@@ -767,12 +767,12 @@ object GameEventWire {
             }
             returnedSecrets <- safeIntField(payload.obj, "returnedSecrets", path)
             refreshedSupply <- safeIntField(payload.obj, "refreshedSupply", path)
-            nextRound <- safeIntField(payload.obj, "nextRound", path)
+            completedRound <- safeIntField(payload.obj, "completedRound", path)
             limited = payload("usurperLimited").bool
           } yield RestCompleted(
             PlayerId(payload("playerId").str), entries.toMap,
             returnedSecrets, refreshedSupply,
-            PlayerId(payload("nextPlayerId").str), nextRound, limited)
+            PlayerId(payload("postRestActivePlayerId").str), completedRound, limited)
         case RoundEndedType => for {
           completed <- safeIntField(payload.obj, "completedRound", path)
           next <- payload("nextRound") match {

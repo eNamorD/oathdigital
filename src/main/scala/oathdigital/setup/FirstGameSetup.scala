@@ -288,8 +288,8 @@ object OathEvent {
       returnedFavor: Map[Suit, Int],
       returnedSecrets: Int,
       refreshedSupply: Int,
-      nextPlayerId: PlayerId,
-      nextRound: Int,
+      postRestActivePlayerId: PlayerId,
+      completedRound: Int,
       usurperLimited: Boolean
   ) extends OathEvent
   final case class RoundEnded(completedRound: Int, nextRound: Option[Int])
@@ -486,6 +486,8 @@ object OathViolation {
       extends OathViolation
   final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
       extends OathViolation
+  final case class UnsupportedRoundEndCatalogInventory(
+      expected: String, actual: String) extends OathViolation
   final case class RestOutcomeMismatch(detail: String)
       extends OathViolation
   case object ParticipantsEmpty extends OathViolation

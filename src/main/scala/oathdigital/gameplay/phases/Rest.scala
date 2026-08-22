@@ -1,5 +1,8 @@
 package oathdigital.gameplay.phases
 
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, StateBasedEvaluation}
 import oathdigital.model._
@@ -27,6 +30,14 @@ object WarExhaustionRandomPort {
 }
 
 object Rest {
+  private val ExpectedHandlerInventory =
+    "ebe0c1ad8fdc22834f96264b1036f6160e7072676ef1069bed447dd1a57e98d6"
+  private val RelevantHandlers = Set(
+    "denizen.vow-of-poverty",
+    "denizen.naysayers",
+    "denizen.silver-tongue",
+    "denizen.insomnia",
+    "denizen.vow-of-obedience")
   private val ExileWarbands = 14
   private val ExileSupply = SupplyRules(
     SupplyTrack.Maximum,
@@ -48,7 +59,7 @@ object Rest {
       validateRest(catalog, state, playerId).flatMap { ready =>
         expected(catalog, ready, playerId).flatMap { event =>
           transition(catalog, state, Vector(event),
-            AwaitingWakeAction(event.nextPlayerId)).flatMap { rested =>
+            AwaitingWakeAction(event.postRestActivePlayerId)).flatMap { rested =>
             if (playerId != turnOrder(ready).last) Right(rested)
             else finishRound(catalog, rested, randomPort)
           }
@@ -120,8 +131,12 @@ object Rest {
   private def validateAllExileAndRules(catalog: ExecutableCatalog,
       ready: ReadyGame): Either[OathViolation, Unit] = {
     val game = ready.game
+    val actualHandlerInventory = handlerFingerprint(catalog)
     if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedRestState("Rest is limited to the exile-only first game"))
+    else if (actualHandlerInventory != ExpectedHandlerInventory)
+      Left(UnsupportedRoundEndCatalogInventory(ExpectedHandlerInventory,
+        actualHandlerInventory))
     else activeRoundEndRules(catalog, ready).headOption match {
       case Some((source, handler)) =>
         Left(UnsupportedRoundEndRule(source, handler))
@@ -131,75 +146,65 @@ object Rest {
 
   private def activeRoundEndRules(catalog: ExecutableCatalog,
       ready: ReadyGame): Vector[(String, String)] = {
-    def relevant(text: String): Boolean = {
-      val value = text.toLowerCase(java.util.Locale.ROOT)
-      value.contains("rest:") || value.contains("end of round") ||
-        value.contains("war exhaustion") || value.contains("win the game")
-    }
-    def handlerRelevant(handler: String): Boolean = {
-      val value = handler.toLowerCase(java.util.Locale.ROOT)
-      Vector("rest", "round", "victory", "war-exhaustion", "game-end")
-        .exists(value.contains)
-    }
-    val maps = catalogById(catalog)
-    val denizens = maps.denizens
-    val relics = maps.relics
-    val edifices = maps.edifices
-    val legacies = maps.legacies
     val current = ready.game.current
-    val sitePowerRules = current.map.inPlay.flatMap { siteId =>
-      catalog.sites.find(_.id == siteId).toVector.flatMap(_.handlers
-        .filter(handlerRelevant).map(h => s"site:${siteId.value}" -> h))
+    val actor = current.players.find(_.player == current.turn.activePlayer).get
+    val accessibleSites = current.map.inPlay.filter { siteId =>
+      actor.pawnSite.contains(siteId) || SiteRule.ruledBy(
+        current.map.sites(siteId).forces, current.players,
+        actor.player).getOrElse(false)
     }
-    val adviserRules = current.players.flatMap { player => player.advisers.collect {
+    def denizenHandlers(id: DenizenId) = catalog.denizens
+      .find(_.id.value == id.value).toVector.flatMap(_.handlers)
+    def edificeHandlers(card: EdificeState) = catalog.edifices
+      .find(_.id.value == card.id.value).toVector.flatMap { definition =>
+        if (card.side == EdificeSide.Intact) definition.intact.handlers
+        else definition.ruined.handlers
+      }
+    val sources = actor.advisers.collect {
       case d: DenizenState if d.orientation == Orientation.FaceUp =>
-        denizens.get(d.id.value).toVector.flatMap(defn =>
-          Option.when(relevant(defn.rulesText))(defn.handlers.map(h =>
-            s"adviser:${player.player.value}:denizen:${d.id.value}" -> h)).toVector.flatten)
-    }.flatten }
-    val siteRules = current.map.sites.toVector.flatMap { case (siteId, site) =>
-      site.denizens.flatMap {
+        oathdigital.gameplay.RuleSourceRef.Adviser(actor.player, d.id).stableKey ->
+          denizenHandlers(d.id)
+    } ++ accessibleSites.flatMap { siteId => current.map.sites(siteId).denizens.map {
         case d: DenizenState if d.orientation == Orientation.FaceUp =>
-          denizens.get(d.id.value).toVector.flatMap(defn =>
-            Option.when(relevant(defn.rulesText))(defn.handlers.map(h =>
-              s"site-card:${siteId.value}:denizen:${d.id.value}" -> h)).toVector.flatten)
-        case e: EdificeState => edifices.get(e.id.value).toVector.flatMap { defn =>
-          val face = if (e.side == EdificeSide.Intact) defn.intact else defn.ruined
-          Option.when(relevant(face.rulesText))(face.handlers.map(h =>
-            s"edifice:${siteId.value}:${e.id.value}" -> h)).toVector.flatten
-        }
-        case _ => Vector.empty
+          oathdigital.gameplay.RuleSourceRef.SiteCard(siteId, d.id).stableKey ->
+            denizenHandlers(d.id)
+        case e: EdificeState =>
+          oathdigital.gameplay.RuleSourceRef.Edifice(siteId, e.id).stableKey ->
+            edificeHandlers(e)
+        case _ => "inactive" -> Vector.empty
+      }} ++ actor.relics.collect { case relic if relic.orientation == Orientation.FaceUp =>
+        oathdigital.gameplay.RuleSourceRef.Relic(actor.player, relic.id).stableKey ->
+          catalog.relics.find(_.id.value == relic.id.value).toVector.flatMap(_.handlers)
+      } ++ ready.game.campaign.lineages(actor.lineage).legacies.filter(_.active).map {
+        legacy => oathdigital.gameplay.RuleSourceRef.Legacy(actor.lineage,
+          legacy.id).stableKey -> catalog.legacies.find(_.id.value == legacy.id.value)
+          .toVector.flatMap(_.handlers)
+      } ++ accessibleSites.map { siteId =>
+        oathdigital.gameplay.RuleSourceRef.Site(siteId).stableKey ->
+          catalog.sites.find(_.id == siteId).toVector.flatMap(_.handlers)
       }
-    }
-    val relicRules = current.players.flatMap { player => player.relics.filter(
-      _.orientation == Orientation.FaceUp).flatMap { relic =>
-      relics.get(relic.id.value).toVector.flatMap(defn =>
-        Option.when(relevant(defn.rulesText))(defn.handlers.map(h =>
-          s"relic:${player.player.value}:${relic.id.value}" -> h)).toVector.flatten)
-    }}
-    val legacyRules = ready.game.campaign.lineages.values.toVector.flatMap { lineage =>
-      lineage.legacies.filter(_.active).flatMap { legacy =>
-        val source = s"legacy:${lineage.id.value}:${legacy.id.value}"
-        legacies.get(legacy.id.value).fold(Vector(source -> "catalog-missing"))(
-          defn => if (defn.handlers.isEmpty) Vector(source -> "legacy.active")
-          else defn.handlers.map(h => source -> h))
-      }
-    }
-    (sitePowerRules ++ adviserRules ++ siteRules ++ relicRules ++ legacyRules)
-      .sortBy { case (source, handler) => source -> handler }
+    sources.flatMap { case (source, handlers) =>
+      handlers.filter(RelevantHandlers).map(source -> _)
+    }.sortBy { case (source, handler) => source -> handler }
   }
 
-  private final case class CatalogMaps(
-      denizens: Map[String, oathdigital.catalog.DenizenDefinition],
-      relics: Map[String, oathdigital.catalog.RelicDefinition],
-      edifices: Map[String, oathdigital.catalog.EdificeDefinition],
-      legacies: Map[String, oathdigital.catalog.LegacyDefinition])
-
-  private def catalogById(catalog: ExecutableCatalog): CatalogMaps = {
-    CatalogMaps(catalog.denizens.map(d => d.id.value -> d).toMap,
-      catalog.relics.map(d => d.id.value -> d).toMap,
-      catalog.edifices.map(d => d.id.value -> d).toMap,
-      catalog.legacies.map(d => d.id.value -> d).toMap)
+  private def handlerFingerprint(catalog: ExecutableCatalog): String = {
+    val canonical = (
+      catalog.denizens.sortBy(_.id.value).map(d =>
+        s"denizen|${d.id.value}|${d.handlers.sorted.mkString(",")}") ++
+      catalog.relics.sortBy(_.id.value).map(r =>
+        s"relic|${r.id.value}|${r.handlers.sorted.mkString(",")}") ++
+      catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
+        s"edifice-intact|${e.id.value}|${e.intact.handlers.sorted.mkString(",")}",
+        s"edifice-ruined|${e.id.value}|${e.ruined.handlers.sorted.mkString(",")}")) ++
+      catalog.legacies.sortBy(_.id.value).map(l =>
+        s"legacy|${l.id.value}|${l.handlers.sorted.mkString(",")}") ++
+      catalog.sites.sortBy(_.id.value).map(s =>
+        s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}")
+    ).mkString("\n")
+    MessageDigest.getInstance("SHA-256")
+      .digest(canonical.getBytes(StandardCharsets.UTF_8))
+      .map(byte => f"${byte & 0xff}%02x").mkString
   }
 
   private def expected(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -278,7 +283,7 @@ object Rest {
         players = players,
         map = current.map.copy(sites = sites),
         tracks = current.tracks.copy(usurperLimited = event.usurperLimited),
-        turn = TurnState(event.nextPlayerId,
+        turn = TurnState(event.postRestActivePlayerId,
           if (turnOrder(ready).last == event.playerId) Phase.RoundEnd else Phase.Wake,
           Set.empty),
         pending = None)))

@@ -331,7 +331,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       val state = state0.copy(game = state0.game.copy(current =
         state0.game.current.copy(players = state0.game.current.players.map(p =>
           if (p.player == players(0)) p.copy(revealedVision = Some(
-            VisionState(vision, Orientation.FaceUp))) else p))))
+            VisionState(vision, Orientation.FaceUp))) else p), tracks =
+          state0.game.current.tracks.copy(visionsDrawn = 3))))
       assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(state)), _.head).toOption.get.last,
         WarExhaustionResolved(players(0), VictoryKind.Visionary,
           Some(vision), Vector.empty), clue(vision))
@@ -348,9 +349,44 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     }
     val combined = conquest.copy(game = conquest.game.copy(current =
       conquest.game.current.copy(players = combinedPlayers,
-        banners = rebellion.game.current.banners)))
+        banners = rebellion.game.current.banners,
+        tracks = conquest.game.current.tracks.copy(visionsDrawn = 3))))
     assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(combined)), _.head).toOption.get.last,
       WarExhaustionResolved(players(0), VictoryKind.Visionary,
         Some(VisionRules.Conquest), Vector.empty))
+  }
+
+  test("round-eight Visionary eligibility still requires three Visions drawn") {
+    val base = prepared(Vector.empty, round = 8)
+    val player = base.game.current.players.head.player
+    val qualified = prepared(Vector(Some(player)), round = 8)
+    def withCount(count: Int, holder: Option[PlayerId]) = qualified.copy(game =
+      qualified.game.copy(current = qualified.game.current.copy(
+        players = qualified.game.current.players.map(p => if (p.player == player)
+          p.copy(revealedVision = Some(VisionState(VisionRules.Conquest,
+            Orientation.FaceUp))) else p),
+        tracks = qualified.game.current.tracks.copy(visionsDrawn = count),
+        title = OathkeeperState(holder, TitleSide.Oathkeeper))))
+
+    Vector(0, 2).foreach { count =>
+      val keeper = base.game.current.players(1).player
+      val event = StateBasedEvaluation.endRound(Ready(atRoundEnd(
+        withCount(count, Some(keeper)))), _.head).toOption.get.last
+      assertEquals(event, WarExhaustionResolved(keeper,
+        VictoryKind.Oathkeeper, None, Vector.empty), clue(count))
+      val random = StateBasedEvaluation.endRound(Ready(atRoundEnd(
+        withCount(count, None))), _.last).toOption.get.last
+        .asInstanceOf[WarExhaustionResolved]
+      assertEquals(random.kind, VictoryKind.RandomSelection, clue(count))
+    }
+    assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(
+      withCount(3, None))), _.head).toOption.get.last,
+      WarExhaustionResolved(player, VictoryKind.Visionary,
+        Some(VisionRules.Conquest), Vector.empty))
+
+    val below = atRoundEnd(withCount(2, None))
+    val afterRound = rules.evolve(Ready(below), RoundEnded(8, None)).toOption.get
+    assert(rules.evolve(afterRound, WarExhaustionResolved(player,
+      VictoryKind.Visionary, Some(VisionRules.Conquest), Vector.empty)).isLeft)
   }
 }
