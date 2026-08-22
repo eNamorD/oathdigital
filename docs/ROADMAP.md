@@ -7,9 +7,9 @@ been reviewed.
 
 ## Now
 
-**Phase 2 - Suspended decisions and action boundaries** is active in a
-dedicated implementation task. It audits and completes continuation processing
-across every supported all-Exile procedure.
+**Phase 3 - Powers and battle plans** is next. Base all-Exile procedures,
+goals, endings, and suspended-decision boundaries are complete; powers can now
+extend stable typed procedure boundaries rather than add action-specific paths.
 
 ## Next
 
@@ -34,8 +34,8 @@ campaign-continuity rules.
 1. [x] Generalize Oathkeeper qualification beyond Supremacy.
 2. [x] Implement Vision reveal, qualification, victory, and Conspiracy.
 3. [x] Implement all-Exile round endings and War Exhaustion.
-4. Complete suspended-decision and action-boundary processing needed by these
-   procedures.
+4. [x] Complete suspended-decision and action-boundary processing needed by
+   these procedures.
 
 ### Phase 3 - Powers and battle plans
 
@@ -118,6 +118,16 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 2 - Suspended decisions and action boundaries.** Setup, Search,
+  Recover, Forge, Challenge, Campaign and Raid, Negotiation, Conspiracy,
+  Oathkeeper ties, Rest, and round ending now share verified suspension and
+  completion semantics. Successful Raid relocation reaches the action boundary;
+  Search-to-Conspiracy reconnect restores the correct owner-only choice; a
+  terminal result suppresses later derived evaluation; and round-eight replay
+  requires the recorded round-end transition before War Exhaustion. Obsolete
+  Chronicle placeholders were removed. Stale and unauthorized decisions append
+  nothing, while authorized non-active participants retain their controls.
 
 - [x] **Phase 2 - All-Exile round endings and War Exhaustion.** Final Rest now
   enters an explicit authoritative round-end phase. Rounds 1–7 advance without
