@@ -219,6 +219,8 @@ object SearchRules {
         case _ => Vector.empty
       }
       val current = updated.game.current
+      val conspiracy = event.kept == VisionRules.Conspiracy && event.placement ==
+        SearchPlacement.Adviser(Orientation.FaceUp, None)
       updated.copy(game = updated.game.copy(current = current.copy(
         commonCards = current.commonCards.copy(
           regionalDiscards = current.commonCards.regionalDiscards.updated(
@@ -227,7 +229,9 @@ object SearchRules {
               event.discardedInOrder ++ placementResult.discardedWorld ++ extra),
           edificeDeck = current.commonCards.edificeDeck ++
             placementResult.discardedEdifices),
-        pending = None
+        pending = Option.when(conspiracy)(PendingProcedure.Conspiracy(
+          event.decision, event.playerId, VisionRules.Conspiracy, None, 0,
+          awaitingTarget = true))
       )))
     }
   }
@@ -307,7 +311,15 @@ object SearchRules {
             }
       }
       case SearchPlacement.Adviser(orientation, replace) =>
-        validateAdviserReplacement(catalog, player, replace).flatMap {
+        (kept match {
+          case id: VisionId if orientation == Orientation.FaceUp =>
+            val expected = player.revealedVision.map(_.id)
+            if (replace != expected) Left(InvalidSearchPlacement(
+              if (expected.nonEmpty) "a revealed Vision must be replaced"
+              else "there is no revealed Vision to replace"))
+            else Right(player.advisers -> expected.map(identity[WorldCardId]))
+          case _ => validateAdviserReplacement(catalog, player, replace)
+        }).flatMap {
           case (advisers, removed) =>
           kept match {
             case id: DenizenId =>
@@ -330,9 +342,14 @@ object SearchRules {
                 }
             case id: VisionId =>
               if (!FirstGameRulesData.visions.contains(id)) Left(UnknownWorldCard(id))
+              else if (id == VisionRules.Conspiracy && orientation == Orientation.FaceUp &&
+                  replace.nonEmpty) Left(InvalidSearchPlacement(
+                "Conspiracy does not replace a revealed Vision"))
               else {
                 val nextPlayers = current.players.map { candidate =>
                   if (candidate.player != player.player) candidate
+                  else if (orientation == Orientation.FaceUp && id == VisionRules.Conspiracy)
+                    candidate.copy(advisers = advisers)
                   else if (orientation == Orientation.FaceUp)
                     candidate.copy(advisers = advisers, revealedVision =
                       Some(VisionState(id, Orientation.FaceUp)))

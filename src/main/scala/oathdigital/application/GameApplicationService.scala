@@ -6,6 +6,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.actions.MinorActionCommand
+import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
@@ -62,6 +63,12 @@ object GameCommand {
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
+  final case class RevealVision(playerId: PlayerId, visionId: VisionId)
+      extends GameCommand
+  final case class PlayConspiracy(playerId: PlayerId,
+      target: Option[ConspiracyTargetRef]) extends GameCommand
+  final case class ChooseConspiracySecretSite(playerId: PlayerId,
+      decision: DecisionId, siteId: SiteId) extends GameCommand
   final case class BeginNegotiation(playerId: PlayerId,
       participants: Vector[PlayerId]) extends GameCommand
   final case class ReplaceNegotiationTerms(playerId: PlayerId,
@@ -450,6 +457,18 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
       case GameCommand.MoveWarbands(playerId, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
+      case GameCommand.RevealVision(playerId, visionId) =>
+        rules.handle(state, VisionCommand.Reveal(playerId, visionId))
+      case GameCommand.PlayConspiracy(playerId, target) =>
+        rules.handle(state, VisionCommand.PlayConspiracy(playerId,
+          state match {
+            case OathState.Ready(ready) => ready.game.current.pending.collect {
+              case p: PendingProcedure.Conspiracy if p.awaitingTarget => p.decision
+            }.getOrElse(DecisionId(s"conspiracy-$nextSequence"))
+            case _ => DecisionId(s"conspiracy-$nextSequence")
+          }, target))
+      case GameCommand.ChooseConspiracySecretSite(playerId, decision, siteId) =>
+        rules.handle(state, VisionCommand.ChooseSecretSite(playerId, decision, siteId))
       case GameCommand.BeginNegotiation(playerId, participants) =>
         rules.handle(state, NegotiationCommand.Begin(playerId,
           DecisionId(s"negotiation-$nextSequence"), participants))

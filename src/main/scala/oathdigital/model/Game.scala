@@ -112,6 +112,36 @@ sealed trait PendingProcedure extends Product with Serializable {
   def decision: DecisionId
 }
 
+sealed trait ConspiracyTarget extends Product with Serializable {
+  def owner: PlayerId
+  def stableKey: String
+}
+
+sealed trait ConspiracyTargetRef extends Product with Serializable {
+  def owner: PlayerId
+  def stableKey: String
+}
+object ConspiracyTargetRef {
+  final case class RelicSlot(owner: PlayerId, slot: Int)
+      extends ConspiracyTargetRef {
+    require(slot >= 0, "Conspiracy relic slot must be non-negative")
+    def stableKey = s"player:${owner.value}:relic-slot:$slot"
+  }
+  final case class Banner(owner: PlayerId, banner: oathdigital.model.Banner)
+      extends ConspiracyTargetRef {
+    def stableKey = s"player:${owner.value}:banner:${banner.key}"
+  }
+}
+object ConspiracyTarget {
+  final case class Relic(owner: PlayerId, relic: RelicId) extends ConspiracyTarget {
+    def stableKey = s"player:${owner.value}:relic:${relic.value}"
+  }
+  final case class Banner(owner: PlayerId, banner: oathdigital.model.Banner)
+      extends ConspiracyTarget {
+    def stableKey = s"player:${owner.value}:banner:${banner.key}"
+  }
+}
+
 /** Stable, container-qualified target for a denizen printed at a site. */
 final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
   def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
@@ -387,6 +417,17 @@ object PendingProcedure {
       decision: DecisionId,
       actor: PlayerId,
       candidates: Vector[PlayerId]
+  ) extends PendingProcedure
+
+  final case class Conspiracy(
+      decision: DecisionId,
+      actor: PlayerId,
+      source: VisionId,
+      target: Option[ConspiracyTarget],
+      remainingSecretPlacements: Int,
+      secretSites: Vector[SiteId] = Vector.empty,
+      favorReturnOrder: Vector[Suit] = Vector.empty,
+      awaitingTarget: Boolean = false
   ) extends PendingProcedure
 
   final case class Negotiation(

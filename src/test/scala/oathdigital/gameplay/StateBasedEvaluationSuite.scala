@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.TravelCommand
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.setup._
@@ -211,5 +212,61 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val replayed = events.foldLeft[Either[OathViolation, OathState]](
       Right(initial))((next, event) => next.flatMap(rules.evolve(_, event)))
     assertEquals(replayed, Right(state))
+  }
+
+  test("all four true Visions require three drawn and a unique qualifying leader") {
+    val base = prepared(Vector.empty)
+    val active = base.game.current.turn.activePlayer
+    val relic = RelicState(RelicId("vision-relic"), Orientation.FaceDown, Tokens.empty)
+    def bannerState(banner: Banner) = base.copy(game = base.game.copy(current =
+      base.game.current.copy(banners = banner match {
+        case Banner.PeoplesFavor => base.game.current.banners.copy(
+          peoplesFavor = base.game.current.banners.peoplesFavor.copy(holder = Some(active)))
+        case Banner.DarkestSecret => base.game.current.banners.copy(
+          darkestSecret = base.game.current.banners.darkestSecret.copy(holder = Some(active)))
+      })))
+    val cases = Vector(
+      VisionRules.Conquest -> prepared(Vector(Some(active))),
+      VisionRules.Sanctuary -> base.copy(game = base.game.copy(current =
+        base.game.current.copy(players = base.game.current.players.map(p =>
+          if (p.player == active) p.copy(relics = Vector(relic)) else p)))),
+      VisionRules.Rebellion -> bannerState(Banner.PeoplesFavor),
+      VisionRules.Faith -> bannerState(Banner.DarkestSecret)
+    )
+    cases.foreach { case (vision, state0) =>
+      val state = state0.copy(game = state0.game.copy(current = state0.game.current.copy(
+        players = state0.game.current.players.map(p => if (p.player == active)
+          p.copy(revealedVision = Some(VisionState(vision, Orientation.FaceUp))) else p),
+        tracks = state0.game.current.tracks.copy(visionsDrawn = 3))))
+      assertEquals(StateBasedEvaluation.visionAtWake(Ready(state)),
+        Right(Some(VisionVictory(active, vision))), clue(vision))
+      val below = state.copy(game = state.game.copy(current = state.game.current.copy(
+        tracks = state.game.current.tracks.copy(visionsDrawn = 2))))
+      assertEquals(StateBasedEvaluation.visionAtWake(Ready(below)), Right(None), clue(vision))
+    }
+  }
+
+  test("a newly flipped Oathkeeper can win by Vision but never immediately as Usurper") {
+    val base = prepared(Vector.empty)
+    val active = base.game.current.turn.activePlayer
+    val qualifying = prepared(Vector(Some(active)), holder = Some(active), limited = false)
+    val withVision = qualifying.copy(game = qualifying.game.copy(current =
+      qualifying.game.current.copy(players = qualifying.game.current.players.map(p =>
+        if (p.player == active) p.copy(revealedVision = Some(VisionState(
+          VisionRules.Conquest, Orientation.FaceUp))) else p), tracks =
+        qualifying.game.current.tracks.copy(visionsDrawn = 3))))
+    assertEquals(StateBasedEvaluation.atWake(Ready(withVision)),
+      Right(Some(UsurperFlipped(active))))
+    val flipped = rules.evolve(Ready(withVision), UsurperFlipped(active)).toOption.get
+    assertEquals(StateBasedEvaluation.visionAtWake(flipped),
+      Right(Some(VisionVictory(active, VisionRules.Conquest))))
+    assertEquals(StateBasedEvaluation.atWake(flipped),
+      Right(Some(UsurperVictory(active))))
+
+    val noVision = qualifying.copy(game = qualifying.game.copy(current =
+      qualifying.game.current.copy(tracks = qualifying.game.current.tracks.copy(
+        visionsDrawn = 3))))
+    val afterFlip = rules.evolve(Ready(noVision), UsurperFlipped(active)).toOption.get
+    assertEquals(StateBasedEvaluation.visionAtWake(afterFlip), Right(None))
   }
 }

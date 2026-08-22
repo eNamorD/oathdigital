@@ -6,6 +6,7 @@ import oathdigital.setup._
 import oathdigital.setup.OathEvent._
 import oathdigital.setup.OathState._
 import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.actions.VisionRules
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.
@@ -87,6 +88,18 @@ object StateBasedEvaluation {
       }
     }
 
+  def visionAtWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
+    supported(state).map { ready =>
+      val current = ready.game.current
+      Option.when(current.tracks.visionsDrawn >= 3)(current.players.find(
+        _.player == current.turn.activePlayer).flatMap { actor =>
+        actor.revealedVision.flatMap(v => VisionRules.trueGoal(v.id).flatMap { goal =>
+          Option.when(qualifyingPlayers(goal, current) == Set(actor.player))(
+            VisionVictory(actor.player, v.id))
+        })
+      }).flatten
+    }
+
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent): Either[OathViolation, OathState] =
     event match {
       case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap {
@@ -143,6 +156,13 @@ object StateBasedEvaluation {
             update(state)(current => current.copy(result = Some(GameResult(recorded.playerId))))
           case expected => Left(InvalidEventOrder(
             s"Usurper victory mismatch: expected $expected, recorded $recorded"))
+        }
+      case recorded: VisionVictory =>
+        visionAtWake(state).flatMap {
+          case Some(expected: VisionVictory) if expected == recorded =>
+            update(state)(current => current.copy(result = Some(GameResult(recorded.playerId))))
+          case expected => Left(InvalidEventOrder(
+            s"Vision victory mismatch: expected $expected, recorded $recorded"))
         }
       case _ => Left(InvalidEventOrder("not a state-based evaluation event"))
     }

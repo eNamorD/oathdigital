@@ -164,6 +164,22 @@ object OathEvent {
       playerId: PlayerId, adviserId: WorldCardId, placement: SearchPlacement,
       favorGained: Int, discardedWorld: Vector[WorldCardId],
       discardedEdifices: Vector[EdificeId]) extends OathEvent
+  final case class VisionRevealed(
+      playerId: PlayerId, visionId: VisionId, replaced: Option[VisionId],
+      destination: Region) extends OathEvent
+  final case class ConspiracyStarted(
+      playerId: PlayerId, decision: DecisionId, source: VisionId,
+      target: Option[ConspiracyTarget], automaticSecretSites: Vector[SiteId],
+      automaticFavorReturns: Vector[Suit])
+      extends OathEvent
+  final case class ConspiracySecretSiteChosen(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      automaticSecretSites: Vector[SiteId]) extends OathEvent
+  final case class ConspiracyCompleted(
+      playerId: PlayerId, decision: DecisionId, source: VisionId,
+      target: Option[ConspiracyTarget], secretSites: Vector[SiteId],
+      favorReturnOrder: Vector[Suit])
+      extends OathEvent
   final case class SiteRelicsPeeked(
       playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
       extends OathEvent
@@ -285,6 +301,8 @@ object OathEvent {
       extends OathEvent
   final case class UsurperFlipped(playerId: PlayerId) extends OathEvent
   final case class UsurperVictory(playerId: PlayerId) extends OathEvent
+  final case class VisionVictory(playerId: PlayerId, visionId: VisionId)
+      extends OathEvent
 }
 
 sealed trait TradeResource extends Product with Serializable
@@ -322,6 +340,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingBannerDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingConspiracyDecision(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)
@@ -412,6 +432,11 @@ object OathViolation {
       extends OathViolation
   final case class UnsupportedMinorActionRule(source: CardId, handlers: Vector[String])
       extends OathViolation
+  final case class VisionUnavailable(detail: String) extends OathViolation
+  final case class ConspiracyUnavailable(detail: String) extends OathViolation
+  final case class ConspiracyDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class ConspiracyOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedMinorActionCatalogInventory(expected: String, actual: String)
       extends OathViolation
   final case class NegotiationUnavailable(detail: String) extends OathViolation

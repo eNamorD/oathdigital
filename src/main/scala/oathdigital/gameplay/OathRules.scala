@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
   RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
+import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
 import oathdigital.model._
@@ -45,6 +46,19 @@ final class OathRules(catalog: ExecutableCatalog,
   ): Either[OathViolation, OathTransition] =
     Search.handle(catalog, state, command).flatMap { transition =>
       command match {
+        case _: SearchCommand.Complete if (transition.state match {
+          case Ready(ready) => ready.game.current.pending.exists {
+            case p: PendingProcedure.Conspiracy => p.awaitingTarget
+            case _ => false
+          }
+          case _ => false
+        }) => Right(transition.copy(continue = transition.state match {
+          case Ready(ready) => ready.game.current.pending.collect {
+            case p: PendingProcedure.Conspiracy =>
+              OathContinue.AwaitingConspiracyDecision(p.actor, p.decision)
+          }.get
+          case _ => transition.continue
+        }))
         case _: SearchCommand.Complete => completeAction(transition)
         case _ => Right(transition)
       }
@@ -80,6 +94,18 @@ final class OathRules(catalog: ExecutableCatalog,
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] =
     MinorActions.handle(catalog, state, command).flatMap(completeAction)
+
+  def handle(state: OathState, command: VisionCommand)
+      : Either[OathViolation, OathTransition] =
+    Visions.handle(catalog, state, command).flatMap { transition => command match {
+      case _: VisionCommand.ChooseSecretSite | _: VisionCommand.PlayConspiracy
+          if (transition.state match {
+            case Ready(ready) => ready.game.current.pending.isEmpty
+            case _ => false
+          }) => completeAction(transition)
+      case _: VisionCommand.Reveal => completeAction(transition)
+      case _ => Right(transition)
+    }}
 
   def handle(state: OathState, command: NegotiationCommand)
       : Either[OathViolation, OathTransition] =
@@ -146,6 +172,10 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
+      case event: VisionRevealed => Visions.evolve(catalog, state, event)
+      case event: ConspiracyStarted => Visions.evolve(catalog, state, event)
+      case event: ConspiracySecretSiteChosen => Visions.evolve(catalog, state, event)
+      case event: ConspiracyCompleted => Visions.evolve(catalog, state, event)
       case event: NegotiationStarted => Negotiation.evolve(catalog, state, event)
       case event: NegotiationTermsReplaced => Negotiation.evolve(catalog, state, event)
       case event: NegotiationAccepted => Negotiation.evolve(catalog, state, event)
@@ -175,6 +205,7 @@ final class OathRules(catalog: ExecutableCatalog,
         StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: VisionVictory => StateBasedEvaluation.evolve(catalog, state, event)
       case setupEvent => setup.evolve(state, setupEvent)
     }
 
@@ -182,8 +213,30 @@ final class OathRules(catalog: ExecutableCatalog,
     appendEvaluation(transition, StateBasedEvaluation.banditRefill(catalog, _))
       .flatMap(appendEvaluation(_, StateBasedEvaluation.afterAction))
 
-  private def enterWake(transition: OathTransition) =
-    appendEvaluation(transition, StateBasedEvaluation.atWake)
+  private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] = {
+    def append(current: OathTransition, event: OathEvent) =
+      evolve(current.state, event).map(next => current.copy(state = next,
+        events = current.events :+ event, continue = event match {
+          case UsurperVictory(winner) => OathContinue.GameFinished(winner)
+          case VisionVictory(winner, _) => OathContinue.GameFinished(winner)
+          case _ => current.continue
+        }))
+    StateBasedEvaluation.atWake(transition.state).flatMap {
+      case Some(win: UsurperVictory) => append(transition, win)
+      case Some(flip: UsurperFlipped) => append(transition, flip).flatMap { after =>
+        StateBasedEvaluation.visionAtWake(after.state).flatMap {
+          case Some(vision) => append(after, vision)
+          case None => Right(after)
+        }
+      }
+      case None => StateBasedEvaluation.visionAtWake(transition.state).flatMap {
+        case Some(vision) => append(transition, vision)
+        case None => Right(transition)
+      }
+      case Some(other) => Left(InvalidEventOrder(
+        s"unexpected Wake evaluation event: $other"))
+    }
+  }
 
   private def appendEvaluation(transition: OathTransition,
       evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =
