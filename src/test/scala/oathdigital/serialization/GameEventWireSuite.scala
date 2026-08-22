@@ -15,6 +15,39 @@ import oathdigital.setup.FirstGameSetupFixture._
 class GameEventWireSuite extends munit.FunSuite {
   private val rules = new FirstGameSetupRules(catalog)
 
+  test("v12 Vision and Conspiracy events preserve hidden choices exactly") {
+    val red = PlayerId("red")
+    val conspiracy = VisionId("vision:conspiracy")
+    val decision = DecisionId("conspiracy-12")
+    val target = ConspiracyTarget.Relic(PlayerId("blue"), RelicId("R12"))
+    val events = Vector[OathEvent](
+      OathEvent.VisionRevealed(red, VisionId("vision:vision-of-faith"),
+        Some(VisionId("vision:vision-of-conquest")), Region.Provinces),
+      OathEvent.ConspiracyStarted(red, decision, conspiracy, Some(target),
+        Vector(SiteId("S1")), Vector(Suit.Order)),
+      OathEvent.ConspiracySecretSiteChosen(red, decision, SiteId("S2"),
+        Vector(SiteId("S3"))),
+      OathEvent.ConspiracyCompleted(red, decision, conspiracy, Some(target),
+        Vector(SiteId("S1"), SiteId("S2"), SiteId("S3")),
+        Vector(Suit.Order, Suit.Beast)),
+      OathEvent.VisionVictory(red, VisionId("vision:vision-of-faith")))
+    val encoded = GameEventWire.encodeStream("visions", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
+      Vector.fill(events.size)(12))
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+
+    val banner = OathEvent.ConspiracyStarted(red, decision, conspiracy,
+      Some(ConspiracyTarget.Banner(PlayerId("blue"), Banner.DarkestSecret)),
+      Vector.empty, Vector.empty)
+    val bannerJson = GameEventWire.encodeEvent("visions", catalogRef, 20, banner)
+      .toOption.get
+    assertEquals(GameEventWire.decode(bannerJson).toOption.get.event, banner)
+    bannerJson("payload")("target")("banner") = "unknown"
+    assert(GameEventWire.decode(bannerJson).isLeft)
+  }
+
   test("v11 Negotiation events preserve authored terms and disclosures") {
     val red = PlayerId("red"); val blue = PlayerId("blue")
     val terms = NegotiationTerms(Vector(NegotiationTransfer(blue, 2,

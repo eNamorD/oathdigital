@@ -92,6 +92,10 @@ final class AuthenticatedGameGateway(
             actor.discardFacedownAdviser(adviser)
           case GameIntent.PlayFacedownAdviser(adviser, placement) =>
             actor.playFacedownAdviser(adviser, placement)
+          case GameIntent.RevealVision(vision) => actor.revealVision(vision)
+          case GameIntent.PlayConspiracy(target) => actor.playConspiracy(target)
+          case GameIntent.ChooseConspiracySecretSite(decision, site) =>
+            actor.chooseConspiracySecretSite(decision, site)
           case GameIntent.PeekSiteRelics => actor.peekSiteRelics
           case GameIntent.RevealOwnedRelic(relic) => actor.revealOwnedRelic(relic)
           case GameIntent.MoveWarbands(toSite, amount) =>

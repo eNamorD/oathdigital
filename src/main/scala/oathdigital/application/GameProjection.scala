@@ -7,7 +7,7 @@ import oathdigital.setup.FirstGameParticipant
 import oathdigital.setup.ReadyGame
 import oathdigital.setup.WakeResource
 import oathdigital.gameplay.TakeWealthRules
-import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules}
+import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules, VisionRules, Visions}
 import oathdigital.gameplay.phases.Rest
 
 final case class SetupPlayerProjection(
@@ -130,7 +130,8 @@ final case class BoardTargetActionProjection(
     autoActivate: Boolean,
     candidates: Vector[BoardTargetCandidateProjection],
     formation: Option[BoardTargetFormationProjection] = None,
-    requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty
+    requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
+    decisionId: Option[String] = None
 ) {
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")
@@ -388,6 +389,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 if requestingPlayer.contains(p.actor) =>
               Vector("chooseOathkeeperRecipient")
             case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
+            case Some(p: PendingProcedure.Conspiracy)
+                if requestingPlayer.contains(p.actor) =>
+              Vector("chooseConspiracySecretSite")
+            case Some(_: PendingProcedure.Conspiracy) => Vector.empty
             case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
                 requestingPlayer.contains(CampaignRules.planDecisionOwner(c)) =>
               Vector("chooseCampaignPlan", "finishCampaignPlans")
@@ -426,6 +431,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     BannerRules.playerResources(active, b) > 0))("placeBannerResource"),
                   Option.when(active.advisers.exists(adviserOrientation(_) == Orientation.FaceDown))(
                     "facedownAdviserMinorAction"),
+                  Option.when(active.advisers.exists {
+                    case VisionState(id, Orientation.FaceDown) =>
+                      VisionRules.trueGoal(id).nonEmpty
+                    case _ => false
+                  })("revealVision"),
+                  Option.when(active.advisers.exists {
+                    case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
+                    case _ => false
+                  })("playConspiracy"),
                   Option.when(active.pawnSite.flatMap(current.map.sites.get).exists(_.relics.nonEmpty))(
                     "peekSiteRelics"),
                   Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(
@@ -617,6 +631,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 if oathkeeperRecipient.nonEmpty => "oathkeeper-recipient"
             case Some(_: PendingProcedure.OathkeeperRecipient) =>
               "oathkeeper-recipient-waiting"
+            case Some(p: PendingProcedure.Conspiracy)
+                if requestingPlayer.contains(p.actor) => "conspiracy-secret-site"
+            case Some(_: PendingProcedure.Conspiracy) => "conspiracy-waiting"
             case _ => current.turn.phase match {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
@@ -710,10 +727,15 @@ final class GameProjector(catalog: ExecutableCatalog) {
               }
             else Vector.empty,
           boardTargetActions =
-            if (requestingPlayer.contains(active.player) &&
-                current.turn.phase == Phase.Act && current.pending.isEmpty)
-              boardTargetActions(value, active)
-            else Vector.empty,
+            current.pending match {
+              case Some(p: PendingProcedure.Conspiracy)
+                  if requestingPlayer.contains(p.actor) =>
+                Vector(conspiracySecretSiteAction(value, p))
+              case _ if requestingPlayer.contains(active.player) &&
+                current.turn.phase == Phase.Act && current.pending.isEmpty =>
+                boardTargetActions(value, active)
+              case _ => Vector.empty
+            },
           pendingCardDecision = pendingDecision,
           recover = recoverProjection,
           forge = forgeProjection,
@@ -845,6 +867,27 @@ final class GameProjector(catalog: ExecutableCatalog) {
         BoardTargetCandidateProjection(BoardTargetRefProjection.Player(candidate.value),
           safeLabel(candidate.value), Vector("Co-located negotiator"))
       }
+    val revealVisions = player.advisers.collect {
+      case VisionState(id, Orientation.FaceDown)
+          if VisionRules.trueGoal(id).nonEmpty =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerAdviser(player.player.value, id.value),
+          safeLabel(id.value))
+    }
+    val hasConspiracy = player.advisers.exists {
+      case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
+      case _ => false
+    }
+    val conspiracyTargets = Visions.legalTargetRefs(ready, player.player).map {
+      case ConspiracyTargetRef.RelicSlot(owner, slot) =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerRelic(owner.value, slot.toString),
+          s"${safeLabel(owner.value)} facedown relic")
+      case ConspiracyTargetRef.Banner(owner, banner) =>
+        BoardTargetCandidateProjection(
+          BoardTargetRefProjection.PlayerBanner(owner.value, banner.key),
+          s"${safeLabel(owner.value)} ${safeLabel(banner.key)}")
+    }
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites", campaign,
@@ -862,10 +905,29 @@ final class GameProjector(catalog: ExecutableCatalog) {
       selection("challenge", "Choose a banner to Challenge", challenges),
       selection("negotiation", "Choose one or more co-located negotiators", negotiators,
         minimum = 1, maximum = negotiators.size),
+      selection("reveal-vision", "Choose a Vision to reveal", revealVisions),
+      Option.when(hasConspiracy)(BoardTargetActionProjection(
+        "play-conspiracy", if (conspiracyTargets.isEmpty) "Play Conspiracy"
+          else "Choose an enemy asset for Conspiracy",
+        if (conspiracyTargets.isEmpty) 0 else 1,
+        if (conspiracyTargets.isEmpty) 0 else 1,
+        autoActivate = false, conspiracyTargets)),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)
     ).flatten
+  }
+
+  private def conspiracySecretSiteAction(ready: ReadyGame,
+      pending: PendingProcedure.Conspiracy): BoardTargetActionProjection = {
+    val sites = BannerRules.leastSites(
+      ready.game.current, pending.secretSites).map { site =>
+      BoardTargetCandidateProjection(BoardTargetRefProjection.Site(site.value),
+        siteNames.getOrElse(site, safeLabel(site.value)))
+    }
+    BoardTargetActionProjection("conspiracy-secret-site",
+      "Choose a tied least-stocked site for the Darkest Secret",
+      1, 1, autoActivate = true, sites, decisionId = Some(pending.decision.value))
   }
 
   private def selection(kind: String, prompt: String,

@@ -3,12 +3,51 @@ package oathdigital.server
 import oathdigital.application.{CardDecisionResolution, GameCommand, GameProjection,
   OathkeeperProjection}
 import oathdigital.model.{DecisionId, DenizenId, EconomyTargetRef, EdificeId,
-  CampaignBanner, CampaignRaidTarget, PendingProcedure, PlayerId, RelicId, SiteId}
+  Banner, CampaignBanner, CampaignRaidTarget, ConspiracyTargetRef, PendingProcedure,
+  PlayerId, RelicId, SiteId, VisionId}
 import oathdigital.serialization.{
   GameEventWire
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("development Vision and Conspiracy commands retain typed actor and targets") {
+    val reveal = commandRequest(ujson.Obj("type" -> "revealVision",
+      "playerId" -> "red", "visionId" -> "vision:vision-of-faith"))
+    assertEquals(GameHttpWire.decodeCommand(reveal).toOption.get.command,
+      GameCommand.RevealVision(PlayerId("red"),
+        VisionId("vision:vision-of-faith")))
+    val play = commandRequest(ujson.Obj("type" -> "playConspiracy",
+      "playerId" -> "red", "target" -> ujson.Obj("kind" -> "banner",
+        "ownerPlayerId" -> "blue", "banner" -> "darkest-secret")))
+    assertEquals(GameHttpWire.decodeCommand(play).toOption.get.command,
+      GameCommand.PlayConspiracy(PlayerId("red"), Some(
+        ConspiracyTargetRef.Banner(PlayerId("blue"), Banner.DarkestSecret))))
+    val choose = commandRequest(ujson.Obj("type" -> "chooseConspiracySecretSite",
+      "playerId" -> "red", "decisionId" -> "conspiracy-1", "siteId" -> "S2"))
+    assertEquals(GameHttpWire.decodeCommand(choose).toOption.get.command,
+      GameCommand.ChooseConspiracySecretSite(PlayerId("red"),
+        DecisionId("conspiracy-1"), SiteId("S2")))
+    val malformed = ujson.read(play)
+    malformed("command")("target")("banner") = "spoofed"
+    assert(GameHttpWire.decodeCommand(ujson.write(malformed)).isLeft)
+  }
+
+  test("authenticated Vision intents derive actors and use opaque relic slots") {
+    def intent(value: ujson.Obj) = ujson.write(ujson.Obj(
+      "expectedNextSequence" -> 12, "intent" -> value))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(intent(ujson.Obj(
+      "type" -> "revealVision", "visionId" -> "vision:vision-of-rebellion")))
+      .toOption.get.intent, GameIntent.RevealVision(
+        VisionId("vision:vision-of-rebellion")))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(intent(ujson.Obj(
+      "type" -> "playConspiracy", "target" -> ujson.Obj(
+        "kind" -> "relic-slot", "ownerPlayerId" -> "blue", "slot" -> 1))))
+      .toOption.get.intent, GameIntent.PlayConspiracy(Some(
+        ConspiracyTargetRef.RelicSlot(PlayerId("blue"), 1))))
+    assert(AuthenticatedGameHttpWire.decodeCommand(intent(ujson.Obj(
+      "type" -> "playConspiracy", "target" -> ujson.Obj(
+        "kind" -> "relic-slot", "ownerPlayerId" -> "blue", "slot" -> -1)))).isLeft)
+  }
   test("development Negotiation command retains its explicit loopback actor") {
     val json = """{"gameId":"game","expectedNextSequence":50,"command":{"type":"beginNegotiation","playerId":"red","participantPlayerIds":["blue","yellow"]}}"""
     assertEquals(GameHttpWire.decodeCommand(json).toOption.get.command,
@@ -107,6 +146,15 @@ class GameHttpWireSuite extends munit.FunSuite {
     assertEquals(json("oathkeeper")("side").str, "usurper")
     assertEquals(json("oathkeeper")("winnerPlayerId").str, "p2")
     assert(!GameHttpWire.encodeProjection(projection).contains("lineage"))
+    val pending = projection.copy(boardTargetActions = Vector(
+      oathdigital.application.BoardTargetActionProjection(
+        "conspiracy-secret-site", "Choose site", 1, 1, autoActivate = true,
+        Vector(oathdigital.application.BoardTargetCandidateProjection(
+          oathdigital.application.BoardTargetRefProjection.Site("S1"), "Site 1")),
+        decisionId = Some("conspiracy-1"))))
+    val pendingJson = ujson.read(GameHttpWire.encodeProjection(pending))
+    assertEquals(pendingJson("boardTargetActions")(0)("decisionId").str,
+      "conspiracy-1")
   }
   test("generic development card decision carries actor and typed resolution") {
     val json = commandRequest(ujson.Obj("type" -> "resolveCardDecision",

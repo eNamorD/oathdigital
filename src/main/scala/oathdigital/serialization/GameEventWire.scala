@@ -35,6 +35,7 @@ object GameEventWire {
   val BannerFormatVersion: Int = 9
   val MinorActionFormatVersion: Int = 10
   val NegotiationFormatVersion: Int = 11
+  val VisionFormatVersion: Int = 12
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -83,6 +84,11 @@ object GameEventWire {
     "gameplay.oathkeeper-recipient-chosen"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
+  val VisionRevealedType = "gameplay.vision-revealed"
+  val ConspiracyStartedType = "gameplay.conspiracy-started"
+  val ConspiracySecretSiteChosenType = "gameplay.conspiracy-secret-site-chosen"
+  val ConspiracyCompletedType = "gameplay.conspiracy-completed"
+  val VisionVictoryType = "gameplay.vision-victory"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -184,7 +190,8 @@ object GameEventWire {
                 version == SearchFormatVersion || version == RestFormatVersion ||
                 version == EconomyFormatVersion || version == RecoverFormatVersion ||
                 version == ForgeFormatVersion || version == BannerFormatVersion ||
-                version == MinorActionFormatVersion || version == NegotiationFormatVersion)
+                version == MinorActionFormatVersion || version == NegotiationFormatVersion ||
+                version == VisionFormatVersion)
               Right(())
             else
               Left(
@@ -329,9 +336,17 @@ object GameEventWire {
       case _: OathkeeperRecipientChosen => OathkeeperRecipientChosenType
       case _: UsurperFlipped => UsurperFlippedType
       case _: UsurperVictory => UsurperVictoryType
+      case _: VisionRevealed => VisionRevealedType
+      case _: ConspiracyStarted => ConspiracyStartedType
+      case _: ConspiracySecretSiteChosen => ConspiracySecretSiteChosenType
+      case _: ConspiracyCompleted => ConspiracyCompletedType
+      case _: VisionVictory => VisionVictoryType
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: VisionRevealed | _: ConspiracyStarted |
+        _: ConspiracySecretSiteChosen | _: ConspiracyCompleted |
+        _: VisionVictory => VisionFormatVersion
     case _: NegotiationStarted | _: NegotiationTermsReplaced |
         _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted =>
       NegotiationFormatVersion
@@ -589,6 +604,28 @@ object GameEventWire {
           "recipientPlayerId" -> recipient.value)
       case UsurperFlipped(player) => ujson.Obj("playerId" -> player.value)
       case UsurperVictory(player) => ujson.Obj("playerId" -> player.value)
+      case VisionRevealed(player, vision, replaced, destination) => ujson.Obj(
+        "playerId" -> player.value, "visionId" -> vision.value,
+        "replacedVisionId" -> replaced.fold[ujson.Value](ujson.Null)(v => ujson.Str(v.value)),
+        "discardRegion" -> destination.key)
+      case ConspiracyStarted(player, decision, source, target, sites, favor) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "sourceVisionId" -> source.value,
+        "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
+        "automaticSecretSites" -> stringArray(sites.map(_.value)),
+        "automaticFavorReturns" -> stringArray(favor.map(_.key)))
+      case ConspiracySecretSiteChosen(player, decision, site, sites) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "secretSiteId" -> site.value,
+        "automaticSecretSites" -> stringArray(sites.map(_.value)))
+      case ConspiracyCompleted(player, decision, source, target, sites, favor) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "sourceVisionId" -> source.value,
+        "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
+        "secretSites" -> stringArray(sites.map(_.value)),
+        "favorReturnOrder" -> stringArray(favor.map(_.key)))
+      case VisionVictory(player, vision) => ujson.Obj(
+        "playerId" -> player.value, "visionId" -> vision.value)
     }
 
   private def decodePayload(
@@ -977,6 +1014,38 @@ object GameEventWire {
           Right(UsurperFlipped(PlayerId(payload("playerId").str)))
         case UsurperVictoryType =>
           Right(UsurperVictory(PlayerId(payload("playerId").str)))
+        case VisionRevealedType => for {
+          destination <- decodeRegion(payload("discardRegion").str,
+            s"$path.discardRegion")
+        } yield VisionRevealed(PlayerId(payload("playerId").str),
+          VisionId(payload("visionId").str), payload("replacedVisionId") match {
+            case ujson.Null => None
+            case value => Some(VisionId(value.str))
+          }, destination)
+        case ConspiracyStartedType => for {
+          target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
+          favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
+            Suit.all.find(_.key == v.str).toRight(InvalidValue(
+              s"$path.automaticFavorReturns", "unknown suit")))
+        } yield ConspiracyStarted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str),
+          VisionId(payload("sourceVisionId").str), target,
+          payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str)), favor)
+        case ConspiracySecretSiteChosenType => Right(ConspiracySecretSiteChosen(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
+          SiteId(payload("secretSiteId").str),
+          payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str))))
+        case ConspiracyCompletedType => for {
+          target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
+          favor <- traverse(payload("favorReturnOrder").arr.toVector)(v =>
+            Suit.all.find(_.key == v.str).toRight(InvalidValue(
+              s"$path.favorReturnOrder", "unknown suit")))
+        } yield ConspiracyCompleted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str),
+          VisionId(payload("sourceVisionId").str), target,
+          payload("secretSites").arr.toVector.map(v => SiteId(v.str)), favor)
+        case VisionVictoryType => Right(VisionVictory(
+          PlayerId(payload("playerId").str), VisionId(payload("visionId").str)))
         case other => Left(UnknownEventType(s"$path.eventType", other))
       }
     } catch {
@@ -995,7 +1064,11 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == NegotiationStartedType ||
+      if (eventType == VisionRevealedType || eventType == ConspiracyStartedType ||
+          eventType == ConspiracySecretSiteChosenType ||
+          eventType == ConspiracyCompletedType || eventType == VisionVictoryType)
+        VisionFormatVersion
+      else if (eventType == NegotiationStartedType ||
           eventType == NegotiationTermsReplacedType ||
           eventType == NegotiationAcceptedType || eventType == NegotiationDeclinedType ||
           eventType == NegotiationCompletedType) NegotiationFormatVersion
@@ -1307,6 +1380,31 @@ object GameEventWire {
 
   private def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
+
+  private def encodeConspiracyTarget(target: ConspiracyTarget): ujson.Value =
+    target match {
+      case ConspiracyTarget.Relic(owner, relic) => ujson.Obj(
+        "kind" -> "relic", "ownerPlayerId" -> owner.value,
+        "relicId" -> relic.value)
+      case ConspiracyTarget.Banner(owner, banner) => ujson.Obj(
+        "kind" -> "banner", "ownerPlayerId" -> owner.value,
+        "banner" -> banner.key)
+    }
+
+  private def decodeOptionalConspiracyTarget(value: ujson.Value, path: String)
+      : Either[WireError, Option[ConspiracyTarget]] = value match {
+    case ujson.Null => Right(None)
+    case other => try other("kind").str match {
+      case "relic" => Right(Some(ConspiracyTarget.Relic(
+        PlayerId(other("ownerPlayerId").str), RelicId(other("relicId").str))))
+      case "banner" => decodeBanner(other("banner").str, s"$path.banner").map(
+        banner => Some(ConspiracyTarget.Banner(
+          PlayerId(other("ownerPlayerId").str), banner)))
+      case kind => Left(InvalidValue(s"$path.kind",
+        s"unknown Conspiracy target '$kind'"))
+    } catch { case NonFatal(error) => Left(InvalidValue(path,
+      Option(error.getMessage).getOrElse("invalid Conspiracy target"))) }
+  }
 
   private def encodeForceKind(force: ForceKind): ujson.Value = force match {
     case ForceKind.Bandit => ujson.Obj("kind" -> "bandit")

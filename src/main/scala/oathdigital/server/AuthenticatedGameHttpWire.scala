@@ -35,6 +35,10 @@ object GameIntent {
   final case class DiscardFacedownAdviser(adviser: WorldCardId) extends GameIntent
   final case class PlayFacedownAdviser(adviser: WorldCardId,
       placement: SearchPlacement) extends GameIntent
+  final case class RevealVision(vision: VisionId) extends GameIntent
+  final case class PlayConspiracy(target: Option[ConspiracyTargetRef]) extends GameIntent
+  final case class ChooseConspiracySecretSite(decision: DecisionId, site: SiteId)
+      extends GameIntent
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relic: RelicId) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
@@ -282,6 +286,21 @@ object AuthenticatedGameHttpWire {
         placementValue <- field(obj, "placement", "$.intent")
         placement <- decodePlacement(placementValue, "$.intent.placement")
       } yield GameIntent.PlayFacedownAdviser(adviser, placement)
+      case "revealVision" =>
+        exactFields(obj, Set("type", "visionId"), "$.intent")
+          .flatMap(_ => stringField(obj, "visionId", "$.intent"))
+          .map(id => GameIntent.RevealVision(VisionId(id)))
+      case "playConspiracy" => for {
+        _ <- exactFields(obj, Set("type", "target"), "$.intent")
+        value <- field(obj, "target", "$.intent")
+        target <- decodeConspiracyTarget(value, "$.intent.target")
+      } yield GameIntent.PlayConspiracy(target)
+      case "chooseConspiracySecretSite" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "siteId"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        site <- stringField(obj, "siteId", "$.intent")
+      } yield GameIntent.ChooseConspiracySecretSite(
+        DecisionId(decision), SiteId(site))
       case "peekSiteRelics" =>
         exactFields(obj, Set("type"), "$.intent").map(_ => GameIntent.PeekSiteRelics)
       case "revealOwnedRelic" =>
@@ -413,6 +432,30 @@ object AuthenticatedGameHttpWire {
         s"unknown intent type '$other'"
       ))
     }
+
+  private def decodeConspiracyTarget(value: ujson.Value, path: String)
+      : Either[HttpInputError, Option[ConspiracyTargetRef]] = value match {
+    case ujson.Null => Right(None)
+    case other => objectValue(other, path).flatMap { obj =>
+      stringField(obj, "kind", path).flatMap {
+        case "relic-slot" => for {
+          _ <- exactFields(obj, Set("kind", "ownerPlayerId", "slot"), path)
+          owner <- stringField(obj, "ownerPlayerId", path)
+          slotValue <- field(obj, "slot", path)
+          slot <- nonNegativeInt(slotValue, s"$path.slot")
+        } yield Some(ConspiracyTargetRef.RelicSlot(PlayerId(owner), slot))
+        case "banner" => for {
+          _ <- exactFields(obj, Set("kind", "ownerPlayerId", "banner"), path)
+          owner <- stringField(obj, "ownerPlayerId", path)
+          key <- stringField(obj, "banner", path)
+          banner <- Banner.fromKey(key).toRight(HttpInputError(
+            s"$path.banner", s"unknown banner '$key'"))
+        } yield Some(ConspiracyTargetRef.Banner(PlayerId(owner), banner))
+        case kind => Left(HttpInputError(s"$path.kind",
+          s"unknown Conspiracy target '$kind'"))
+      }
+    }
+  }
 
   private def decodeDecisionResolution(value: ujson.Value, path: String)
       : Either[HttpInputError, CardDecisionResolution] = objectValue(value, path).flatMap { obj =>
