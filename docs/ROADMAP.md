@@ -7,7 +7,9 @@ been reviewed.
 
 ## Now
 
-No item is currently assigned.
+**Phase 1 - All-Exile Negotiation** is active in the implementation task. It
+uses a multi-party, participant-authored deal with unanimous consent, atomic
+favor/relic transfers, and binding hidden-information disclosures.
 
 ## Next
 
