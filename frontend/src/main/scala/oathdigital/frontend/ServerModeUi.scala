@@ -481,11 +481,7 @@ object ServerModeUi {
               .foreach(handleBoardSelection)
             panel.appendChild(confirm)
           }
-          action.candidates.filter(candidate => candidate.target match {
-            case _: BoardTargetRef.Player | _: BoardTargetRef.PlayerPawn |
-                _: BoardTargetRef.PlayerBanner => true
-            case _ => false
-          }).foreach { candidate =>
+          action.candidates.foreach { candidate =>
             val choose = button(candidateButtonLabel(candidate),
               "board-target-control raid-target-control")
             choose.setAttribute("data-target-ref", candidate.target.stableKey)
@@ -589,11 +585,16 @@ object ServerModeUi {
             val control = button(actionLabel(action.actionKind),
               s"act-action target-action action-${action.actionKind}")
             control.disabled = !controlsAvailable ||
-              !presentation.showGameplayControls || action.candidates.isEmpty
+              !presentation.showGameplayControls ||
+              (action.candidates.isEmpty && action.minimum > 0)
             control.onclick = _ => {
-              boardSelectionState = boardSelectionState.map(
-                _.activate(action.actionKind))
-              render()
+              if (action.minimum == 0 && action.maximum == 0)
+                commandForSelection(action, Vector.empty, selectedPlayer).foreach(submit)
+              else {
+                boardSelectionState = boardSelectionState.map(
+                  _.activate(action.actionKind))
+                render()
+              }
             }
             panel.appendChild(control)
           }
@@ -1456,11 +1457,15 @@ object ServerModeUi {
     case "muster" => "Muster"
     case "trade-favor" => "Trade for favor"
     case "trade-secret" => "Trade for secrets"
+    case "reveal-vision" => "Reveal Vision"
+    case "play-conspiracy" => "Play Conspiracy"
+    case "conspiracy-secret-site" => "Place Darkest Secret"
     case other => other
   }
 
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
-    if (action.maximum == 1) "Choose one target. Selection submits immediately."
+    if (action.maximum == 0) "No target is available; confirm to play this action."
+    else if (action.maximum == 1) "Choose one target. Selection submits immediately."
     else s"Choose ${action.minimum} to ${action.maximum} targets, then confirm."
 
   private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
@@ -1529,6 +1534,21 @@ object ServerModeUi {
         Some(GameCommand.BeginNegotiation(playerId, players.collect {
           case BoardTargetRef.Player(id) => id
         }))
+      case ("reveal-vision", Vector(BoardTargetRef.PlayerAdviser(owner, vision)))
+          if owner == playerId =>
+        Some(GameCommand.RevealVision(playerId, vision))
+      case ("play-conspiracy", Vector(BoardTargetRef.PlayerRelic(owner, relic))) =>
+        relic.toIntOption.map(slot => GameCommand.PlayConspiracy(playerId,
+          Some(ConspiracyTarget.RelicSlot(owner, slot))))
+      case ("play-conspiracy", Vector(BoardTargetRef.PlayerBanner(owner, banner))) =>
+        Some(GameCommand.PlayConspiracy(playerId,
+          Some(ConspiracyTarget.Banner(owner, banner))))
+      case ("play-conspiracy", Vector()) if action.minimum == 0 &&
+          action.maximum == 0 =>
+        Some(GameCommand.PlayConspiracy(playerId, None))
+      case ("conspiracy-secret-site", Vector(BoardTargetRef.Site(site))) =>
+        action.decisionId.map(GameCommand.ChooseConspiracySecretSite(
+          playerId, _, site))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>

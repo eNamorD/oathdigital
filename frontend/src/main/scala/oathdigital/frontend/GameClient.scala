@@ -160,7 +160,8 @@ final case class BoardTargetAction(
     actionKind: String, prompt: String, minimum: Int, maximum: Int,
     autoActivate: Boolean, candidates: Vector[BoardTargetCandidate],
     formation: Option[BoardTargetFormation] = None,
-    requiredTargets: Vector[BoardTargetRef] = Vector.empty)
+    requiredTargets: Vector[BoardTargetRef] = Vector.empty,
+    decisionId: Option[String] = None)
 final case class CardResolution(kind: String, orientation: Option[String],
     replacementRequired: Boolean, replacementTargets: Vector[CardDetails])
 final case class PendingCardDecision(
@@ -317,6 +318,11 @@ object GameCommand {
       destinationSiteId: String) extends GameCommand
   final case class ChooseOathkeeperRecipient(playerId: String,
       decisionId: String, recipientPlayerId: String) extends GameCommand
+  final case class RevealVision(playerId: String, visionId: String) extends GameCommand
+  final case class PlayConspiracy(playerId: String,
+      target: Option[ConspiracyTarget]) extends GameCommand
+  final case class ChooseConspiracySecretSite(playerId: String,
+      decisionId: String, siteId: String) extends GameCommand
   final case class Muster(playerId: String, target: EconomyTarget) extends GameCommand
   final case class Trade(playerId: String, target: EconomyTarget, resource: String)
       extends GameCommand
@@ -363,6 +369,13 @@ object GameCommand {
   final case class ResolveCardDecision(
       playerId: String, decisionId: String, resolution: DecisionResolution)
       extends GameCommand
+}
+sealed trait ConspiracyTarget
+object ConspiracyTarget {
+  final case class RelicSlot(ownerPlayerId: String, slot: Int)
+      extends ConspiracyTarget
+  final case class Banner(ownerPlayerId: String, banner: String)
+      extends ConspiracyTarget
 }
 sealed trait DecisionResolution
 object DecisionResolution {
@@ -620,6 +633,21 @@ object GameJson {
         js.Dynamic.literal(`type` = "chooseOathkeeperRecipient",
           playerId = player, decisionId = decision,
           recipientPlayerId = recipient)
+      case GameCommand.RevealVision(player, vision) =>
+        js.Dynamic.literal(`type` = "revealVision", playerId = player,
+          visionId = vision)
+      case GameCommand.PlayConspiracy(player, target) =>
+        val encodedTarget: js.Any = target.fold[js.Any](null) {
+          case ConspiracyTarget.RelicSlot(owner, slot) => js.Dynamic.literal(
+            kind = "relic-slot", ownerPlayerId = owner, slot = slot)
+          case ConspiracyTarget.Banner(owner, banner) => js.Dynamic.literal(
+            kind = "banner", ownerPlayerId = owner, banner = banner)
+        }
+        js.Dynamic.literal(`type` = "playConspiracy", playerId = player,
+          target = encodedTarget)
+      case GameCommand.ChooseConspiracySecretSite(player, decision, site) =>
+        js.Dynamic.literal(`type` = "chooseConspiracySecretSite",
+          playerId = player, decisionId = decision, siteId = site)
       case GameCommand.Muster(player, target) =>
         js.Dynamic.literal(`type` = "muster", playerId = player,
           target = js.Dynamic.literal(kind = target.kind, id = target.id))
@@ -1016,52 +1044,7 @@ object GameJson {
               gained <- int(item, "gained", path)
             } yield LegalTrade(target, label, suit, resource, cost, gained) })
         }
-        boardActions <- array(root, "boardTargetActions", "$").flatMap(
-          traverse(_, "boardTargetActions") { (item, path) => for {
-            kind <- string(item, "actionKind", path)
-            prompt <- string(item, "prompt", path)
-            minimum <- int(item, "minimum", path)
-            maximum <- int(item, "maximum", path)
-            auto <- bool(item, "autoActivate", path)
-            required <- array(item, "requiredTargets", path).flatMap(
-              traverse(_, "requiredTargets")((value, requiredPath) =>
-                boardTargetRef(value, requiredPath)))
-            formation <- optionalField(item, "formation").flatMap {
-              case None => Right(None)
-              case Some(value) if value == null => Right(None)
-              case Some(value) => objectValue(value, s"$path.formation").flatMap { obj =>
-                for {
-                  min <- int(obj, "minimumForce", s"$path.formation")
-                  max <- int(obj, "maximumForce", s"$path.formation")
-                  warbands <- int(obj, "availableWarbands", s"$path.formation")
-                  cost <- int(obj, "supplyCost", s"$path.formation")
-                  _ <- Either.cond(min >= 0 && max >= min && warbands >= 0 &&
-                    max <= warbands && cost >= 0,
-                    (), GameClientFailure.DecodeFailure(s"$path.formation",
-                      "invalid board-target formation bounds"))
-                } yield Some(BoardTargetFormation(min, max, warbands, cost))
-              }
-            }
-            candidates <- array(item, "candidates", path).flatMap(
-              traverse(_, "candidates") { (candidate, candidatePath) => for {
-                targetValue <- field(candidate, "target", candidatePath)
-                target <- boardTargetRef(targetValue, s"$candidatePath.target")
-                label <- string(candidate, "label", candidatePath)
-                details <- stringArray(candidate, "details", candidatePath)
-              } yield BoardTargetCandidate(target, label, details) })
-            _ <- Either.cond(minimum >= 0 && maximum >= minimum &&
-              maximum <= candidates.size, (), GameClientFailure.DecodeFailure(
-                path, "invalid board-target cardinality"))
-            keys = candidates.map(_.target.stableKey)
-            _ <- Either.cond(keys.distinct.size == keys.size, (),
-              GameClientFailure.DecodeFailure(s"$path.candidates",
-                "duplicate target reference"))
-            _ <- Either.cond(required.distinct.size == required.size &&
-              required.forall(candidates.map(_.target).contains) &&
-              required.size <= minimum, (), GameClientFailure.DecodeFailure(
-                s"$path.requiredTargets", "invalid required target reference"))
-          } yield BoardTargetAction(kind, prompt, minimum, maximum, auto,
-            candidates, formation, required) })
+        boardActions <- decodeBoardTargetActions(root)
         pendingDecision <- optionalField(root, "pendingCardDecision").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -1485,6 +1468,67 @@ object GameJson {
         "expected denizen or edifice"))
   } yield EconomyTarget(kind, id)
 
+  @scala.noinline
+  private def decodeBoardTargetActions(root: js.Dynamic)
+      : Either[GameClientFailure, Vector[BoardTargetAction]] =
+    array(root, "boardTargetActions", "$").flatMap(
+      traverse(_, "boardTargetActions")(boardTargetAction))
+
+  @scala.noinline
+  private def boardTargetAction(item: js.Dynamic, path: String)
+      : Either[GameClientFailure, BoardTargetAction] = for {
+    kind <- string(item, "actionKind", path)
+    prompt <- string(item, "prompt", path)
+    minimum <- int(item, "minimum", path)
+    maximum <- int(item, "maximum", path)
+    auto <- bool(item, "autoActivate", path)
+    decision <- optionalText(item, "decisionId", path)
+    required <- array(item, "requiredTargets", path).flatMap(
+      traverse(_, "requiredTargets")((value, requiredPath) =>
+        boardTargetRef(value, requiredPath)))
+    formation <- boardTargetFormation(item, path)
+    candidates <- array(item, "candidates", path).flatMap(
+      traverse(_, "candidates")(boardTargetCandidate))
+    _ <- Either.cond(minimum >= 0 && maximum >= minimum &&
+      maximum <= candidates.size, (), GameClientFailure.DecodeFailure(
+        path, "invalid board-target cardinality"))
+    keys = candidates.map(_.target.stableKey)
+    _ <- Either.cond(keys.distinct.size == keys.size, (),
+      GameClientFailure.DecodeFailure(s"$path.candidates",
+        "duplicate target reference"))
+    _ <- Either.cond(required.distinct.size == required.size &&
+      required.forall(candidates.map(_.target).contains) &&
+      required.size <= minimum, (), GameClientFailure.DecodeFailure(
+        s"$path.requiredTargets", "invalid required target reference"))
+  } yield BoardTargetAction(kind, prompt, minimum, maximum, auto,
+    candidates, formation, required, decision)
+
+  private def boardTargetFormation(item: js.Dynamic, path: String)
+      : Either[GameClientFailure, Option[BoardTargetFormation]] =
+    optionalField(item, "formation").flatMap {
+      case None => Right(None)
+      case Some(value) if value == null => Right(None)
+      case Some(value) => objectValue(value, s"$path.formation").flatMap { obj =>
+        for {
+          min <- int(obj, "minimumForce", s"$path.formation")
+          max <- int(obj, "maximumForce", s"$path.formation")
+          warbands <- int(obj, "availableWarbands", s"$path.formation")
+          cost <- int(obj, "supplyCost", s"$path.formation")
+          _ <- Either.cond(min >= 0 && max >= min && warbands >= 0 &&
+            max <= warbands && cost >= 0, (), GameClientFailure.DecodeFailure(
+              s"$path.formation", "invalid board-target formation bounds"))
+        } yield Some(BoardTargetFormation(min, max, warbands, cost))
+      }
+    }
+
+  private def boardTargetCandidate(candidate: js.Dynamic, path: String)
+      : Either[GameClientFailure, BoardTargetCandidate] = for {
+    targetValue <- field(candidate, "target", path)
+    target <- boardTargetRef(targetValue, s"$path.target")
+    label <- string(candidate, "label", path)
+    details <- stringArray(candidate, "details", path)
+  } yield BoardTargetCandidate(target, label, details)
+
   private def boardTargetRef(value: js.Dynamic, path: String)
       : Either[GameClientFailure, BoardTargetRef] = for {
     obj <- objectValue(value, path)
@@ -1522,6 +1566,7 @@ object GameJson {
     }
   } yield target
 
+  @scala.noinline
   private def safely[A](decode: => Either[GameClientFailure, A]) =
     try decode
     catch {
@@ -1696,6 +1741,7 @@ object GameJson {
           "duplicate Campaign plan source"))
     }
 
+  @scala.noinline
   private def traverse[A](
       values: Vector[js.Dynamic],
       name: String
