@@ -9,6 +9,12 @@ import oathdigital.serialization.{
 }
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("development Negotiation command retains its explicit loopback actor") {
+    val json = """{"gameId":"game","expectedNextSequence":50,"command":{"type":"beginNegotiation","playerId":"red","participantPlayerIds":["blue","yellow"]}}"""
+    assertEquals(GameHttpWire.decodeCommand(json).toOption.get.command,
+      oathdigital.application.GameCommand.BeginNegotiation(PlayerId("red"),
+        Vector(PlayerId("blue"), PlayerId("yellow"))))
+  }
   test("development Forge commands retain actor and exclude relic identity") {
     val begin = commandRequest(ujson.Obj("type" -> "beginForge",
       "playerId" -> "p2"))

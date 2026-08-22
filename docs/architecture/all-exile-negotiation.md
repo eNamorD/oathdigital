@@ -1,0 +1,11 @@
+# All-Exile Negotiation
+
+The Phase 1 Negotiation slice implements the Combined Rulebook page 27 and New Foundations page 15 procedure for fixed, unaltered, all-Exile first games. It is a persistent 0-Supply minor action started by the active player with one or more co-located players.
+
+`PendingProcedure.Negotiation` is the authoritative current deal. It stores the actor-first canonical participant order, site, each participant's current outgoing terms, and acceptances. Replacing any terms clears all consent. The event stream records starts, complete term replacements, acceptances, declines, and the unanimously accepted final snapshot. Completion revalidates co-location, ownership, quantities, unique relic allocation, and disclosure authority before atomically moving favor and complete relic states.
+
+Disclosures are binding deal terms rather than an immediate sharing command. Before completion only their author sees the promised identity; other participants see a generic disclosure entry. Completion grants selected recipients persistent adviser, held-relic, or site-relic knowledge. Adviser and held-relic knowledge follows card identity; site-relic knowledge remains site-scoped. Any future move into a shuffled or otherwise randomized opaque zone must explicitly clear applicable knowledge.
+
+Accessible `When Negotiating` handlers are discovered for every participant through typed `RuleActivation` identities and `RuleQueryContext.Negotiation`. Council Arbiter, Deed Writer, and Traveling Negotiator currently resolve as stable unsupported rules. This slice does not infer mechanics from rules text.
+
+Citizenship and the Grand Scepter, secrets/adviser/site transfers, remote Negotiation, future-action promises, private-room powers, and all component-specific Negotiation behavior remain deferred.

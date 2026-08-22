@@ -125,6 +125,9 @@ sealed trait BoardTargetRef extends Product with Serializable {
   def stableKey: String
 }
 object BoardTargetRef {
+  final case class Player(playerId: String) extends BoardTargetRef {
+    def stableKey: String = s"player:$playerId"
+  }
   final case class Site(siteId: String) extends BoardTargetRef {
     def stableKey: String = s"site:$siteId"
   }
@@ -181,6 +184,25 @@ final case class MinorAdviser(card: CardDetails,
 final case class MinorActionsState(advisers: Vector[MinorAdviser],
     canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetails],
     siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
+final case class NegotiationTransferInput(recipientPlayerId: String,
+    favor: Int, relicIds: Vector[String])
+final case class NegotiationDisclosureInput(recipientPlayerId: String,
+    kind: String, ownerPlayerId: Option[String] = None,
+    siteId: Option[String] = None, cardKind: Option[String] = None,
+    cardId: String)
+final case class NegotiationTermsInput(transfers: Vector[NegotiationTransferInput],
+    disclosures: Vector[NegotiationDisclosureInput])
+final case class NegotiationTransferState(authorPlayerId: String,
+    recipientPlayerId: String, favor: Int, relicCount: Int,
+    relics: Vector[CardDetails])
+final case class NegotiationDisclosureState(authorPlayerId: String,
+    recipientPlayerId: String, kind: String, card: Option[CardDetails])
+final case class NegotiationState(decisionId: String, actorPlayerId: String,
+    siteId: String, participantPlayerIds: Vector[String],
+    acceptedPlayerIds: Vector[String], transfers: Vector[NegotiationTransferState],
+    disclosures: Vector[NegotiationDisclosureState], editableFavor: Int,
+    editableRelics: Vector[CardDetails], editableAdvisers: Vector[CardDetails],
+    editableSiteRelics: Vector[CardDetails])
 final case class PlayerBoard(
     playerId: String, warbands: Int, favor: Int, faceUpSecrets: Int,
     faceDownSecrets: Int, supply: Int, pawnSiteId: Option[String],
@@ -218,7 +240,9 @@ final case class GameProjection(
     forge: Option[ForgeState] = None,
     banners: Vector[BannerState] = Vector.empty,
     challenge: Option[ChallengeState] = None,
-    minorActions: Option[MinorActionsState] = None
+    minorActions: Option[MinorActionsState] = None,
+    negotiation: Option[NegotiationState] = None,
+    negotiationWaiting: Boolean = false
 )
 final case class RecoverState(decisionId: String, dice: Vector[String],
     shields: Int, difficulty: Int, supplySpent: Int, supplyRemaining: Int,
@@ -316,6 +340,14 @@ object GameCommand {
   final case class PeekSiteRelics(playerId: String) extends GameCommand
   final case class RevealOwnedRelic(playerId: String, relicId: String) extends GameCommand
   final case class MoveWarbands(playerId: String, toSite: Boolean, amount: Int)
+      extends GameCommand
+  final case class BeginNegotiation(playerId: String,
+      participantPlayerIds: Vector[String]) extends GameCommand
+  final case class ReplaceNegotiationTerms(playerId: String, decisionId: String,
+      terms: NegotiationTermsInput) extends GameCommand
+  final case class AcceptNegotiation(playerId: String, decisionId: String)
+      extends GameCommand
+  final case class DeclineNegotiation(playerId: String, decisionId: String)
       extends GameCommand
   final case class AddRecoverDice(playerId: String, decisionId: String) extends GameCommand
   final case class StopRecover(playerId: String, decisionId: String) extends GameCommand
@@ -639,6 +671,18 @@ object GameJson {
       case GameCommand.MoveWarbands(player, toSite, amount) =>
         js.Dynamic.literal(`type` = "moveWarbands", playerId = player,
           toSite = toSite, amount = amount)
+      case GameCommand.BeginNegotiation(player, participants) =>
+        js.Dynamic.literal(`type` = "beginNegotiation", playerId = player,
+          participantPlayerIds = js.Array(participants: _*))
+      case GameCommand.ReplaceNegotiationTerms(player, decision, terms) =>
+        js.Dynamic.literal(`type` = "replaceNegotiationTerms", playerId = player,
+          decisionId = decision, terms = encodeNegotiationTerms(terms))
+      case GameCommand.AcceptNegotiation(player, decision) =>
+        js.Dynamic.literal(`type` = "acceptNegotiation", playerId = player,
+          decisionId = decision)
+      case GameCommand.DeclineNegotiation(player, decision) =>
+        js.Dynamic.literal(`type` = "declineNegotiation", playerId = player,
+          decisionId = decision)
       case GameCommand.AddRecoverDice(player, decision) =>
         js.Dynamic.literal(`type` = "addRecoverDice", playerId = player,
           decisionId = decision)
@@ -685,6 +729,25 @@ object GameJson {
       command = payload
     ))
   }
+
+  private def encodeNegotiationTerms(terms: NegotiationTermsInput): js.Dynamic =
+    js.Dynamic.literal(
+      transfers = js.Array(terms.transfers.map(t => js.Dynamic.literal(
+        recipientPlayerId = t.recipientPlayerId, favor = t.favor,
+        relicIds = js.Array(t.relicIds: _*))): _*),
+      disclosures = js.Array(terms.disclosures.map { d =>
+        val information = d.kind match {
+          case "adviser" => js.Dynamic.literal(kind = d.kind,
+            ownerPlayerId = d.ownerPlayerId.get,
+            card = js.Dynamic.literal(kind = d.cardKind.get, id = d.cardId))
+          case "held-relic" => js.Dynamic.literal(kind = d.kind,
+            ownerPlayerId = d.ownerPlayerId.get, relicId = d.cardId)
+          case "site-relic" => js.Dynamic.literal(kind = d.kind,
+            siteId = d.siteId.get, relicId = d.cardId)
+        }
+        js.Dynamic.literal(recipientPlayerId = d.recipientPlayerId,
+          information = information)
+      }: _*))
 
   def decodeProjection(
       json: String
@@ -1132,6 +1195,51 @@ object GameJson {
           } yield Some(MinorActionsState(advisers, canPeek, relics, site,
             toSite, toBoard)) }
         }
+        negotiation <- optionalField(root, "negotiation").flatMap {
+          case None => Right(None)
+          case Some(value) if value == null => Right(None)
+          case Some(value) => objectValue(value, "$.negotiation").flatMap { obj => for {
+            decision <- string(obj, "decisionId", "$.negotiation")
+            actor <- string(obj, "actorPlayerId", "$.negotiation")
+            site <- string(obj, "siteId", "$.negotiation")
+            participants <- stringArray(obj, "participantPlayerIds", "$.negotiation")
+            accepted <- stringArray(obj, "acceptedPlayerIds", "$.negotiation")
+            transfers <- array(obj, "transfers", "$.negotiation").flatMap(
+              traverse(_, "negotiation.transfers") { (row, path) => for {
+                author <- string(row, "authorPlayerId", path)
+                recipient <- string(row, "recipientPlayerId", path)
+                favor <- int(row, "favor", path)
+                count <- int(row, "relicCount", path)
+                relics <- array(row, "relics", path).flatMap(
+                  traverse(_, "relics")((card, cardPath) => cardDetails(card, cardPath)))
+              } yield NegotiationTransferState(author, recipient, favor, count, relics) })
+            disclosures <- array(obj, "disclosures", "$.negotiation").flatMap(
+              traverse(_, "negotiation.disclosures") { (row, path) => for {
+                author <- string(row, "authorPlayerId", path)
+                recipient <- string(row, "recipientPlayerId", path)
+                kind <- string(row, "kind", path)
+                card <- optionalField(row, "card").flatMap {
+                  case None => Right(None)
+                  case Some(value) if value == null => Right(None)
+                  case Some(value) => cardDetails(value, s"$path.card").map(Some(_))
+                }
+              } yield NegotiationDisclosureState(author, recipient, kind, card) })
+            favor <- int(obj, "editableFavor", "$.negotiation")
+            relics <- array(obj, "editableRelics", "$.negotiation").flatMap(
+              traverse(_, "editableRelics")((card, path) => cardDetails(card, path)))
+            advisers <- array(obj, "editableAdvisers", "$.negotiation").flatMap(
+              traverse(_, "editableAdvisers")((card, path) => cardDetails(card, path)))
+            siteRelics <- array(obj, "editableSiteRelics", "$.negotiation").flatMap(
+              traverse(_, "editableSiteRelics")((card, path) => cardDetails(card, path)))
+          } yield Some(NegotiationState(decision, actor, site, participants, accepted,
+            transfers, disclosures, favor, relics, advisers, siteRelics)) }
+        }
+        negotiationWaiting <- optionalField(root, "negotiationWaiting").flatMap {
+          case None => Right(false)
+          case Some(value) if js.typeOf(value) == "boolean" => Right(value.asInstanceOf[Boolean])
+          case _ => Left(GameClientFailure.DecodeFailure("$.negotiationWaiting",
+            "expected boolean"))
+        }
         campaign <- optionalField(root, "campaign").flatMap {
           case None => Right(None)
           case Some(value) if value == null => Right(None)
@@ -1307,7 +1415,9 @@ object GameJson {
         forge,
         banners,
         challenge,
-        minorActions
+        minorActions,
+        negotiation,
+        negotiationWaiting
       )
     }
   }
@@ -1380,6 +1490,7 @@ object GameJson {
     obj <- objectValue(value, path)
     kind <- string(obj, "kind", path)
     target <- kind match {
+      case "player" => string(obj, "playerId", path).map(BoardTargetRef.Player)
       case "site" => string(obj, "siteId", path).map(BoardTargetRef.Site)
       case "site-card" => for {
         site <- string(obj, "siteId", path)

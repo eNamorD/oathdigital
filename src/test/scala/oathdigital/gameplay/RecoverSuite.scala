@@ -46,7 +46,7 @@ class RecoverSuite extends munit.FunSuite {
 
     assertEquals(projection.legalControls.toSet,
       Set("beginRecover", "beginRest", "facedownAdviserMinorAction",
-        "peekSiteRelics"))
+        "peekSiteRelics", "beginNegotiation"))
   }
 
   test("each payment records two dice and stop returns to Act without revealing") {

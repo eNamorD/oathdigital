@@ -1103,6 +1103,59 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
+  test("HSQL reopen preserves completed Negotiation disclosure knowledge") {
+    val path = Files.createTempDirectory("oathdigital-negotiation-reopen-").resolve("journal")
+    val gameId = "game-hsql-negotiation"
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val (completed, actor, other, adviser) = try {
+      val service = new GameApplicationService(catalog, first)
+      val setup = execute(service, gameId)
+      val Ready(ready) = setup.state: @unchecked
+      val actor = ready.game.current.turn.activePlayer
+      val other = ready.game.current.players.find(_.player != actor).get
+      val act = service.handle(gameId, setup.nextSequence,
+        GameCommand.EndWake(actor)).toOption.get
+      val traveled = service.handle(gameId, act.nextSequence,
+        GameCommand.Travel(actor, other.pawnSite.get)).toOption.get
+      val started = service.handle(gameId, traveled.nextSequence,
+        GameCommand.BeginNegotiation(actor, Vector(other.player))).toOption.get
+      val decision = started.state.asInstanceOf[Ready].value.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Negotiation].decision
+      val adviser = ready.game.current.players.find(_.player == actor).get
+        .advisers.head.id.asInstanceOf[WorldCardId]
+      val terms = NegotiationTerms(disclosures = Vector(NegotiationDisclosure(
+        other.player, NegotiationDisclosureRef.Adviser(actor, adviser))))
+      val changed = service.handle(gameId, started.nextSequence,
+        GameCommand.ReplaceNegotiationTerms(actor, decision, terms)).fold(
+          error => fail(s"failed to persist Negotiation terms: $error"), identity)
+      assertEquals(service.handle(gameId, started.nextSequence,
+        GameCommand.AcceptNegotiation(actor, decision)).left.toOption,
+        Some(GameApplicationError.StaleClientPosition(
+          started.nextSequence, changed.nextSequence)))
+      val actorAccepted = service.handle(gameId, changed.nextSequence,
+        GameCommand.AcceptNegotiation(actor, decision)).toOption.get
+      val completed = service.handle(gameId, actorAccepted.nextSequence,
+        GameCommand.AcceptNegotiation(other.player, decision)).toOption.get
+      (completed, actor, other.player, adviser)
+    } finally first.close()
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
+      error => fail(s"failed to reopen Negotiation repository: $error"), identity)
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, completed.state)
+      val projector = new GameProjector(catalog)
+      assertEquals(projector.project(gameId, loaded, actor).negotiation, None)
+      val recipientBoard = projector.project(gameId, loaded, other).playerBoards
+        .find(_.playerId == actor.value).get
+      assert(recipientBoard.advisers.exists(card => card.cardId == adviser.value && !card.hidden))
+      val publicBoard = projector.projectPublic(gameId, loaded).playerBoards
+        .find(_.playerId == actor.value).get
+      assert(publicBoard.advisers.forall(card => card.cardId != adviser.value || card.hidden))
+      assertEquals(projector.projectPublic(gameId, loaded).negotiation, None)
+    } finally reopened.close()
+  }
+
 
   test("HSQL reopen preserves Raid pending and completed replay") {
     val path = Files.createTempDirectory("oathdigital-raid-reopen-").resolve("journal")

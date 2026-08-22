@@ -96,6 +96,12 @@ final class AuthenticatedGameGateway(
           case GameIntent.RevealOwnedRelic(relic) => actor.revealOwnedRelic(relic)
           case GameIntent.MoveWarbands(toSite, amount) =>
             actor.moveWarbands(toSite, amount)
+          case GameIntent.BeginNegotiation(participants) =>
+            actor.beginNegotiation(participants)
+          case GameIntent.ReplaceNegotiationTerms(decision, terms) =>
+            actor.replaceNegotiationTerms(decision, terms)
+          case GameIntent.AcceptNegotiation(decision) => actor.acceptNegotiation(decision)
+          case GameIntent.DeclineNegotiation(decision) => actor.declineNegotiation(decision)
           case GameIntent.AddRecoverDice(decision) => actor.addRecoverDice(decision)
           case GameIntent.StopRecover(decision) => actor.stopRecover(decision)
           case GameIntent.BeginCampaignConquest(targetSiteIds, attackDiceCount) =>

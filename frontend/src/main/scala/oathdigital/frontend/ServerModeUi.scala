@@ -482,7 +482,8 @@ object ServerModeUi {
             panel.appendChild(confirm)
           }
           action.candidates.filter(candidate => candidate.target match {
-            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerBanner => true
+            case _: BoardTargetRef.Player | _: BoardTargetRef.PlayerPawn |
+                _: BoardTargetRef.PlayerBanner => true
             case _ => false
           }).foreach { candidate =>
             val choose = button(candidateButtonLabel(candidate),
@@ -681,6 +682,73 @@ object ServerModeUi {
             selectedPlayer, amount.value.toInt).foreach(submit)
           panel.appendChild(complete)
         }
+      }
+      value.negotiation match {
+        case Some(deal) if presentation.showGameplayControls =>
+          panel.appendChild(text("h2", "", "Negotiation"))
+          panel.appendChild(text("p", "negotiation-status",
+            deal.participantPlayerIds.map(id => s"$id: ${if (deal.acceptedPlayerIds.contains(id))
+              "accepted" else "reviewing"}").mkString(" · ")))
+          deal.transfers.foreach(t => panel.appendChild(text("p", "negotiation-transfer",
+            s"${t.authorPlayerId} gives ${t.recipientPlayerId}: ${t.favor} favor, " +
+              s"${t.relicCount} relic(s)")))
+          deal.disclosures.foreach(d => panel.appendChild(text("p", "negotiation-disclosure",
+            s"${d.authorPlayerId} promises ${d.recipientPlayerId} a ${d.kind} disclosure")))
+          val favors = scala.collection.mutable.ArrayBuffer.empty[(String, dom.html.Input)]
+          val relics = scala.collection.mutable.ArrayBuffer.empty[(String, String, dom.html.Input)]
+          val disclosures = scala.collection.mutable.ArrayBuffer.empty[
+            (String, String, CardDetails, dom.html.Input)]
+          deal.participantPlayerIds.filterNot(_ == selectedPlayer).foreach { recipient =>
+            panel.appendChild(text("h3", "", s"Your terms for $recipient"))
+            val favor = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+            favor.`type` = "number"; favor.min = "0"; favor.max = deal.editableFavor.toString
+            favor.value = deal.transfers.find(t => t.authorPlayerId == selectedPlayer &&
+              t.recipientPlayerId == recipient).map(_.favor).getOrElse(0).toString
+            favor.setAttribute("aria-label", s"Favor offered to $recipient")
+            panel.appendChild(favor); favors += recipient -> favor
+            deal.editableRelics.foreach { relic =>
+              val check = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+              check.`type` = "checkbox"; check.setAttribute("aria-label",
+                s"Offer ${relic.name} to $recipient")
+              panel.appendChild(check); panel.appendChild(text("span", "", s" ${relic.name} "))
+              relics += ((recipient, relic.cardId, check))
+            }
+            (deal.editableAdvisers.map("adviser" -> _) ++
+                deal.editableRelics.map("held-relic" -> _) ++
+                deal.editableSiteRelics.map("site-relic" -> _)).foreach { case (kind, card) =>
+              val check = dom.document.createElement("input").asInstanceOf[dom.html.Input]
+              check.`type` = "checkbox"; check.setAttribute("aria-label",
+                s"Promise $kind disclosure of ${card.name} to $recipient")
+              panel.appendChild(check); panel.appendChild(text("span", "", s" Show ${card.name} "))
+              disclosures += ((recipient, kind, card, check))
+            }
+          }
+          val save = button("Save Deal Changes", "negotiation-save")
+          save.disabled = !controlsAvailable
+          save.onclick = _ => {
+            val terms = NegotiationTermsInput(favors.map { case (recipient, input) =>
+              NegotiationTransferInput(recipient, input.value.toInt,
+                relics.collect { case (`recipient`, relic, check) if check.checked => relic }.toVector)
+            }.toVector, disclosures.collect { case (recipient, kind, card, check)
+                if check.checked => NegotiationDisclosureInput(recipient, kind,
+                  Option.when(kind != "site-relic")(selectedPlayer),
+                  Option.when(kind == "site-relic")(deal.siteId),
+                  Option.when(kind == "adviser")(card.cardKind), card.cardId)
+            }.toVector)
+            submit(GameCommand.ReplaceNegotiationTerms(selectedPlayer, deal.decisionId, terms))
+          }
+          panel.appendChild(save)
+          val accept = button("Accept Current Deal", "negotiation-accept")
+          accept.disabled = !controlsAvailable
+          accept.onclick = _ => submit(GameCommand.AcceptNegotiation(
+            selectedPlayer, deal.decisionId)); panel.appendChild(accept)
+          val decline = button("End/Decline", "negotiation-decline")
+          decline.disabled = !controlsAvailable
+          decline.onclick = _ => submit(GameCommand.DeclineNegotiation(
+            selectedPlayer, deal.decisionId)); panel.appendChild(decline)
+        case None if value.negotiationWaiting =>
+          panel.appendChild(text("p", "informational", "Waiting for the negotiation to finish."))
+        case _ => ()
       }
       value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
         panel.appendChild(text("h2", "", "Campaign"))
@@ -1429,6 +1497,11 @@ object ServerModeUi {
           } => Some(GameCommand.CampaignRaid(playerId, targets, attackDiceCount))
       case ("challenge", Vector(BoardTargetRef.PlayerBanner(_, banner))) =>
         Some(GameCommand.BeginChallenge(playerId, banner))
+      case ("negotiation", players) if players.nonEmpty &&
+          players.forall(_.isInstanceOf[BoardTargetRef.Player]) =>
+        Some(GameCommand.BeginNegotiation(playerId, players.collect {
+          case BoardTargetRef.Player(id) => id
+        }))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>

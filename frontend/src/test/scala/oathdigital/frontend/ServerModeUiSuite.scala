@@ -70,6 +70,11 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerModeUi.commandForSelection(action("challenge"), Vector(
       BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")), "red"),
       Some(GameCommand.BeginChallenge("red", "peoples-favor")))
+    val negotiation = BoardTargetAction("negotiation", "Choose negotiators", 1, 2,
+      false, Vector.empty)
+    assertEquals(ServerModeUi.commandForSelection(negotiation, Vector(
+      BoardTargetRef.Player("blue"), BoardTargetRef.Player("yellow")), "red"),
+      Some(GameCommand.BeginNegotiation("red", Vector("blue", "yellow"))))
   }
 
   test("Challenge controls render only owner-authorized site or replacement commands") {

@@ -38,6 +38,11 @@ object GameIntent {
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relic: RelicId) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
+  final case class BeginNegotiation(participants: Vector[PlayerId]) extends GameIntent
+  final case class ReplaceNegotiationTerms(decision: DecisionId,
+      terms: NegotiationTerms) extends GameIntent
+  final case class AcceptNegotiation(decision: DecisionId) extends GameIntent
+  final case class DeclineNegotiation(decision: DecisionId) extends GameIntent
   final case class AddRecoverDice(decision: DecisionId) extends GameIntent
   final case class StopRecover(decision: DecisionId) extends GameIntent
   final case class BeginCampaignConquest(
@@ -292,6 +297,25 @@ object AuthenticatedGameHttpWire {
         amount <- field(obj, "amount", "$.intent")
           .flatMap(value => nonNegativeInt(value, "$.intent.amount"))
       } yield GameIntent.MoveWarbands(toSite, amount)
+      case "beginNegotiation" => for {
+        _ <- exactFields(obj, Set("type", "participantPlayerIds"), "$.intent")
+        values <- field(obj, "participantPlayerIds", "$.intent").flatMap {
+          case array: ujson.Arr => Right(array.value.toVector)
+          case _ => Left(HttpInputError("$.intent.participantPlayerIds", "expected array"))
+        }
+      } yield GameIntent.BeginNegotiation(values.map(v => PlayerId(v.str)))
+      case "replaceNegotiationTerms" => for {
+        _ <- exactFields(obj, Set("type", "decisionId", "terms"), "$.intent")
+        decision <- stringField(obj, "decisionId", "$.intent")
+        termsValue <- field(obj, "terms", "$.intent")
+        terms <- NegotiationHttpCodec.decodeTerms(termsValue, "$.intent.terms")
+      } yield GameIntent.ReplaceNegotiationTerms(DecisionId(decision), terms)
+      case "acceptNegotiation" => exactFields(obj, Set("type", "decisionId"), "$.intent")
+        .flatMap(_ => stringField(obj, "decisionId", "$.intent"))
+        .map(id => GameIntent.AcceptNegotiation(DecisionId(id)))
+      case "declineNegotiation" => exactFields(obj, Set("type", "decisionId"), "$.intent")
+        .flatMap(_ => stringField(obj, "decisionId", "$.intent"))
+        .map(id => GameIntent.DeclineNegotiation(DecisionId(id)))
       case "addRecoverDice" =>
         exactFields(obj, Set("type", "decisionId"), "$.intent")
           .flatMap(_ => stringField(obj, "decisionId", "$.intent"))

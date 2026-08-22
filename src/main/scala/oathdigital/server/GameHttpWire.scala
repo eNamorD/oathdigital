@@ -356,6 +356,27 @@ object GameHttpWire {
             "maxBoardToSite" -> minor.maxBoardToSite,
             "maxSiteToBoard" -> minor.maxSiteToBoard)
         },
+        "negotiation" -> projection.negotiation.fold[ujson.Value](ujson.Null) { deal =>
+          ujson.Obj("decisionId" -> deal.decisionId,
+            "actorPlayerId" -> deal.actorPlayerId, "siteId" -> deal.siteId,
+            "participantPlayerIds" -> ujson.Arr.from(deal.participantPlayerIds.map(ujson.Str(_))),
+            "acceptedPlayerIds" -> ujson.Arr.from(deal.acceptedPlayerIds.map(ujson.Str(_))),
+            "transfers" -> ujson.Arr.from(deal.transfers.map(t => ujson.Obj(
+              "authorPlayerId" -> t.authorPlayerId,
+              "recipientPlayerId" -> t.recipientPlayerId, "favor" -> t.favor,
+              "relicCount" -> t.relicCount,
+              "relics" -> ujson.Arr.from(t.relics.map(encodeCardDetails))))),
+            "disclosures" -> ujson.Arr.from(deal.disclosures.map(d => ujson.Obj(
+              "authorPlayerId" -> d.authorPlayerId,
+              "recipientPlayerId" -> d.recipientPlayerId, "kind" -> d.kind,
+              "card" -> d.card.fold[ujson.Value](ujson.Null)(encodeCardDetails)))),
+            "editableFavor" -> deal.editableFavor,
+            "editableRelics" -> ujson.Arr.from(deal.editableRelics.map(encodeCardDetails)),
+            "editableAdvisers" -> ujson.Arr.from(deal.editableAdvisers.map(encodeCardDetails)),
+            "editableSiteRelics" -> ujson.Arr.from(
+              deal.editableSiteRelics.map(encodeCardDetails)))
+        },
+        "negotiationWaiting" -> projection.negotiationWaiting,
         "playerBoards" -> ujson.Arr.from(projection.playerBoards.map { board => ujson.Obj(
           "playerId" -> board.playerId, "warbands" -> board.warbands,
           "favor" -> board.favor, "faceUpSecrets" -> board.faceUpSecrets,
@@ -394,6 +415,8 @@ object GameHttpWire {
   private def encodeBoardTarget(
       target: oathdigital.application.BoardTargetRefProjection
   ): ujson.Obj = target match {
+    case oathdigital.application.BoardTargetRefProjection.Player(playerId) =>
+      ujson.Obj("kind" -> "player", "playerId" -> playerId)
     case oathdigital.application.BoardTargetRefProjection.Site(siteId) =>
       ujson.Obj("kind" -> "site", "siteId" -> siteId)
     case oathdigital.application.BoardTargetRefProjection.SiteCard(
@@ -573,6 +596,28 @@ object GameHttpWire {
         }
         amount <- field(obj, "amount", path).flatMap(v => nonNegativeInt(v, s"$path.amount"))
       } yield GameCommand.MoveWarbands(PlayerId(p), toSite, amount)
+      case "beginNegotiation" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "participantPlayerIds"), path)
+        p <- stringField(obj, "playerId", path)
+        values <- field(obj, "participantPlayerIds", path).flatMap {
+          case array: ujson.Arr => Right(array.value.toVector)
+          case _ => Left(HttpInputError(s"$path.participantPlayerIds", "expected array"))
+        }
+      } yield GameCommand.BeginNegotiation(PlayerId(p), values.map(v => PlayerId(v.str)))
+      case "replaceNegotiationTerms" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId", "terms"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+        termsValue <- field(obj, "terms", path)
+        terms <- NegotiationHttpCodec.decodeTerms(termsValue, s"$path.terms")
+      } yield GameCommand.ReplaceNegotiationTerms(PlayerId(p), DecisionId(d), terms)
+      case "acceptNegotiation" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+      } yield GameCommand.AcceptNegotiation(PlayerId(p), DecisionId(d))
+      case "declineNegotiation" => for {
+        _ <- exactFields(obj, Set("type", "playerId", "decisionId"), path)
+        p <- stringField(obj, "playerId", path); d <- stringField(obj, "decisionId", path)
+      } yield GameCommand.DeclineNegotiation(PlayerId(p), DecisionId(d))
       case "addRecoverDice" => for {
         p <- stringField(obj, "playerId", path)
         d <- stringField(obj, "decisionId", path)

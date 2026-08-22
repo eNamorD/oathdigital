@@ -3,8 +3,23 @@ package oathdigital.server
 import oathdigital.model.{Banner, CampaignBanner, CampaignRaidTarget, DecisionId, DenizenId,
   EconomyTargetRef, EdificeId, Orientation, PendingProcedure, PlayerId, RelicId,
   SearchPlacement, SiteId}
+import oathdigital.model.{NegotiationDisclosure, NegotiationDisclosureRef,
+  NegotiationTerms, NegotiationTransfer, VisionId}
 
 class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
+  test("authenticated Negotiation intents are caller-authored and actor-free") {
+    val begin = """{"expectedNextSequence":50,"intent":{"type":"beginNegotiation","participantPlayerIds":["blue","yellow"]}}"""
+    val replace = """{"expectedNextSequence":51,"intent":{"type":"replaceNegotiationTerms","decisionId":"negotiation-50","terms":{"transfers":[{"recipientPlayerId":"blue","favor":2,"relicIds":["R1"]}],"disclosures":[{"recipientPlayerId":"yellow","information":{"kind":"adviser","ownerPlayerId":"red","card":{"kind":"vision","id":"V1"}}}]}}}"""
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(begin).toOption.get.intent,
+      GameIntent.BeginNegotiation(Vector(PlayerId("blue"), PlayerId("yellow"))))
+    assertEquals(AuthenticatedGameHttpWire.decodeCommand(replace).toOption.get.intent,
+      GameIntent.ReplaceNegotiationTerms(DecisionId("negotiation-50"),
+        NegotiationTerms(Vector(NegotiationTransfer(PlayerId("blue"), 2,
+          Vector(RelicId("R1")))), Vector(NegotiationDisclosure(PlayerId("yellow"),
+          NegotiationDisclosureRef.Adviser(PlayerId("red"), VisionId("V1")))))))
+    assert(AuthenticatedGameHttpWire.decodeCommand(begin.replace(
+      "\"participantPlayerIds\"", "\"playerId\":\"spoof\",\"participantPlayerIds\"")).isLeft)
+  }
   test("authenticated minor-action intents are actor-free and typed") {
     val discard = """{"expectedNextSequence":40,"intent":{"type":"discardFacedownAdviser","adviser":{"kind":"denizen","id":"42"}}}"""
     val play = """{"expectedNextSequence":41,"intent":{"type":"playFacedownAdviser","adviser":{"kind":"denizen","id":"42"},"placement":{"kind":"adviser-face-up"}}}"""

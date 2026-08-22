@@ -35,7 +35,9 @@ final case class FirstGameSupportState(
     foundationProfile: FirstGameFoundationProfile,
     favorBanks: Map[Suit, Int],
     firstPlayer: PlayerId,
-    relicKnowledge: Map[PlayerId, Map[SiteId, Vector[RelicId]]] = Map.empty
+    relicKnowledge: Map[PlayerId, Map[SiteId, Vector[RelicId]]] = Map.empty,
+    adviserKnowledge: Map[PlayerId, Vector[WorldCardId]] = Map.empty,
+    heldRelicKnowledge: Map[PlayerId, Vector[RelicId]] = Map.empty
 )
 
 final case class ReadyGame(
@@ -169,6 +171,20 @@ object OathEvent {
   final case class WarbandsMoved(
       playerId: PlayerId, siteId: SiteId, toSite: Boolean, amount: Int,
       priorBoardWarbands: Int, priorSiteWarbands: Int) extends OathEvent
+  final case class NegotiationStarted(
+      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
+      participants: Vector[PlayerId]) extends OathEvent
+  final case class NegotiationTermsReplaced(
+      playerId: PlayerId, decision: DecisionId, terms: NegotiationTerms)
+      extends OathEvent
+  final case class NegotiationAccepted(
+      playerId: PlayerId, decision: DecisionId) extends OathEvent
+  final case class NegotiationDeclined(
+      playerId: PlayerId, decision: DecisionId) extends OathEvent
+  final case class NegotiationCompleted(
+      playerId: PlayerId, decision: DecisionId,
+      participants: Vector[PlayerId], terms: Map[PlayerId, NegotiationTerms])
+      extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,
@@ -396,6 +412,14 @@ object OathViolation {
   final case class UnsupportedMinorActionRule(source: CardId, handlers: Vector[String])
       extends OathViolation
   final case class UnsupportedMinorActionCatalogInventory(expected: String, actual: String)
+      extends OathViolation
+  final case class NegotiationUnavailable(detail: String) extends OathViolation
+  final case class NegotiationDecisionMismatch(expected: DecisionId, actual: DecisionId)
+      extends OathViolation
+  final case class NegotiationOutcomeMismatch(detail: String) extends OathViolation
+  final case class UnsupportedNegotiationRule(source: String, handler: String)
+      extends OathViolation
+  final case class UnsupportedNegotiationCatalogInventory(expected: String, actual: String)
       extends OathViolation
   final case class LockedAdviserCannotBeDiscarded(id: CardId)
       extends OathViolation
@@ -658,6 +682,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
           _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
           _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
+          _: NegotiationStarted | _: NegotiationTermsReplaced |
+          _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>

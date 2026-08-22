@@ -6,6 +6,7 @@ import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.actions.MinorActionCommand
+import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
@@ -60,6 +61,14 @@ object GameCommand {
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
+      extends GameCommand
+  final case class BeginNegotiation(playerId: PlayerId,
+      participants: Vector[PlayerId]) extends GameCommand
+  final case class ReplaceNegotiationTerms(playerId: PlayerId,
+      decision: DecisionId, terms: NegotiationTerms) extends GameCommand
+  final case class AcceptNegotiation(playerId: PlayerId, decision: DecisionId)
+      extends GameCommand
+  final case class DeclineNegotiation(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
@@ -441,6 +450,15 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
       case GameCommand.MoveWarbands(playerId, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
+      case GameCommand.BeginNegotiation(playerId, participants) =>
+        rules.handle(state, NegotiationCommand.Begin(playerId,
+          DecisionId(s"negotiation-$nextSequence"), participants))
+      case GameCommand.ReplaceNegotiationTerms(playerId, decision, terms) =>
+        rules.handle(state, NegotiationCommand.ReplaceTerms(playerId, decision, terms))
+      case GameCommand.AcceptNegotiation(playerId, decision) =>
+        rules.handle(state, NegotiationCommand.Accept(playerId, decision))
+      case GameCommand.DeclineNegotiation(playerId, decision) =>
+        rules.handle(state, NegotiationCommand.Decline(playerId, decision))
       case GameCommand.AddRecoverDice(playerId, decision) =>
         rules.handle(state, RecoverCommand.Roll(playerId, decision,
           defenseDicePort.rollTwo()))

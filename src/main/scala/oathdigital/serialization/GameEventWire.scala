@@ -34,6 +34,7 @@ object GameEventWire {
   val ForgeFormatVersion: Int = 8
   val BannerFormatVersion: Int = 9
   val MinorActionFormatVersion: Int = 10
+  val NegotiationFormatVersion: Int = 11
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -62,6 +63,11 @@ object GameEventWire {
   val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
   val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"
   val WarbandsMovedType = "gameplay.warbands-moved"
+  val NegotiationStartedType = "gameplay.negotiation-started"
+  val NegotiationTermsReplacedType = "gameplay.negotiation-terms-replaced"
+  val NegotiationAcceptedType = "gameplay.negotiation-accepted"
+  val NegotiationDeclinedType = "gameplay.negotiation-declined"
+  val NegotiationCompletedType = "gameplay.negotiation-completed"
   val CampaignStartedType = "gameplay.campaign-started"
   val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
   val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
@@ -178,7 +184,7 @@ object GameEventWire {
                 version == SearchFormatVersion || version == RestFormatVersion ||
                 version == EconomyFormatVersion || version == RecoverFormatVersion ||
                 version == ForgeFormatVersion || version == BannerFormatVersion ||
-                version == MinorActionFormatVersion)
+                version == MinorActionFormatVersion || version == NegotiationFormatVersion)
               Right(())
             else
               Left(
@@ -304,6 +310,11 @@ object GameEventWire {
       case _: SiteRelicsPeeked => SiteRelicsPeekedType
       case _: OwnedRelicRevealed => OwnedRelicRevealedType
       case _: WarbandsMoved => WarbandsMovedType
+      case _: NegotiationStarted => NegotiationStartedType
+      case _: NegotiationTermsReplaced => NegotiationTermsReplacedType
+      case _: NegotiationAccepted => NegotiationAcceptedType
+      case _: NegotiationDeclined => NegotiationDeclinedType
+      case _: NegotiationCompleted => NegotiationCompletedType
       case _: CampaignStarted => CampaignStartedType
       case _: CampaignPlanChosen => CampaignPlanChosenType
       case _: CampaignPlansFinished => CampaignPlansFinishedType
@@ -321,6 +332,9 @@ object GameEventWire {
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: NegotiationStarted | _: NegotiationTermsReplaced |
+        _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted =>
+      NegotiationFormatVersion
     case _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
         _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved =>
       MinorActionFormatVersion
@@ -475,6 +489,22 @@ object GameEventWire {
         ujson.Obj("playerId" -> player.value, "siteId" -> site.value,
           "toSite" -> toSite, "amount" -> amount,
           "priorBoardWarbands" -> board, "priorSiteWarbands" -> atSite)
+      case NegotiationStarted(player, decision, site, participants) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "siteId" -> site.value, "participants" -> stringArray(participants.map(_.value)))
+      case NegotiationTermsReplaced(player, decision, terms) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "terms" -> encodeNegotiationTerms(terms))
+      case NegotiationAccepted(player, decision) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value)
+      case NegotiationDeclined(player, decision) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value)
+      case NegotiationCompleted(player, decision, participants, terms) => ujson.Obj(
+        "playerId" -> player.value, "decisionId" -> decision.value,
+        "participants" -> stringArray(participants.map(_.value)),
+        "terms" -> ujson.Arr.from(participants.map(author => ujson.Obj(
+          "authorPlayerId" -> author.value,
+          "terms" -> encodeNegotiationTerms(terms(author))))))
       case CampaignStarted(player, decision, sites, defender, spent, force,
           kind, raidTargets) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -791,6 +821,24 @@ object GameEventWire {
           atSite <- safeIntField(payload.obj, "priorSiteWarbands", path)
         } yield WarbandsMoved(PlayerId(payload("playerId").str),
           SiteId(payload("siteId").str), payload("toSite").bool, amount, board, atSite)
+        case NegotiationStartedType => Right(NegotiationStarted(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
+          SiteId(payload("siteId").str), payload("participants").arr.toVector
+            .map(v => PlayerId(v.str))))
+        case NegotiationTermsReplacedType => decodeNegotiationTerms(
+          payload("terms"), s"$path.terms").map(terms => NegotiationTermsReplaced(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str), terms))
+        case NegotiationAcceptedType => Right(NegotiationAccepted(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
+        case NegotiationDeclinedType => Right(NegotiationDeclined(
+          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
+        case NegotiationCompletedType => for {
+          participants <- Right(payload("participants").arr.toVector.map(v => PlayerId(v.str)))
+          rows <- traverse(payload("terms").arr.toVector)(row =>
+            decodeNegotiationTerms(row("terms"), s"$path.terms").map(
+              PlayerId(row("authorPlayerId").str) -> _))
+        } yield NegotiationCompleted(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), participants, rows.toMap)
         case CampaignStartedType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           force <- safeIntField(payload.obj, "force", path)
@@ -947,7 +995,11 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == FacedownAdviserDiscardedType ||
+      if (eventType == NegotiationStartedType ||
+          eventType == NegotiationTermsReplacedType ||
+          eventType == NegotiationAcceptedType || eventType == NegotiationDeclinedType ||
+          eventType == NegotiationCompletedType) NegotiationFormatVersion
+      else if (eventType == FacedownAdviserDiscardedType ||
           eventType == FacedownAdviserPlayedType ||
           eventType == SiteRelicsPeekedType ||
           eventType == OwnedRelicRevealedType ||
@@ -989,6 +1041,51 @@ object GameEventWire {
 
   private def decodeBanner(value: String, path: String): Either[WireError, Banner] =
     Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))
+
+  private def encodeNegotiationTerms(terms: NegotiationTerms): ujson.Value = ujson.Obj(
+    "transfers" -> ujson.Arr.from(terms.transfers.map(transfer => ujson.Obj(
+      "recipientPlayerId" -> transfer.recipient.value, "favor" -> transfer.favor,
+      "relicIds" -> stringArray(transfer.relics.map(_.value))))),
+    "disclosures" -> ujson.Arr.from(terms.disclosures.map { disclosure =>
+      val information = disclosure.information match {
+        case NegotiationDisclosureRef.Adviser(owner, card) => ujson.Obj(
+          "kind" -> "adviser", "ownerPlayerId" -> owner.value,
+          "card" -> encodeWorldCard(card))
+        case NegotiationDisclosureRef.HeldRelic(owner, relic) => ujson.Obj(
+          "kind" -> "held-relic", "ownerPlayerId" -> owner.value,
+          "relicId" -> relic.value)
+        case NegotiationDisclosureRef.SiteRelic(site, relic) => ujson.Obj(
+          "kind" -> "site-relic", "siteId" -> site.value, "relicId" -> relic.value)
+      }
+      ujson.Obj("recipientPlayerId" -> disclosure.recipient.value,
+        "information" -> information)
+    }))
+
+  private def decodeNegotiationTerms(value: ujson.Value,
+      path: String): Either[WireError, NegotiationTerms] = try {
+    for {
+      transfers <- traverse(value("transfers").arr.toVector) { row => for {
+        favor <- safeIntField(row.obj, "favor", s"$path.transfers")
+      } yield NegotiationTransfer(PlayerId(row("recipientPlayerId").str), favor,
+        row("relicIds").arr.toVector.map(v => RelicId(v.str))) }
+      disclosures <- traverse(value("disclosures").arr.toVector) { row =>
+        val info = row("information")
+        val decoded: Either[WireError, NegotiationDisclosureRef] = info("kind").str match {
+          case "adviser" => decodeWorldCard(info("card"), s"$path.disclosures.card")
+            .map(card => NegotiationDisclosureRef.Adviser(
+              PlayerId(info("ownerPlayerId").str), card))
+          case "held-relic" => Right(NegotiationDisclosureRef.HeldRelic(
+            PlayerId(info("ownerPlayerId").str), RelicId(info("relicId").str)))
+          case "site-relic" => Right(NegotiationDisclosureRef.SiteRelic(
+            SiteId(info("siteId").str), RelicId(info("relicId").str)))
+          case other => Left(InvalidValue(s"$path.disclosures.kind",
+            s"unknown disclosure kind '$other'"))
+        }
+        decoded.map(NegotiationDisclosure(PlayerId(row("recipientPlayerId").str), _))
+      }
+    } yield NegotiationTerms(transfers, disclosures)
+  } catch { case NonFatal(error) => Left(InvalidValue(path,
+    Option(error.getMessage).getOrElse("invalid Negotiation terms"))) }
 
   private def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(

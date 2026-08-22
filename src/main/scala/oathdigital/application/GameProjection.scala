@@ -90,6 +90,7 @@ final case class LegalTradeProjection(
     resource: String, supplyCost: Int, gained: Int)
 sealed trait BoardTargetRefProjection extends Product with Serializable
 object BoardTargetRefProjection {
+  final case class Player(playerId: String) extends BoardTargetRefProjection
   final case class Site(siteId: String) extends BoardTargetRefProjection
   final case class SiteCard(siteId: String, cardKind: String, cardId: String)
       extends BoardTargetRefProjection
@@ -218,6 +219,19 @@ final case class MinorAdviserProjection(card: CardDetailsProjection,
 final case class MinorActionsProjection(advisers: Vector[MinorAdviserProjection],
     canPeekSiteRelics: Boolean, facedownRelics: Vector[CardDetailsProjection],
     siteId: Option[String], maxBoardToSite: Int, maxSiteToBoard: Int)
+final case class NegotiationTransferProjection(authorPlayerId: String,
+    recipientPlayerId: String, favor: Int, relicCount: Int,
+    relics: Vector[CardDetailsProjection])
+final case class NegotiationDisclosureProjection(authorPlayerId: String,
+    recipientPlayerId: String, kind: String,
+    card: Option[CardDetailsProjection])
+final case class NegotiationProjection(decisionId: String, actorPlayerId: String,
+    siteId: String, participantPlayerIds: Vector[String],
+    acceptedPlayerIds: Vector[String], transfers: Vector[NegotiationTransferProjection],
+    disclosures: Vector[NegotiationDisclosureProjection],
+    editableFavor: Int, editableRelics: Vector[CardDetailsProjection],
+    editableAdvisers: Vector[CardDetailsProjection],
+    editableSiteRelics: Vector[CardDetailsProjection])
 
 final case class GameProjection(
     gameId: String,
@@ -253,6 +267,8 @@ final case class GameProjection(
     ,banners: Vector[BannerProjection] = Vector.empty
     ,challenge: Option[ChallengeProjection] = None
     ,minorActions: Option[MinorActionsProjection] = None
+    ,negotiation: Option[NegotiationProjection] = None
+    ,negotiationWaiting: Boolean = false
 )
 
 final class GameProjector(catalog: ExecutableCatalog) {
@@ -362,6 +378,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
         val site = active.pawnSite.flatMap(current.map.sites.get)
         val controls = if (current.result.nonEmpty) Vector.empty
           else current.pending match {
+            case Some(n: PendingProcedure.Negotiation)
+                if requestingPlayer.exists(n.participants.contains) =>
+              Vector("replaceNegotiationTerms", "acceptNegotiation", "declineNegotiation")
+            case Some(_: PendingProcedure.Negotiation) => Vector.empty
             case Some(p: PendingProcedure.OathkeeperRecipient)
                 if requestingPlayer.contains(p.actor) =>
               Vector("chooseOathkeeperRecipient")
@@ -409,7 +429,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
                   Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(
                     "revealOwnedRelic"),
                   Option.when(minorActionsProjection(value, active).maxBoardToSite > 0 ||
-                    minorActionsProjection(value, active).maxSiteToBoard > 0)("moveWarbands")
+                    minorActionsProjection(value, active).maxSiteToBoard > 0)("moveWarbands"),
+                  Option.when(oathdigital.gameplay.actions.Negotiation
+                    .legalParticipants(value, active.player).nonEmpty)("beginNegotiation")
                 ).flatten
               case Phase.Rest => Vector("finishRest")
               case Phase.Wake =>
@@ -716,7 +738,13 @@ final class GameProjector(catalog: ExecutableCatalog) {
             challenge = challengeProjection,
             minorActions = Option.when(requestingPlayer.contains(active.player) &&
               current.turn.phase == Phase.Act && current.pending.isEmpty)(
-              minorActionsProjection(value, active)))
+              minorActionsProjection(value, active)),
+            negotiation = negotiationProjection(value, requestingPlayer),
+            negotiationWaiting = current.pending.exists {
+              case n: PendingProcedure.Negotiation =>
+                !requestingPlayer.exists(n.participants.contains)
+              case _ => false
+            })
     }
 
   private def minorActionsProjection(ready: ReadyGame,
@@ -809,6 +837,11 @@ final class GameProjector(catalog: ExecutableCatalog) {
         safeLabel(banner.key), Vector("1 Supply",
           s"Currently ${BannerRules.resources(ready.game.current, banner)} resources"))
     }
+    val negotiators = oathdigital.gameplay.actions.Negotiation
+      .legalParticipants(ready, player.player).map { candidate =>
+        BoardTargetCandidateProjection(BoardTargetRefProjection.Player(candidate.value),
+          safeLabel(candidate.value), Vector("Co-located negotiator"))
+      }
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites", campaign,
@@ -824,6 +857,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
         minimum = Option.when(raid.nonEmpty)(1).getOrElse(0), maximum = raid.size,
         requiredTargets = raid.headOption.map(_.target).toVector),
       selection("challenge", "Choose a banner to Challenge", challenges),
+      selection("negotiation", "Choose one or more co-located negotiators", negotiators,
+        minimum = 1, maximum = negotiators.size),
       selection("muster", "Choose a card to Muster from", musters),
       selection("trade-favor", "Choose a card to Trade for favor", favor),
       selection("trade-secret", "Choose a card to Trade for secrets", secret)
@@ -1045,19 +1080,73 @@ final class GameProjector(catalog: ExecutableCatalog) {
       .filter(_ >= 0)).getOrElse(0)
     (players.drop(start) ++ players.take(start)).map { player =>
       val owns = viewer.contains(player.player)
+      val knownAdvisers = viewer.toVector.flatMap(id =>
+        ready.support.adviserKnowledge.getOrElse(id, Vector.empty)).toSet
+      val knownRelics = viewer.toVector.flatMap(id =>
+        ready.support.heldRelicKnowledge.getOrElse(id, Vector.empty)).toSet
       PlayerBoardProjection(player.player.value, player.board.warbands,
         player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
         player.board.supply.supply, player.pawnSite.map(_.value),
-        player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown && !owns)
+        player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown &&
+            !owns && !knownAdvisers(card.id.asInstanceOf[WorldCardId]))
           hiddenCard(card.id, "adviser") else cardDetails(card.id,
             Some(adviserOrientation(card)), hidden = false)),
-        player.relics.map(card => if (card.orientation == Orientation.FaceDown && !owns)
+        player.relics.map(card => if (card.orientation == Orientation.FaceDown &&
+            !owns && !knownRelics(card.id))
           hiddenCard(card.id, "relic") else cardDetails(card.id,
             Some(card.orientation), hidden = false)),
         player.revealedVision.map(card => cardDetails(card.id,
           Some(card.orientation), hidden = false)))
     }
   }
+
+  private def negotiationProjection(ready: ReadyGame,
+      viewer: Option[PlayerId]): Option[NegotiationProjection] =
+    ready.game.current.pending.collect {
+      case negotiation: PendingProcedure.Negotiation
+          if viewer.exists(negotiation.participants.contains) =>
+        val viewing = viewer.get
+        val transfers = negotiation.participants.flatMap { author =>
+          negotiation.terms(author).transfers.map { transfer =>
+            val owner = ready.game.current.players.find(_.player == author).get
+            NegotiationTransferProjection(author.value, transfer.recipient.value,
+              transfer.favor, transfer.relics.size,
+              if (viewing == author) transfer.relics.flatMap(id => owner.relics
+                .find(_.id == id).map(r => cardDetails(r.id, Some(r.orientation), hidden = false)))
+              else Vector.empty)
+          }
+        }
+        val disclosures = negotiation.participants.flatMap { author =>
+          negotiation.terms(author).disclosures.map { disclosure =>
+            val visible = viewing == author
+            val (kind, detail) = disclosure.information match {
+              case NegotiationDisclosureRef.Adviser(_, card) => "adviser" ->
+                Option.when(visible)(cardDetails(card, Some(Orientation.FaceDown), hidden = false))
+              case NegotiationDisclosureRef.HeldRelic(_, relic) => "held-relic" ->
+                Option.when(visible)(cardDetails(relic, Some(Orientation.FaceDown), hidden = false))
+              case NegotiationDisclosureRef.SiteRelic(_, relic) => "site-relic" ->
+                Option.when(visible)(cardDetails(relic, Some(Orientation.FaceDown), hidden = false))
+            }
+            NegotiationDisclosureProjection(author.value, disclosure.recipient.value,
+              kind, detail)
+          }
+        }
+        val player = ready.game.current.players.find(_.player == viewing).get
+        val siteRelics = ready.support.relicKnowledge.getOrElse(viewing, Map.empty)
+          .toVector.flatMap { case (site, known) => ready.game.current.map.sites.get(site)
+            .toVector.flatMap(_.relics.filter(r => known.contains(r.id))) }
+        NegotiationProjection(negotiation.decision.value, negotiation.actor.value,
+          negotiation.site.value, negotiation.participants.map(_.value),
+          negotiation.participants.filter(negotiation.accepted).map(_.value),
+          transfers, disclosures, player.board.favor,
+          player.relics.map(r => cardDetails(r.id, Some(r.orientation), hidden = false)),
+          player.advisers.collect {
+            case d: DenizenState if d.orientation == Orientation.FaceDown =>
+              cardDetails(d.id, Some(d.orientation), hidden = false)
+            case v: VisionState if v.orientation == Orientation.FaceDown =>
+              cardDetails(v.id, Some(v.orientation), hidden = false)
+          }, siteRelics.map(r => cardDetails(r.id, Some(r.orientation), hidden = false)))
+    }
 
   private def hiddenCard(id: CardId, kind: String) = CardDetailsProjection(
     "hidden", kind, s"Facedown $kind", orientation = Some("face-down"), hidden = true)

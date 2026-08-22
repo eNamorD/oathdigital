@@ -103,6 +103,15 @@ final case class AuthorizedPlayer private (
     GameCommand.RevealOwnedRelic(access.playerId, relic)
   def moveWarbands(toSite: Boolean, amount: Int): GameCommand =
     GameCommand.MoveWarbands(access.playerId, toSite, amount)
+  def beginNegotiation(participants: Vector[PlayerId]): GameCommand =
+    GameCommand.BeginNegotiation(access.playerId, participants)
+  def replaceNegotiationTerms(decision: DecisionId,
+      terms: NegotiationTerms): GameCommand =
+    GameCommand.ReplaceNegotiationTerms(access.playerId, decision, terms)
+  def acceptNegotiation(decision: DecisionId): GameCommand =
+    GameCommand.AcceptNegotiation(access.playerId, decision)
+  def declineNegotiation(decision: DecisionId): GameCommand =
+    GameCommand.DeclineNegotiation(access.playerId, decision)
   def addRecoverDice(decision: DecisionId): GameCommand =
     GameCommand.AddRecoverDice(access.playerId, decision)
   def stopRecover(decision: DecisionId): GameCommand =

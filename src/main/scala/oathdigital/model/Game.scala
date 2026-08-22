@@ -392,14 +392,58 @@ object PendingProcedure {
   final case class Negotiation(
       decision: DecisionId,
       actor: PlayerId,
-      other: PlayerId
-  ) extends PendingProcedure
+      site: SiteId,
+      participants: Vector[PlayerId],
+      terms: Map[PlayerId, NegotiationTerms],
+      accepted: Set[PlayerId]
+  ) extends PendingProcedure {
+    require(participants.size >= 2 && participants.head == actor &&
+      participants.distinct.size == participants.size,
+      "Negotiation participants must be distinct and actor-first")
+    require(terms.keySet == participants.toSet,
+      "Negotiation terms must exist for every participant")
+    require(accepted.subsetOf(participants.toSet),
+      "Negotiation acceptances must belong to participants")
+  }
 
   final case class Chronicle(
       decision: DecisionId,
       task: ChronicleTask,
       taskHolders: Map[ChronicleTask, PlayerId]
   ) extends PendingProcedure
+}
+
+final case class NegotiationTransfer(
+    recipient: PlayerId,
+    favor: Int,
+    relics: Vector[RelicId]
+) {
+  require(favor >= 0, "Negotiation favor must be non-negative")
+  require(relics.distinct.size == relics.size,
+    "Negotiation relic transfers must be distinct")
+}
+
+sealed trait NegotiationDisclosureRef extends Product with Serializable
+object NegotiationDisclosureRef {
+  final case class Adviser(owner: PlayerId, card: WorldCardId)
+      extends NegotiationDisclosureRef
+  final case class HeldRelic(owner: PlayerId, relic: RelicId)
+      extends NegotiationDisclosureRef
+  final case class SiteRelic(site: SiteId, relic: RelicId)
+      extends NegotiationDisclosureRef
+}
+final case class NegotiationDisclosure(
+    recipient: PlayerId,
+    information: NegotiationDisclosureRef
+)
+final case class NegotiationTerms(
+    transfers: Vector[NegotiationTransfer] = Vector.empty,
+    disclosures: Vector[NegotiationDisclosure] = Vector.empty
+) {
+  require(transfers.map(_.recipient).distinct.size == transfers.size,
+    "Negotiation transfers must have one row per recipient")
+  require(disclosures.distinct.size == disclosures.size,
+    "Negotiation disclosures must be distinct")
 }
 
 sealed trait AttackDieFace extends Product with Serializable

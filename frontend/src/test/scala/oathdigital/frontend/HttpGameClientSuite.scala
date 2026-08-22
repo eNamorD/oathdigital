@@ -6,6 +6,29 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class HttpGameClientSuite extends FunSuite {
+  test("Negotiation projection decodes redacted ledger and encodes authored terms") {
+    val card = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
+    val deal = s"""{"decisionId":"negotiation-50","actorPlayerId":"red-exile","siteId":"site:a","participantPlayerIds":["red-exile","blue-exile"],"acceptedPlayerIds":["blue-exile"],"transfers":[{"authorPlayerId":"red-exile","recipientPlayerId":"blue-exile","favor":2,"relicCount":1,"relics":[$card]}],"disclosures":[{"authorPlayerId":"blue-exile","recipientPlayerId":"red-exile","kind":"adviser","card":null}],"editableFavor":4,"editableRelics":[$card],"editableAdvisers":[],"editableSiteRelics":[]}"""
+    val json = projectionJson(sequence = 51, phase = "act-action-selection",
+      ready = true, completed = false, choices = false).replace(
+      "\"pendingCardDecision\":null",
+      s"\"pendingCardDecision\":null,\"negotiation\":$deal")
+    val decoded = GameJson.decodeProjection(json).toOption.get.negotiation.get
+    assertEquals(decoded.acceptedPlayerIds, Vector("blue-exile"))
+    assertEquals(decoded.disclosures.head.card, None)
+    val terms = NegotiationTermsInput(Vector(NegotiationTransferInput(
+      "blue-exile", 2, Vector("R1"))), Vector.empty)
+    val encoded = GameJson.encodeCommand(51, GameCommand.ReplaceNegotiationTerms(
+      "red-exile", decoded.decisionId, terms))
+    assert(encoded.contains("replaceNegotiationTerms"))
+    assert(encoded.contains("\"relicIds\":[\"R1\"]"))
+    val waiting = projectionJson(sequence = 51, phase = "act-action-selection",
+      ready = true, completed = false, choices = false).replace(
+      "\"pendingCardDecision\":null",
+      "\"pendingCardDecision\":null,\"negotiationWaiting\":true")
+    assert(GameJson.decodeProjection(waiting).toOption.get.negotiationWaiting)
+    assertEquals(GameJson.decodeProjection(waiting).toOption.get.negotiation, None)
+  }
   test("minor actions decode private state and encode typed controls") {
     val card = """{"cardId":"42","cardKind":"denizen","name":"Scout","suit":"nomad","restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":null,"defense":null,"hidden":false}"""
     val relic = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
