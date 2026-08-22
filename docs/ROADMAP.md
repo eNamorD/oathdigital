@@ -7,8 +7,9 @@ been reviewed.
 
 ## Now
 
-No milestone is currently assigned. The next item is Phase 2's all-Exile round
-endings and War Exhaustion slice.
+**Phase 2 - Round endings and War Exhaustion** is active in a dedicated
+implementation task. It covers the fixed all-Exile end-of-round procedure,
+authoritative War Exhaustion, and terminal outcomes.
 
 ## Next
 
