@@ -7,9 +7,9 @@ been reviewed.
 
 ## Now
 
-No milestone is currently assigned. Phase 1 base actions are complete; the
-next milestone is Phase 2's generalization of Oathkeeper qualification beyond
-Supremacy.
+**Phase 2 - Generalize Oathkeeper qualification** is active in a dedicated
+implementation task. It extends qualification beyond Supremacy while keeping
+the existing authoritative evaluation and replay boundaries.
 
 ## Next
 
