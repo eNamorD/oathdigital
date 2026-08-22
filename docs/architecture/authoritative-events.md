@@ -54,6 +54,11 @@ No v1-to-v2 migration exists because a v1 stream did not record
 the denizen, relic, adviser, color, first-player, or supporting-world outcomes
 needed to construct the v2 aggregate.
 
+The setup-start event carries the selected Oathkeeper goal. This is required
+even though the default first-game plan uses Supremacy: the fixed, unaltered
+all-Exile runtime evaluates all four printed goals, and replay must reconstruct
+Protection, The People, or Devotion without consulting a mutable default.
+
 V2 writers accept an absolute non-negative sequence for each envelope, so a
 command's event batch can begin at the repository's current nonzero stream
 position. Batch helpers require contiguous absolute positions relative to the

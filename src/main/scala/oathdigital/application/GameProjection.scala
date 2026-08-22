@@ -723,7 +723,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
           worldDeckTopCardKind = current.commonCards.worldDeck.headOption.map(cardKind),
           playerBoards = viewerOrderedBoards(value, requestingPlayer),
           oathkeeper = Some(OathkeeperProjection(
-            "supremacy", current.title.holder.map(_.value),
+            value.game.campaign.oathkeeperGoal.key,
+            current.title.holder.map(_.value),
             current.title.side match {
               case TitleSide.Oathkeeper => "oathkeeper"
               case TitleSide.Usurper => "usurper"

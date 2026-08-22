@@ -66,7 +66,9 @@ class RecoverSuite extends munit.FunSuite {
   }
 
   test("success privately peeks and transfers exactly one facedown relic") {
-    val (ready, player, siteId, relic) = recoverable
+    val (base, player, siteId, relic) = recoverable
+    val ready = base.copy(game = base.game.copy(campaign =
+      base.game.campaign.copy(oathkeeperGoal = OathkeeperGoal.Protection)))
     val other = ready.game.current.players.find(_.player != player.player).get
     val id = DecisionId("recover-private")
     val success = rules.handle(Ready(ready), RecoverCommand.Roll(player.player, id,
@@ -86,6 +88,8 @@ class RecoverSuite extends munit.FunSuite {
     assertEquals(after.game.current.players.find(_.player == player.player).get
       .relics.map(r => r.id -> r.orientation), Vector(relic.id -> Orientation.FaceDown))
     assertEquals(after.game.current.pending, None)
+    assertEquals(taken.events.last, OathkeeperChanged(Some(player.player)))
+    assertEquals(after.game.current.title.holder, Some(player.player))
   }
 
   test("replay rejects wrong cost roll size stale decision and unavailable relic") {

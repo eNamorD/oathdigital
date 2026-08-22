@@ -23,7 +23,8 @@ final case class FirstGameSetupPlan(
     denizenOrder: Vector[DenizenId],
     worldDeckOrder: Vector[WorldCardId],
     relicOrder: Vector[RelicId],
-    homelandEdifices: Vector[(SiteId, EdificeId)]
+    homelandEdifices: Vector[(SiteId, EdificeId)],
+    oathkeeperGoal: OathkeeperGoal = OathkeeperGoal.Supremacy
 )
 
 sealed trait FirstGameFoundationProfile extends Product with Serializable
@@ -948,7 +949,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Vector.empty,
         Vector.empty,
         Map.empty,
-        OathkeeperGoal.Supremacy,
+        plan.oathkeeperGoal,
         EraState(20, lineages.keys.map(_ -> 0).toMap)
       ),
       CurrentGameState(

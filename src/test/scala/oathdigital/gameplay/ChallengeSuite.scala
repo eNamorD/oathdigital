@@ -42,7 +42,9 @@ class ChallengeSuite extends munit.FunSuite {
   }
 
   test("People's Favor resolves every least-bank tie leftmost and proceeds to replacement") {
-    val (base, actor) = ready(resources = 2)
+    val (initial, actor) = ready(resources = 2)
+    val base = initial.copy(game = initial.game.copy(campaign =
+      initial.game.campaign.copy(oathkeeperGoal = OathkeeperGoal.ThePeople)))
     val id = DecisionId("challenge-favor")
     val started = rules.handle(Ready(base), ChallengeCommand.Begin(
       actor.player, id, Banner.PeoplesFavor)).toOption.get
@@ -62,6 +64,8 @@ class ChallengeSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.peoplesFavor.favor, 3)
     assertEquals(after.game.current.players.find(_.player == actor.player).get.board.favor,
       actor.board.favor - 3)
+    assertEquals(completed.events.last, OathkeeperChanged(Some(actor.player)))
+    assertEquals(after.game.current.title.holder, Some(actor.player))
   }
 
   test("valid setup history replays exactly through People's Favor completion") {

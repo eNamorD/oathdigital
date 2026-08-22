@@ -414,10 +414,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   private def execute(
       service: GameApplicationService,
       gameId: String,
-      placementSites: Vector[oathdigital.model.SiteId] = sites
+      placementSites: Vector[oathdigital.model.SiteId] = sites,
+      setupPlan: oathdigital.setup.FirstGameSetupPlan = plan
   ): GameAccepted = {
     var accepted =
-      service.handle(gameId, 0L, GameCommand.Begin(plan))
+      service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
         .toOption.get
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     order.zipWithIndex.foreach { case (playerId, index) =>
@@ -427,13 +428,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         GameCommand.PlacePawn(playerId, placementSites(index))
       ).toOption.get
       val participantIndex =
-        plan.participants.indexWhere(_.playerId == playerId)
+        setupPlan.participants.indexWhere(_.playerId == playerId)
       accepted = service.handle(
         gameId,
         accepted.nextSequence,
         GameCommand.ChooseAdviser(
           playerId,
-          plan.denizenOrder(6 + participantIndex * 3)
+          setupPlan.denizenOrder(6 + participantIndex * 3)
         )
       ).toOption.get
     }
@@ -455,6 +456,19 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(records.forall(record =>
       ujson.read(record)("formatVersion").num.toInt ==
         GameEventWire.FormatVersion))
+  }
+
+  test("reload preserves a non-Supremacy setup goal") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val accepted = execute(service, "game-protection", setupPlan =
+      plan.copy(oathkeeperGoal = OathkeeperGoal.Protection))
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load("game-protection").toOption.flatten.get
+
+    assertEquals(reloaded.state, accepted.state)
+    assertEquals(reloaded.state.asInstanceOf[Ready].value.game.campaign
+      .oathkeeperGoal, OathkeeperGoal.Protection)
   }
 
   test("gameplay appends v3 at the absolute position and reloads equally") {

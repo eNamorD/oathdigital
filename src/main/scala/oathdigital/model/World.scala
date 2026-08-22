@@ -248,12 +248,15 @@ final case class FoundationState(
     alterationSources: Set[LegacyId]
 )
 
-sealed trait OathkeeperGoal extends Product with Serializable
+sealed trait OathkeeperGoal extends Product with Serializable { def key: String }
 object OathkeeperGoal {
-  case object Supremacy extends OathkeeperGoal
-  case object Protection extends OathkeeperGoal
-  case object ThePeople extends OathkeeperGoal
-  case object Devotion extends OathkeeperGoal
+  case object Supremacy extends OathkeeperGoal { val key = "supremacy" }
+  case object Protection extends OathkeeperGoal { val key = "protection" }
+  case object ThePeople extends OathkeeperGoal { val key = "the-people" }
+  case object Devotion extends OathkeeperGoal { val key = "devotion" }
+
+  val all: Vector[OathkeeperGoal] =
+    Vector(Supremacy, Protection, ThePeople, Devotion)
 }
 
 sealed trait TitleSide extends Product with Serializable

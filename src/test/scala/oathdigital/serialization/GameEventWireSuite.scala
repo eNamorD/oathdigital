@@ -516,6 +516,23 @@ class GameEventWireSuite extends munit.FunSuite {
       OathkeeperChanged(None))
   }
 
+  test("setup history preserves every Oathkeeper goal") {
+    OathkeeperGoal.all.foreach { goal =>
+      val event = OathEvent.FirstGameStarted(plan.copy(oathkeeperGoal = goal))
+      val encoded = GameEventWire.encodeEvent("goal", catalogRef, 0L, event)
+        .toOption.get
+      assertEquals(encoded("payload")("oathkeeperGoal").str, goal.key)
+      assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
+    }
+    val invalid = GameEventWire.encodeEvent("goal", catalogRef, 0L,
+      OathEvent.FirstGameStarted(plan)).toOption.get
+    invalid("payload")("oathkeeperGoal") = "unknown"
+    assert(GameEventWire.decode(invalid).left.toOption.exists {
+      case WireError.InvalidValue(path, _) => path.endsWith(".oathkeeperGoal")
+      case _ => false
+    })
+  }
+
   test("v4 Search events round trip exact hidden outcome and player choices") {
     val drawn = Vector[WorldCardId](DenizenId("denizen:a"), VisionId("vision:b"))
     val started = SearchStarted(PlayerId("p2"), DecisionId("search-9"),

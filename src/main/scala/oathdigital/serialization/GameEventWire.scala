@@ -1098,6 +1098,7 @@ object GameEventWire {
         )
       }),
       "firstPlayer" -> plan.firstPlayer.value,
+      "oathkeeperGoal" -> plan.oathkeeperGoal.key,
       "orderedSites" -> stringArray(plan.orderedSites.map(_.value)),
       "denizenOrder" -> stringArray(plan.denizenOrder.map(_.value)),
       "worldDeckOrder" -> ujson.Arr.from(
@@ -1153,6 +1154,10 @@ object GameEventWire {
               )
           }
         }
+        oathkeeperGoal <- OathkeeperGoal.all
+          .find(_.key == obj("oathkeeperGoal").str)
+          .toRight(InvalidValue(s"$path.oathkeeperGoal",
+            s"unknown Oathkeeper goal '${obj("oathkeeperGoal").str}'"))
       } yield FirstGameSetupPlan(
         catalog,
         participants,
@@ -1163,7 +1168,8 @@ object GameEventWire {
         obj("relicOrder").arr.toVector.map(v => RelicId(v.str)),
         obj("homelandEdifices").arr.toVector.map { entry =>
           SiteId(entry("siteId").str) -> EdificeId(entry("edificeId").str)
-        }
+        },
+        oathkeeperGoal
       )
     } catch {
       case NonFatal(error) =>

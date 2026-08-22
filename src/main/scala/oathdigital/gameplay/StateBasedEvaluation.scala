@@ -8,10 +8,10 @@ import oathdigital.setup.OathState._
 import oathdigital.setup.OathViolation._
 
 /**
- * State-based checks for the fixed, all-Exile first game only.
+ * State-based checks for the fixed, unaltered all-Exile game only.
  *
- * CR p.16 gives Supremacy a strict qualification rule, then gives the current
- * holder two special tie duties: retain a highest tie, or choose among tied
+ * CR p.16 gives each goal a strict qualification rule, then gives the current
+ * holder two special tie duties: retain a qualifying tie, or choose among tied
  * leaders when no longer tied. The latter is a player decision and is not
  * guessed here. This is deliberately not a reusable, context-free tie breaker.
  */
@@ -31,17 +31,8 @@ object StateBasedEvaluation {
   def afterAction(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).flatMap { ready =>
       val current = ready.game.current
-      val counts = current.players.map { player =>
-        val count = current.map.sites.values.count(_.forces match {
-          case SiteForces.Occupied(ForceKind.Exile(lineage), _) =>
-            lineage == player.lineage
-          case _ => false
-        })
-        player.player -> count
-      }.toMap
-      val maximum = counts.values.maxOption.getOrElse(0)
-      val leaders = counts.collect { case (player, count)
-          if maximum > 0 && count == maximum => player }.toSet
+      val leaders = qualifyingPlayers(
+        ready.game.campaign.oathkeeperGoal, current)
       current.title.holder match {
         case Some(holder) if leaders(holder) => Right(None)
         case Some(holder) if leaders.size > 1 =>
@@ -159,11 +150,38 @@ object StateBasedEvaluation {
   private def supported(state: OathState): Either[OathViolation, ReadyGame] = state match {
     case Ready(ready)
         if ready.support.foundationProfile == FirstGameFoundationProfile.FixedUnaltered &&
-          ready.game.campaign.oathkeeperGoal == OathkeeperGoal.Supremacy &&
           ready.game.campaign.lineages.values.forall(_.role == Role.Exile) => Right(ready)
     case Ready(_) => Left(UnsupportedWakeVictoryState(
-      "state-based Oathkeeper evaluation is limited to the fixed all-Exile first game"))
+      "state-based Oathkeeper evaluation is limited to the fixed, unaltered all-Exile game"))
     case _ => Left(GameNotStarted)
+  }
+
+  private def qualifyingPlayers(goal: OathkeeperGoal,
+      current: CurrentGameState): Set[PlayerId] =
+    goal match {
+      case OathkeeperGoal.Supremacy =>
+        leadersWithPositiveCount(current.players.map { player =>
+          player.player -> current.map.sites.values.count(_.forces match {
+            case SiteForces.Occupied(ForceKind.Exile(lineage), _) =>
+              lineage == player.lineage
+            case _ => false
+          })
+        })
+      case OathkeeperGoal.Protection =>
+        leadersWithPositiveCount(current.players.map(player =>
+          player.player -> player.relics.size))
+      case OathkeeperGoal.ThePeople =>
+        current.banners.peoplesFavor.holder.toSet
+      case OathkeeperGoal.Devotion =>
+        current.banners.darkestSecret.holder.toSet
+    }
+
+  private def leadersWithPositiveCount(
+      counts: Vector[(PlayerId, Int)]): Set[PlayerId] = {
+    val maximum = counts.map(_._2).maxOption.getOrElse(0)
+    counts.collect { case (player, count) if maximum > 0 && count == maximum =>
+      player
+    }.toSet
   }
 
   private def update(state: OathState)(f: CurrentGameState => CurrentGameState) = state match {

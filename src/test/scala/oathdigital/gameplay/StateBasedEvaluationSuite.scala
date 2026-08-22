@@ -99,6 +99,70 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     assertEquals(rules.evolve(pending, chosen.events.head), Right(chosen.state))
   }
 
+  test("all four printed goals qualify from their authoritative holdings") {
+    val base = prepared(Vector.empty)
+    val players = base.game.current.players.map(_.player)
+    val relicLeader = players(1)
+    val withRelics = base.game.current.players.map { player =>
+      if (player.player == relicLeader) player.copy(relics = Vector(
+        RelicState(RelicId("qualification-relic"), Orientation.FaceDown,
+          Tokens.empty)))
+      else player
+    }
+
+    val cases = Vector(
+      OathkeeperGoal.Supremacy -> prepared(Vector(Some(players.head))),
+      OathkeeperGoal.Protection -> base.copy(game = base.game.copy(
+        current = base.game.current.copy(players = withRelics))),
+      OathkeeperGoal.ThePeople -> base.copy(game = base.game.copy(
+        current = base.game.current.copy(banners = base.game.current.banners.copy(
+          peoplesFavor = base.game.current.banners.peoplesFavor.copy(
+            holder = Some(players(2))))))),
+      OathkeeperGoal.Devotion -> base.copy(game = base.game.copy(
+        current = base.game.current.copy(banners = base.game.current.banners.copy(
+          darkestSecret = base.game.current.banners.darkestSecret.copy(
+            holder = Some(players(0)))))))
+    )
+
+    cases.foreach { case (goal, state) =>
+      val expected = goal match {
+        case OathkeeperGoal.Supremacy => players.head
+        case OathkeeperGoal.Protection => relicLeader
+        case OathkeeperGoal.ThePeople => players(2)
+        case OathkeeperGoal.Devotion => players(0)
+      }
+      val scoped = state.copy(game = state.game.copy(
+        campaign = state.game.campaign.copy(oathkeeperGoal = goal)))
+      val event = OathkeeperChanged(Some(expected))
+      assertEquals(StateBasedEvaluation.afterAction(Ready(scoped)),
+        Right(Some(event)), clue(goal))
+      assertEquals(rules.evolve(Ready(scoped), event).map(_.asInstanceOf[Ready]
+        .value.game.current.title.holder), Right(Some(expected)), clue(goal))
+      assertEquals(new GameProjector(catalog).projectPublic("goal",
+        LoadedGame(Ready(scoped), 0)).oathkeeper.map(_.goal),
+        Some(goal.key), clue(goal))
+    }
+  }
+
+  test("Protection requires at least one relic and preserves highest-count ties") {
+    val base = prepared(Vector.empty)
+    val players = base.game.current.players
+    val protection = base.copy(game = base.game.copy(
+      campaign = base.game.campaign.copy(
+        oathkeeperGoal = OathkeeperGoal.Protection)))
+    assertEquals(StateBasedEvaluation.afterAction(Ready(protection)), Right(None))
+
+    val tiedPlayers = players.zipWithIndex.map { case (player, index) =>
+      if (index < 2) player.copy(relics = Vector(RelicState(
+        RelicId(s"tied-relic-$index"), Orientation.FaceDown, Tokens.empty)))
+      else player
+    }
+    val tied = protection.copy(game = protection.game.copy(
+      current = protection.game.current.copy(players = tiedPlayers,
+        title = OathkeeperState(Some(players.head.player), TitleSide.Oathkeeper))))
+    assertEquals(StateBasedEvaluation.afterAction(Ready(tied)), Right(None))
+  }
+
   test("round four releases limiter and retained Usurper wins next Wake") {
     val base = execute(setup)._1.asInstanceOf[Ready].value
     val holder = base.support.firstPlayer
