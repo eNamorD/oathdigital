@@ -7,9 +7,9 @@ been reviewed.
 
 ## Now
 
-No milestone is currently assigned. The next item is Phase 2's completion of
-suspended-decision and action-boundary processing for the supported all-Exile
-procedures.
+**Phase 2 - Suspended decisions and action boundaries** is active in a
+dedicated implementation task. It audits and completes continuation processing
+across every supported all-Exile procedure.
 
 ## Next
 
