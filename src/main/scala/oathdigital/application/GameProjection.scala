@@ -433,13 +433,14 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     "facedownAdviserMinorAction"),
                   Option.when(active.advisers.exists {
                     case VisionState(id, Orientation.FaceDown) =>
-                      VisionRules.trueGoal(id).nonEmpty
+                      Visions.canReveal(catalog, value, active.player, id)
                     case _ => false
                   })("revealVision"),
                   Option.when(active.advisers.exists {
                     case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
                     case _ => false
-                  })("playConspiracy"),
+                  } && Visions.canPlayConspiracy(catalog, value, active.player))(
+                    "playConspiracy"),
                   Option.when(active.pawnSite.flatMap(current.map.sites.get).exists(_.relics.nonEmpty))(
                     "peekSiteRelics"),
                   Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(

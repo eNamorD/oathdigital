@@ -313,11 +313,15 @@ object SearchRules {
       case SearchPlacement.Adviser(orientation, replace) =>
         (kept match {
           case id: VisionId if orientation == Orientation.FaceUp =>
-            val expected = player.revealedVision.map(_.id)
-            if (replace != expected) Left(InvalidSearchPlacement(
-              if (expected.nonEmpty) "a revealed Vision must be replaced"
-              else "there is no revealed Vision to replace"))
-            else Right(player.advisers -> expected.map(identity[WorldCardId]))
+            MinorActionPowerSupport.validateFaceupVision(
+              catalog, ready, player.player, id).flatMap { _ =>
+              val expected = if (id == VisionRules.Conspiracy) None
+                else player.revealedVision.map(_.id)
+              if (replace != expected) Left(InvalidSearchPlacement(
+                if (expected.nonEmpty) "a revealed Vision must be replaced"
+                else "there is no revealed Vision to replace"))
+              else Right(player.advisers -> expected.map(identity[WorldCardId]))
+            }
           case _ => validateAdviserReplacement(catalog, player, replace)
         }).flatMap {
           case (advisers, removed) =>

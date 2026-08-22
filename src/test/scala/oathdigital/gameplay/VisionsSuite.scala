@@ -1,11 +1,12 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{SearchCommand, VisionCommand, VisionRules, Visions}
+import oathdigital.gameplay.actions.{SearchCommand, SearchRules, VisionCommand, VisionRules, Visions}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.FirstGameSetupFixture._
 import oathdigital.setup.OathEvent._
 import oathdigital.setup.OathState.Ready
+import oathdigital.setup.OathViolation.UnsupportedVisionRule
 
 class VisionsSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -139,5 +140,113 @@ class VisionsSuite extends munit.FunSuite {
     val Ready(after) = resolved.state: @unchecked
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor.player))
     assertEquals(after.game.current.pending, None)
+  }
+
+  private def withActorAdviser(base: ReadyGame, actor: PlayerState,
+      handler: String): ReadyGame = {
+    val definition = catalog.denizens.find(_.handlers.contains(handler)).get
+    val powered = DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
+      Tokens.empty)
+    base.copy(game = base.game.copy(current = base.game.current.copy(players =
+      base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = p.advisers :+ powered) else p))))
+  }
+
+  private def withEdifice(base: ReadyGame, siteId: SiteId, side: EdificeSide,
+      handler: String): ReadyGame = {
+    val definition = catalog.edifices.find(e => (side match {
+      case EdificeSide.Intact => e.intact.handlers
+      case EdificeSide.Ruined => e.ruined.handlers
+    }).contains(handler)).get
+    val state = EdificeState(EdificeId(definition.id.value), side, Tokens.empty)
+    val site = base.game.current.map.sites(siteId)
+    base.copy(game = base.game.copy(current = base.game.current.copy(map =
+      base.game.current.map.copy(sites = base.game.current.map.sites.updated(
+        siteId, site.copy(denizens = site.denizens :+ state))))))
+  }
+
+  test("actor and enemy Vision restrictions reject with stable source identities") {
+    val (base0, actor, _) = actWith(VisionRules.Faith)
+    val vow = withActorAdviser(base0, actor, "denizen.vow-of-obedience")
+    assertEquals(rules.handle(Ready(vow), VisionCommand.Reveal(
+      actor.player, VisionRules.Faith)).left.toOption,
+      Some(UnsupportedVisionRule(
+        s"adviser:${actor.player.value}:denizen:121", "denizen.vow-of-obedience")))
+    val projected = new oathdigital.application.GameProjector(catalog).project(
+      "blocked-vision", oathdigital.application.LoadedGame(Ready(vow), 0),
+      actor.player)
+    assert(!projected.legalControls.contains("revealVision"))
+
+    val enemy = base0.game.current.players.find(_.player != actor.player).get
+    val siteId = actor.pawnSite.get
+    val policeId = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.secret-police")).get.id.value)
+    val site = base0.game.current.map.sites(siteId).copy(
+      forces = SiteForces.Occupied(ForceKind.Exile(enemy.lineage), 1),
+      denizens = Vector(DenizenState(policeId, Orientation.FaceUp, Tokens.empty)))
+    val police = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+      map = base0.game.current.map.copy(sites = base0.game.current.map.sites.updated(
+        siteId, site)))))
+    assertEquals(rules.handle(Ready(police), VisionCommand.Reveal(
+      actor.player, VisionRules.Faith)).left.toOption,
+      Some(UnsupportedVisionRule(s"site-card:${siteId.value}:denizen:${policeId.value}",
+        "denizen.secret-police")))
+
+    val triggerId = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.book-binders")).get.id.value)
+    val trigger = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+      players = base0.game.current.players.map(p => if (p.player == enemy.player)
+        p.copy(advisers = Vector(DenizenState(triggerId, Orientation.FaceUp,
+          Tokens.empty))) else p))))
+    assertEquals(rules.handle(Ready(trigger), VisionCommand.Reveal(
+      actor.player, VisionRules.Faith)).left.toOption,
+      Some(UnsupportedVisionRule(
+        s"adviser:${enemy.player.value}:denizen:${triggerId.value}",
+        "denizen.book-binders")))
+  }
+
+  test("both audited Vision edifice faces reject only in their relevant contexts") {
+    val (base, actor, _) = actWith(VisionRules.Conquest)
+    val remote = base.game.current.map.inPlay.find(!actor.pawnSite.contains(_)).get
+    val intact = withEdifice(base, remote, EdificeSide.Intact, "edifice.e08.intact")
+    assertEquals(rules.handle(Ready(intact), VisionCommand.Reveal(
+      actor.player, VisionRules.Conquest)).left.toOption,
+      Some(UnsupportedVisionRule(s"edifice:${remote.value}:E08", "edifice.e08.intact")))
+
+    val local = actor.pawnSite.get
+    val ruined = withEdifice(base, local, EdificeSide.Ruined, "edifice.e08.ruined")
+    assertEquals(rules.handle(Ready(ruined), VisionCommand.Reveal(
+      actor.player, VisionRules.Conquest)).left.toOption,
+      Some(UnsupportedVisionRule(s"edifice:${local.value}:E08", "edifice.e08.ruined")))
+  }
+
+  test("direct and Search faceup routes share the audit while unrelated powers do not block") {
+    val (base0, actor, _) = actWith(VisionRules.Sanctuary)
+    val blocked = withActorAdviser(base0, actor, "denizen.vow-of-obedience")
+    assert(rules.handle(Ready(blocked), VisionCommand.Reveal(
+      actor.player, VisionRules.Sanctuary)).isLeft)
+    val pending = PendingProcedure.Search(DecisionId("vision-audit-search"), actor.player,
+      drawn = Vector(VisionRules.Sanctuary))
+    val searchState = blocked.copy(game = blocked.game.copy(current =
+      blocked.game.current.copy(pending = Some(pending))))
+    assert(!SearchRules.legalPlacements(catalog, searchState, pending,
+      VisionRules.Sanctuary).contains(
+        SearchPlacement.Adviser(Orientation.FaceUp, None)))
+
+    val revelation = withActorAdviser(base0, actor, "denizen.revelation")
+    assert(rules.handle(Ready(revelation), VisionCommand.Reveal(
+      actor.player, VisionRules.Sanctuary)).isRight)
+  }
+
+  test("altered Foundations reject at the bounded Vision boundary") {
+    val (base, actor, _) = actWith(VisionRules.Rebellion)
+    val number = FoundationNumber.I
+    val changed = base.copy(game = base.game.copy(campaign = base.game.campaign.copy(
+      foundations = base.game.campaign.foundations.updated(number,
+        FoundationState(FoundationFace.Altered, Set(LegacyId("legacy:vision-change")))))))
+    assertEquals(rules.handle(Ready(changed), VisionCommand.Reveal(
+      actor.player, VisionRules.Rebellion)).left.toOption,
+      Some(UnsupportedVisionRule("foundation:1",
+        "foundation.altered-vision-rules")))
   }
 }

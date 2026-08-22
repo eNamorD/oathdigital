@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{MinorActionCommand, MinorActionPowerSupport,
-  MinorActions}
+  MinorActions, VisionRules}
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.setup._
@@ -152,6 +152,27 @@ class MinorActionsSuite extends munit.FunSuite {
       Some(UnsupportedMinorActionRule(conspiracy, Vector("vision.conspiracy"))))
   }
 
+  test("true Visions cannot bypass the authoritative reveal procedure") {
+    val (base, actor, _, _, _) = ready()
+    val vision = VisionRules.Conquest
+    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = Vector(VisionState(vision, Orientation.FaceDown))) else p))))
+    val placement = SearchPlacement.Adviser(Orientation.FaceUp, None)
+    assertEquals(MinorActions.legalAdviserPlacements(
+      catalog, modified, actor.player, vision), Vector.empty)
+    assertEquals(rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
+      actor.player, vision, placement)).left.toOption,
+      Some(UnsupportedMinorActionRule(vision, Vector("vision.reveal-procedure"))))
+    val projected = new oathdigital.application.GameProjector(catalog).project(
+      "vision-minor", oathdigital.application.LoadedGame(Ready(modified), 0),
+      actor.player)
+    val projectedPlacements = projected.minorActions.toVector.flatMap(_.advisers)
+      .filter(_.card.cardId == vision.value).flatMap(_.placements)
+    assertEquals(projectedPlacements.map(_.kind), Vector("discard"))
+    assert(projected.legalControls.contains("revealVision"))
+  }
+
   test("locked restriction applies only faceup and does not prevent facedown discard") {
     val (base, actor, _, _, _) = ready()
     val locked = DenizenId(catalog.denizens.find(_.restrictions ==
@@ -190,5 +211,28 @@ class MinorActionsSuite extends munit.FunSuite {
       handlers = first.handlers :+ "denizen.future-handler") +: catalog.denizens.tail)
     assert(MinorActionPowerSupport.validateInventory(changed).left.toOption.exists(
       _.isInstanceOf[UnsupportedMinorActionCatalogInventory]))
+  }
+
+  test("Vision inventory fingerprint covers every runtime handler family and edifice face") {
+    val changed = Vector(
+      catalog.copy(relics = catalog.relics.head.copy(
+        handlers = catalog.relics.head.handlers :+ "relic.future-vision") +:
+          catalog.relics.tail),
+      catalog.copy(edifices = catalog.edifices.head.copy(intact =
+        catalog.edifices.head.intact.copy(handlers =
+          catalog.edifices.head.intact.handlers :+ "edifice.future-vision")) +:
+          catalog.edifices.tail),
+      catalog.copy(edifices = catalog.edifices.head.copy(ruined =
+        catalog.edifices.head.ruined.copy(handlers =
+          catalog.edifices.head.ruined.handlers :+ "edifice.future-ruined-vision")) +:
+          catalog.edifices.tail),
+      catalog.copy(legacies = catalog.legacies.head.copy(
+        handlers = catalog.legacies.head.handlers :+ "legacy.future-vision") +:
+          catalog.legacies.tail),
+      catalog.copy(sites = catalog.sites.head.copy(
+        handlers = catalog.sites.head.handlers :+ "site.future-vision") +:
+          catalog.sites.tail))
+    changed.foreach(value => assert(
+      MinorActionPowerSupport.validateInventory(value).isLeft))
   }
 }

@@ -49,3 +49,15 @@ Vision-changing or reveal-blocking powers, alternate banner faces, or other
 component modifiers. Relevant implemented command paths continue to reject
 unsupported handlers with their stable source identity instead of ignoring
 them.
+
+The faceup-Vision legality boundary fingerprints denizens, relics, both faces
+of every edifice, legacies, and sites. In the pinned runtime catalog it treats
+`denizen.vow-of-obedience`, `denizen.secret-police`,
+`denizen.book-binders`, `edifice.e08.intact` (Sacred Ground), and
+`edifice.e08.ruined` (Desecrated Ground) as relevant. Direct reveal, Search,
+Conspiracy, event replay, and private projection all use this boundary.
+Unrelated Vision references such as facedown-adviser peeks, adviser-limit
+changes, setup ordering, and the generic `denizen.revelation` When Played power
+do not block faceup Vision play. The legacy facedown-adviser command supports
+discarding a Vision but cannot play one faceup; `VisionRevealed` and the typed
+Conspiracy procedure are the sole faceup paths.

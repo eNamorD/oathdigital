@@ -35,6 +35,17 @@ object VisionRules {
 }
 
 object Visions {
+  def canReveal(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId, vision: VisionId): Boolean =
+    VisionRules.trueGoal(vision).nonEmpty &&
+      MinorActionPowerSupport.validateFaceupVision(
+        catalog, ready, player, vision).isRight
+
+  def canPlayConspiracy(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerId): Boolean =
+    MinorActionPowerSupport.validateFaceupVision(
+      catalog, ready, player, VisionRules.Conspiracy).isRight
+
   def handle(catalog: ExecutableCatalog, state: OathState, command: VisionCommand)
       : Either[OathViolation, OathTransition] = command match {
     case VisionCommand.Reveal(player, vision) => for {
@@ -43,6 +54,7 @@ object Visions {
       _ <- Either.cond(VisionRules.trueGoal(vision).nonEmpty, (),
         VisionUnavailable("only a true Vision can be revealed"))
       _ <- facedownVision(actor, vision)
+      _ <- MinorActionPowerSupport.validateFaceupVision(catalog, ready, player, vision)
       region <- actor.pawnSite.flatMap(ready.game.current.map.regionOf)
         .toRight(PawnSiteMissing(player))
       event = VisionRevealed(player, vision, actor.revealedVision.map(_.id),
@@ -65,6 +77,8 @@ object Visions {
         case _ => false
       }
       _ <- if (fromSearch) Right(()) else facedownVision(actor, VisionRules.Conspiracy)
+      _ <- MinorActionPowerSupport.validateFaceupVision(
+        catalog, ready, player, VisionRules.Conspiracy)
       legal = legalTargetRefs(ready, player)
       _ <- Either.cond(if (legal.isEmpty) target.isEmpty else target.exists(legal.contains), (),
         ConspiracyUnavailable(if (legal.isEmpty) "no target is legal"
@@ -150,6 +164,8 @@ object Visions {
       _ <- Either.cond(VisionRules.trueGoal(e.visionId).nonEmpty, (),
         VisionUnavailable("recorded card is not a true Vision"))
       _ <- facedownVision(actor, e.visionId)
+      _ <- MinorActionPowerSupport.validateFaceupVision(
+        catalog, ready, e.playerId, e.visionId)
       region <- actor.pawnSite.flatMap(ready.game.current.map.regionOf)
         .toRight(PawnSiteMissing(e.playerId))
       _ <- Either.cond(e.replaced == actor.revealedVision.map(_.id) &&
@@ -182,6 +198,8 @@ object Visions {
         case _ => false
       }
       _ <- if (fromSearch) Right(()) else facedownVision(actor, e.source)
+      _ <- MinorActionPowerSupport.validateFaceupVision(
+        catalog, ready, e.playerId, e.source)
       legal = legalTargetRefs(ready, e.playerId).flatMap(resolveTarget(ready, _))
       _ <- Either.cond(if (legal.isEmpty) e.target.isEmpty else e.target.exists(legal.contains), (),
         ConspiracyOutcomeMismatch("recorded target is not legal"))
