@@ -7,9 +7,8 @@ been reviewed.
 
 ## Now
 
-**Phase 2 - Generalize Oathkeeper qualification** is active in a dedicated
-implementation task. It extends qualification beyond Supremacy while keeping
-the existing authoritative evaluation and replay boundaries.
+No milestone is currently assigned. The next item is Phase 2's Vision reveal,
+qualification, victory, and Conspiracy slice.
 
 ## Next
 
@@ -31,7 +30,7 @@ campaign-continuity rules.
 
 ### Phase 2 - Complete all-Exile goals and endings
 
-1. Generalize Oathkeeper qualification beyond Supremacy.
+1. [x] Generalize Oathkeeper qualification beyond Supremacy.
 2. Implement Vision reveal, qualification, victory, and Conspiracy.
 3. Implement all-Exile round endings and War Exhaustion.
 4. Complete suspended-decision and action-boundary processing needed by these
@@ -118,6 +117,16 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 2 - Generalized Oathkeeper qualification.** The fixed,
+  unaltered all-Exile game evaluates all four printed goals at authoritative
+  post-action boundaries: ruled sites for Supremacy, held relics for
+  Protection, and the current banner holders for The People and Devotion.
+  Qualification preserves minimum holdings, holder-retained ties,
+  displaced-holder recipient decisions, title clearing, and the existing
+  Oathkeeper-to-Usurper Wake flow. The selected goal is durable setup-event
+  state and survives wire encoding, replay, persistence/reopen, and public
+  projection. Goal-changing powers remain deferred to typed action handlers.
 
 - [x] **Phase 1 - All-Exile Negotiation.** Co-located Exiles can create
   persistent bilateral or multi-party deals, author only their own outgoing
