@@ -210,7 +210,14 @@ object StateBasedEvaluation {
         case Ready(ready) =>
           val round = ready.game.current.tracks.round
           val expected = RoundEnded(round, Option.when(round < 8)(round + 1))
-          if (ready.game.current.turn.phase != Phase.RoundEnd)
+          val players = ready.game.current.players.map(_.player)
+          val firstIndex = players.indexOf(ready.support.firstPlayer)
+          val first = (players.drop(firstIndex) ++ players.take(firstIndex)).head
+          if (ready.game.current.pending.nonEmpty)
+            Left(PendingProcedureBlocksAction(
+              ready.game.current.pending.get.decision))
+          else if (ready.game.current.turn.phase != Phase.RoundEnd ||
+              ready.game.current.turn.activePlayer != first)
             Left(InvalidEventOrder("round-end event is outside the round-end procedure"))
           else if (recorded != expected) Left(InvalidEventOrder(
             s"round-end mismatch: expected $expected, recorded $recorded"))
@@ -220,7 +227,7 @@ object StateBasedEvaluation {
               usurperLimited = current.tracks.usurperLimited &&
                 recorded.completedRound < 3),
             turn = current.turn.copy(phase = recorded.nextRound.fold[Phase](
-              Phase.RoundEnd)(_ => Phase.Wake))))
+              Phase.WarExhaustion)(_ => Phase.Wake))))
         case _ => Left(GameNotStarted)
       }
       case recorded: WarExhaustionResolved => expectedWarExhaustion(state).flatMap {
@@ -255,7 +262,7 @@ object StateBasedEvaluation {
       : Either[OathViolation, ExpectedWarExhaustion] = supported(state).flatMap { ready =>
     val current = ready.game.current
     if (current.tracks.round != 8 || current.result.nonEmpty ||
-        current.turn.phase != Phase.RoundEnd)
+        current.turn.phase != Phase.WarExhaustion)
       Left(InvalidEventOrder("War Exhaustion is only resolved after round eight"))
     else endRoundWinner(current, ready.support.firstPlayer)
   }

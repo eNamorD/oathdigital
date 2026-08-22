@@ -300,6 +300,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       .asInstanceOf[WarExhaustionResolved]
     assertEquals(random.kind, VictoryKind.RandomSelection)
     assertEquals(random.winner, random.randomCandidates(1))
+    assert(rules.evolve(Ready(atRoundEnd(base)), random).isLeft,
+      "War Exhaustion replay must include RoundEnded(8, None) first")
     val afterRound = rules.evolve(Ready(atRoundEnd(base)), RoundEnded(8, None)).toOption.get
     assert(rules.evolve(afterRound, random.copy(
       randomCandidates = random.randomCandidates.reverse)).isLeft)

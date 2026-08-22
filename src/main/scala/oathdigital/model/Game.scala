@@ -63,6 +63,7 @@ object Phase {
   case object Act extends Phase
   case object Rest extends Phase
   private[oathdigital] case object RoundEnd extends Phase
+  private[oathdigital] case object WarExhaustion extends Phase
 }
 
 final case class TurnState(

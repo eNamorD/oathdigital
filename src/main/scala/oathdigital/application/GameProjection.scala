@@ -454,6 +454,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
                 ).flatten
               case Phase.Rest => Vector("finishRest")
               case Phase.RoundEnd => Vector.empty
+              case Phase.WarExhaustion => Vector.empty
               case Phase.Wake =>
                 val takeControls = active.pawnSite.toVector.flatMap { siteId =>
                   Vector(
@@ -643,6 +644,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Phase.Act => "act-action-selection"
             case Phase.Rest => "rest"
             case Phase.RoundEnd => "round-end"
+            case Phase.WarExhaustion => "war-exhaustion"
             }
           },
           Some(value.game.current.turn.activePlayer.value),
