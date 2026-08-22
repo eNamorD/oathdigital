@@ -7,8 +7,9 @@ been reviewed.
 
 ## Now
 
-No milestone is currently assigned. The next item is Phase 2's Vision reveal,
-qualification, victory, and Conspiracy slice.
+**Phase 2 - Visions and Conspiracy** is active in a dedicated implementation
+task. It covers Vision reveal, qualification and victory plus the bounded
+all-Exile Conspiracy procedure.
 
 ## Next
 
