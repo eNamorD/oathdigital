@@ -7,9 +7,9 @@ been reviewed.
 
 ## Now
 
-**Phase 1 - All-Exile Negotiation** is active in the implementation task. It
-uses a multi-party, participant-authored deal with unanimous consent, atomic
-favor/relic transfers, and binding hidden-information disclosures.
+No milestone is currently assigned. Phase 1 base actions are complete; the
+next milestone is Phase 2's generalization of Oathkeeper qualification beyond
+Supremacy.
 
 ## Next
 
@@ -26,8 +26,8 @@ campaign-continuity rules.
 4. [x] Implement the core minor actions: play/discard a facedown adviser,
    reveal/peek at relics, withdraw warbands from the pawn's site while leaving
    one, and deploy board warbands to that site when the player rules it.
-5. Implement ordinary all-Exile Negotiation as an atomic, consented favor/relic
-   exchange. Citizenship remains deferred with the Empire.
+5. [x] Implement ordinary all-Exile Negotiation as an atomic, consented
+   favor/relic exchange. Citizenship remains deferred with the Empire.
 
 ### Phase 2 - Complete all-Exile goals and endings
 
@@ -118,6 +118,18 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 1 - All-Exile Negotiation.** Co-located Exiles can create
+  persistent bilateral or multi-party deals, author only their own outgoing
+  favor, relic, and binding disclosure terms, and accept the current deal
+  unanimously. Any edit clears consent; the last acceptance atomically applies
+  transfers and durable scoped knowledge, while decline applies nothing and
+  still completes the action boundary. Projection redacts hidden identities,
+  derives acceptance legality from authoritative state, and supports
+  non-active participants through authenticated transport and the accessible
+  Scala.js editor. Relevant component families are inventory-audited and
+  unimplemented Negotiation powers reject explicitly; Citizenship, additional
+  asset types, remote deals, and printed powers remain deferred.
 
 - [x] **Phase 1 - Core minor actions.** During Act, players can play or discard
   a facedown adviser as if searched, privately inspect relics at their site,
