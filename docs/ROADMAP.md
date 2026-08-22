@@ -7,9 +7,8 @@ been reviewed.
 
 ## Now
 
-**Phase 2 - Visions and Conspiracy** is active in a dedicated implementation
-task. It covers Vision reveal, qualification and victory plus the bounded
-all-Exile Conspiracy procedure.
+No milestone is currently assigned. The next item is Phase 2's all-Exile round
+endings and War Exhaustion slice.
 
 ## Next
 
@@ -32,7 +31,7 @@ campaign-continuity rules.
 ### Phase 2 - Complete all-Exile goals and endings
 
 1. [x] Generalize Oathkeeper qualification beyond Supremacy.
-2. Implement Vision reveal, qualification, victory, and Conspiracy.
+2. [x] Implement Vision reveal, qualification, victory, and Conspiracy.
 3. Implement all-Exile round endings and War Exhaustion.
 4. Complete suspended-decision and action-boundary processing needed by these
    procedures.
@@ -118,6 +117,18 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 2 - Visions and Conspiracy.** Exiles can reveal any of the four
+  true Visions through one authoritative direct/Search legality path, replace
+  an existing revealed Vision, and win at Wake after the Usurper step when at
+  least three Visions have been drawn and their printed goal is uniquely met.
+  Conspiracy takes a co-located player's opaque relic slot or banner, applies
+  banner ribbons through replay-validated decisions, and returns to the box.
+  Commands, event v12, persistence, scoped projection, authenticated transport,
+  and accessible Scala.js controls preserve hidden identities. Relevant Vision
+  restrictions and triggers are catalog-wide inventory-audited and reject with
+  stable source identities until their powers are implemented; altered
+  Foundations and multi-Vision storage remain deferred.
 
 - [x] **Phase 2 - Generalized Oathkeeper qualification.** The fixed,
   unaltered all-Exile game evaluates all four printed goals at authoritative
