@@ -331,7 +331,11 @@ object ServerModeUi {
           node.textContent = "Rest phase — finish Rest when ready."
         case None if value.phase == "game-over" =>
           node.textContent = value.oathkeeper.flatMap(_.winnerPlayerId)
-            .fold("Game over.")(winner => s"Game over — $winner wins as Usurper.")
+            .fold("Game over.") { winner =>
+              val reason = value.oathkeeper.flatMap(_.winnerVictoryKind)
+                .map(_.replace('-', ' ')).getOrElse("winner")
+              s"Game over — $winner wins ($reason)."
+            }
         case None if value.phase == "search-decision" =>
           node.textContent = "Act phase — resolve your Search."
         case None if value.phase == "awaiting-adviser" =>

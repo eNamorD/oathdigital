@@ -140,11 +140,13 @@ class GameHttpWireSuite extends munit.FunSuite {
       Vector.empty, Vector.empty, Vector.empty, Vector.empty,
       ready = true, completed = true,
       oathkeeper = Some(OathkeeperProjection("supremacy", Some("p2"),
-        "usurper", usurperLimited = false, Some("p2"))))
+        "usurper", usurperLimited = false, Some("p2"),
+        Some("oathkeeper"))))
     val json = ujson.read(GameHttpWire.encodeProjection(projection))
     assertEquals(json("oathkeeper")("holderPlayerId").str, "p2")
     assertEquals(json("oathkeeper")("side").str, "usurper")
     assertEquals(json("oathkeeper")("winnerPlayerId").str, "p2")
+    assertEquals(json("oathkeeper")("winnerVictoryKind").str, "oathkeeper")
     assert(!GameHttpWire.encodeProjection(projection).contains("lineage"))
     val pending = projection.copy(boardTargetActions = Vector(
       oathdigital.application.BoardTargetActionProjection(

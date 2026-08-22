@@ -36,6 +36,7 @@ object GameEventWire {
   val MinorActionFormatVersion: Int = 10
   val NegotiationFormatVersion: Int = 11
   val VisionFormatVersion: Int = 12
+  val RoundEndFormatVersion: Int = 13
   val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -89,6 +90,8 @@ object GameEventWire {
   val ConspiracySecretSiteChosenType = "gameplay.conspiracy-secret-site-chosen"
   val ConspiracyCompletedType = "gameplay.conspiracy-completed"
   val VisionVictoryType = "gameplay.vision-victory"
+  val RoundEndedType = "gameplay.round-ended"
+  val WarExhaustionResolvedType = "gameplay.war-exhaustion-resolved"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -191,7 +194,7 @@ object GameEventWire {
                 version == EconomyFormatVersion || version == RecoverFormatVersion ||
                 version == ForgeFormatVersion || version == BannerFormatVersion ||
                 version == MinorActionFormatVersion || version == NegotiationFormatVersion ||
-                version == VisionFormatVersion)
+                version == VisionFormatVersion || version == RoundEndFormatVersion)
               Right(())
             else
               Left(
@@ -303,6 +306,8 @@ object GameEventWire {
       case _: SearchCompleted => SearchCompletedType
       case _: RestStarted => RestStartedType
       case _: RestCompleted => RestCompletedType
+      case _: RoundEnded => RoundEndedType
+      case _: WarExhaustionResolved => WarExhaustionResolvedType
       case _: RecoverRolled => RecoverRolledType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
@@ -344,6 +349,7 @@ object GameEventWire {
     }
 
   private def formatVersion(event: OathEvent): Int = event match {
+    case _: RoundEnded | _: WarExhaustionResolved => RoundEndFormatVersion
     case _: VisionRevealed | _: ConspiracyStarted |
         _: ConspiracySecretSiteChosen | _: ConspiracyCompleted |
         _: VisionVictory => VisionFormatVersion
@@ -441,6 +447,14 @@ object GameEventWire {
           "nextRound" -> round,
           "usurperLimited" -> limited
         )
+      case RoundEnded(completed, next) => ujson.Obj(
+        "completedRound" -> completed,
+        "nextRound" -> next.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+      case WarExhaustionResolved(winner, kind, vision, candidates) => ujson.Obj(
+        "winnerPlayerId" -> winner.value,
+        "victoryKind" -> kind.key,
+        "visionId" -> vision.fold[ujson.Value](ujson.Null)(v => ujson.Str(v.value)),
+        "randomCandidatePlayerIds" -> stringArray(candidates.map(_.value)))
       case RecoverRolled(player, decision, site, spent, dice) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent,
@@ -759,6 +773,27 @@ object GameEventWire {
             PlayerId(payload("playerId").str), entries.toMap,
             returnedSecrets, refreshedSupply,
             PlayerId(payload("nextPlayerId").str), nextRound, limited)
+        case RoundEndedType => for {
+          completed <- safeIntField(payload.obj, "completedRound", path)
+          next <- payload("nextRound") match {
+            case ujson.Null => Right(None)
+            case value => safeInt(value, s"$path.nextRound").map(Some(_))
+          }
+        } yield RoundEnded(completed, next)
+        case WarExhaustionResolvedType => for {
+          kind <- payload("victoryKind").str match {
+            case "usurper" => Right(VictoryKind.Usurper)
+            case "visionary" => Right(VictoryKind.Visionary)
+            case "oathkeeper" => Right(VictoryKind.Oathkeeper)
+            case "random-selection" => Right(VictoryKind.RandomSelection)
+            case other => Left(InvalidValue(s"$path.victoryKind",
+              s"unknown victory kind $other"))
+          }
+        } yield WarExhaustionResolved(PlayerId(payload("winnerPlayerId").str),
+          kind, payload("visionId") match {
+            case ujson.Null => None
+            case value => Some(VisionId(value.str))
+          }, payload("randomCandidatePlayerIds").arr.toVector.map(v => PlayerId(v.str)))
         case RecoverRolledType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           dice <- traverse(payload("dice").arr.toVector)(v =>
@@ -1064,7 +1099,9 @@ object GameEventWire {
       path: String
   ): Either[WireError, Unit] = {
     val expected =
-      if (eventType == VisionRevealedType || eventType == ConspiracyStartedType ||
+      if (eventType == RoundEndedType || eventType == WarExhaustionResolvedType)
+        RoundEndFormatVersion
+      else if (eventType == VisionRevealedType || eventType == ConspiracyStartedType ||
           eventType == ConspiracySecretSiteChosenType ||
           eventType == ConspiracyCompletedType || eventType == VisionVictoryType)
         VisionFormatVersion

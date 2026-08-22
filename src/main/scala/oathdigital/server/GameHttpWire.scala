@@ -162,7 +162,8 @@ object GameHttpWire {
           ujson.Obj("goal" -> oath.goal,
             "holderPlayerId" -> oath.holderPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
             "side" -> oath.side, "usurperLimited" -> oath.usurperLimited,
-            "winnerPlayerId" -> oath.winnerPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)))
+            "winnerPlayerId" -> oath.winnerPlayerId.fold[ujson.Value](ujson.Null)(ujson.Str(_)),
+            "winnerVictoryKind" -> oath.winnerVictoryKind.fold[ujson.Value](ujson.Null)(ujson.Str(_)))
         },
         "oathkeeperRecipient" -> projection.oathkeeperRecipient.fold[
           ujson.Value](ujson.Null) { decision =>

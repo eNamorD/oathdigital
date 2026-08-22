@@ -14,10 +14,10 @@ import oathdigital.application.{
   SetupApplicationService
 }
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.model.{CatalogRef, PlayerId}
+import oathdigital.model.{CatalogRef, PlayerId, VictoryKind}
 import oathdigital.serialization.GameEventWire
 import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
-  UsurperVictory}
+  UsurperVictory, RoundEnded, WarExhaustionResolved}
 import oathdigital.serialization.WireError.MalformedJson
 import oathdigital.setup.SetupCommand.PlacePawn
 
@@ -186,14 +186,17 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     val events = Vector(
       OathkeeperChanged(Some(PlayerId("p2"))),
       UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")))
+      UsurperVictory(PlayerId("p2")),
+      RoundEnded(8, None),
+      WarExhaustionResolved(PlayerId("p2"), VictoryKind.Oathkeeper,
+        None, Vector.empty))
     val records = events.zipWithIndex.map { case (event, index) =>
       ujson.write(GameEventWire.encodeEvent("oathkeeper", catalog.ref,
         index.toLong, event).toOption.get)
     }
     val first = open(path)
     try assertEquals(first.append("oathkeeper", ExpectedStream.MustNotExist,
-      records), Right(RepositoryAppendResult.Appended(0L, 3)))
+      records), Right(RepositoryAppendResult.Appended(0L, 5)))
     finally first.close()
 
     val reloaded = open(path)

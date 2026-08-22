@@ -292,6 +292,14 @@ object OathEvent {
       nextRound: Int,
       usurperLimited: Boolean
   ) extends OathEvent
+  final case class RoundEnded(completedRound: Int, nextRound: Option[Int])
+      extends OathEvent
+  final case class WarExhaustionResolved(
+      winner: PlayerId,
+      kind: VictoryKind,
+      visionId: Option[VisionId],
+      randomCandidates: Vector[PlayerId]
+  ) extends OathEvent
   final case class OathkeeperChanged(holder: Option[PlayerId]) extends OathEvent
   final case class OathkeeperRecipientChoiceStarted(
       actor: PlayerId, decision: DecisionId, candidates: Vector[PlayerId])
@@ -475,6 +483,8 @@ object OathViolation {
       extends OathViolation
   final case class ChallengeOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
+      extends OathViolation
+  final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)
       extends OathViolation
   final case class RestOutcomeMismatch(detail: String)
       extends OathViolation

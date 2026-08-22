@@ -113,11 +113,11 @@ class HttpGameClientSuite extends FunSuite {
       "\"pendingCardDecision\":null,\"oathkeeper\":{" +
         "\"goal\":\"supremacy\",\"holderPlayerId\":\"red-exile\"," +
         "\"side\":\"usurper\",\"usurperLimited\":false," +
-        "\"winnerPlayerId\":\"red-exile\"}")
+        "\"winnerPlayerId\":\"red-exile\",\"winnerVictoryKind\":\"usurper\"}")
     val decoded = GameJson.decodeProjection(json).toOption.get
     assertEquals(decoded.oathkeeper, Some(OathkeeperStatus("supremacy",
       Some("red-exile"), "usurper", usurperLimited = false,
-      Some("red-exile"))))
+      Some("red-exile"), Some("usurper"))))
   }
   test("scoped Oathkeeper recipient decision decodes and encodes its choice") {
     val json = projectionJson(sequence = 31, phase = "oathkeeper-recipient",

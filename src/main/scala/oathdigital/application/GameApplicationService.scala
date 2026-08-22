@@ -9,6 +9,7 @@ import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
+import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
 import oathdigital.setup.{
@@ -248,13 +249,16 @@ final class GameApplicationService(
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
     relicDrawPort: RelicDrawPort = RelicDrawPort.authoritative,
     defenseDicePort: DefenseDicePort = DefenseDicePort.random,
-    campaignDicePort: CampaignDicePort = CampaignDicePort.random
+    campaignDicePort: CampaignDicePort = CampaignDicePort.random,
+    warExhaustionRandomPort: WarExhaustionRandomPort =
+      WarExhaustionRandomPort.random
 ) {
   import GameApplicationError._
   import RepositoryAppendResult._
 
   private val setupRules = new FirstGameSetupRules(catalog)
-  private val rules = new OathRules(catalog)
+  private val rules = new OathRules(catalog,
+    warExhaustionRandomPort = warExhaustionRandomPort)
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */

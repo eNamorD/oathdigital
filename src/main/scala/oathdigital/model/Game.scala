@@ -62,6 +62,7 @@ object Phase {
   case object Wake extends Phase
   case object Act extends Phase
   case object Rest extends Phase
+  private[oathdigital] case object RoundEnd extends Phase
 }
 
 final case class TurnState(
@@ -534,7 +535,16 @@ object SearchPlacement {
   ) extends SearchPlacement
 }
 
-final case class GameResult(winner: PlayerId)
+sealed trait VictoryKind extends Product with Serializable { def key: String }
+object VictoryKind {
+  case object Usurper extends VictoryKind { val key = "usurper" }
+  case object Visionary extends VictoryKind { val key = "visionary" }
+  case object Oathkeeper extends VictoryKind { val key = "oathkeeper" }
+  case object RandomSelection extends VictoryKind { val key = "random-selection" }
+}
+
+final case class GameResult(winner: PlayerId,
+    kind: VictoryKind = VictoryKind.Usurper)
 
 final case class CurrentGameState(
     players: Vector[PlayerState],

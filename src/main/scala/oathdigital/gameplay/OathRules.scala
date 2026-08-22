@@ -8,7 +8,8 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
-import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand}
+import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
+  WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.setup._
 import oathdigital.setup.OathEvent._
@@ -18,7 +19,9 @@ import oathdigital.setup.OathViolation._
 /** Deterministic aggregate boundary for setup and gameplay routing. */
 final class OathRules(catalog: ExecutableCatalog,
     campaignLosingForceRegistry: CampaignLosingForceRegistry =
-      CampaignLosingForceRegistry.default)
+      CampaignLosingForceRegistry.default,
+    warExhaustionRandomPort: WarExhaustionRandomPort =
+      WarExhaustionRandomPort.random)
     extends EventEvolution[OathState, OathEvent, OathViolation] {
   private val setup = new FirstGameSetupRules(catalog)
 
@@ -134,8 +137,12 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] =
-    Rest.handle(catalog, state, command).flatMap { transition =>
+    Rest.handle(catalog, state, command, warExhaustionRandomPort).flatMap { transition =>
       command match {
+        case _: RestCommand.Finish if (transition.state match {
+          case Ready(ready) => ready.game.current.result.nonEmpty
+          case _ => false
+        }) => Right(transition)
         case _: RestCommand.Finish => enterWake(transition)
         case _ => Right(transition)
       }
@@ -206,6 +213,9 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
       case event: VisionVictory => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: RoundEnded => StateBasedEvaluation.evolve(catalog, state, event)
+      case event: WarExhaustionResolved =>
+        StateBasedEvaluation.evolve(catalog, state, event)
       case setupEvent => setup.evolve(state, setupEvent)
     }
 

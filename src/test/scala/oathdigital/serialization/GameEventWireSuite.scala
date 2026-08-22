@@ -9,10 +9,24 @@ import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEn
   WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
 import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
-  OathkeeperRecipientChosen}
+  OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
+  test("v13 round ending and War Exhaustion preserve outcome and random domain") {
+    val p1 = PlayerId("p1")
+    val p2 = PlayerId("p2")
+    val events = Vector[OathEvent](RoundEnded(8, None),
+      WarExhaustionResolved(p2, VictoryKind.RandomSelection, None,
+        Vector(p1, p2)))
+    events.zipWithIndex.foreach { case (event, index) =>
+      val encoded = GameEventWire.encodeEvent("war", catalog.ref, index, event)
+        .toOption.get
+      val decoded = GameEventWire.decode(encoded).toOption.get
+      assertEquals(decoded.formatVersion, GameEventWire.RoundEndFormatVersion)
+      assertEquals(decoded.event, event)
+    }
+  }
   private val rules = new FirstGameSetupRules(catalog)
 
   test("v12 Vision and Conspiracy events preserve hidden choices exactly") {

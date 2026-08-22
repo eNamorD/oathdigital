@@ -199,7 +199,8 @@ final case class CampaignPlanChoiceProjection(
     mechanicalResult: String)
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
-    usurperLimited: Boolean, winnerPlayerId: Option[String])
+    usurperLimited: Boolean, winnerPlayerId: Option[String],
+    winnerVictoryKind: Option[String] = None)
 final case class OathkeeperRecipientProjection(
     decisionId: String, actorPlayerId: String,
     candidatePlayerIds: Vector[String])
@@ -417,7 +418,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case None => current.turn.phase match {
               case Phase.Act =>
                 Vector(
-                  Option.when(Rest.validateBegin(Ready(value), active.player).isRight)(
+                  Option.when(Rest.validateBegin(catalog, Ready(value), active.player).isRight)(
                     "beginRest"),
                   Option.when(active.pawnSite.exists(siteId =>
                     RecoverRules.validate(catalog, value, active, siteId).isRight))(
@@ -451,6 +452,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
                     .legalParticipants(value, active.player).nonEmpty)("beginNegotiation")
                 ).flatten
               case Phase.Rest => Vector("finishRest")
+              case Phase.RoundEnd => Vector.empty
               case Phase.Wake =>
                 val takeControls = active.pawnSite.toVector.flatMap { siteId =>
                   Vector(
@@ -639,6 +641,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
             case Phase.Wake => "wake"
             case Phase.Act => "act-action-selection"
             case Phase.Rest => "rest"
+            case Phase.RoundEnd => "round-end"
             }
           },
           Some(value.game.current.turn.activePlayer.value),
@@ -751,7 +754,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
             current.title.side match {
               case TitleSide.Oathkeeper => "oathkeeper"
               case TitleSide.Usurper => "usurper"
-            }, current.tracks.usurperLimited, current.result.map(_.winner.value))),
+            }, current.tracks.usurperLimited, current.result.map(_.winner.value),
+              current.result.map(_.kind.key))),
           oathkeeperRecipient = oathkeeperRecipient,
           campaignRaidRelocation = campaignRaidRelocation)
           .copy(banners = Vector(

@@ -279,7 +279,8 @@ final case class CampaignPlanChoice(kind: String, sourceKey: Option[String],
     label: String, handlerId: Option[String], favorCost: Int, secretCost: Int,
     mechanicalResult: String)
 final case class OathkeeperStatus(goal: String, holderPlayerId: Option[String],
-    side: String, usurperLimited: Boolean, winnerPlayerId: Option[String])
+    side: String, usurperLimited: Boolean, winnerPlayerId: Option[String],
+    winnerVictoryKind: Option[String] = None)
 final case class OathkeeperRecipientDecision(decisionId: String,
     actorPlayerId: String, candidatePlayerIds: Vector[String])
 
@@ -951,7 +952,8 @@ object GameJson {
             side <- string(obj, "side", "$.oathkeeper")
             limited <- bool(obj, "usurperLimited", "$.oathkeeper")
             winner <- optionalString(obj, "winnerPlayerId", "$.oathkeeper")
-          } yield Some(OathkeeperStatus(goal, holder, side, limited, winner)) }
+            kind <- optionalString(obj, "winnerVictoryKind", "$.oathkeeper")
+          } yield Some(OathkeeperStatus(goal, holder, side, limited, winner, kind)) }
         }
         oathkeeperRecipient <- optionalField(root, "oathkeeperRecipient").flatMap {
           case None => Right(None)
