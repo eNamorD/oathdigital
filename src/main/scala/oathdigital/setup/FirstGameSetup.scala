@@ -3,7 +3,6 @@ package oathdigital.setup
 import oathdigital.catalog.{ExecutableCatalog, Suit => CatalogSuit}
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
-import oathdigital.setup.SetupCommand.PlacePawn
 
 final case class PlayerColor(value: String) {
   require(value.trim.nonEmpty, "player color must not be blank")
@@ -14,6 +13,8 @@ final case class FirstGameParticipant(
     lineageId: LineageId,
     color: PlayerColor
 )
+
+final case class PawnPlacement(playerId: PlayerId, siteId: SiteId)
 
 final case class FirstGameSetupPlan(
     catalog: CatalogRef,
@@ -65,6 +66,8 @@ object FirstGameSetupCommand {
   final case class Begin(plan: FirstGameSetupPlan)
       extends FirstGameSetupCommand
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
+      extends FirstGameSetupCommand
+  final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
       extends FirstGameSetupCommand
 }
 
@@ -571,6 +574,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       command: FirstGameSetupCommand
   ): Either[OathViolation, OathTransition] =
     command match {
+      case command: PlacePawn => handle(state, command)
       case Begin(plan) =>
         state match {
           case NoGame =>
@@ -616,7 +620,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         }
     }
 
-  /** Reuses the v1 bounded pawn-placement command type unchanged. */
+  /** Handles the first-game pawn placement step. */
   def handle(
       state: OathState,
       command: PlacePawn

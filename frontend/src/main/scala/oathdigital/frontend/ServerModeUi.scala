@@ -1657,7 +1657,14 @@ object ServerModeUi {
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
 
   private def queryParameter(name: String): Option[String] =
-    FrontendMode.queryParameter(dom.window.location.search, name)
+    dom.window.location.search.stripPrefix("?").split("&").toVector
+      .flatMap { pair =>
+        pair.split("=", 2).toVector match {
+          case Vector(key, value) if key == name =>
+            Some(js.URIUtils.decodeURIComponent(value))
+          case _ => None
+        }
+      }.headOption.filter(_.nonEmpty)
 
   private def updateUrl(gameId: String, playerId: String): Unit =
     dom.window.history.replaceState(

@@ -9,17 +9,13 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 import oathdigital.application.{
   ExpectedStream,
-  RepositoryAppendResult,
-  SetupApplicationError,
-  SetupApplicationService
+  RepositoryAppendResult
 }
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.{CatalogRef, PlayerId, VictoryKind}
 import oathdigital.serialization.GameEventWire
 import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, RoundEnded, WarExhaustionResolved}
-import oathdigital.serialization.WireError.MalformedJson
-import oathdigital.setup.SetupCommand.PlacePawn
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   implicit private val executionContext: ExecutionContext =
@@ -339,31 +335,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
         Right(RepositoryAppendResult.Appended(2L, 1))
       )
     } finally reopened.close()
-  }
-
-  test("malformed stored envelopes propagate through the application service") {
-    val repository = open(databasePath("malformed"))
-    try {
-      repository.append(
-        "game-malformed",
-        ExpectedStream.MustNotExist,
-        Vector("{")
-      )
-      val result = new SetupApplicationService(catalog, repository)
-        .handle(
-          "game-malformed",
-          PlacePawn(PlayerId("p1"), oathdigital.model.SiteId("site:test"))
-        )
-
-      assert(result.left.toOption.get match {
-        case SetupApplicationError.DecodeFailure(_: MalformedJson) => true
-        case _ => false
-      })
-      assertEquals(
-        repository.load("game-malformed").toOption.flatten.get.records,
-        Vector("{")
-      )
-    } finally repository.close()
   }
 
 }

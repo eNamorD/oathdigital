@@ -36,8 +36,6 @@ lazy val frontend = (project in file("frontend"))
         shared / "oathdigital" / "model" / "Identity.scala",
         shared / "oathdigital" / "model" / "Resources.scala",
         shared / "oathdigital" / "catalog" / "CatalogModel.scala",
-        shared / "oathdigital" / "engine" / "Engine.scala",
-        shared / "oathdigital" / "setup" / "Setup.scala",
         shared / "oathdigital" / "presentation" / "ViewModel.scala"
       )
     },

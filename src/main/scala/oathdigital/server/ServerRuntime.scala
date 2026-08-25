@@ -3,9 +3,6 @@ package oathdigital.server
 import java.nio.file.Path
 
 import oathdigital.application.{
-  SetupApplicationError,
-  SetupApplicationService,
-  SetupCommandAccepted,
   IdentityRepository,
   MembershipAuthorizationService
 }
@@ -15,31 +12,7 @@ import oathdigital.catalog.{
   CatalogSelection
 }
 import oathdigital.persistence.HsqldbDatabaseOwner
-import oathdigital.setup.SetupCommand
-
-/**
- * The only production command gateway.
- *
- * Network decoders call this boundary with transient commands. Validation and
- * durable append remain inside the JVM-owned application service.
- */
-final class ServerCommandGateway private[server] (
-    service: SetupApplicationService
-) {
-  def handleSetup(
-      gameId: String,
-      expectedNextSequence: Long,
-      command: SetupCommand
-  ): Either[SetupApplicationError, SetupCommandAccepted] =
-    service.handleAtExpectedPosition(
-      gameId,
-      expectedNextSequence,
-      command
-    )
-}
-
 final class ServerRuntime private (
-    val commands: ServerCommandGateway,
     val firstGame: GameServerGateway,
     val authenticatedGame: AuthenticatedGameGateway,
     val authorization: MembershipAuthorizationService,
@@ -78,7 +51,6 @@ object ServerRuntime {
             "; "
           ))
         .map { catalog =>
-          val service = new SetupApplicationService(catalog, repository)
           val firstGameService =
             new oathdigital.application.GameApplicationService(
               catalog,
@@ -93,7 +65,6 @@ object ServerRuntime {
           val authorization =
             new MembershipAuthorizationService(database.identities)
           new ServerRuntime(
-            new ServerCommandGateway(service),
             new GameServerGateway(
               firstGameService,
               projector,

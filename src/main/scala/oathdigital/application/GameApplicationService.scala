@@ -20,7 +20,6 @@ import oathdigital.setup.{
   FirstGameSetupRules,
   OathState,
   OathViolation,
-  SetupCommand,
   TradeResource,
   WakeResource
 }
@@ -399,7 +398,7 @@ final class GameApplicationService(
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.PlacePawn(playerId, siteId) =>
-        setupRules.handle(state, SetupCommand.PlacePawn(playerId, siteId))
+        setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
       case GameCommand.ChooseAdviser(playerId, adviserId) =>
         setupRules.handle(
           state,

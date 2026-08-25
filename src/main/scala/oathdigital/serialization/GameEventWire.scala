@@ -17,10 +17,7 @@ final case class GameEventEnvelope(
 )
 
 /**
- * Explicit mixed vocabulary: v2 setup followed by v3 gameplay events.
- *
- * V1 remains owned by `SetupEventWire`; this dual reader/writer boundary keeps
- * its checked-in bytes unchanged instead of reinterpreting old payloads.
+ * Explicit current game-event vocabulary, including first-game setup.
  */
 object GameEventWire {
   import WireError._
@@ -37,7 +34,7 @@ object GameEventWire {
   val NegotiationFormatVersion: Int = 11
   val VisionFormatVersion: Int = 12
   val RoundEndFormatVersion: Int = 13
-  val MaxSafeSequence: Long = SetupEventWire.MaxSafeSequence
+  val MaxSafeSequence: Long = 9007199254740991L
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
   val AdviserChosenType = "setup.starting-adviser-chosen"

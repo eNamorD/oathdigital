@@ -10,7 +10,6 @@ import oathdigital.setup.FirstGameSetupCommand._
 import oathdigital.setup.OathEvent._
 import oathdigital.setup.OathState._
 import oathdigital.setup.OathViolation._
-import oathdigital.setup.SetupCommand.PlacePawn
 
 object FirstGameSetupFixture {
   val catalogRef =
