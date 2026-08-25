@@ -11,15 +11,15 @@ class ServerModeUiSuite extends FunSuite {
       Vector.empty, Vector(NegotiationTransferState("red", "blue", 0, 1,
         Vector(relic))), Vector(NegotiationDisclosureState("red", "yellow",
         "adviser", Some(adviser))), 3, Vector(relic), Vector(adviser), Vector.empty)
-    assert(ServerModeUi.negotiationRelicChecked(deal, "red", "blue", "R1"))
-    assert(!ServerModeUi.negotiationRelicChecked(deal, "red", "yellow", "R1"))
-    assert(ServerModeUi.negotiationDisclosureChecked(
+    assert(ServerUiSupport.negotiationRelicChecked(deal, "red", "blue", "R1"))
+    assert(!ServerUiSupport.negotiationRelicChecked(deal, "red", "yellow", "R1"))
+    assert(ServerUiSupport.negotiationDisclosureChecked(
       deal, "red", "yellow", "adviser", "D1"))
-    assert(!ServerModeUi.negotiationDisclosureChecked(
+    assert(!ServerUiSupport.negotiationDisclosureChecked(
       deal, "blue", "yellow", "adviser", "D1"))
-    assert(ServerModeUi.negotiationRelicCompetes("blue", "R1", "yellow", "R1"))
-    assert(!ServerModeUi.negotiationRelicCompetes("blue", "R1", "blue", "R1"))
-    assert(!ServerModeUi.negotiationRelicCompetes("blue", "R2", "yellow", "R1"))
+    assert(ServerUiSupport.negotiationRelicCompetes("blue", "R1", "yellow", "R1"))
+    assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R1", "blue", "R1"))
+    assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R2", "yellow", "R1"))
   }
 
   test("Forge assignment state enforces cardinality and resets stale context") {
@@ -54,111 +54,111 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
     def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
       false, placeholderCandidates)
-    assertEquals(ServerModeUi.commandForSelection(action("travel"),
+    assertEquals(ServerUiSupport.commandForSelection(action("travel"),
       Vector(BoardTargetRef.Site("site:b")), "red"),
       Some(GameCommand.Travel("red", "site:b")))
-    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red", 4),
       Some(GameCommand.CampaignConquest("red", "site:b", 4)))
-    assertEquals(ServerModeUi.commandForSelection(action("muster"), Vector(
+    assertEquals(ServerUiSupport.commandForSelection(action("muster"), Vector(
       BoardTargetRef.SiteCard("site", "edifice", "E26")), "red"),
       Some(GameCommand.Muster("red", EconomyTarget("edifice", "E26"))))
-    assertEquals(ServerModeUi.commandForSelection(action("trade-favor"), Vector(
+    assertEquals(ServerUiSupport.commandForSelection(action("trade-favor"), Vector(
       BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
       Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "favor")))
-    assertEquals(ServerModeUi.commandForSelection(action("trade-secret"), Vector(
+    assertEquals(ServerUiSupport.commandForSelection(action("trade-secret"), Vector(
       BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
       Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "secret")))
-    assertEquals(ServerModeUi.commandForSelection(action("travel"), Vector(
+    assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
       BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
-    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:a"), BoardTargetRef.Site("site:b")),
       "red", 4), Some(GameCommand.CampaignConquest("red",
         Vector("site:a", "site:b"), 4)))
-    assertEquals(ServerModeUi.commandForSelection(action("campaign-conquest"),
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red", 0),
       Some(GameCommand.CampaignConquest("red", "site:b", 0)))
     val raidTargets = Vector[BoardTargetRef](
       BoardTargetRef.PlayerPawn("blue"),
       BoardTargetRef.PlayerRelic("blue", "R03"),
       BoardTargetRef.PlayerBanner("blue", "peoples-favor"))
-    assertEquals(ServerModeUi.commandForSelection(action("campaign-raid"),
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
       raidTargets, "red", 2),
       Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
-    assertEquals(ServerModeUi.commandForSelection(action("campaign-raid"),
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
       raidTargets.tail, "red", 2), None)
-    assertEquals(ServerModeUi.commandForSelection(action("challenge"), Vector(
+    assertEquals(ServerUiSupport.commandForSelection(action("challenge"), Vector(
       BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")), "red"),
       Some(GameCommand.BeginChallenge("red", "peoples-favor")))
     val negotiation = BoardTargetAction("negotiation", "Choose negotiators", 1, 2,
       false, Vector("blue", "yellow").map(id => BoardTargetCandidate(
         BoardTargetRef.Player(id), id, Vector.empty)))
-    assertEquals(ServerModeUi.commandForSelection(negotiation, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(negotiation, Vector(
       BoardTargetRef.Player("blue"), BoardTargetRef.Player("yellow")), "red"),
       Some(GameCommand.BeginNegotiation("red", Vector("blue", "yellow"))))
 
     val reveal = action("reveal-vision")
-    assertEquals(ServerModeUi.commandForSelection(reveal, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(reveal, Vector(
       BoardTargetRef.PlayerAdviser("red", "vision-conquest")), "red"),
       Some(GameCommand.RevealVision("red", "vision-conquest")))
-    assertEquals(ServerModeUi.commandForSelection(reveal, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(reveal, Vector(
       BoardTargetRef.PlayerAdviser("blue", "vision-conquest")), "red"), None)
     val conspiracy = action("play-conspiracy")
-    assertEquals(ServerModeUi.commandForSelection(conspiracy, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
       BoardTargetRef.PlayerRelic("blue", "1")), "red"),
       Some(GameCommand.PlayConspiracy("red",
         Some(ConspiracyTarget.RelicSlot("blue", 1)))))
-    assertEquals(ServerModeUi.commandForSelection(conspiracy, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
       BoardTargetRef.PlayerBanner("blue", "darkest-secret")), "red"),
       Some(GameCommand.PlayConspiracy("red",
         Some(ConspiracyTarget.Banner("blue", "darkest-secret")))))
-    assertEquals(ServerModeUi.commandForSelection(conspiracy, Vector(
+    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
       BoardTargetRef.PlayerRelic("blue", "hidden-id")), "red"), None)
     val noTarget = conspiracy.copy(minimum = 0, maximum = 0)
-    assertEquals(ServerModeUi.commandForSelection(noTarget, Vector.empty, "red"),
+    assertEquals(ServerUiSupport.commandForSelection(noTarget, Vector.empty, "red"),
       Some(GameCommand.PlayConspiracy("red", None)))
     val secretSite = action("conspiracy-secret-site")
       .copy(decisionId = Some("conspiracy-12"))
-    assertEquals(ServerModeUi.commandForSelection(secretSite,
+    assertEquals(ServerUiSupport.commandForSelection(secretSite,
       Vector(BoardTargetRef.Site("site:b")), "red"),
       Some(GameCommand.ChooseConspiracySecretSite(
         "red", "conspiracy-12", "site:b")))
-    assertEquals(ServerModeUi.commandForSelection(secretSite.copy(decisionId = None),
+    assertEquals(ServerUiSupport.commandForSelection(secretSite.copy(decisionId = None),
       Vector(BoardTargetRef.Site("site:b")), "red"), None)
   }
 
   test("Challenge controls render only owner-authorized site or replacement commands") {
     val sites = ChallengeState("challenge-9", "red", "darkest-secret", None,
       3, Vector("site:a", "site:b"), 4, 6)
-    assertEquals(ServerModeUi.challengeSiteCommands(sites, "red"), Vector(
+    assertEquals(ServerUiSupport.challengeSiteCommands(sites, "red"), Vector(
       GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:a"),
       GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:b")))
-    assertEquals(ServerModeUi.challengeSiteCommands(sites, "blue"), Vector.empty)
-    assertEquals(ServerModeUi.completeChallengeCommand(sites, "red", 4), None)
+    assertEquals(ServerUiSupport.challengeSiteCommands(sites, "blue"), Vector.empty)
+    assertEquals(ServerUiSupport.completeChallengeCommand(sites, "red", 4), None)
     val replacement = sites.copy(banner = "peoples-favor",
       legalSecretSiteIds = Vector.empty)
-    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "red", 4),
+    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "red", 4),
       Some(GameCommand.CompleteChallenge("red", "challenge-9", 4)))
-    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "blue", 4), None)
-    assertEquals(ServerModeUi.completeChallengeCommand(replacement, "red", 3), None)
-    assertEquals(ServerModeUi.actionLabel("challenge"), "Challenge")
-    assertEquals(ServerModeUi.actionLabel("peoples-favor"), "People's Favor")
+    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "blue", 4), None)
+    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "red", 3), None)
+    assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
+    assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
   }
 
   test("minor adviser controls map only projected typed placements") {
     val card = CardDetails("D1", "denizen", "The Adviser")
     val replacement = CardDetails("D2", "denizen", "The Old Denizen")
     val adviser = MinorAdviser(card, Vector.empty)
-    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
       MinorAdviserPlacement("discard"), "red"),
       Some(GameCommand.DiscardFacedownAdviser("red", card)))
-    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
       MinorAdviserPlacement("play-adviser"), "red"),
       Some(GameCommand.PlayFacedownAdviser("red", card, "adviser-face-up")))
-    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
       MinorAdviserPlacement("play-site", Some(replacement)), "red"),
       Some(GameCommand.PlayFacedownAdviser("red", card, "site", Some(replacement))))
-    assertEquals(ServerModeUi.minorAdviserCommand(adviser,
+    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
       MinorAdviserPlacement("unsupported"), "red"), None)
   }
 
@@ -168,40 +168,40 @@ class ServerModeUiSuite extends FunSuite {
     val multi = single.copy(actionKind = "campaign", maximum = 3,
       candidates = Vector("a", "b", "c").map(id => BoardTargetCandidate(
         BoardTargetRef.Site(id), id, Vector.empty)))
-    assert(ServerModeUi.cardinalityInstruction(single).contains("immediately"))
-    assertEquals(ServerModeUi.cardinalityInstruction(multi),
+    assert(ServerUiSupport.cardinalityInstruction(single).contains("immediately"))
+    assertEquals(ServerUiSupport.cardinalityInstruction(multi),
       "Choose 1 to 3 targets, then confirm.")
-    assertEquals(ServerModeUi.candidateButtonLabel(BoardTargetCandidate(
+    assertEquals(ServerUiSupport.candidateButtonLabel(BoardTargetCandidate(
       BoardTargetRef.Site("b"), "Site B", Vector("2 Supply"))),
       "Site B · 2 Supply")
-    assertEquals(ServerModeUi.candidateButtonLabel(BoardTargetCandidate(
+    assertEquals(ServerUiSupport.candidateButtonLabel(BoardTargetCandidate(
       BoardTargetRef.Site("b"), "Site B",
       Vector("2 Supply", "Commit all 4 board warbands"))),
       "Site B · 2 Supply · Commit all 4 board warbands")
-    assertEquals(ServerModeUi.actionLabel("trade-secret"), "Trade for secrets")
-    assertEquals(ServerModeUi.actionLabel("reveal-vision"), "Reveal Vision")
-    assertEquals(ServerModeUi.actionLabel("play-conspiracy"), "Play Conspiracy")
-    assertEquals(ServerModeUi.cardinalityInstruction(single.copy(
+    assertEquals(ServerUiSupport.actionLabel("trade-secret"), "Trade for secrets")
+    assertEquals(ServerUiSupport.actionLabel("reveal-vision"), "Reveal Vision")
+    assertEquals(ServerUiSupport.actionLabel("play-conspiracy"), "Play Conspiracy")
+    assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
       actionKind = "play-conspiracy", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
   }
 
   test("Campaign uses the generic board-target action label") {
-    assertEquals(ServerModeUi.actionLabel("campaign-conquest"), "Campaign")
-    assertEquals(ServerModeUi.actionLabel("campaign-raid"), "Raid")
+    assertEquals(ServerUiSupport.actionLabel("campaign-conquest"), "Campaign")
+    assertEquals(ServerUiSupport.actionLabel("campaign-raid"), "Raid")
     val skip = CampaignPlanChoice("skip", None, None, None, None,
       "Use no battle plan", None, 0, 0, "Roll normally")
     val outriders = CampaignPlanChoice("adviser", Some("source"), Some("red"),
       None, Some("143"), "Outriders", Some("denizen.outriders"), 0, 0,
       "Ignore all attack-roll skull losses")
-    assertEquals(ServerModeUi.campaignPlanButtonLabel(skip), "Use no battle plan")
-    assertEquals(ServerModeUi.campaignPlanButtonLabel(outriders), "Outriders")
+    assertEquals(ServerUiSupport.campaignPlanButtonLabel(skip), "Use no battle plan")
+    assertEquals(ServerUiSupport.campaignPlanButtonLabel(outriders), "Outriders")
     val brass = CampaignPlanChoice("relic", Some("relic:red:R25"), Some("red"),
       None, Some("R25"), "Brass Army", Some("relic.brass-army"), 0, 1,
       "Add 4 attack dice")
-    assertEquals(ServerModeUi.campaignPlanButtonLabel(brass),
+    assertEquals(ServerUiSupport.campaignPlanButtonLabel(brass),
       "Brass Army (Place 1 Secret)")
-    assertEquals(ServerModeUi.campaignSelectedPlansLabel(Vector(brass, outriders)),
+    assertEquals(ServerUiSupport.campaignSelectedPlansLabel(Vector(brass, outriders)),
       "Selected: 1. Brass Army · 2. Outriders")
     val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
       false, Vector(BoardTargetCandidate(BoardTargetRef.Site("site:b"),
@@ -209,28 +209,28 @@ class ServerModeUiSuite extends FunSuite {
     val formation = BoardTargetFormationState(
       BoardSelectionContext("game", "red", 7), action,
       BoardTargetRef.Site("site:b"), 2)
-    assertEquals(ServerModeUi.campaignFormationSummary(formation),
+    assertEquals(ServerUiSupport.campaignFormationSummary(formation),
       "Committed force: 2. Board warbands remaining: 2. " +
         "Attack dice before plans: 2. Cost: 2 Supply.")
-    assertEquals(ServerModeUi.campaignForceChoiceLabel(2), "Commit 2 warbands")
-    assertEquals(ServerModeUi.campaignForceAdjustmentLabel(increase = false),
+    assertEquals(ServerUiSupport.campaignForceChoiceLabel(2), "Commit 2 warbands")
+    assertEquals(ServerUiSupport.campaignForceAdjustmentLabel(increase = false),
       "Decrease committed force")
-    assertEquals(ServerModeUi.campaignForceAdjustmentLabel(increase = true),
+    assertEquals(ServerUiSupport.campaignForceAdjustmentLabel(increase = true),
       "Increase committed force")
-    assertEquals(ServerModeUi.commandForFormation(formation, "red"),
+    assertEquals(ServerUiSupport.commandForFormation(formation, "red"),
       Some(GameCommand.CampaignConquest("red", "site:b", 2)))
-    assertEquals(ServerModeUi.commandForFormation(formation.copy(
+    assertEquals(ServerUiSupport.commandForFormation(formation.copy(
       targets = Vector(BoardTargetRef.PlayerRelic("red", "R1"))), "red"), None)
     val empty = formation.copy(force = 0)
-    assertEquals(ServerModeUi.campaignFormationSummary(empty),
+    assertEquals(ServerUiSupport.campaignFormationSummary(empty),
       "Committed force: 0. Board warbands remaining: 4. " +
         "Attack dice before plans: 0. Cost: 2 Supply.")
-    assertEquals(ServerModeUi.commandForFormation(empty, "red"),
+    assertEquals(ServerUiSupport.commandForFormation(empty, "red"),
       Some(GameCommand.CampaignConquest("red", "site:b", 0)))
     val raid = formation.copy(action = action.copy(actionKind = "campaign-raid"),
       targets = Vector(BoardTargetRef.PlayerPawn("blue"),
         BoardTargetRef.PlayerBanner("blue", "darkest-secret")))
-    assertEquals(ServerModeUi.commandForFormation(raid, "red"),
+    assertEquals(ServerUiSupport.commandForFormation(raid, "red"),
       Some(GameCommand.CampaignRaid("red", raid.targets, 2)))
   }
 
@@ -269,10 +269,10 @@ class ServerModeUiSuite extends FunSuite {
   test("Raid relocation commands are scoped to the attacking owner") {
     val decision = CampaignRaidRelocation("raid-9", "red", "blue", "site:a",
       Vector("site:b", "site:c"))
-    assertEquals(ServerModeUi.raidRelocationCommands(decision, "red"), Vector(
+    assertEquals(ServerUiSupport.raidRelocationCommands(decision, "red"), Vector(
       GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:b"),
       GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:c")))
-    assertEquals(ServerModeUi.raidRelocationCommands(decision, "blue"), Vector.empty)
+    assertEquals(ServerUiSupport.raidRelocationCommands(decision, "blue"), Vector.empty)
   }
 
   test("site forces retain accessible labels counts and stable color classes") {
@@ -287,15 +287,15 @@ class ServerModeUiSuite extends FunSuite {
         "Bandit Warbands", "bandit") -> ("Bandit Warbands x3", "force-bandit")
     )
     cases.foreach { case (forces, (label, cssClass)) =>
-      assertEquals(ServerModeUi.forceText(forces), label)
-      assertEquals(ServerModeUi.forceCssClass(forces), cssClass)
+      assertEquals(ServerUiSupport.forceText(forces), label)
+      assertEquals(ServerUiSupport.forceCssClass(forces), cssClass)
     }
     assertEquals(GameSite("empty", "Empty", 0, 0, 0, 0, Vector.empty,
       GameSiteRelics(0)).forces, None)
   }
 
   test("Take Wealth actions use the active-player labels and commands") {
-    val actions = ServerModeUi.takeWealthActions(
+    val actions = ServerUiSupport.takeWealthActions(
       projection(Set("takeFavor", "takeSecret", "endWake")),
       "red-exile"
     )
@@ -315,7 +315,7 @@ class ServerModeUiSuite extends FunSuite {
 
   test("unavailable Take Wealth actions are absent") {
     assertEquals(
-      ServerModeUi.takeWealthActions(
+      ServerUiSupport.takeWealthActions(
         projection(Set("endWake")),
         "red-exile"
       ),
@@ -324,7 +324,7 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("blocked Take Wealth resource is absent while the legal one remains") {
-    val actions = ServerModeUi.takeWealthActions(
+    val actions = ServerUiSupport.takeWealthActions(
       projection(Set("takeSecret", "endWake")),
       "red-exile"
     )
@@ -334,7 +334,7 @@ class ServerModeUiSuite extends FunSuite {
 
   test("already-used Take Wealth actions are absent from a later phase") {
     assertEquals(
-      ServerModeUi.takeWealthActions(
+      ServerUiSupport.takeWealthActions(
         projection(Set("takeFavor", "takeSecret"), phase = "act-action-selection"),
         "red-exile"
       ),
@@ -347,13 +347,13 @@ class ServerModeUiSuite extends FunSuite {
       Set("takeFavor", "takeSecret", "endWake"),
       activeParticipantId = "red-exile"
     )
-    val presentation = ServerModeUi.viewerPresentation(value, "blue-exile")
+    val presentation = ServerUiSupport.viewerPresentation(value, "blue-exile")
 
     assertEquals(presentation.showGameplayControls, false)
     assertEquals(presentation.waitingForPlayerId, Some("red-exile"))
     assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
     assertEquals(
-      ServerModeUi.takeWealthActions(value, "blue-exile"),
+      ServerUiSupport.takeWealthActions(value, "blue-exile"),
       Vector.empty
     )
   }
@@ -367,12 +367,12 @@ class ServerModeUiSuite extends FunSuite {
           "Muster target", "order", 1, 2)),
         legalTrades = Vector(LegalTrade(EconomyTarget("denizen", "d1"),
           "Trade target", "order", "favor", 1, 2)))
-    val inactive = ServerModeUi.viewerPresentation(value, "blue-exile")
-    val active = ServerModeUi.viewerPresentation(value, "red-exile")
+    val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
+    val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 
     assertEquals(inactive.waitingForPlayerId, Some("red-exile"))
-    assert(!ServerModeUi.showActActionControls(value, inactive))
-    assert(ServerModeUi.showActActionControls(value, active))
+    assert(!ServerUiSupport.showActActionControls(value, inactive))
+    assert(ServerUiSupport.showActActionControls(value, active))
   }
 
   test("inactive setup viewer waits without pawn or private adviser controls") {
@@ -383,7 +383,7 @@ class ServerModeUiSuite extends FunSuite {
       ready = false
     )
 
-    val presentation = ServerModeUi.viewerPresentation(value, "blue-exile")
+    val presentation = ServerUiSupport.viewerPresentation(value, "blue-exile")
 
     assertEquals(presentation.showGameplayControls, false)
     assertEquals(presentation.waitingForDisplayName, Some("Red Exile"))
@@ -391,12 +391,12 @@ class ServerModeUiSuite extends FunSuite {
 
   test("active viewer retains Wake and setup gameplay controls") {
     val wake = projection(Set("takeFavor", "endWake"))
-    assert(ServerModeUi.viewerPresentation(
+    assert(ServerUiSupport.viewerPresentation(
       wake,
       "red-exile"
     ).showGameplayControls)
     assertEquals(
-      ServerModeUi.takeWealthActions(wake, "red-exile").map(_.label),
+      ServerUiSupport.takeWealthActions(wake, "red-exile").map(_.label),
       Vector("Take Wealth: 1 favor")
     )
 
@@ -405,20 +405,20 @@ class ServerModeUiSuite extends FunSuite {
       phase = "awaiting-adviser",
       ready = false
     )
-    assert(ServerModeUi.viewerPresentation(
+    assert(ServerUiSupport.viewerPresentation(
       setup,
       "red-exile"
     ).showGameplayControls)
   }
 
   test("board target classes distinguish candidate selected and read-only state") {
-    assertEquals(ServerModeUi.siteTargetClasses(false, false),
+    assertEquals(ServerUiSupport.siteTargetClasses(false, false),
       "site site-readonly")
-    assertEquals(ServerModeUi.siteTargetClasses(true, false),
+    assertEquals(ServerUiSupport.siteTargetClasses(true, false),
       "site board-target")
-    assertEquals(ServerModeUi.siteTargetClasses(true, true),
+    assertEquals(ServerUiSupport.siteTargetClasses(true, true),
       "site board-target board-target-selected")
-    assert(ServerModeUi.cardTargetClasses(true, true)
+    assert(ServerUiSupport.cardTargetClasses(true, true)
       .contains("board-target-selected"))
   }
 
@@ -480,11 +480,11 @@ class ServerModeUiSuite extends FunSuite {
   }
 
   test("pile symbols and shape classes distinguish public tops and empty piles") {
-    assertEquals(ServerModeUi.pileSymbol(2, Some("denizen")), "D")
-    assertEquals(ServerModeUi.pileSymbol(1, Some("vision")), "V")
-    assertEquals(ServerModeUi.pileSymbol(0, None), "")
-    assertEquals(ServerModeUi.pileCardClasses(2), "pile-card pile-back")
-    assertEquals(ServerModeUi.pileCardClasses(0), "pile-card pile-empty")
+    assertEquals(ServerUiSupport.pileSymbol(2, Some("denizen")), "D")
+    assertEquals(ServerUiSupport.pileSymbol(1, Some("vision")), "V")
+    assertEquals(ServerUiSupport.pileSymbol(0, None), "")
+    assertEquals(ServerUiSupport.pileCardClasses(2), "pile-card pile-back")
+    assertEquals(ServerUiSupport.pileCardClasses(0), "pile-card pile-empty")
   }
 
   test("site and denizen visuals deterministically fall back without assets") {

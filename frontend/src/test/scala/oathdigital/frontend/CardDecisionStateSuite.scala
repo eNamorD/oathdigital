@@ -46,12 +46,12 @@ class CardDecisionStateSuite extends munit.FunSuite {
 
   test("zone drops move cards in both directions") {
     val initial = CardDecisionState.initial(decision)
-    val kept = ServerModeUi.dropOnKeep(initial, "b")
+    val kept = ServerUiSupport.dropOnKeep(initial, "b")
     assertEquals(kept.keep.map(_.cardId), Vector("b"))
-    val returned = ServerModeUi.dropOnDiscard(kept, "b")
+    val returned = ServerUiSupport.dropOnDiscard(kept, "b")
     assertEquals(returned.keep, Vector.empty)
     assertEquals(returned.discard.map(_.cardId), Vector("a", "c", "b"))
-    val before = ServerModeUi.dropBeforeDiscard(kept, "b", "c")
+    val before = ServerUiSupport.dropBeforeDiscard(kept, "b", "c")
     assertEquals(before.keep, Vector.empty)
     assertEquals(before.discard.map(_.cardId), Vector("a", "b", "c"))
   }

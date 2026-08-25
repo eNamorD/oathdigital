@@ -216,4 +216,21 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assert(Files.exists(Paths.get(
       "shared/src/main/scala/oathdigital/protocol/BootstrapProtocolCodec.scala")))
   }
+
+  test("frontend production sources stay bounded and renderers remain isolated") {
+    val root = Paths.get("frontend/src/main/scala/oathdigital/frontend")
+    val sources = Files.walk(root).iterator.asScala
+      .filter(_.toString.endsWith(".scala")).toVector
+    val oversized = sources.flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > 800)(s"$path:$lines")
+    }.sorted
+    val forbidden = Vector("import oathdigital.application",
+      "import oathdigital.gameplay", "import oathdigital.server")
+    val rendererViolations = sources.filter(path =>
+      path.getFileName.toString.contains("Renderer") && forbidden.exists(
+        Files.readString(path).contains)).map(_.toString).sorted
+    assertEquals(oversized, Vector.empty)
+    assertEquals(rendererViolations, Vector.empty)
+  }
 }
