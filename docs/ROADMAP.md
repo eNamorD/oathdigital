@@ -7,9 +7,10 @@ been reviewed.
 
 ## Now
 
-**Phase 3 - Powers and battle plans** is next. Base all-Exile procedures,
-goals, endings, and suspended-decision boundaries are complete; powers can now
-extend stable typed procedure boundaries rather than add action-specific paths.
+**Pre-Phase 3 architecture review and refactor** is active. It removes obsolete
+parallel implementations, normalizes domain and gameplay ownership, unifies
+transport contracts, splits oversized backend/frontend modules, and establishes
+the typed extension boundaries needed before powers multiply the code surface.
 
 ## Next
 
@@ -46,6 +47,18 @@ phase/victory triggers, and then the remaining attacker, defender, and bandit
 battle plans. Add Foundation, Legacy, relic, edifice, banner, site, and Vision
 handlers through the same typed boundaries. Unknown relevant handlers continue
 to reject explicitly until implemented.
+
+### Pre-Phase 3 architecture gate
+
+1. [ ] Remove the historical v1 setup/action-authority stack and browser-memory
+   UI.
+2. [ ] Normalize aggregate, setup-procedure, transition, and Campaign module
+   ownership; centralize factual rule-source and catalog-handler discovery.
+3. [ ] Unify actorless JVM/Scala.js transport contracts and collapse the current
+   pre-release event stream to one format.
+4. [ ] Split projection, client, and UI monoliths without duplicating legality.
+5. [ ] Refresh architecture documentation, enforce dependency guardrails, and
+   pass the complete release gate before activating Phase 3.
 
 ### Phase 4 - Player-facing action history
 
