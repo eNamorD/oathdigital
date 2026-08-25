@@ -1,13 +1,11 @@
 package oathdigital.gameplay.actions
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.model._
-import oathdigital.gameplay.setup.ReadyGame
-import oathdigital.gameplay.setup.OathViolation
-import oathdigital.gameplay.setup.OathViolation.{UnsupportedMinorActionCatalogInventory,
+import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.OathViolation
+import oathdigital.gameplay.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule, UnsupportedVisionRule}
 
 /** Transitional audited seam for component behavior relevant to base minor
@@ -44,7 +42,7 @@ object MinorActionPowerSupport {
     "edifice.e08.intact", "edifice.e08.ruined")
 
   def validateInventory(catalog: ExecutableCatalog): Either[OathViolation, Unit] = {
-    val actual = fingerprint(catalog)
+    val actual = CatalogHandlerInventory.structuralFingerprint(catalog)
     Either.cond(actual == ExpectedInventory, (),
       UnsupportedMinorActionCatalogInventory(ExpectedInventory, actual))
   }
@@ -186,22 +184,4 @@ object MinorActionPowerSupport {
     }
   }
 
-  private def fingerprint(catalog: ExecutableCatalog): String = {
-    val canonical = (
-      catalog.denizens.sortBy(_.id.value).map(d =>
-        s"denizen|${d.id.value}|${d.handlers.sorted.mkString(",")}") ++
-      catalog.relics.sortBy(_.id.value).map(r =>
-        s"relic|${r.id.value}|${r.handlers.sorted.mkString(",")}") ++
-      catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
-        s"edifice-intact|${e.id.value}|${e.intact.handlers.sorted.mkString(",")}",
-        s"edifice-ruined|${e.id.value}|${e.ruined.handlers.sorted.mkString(",")}")) ++
-      catalog.legacies.sortBy(_.id.value).map(l =>
-        s"legacy|${l.id.value}|${l.handlers.sorted.mkString(",")}") ++
-      catalog.sites.sortBy(_.id.value).map(s =>
-        s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}")
-    ).mkString("\n")
-    MessageDigest.getInstance("SHA-256")
-      .digest(canonical.getBytes(StandardCharsets.UTF_8))
-      .map(byte => f"${byte & 0xff}%02x").mkString
-  }
 }

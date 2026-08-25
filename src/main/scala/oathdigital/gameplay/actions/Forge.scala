@@ -1,13 +1,14 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
+import oathdigital.catalog.CatalogHandlerInventory
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait ForgeCommand extends Product with Serializable
 object ForgeCommand {
@@ -161,8 +162,7 @@ object Forge {
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue) =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (s, e) => s.flatMap(evolve(catalog, _, e))).map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 }
 
 object ForgeRules {
@@ -174,16 +174,6 @@ object ForgeRules {
   private val AuditedIrrelevantHandlerFingerprint =
     "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97"
 
-  private def handlerFingerprint(catalog: ExecutableCatalog): String = {
-    val ids = catalog.denizens.flatMap(_.handlers) ++
-      catalog.relics.flatMap(_.handlers) ++ catalog.legacies.flatMap(_.handlers) ++
-      catalog.sites.flatMap(_.handlers) ++ catalog.edifices.flatMap(e =>
-        e.intact.handlers ++ e.ruined.handlers)
-    val bytes = java.security.MessageDigest.getInstance("SHA-256")
-      .digest(ids.distinct.sorted.mkString("\n").getBytes("UTF-8"))
-    bytes.map(b => f"${b & 0xff}%02x").mkString
-  }
-
   private def unauditedActive(ids: Vector[String], catalogAudited: Boolean) =
     ids.nonEmpty && !catalogAudited
 
@@ -192,7 +182,7 @@ object ForgeRules {
     val game = ready.game
     val definition = catalog.sites.find(_.id == siteId)
     val site = game.current.map.sites.get(siteId)
-    val catalogAudited = handlerFingerprint(catalog) ==
+    val catalogAudited = CatalogHandlerInventory.fingerprint(catalog) ==
       AuditedIrrelevantHandlerFingerprint
     val blocked =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Forge is limited to the exile-only first game")

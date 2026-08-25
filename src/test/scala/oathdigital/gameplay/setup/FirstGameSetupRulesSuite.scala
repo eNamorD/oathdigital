@@ -1,15 +1,17 @@
 package oathdigital.gameplay.setup
 
+import oathdigital.gameplay._
+
 import java.nio.file.Paths
 
 import oathdigital.catalog._
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
-import oathdigital.gameplay.setup.OathContinue._
+import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.setup.FirstGameSetupCommand._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 object FirstGameSetupFixture {
   val catalogRef =

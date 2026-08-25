@@ -14,7 +14,7 @@ import oathdigital.application.{
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.{CatalogRef, PlayerId, VictoryKind}
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
+import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, RoundEnded, WarExhaustionResolved}
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite {

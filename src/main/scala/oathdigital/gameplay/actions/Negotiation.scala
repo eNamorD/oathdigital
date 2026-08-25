@@ -1,16 +1,16 @@
 package oathdigital.gameplay.actions
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, RuleActivation,
   RuleOutcome, RuleQueryContext, RuleSourceRef, RuntimeRuleRegistry}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue.ActActionSelection
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.setup.FirstGameFoundationProfile
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue.ActActionSelection
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait NegotiationCommand extends Product with Serializable
 object NegotiationCommand {
@@ -290,22 +290,7 @@ object NegotiationPowerSupport {
 
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, site: SiteId,
       participants: Vector[PlayerId]): Either[OathViolation, Unit] = {
-    val canonical = (
-      catalog.denizens.sortBy(_.id.value).map(d =>
-        s"denizen|${d.id.value}|${d.handlers.sorted.mkString(",")}") ++
-      catalog.relics.sortBy(_.id.value).map(r =>
-        s"relic|${r.id.value}|${r.handlers.sorted.mkString(",")}") ++
-      catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
-        s"edifice-intact|${e.id.value}|${e.intact.handlers.sorted.mkString(",")}",
-        s"edifice-ruined|${e.id.value}|${e.ruined.handlers.sorted.mkString(",")}")) ++
-      catalog.legacies.sortBy(_.id.value).map(l =>
-        s"legacy|${l.id.value}|${l.handlers.sorted.mkString(",")}") ++
-      catalog.sites.sortBy(_.id.value).map(s =>
-        s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}")
-    ).mkString("\n")
-    val actual = MessageDigest.getInstance("SHA-256")
-      .digest(canonical.getBytes(StandardCharsets.UTF_8))
-      .map(byte => f"${byte & 0xff}%02x").mkString
+    val actual = CatalogHandlerInventory.structuralFingerprint(catalog)
     if (actual != ExpectedInventory) return Left(
       UnsupportedNegotiationCatalogInventory(ExpectedInventory, actual))
     val activations: Vector[RuleActivation] = participants.flatMap { participant =>

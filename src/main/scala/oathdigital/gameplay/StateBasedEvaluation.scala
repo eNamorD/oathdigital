@@ -2,11 +2,12 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.setup.FirstGameFoundationProfile
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.

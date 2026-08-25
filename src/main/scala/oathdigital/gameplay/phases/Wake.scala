@@ -1,12 +1,12 @@
 package oathdigital.gameplay.phases
 
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, TakeWealthRules}
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle, TakeWealthRules}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 import GameStateUpdates.updateCurrent
 
@@ -112,9 +112,7 @@ object Wake {
       events: Vector[OathEvent],
       continue: OathContinue
   ): Either[OathViolation, OathTransition] =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (next, event) => next.flatMap(evolve(_, event)))
-      .map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve)
 
   def takeWealthPower(siteId: SiteId): PowerUseRef =
     PowerUseRef(

@@ -2,7 +2,8 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.OathRules
+import oathdigital.gameplay.{OathContinue, OathEvent, OathRules, OathState,
+  OathViolation, TradeResource, WakeResource}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, SearchRules, TravelCommand}
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -13,15 +14,9 @@ import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
 import oathdigital.gameplay.setup.{
-  OathContinue,
   FirstGameSetupCommand,
-  OathEvent,
   FirstGameSetupPlan,
-  FirstGameSetupRules,
-  OathState,
-  OathViolation,
-  TradeResource,
-  WakeResource
+  FirstGameSetupRules
 }
 
 sealed trait GameCommand extends Product with Serializable
@@ -172,25 +167,25 @@ object CardDecisionIds {
 
 trait SearchDrawPort {
   def prepare(
-      ready: oathdigital.gameplay.setup.ReadyGame,
+      ready: oathdigital.gameplay.ReadyGame,
       source: SearchSource,
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
 }
 
 trait RelicDrawPort {
-  def prepare(ready: oathdigital.gameplay.setup.ReadyGame): Either[OathViolation, RelicId]
+  def prepare(ready: oathdigital.gameplay.ReadyGame): Either[OathViolation, RelicId]
 }
 object RelicDrawPort {
   val authoritative: RelicDrawPort = new RelicDrawPort {
-    def prepare(ready: oathdigital.gameplay.setup.ReadyGame) =
+    def prepare(ready: oathdigital.gameplay.ReadyGame) =
       ready.game.current.commonCards.relicDeck.headOption
         .toRight(OathViolation.ForgeUnavailable("relic deck is empty"))
   }
 }
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
-    def prepare(ready: oathdigital.gameplay.setup.ReadyGame, source: SearchSource,
+    def prepare(ready: oathdigital.gameplay.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
   }
 }

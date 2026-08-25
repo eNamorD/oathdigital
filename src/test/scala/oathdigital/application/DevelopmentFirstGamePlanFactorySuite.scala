@@ -12,9 +12,9 @@ import oathdigital.server.{
 }
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
-  FirstGameSetupRules,
-  OathState
+  FirstGameSetupRules
 }
+import oathdigital.gameplay.OathState
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {

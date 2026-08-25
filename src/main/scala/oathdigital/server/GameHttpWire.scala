@@ -11,7 +11,8 @@ import oathdigital.application.{
 }
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.setup.{PlayerColor, TradeResource, WakeResource}
+import oathdigital.gameplay.{TradeResource, WakeResource}
+import oathdigital.gameplay.setup.PlayerColor
 
 final case class GameCommandRequest(
     expectedNextSequence: Long,

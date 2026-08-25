@@ -19,7 +19,8 @@ import oathdigital.gameplay.actions.TravelCommand
 import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.setup.{FirstGameSetupRules, OathState}
+import oathdigital.gameplay.setup.FirstGameSetupRules
+import oathdigital.gameplay.OathState
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {

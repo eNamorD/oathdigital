@@ -2,13 +2,14 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.setup.FirstGameRulesData
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
 
 sealed trait SearchCommand extends Product with Serializable
@@ -131,9 +132,7 @@ object Search {
       events: Vector[OathEvent],
       continue: OathContinue
   ): Either[OathViolation, OathTransition] =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (next, event) => next.flatMap(evolve(catalog, _, event)))
-      .map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 }
 
 object SearchRules {

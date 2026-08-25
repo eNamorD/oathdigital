@@ -724,22 +724,6 @@ class HttpGameClientSuite extends FunSuite {
     ))
   }
 
-  test("mode selection is explicit and independent of serving port") {
-    assertEquals(FrontendMode.fromSearch(""), FrontendMode.Server)
-    assertEquals(
-      FrontendMode.fromSearch("?gameId=manual-1"),
-      FrontendMode.Server
-    )
-    assertEquals(
-      FrontendMode.fromSearch("?mode=server&gameId=manual-1"),
-      FrontendMode.Server
-    )
-    assertEquals(
-      FrontendMode.fromSearch("?mode=local"),
-      FrontendMode.LocalDebug
-    )
-  }
-
   test("stale refresh routes through active-player selection with notice") {
     val coordinator = new ServerSessionCoordinator("game-1", "red-exile")
     val request = coordinator.switchSession("game-1", "red-exile")

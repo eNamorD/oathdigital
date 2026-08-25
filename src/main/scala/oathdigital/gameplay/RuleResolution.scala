@@ -1,8 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathViolation._
 
 /** Stable identity for a runtime rule source. PowerUseRef remains the narrower,
   * wire-compatible identity for use-limited powers.

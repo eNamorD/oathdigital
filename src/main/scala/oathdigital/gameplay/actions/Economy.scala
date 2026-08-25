@@ -4,11 +4,12 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathLifecycle, RuleActivation, RuleOutcome,
   RuleQueryContext, RuleSourceRef, RuntimeRuleRegistry}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue.ActActionSelection
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.setup.FirstGameFoundationProfile
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue.ActActionSelection
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait EconomyCommand extends Product with Serializable
 object EconomyCommand {

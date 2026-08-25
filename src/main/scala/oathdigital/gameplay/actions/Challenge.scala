@@ -1,13 +1,14 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
+import oathdigital.catalog.CatalogHandlerInventory
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait ChallengeCommand extends Product with Serializable
 object ChallengeCommand {
@@ -275,21 +276,12 @@ object Challenge {
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue) =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (s, e) => s.flatMap(evolve(catalog, _, e))).map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 }
 
 object ChallengeRules {
   private val AuditedHandlerFingerprint =
     "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97"
-  private def fingerprint(catalog: ExecutableCatalog): String = {
-    val ids = catalog.denizens.flatMap(_.handlers) ++ catalog.relics.flatMap(_.handlers) ++
-      catalog.legacies.flatMap(_.handlers) ++ catalog.sites.flatMap(_.handlers) ++
-      catalog.edifices.flatMap(e => e.intact.handlers ++ e.ruined.handlers)
-    java.security.MessageDigest.getInstance("SHA-256").digest(
-      ids.distinct.sorted.mkString("\n").getBytes("UTF-8"))
-      .map(b => f"${b & 0xff}%02x").mkString
-  }
   def validateBase(catalog: ExecutableCatalog, ready: ReadyGame): Either[OathViolation, Unit] = {
     val game = ready.game
     val reason =
@@ -297,7 +289,7 @@ object ChallengeRules {
       else if (game.current.banners.peoplesFavor.active != PeoplesFavorFace.Mob || game.current.banners.darkestSecret.active != DarkestSecretFace.WanderingFlame) Some("unsupported active banner face")
       else if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Challenge is bounded to the first-game Exile state")
       else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active))) Some("active legacy Challenge modifiers are unsupported")
-      else if (fingerprint(catalog) != AuditedHandlerFingerprint) Some("unknown banner/Challenge handler catalog")
+      else if (CatalogHandlerInventory.fingerprint(catalog) != AuditedHandlerFingerprint) Some("unknown banner/Challenge handler catalog")
       else None
     reason.map(UnsupportedBannerState).toLeft(())
   }

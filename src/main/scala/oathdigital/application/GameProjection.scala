@@ -2,10 +2,10 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
-import oathdigital.gameplay.setup.OathState.{InProgress, NoGame, Ready}
+import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
 import oathdigital.gameplay.setup.FirstGameParticipant
-import oathdigital.gameplay.setup.ReadyGame
-import oathdigital.gameplay.setup.WakeResource
+import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules, ChallengeRules, Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules, VisionRules, Visions}
 import oathdigital.gameplay.phases.Rest
@@ -728,8 +728,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
                   LegalTradeProjection(result.target.kind, result.target.id.value,
                     economyLabel(result.target), result.suit.key,
                     result.resource match {
-                      case oathdigital.gameplay.setup.TradeResource.Favor => "favor"
-                      case oathdigital.gameplay.setup.TradeResource.Secret => "secret"
+                      case oathdigital.gameplay.TradeResource.Favor => "favor"
+                      case oathdigital.gameplay.TradeResource.Secret => "secret"
                     }, result.supplySpent, result.gained)
               }
             else Vector.empty,
@@ -858,10 +858,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
           BoardTargetRefProjection.PlayerBanner(defender.value, key),
           safeLabel(key))
     }
-    val favor = trades.filter(_.resource == oathdigital.gameplay.setup.TradeResource.Favor)
+    val favor = trades.filter(_.resource == oathdigital.gameplay.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
-    val secret = trades.filter(_.resource == oathdigital.gameplay.setup.TradeResource.Secret)
+    val secret = trades.filter(_.resource == oathdigital.gameplay.TradeResource.Secret)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     val challenges = ChallengeRules.legal(catalog, ready, player.player).map { banner =>

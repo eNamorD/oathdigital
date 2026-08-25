@@ -5,11 +5,11 @@ import oathdigital.gameplay.phases.WakeCommand
 
 import oathdigital.model._
 import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue.ActActionSelection
-import oathdigital.gameplay.setup.OathEvent.Traveled
+import oathdigital.gameplay.OathContinue.ActActionSelection
+import oathdigital.gameplay.OathEvent.Traveled
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.OathState.Ready
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation._
 
 class TravelSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

@@ -219,7 +219,7 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
       """{"expectedNextSequence":9,"intent":{"type":"endWake"}}"""
     assertEquals(
       AuthenticatedGameHttpWire.decodeCommand(wealth).toOption.get.intent,
-      GameIntent.TakeWealth(oathdigital.gameplay.setup.WakeResource.Secret)
+      GameIntent.TakeWealth(oathdigital.gameplay.WakeResource.Secret)
     )
     assertEquals(
       AuthenticatedGameHttpWire.decodeCommand(end).toOption.get.intent,
@@ -268,7 +268,7 @@ class AuthenticatedGameHttpWireSuite extends munit.FunSuite {
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(muster).toOption.get.intent,
       GameIntent.Muster(target))
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(trade).toOption.get.intent,
-      GameIntent.Trade(target, oathdigital.gameplay.setup.TradeResource.Secret))
+      GameIntent.Trade(target, oathdigital.gameplay.TradeResource.Secret))
     val unsupported = ujson.read(muster).obj
     unsupported("intent").obj("target").obj("kind") = "relic"
     assertEquals(AuthenticatedGameHttpWire.decodeCommand(ujson.write(unsupported))

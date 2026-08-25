@@ -1,13 +1,13 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait RecoverCommand extends Product with Serializable
 object RecoverCommand {
@@ -144,11 +144,20 @@ object Recover {
 
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue) =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (s, e) => s.flatMap(evolve(catalog, _, e))).map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 }
 
 object RecoverRules {
+  private val RelevantHandlerIds = Set(
+    "denizen.relic-worship",
+    "edifice.e13.ruined",
+    "edifice.e17.intact",
+    "edifice.e17.ruined"
+  )
+
+  private[gameplay] def isRelevantHandler(handlerId: String): Boolean =
+    RelevantHandlerIds(handlerId)
+
   def difficulty(catalog: ExecutableCatalog, site: SiteId): Option[Int] =
     catalog.sites.find(_.id == site).flatMap(_.recoverDifficulty)
 
@@ -163,15 +172,16 @@ object RecoverRules {
       else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Recover")
       else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active))) Some("active legacy Recover modifiers are not supported")
       else if (player.relics.exists(r => r.orientation == Orientation.FaceUp &&
-          catalog.relics.find(_.id.value == r.id.value).exists(_.rulesText.toLowerCase.contains("recover"))))
+          catalog.relics.find(_.id.value == r.id.value)
+            .exists(_.handlers.exists(RelevantHandlerIds))))
         Some("active held-relic Recover modifiers are not supported")
       else if (site.exists(_.denizens.exists {
         case d: DenizenState if d.orientation == Orientation.FaceUp =>
           catalog.denizens.find(_.id.value == d.id.value)
-            .exists(_.rulesText.toLowerCase.contains("recover"))
+            .exists(_.handlers.exists(RelevantHandlerIds))
         case e: EdificeState if e.side == EdificeSide.Intact =>
           catalog.edifices.find(_.id.value == e.id.value).exists(edifice =>
-            edifice.intact.rulesText.toLowerCase.contains("recover"))
+            edifice.intact.handlers.exists(RelevantHandlerIds))
         case _ => false
       })) Some("active site-card Recover modifiers are not supported")
       else None

@@ -5,9 +5,9 @@ import oathdigital.gameplay.phases.{RestCommand, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.OathEvent.{RestCompleted, RestStarted}
-import oathdigital.gameplay.setup.OathState.Ready
-import oathdigital.gameplay.setup.OathViolation.{RestOutcomeMismatch,
+import oathdigital.gameplay.OathEvent.{RestCompleted, RestStarted}
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation.{RestOutcomeMismatch,
   UnsupportedRoundEndCatalogInventory, UnsupportedRoundEndRule}
 
 class RestSuite extends munit.FunSuite {

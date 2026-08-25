@@ -1,16 +1,15 @@
 package oathdigital.gameplay.phases
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, StateBasedEvaluation}
+import oathdigital.catalog.CatalogHandlerInventory
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle, StateBasedEvaluation}
 import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.OathContinue._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState._
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.setup.FirstGameFoundationProfile
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathContinue._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState._
+import oathdigital.gameplay.OathViolation._
 
 sealed trait RestCommand extends Product with Serializable
 object RestCommand {
@@ -131,7 +130,7 @@ object Rest {
   private def validateAllExileAndRules(catalog: ExecutableCatalog,
       ready: ReadyGame): Either[OathViolation, Unit] = {
     val game = ready.game
-    val actualHandlerInventory = handlerFingerprint(catalog)
+    val actualHandlerInventory = CatalogHandlerInventory.structuralFingerprint(catalog)
     if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedRestState("Rest is limited to the exile-only first game"))
     else if (actualHandlerInventory != ExpectedHandlerInventory)
@@ -186,25 +185,6 @@ object Rest {
     sources.flatMap { case (source, handlers) =>
       handlers.filter(RelevantHandlers).map(source -> _)
     }.sortBy { case (source, handler) => source -> handler }
-  }
-
-  private def handlerFingerprint(catalog: ExecutableCatalog): String = {
-    val canonical = (
-      catalog.denizens.sortBy(_.id.value).map(d =>
-        s"denizen|${d.id.value}|${d.handlers.sorted.mkString(",")}") ++
-      catalog.relics.sortBy(_.id.value).map(r =>
-        s"relic|${r.id.value}|${r.handlers.sorted.mkString(",")}") ++
-      catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
-        s"edifice-intact|${e.id.value}|${e.intact.handlers.sorted.mkString(",")}",
-        s"edifice-ruined|${e.id.value}|${e.ruined.handlers.sorted.mkString(",")}")) ++
-      catalog.legacies.sortBy(_.id.value).map(l =>
-        s"legacy|${l.id.value}|${l.handlers.sorted.mkString(",")}") ++
-      catalog.sites.sortBy(_.id.value).map(s =>
-        s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}")
-    ).mkString("\n")
-    MessageDigest.getInstance("SHA-256")
-      .digest(canonical.getBytes(StandardCharsets.UTF_8))
-      .map(byte => f"${byte & 0xff}%02x").mkString
   }
 
   private def expected(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -304,9 +284,7 @@ object Rest {
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue)
       : Either[OathViolation, OathTransition] =
-    events.foldLeft[Either[OathViolation, OathState]](Right(state))(
-      (next, event) => next.flatMap(evolve(catalog, _, event)))
-      .map(OathTransition(_, events, continue))
+    GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 
   private def finishRound(catalog: ExecutableCatalog, transition: OathTransition,
       randomPort: WarExhaustionRandomPort)

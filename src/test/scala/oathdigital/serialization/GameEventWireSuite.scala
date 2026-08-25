@@ -2,12 +2,13 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
+import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.gameplay.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
+import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
-import oathdigital.gameplay.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
+import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

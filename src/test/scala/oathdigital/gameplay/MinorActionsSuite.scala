@@ -6,9 +6,9 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState.Ready
-import oathdigital.gameplay.setup.OathViolation.{UnsupportedMinorActionCatalogInventory,
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule}
 
 class MinorActionsSuite extends munit.FunSuite {

@@ -6,9 +6,9 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignLosingFo
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState.Ready
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation._
 
 class CampaignSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -742,10 +742,6 @@ class CampaignSuite extends munit.FunSuite {
 
   test("audited exact-ID bandit classifications remain conservative") {
     import CampaignRules.HandlerSupport
-    val definitions =
-      catalog.denizens.flatMap(d => d.handlers.map(_ -> d.rulesText)) ++
-        catalog.relics.flatMap(r => r.handlers.map(_ -> r.rulesText))
-    val byHandler = definitions.toMap
     val irrelevant = Set(
       "denizen.bear-traps", "denizen.extra-provisions",
       "denizen.gleaming-armor", "denizen.herald", "denizen.insect-swarm",
@@ -755,12 +751,12 @@ class CampaignSuite extends munit.FunSuite {
       "relic.bandit-standard", "relic.fearsome-shield", "relic.sticky-fire",
       "relic.obsidian-cage", "relic.the-grand-scepter")
     irrelevant.foreach { id =>
-      assertEquals(CampaignRules.classify(id, byHandler(id)),
+      assertEquals(CampaignRules.classify(id, catalog),
         HandlerSupport.IrrelevantToBanditConquest, id)
     }
     Set("denizen.peace-envoy", "relic.bag-of-siegeworks",
       "relic.keeping-banner").foreach { id =>
-      assert(CampaignRules.classify(id, byHandler(id))
+      assert(CampaignRules.classify(id, catalog)
         .isInstanceOf[HandlerSupport.Blocked], id)
     }
   }

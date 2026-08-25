@@ -5,9 +5,9 @@ import oathdigital.gameplay.actions.{ForgeCommand, ForgeRules}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.OathEvent._
-import oathdigital.gameplay.setup.OathState.Ready
-import oathdigital.gameplay.setup.OathViolation._
+import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation._
 
 class ForgeSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
