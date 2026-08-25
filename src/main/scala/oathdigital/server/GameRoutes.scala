@@ -16,9 +16,11 @@ import org.slf4j.LoggerFactory
 import oathdigital.application.{
   GameApplicationError,
   GameCommand,
-  GameIntentMapper,
-  GameProjection
+  FirstGameBootstrapMapper,
+  GameIntentMapper
 }
+import oathdigital.protocol.FirstGameBootstrapRequest
+import oathdigital.protocol.projection.GameProjection
 import oathdigital.model.PlayerId
 
 final class GameServerGateway(
@@ -34,7 +36,7 @@ final class GameServerGateway(
       requestingPlayer: PlayerId,
       request: FirstGameBootstrapRequest
   ): Either[GameApplicationError, GameProjection] =
-    planFactory.build(request.config)
+    planFactory.build(FirstGameBootstrapMapper.map(request))
       .left.map(failure =>
         GameApplicationError.BootstrapFailure(failure.message))
       .flatMap(plan =>

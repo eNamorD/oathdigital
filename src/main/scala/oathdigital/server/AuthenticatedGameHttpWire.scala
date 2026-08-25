@@ -1,12 +1,7 @@
 package oathdigital.server
 
-import oathdigital.application.FirstGameBootstrapConfig
-import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest}
-
-final case class AuthenticatedBootstrapRequest(
-    expectedNextSequence: Long,
-    config: FirstGameBootstrapConfig
-)
+import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
+  FirstGameBootstrapRequest}
 
 /** Authentication affects actor binding only, never payload decoding. */
 object AuthenticatedGameHttpWire {
@@ -14,7 +9,6 @@ object AuthenticatedGameHttpWire {
     ActorlessCommandCodec.decode(json)
       .left.map(error => HttpInputError(error.path, error.message))
 
-  def decodeBootstrap(json: String): Either[HttpInputError, AuthenticatedBootstrapRequest] =
-    GameHttpWire.decodeBootstrap(json).map(request => AuthenticatedBootstrapRequest(
-      request.expectedNextSequence, request.config))
+  def decodeBootstrap(json: String): Either[HttpInputError, FirstGameBootstrapRequest] =
+    GameHttpWire.decodeBootstrap(json)
 }

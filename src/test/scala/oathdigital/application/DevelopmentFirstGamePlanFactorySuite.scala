@@ -5,11 +5,12 @@ import java.nio.file.Files
 import oathdigital.catalog.RelicRole
 import oathdigital.model.{PlayerId, RelicId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
-import oathdigital.server.{
-  FirstGameBootstrapRequest,
-  GameHttpWire,
-  GameServerGateway
+import oathdigital.protocol.{
+  BootstrapParticipantRequest,
+  FirstGameBootstrapRequest
 }
+import oathdigital.protocol.projection.BoardTargetRefProjection
+import oathdigital.server.{GameHttpWire, GameServerGateway}
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
   FirstGameSetupRules
@@ -79,7 +80,10 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       try gateway.bootstrap(
         "bootstrap-game",
         PlayerId("p2"),
-        FirstGameBootstrapRequest(0L, config)
+        FirstGameBootstrapRequest(0L, config.participants.map(participant =>
+          BootstrapParticipantRequest(participant.playerId.value,
+            participant.lineageId.value, participant.color.value)),
+          config.firstPlayer.value)
       ).toOption.get
       finally repository.close()
     val json = GameHttpWire.encodeProjection(projection)

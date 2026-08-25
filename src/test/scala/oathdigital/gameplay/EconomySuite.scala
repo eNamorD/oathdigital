@@ -1,5 +1,7 @@
 package oathdigital.gameplay
 
+import oathdigital.protocol.projection.BoardTargetRefProjection
+
 import oathdigital.gameplay.actions.EconomyCommand
 import oathdigital.model._
 import oathdigital.gameplay.setup._
@@ -144,7 +146,7 @@ class EconomySuite extends munit.FunSuite {
       action.actionKind == "travel" || action.actionKind == "campaign-conquest" ||
         action.actionKind == "challenge")
     assert(economy.flatMap(_.candidates).forall(_.target.isInstanceOf[
-      oathdigital.application.BoardTargetRefProjection.SiteCard]))
+      BoardTargetRefProjection.SiteCard]))
     assert(economy.flatMap(_.candidates).forall(_.details.size == 2))
     assertEquals(hidden.legalMusters, Vector.empty)
     assertEquals(hidden.legalTrades, Vector.empty)

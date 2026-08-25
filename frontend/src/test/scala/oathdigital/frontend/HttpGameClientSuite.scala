@@ -165,11 +165,12 @@ class HttpGameClientSuite extends FunSuite {
     assert(!finish.contains("\"playerId\""))
     assert(finish.contains("\"intent\""))
   }
-  private val bootstrap = FirstGameBootstrap(
+  private val bootstrap = oathdigital.protocol.FirstGameBootstrapRequest(
+    0,
     Vector(
-      BootstrapPlayer("red-exile", "red-lineage", "red"),
-      BootstrapPlayer("blue-exile", "blue-lineage", "blue"),
-      BootstrapPlayer("yellow-exile", "yellow-lineage", "yellow")
+      oathdigital.protocol.BootstrapParticipantRequest("red-exile", "red-lineage", "red"),
+      oathdigital.protocol.BootstrapParticipantRequest("blue-exile", "blue-lineage", "blue"),
+      oathdigital.protocol.BootstrapParticipantRequest("yellow-exile", "yellow-lineage", "yellow")
     ),
     "red-exile"
   )
@@ -341,10 +342,11 @@ class HttpGameClientSuite extends FunSuite {
     assert(placement.contains("\"count\":0"))
 
     val planPending = """{"decisionId":"campaign-17","targetSiteIds":["site:b"],"placementTargets":[{"siteId":"site:b","label":"Site B"}],"force":3,"plansFinished":false,"planChoices":[{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}],"selectedPlans":[],"attackDice":[],"attack":0,"skullLosses":0,"maxSacrifice":3,"sacrificed":null,"defenseDice":[],"defense":null,"victorious":null,"maxPlacement":3}"""
-    val planState = GameJson.decodeProjection(projectionJson(sequence = 18,
+    val planResult = GameJson.decodeProjection(projectionJson(sequence = 18,
       choices = false).replace("\"pendingCardDecision\":null",
         s"\"pendingCardDecision\":null,\"campaign\":$planPending"))
-      .toOption.get.campaign.get
+    assert(planResult.isRight, planResult.left.toOption.toString)
+    val planState = planResult.toOption.get.campaign.get
     assertEquals(planState.planChoices.map(_.kind), Vector("adviser"))
     val adviserJson = """{"kind":"adviser","sourceKey":"adviser:red-exile:denizen:143","playerId":"red-exile","siteId":null,"cardId":"143","label":"Outriders","handlerId":"denizen.outriders","favorCost":0,"secretCost":0,"mechanicalResult":"Ignore all attack-roll skull losses"}"""
     val duplicateSelected = planPending.replace("\"selectedPlans\":[]",

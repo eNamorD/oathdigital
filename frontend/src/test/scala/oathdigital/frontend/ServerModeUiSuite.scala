@@ -50,8 +50,10 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context, None), None)
   }
   test("selection actions map only authorized single target shapes to commands") {
+    val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
+      BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
     def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
-      false, Vector.empty)
+      false, placeholderCandidates)
     assertEquals(ServerModeUi.commandForSelection(action("travel"),
       Vector(BoardTargetRef.Site("site:b")), "red"),
       Some(GameCommand.Travel("red", "site:b")))
@@ -89,7 +91,8 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")), "red"),
       Some(GameCommand.BeginChallenge("red", "peoples-favor")))
     val negotiation = BoardTargetAction("negotiation", "Choose negotiators", 1, 2,
-      false, Vector.empty)
+      false, Vector("blue", "yellow").map(id => BoardTargetCandidate(
+        BoardTargetRef.Player(id), id, Vector.empty)))
     assertEquals(ServerModeUi.commandForSelection(negotiation, Vector(
       BoardTargetRef.Player("blue"), BoardTargetRef.Player("yellow")), "red"),
       Some(GameCommand.BeginNegotiation("red", Vector("blue", "yellow"))))
@@ -161,8 +164,10 @@ class ServerModeUiSuite extends FunSuite {
 
   test("selection copy exposes details and non-color cardinality instructions") {
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
-      Vector.empty)
-    val multi = single.copy(actionKind = "campaign", maximum = 3)
+      Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
+    val multi = single.copy(actionKind = "campaign", maximum = 3,
+      candidates = Vector("a", "b", "c").map(id => BoardTargetCandidate(
+        BoardTargetRef.Site(id), id, Vector.empty)))
     assert(ServerModeUi.cardinalityInstruction(single).contains("immediately"))
     assertEquals(ServerModeUi.cardinalityInstruction(multi),
       "Choose 1 to 3 targets, then confirm.")
@@ -569,7 +574,7 @@ class ServerModeUiSuite extends FunSuite {
       ),
       world = Vector.empty,
       pawnLocations = Vector.empty,
-      legalControls = legalControls,
+      legalControls = legalControls.toVector.sorted,
       ready = ready,
       completed = false
     )

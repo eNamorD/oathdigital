@@ -7,11 +7,12 @@ import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object ServerModeUi {
-  private val bootstrap = FirstGameBootstrap(
+  private val bootstrap = FirstGameBootstrapRequest(
+    0,
     Vector(
-      BootstrapPlayer("red-exile", "red-lineage", "red"),
-      BootstrapPlayer("blue-exile", "blue-lineage", "blue"),
-      BootstrapPlayer("yellow-exile", "yellow-lineage", "yellow")
+      BootstrapParticipantRequest("red-exile", "red-lineage", "red"),
+      BootstrapParticipantRequest("blue-exile", "blue-lineage", "blue"),
+      BootstrapParticipantRequest("yellow-exile", "yellow-lineage", "yellow")
     ),
     "red-exile"
   )
@@ -270,7 +271,7 @@ object ServerModeUi {
       bar.appendChild(input)
       projection.toVector.flatMap(_.players).foreach { player =>
         val selector = button(player.displayName,
-          s"player-selector ${player.color.cssClass}")
+          s"player-selector ${PlayerColorToken.fromKey(player.colorToken).cssClass}")
         selector.setAttribute("aria-pressed",
           (player.playerId == selectedPlayer).toString)
         selector.setAttribute("data-player-id", player.playerId)
@@ -1629,7 +1630,8 @@ object ServerModeUi {
     val player = value.players.find(_.playerId == playerId)
     val node = text(
       "span",
-      s"player-ref ${player.fold[PlayerColorToken](PlayerColorToken.Neutral)(_.color).cssClass}",
+      s"player-ref ${player.fold[PlayerColorToken](PlayerColorToken.Neutral)(p =>
+        PlayerColorToken.fromKey(p.colorToken)).cssClass}",
       player.fold(playerId)(_.displayName)
     )
     node.setAttribute("data-player-id", playerId)

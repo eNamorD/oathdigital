@@ -1,5 +1,8 @@
 package oathdigital.application
 
+import oathdigital.protocol.projection.{BoardTargetRefProjection,
+  SiteForcesProjection}
+
 import java.nio.file.Files
 
 import oathdigital.model._

@@ -14,7 +14,8 @@ import akka.http.scaladsl.server.{Directives, Route}
 import org.slf4j.LoggerFactory
 
 import oathdigital.application._
-import oathdigital.protocol.ActorlessCommandRequest
+import oathdigital.protocol.{ActorlessCommandRequest, FirstGameBootstrapRequest}
+import oathdigital.protocol.projection.GameProjection
 
 sealed trait AuthenticatedGameFailure extends Product with Serializable
 object AuthenticatedGameFailure {
@@ -81,15 +82,16 @@ final class AuthenticatedGameGateway(
   def bootstrap(
       gameId: String,
       principal: AuthenticatedPrincipal,
-      request: AuthenticatedBootstrapRequest
+      request: FirstGameBootstrapRequest
   ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeBootstrap(gameId, principal)
       .left.map(Authorization)
       .flatMap { _ =>
         identities.listMemberships(gameId).left.map(Identity).flatMap {
           memberships =>
-            validateSeats(memberships, request.config).flatMap { _ =>
-              planFactory.build(request.config)
+            val config = FirstGameBootstrapMapper.map(request)
+            validateSeats(memberships, config).flatMap { _ =>
+              planFactory.build(config)
                 .left.map(failure => BootstrapConfiguration(failure.message))
                 .flatMap(plan => service.handle(
                   gameId,

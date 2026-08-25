@@ -77,7 +77,7 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     ).foreach(next => assertEquals(BoardTargetSelectionState.reconcile(
       Some(selected), next, Vector(action)).selectedKeys, Set.empty[String]))
     assertEquals(BoardTargetSelectionState.reconcile(Some(selected), context,
-      Vector(action.copy(candidates = Vector(siteA)))).selectedKeys,
+      Vector(action.copy(maximum = 1, candidates = Vector(siteA)))).selectedKeys,
       Set.empty[String])
   }
 

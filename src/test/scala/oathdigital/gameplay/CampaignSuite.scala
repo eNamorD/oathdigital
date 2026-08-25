@@ -1,6 +1,8 @@
 package oathdigital.gameplay
 
-import oathdigital.application.{BoardTargetRefProjection, GameProjector, LoadedGame}
+import oathdigital.application.{GameProjector, LoadedGame}
+import oathdigital.protocol.projection.{BoardTargetFormationProjection,
+  BoardTargetRefProjection}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignLosingForceRegistry,
   CampaignLosingForceResolver, CampaignPlanEffects, CampaignRules}
 import oathdigital.model._
@@ -250,7 +252,7 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(action.candidates.head.details,
       Vector("2 Supply", s"Choose 0 to ${player.board.warbands} board warbands"))
     assertEquals(action.formation, Some(
-      oathdigital.application.BoardTargetFormationProjection(
+      BoardTargetFormationProjection(
         0, player.board.warbands, player.board.warbands, 2)))
     val hidden = new GameProjector(catalog).projectPublic("campaign",
       LoadedGame(Ready(ready), 1))
@@ -352,17 +354,16 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(CampaignRules.legalTargets(catalog, empty, player.player).head,
       site)
     assertEquals(campaignAction(empty).flatMap(_.formation), Some(
-      oathdigital.application.BoardTargetFormationProjection(0, 0, 0,
+      BoardTargetFormationProjection(0, 0, 0,
         Campaign.SupplyCost)))
 
     val exact = withResources(1, Campaign.SupplyCost)
     val formation = campaignAction(exact).flatMap(_.formation).get
-    assertEquals(formation, oathdigital.application.BoardTargetFormationProjection(
+    assertEquals(formation, BoardTargetFormationProjection(
       Campaign.MinimumForce, 1, 1, Campaign.SupplyCost))
   }
 
   test("formation projection rejects malformed authoritative bounds") {
-    import oathdigital.application.BoardTargetFormationProjection
     intercept[IllegalArgumentException](BoardTargetFormationProjection(-1, 1, 1, 2))
     intercept[IllegalArgumentException](BoardTargetFormationProjection(2, 1, 2, 2))
     intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 2, 1, 2))

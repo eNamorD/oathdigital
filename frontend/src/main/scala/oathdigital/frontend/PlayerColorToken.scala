@@ -10,4 +10,12 @@ object PlayerColorToken {
   case object Red extends PlayerColorToken { val cssClass = "player-red" }
   case object Yellow extends PlayerColorToken { val cssClass = "player-yellow" }
   case object Neutral extends PlayerColorToken { val cssClass = "player-neutral" }
+
+  def fromKey(value: String): PlayerColorToken = value match {
+    case "purple" => Purple
+    case "blue" => Blue
+    case "red" => Red
+    case "yellow" => Yellow
+    case _ => Neutral
+  }
 }
