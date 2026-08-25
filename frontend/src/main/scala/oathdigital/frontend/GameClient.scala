@@ -4,6 +4,7 @@ import org.scalajs.dom
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js
 import scala.util.control.NonFatal
+import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest}
 
 final case class TransportResponse(status: Int, body: String)
 final case class RawEvent(sequence: Long, discriminator: String, rawPayload: String)
@@ -753,10 +754,9 @@ object GameJson {
         js.Dynamic.literal(`type` = "resolveCardDecision", playerId = player,
           decisionId = decision, resolution = value)
     }
-    js.JSON.stringify(js.Dynamic.literal(
-      expectedNextSequence = sequence.toDouble,
-      command = payload
-    ))
+    js.Dynamic.global.Reflect.deleteProperty(payload, "playerId")
+    ActorlessCommandCodec.encode(ActorlessCommandRequest(sequence,
+      ujson.read(js.JSON.stringify(payload)).obj))
   }
 
   private def encodeNegotiationTerms(terms: NegotiationTermsInput): js.Dynamic =

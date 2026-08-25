@@ -45,6 +45,11 @@ object ProjectionScope {
   final case class PlayerPrivate(playerId: PlayerId) extends ProjectionScope
 }
 
+object AuthorizedPlayer {
+  private[application] def forPlayer(playerId: PlayerId): AuthorizedPlayer =
+    AuthorizedPlayer(GameAccessContext.Player("transport", UserId("transport"), playerId))
+}
+
 final case class ProjectionAuthorization(
     access: GameAccessContext,
     scope: ProjectionScope

@@ -1,6 +1,6 @@
 [
   {
-    "formatVersion": 4,
+    "formatVersion": 1,
     "gameId": "search",
     "sequence": 9,
     "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},
@@ -18,7 +18,7 @@
     }
   },
   {
-    "formatVersion": 4,
+    "formatVersion": 1,
     "gameId": "search",
     "sequence": 10,
     "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},

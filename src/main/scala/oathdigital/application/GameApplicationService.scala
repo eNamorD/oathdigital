@@ -12,7 +12,7 @@ import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
-import oathdigital.serialization.{GameEventWire, WireError}
+import oathdigital.serialization.WireError
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
   FirstGameSetupPlan,
@@ -231,11 +231,7 @@ object GameApplicationError {
 }
 
 /**
- * Event-sourced application service for the current mixed v2-v5 game stream.
- *
- * V1 envelopes are rejected by `GameEventWire`; no implicit migration is
- * attempted. Strict contiguous mixed-version replay shares one reconstruction
- * path.
+ * Event-sourced application service for the single current v1 game stream.
  */
 final class GameApplicationService(
     catalog: ExecutableCatalog,
@@ -245,7 +241,8 @@ final class GameApplicationService(
     defenseDicePort: DefenseDicePort = DefenseDicePort.random,
     campaignDicePort: CampaignDicePort = CampaignDicePort.random,
     warExhaustionRandomPort: WarExhaustionRandomPort =
-      WarExhaustionRandomPort.random
+      WarExhaustionRandomPort.random,
+    eventCodec: GameEventCodec = GameEventCodec.current
 ) {
   import GameApplicationError._
   import RepositoryAppendResult._
@@ -329,7 +326,7 @@ final class GameApplicationService(
       _ <-
         if (stream.gameId == gameId) Right(())
         else Left(StreamIdentityMismatch(gameId, stream.gameId))
-      envelopes <- GameEventWire
+      envelopes <- eventCodec
         .decodeStream(stream.records.mkString("[", ",", "]"))
         .left
         .map(CodecFailure)
@@ -553,7 +550,7 @@ final class GameApplicationService(
       Either[GameApplicationError, Vector[String]]
     ](Right(Vector.empty)) {
       case (Right(accumulated), (event, offset)) =>
-        GameEventWire
+        eventCodec
           .encodeEvent(
             gameId,
             catalog.ref,

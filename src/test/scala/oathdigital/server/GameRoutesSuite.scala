@@ -51,7 +51,7 @@ class GameRoutesSuite extends munit.FunSuite {
       val malformed = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        """{"expectedNextSequence":1,"command":{"type":"placePawn"}}"""
+        """{"expectedNextSequence":1,"intent":{"type":"placePawn"}}"""
       )
       assertEquals(malformed.statusCode(), 400)
 
@@ -74,8 +74,8 @@ class GameRoutesSuite extends munit.FunSuite {
       val stale = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":0,"command":{"type":"placePawn",
-           |"playerId":"p2","siteId":"${sites.head.value}"}}""".stripMargin
+        s"""{"expectedNextSequence":0,"intent":{"type":"placePawn",
+           |"siteId":"${sites.head.value}"}}""".stripMargin
       )
       assertEquals(stale.statusCode(), 409)
       assertEquals(
@@ -86,8 +86,8 @@ class GameRoutesSuite extends munit.FunSuite {
       val placed = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":1,"command":{"type":"placePawn",
-           |"playerId":"p2","siteId":"${sites.head.value}"}}""".stripMargin
+        s"""{"expectedNextSequence":1,"intent":{"type":"placePawn",
+           |"siteId":"${sites.head.value}"}}""".stripMargin
       )
       assertEquals(placed.statusCode(), 200)
       assertEquals(ujson.read(placed.body())("phase").str,
@@ -97,8 +97,8 @@ class GameRoutesSuite extends munit.FunSuite {
       val chosen = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":2,"command":{"type":"resolveCardDecision",
-           |"playerId":"p2","decisionId":"setup-adviser-0-p2",
+        s"""{"expectedNextSequence":2,"intent":{"type":"resolveCardDecision",
+           |"decisionId":"setup-adviser-0-p2",
            |"resolution":{"kind":"starting-adviser","adviserId":"${adviser.value}"}}}""".stripMargin
       )
       assertEquals(chosen.statusCode(), 200)

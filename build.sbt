@@ -5,6 +5,8 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 lazy val root = (project in file("."))
   .settings(
     name := "oathdigital-engine",
+    Compile / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "main" / "scala",
+    Test / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "test" / "scala",
     libraryDependencies ++= Seq(
       "com.lihaoyi" %% "ujson" % "4.4.3",
       "com.typesafe.slick" %% "slick" % "3.5.2",
@@ -39,8 +41,13 @@ lazy val frontend = (project in file("frontend"))
         shared / "oathdigital" / "presentation" / "ViewModel.scala"
       )
     },
+    Compile / unmanagedSourceDirectories +=
+      (LocalRootProject / baseDirectory).value / "shared" / "src" / "main" / "scala",
+    Test / unmanagedSourceDirectories +=
+      (LocalRootProject / baseDirectory).value / "shared" / "src" / "test" / "scala",
     libraryDependencies ++= Seq(
       "org.scala-js" %%% "scalajs-dom" % "2.8.0",
+      "com.lihaoyi" %%% "ujson" % "4.4.3",
       "org.scalameta" %%% "munit" % "1.0.4" % Test
     ),
     scalacOptions ++= Seq(

@@ -156,13 +156,14 @@ class HttpGameClientSuite extends FunSuite {
     assert(completed.contains("\"denizenId\":\"denizen:1\""))
     assert(!completed.contains("relicId"))
   }
-  test("Rest commands encode current sequence and actor") {
+  test("Rest commands encode current sequence without an actor") {
     val begin = GameJson.encodeCommand(12L, GameCommand.BeginRest("red-exile"))
     val finish = GameJson.encodeCommand(13L, GameCommand.FinishRest("red-exile"))
     assert(begin.contains("\"type\":\"beginRest\""))
     assert(begin.contains("\"expectedNextSequence\":12"))
     assert(finish.contains("\"type\":\"finishRest\""))
-    assert(finish.contains("\"playerId\":\"red-exile\""))
+    assert(!finish.contains("\"playerId\""))
+    assert(finish.contains("\"intent\""))
   }
   private val bootstrap = FirstGameBootstrap(
     Vector(
@@ -294,7 +295,7 @@ class HttpGameClientSuite extends FunSuite {
       GameCommand.CampaignConquest("red-exile", "site:b", 3))
     assert(encoded.contains("\"expectedNextSequence\":17"))
     assert(encoded.contains("\"type\":\"beginCampaignConquest\""))
-    assert(encoded.contains("\"playerId\":\"red-exile\""))
+    assert(!ujson.read(encoded)("intent").obj.contains("playerId"))
     assert(encoded.contains("\"targetSiteIds\":[\"site:b\"]"))
     assert(encoded.contains("\"attackDiceCount\":3"))
     assert(!encoded.contains("\"attackDice\":"))

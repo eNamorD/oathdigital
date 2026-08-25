@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory
 import oathdigital.application.{
   GameApplicationError,
   GameCommand,
+  GameIntentMapper,
   GameProjection
 }
 import oathdigital.model.PlayerId
@@ -118,21 +119,12 @@ final class GameRoutes(
                         s"${error.path}: ${error.message}"
                       ))
                     case Right(request) =>
-                      validateActor(validPlayerId, request.command) match {
-                        case Left(error) =>
-                          complete(jsonResponse(
-                            StatusCodes.BadRequest,
-                            "actor-selector-mismatch",
-                            s"${error.path}: ${error.message}"
-                          ))
-                        case Right(_) =>
-                          completeAsync(gateway.submit(
-                            validGameId,
-                            PlayerId(validPlayerId),
-                            request.expectedNextSequence,
-                            request.command
-                          ))
-                      }
+                      completeAsync(gateway.submit(
+                        validGameId,
+                        PlayerId(validPlayerId),
+                        request.expectedNextSequence,
+                        GameIntentMapper.bind(PlayerId(validPlayerId), request.intent)
+                      ))
                   }
                 }
               }
@@ -243,65 +235,6 @@ final class GameRoutes(
         "$.playerId"
       )
     } yield game -> player
-
-  private def validateActor(
-      selector: String,
-      command: GameCommand
-  ): Either[HttpInputError, Unit] = {
-    val actor = command match {
-      case GameCommand.PlacePawn(playerId, _) => Some(playerId.value)
-      case GameCommand.ChooseAdviser(playerId, _) => Some(playerId.value)
-      case GameCommand.TakeWealth(playerId, _) => Some(playerId.value)
-      case GameCommand.EndWake(playerId) => Some(playerId.value)
-      case GameCommand.Travel(playerId, _) => Some(playerId.value)
-      case GameCommand.Muster(playerId, _) => Some(playerId.value)
-      case GameCommand.Trade(playerId, _, _) => Some(playerId.value)
-      case GameCommand.BeginSearch(playerId, _) => Some(playerId.value)
-      case GameCommand.BeginRecover(playerId) => Some(playerId.value)
-      case GameCommand.BeginForge(playerId) => Some(playerId.value)
-      case GameCommand.CompleteForge(playerId, _, _) => Some(playerId.value)
-      case GameCommand.BeginChallenge(playerId, _) => Some(playerId.value)
-      case GameCommand.ChooseChallengeSecretSite(playerId, _, _) => Some(playerId.value)
-      case GameCommand.CompleteChallenge(playerId, _, _) => Some(playerId.value)
-      case GameCommand.PlaceBannerResource(playerId, _, _) => Some(playerId.value)
-      case GameCommand.DiscardFacedownAdviser(playerId, _) => Some(playerId.value)
-      case GameCommand.PlayFacedownAdviser(playerId, _, _) => Some(playerId.value)
-      case GameCommand.RevealVision(playerId, _) => Some(playerId.value)
-      case GameCommand.PlayConspiracy(playerId, _) => Some(playerId.value)
-      case GameCommand.ChooseConspiracySecretSite(playerId, _, _) => Some(playerId.value)
-      case GameCommand.PeekSiteRelics(playerId) => Some(playerId.value)
-      case GameCommand.RevealOwnedRelic(playerId, _) => Some(playerId.value)
-      case GameCommand.MoveWarbands(playerId, _, _) => Some(playerId.value)
-      case GameCommand.BeginNegotiation(playerId, _) => Some(playerId.value)
-      case GameCommand.ReplaceNegotiationTerms(playerId, _, _) => Some(playerId.value)
-      case GameCommand.AcceptNegotiation(playerId, _) => Some(playerId.value)
-      case GameCommand.DeclineNegotiation(playerId, _) => Some(playerId.value)
-      case GameCommand.AddRecoverDice(playerId, _) => Some(playerId.value)
-      case GameCommand.StopRecover(playerId, _) => Some(playerId.value)
-      case GameCommand.BeginCampaignConquest(playerId, _, _) => Some(playerId.value)
-      case GameCommand.BeginCampaignRaid(playerId, _, _) => Some(playerId.value)
-      case GameCommand.ChooseCampaignPlan(playerId, _, _) => Some(playerId.value)
-      case GameCommand.FinishCampaignPlans(playerId, _) => Some(playerId.value)
-      case GameCommand.ChooseCampaignSacrifice(playerId, _, _) => Some(playerId.value)
-      case GameCommand.PlaceCampaignForce(playerId, _, _) => Some(playerId.value)
-      case GameCommand.RelocateCampaignRaidPawn(playerId, _, _) => Some(playerId.value)
-      case GameCommand.ChooseOathkeeperRecipient(playerId, _, _) =>
-        Some(playerId.value)
-      case GameCommand.CompleteSearch(playerId, _, _, _, _) => Some(playerId.value)
-      case GameCommand.ResolveCardDecision(playerId, _, _) => Some(playerId.value)
-      case GameCommand.BeginRest(playerId) => Some(playerId.value)
-      case GameCommand.FinishRest(playerId) => Some(playerId.value)
-      case GameCommand.Begin(_) => None
-    }
-    actor match {
-      case Some(value) if value != selector =>
-        Left(HttpInputError(
-          "$.command.playerId",
-          "must match the development playerId selector"
-        ))
-      case _ => Right(())
-    }
-  }
 
   private def inputError(error: HttpInputError): HttpResponse =
     jsonResponse(

@@ -11,6 +11,7 @@ import oathdigital.model._
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.{TradeResource, WakeResource}
 import oathdigital.gameplay.setup.PlayerColor
+import oathdigital.protocol.ActorlessCommandCodec
 
 sealed trait GameIntent extends Product with Serializable
 object GameIntent {
@@ -149,22 +150,10 @@ object AuthenticatedGameHttpWire {
   def decodeCommand(
       json: String
   ): Either[HttpInputError, AuthenticatedCommandRequest] =
-    try {
-      for {
-        root <- objectValue(ujson.read(json), "$")
-        _ <- exactFields(root, Set("expectedNextSequence", "intent"), "$")
-        expectedValue <- field(root, "expectedNextSequence", "$")
-        expected <- safeSequence(expectedValue, "$.expectedNextSequence")
-        intentValue <- field(root, "intent", "$")
-        intentObject <- objectValue(intentValue, "$.intent")
-        intent <- decodeIntent(intentObject)
-      } yield AuthenticatedCommandRequest(expected, intent)
-    } catch {
-      case NonFatal(error) => Left(HttpInputError(
-        "$",
-        Option(error.getMessage).getOrElse("malformed JSON")
-      ))
-    }
+    ActorlessCommandCodec.decode(json)
+      .left.map(error => HttpInputError(error.path, error.message))
+      .flatMap(request => decodeIntent(request.intent)
+        .map(AuthenticatedCommandRequest(request.expectedNextSequence, _)))
 
   private def decodeIntent(
       obj: ujson.Obj

@@ -66,32 +66,32 @@ class GameTrustBoundaryRoutesSuite extends munit.FunSuite {
       val begin = post(
         client,
         s"$base/api/dev/first-games/game/commands?playerId=p1",
-        """{"expectedNextSequence":0,"command":{"type":"begin",
+        """{"expectedNextSequence":0,"intent":{"type":"begin",
           |"plan":{"relicOrder":["hidden"]}}}""".stripMargin
       )
       assertEquals(begin.statusCode(), 400)
-      assert(ujson.read(begin.body())("message").str.contains("bootstrap"))
+      assert(ujson.read(begin.body())("message").str.contains("unknown"))
 
       val mismatch = post(
         client,
         s"$base/api/dev/first-games/game/commands?playerId=p1",
-        """{"expectedNextSequence":0,"command":{"type":"placePawn",
+        """{"expectedNextSequence":0,"intent":{"type":"placePawn",
           |"playerId":"p2","siteId":"S1"}}""".stripMargin
       )
       assertEquals(mismatch.statusCode(), 400)
       assertEquals(
         ujson.read(mismatch.body())("error").str,
-        "actor-selector-mismatch"
+        "malformed-request"
       )
       val travelMismatch = post(
         client,
         s"$base/api/dev/first-games/game/commands?playerId=p1",
-        """{"expectedNextSequence":0,"command":{"type":"travel",
+        """{"expectedNextSequence":0,"intent":{"type":"travel",
           |"playerId":"p2","destinationSiteId":"S2"}}""".stripMargin
       )
       assertEquals(travelMismatch.statusCode(), 400)
       assertEquals(ujson.read(travelMismatch.body())("error").str,
-        "actor-selector-mismatch")
+        "malformed-request")
 
       val internal = get(
         client,

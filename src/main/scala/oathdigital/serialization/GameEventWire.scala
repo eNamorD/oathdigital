@@ -23,18 +23,19 @@ final case class GameEventEnvelope(
 object GameEventWire {
   import WireError._
 
-  val FormatVersion: Int = 2
-  val GameplayFormatVersion: Int = 3
-  val SearchFormatVersion: Int = 4
-  val RestFormatVersion: Int = 5
-  val EconomyFormatVersion: Int = 6
-  val RecoverFormatVersion: Int = 7
-  val ForgeFormatVersion: Int = 8
-  val BannerFormatVersion: Int = 9
-  val MinorActionFormatVersion: Int = 10
-  val NegotiationFormatVersion: Int = 11
-  val VisionFormatVersion: Int = 12
-  val RoundEndFormatVersion: Int = 13
+  /** The pre-release stream has one current format and no compatibility reader. */
+  val FormatVersion: Int = 1
+  val GameplayFormatVersion: Int = FormatVersion
+  val SearchFormatVersion: Int = FormatVersion
+  val RestFormatVersion: Int = FormatVersion
+  val EconomyFormatVersion: Int = FormatVersion
+  val RecoverFormatVersion: Int = FormatVersion
+  val ForgeFormatVersion: Int = FormatVersion
+  val BannerFormatVersion: Int = FormatVersion
+  val MinorActionFormatVersion: Int = FormatVersion
+  val NegotiationFormatVersion: Int = FormatVersion
+  val VisionFormatVersion: Int = FormatVersion
+  val RoundEndFormatVersion: Int = FormatVersion
   val MaxSafeSequence: Long = 9007199254740991L
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"

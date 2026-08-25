@@ -7,7 +7,6 @@ import oathdigital.gameplay.actions.{CampaignRules, SearchRules}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
-import oathdigital.serialization.WireError.UnsupportedFormatVersion
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent.{
   GamePawnPlaced,
@@ -513,9 +512,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Act)
     val records = repository.load("game-wake").toOption.flatten.get.records
     assertEquals(records.take(8).map(record =>
-      ujson.read(record)("formatVersion").num.toInt).distinct, Vector(2))
+      ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
     assertEquals(records.drop(8).map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector(3, 3))
+      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1))
     assertEquals(records.drop(8).map(record =>
       ujson.read(record)("eventType").str),
       Vector("gameplay.take-wealth", "gameplay.wake-ended"))
@@ -548,7 +547,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Act)
     val last = ujson.read(repository.load("game-travel").toOption.flatten.get
       .records.last)
-    assertEquals(last("formatVersion").num.toInt, 3)
+    assertEquals(last("formatVersion").num.toInt, 1)
     assertEquals(last("eventType").str, "gameplay.traveled")
   }
 
@@ -574,7 +573,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     }, Some(Tokens(1, 0)))
     val record = ujson.read(repository.load("game-economy-edifice")
       .toOption.flatten.get.records.last)
-    assertEquals(record("formatVersion").num.toInt, 6)
+    assertEquals(record("formatVersion").num.toInt, 1)
     assertEquals(record("payload")("target")("kind").str, "edifice")
     assertEquals(record("payload")("target")("id").str, edificeId.value)
   }
@@ -608,7 +607,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(loaded.state, completed.state)
     val versions = repository.load("game-search").toOption.flatten.get.records
       .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt)
-    assertEquals(versions, Vector(4, 4))
+    assertEquals(versions, Vector(1, 1))
   }
 
   test("Search draw port cannot inject card identities inconsistent with state") {
@@ -698,7 +697,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertNotEquals(after.game.current.turn.activePlayer, active)
     assertEquals(repository.load("game-rest").toOption.flatten.get.records
       .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt),
-      Vector(5, 5))
+      Vector(1, 1))
   }
 
   test("site projection exposes ordered public properties without relic identity") {
@@ -870,7 +869,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
   }
 
-  test("v1 envelopes are not reinterpreted as v2 setup history") {
+  test("malformed v1 envelopes are rejected without reinterpretation") {
     val repository = new InMemoryEventStreamRepository
     repository.seed(
       "game-v1",
@@ -880,9 +879,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .load("game-v1")
 
     assert(result.left.toOption.get match {
-      case GameApplicationError.CodecFailure(
-            _: UnsupportedFormatVersion
-          ) => true
+      case GameApplicationError.CodecFailure(_) => true
       case _ => false
     })
   }
