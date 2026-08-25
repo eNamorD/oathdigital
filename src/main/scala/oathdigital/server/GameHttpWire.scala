@@ -5,6 +5,7 @@ import scala.util.control.NonFatal
 import oathdigital.application.{
   BootstrapParticipant,
   FirstGameBootstrapConfig,
+  GameIntent,
   GameProjection
 }
 import oathdigital.model._

@@ -1001,11 +1001,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       new GameApplicationService(catalog, repository)
         .load("game-missing-zero"),
       Left(GameApplicationError.CodecFailure(
-        oathdigital.serialization.WireError.InvalidSequence(
-          "$[0].sequence",
-          0L,
-          1L
-        )
+        EventCodecFailure("invalid-sequence", "$[0].sequence",
+          "expected 0 but found 1")
       ))
     )
   }

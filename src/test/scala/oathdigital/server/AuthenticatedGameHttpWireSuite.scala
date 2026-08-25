@@ -1,5 +1,7 @@
 package oathdigital.server
 
+import oathdigital.application.GameIntent
+
 import oathdigital.model.{Banner, CampaignBanner, CampaignRaidTarget, DecisionId, DenizenId,
   EconomyTargetRef, EdificeId, Orientation, PendingProcedure, PlayerId, RelicId,
   SearchPlacement, SiteId}

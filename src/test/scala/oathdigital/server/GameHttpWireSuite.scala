@@ -1,6 +1,6 @@
 package oathdigital.server
 
-import oathdigital.application.{GameCommand, GameIntentMapper}
+import oathdigital.application.{GameCommand, GameIntent, GameIntentMapper}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model.{PlayerId, SiteId}
 

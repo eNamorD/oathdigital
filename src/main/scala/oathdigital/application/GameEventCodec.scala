@@ -2,19 +2,28 @@ package oathdigital.application
 
 import oathdigital.gameplay.OathEvent
 import oathdigital.model.CatalogRef
-import oathdigital.serialization.{GameEventEnvelope, GameEventWire, WireError}
 
-/** Application-owned boundary around the persisted event representation. */
+final case class EventCodecFailure(code: String, path: String, message: String)
+    extends Product with Serializable
+
+final case class DecodedGameEvent(
+    gameId: String,
+    sequence: Long,
+    eventType: String,
+    event: OathEvent
+)
+
+/** Application-owned persisted-event boundary with representation-free values. */
 trait GameEventCodec {
-  def decodeStream(json: String): Either[WireError, Vector[GameEventEnvelope]]
+  def decodeStream(json: String): Either[EventCodecFailure, Vector[DecodedGameEvent]]
   def encodeEvent(gameId: String, catalog: CatalogRef, sequence: Long,
-      event: OathEvent): Either[WireError, ujson.Value]
+      event: OathEvent): Either[EventCodecFailure, String]
 }
 
 object GameEventCodec {
-  val current: GameEventCodec = new GameEventCodec {
-    def decodeStream(json: String) = GameEventWire.decodeStream(json)
-    def encodeEvent(gameId: String, catalog: CatalogRef, sequence: Long,
-        event: OathEvent) = GameEventWire.encodeEvent(gameId, catalog, sequence, event)
+  lazy val default: GameEventCodec = {
+    val providers = java.util.ServiceLoader.load(classOf[GameEventCodec]).iterator()
+    if (providers.hasNext) providers.next()
+    else throw new IllegalStateException("no GameEventCodec adapter is installed")
   }
 }

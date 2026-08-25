@@ -25,17 +25,6 @@ object GameEventWire {
 
   /** The pre-release stream has one current format and no compatibility reader. */
   val FormatVersion: Int = 1
-  val GameplayFormatVersion: Int = FormatVersion
-  val SearchFormatVersion: Int = FormatVersion
-  val RestFormatVersion: Int = FormatVersion
-  val EconomyFormatVersion: Int = FormatVersion
-  val RecoverFormatVersion: Int = FormatVersion
-  val ForgeFormatVersion: Int = FormatVersion
-  val BannerFormatVersion: Int = FormatVersion
-  val MinorActionFormatVersion: Int = FormatVersion
-  val NegotiationFormatVersion: Int = FormatVersion
-  val VisionFormatVersion: Int = FormatVersion
-  val RoundEndFormatVersion: Int = FormatVersion
   val MaxSafeSequence: Long = 9007199254740991L
   val FirstGameStartedType = "setup.first-game-started"
   val PawnPlacedType = "setup.first-game-pawn-placed"
@@ -101,7 +90,7 @@ object GameEventWire {
   ): Either[WireError, ujson.Value] =
     encode(
       GameEventEnvelope(
-        formatVersion(event),
+        FormatVersion,
         gameId,
         sequence,
         catalog,
@@ -188,12 +177,7 @@ object GameEventWire {
         for {
           version <- formatVersionField(obj, path)
           _ <-
-            if (version == FormatVersion || version == GameplayFormatVersion ||
-                version == SearchFormatVersion || version == RestFormatVersion ||
-                version == EconomyFormatVersion || version == RecoverFormatVersion ||
-                version == ForgeFormatVersion || version == BannerFormatVersion ||
-                version == MinorActionFormatVersion || version == NegotiationFormatVersion ||
-                version == VisionFormatVersion || version == RoundEndFormatVersion)
+            if (version == FormatVersion)
               Right(())
             else
               Left(
@@ -218,7 +202,6 @@ object GameEventWire {
             s"$path.payload",
             ref
           )
-          _ <- validateEventVersion(version, eventType, path)
         } yield GameEventEnvelope(
           version,
           gameId,
@@ -265,13 +248,13 @@ object GameEventWire {
   ): Either[WireError, Unit] =
     for {
       _ <-
-        if (envelope.formatVersion == formatVersion(envelope.event)) Right(())
+        if (envelope.formatVersion == FormatVersion) Right(())
         else
           Left(
             UnsupportedFormatVersion(
               "$.formatVersion",
               envelope.formatVersion,
-              formatVersion(envelope.event)
+              FormatVersion
             )
           )
       _ <-
@@ -347,32 +330,6 @@ object GameEventWire {
       case _: VisionVictory => VisionVictoryType
     }
 
-  private def formatVersion(event: OathEvent): Int = event match {
-    case _: RoundEnded | _: WarExhaustionResolved => RoundEndFormatVersion
-    case _: VisionRevealed | _: ConspiracyStarted |
-        _: ConspiracySecretSiteChosen | _: ConspiracyCompleted |
-        _: VisionVictory => VisionFormatVersion
-    case _: NegotiationStarted | _: NegotiationTermsReplaced |
-        _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted =>
-      NegotiationFormatVersion
-    case _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
-        _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved =>
-      MinorActionFormatVersion
-    case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
-        _: BannerChallengeCompleted | _: BannerResourcePlaced => BannerFormatVersion
-    case _: ForgeStarted | _: ForgeCompleted => ForgeFormatVersion
-    case _: WealthTaken | _: WakeEnded | _: Traveled => GameplayFormatVersion
-    case _: Mustered | _: Traded => EconomyFormatVersion
-    case _: SearchStarted | _: SearchCompleted => SearchFormatVersion
-    case _: RestStarted | _: RestCompleted => RestFormatVersion
-    case _: RecoverRolled | _: RecoverStopped | _: RelicRecovered |
-        _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered | _: CampaignRaided | _: CampaignRaidPawnRelocated |
-        _: BanditsRefilled => RecoverFormatVersion
-    case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
-        _: OathkeeperRecipientChosen | _: UsurperFlipped | _: UsurperVictory =>
-      RecoverFormatVersion
-    case _ => FormatVersion
-  }
 
   private def encodePayload(event: OathEvent): ujson.Value =
     event match {
@@ -1092,61 +1049,6 @@ object GameEventWire {
         )
     }
 
-  private def validateEventVersion(
-      version: Int,
-      eventType: String,
-      path: String
-  ): Either[WireError, Unit] = {
-    val expected =
-      if (eventType == RoundEndedType || eventType == WarExhaustionResolvedType)
-        RoundEndFormatVersion
-      else if (eventType == VisionRevealedType || eventType == ConspiracyStartedType ||
-          eventType == ConspiracySecretSiteChosenType ||
-          eventType == ConspiracyCompletedType || eventType == VisionVictoryType)
-        VisionFormatVersion
-      else if (eventType == NegotiationStartedType ||
-          eventType == NegotiationTermsReplacedType ||
-          eventType == NegotiationAcceptedType || eventType == NegotiationDeclinedType ||
-          eventType == NegotiationCompletedType) NegotiationFormatVersion
-      else if (eventType == FacedownAdviserDiscardedType ||
-          eventType == FacedownAdviserPlayedType ||
-          eventType == SiteRelicsPeekedType ||
-          eventType == OwnedRelicRevealedType ||
-          eventType == WarbandsMovedType) MinorActionFormatVersion
-      else if (eventType == BannerChallengeStartedType ||
-          eventType == BannerRibbonChoiceMadeType ||
-          eventType == BannerChallengeCompletedType ||
-          eventType == BannerResourcePlacedType) BannerFormatVersion
-      else if (eventType == ForgeStartedType || eventType == ForgeCompletedType)
-        ForgeFormatVersion
-      else if (eventType == RecoverRolledType || eventType == RecoverStoppedType ||
-          eventType == RelicRecoveredType || eventType == CampaignStartedType ||
-          eventType == CampaignPlanChosenType ||
-          eventType == CampaignPlansFinishedType ||
-          eventType == CampaignSacrificedType || eventType == CampaignConqueredType ||
-          eventType == CampaignRaidedType || eventType == CampaignRaidPawnRelocatedType ||
-          eventType == BanditsRefilledType ||
-          eventType == OathkeeperChangedType ||
-          eventType == OathkeeperRecipientChoiceStartedType ||
-          eventType == OathkeeperRecipientChosenType ||
-          eventType == UsurperFlippedType || eventType == UsurperVictoryType)
-        RecoverFormatVersion
-      else if (eventType == MusteredType || eventType == TradedType)
-        EconomyFormatVersion
-      else if (eventType == RestStartedType || eventType == RestCompletedType)
-        RestFormatVersion
-      else if (eventType == SearchStartedType || eventType == SearchCompletedType)
-        SearchFormatVersion
-      else if (eventType == TakeWealthType || eventType == WakeEndedType ||
-          eventType == TraveledType)
-        GameplayFormatVersion
-      else FormatVersion
-    if (version == expected) Right(())
-    else Left(InvalidValue(
-      s"$path.formatVersion",
-      s"event type '$eventType' requires format version $expected"
-    ))
-  }
 
   private def decodeBanner(value: String, path: String): Either[WireError, Banner] =
     Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))

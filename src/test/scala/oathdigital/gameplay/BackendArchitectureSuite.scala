@@ -146,4 +146,22 @@ class BackendArchitectureSuite extends munit.FunSuite {
         Files.readString(path).contains("rulesText")).map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
   }
+
+  test("application never imports server or serialization layers") {
+    val root = Paths.get("src/main/scala/oathdigital/application")
+    val forbidden = Vector("import oathdigital.server", "import oathdigital.serialization")
+    val offenders = Files.walk(root).iterator.asScala.filter(path =>
+      path.toString.endsWith(".scala") && forbidden.exists(
+        Files.readString(path).contains)).map(_.toString).toVector
+    assertEquals(offenders, Vector.empty)
+  }
+
+  test("shared command protocol is compiled by both configured runtimes") {
+    val build = Files.readString(Paths.get("build.sbt"))
+    assert(build.contains("shared\" / \"src\" / \"main\" / \"scala"))
+    assert(build.contains("shared\" / \"src\" / \"test\" / \"scala"))
+    assert(Files.exists(Paths.get(
+      "frontend/target/scala-2.13/test-classes/oathdigital/protocol/CommandProtocolSuite.class")) ||
+      Files.exists(Paths.get("shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala")))
+  }
 }

@@ -24,7 +24,7 @@ class GameEventWireSuite extends munit.FunSuite {
       val encoded = GameEventWire.encodeEvent("war", catalog.ref, index, event)
         .toOption.get
       val decoded = GameEventWire.decode(encoded).toOption.get
-      assertEquals(decoded.formatVersion, GameEventWire.RoundEndFormatVersion)
+      assertEquals(decoded.formatVersion, GameEventWire.FormatVersion)
       assertEquals(decoded.event, event)
     }
   }

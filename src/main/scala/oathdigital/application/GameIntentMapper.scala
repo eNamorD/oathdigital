@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.model.PlayerId
-import oathdigital.server.GameIntent
 
 /** The single actor-binding boundary shared by development and authenticated HTTP. */
 object GameIntentMapper {
