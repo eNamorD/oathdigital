@@ -41,8 +41,8 @@ runs the ordinary action-boundary Oathkeeper evaluation.
 
 Commands validate current phase, actor, pending decision, source card, target
 slot, co-location, and current holdings. Events record resolved targets and
-ordered ribbon outcomes; replay recalculates them. Event v12 is the current
-pre-release format and intentionally has no migration reader.
+ordered ribbon outcomes; replay recalculates them. These facts use the single
+current pre-release event format, which intentionally has no migration reader.
 
 This slice does not implement altered Foundations, Empire-only Vision rules,
 Vision-changing or reveal-blocking powers, alternate banner faces, or other

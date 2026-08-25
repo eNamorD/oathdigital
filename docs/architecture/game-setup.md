@@ -1,92 +1,54 @@
-# Bounded game setup
+# First-game setup
 
 Status: implemented and replay-tested, reviewed August 2026.
 
-This document distinguishes the historical v1 pawn-placement proof from the
-complete exile-only introductory setup used by the current game stream.
+`gameplay/setup/FirstGameSetup.scala` owns the introductory all-Exile setup
+state machine. It begins at `OathState.NoGame`, records a complete
+`FirstGameSetupPlan`, validates pawn placement and starting-adviser choices,
+and ends at `OathState.Ready(ReadyGame)` with the selected first player in
+Wake.
 
-## State and command boundary
+## Recorded plan and validation
 
-`SetupState` has three immutable states: `NotStarted`, `InProgress`, and
-`Completed`. Started state pins the production `CatalogRef`, preserves ordered
-player/lineage participants, stores the ordered 2/3/3 eight-site layout, and
-records pawn placements in participant order.
+The plan records every externally randomized outcome:
 
-`BeginSetup` contains the exact ordered eight-site selection. That order is the
-externally recorded result of any shuffle or draw. Command handling and replay
-perform no random selection and receive no RNG. `PlacePawn` identifies the
-participant and an in-play site. Several pawns may share a site.
+- ordered participants, player/color/lineage identities, and first player;
+- the ordered eight-site layout;
+- the 60-denizen pool and final World Deck order;
+- the five fixed first-game Visions and packet positions;
+- the ordinary-relic order; and
+- the matching ruined edifice for each selected Homeland.
 
-Commands emit `SetupStarted`, `PawnPlaced`, and, immediately after the final
-pawn, `SetupCompleted`. The typed continuation reports either the next
-participant awaiting placement or completion. Replay applies only events and
-reports the zero-based index of the first invalid event.
+Replay applies only recorded values. Setup validates catalog identity, unique
+participants and lineages, ten denizens per suit, regional discard seeds,
+three-card starting hands, Vision packets, ordinary-relic conservation,
+Homeland/edifice suits, placement order, adviser ownership, and structural
+domain invariants.
 
-## Validated scope
+The completed aggregate includes site resources and bandits, facedown site
+relics, ruined Homeland edifices, regional discards, player advisers, World and
+relic decks, starting Exile boards and Supply, banners, tracks, the selected
+Oathkeeper goal, favor banks, and six unaltered Foundations.
 
-The rules validate the pinned catalog, nonempty and unique players and
-lineages, exactly eight distinct catalog sites, strict placement order, and
-catalog-known/in-play pawn destinations. Tests load the production typed
-catalog projection containing setup cards, Supply boards, and sites.
+The scope follows Combined Rulebook pp. 6-7 and the New Foundations first-game
+clarification on p. 8. It excludes Legacy selection/effects,
+Chancellor/Citizen/Imperial setup, campaign restoration, altered Foundations,
+and Chronicle progression.
 
-## Deliberate deferrals
+## Application and transport
 
-The setup events use the versioned durable format described in
-[`authoritative-events.md`](authoritative-events.md). Commands are not part of
-that wire format.
+`DevelopmentFirstGamePlanFactory` creates a reproducible catalog-derived plan
+for loopback development. Production bootstrap accepts only public participant
+configuration; the server derives the hidden plan and records it in the first
+event. Neither bootstrap response nor ordinary projection exposes hidden order.
 
-The v1 bounded slice does not initialize player boards or Supply, advisers,
-legacies, edifices, Foundations, the Chronicle, card decks, resources, roles,
-or a full `OathGame`. It does not implement UI, database/network storage,
-snapshots, or gameplay.
+Shared `FirstGameBootstrapRequest` and its codec compile on JVM and Scala.js.
+They are actorless configuration DTOs. The authenticated route derives
+authorization and player seats from memberships. The application maps bootstrap
+configuration to domain setup and appends the same current event envelope used
+by gameplay.
 
-## Exile-only complete first-game endpoint
-
-`FirstGameSetupRules` is a separate v2 state machine from the historical v1
-bounded proof. This is the current implementation shape, not a pre-release
-compatibility requirement. It
-starts at `NoGame`, records a complete `FirstGameSetupPlan`, reuses the existing
-typed `SetupCommand.PlacePawn`, records each starting adviser choice, and ends
-at `Ready(ReadyGame)`. The endpoint contains a structurally valid
-`OathGame`; its selected first player is active at `Phase.Wake`, meaning they
-are ready to begin their first turn. Wake behavior is not executed here.
-
-The plan records every external outcome that setup would randomize:
-
-- seating, stable player/color/lineage identities, and first player;
-- the ordered eight selected sites;
-- the 60-denizen pool order and exact final World Deck order;
-- all five fixed first-game Vision identities and their packet positions;
-- the complete ordinary-relic order; and
-- the matching ruined edifice chosen for each selected Homeland.
-
-Replay applies these recorded values and never invokes randomness. The engine
-validates 10 denizens per suit, the two-card regional discard seeds, three-card
-player hands, the 10-denizen/2-Vision and 15-denizen/3-Vision packets, complete
-ordinary-relic conservation, matching Homeland/edifice suits, placement order,
-and adviser ownership.
-
-The built aggregate includes site starting resources, capacity bandits,
-facedown site relics, ruined Homeland edifices, regional discards, advisers,
-the World and relic decks, starting Exile board wealth and full Supply, banners,
-tracks, Oath of Supremacy, an empty Oathkeeper title, fixed favor banks, and
-six normal Foundations with no alteration sources.
-
-This inclusion is sourced to Combined Rulebook pp. 6-7 and the New Foundations
-first-game clarification on p. 8. The implementation deliberately excludes
-Legacy draws/choices/effects, Chancellor/Citizen/Imperial setup, campaign
-restoration, generic Foundation interpretation, and Chronicle progression. It
-also does not claim the contents of the
-Dispossessed or the order of the 16 unselected Atlas sites; neither is needed
-to make the selected world, player state, and active decks structurally valid
-for this endpoint. The Grand Scepter is excluded from the ordinary relic
-shuffle because it is an Imperial component.
-
-## Gameplay handoff
-
-The final setup event produces `Ready(ReadyGame)` with the selected first Exile
-active in Wake. From that point `OathRules` owns Wake and Act behavior; setup
-rules do not special-case later gameplay. See
-[gameplay-modules.md](gameplay-modules.md),
-[rule-resolution.md](rule-resolution.md), and
-[bounded-search.md](bounded-search.md) for the implemented gameplay boundaries.
+Player/public setup projections use `GameProjector`. Only the active adviser
+chooser sees candidate identities and controls; pawn candidates are projected
+as typed board targets. Replay, application, route, redaction, and shared codec
+tests cover the boundary.

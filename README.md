@@ -1,91 +1,72 @@
 # Oath Digital
 
-Oath Digital is a Scala/Scala.js implementation of Oath: New Foundations built
-around a deterministic, server-authoritative game engine:
+Oath Digital is a Scala/Scala.js implementation of Oath: New Foundations. The
+JVM is authoritative: clients send actorless intents, deterministic gameplay
+emits domain events, and state is rebuilt by replaying the event stream.
 
-- accepted commands are transient requests and resulting domain events are the
-  authoritative durable source of truth;
-- rules transitions are deterministic;
-- continuations describe the next player or forced engine step;
-- event journals use expected-index appends for asynchronous concurrency; and
-- current state can be reconstructed by replaying the event stream.
-
-The copied HRF sources under `vendor/haunt-roll-fail/hrf` are retained as
-MIT-licensed reference material. They are not part of this build because they
-depend on HRF's complete Scala.js framework.
+The copied HRF sources under `vendor/haunt-roll-fail/hrf` are MIT-licensed
+reference material and are not part of the build.
 
 ## Architecture
 
-- [Core domain model](docs/architecture/core-domain-model.md)
-- [Authoritative domain events](docs/architecture/authoritative-events.md)
-- [First-game setup](docs/architecture/game-setup.md)
-- [Server event journal and security boundary](docs/architecture/server-event-journal.md)
-- [Gameplay module structure](docs/architecture/gameplay-modules.md)
-- [Typed rule resolution](docs/architecture/rule-resolution.md)
-- [Bounded Search and hidden decisions](docs/architecture/bounded-search.md)
-- [Bounded Campaign](docs/architecture/bounded-campaign.md)
-- [All-Exile Negotiation](docs/architecture/all-exile-negotiation.md)
-- [Bounded Visions and Conspiracy](docs/architecture/bounded-visions-and-conspiracy.md)
-- [All-Exile round endings](docs/architecture/all-exile-round-endings.md)
+Start with [codebase structure](docs/architecture/codebase-structure.md). The
+main durable decisions are:
 
-The rules engine in `oathdigital.engine` has no UI or asset dependency.
-`oathdigital.catalog` loads selected, source-verified catalog projections into
-typed definitions and rejects incompatible or unresolved executable data.
-`oathdigital.presentation` is the image-independent boundary between
-rules/application code and renderers:
+- [gameplay modules](docs/architecture/gameplay-modules.md)
+- [typed rule resolution](docs/architecture/rule-resolution.md)
+- [authoritative events](docs/architecture/authoritative-events.md)
+- [application/event-store boundary](docs/architecture/event-store-application-service.md)
+- [server journal and trust boundary](docs/architecture/server-event-journal.md)
+- [first-game setup](docs/architecture/game-setup.md)
+- [core domain model](docs/architecture/core-domain-model.md)
 
-- `BoardView` contains immutable `SiteView`, `CardView`, `PieceView`, and
-  `ActionView` values.
-- Every presented entity has a stable `ViewId`, an `AccessibleLabel`, an
-  optional non-owning `ImageRef`, and an image-independent `FallbackVisual`.
-- A platform image loader reports `ImageLoadResult`; `VisualResolver` produces
-  either an image instruction or a text/symbol placeholder. Missing, failed,
-  stale, and mismatched image results all choose the same deterministic
-  fallback.
-- Image references are theme/application concerns. The models do not bundle or
-  require HRF art, copyrighted Oath assets, a graphics toolkit, or Scala.js.
+Rule-specific designs remain in `docs/architecture/bounded-*.md` and the
+all-Exile decision notes. Rule coverage and current implementation evidence are
+tracked in [implementation traceability](docs/rules/implementation-traceability.md).
 
-Renderers should always expose `AccessibleLabel`, including when displaying an
-image. They should render `Placeholder.text` and may additionally render its
-short `symbol`. `PresentationExample` is a compile-checked integration sketch.
+## Build and verification
 
-The server UI presents one player-scoped `pendingCardDecision` protocol for
-starting advisers and Search. Search arrangement is local until final
-confirmation; the server remains authoritative for the kept card, discard
-order, placement, and any required replacement. Ordinary projections redact
-other players' hidden cards. A separate raw authoritative event log is
-available only on the loopback development transport and may reveal hidden
-outcomes.
-
-## Build
-
-Use the project-local wrapper. A normal verification run does not require
+Use the project-local wrapper; a normal verification run does not require
 `clean`:
 
 ```sh
-./sbtw compile test
-./sbtw frontend/test frontend/fastLinkJS
-```
-
-Run the complete unit-test suite with:
-
-```sh
+./sbtw compile
 ./sbtw test
+./sbtw frontend/test
+./sbtw frontend/fullOptJS
 ```
 
-To compile both production and test sources without running tests:
+Scala.js tests need Node on `PATH`. In Codex desktop, the bundled runtime can
+be selected explicitly:
 
 ```sh
-./sbtw Test/compile
+PATH=/Applications/ChatGPT.app/Contents/Resources/cua_node/bin:/usr/bin:/bin:/usr/sbin:/sbin \
+  ./sbtw frontend/test frontend/fullOptJS
 ```
 
-To run the interactive server UI:
+Run deterministic repository checks with:
+
+```sh
+python3 scripts/check-architecture.py
+python3 scripts/check-markdown-links.py
+python3 scripts/validate-component-catalog.py
+python3 reference/catalog-ingestion/build_runtime_catalog.py
+git diff --check
+```
+
+The catalog generator without `--output` is a non-writing equality check.
+
+## Local server UI
+
+Build the frontend and run the loopback server:
 
 ```sh
 ./sbtw frontend/fastLinkJS
 ./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
 ```
 
-Open `http://localhost:8080/?mode=server`. Keep the server terminal open while
-testing; `curl http://localhost:8080/health` checks its health. Stop it with
-Ctrl-C. Keep `var/oathdigital*` to preserve local games.
+Open `http://127.0.0.1:8080/?mode=server`. Check
+`http://127.0.0.1:8080/health`, stop with Ctrl-C, and retain
+`var/oathdigital*` to preserve local games. The development transport includes
+player-view controls and a privileged raw event log; it is loopback-only and is
+not an authentication boundary.

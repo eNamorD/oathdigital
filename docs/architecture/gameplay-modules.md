@@ -1,191 +1,115 @@
-# Gameplay module architecture
+# Gameplay modules
 
-This document defines the intended structure of the gameplay engine as Oath
-Digital grows beyond its initial bounded slices. It is a living architecture
-guide: the roadmap controls when migrations happen, while this document records
-the boundaries and principles those migrations should preserve.
+Gameplay is a deterministic inner layer. It owns commands, legality, pending
+procedures, domain events, and event evolution; it does not know HTTP, JSON,
+databases, projections, or DOM rendering.
 
-Wake, Travel, and Search originally accumulated in one transitional bucket while
-those vertical slices established authoritative events, replay, server authority,
-hidden decisions, and typed rule resolution. They now use the module boundaries
-described below.
-
-## Target structure
+## Current layout
 
 ```text
 oathdigital/gameplay/
   OathRules.scala
+  OathLifecycle.scala
+  StateBasedEvaluation.scala
+  RuleSourceIndex.scala
   RuleResolution.scala
-
+  model/
+    GameStateProtocol.scala
+    GameProcedureProtocol.scala
+    GameEventProtocol.scala
+    GameViolation.scala
+  setup/
+    FirstGameSetup.scala
   phases/
     Wake.scala
     Rest.scala
-
   actions/
     Travel.scala
     Search.scala
     Economy.scala
-    Campaign.scala
-    CampaignPlans.scala
     Recover.scala
+    Forge.scala
+    Challenge.scala
+    Campaign*.scala
+    MinorActions.scala
+    Negotiation.scala
+    Visions.scala
 ```
 
-Files should be added only when they own working behavior. The refactor must not
-create empty Rest, Economy, Campaign, or Recover placeholders.
+`OathRules` is the small aggregate router. Common lifecycle checks belong in
+`OathLifecycle`; action and phase detail remains in the owning module.
+`StateBasedEvaluation` is the shared path for title, victory, and round-end
+facts.
 
-### Aggregate rules
+Wake and Rest bookend turns and remain phase modules. Act actions own their base
+legality, costs, decisions, and evolution. Economy keeps Muster and Trade
+together because they share target and yield mechanics. Campaign is split by
+cohesion: orchestration, legality/source classification, plan registration, and
+resolution. Small handlers are grouped by action or timing, never one file per
+card.
 
-`OathRules` in `gameplay/OathRules.scala` is the deterministic aggregate boundary. It validates the common
-game lifecycle, routes commands and events to the appropriate phase or action,
-and returns the next state, authoritative events, and continuation. It should
-be deliberately boring: detailed costs, choices, card access, and action effects
-belong to their action or phase module.
+## Rule sources and handlers
 
-### Phase modules
+`RuleSourceIndex` enumerates factual sources active in an authoritative
+`ReadyGame`: site cards and faces, advisers, relics, banners, Foundations,
+legacies, and other typed sources. It does not decide mechanics.
 
-Wake and Rest bookend every turn and therefore remain distinct from Act actions.
-Each phase module owns its commands, base legality, phase-specific powers, event
-evolution helpers, and continuation rules.
+`CatalogHandlerInventory` collects and fingerprints the complete handler
+vocabulary across catalog families. Bounded modules use that fingerprint to
+detect unaudited catalog changes before execution. Explicit registries and
+exact-ID classifications then map relevant handlers to typed Scala behavior.
+Unknown relevant handlers fail with stable source/handler identity. Gameplay
+never reads `rulesText`.
 
-`Wake.scala` owns Take Wealth, Wake powers, Wake victory checks, and entry into
-Act. `Rest.scala` owns bounded resource return, secret reveal, Supply refresh,
-per-turn cleanup, player/round advancement, and entry into the next Wake;
-component-specific Rest powers remain incremental typed handlers.
+`RuleResolution` supplies shared source, activation, ordering, query, and
+outcome vocabulary. Specialized registries such as Campaign plans remain in
+their owning module when their windows/effects are action-specific.
 
-### Action modules
+## One legality path
 
-An action module keeps its command vocabulary, base legality, cost calculation,
-pending decision flow, and event evolution together. Travel and Search are
-separate because their state transitions and choices are materially different.
+Live command handling, replay validation, and legal-choice projection call the
+same gameplay rule APIs. Projection may label and redact a legal result, but it
+must not reconstruct legality. The frontend renders only projected controls and
+candidates.
 
-Muster and Trade begin together in `Economy.scala`. Both spend Supply, choose an
-accessible denizen, inspect suit and adviser context, and resolve an economic
-yield. They should split only when their implementations acquire independent
-decision flows or become difficult to navigate. File size is evidence, not a
-rule; roughly 350-450 meaningful lines should prompt a cohesion review rather
-than an automatic split.
+Application projection is split by responsibility: `GameProjector` chooses one
+player/public scope and assembles the DTO; `GamePresentationProjector` owns
+world, site, card, and player-board presentation; `LegalActionProjector` maps
+gameplay legality and targets; and `PendingProcedureProjector` maps forced
+decisions. Scala.js composes `ActionDecisionRenderer`, `WorldBoardRenderer`,
+and `DevelopmentRenderer` through the small `ServerModeUi` controller. These
+outer groups consume shared actorless intent and projection DTOs; none owns
+rules.
 
-Campaign and Recover should receive separate modules only when their implemented
-procedures justify those boundaries.
+Multi-step actions use typed `PendingProcedure` state. Application-owned ports
+prepare random draws, dice, or fallback winners; events record those facts.
+Replay revalidates them against prior state without drawing again. Private
+pending data is exposed only by player-scoped application projections.
 
-`Campaign.scala` owns the printed Campaign stages and invariants, but it does
-not know individual battle-plan IDs, costs, labels, or mechanics.
-`CampaignPlans.scala` owns registered, side/window-scoped plan handlers and
-groups small powers. Generic options carry stable source and handler identity,
-decision ownership, typed costs, and typed effects. The Campaign-specific
-effect vocabulary supports pool changes, reveals and skull handling, with typed
-extension points for result transforms, loss-policy replacement, and suspended
-decisions. Reserved extensions reject until a matching executor is registered;
-they are not silently ignored and do not form a universal card scripting
-language.
+## Boundaries
 
-Projection renders these server-authored options, and replay re-resolves the
-registered handler before comparing source, side, ordering, costs, reveals and
-effects. A player defender owns their plan decision even while the attacker is
-the active player. Bandits use applicable plans only when they are cost-free
-and choice-free, in stable order; other relevant bandit plans block
-conservatively.
-
-### Shared rule resolution
-
-`RuleResolution.scala` contains the typed runtime vocabulary described in
-[rule-resolution.md](rule-resolution.md): stable sources, explicit handler
-registration, action queries, deterministic outcomes, and decision boundaries.
-It must not become an interpreted rules-text engine or a general JSON DSL.
-
-Small power handlers should be grouped by the action or timing they modify, for
-example Travel, Search, economy, Campaign, or Wake/victory handlers. Do not
-create one source file per card. A card receives its own module only when its
-procedure is independently complex.
-
-## Dependency direction
-
-Dependencies point inward toward deterministic domain behavior:
+Dependencies point inward:
 
 ```text
-HTTP / Scala.js UI
-        |
-application services and player-scoped projections
-        |
-OathRules -> phase/action modules -> typed rule resolution
-        |
-domain model, catalog definitions, and authoritative events
-        |
-generic replay and event-journal contracts
+server/frontend -> application/shared protocol -> gameplay -> catalog/model/engine
+persistence/serialization -> application-owned ports
 ```
 
-- Server routes derive the actor and translate transport intents; they do not
-  implement rules.
-- Application services load streams, replay state, invoke rules, and append
-  accepted events with optimistic concurrency.
-- Projections redact hidden information and present legal choices; they do not
-  maintain a second rules implementation.
-- The Scala.js client renders projected state and sends selected intents; it
-  never supplies authoritative randomness or hidden deck state.
-- Persistence stores versioned event bytes and has no knowledge of gameplay
-  legality.
+The domain vocabulary is `OathState`, `ReadyGame`, `OathEvent`,
+`OathContinue`, `GameplayTransition`, and `OathViolation`. `FirstGame`
+names remain only for the introductory setup scenario and its fixtures.
 
-## One authoritative legality path
-
-Commands, replay validation, and legal-choice projection must call the same
-typed base rules and modifier resolution. A projection may transform a legal
-result for display, but it must not recreate legality using parallel Boolean
-conditions. This prevents the UI from offering commands the aggregate rejects
-and prevents replay from accepting outcomes live commands could not produce.
-
-Multi-step actions use an explicit `PendingProcedure`. Server-owned random
-outcomes are recorded in authoritative events, then replay validates those
-facts against the preceding state instead of drawing again. Player-scoped
-projections expose pending private information only to its authorized actor.
-The bounded Search design in [bounded-search.md](bounded-search.md) is the first
-complete example of this pattern.
-
-Events record durable game facts, not transport requests or derived view data.
-Commands remain transient. Internal Scala names and file boundaries may change
-freely. Before public release, event formats and fixtures may also change under
-the policy in [authoritative-events.md](authoritative-events.md).
-
-## Naming policy
-
-“First game” remains a valid scenario and setup qualifier. Names such as
-`FirstGameSetup`, its plan, and first-game fixtures may remain when they truly
-describe the exile-only introductory setup.
-
-Runtime names governing an ordinary game after setup use `Game*` or `Oath*`.
-The R2 cleanup renamed the aggregate, application service, projection, mixed
-event codec, HTTP adapters/routes, and Scala.js client vocabulary accordingly.
-
-The mixed setup/gameplay aggregate vocabulary is `OathState`, `ReadyGame`,
-`OathEvent`, `OathContinue`, `OathTransition`, and `OathViolation`. Genuine
-introductory-scenario concepts retain `FirstGame`: the setup command, plan,
-participants, rules, factory, fixtures, Foundation/support data, bootstrap
-configuration, and the `FirstGameStarted`/`FirstGameCompleted` facts and their
-setup discriminator constants.
-
-The current mixed stream uses v1-v6 vocabulary, but those versions are not a
-public compatibility promise. Before release, a refactor may update the codec
-and checked-in fixtures directly when doing so simplifies the model.
-
-## Evolution order
-
-The structural extraction and runtime naming cleanup are complete. New work
-should preserve those boundaries:
-
-Common Act lifecycle validation, Rest, the combined Economy slice, and bounded
-Recover are now implemented. Future action modules should reuse the same command/replay/
-projection legality path. Split Economy only if later decision flows create
-independent reasons to change.
+Events record accepted game facts, not transport requests or view data.
+Commands are transient. See [authoritative events](authoritative-events.md) and
+[codebase structure](codebase-structure.md).
 
 ## Guardrails
 
-- Split modules by independent reasons to change, not by one type per file.
-- Keep closely related command, legality, and evolution code together.
-- Do not let the aggregate become an append-only action bucket.
-- Do not duplicate legality in projections or clients.
-- Do not infer executable behavior from catalog rules text.
-- Do not silently ignore a relevant activated but unsupported power.
-- Prefer table-driven registrations and tests for small modifiers.
-- Add a generic abstraction only after multiple implemented rules demonstrate
-  the shared behavior.
-- Preserve authoritative replay and hidden-information boundaries through every
-  refactor.
+- Keep aggregate routing small and detailed behavior cohesive.
+- Do not duplicate legality in application projections or frontend renderers.
+- Do not interpret catalog prose or handler-name fragments.
+- Do not silently ignore a relevant unsupported power.
+- Prefer table-driven explicit registrations for small modifiers.
+- Introduce abstractions only after multiple implemented rules prove the seam.
+- Preserve replay, deterministic ordering, and hidden-information boundaries.
+- Keep every production Scala file at or below 800 lines.

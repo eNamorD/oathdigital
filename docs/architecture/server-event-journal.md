@@ -1,6 +1,6 @@
 # Server-authoritative event journal
 
-Status: implemented through schema v3 and mixed v2-v6 game streams.
+Status: implemented through database schema v3 and event format v1.
 
 ## Authority boundary
 
@@ -197,9 +197,8 @@ startup, bind, and shutdown messages are not silently discarded.
 
 ## Loopback development API
 
-The game API uses mixed v2-v6 streams and remains separate from the historical
-v1 pawn-placement service. Versions are rejected rather than reinterpreted by
-the wrong codec.
+The game API uses the single current setup/gameplay stream. Unknown formats and
+discriminators are rejected rather than reinterpreted.
 
 All endpoints are development-only:
 
@@ -228,8 +227,8 @@ sites; ten printed denizen IDs per suit; the valid starting-hand, regional,
 and Vision packet order; every ordinary relic ordered by its catalog numeric
 `value` and printed ID; and a matching ruined edifice for each selected
 Homeland. This is reproducible local fixture construction, not production
-randomness. The derived plan is submitted through the same v2 `Begin`
-application command, so it is fully recorded in the authoritative first event.
+randomness. The derived plan is submitted through the same first-game bootstrap
+application path, so it is fully recorded in the authoritative first event.
 Neither the plan nor its hidden orders are returned by the route.
 
 The command route accepts the implemented setup, Wake, Travel, and Search

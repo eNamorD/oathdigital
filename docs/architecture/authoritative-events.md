@@ -2,106 +2,75 @@
 
 Status: accepted, reviewed August 2026.
 
-## Decision
+Commands are transient requests. Accepted gameplay emits domain events, and
+those events are the single durable game history. Deterministic event evolution
+reconstructs state. `EventReplayEngine` is generic replay machinery, not an
+alternative authority. Snapshots, if introduced, are discardable caches rebuilt
+from the stream.
 
-Production Oath Digital commands are transient requests. A command is validated
-against current state and may produce one or more domain events, but the command
-itself is not durable game history. The resulting domain events are the single
-authoritative stream. Replaying those events through deterministic evolution
-reconstructs game state.
+## Current event boundary
 
-Events are authoritative because they record what the rules accepted and what
-actually happened, including rule-generated consequences such as setup
-completion. Persisting commands instead would require historical command
-handling to reproduce those consequences forever and could create ambiguity
-when rules or command orchestration evolve.
+`OathEvent` and its supporting event facts live in `gameplay/model`.
+Gameplay modules own validation and evolution. The application service loads,
+decodes, replays, handles one command, encodes emitted events, and requests one
+atomic expected-position append.
 
-The HRF-inspired `Action`, `Journal`, and `ReplayEngine` API remains for
-compatibility and existing tests. It is not a second production source of
-truth, and new production slices must use domain events and event evolution.
+`GameEventWire` owns one pre-release envelope format (`formatVersion = 1`)
+for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 
-Snapshots may be introduced later only as rebuildable replay caches. A snapshot
-must be discardable and recoverable from the authoritative event stream; it
-must not replace or fork that history.
+- `LifecycleEventCodec` for setup, Wake, Rest, and lifecycle facts;
+- `ActionEventCodec` for ordinary actions and pending decisions;
+- `CampaignEventCodec` for Campaign procedures; and
+- `EndingEventCodec` for title, Vision, round, and victory facts.
 
-## Pre-release event-format policy
+Readers reject unknown discriminators, malformed values, catalog disagreement,
+unsafe/non-contiguous sequences, and stream identity changes. No Scala class
+name, reflection metadata, command, projection, or transport request is stored.
 
-Until the first public release, saved-game event compatibility is not a product
-requirement. Event payloads, discriminators, and the current format version may
-change in place when that produces a simpler coherent model. A breaking change
-must update the writer, reader, replay tests, fixtures, and development data
-together; it does not require a new event version, migration, or backward-
-compatible reader. Local pre-release saves may be discarded.
+The setup-start payload repeats the pinned catalog reference because it is
+domain data; the envelope and payload must agree. It also records the complete
+setup plan and selected Oathkeeper goal so replay never consults mutable
+defaults or randomness.
 
-The first public release establishes the compatibility baseline. From that
-point, changes to published event history require an explicit version and
-migration or rejection policy.
+## Facts and randomness
 
-Even before release, durable events use an explicit envelope and never encode
-Scala class names or reflection metadata. Readers reject unknown event types,
-malformed identities, catalog disagreement, and non-contiguous sequence
-positions rather than guessing or defaulting. Checked-in fixtures protect
-current replay behavior, not immutable historical bytes.
+Events record accepted facts needed for deterministic replay:
 
-The historical v1 bounded pawn-placement proof retains a checked-in fixture.
-Complete exile-only first-game setup uses a
-separate v2 envelope/vocabulary (`setup.first-game-started`,
-`setup.first-game-pawn-placed`, `setup.starting-adviser-chosen`, and
-`setup.first-game-completed`). `SetupEventWire` remains the v1 reader/writer;
-`GameEventWire` handles the mixed v2-v6 game stream. The current dual-codec
-shape avoids silently defaulting fields when reading the bounded v1 fixture.
-No v1-to-v2 migration exists because a v1 stream did not record
-the denizen, relic, adviser, color, first-player, or supporting-world outcomes
-needed to construct the v2 aggregate.
+- Search start records the application-prepared draw; completion records the
+  exact ordered player decision.
+- Recover and Campaign record prepared physical die faces and resolved costs,
+  targets, plans, losses, and outcomes.
+- Forge records the prepared relic transfer and exact assignments.
+- Challenge, banners, minor actions, Negotiation, Visions, and endings record
+  their authoritative choices and terminal facts.
+- War Exhaustion records the canonical random-fallback candidate order and
+  selected winner when deterministic title/Vision rules do not decide it.
 
-The setup-start event carries the selected Oathkeeper goal. This is required
-even though the default first-game plan uses Supremacy: the fixed, unaltered
-all-Exile runtime evaluates all four printed goals, and replay must reconstruct
-Protection, The People, or Devotion without consulting a mutable default.
+Replay never rerolls or redraws. It derives deterministic facts again and
+rejects tampering. Privileged events may contain hidden information and are not
+ordinary player projection data.
 
-V2 writers accept an absolute non-negative sequence for each envelope, so a
-command's event batch can begin at the repository's current nonzero stream
-position. Batch helpers require contiguous absolute positions relative to the
-batch's declared or first position. Both version and sequence fields are
-decoded as exact integers; fractional, negative, non-finite, overflowing, and
-non-JSON-safe values are rejected rather than truncated.
+## Application and adapters
 
-Wake and Travel extend the same contiguous game stream with format v3. Setup
-discriminators remain v2-only; `gameplay.take-wealth`,
-`gameplay.wake-ended`, and `gameplay.traveled` are v3-only. A reader validates
-one pinned game ID, catalog reference, and absolute safe sequence across the
-mixed stream.
-No event is silently reinterpreted under another format. Pre-release work may
-instead update the current codec and fixtures together under the policy above.
+`application.GameEventCodec` is the representation-free port.
+`serialization.GameEventCodecAdapter` implements it with
+`serialization.GameEventWire`. `EventStreamRepository` stores opaque
+serialized records and has no gameplay legality. HSQLDB and JSON remain outward
+adapters.
 
-`gameplay.take-wealth` records the actor, the pawn site derived when the
-command was accepted, and the chosen loose resource. `gameplay.wake-ended`
-records the actor and advances Wake to Act. Both replay deterministically;
-neither replay nor command handling makes a random or hidden choice.
+Appending compares the expected next sequence and writes the complete emitted
+batch atomically. A conflict writes nothing and requires reload. See
+[event-store application service](event-store-application-service.md) and
+[server event journal](server-event-journal.md).
 
-Search adds `gameplay.search-started` and `gameplay.search-completed` in v4.
-The start event records the server-prepared draw required for deterministic
-replay; completion records the player's ordered decision. These privileged
-events are not exposed through ordinary player projections.
+## Pre-release compatibility policy
 
-Rest adds `gameplay.rest-started` and `gameplay.rest-completed` in v5. The
-completion event records returned favor by suit, returned secrets, refreshed
-Supply, and the resulting player/round position. Replay derives those facts
-again from prior state and rejects disagreement before entering the next Wake.
+Before the first public release, the current envelope may change in place when
+the writer, reader, replay tests, fixtures, and disposable development data are
+updated together. There is no compatibility reader for retired experimental
+event formats. The first public release establishes the migration/rejection
+baseline.
 
-Economy adds `gameplay.mustered` and `gameplay.traded` in v6. Each event records
-the typed denizen-or-edifice target and resolved cost/yield. Replay recalculates
-access, suit matching, resource movement, and component limits before accepting
-the recorded outcome.
-
-The catalog reference is pinned in every envelope. For `setup.started`, it is
-also present in the payload because it is domain data; the codec requires the
-two references to agree.
-
-## Open concerns
-
-The current stream identity is a stable `gameId`, and sequence positions are
-zero-based within that game stream. Database partition keys, tenant identity,
-branching/fork identity, archival boundaries, and cross-game transactions are
-deliberately unresolved. Those decisions may refine storage partitioning but
-must not introduce another authoritative history.
+The current stream key is `gameId`, with zero-based absolute sequence
+positions. Tenant, archival, branching, and cross-game transaction policy
+remain open, but must not introduce another authoritative history.

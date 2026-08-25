@@ -67,9 +67,9 @@ cancellation; the decision must complete. Completion is one atomic event. A
 reload or reconnect reconstructs the pending decision and reissues the same
 player-scoped controls without drawing again.
 
-The v4 gameplay envelope adds only `gameplay.search-started` and
-`gameplay.search-completed`. V1 pawn placement, v2 first-game setup, and v3
-Wake/Travel bytes and readers are unchanged. Replay validates the source top,
+The current event envelope uses explicit `gameplay.search-started` and
+`gameplay.search-completed` discriminators in the unified setup/gameplay
+stream. Replay validates the source top,
 cost, draw stop/order, decision ID, card permutation, and placement invariants;
 randomness never executes during replay.
 
@@ -113,6 +113,6 @@ Deferred: all individual denizen/relic/site Search powers and modifiers,
 visions' victory effects and Conspiracy action, Imperial Vision behavior,
 legacy changes, altered Foundations, campaign setup, generic rules-text
 execution, other action families, and any general hidden-information sharing or
-event-feed product. Durable event APIs must remain privileged because v4 Search
+event-feed product. Durable event APIs must remain privileged because Search
 events necessarily contain the replay outcome; ordinary HTTP routes expose
 only scoped snapshots and generic rejection messages.

@@ -149,7 +149,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
 
   test("application never imports server or serialization layers") {
     val root = Paths.get("src/main/scala/oathdigital/application")
-    val forbidden = Vector("import oathdigital.server", "import oathdigital.serialization")
+    val forbidden = Vector("import oathdigital.server", "import oathdigital.persistence",
+      "import oathdigital.serialization")
     val offenders = Files.walk(root).iterator.asScala.filter(path =>
       path.toString.endsWith(".scala") && forbidden.exists(
         Files.readString(path).contains)).map(_.toString).toVector
@@ -182,8 +183,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assert(build.contains("shared\" / \"src\" / \"main\" / \"scala"))
     assert(build.contains("shared\" / \"src\" / \"test\" / \"scala"))
     assert(Files.exists(Paths.get(
-      "frontend/target/scala-2.13/test-classes/oathdigital/protocol/CommandProtocolSuite.class")) ||
-      Files.exists(Paths.get("shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala")))
+      "shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala")))
   }
 
   test("client and server define no duplicate command intent DTO vocabulary") {
@@ -232,5 +232,44 @@ class BackendArchitectureSuite extends munit.FunSuite {
         Files.readString(path).contains)).map(_.toString).sorted
     assertEquals(oversized, Vector.empty)
     assertEquals(rendererViolations, Vector.empty)
+  }
+
+  test("all production Scala files stay bounded") {
+    val roots = Vector(Paths.get("src/main/scala"),
+      Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
+    val oversized = roots.flatMap(root => Files.walk(root).iterator.asScala)
+      .filter(_.toString.endsWith(".scala")).flatMap { path =>
+        val lines = Files.readAllLines(path).size
+        Option.when(lines > 800)(s"$path:$lines")
+      }.sorted
+    assertEquals(oversized, Vector.empty)
+  }
+
+  test("inner production packages do not import outer adapters") {
+    val constraints = Vector(
+      Paths.get("src/main/scala/oathdigital/model") -> Vector(
+        "application", "gameplay", "persistence", "serialization", "server"),
+      Paths.get("src/main/scala/oathdigital/gameplay") -> Vector(
+        "application", "persistence", "presentation", "protocol",
+        "serialization", "server"))
+    val offenders = constraints.flatMap { case (root, packages) =>
+      val forbidden = packages.map(name => s"import oathdigital.$name")
+      Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala"))
+        .filter(path => forbidden.exists(Files.readString(path).contains))
+        .map(_.toString)
+    }.sorted
+    assertEquals(offenders, Vector.empty)
+  }
+
+  test("retired setup and browser-memory symbols do not return") {
+    val roots = Vector(Paths.get("src/main/scala"),
+      Paths.get("frontend/src/main/scala"), Paths.get("shared/src/main/scala"))
+    val retired = Vector("oathdigital.setup", "SetupEventWire", "SetupState",
+      "BeginSetup", "BrowserMemory")
+    val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
+      .filter(_.toString.endsWith(".scala"))
+      .filter(path => retired.exists(Files.readString(path).contains))
+      .map(_.toString).sorted
+    assertEquals(offenders, Vector.empty)
   }
 }
