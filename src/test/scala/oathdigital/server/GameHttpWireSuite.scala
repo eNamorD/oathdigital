@@ -1,8 +1,9 @@
 package oathdigital.server
 
-import oathdigital.application.{GameCommand, GameIntent, GameIntentMapper}
+import oathdigital.application.{GameCommand, GameIntentMapper}
 import oathdigital.gameplay.WakeResource
-import oathdigital.model.{PlayerId, SiteId}
+import oathdigital.model.PlayerId
+import oathdigital.protocol.GameIntent
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
@@ -12,7 +13,7 @@ class GameHttpWireSuite extends munit.FunSuite {
     val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).toOption.get
     assertEquals(development.expectedNextSequence, authenticated.expectedNextSequence)
     assertEquals(development.intent, authenticated.intent)
-    assertEquals(development.intent, GameIntent.Travel(SiteId("site:b")))
+    assertEquals(development.intent, GameIntent.Travel("site:b"))
   }
 
   test("actor injection is rejected by both transports") {
@@ -26,10 +27,16 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("one mapper binds the transport-selected actor") {
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
-      GameIntent.TakeWealth(WakeResource.Favor)),
-      GameCommand.TakeWealth(PlayerId("dev-selected"), WakeResource.Favor))
+      GameIntent.TakeWealth("favor")),
+      Right(GameCommand.TakeWealth(PlayerId("dev-selected"), WakeResource.Favor)))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
-      GameCommand.EndWake(PlayerId("member-seat")))
+      Right(GameCommand.EndWake(PlayerId("member-seat"))))
+  }
+
+  test("domain conversion rejects unknown protocol identifiers without throwing") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.TakeWealth("injected-resource")).left.toOption.get
+    assertEquals(failure.path, "$.intent.resource")
   }
 
   test("malformed actorless requests retain typed paths") {

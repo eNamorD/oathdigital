@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.{ForgeAssignment, GameIntent => GameCommand}
+
 private[frontend] final case class ForgeAssignmentState(
     context: BoardSelectionContext,
     forge: ForgeState,
@@ -15,8 +17,10 @@ private[frontend] final case class ForgeAssignmentState(
     assignments.count(_ == "secret") == forge.secrets
 
   def command(playerId: String): Option[GameCommand.CompleteForge] =
-    Option.when(canConfirm)(GameCommand.CompleteForge(playerId,
-      forge.decisionId, forge.targets.zip(assignments)))
+    Option.when(canConfirm)(GameCommand.CompleteForge(forge.decisionId,
+      forge.targets.zip(assignments).map { case (target, resource) =>
+        ForgeAssignment(target.siteId, target.denizenId, resource)
+      }))
 }
 
 private[frontend] object ForgeAssignmentState {

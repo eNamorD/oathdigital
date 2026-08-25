@@ -164,4 +164,15 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "frontend/target/scala-2.13/test-classes/oathdigital/protocol/CommandProtocolSuite.class")) ||
       Files.exists(Paths.get("shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala")))
   }
+
+  test("client and server define no duplicate command intent DTO vocabulary") {
+    val roots = Vector(Paths.get("src/main/scala"), Paths.get("frontend/src/main/scala"))
+    val offenders = roots.flatMap(root => Files.walk(root).iterator.asScala)
+      .filter(path => path.toString.endsWith(".scala") &&
+        !path.endsWith("oathdigital/application/GameCommands.scala") &&
+        Files.readAllLines(path).asScala.exists(_.matches(
+          "\\s*(sealed trait|final case class) (GameIntent|GameCommand)(\\s|\\().*")))
+      .map(_.toString).sorted
+    assertEquals(offenders, Vector.empty)
+  }
 }

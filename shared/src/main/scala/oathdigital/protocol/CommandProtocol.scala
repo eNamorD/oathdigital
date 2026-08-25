@@ -24,7 +24,7 @@ object ProtocolDecodeFailure {
 
 final case class ActorlessCommandRequest(
     expectedNextSequence: Long,
-    intent: ujson.Obj
+    intent: GameIntent
 )
 
 final case class BootstrapParticipantRequest(
@@ -46,7 +46,7 @@ object ActorlessCommandCodec {
 
   def encode(request: ActorlessCommandRequest): String = ujson.write(ujson.Obj(
     "expectedNextSequence" -> ujson.Num(request.expectedNextSequence.toDouble),
-    "intent" -> request.intent))
+    "intent" -> CommandIntentCodec.encode(request.intent)))
 
   def decode(json: String): Either[ProtocolDecodeFailure, ActorlessCommandRequest] =
     try decodeValue(ujson.read(json))
@@ -66,12 +66,7 @@ object ActorlessCommandCodec {
           "expected a non-negative safe integer"))
       }
       intentValue <- root.value.get("intent").toRight(MissingField("$.intent"))
-      intent <- intentValue match {
-        case obj: ujson.Obj => Right(obj)
-        case _ => Left(ExpectedObject("$.intent"))
-      }
-      _ <- if (intent.value.contains("playerId"))
-        Left(ActorInjection("$.intent.playerId")) else Right(())
+      intent <- CommandIntentCodec.decode(intentValue, "$.intent")
     } yield ActorlessCommandRequest(sequence, intent)
     case _ => Left(ExpectedObject("$"))
   }

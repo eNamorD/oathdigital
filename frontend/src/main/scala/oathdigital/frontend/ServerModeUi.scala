@@ -1,5 +1,7 @@
 package oathdigital.frontend
 
+import oathdigital.protocol.{GameIntent => GameCommand, _}
+
 import org.scalajs.dom
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -397,7 +399,7 @@ object ServerModeUi {
         val end = button("End Wake", "wake-action")
         end.disabled = !controlsAvailable ||
           !value.legalControls.contains("endWake")
-        end.onclick = _ => submit(GameCommand.EndWake(selectedPlayer))
+        end.onclick = _ => submit(GameCommand.EndWake)
         panel.appendChild(end)
       }
       if (!value.actionSelectionOpen && presentation.showGameplayControls) {
@@ -506,19 +508,19 @@ object ServerModeUi {
             val search = button(label, "act-action search-action")
             search.disabled = !controlsAvailable || !presentation.showGameplayControls
             search.onclick = _ => submit(GameCommand.BeginSearch(
-              selectedPlayer, source.kind, source.region))
+              SearchSource(source.kind, source.region)))
             panel.appendChild(search)
           }
           if (value.legalControls.contains("beginRecover")) {
             val recover = button("Recover (1 Supply)", "act-action recover-action")
             recover.disabled = !controlsAvailable
-            recover.onclick = _ => submit(GameCommand.BeginRecover(selectedPlayer))
+            recover.onclick = _ => submit(GameCommand.BeginRecover)
             panel.appendChild(recover)
           }
           if (value.legalControls.contains("beginForge")) {
             val forge = button("Forge (1 Supply)", "act-action forge-action")
             forge.disabled = !controlsAvailable
-            forge.onclick = _ => submit(GameCommand.BeginForge(selectedPlayer))
+            forge.onclick = _ => submit(GameCommand.BeginForge)
             panel.appendChild(forge)
           }
           if (value.legalControls.contains("placeBannerResource")) {
@@ -532,7 +534,7 @@ object ServerModeUi {
               val place = button("Place resources (0 Supply)", "banner-place-resource")
               place.disabled = !controlsAvailable
               place.onclick = _ => submit(GameCommand.PlaceBannerResource(
-                selectedPlayer, banner.banner, amount.value.toInt))
+                banner.banner, amount.value.toInt))
               panel.appendChild(place)
             }
           }
@@ -559,14 +561,13 @@ object ServerModeUi {
             if (minor.canPeekSiteRelics) {
               val peek = button("Peek at relics at your site", "minor-peek-relics")
               peek.disabled = !controlsAvailable
-              peek.onclick = _ => submit(GameCommand.PeekSiteRelics(selectedPlayer))
+              peek.onclick = _ => submit(GameCommand.PeekSiteRelics)
               panel.appendChild(peek)
             }
             minor.facedownRelics.foreach { relic =>
               val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
               reveal.disabled = !controlsAvailable
-              reveal.onclick = _ => submit(GameCommand.RevealOwnedRelic(
-                selectedPlayer, relic.cardId))
+              reveal.onclick = _ => submit(GameCommand.RevealOwnedRelic(relic.cardId))
               panel.appendChild(reveal)
             }
             Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
@@ -581,7 +582,7 @@ object ServerModeUi {
                 val move = button("Move warbands", "minor-move-warband")
                 move.disabled = !controlsAvailable
                 move.onclick = _ => submit(GameCommand.MoveWarbands(
-                  selectedPlayer, toSite, amount.value.toInt))
+                  toSite, amount.value.toInt))
                 panel.appendChild(move)
               }
           }
@@ -607,7 +608,7 @@ object ServerModeUi {
           if (value.legalControls.contains("beginRest")) {
             val rest = button("End Act and Rest", "rest-action")
             rest.disabled = !controlsAvailable
-            rest.onclick = _ => submit(GameCommand.BeginRest(selectedPlayer))
+            rest.onclick = _ => submit(GameCommand.BeginRest)
             panel.appendChild(rest)
           }
         }
@@ -620,15 +621,13 @@ object ServerModeUi {
         if (recover.canAddDice) {
           val add = button("Spend 1 Supply for two dice", "recover-add")
           add.disabled = !controlsAvailable
-          add.onclick = _ => submit(GameCommand.AddRecoverDice(
-            selectedPlayer, recover.decisionId))
+          add.onclick = _ => submit(GameCommand.AddRecoverDice(recover.decisionId))
           panel.appendChild(add)
         }
         if (recover.canStop) {
           val stop = button("Stop Recover", "recover-stop")
           stop.disabled = !controlsAvailable
-          stop.onclick = _ => submit(GameCommand.StopRecover(
-            selectedPlayer, recover.decisionId))
+          stop.onclick = _ => submit(GameCommand.StopRecover(recover.decisionId))
           panel.appendChild(stop)
         }
       }
@@ -751,18 +750,19 @@ object ServerModeUi {
                   Option.when(kind == "site-relic")(deal.siteId),
                   Option.when(kind == "adviser")(card.cardKind), card.cardId)
             }.toVector)
-            submit(GameCommand.ReplaceNegotiationTerms(selectedPlayer, deal.decisionId, terms))
+            submit(GameCommand.ReplaceNegotiationTerms(deal.decisionId,
+              protocolNegotiationTerms(terms)))
           }
           panel.appendChild(save)
           val accept = button("Accept Current Deal", "negotiation-accept")
           accept.disabled = !controlsAvailable ||
             !value.legalControls.contains("acceptNegotiation")
           accept.onclick = _ => submit(GameCommand.AcceptNegotiation(
-            selectedPlayer, deal.decisionId)); panel.appendChild(accept)
+            deal.decisionId)); panel.appendChild(accept)
           val decline = button("End/Decline", "negotiation-decline")
           decline.disabled = !controlsAvailable
           decline.onclick = _ => submit(GameCommand.DeclineNegotiation(
-            selectedPlayer, deal.decisionId)); panel.appendChild(decline)
+            deal.decisionId)); panel.appendChild(decline)
         case None if value.negotiationWaiting =>
           panel.appendChild(text("p", "informational", "Waiting for the negotiation to finish."))
         case _ => ()
@@ -780,7 +780,7 @@ object ServerModeUi {
             choose.title = choice.mechanicalResult
             choose.disabled = !controlsAvailable
             choose.onclick = _ => submit(GameCommand.ChooseCampaignPlan(
-              selectedPlayer, campaign.decisionId, choice))
+              campaign.decisionId, protocolCampaignPlan(choice)))
             panel.appendChild(choose)
           }
           val rollsNow = campaign.planSide == "defender" || campaign.defenderKind == "bandits"
@@ -790,7 +790,7 @@ object ServerModeUi {
           val finish = button(finishLabel, "campaign-finish-plans")
           finish.disabled = !controlsAvailable
           finish.onclick = _ => submit(GameCommand.FinishCampaignPlans(
-            selectedPlayer, campaign.decisionId))
+            campaign.decisionId))
           panel.appendChild(finish)
         } else {
           panel.appendChild(text("p", "campaign-results",
@@ -803,7 +803,7 @@ object ServerModeUi {
             val choose = button(s"Sacrifice $count", "campaign-sacrifice")
             choose.disabled = !controlsAvailable
             choose.onclick = _ => submit(GameCommand.ChooseCampaignSacrifice(
-              selectedPlayer, campaign.decisionId, count))
+              campaign.decisionId, count))
             panel.appendChild(choose)
           }
         } else {
@@ -850,8 +850,8 @@ object ServerModeUi {
             confirm.disabled = !controlsAvailable
             confirm.onclick = _ => {
               campaignPlacementState = None
-              submit(GameCommand.PlaceCampaignForce(selectedPlayer,
-                campaign.decisionId, placement.allocations))
+              submit(GameCommand.PlaceCampaignForce(campaign.decisionId,
+                placement.allocations.map(v => CampaignForceAllocation(v.siteId, v.count))))
             }
             panel.appendChild(confirm)
             val back = button("Back", "campaign-placement-back")
@@ -890,7 +890,7 @@ object ServerModeUi {
           val choose = button(label, "oathkeeper-recipient-choice")
           choose.disabled = !controlsAvailable
           choose.onclick = _ => submit(GameCommand.ChooseOathkeeperRecipient(
-            selectedPlayer, decision.decisionId, candidate))
+            decision.decisionId, candidate))
           panel.appendChild(choose)
         }
       }
@@ -901,7 +901,7 @@ object ServerModeUi {
         val finish = button("Finish Rest", "rest-action")
         finish.disabled = !controlsAvailable ||
           !value.legalControls.contains("finishRest")
-        finish.onclick = _ => submit(GameCommand.FinishRest(selectedPlayer))
+        finish.onclick = _ => submit(GameCommand.FinishRest)
         panel.appendChild(finish)
       }
       value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
@@ -995,7 +995,7 @@ object ServerModeUi {
           val choose = button(s"Take ${card.name} facedown", "resolution-choice")
           choose.disabled = !controlsAvailable
           choose.onclick = _ => submit(GameCommand.ResolveCardDecision(
-            selectedPlayer, decision.decisionId,
+            decision.decisionId,
             DecisionResolution.TakeFacedownRelic(card.cardId)))
           shell.appendChild(choose)
         }
@@ -1004,7 +1004,7 @@ object ServerModeUi {
         val confirm = button("Confirm adviser", "decision-confirm")
         confirm.disabled = !state.arrangementValid(decision.cards) || !controlsAvailable
         confirm.onclick = _ => state.keep.headOption.foreach(card => submit(
-          GameCommand.ResolveCardDecision(selectedPlayer, decision.decisionId,
+          GameCommand.ResolveCardDecision(decision.decisionId,
             DecisionResolution.StartingAdviser(card.cardId))))
         shell.appendChild(confirm)
       } else state.stage match {
@@ -1050,15 +1050,18 @@ object ServerModeUi {
           confirmRow.appendChild(back)
           val confirm = button("Final confirm", "decision-confirm")
           confirm.disabled = !state.resolutionValid || !controlsAvailable
-          confirm.onclick = _ => for {
-            resolution <- state.selectedResolution
-          } submit(GameCommand.ResolveCardDecision(selectedPlayer, decision.decisionId,
-            DecisionResolution.Search(kept, state.discard,
-              resolution.kind match {
+          confirm.onclick = _ => state.selectedResolution.foreach { resolution =>
+            val placementKind = resolution.kind match {
                 case "adviser" if resolution.orientation.contains("face-up") => "adviser-face-up"
                 case "adviser" => "adviser-face-down"
                 case other => other
-              }, resolution.orientation, state.selectedReplacement)))
+            }
+            submit(GameCommand.ResolveCardDecision(decision.decisionId,
+              DecisionResolution.Search(protocolWorldCard(kept),
+                state.discard.map(protocolWorldCard), Placement(placementKind,
+                  state.selectedReplacement.map(card =>
+                    CardRef(card.cardKind, card.cardId))))))
+          }
           confirmRow.appendChild(confirm)
           shell.appendChild(confirmRow)
       }
@@ -1516,12 +1519,12 @@ object ServerModeUi {
       attackDiceCount: Int = 0): Option[GameCommand] =
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.PlacePawn(playerId, site))
+        Some(GameCommand.PlacePawn(site))
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.Travel(playerId, site))
+        Some(GameCommand.Travel(site))
       case ("campaign-conquest", sites) if sites.nonEmpty &&
           sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.CampaignConquest(playerId, sites.collect {
+        Some(GameCommand.BeginCampaignConquest(sites.collect {
           case BoardTargetRef.Site(site) => site
         }, attackDiceCount))
       case ("campaign-raid", targets) if targets.nonEmpty &&
@@ -1530,35 +1533,34 @@ object ServerModeUi {
             case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
                 _: BoardTargetRef.PlayerBanner => true
             case _ => false
-          } => Some(GameCommand.CampaignRaid(playerId, targets, attackDiceCount))
+          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), attackDiceCount))
       case ("challenge", Vector(BoardTargetRef.PlayerBanner(_, banner))) =>
-        Some(GameCommand.BeginChallenge(playerId, banner))
+        Some(GameCommand.BeginChallenge(banner))
       case ("negotiation", players) if players.nonEmpty &&
           players.forall(_.isInstanceOf[BoardTargetRef.Player]) =>
-        Some(GameCommand.BeginNegotiation(playerId, players.collect {
+        Some(GameCommand.BeginNegotiation(players.collect {
           case BoardTargetRef.Player(id) => id
         }))
       case ("reveal-vision", Vector(BoardTargetRef.PlayerAdviser(owner, vision)))
           if owner == playerId =>
-        Some(GameCommand.RevealVision(playerId, vision))
+        Some(GameCommand.RevealVision(vision))
       case ("play-conspiracy", Vector(BoardTargetRef.PlayerRelic(owner, relic))) =>
-        relic.toIntOption.map(slot => GameCommand.PlayConspiracy(playerId,
+        relic.toIntOption.map(slot => GameCommand.PlayConspiracy(
           Some(ConspiracyTarget.RelicSlot(owner, slot))))
       case ("play-conspiracy", Vector(BoardTargetRef.PlayerBanner(owner, banner))) =>
-        Some(GameCommand.PlayConspiracy(playerId,
+        Some(GameCommand.PlayConspiracy(
           Some(ConspiracyTarget.Banner(owner, banner))))
       case ("play-conspiracy", Vector()) if action.minimum == 0 &&
           action.maximum == 0 =>
-        Some(GameCommand.PlayConspiracy(playerId, None))
+        Some(GameCommand.PlayConspiracy(None))
       case ("conspiracy-secret-site", Vector(BoardTargetRef.Site(site))) =>
-        action.decisionId.map(GameCommand.ChooseConspiracySecretSite(
-          playerId, _, site))
+        action.decisionId.map(GameCommand.ChooseConspiracySecretSite(_, site))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Muster(playerId, EconomyTarget(kind, id)))
+        Some(GameCommand.Muster(oathdigital.protocol.EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "favor"))
+        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "favor"))
       case ("trade-secret", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(playerId, EconomyTarget(kind, id), "secret"))
+        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "secret"))
       case _ => None
     }
 
@@ -1567,7 +1569,7 @@ object ServerModeUi {
     (formation.action.actionKind, formation.targets) match {
       case ("campaign-conquest", sites) if sites.nonEmpty &&
           sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.CampaignConquest(playerId, sites.collect {
+        Some(GameCommand.BeginCampaignConquest(sites.collect {
           case BoardTargetRef.Site(site) => site
         }, formation.force))
       case ("campaign-raid", targets) if targets.nonEmpty &&
@@ -1576,7 +1578,7 @@ object ServerModeUi {
             case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
                 _: BoardTargetRef.PlayerBanner => true
             case _ => false
-          } => Some(GameCommand.CampaignRaid(playerId, targets, formation.force))
+          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), formation.force))
       case _ => None
     }
 
@@ -1585,20 +1587,20 @@ object ServerModeUi {
       playerId: String): Vector[GameCommand.RelocateCampaignRaidPawn] =
     if (decision.actorPlayerId != playerId) Vector.empty
     else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
-      playerId, decision.decisionId, site))
+      decision.decisionId, site))
 
   private[frontend] def challengeSiteCommands(decision: ChallengeState,
       playerId: String): Vector[GameCommand.ChooseChallengeSecretSite] =
     if (decision.actorPlayerId != playerId) Vector.empty
     else decision.legalSecretSiteIds.map(site =>
-      GameCommand.ChooseChallengeSecretSite(playerId, decision.decisionId, site))
+      GameCommand.ChooseChallengeSecretSite(decision.decisionId, site))
 
   private[frontend] def completeChallengeCommand(decision: ChallengeState,
       playerId: String, amount: Int): Option[GameCommand.CompleteChallenge] =
     Option.when(decision.actorPlayerId == playerId &&
       decision.legalSecretSiteIds.isEmpty && amount >= decision.minimumPlacement &&
       amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
-        playerId, decision.decisionId, amount))
+        decision.decisionId, amount))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,
@@ -1609,11 +1611,11 @@ object ServerModeUi {
     else Vector(
       "takeFavor" -> TakeWealthAction(
         "Take Wealth: 1 favor",
-        GameCommand.TakeWealth(playerId, "favor")
+        GameCommand.TakeWealth("favor")
       ),
       "takeSecret" -> TakeWealthAction(
         "Take Wealth: 1 secret",
-        GameCommand.TakeWealth(playerId, "secret")
+        GameCommand.TakeWealth("secret")
       )
     ).collect {
       case (legalControl, action)
@@ -1638,13 +1640,51 @@ object ServerModeUi {
       placement: MinorAdviserPlacement, playerId: String): Option[GameCommand] =
     placement.kind match {
       case "discard" => Some(GameCommand.DiscardFacedownAdviser(
-        playerId, adviser.card))
+        protocolWorldCard(adviser.card)))
       case "play-adviser" => Some(GameCommand.PlayFacedownAdviser(
-        playerId, adviser.card, "adviser-face-up"))
+        protocolWorldCard(adviser.card), Placement("adviser-face-up", None)))
       case "play-site" => Some(GameCommand.PlayFacedownAdviser(
-        playerId, adviser.card, "site", placement.replacement))
+        protocolWorldCard(adviser.card), Placement("site", placement.replacement.map(
+          card => CardRef(card.cardKind, card.cardId)))))
       case _ => None
     }
+
+  private def protocolWorldCard(card: CardDetails): WorldCard =
+    WorldCard(card.cardKind, card.cardId)
+
+  private def protocolRaidTarget(target: BoardTargetRef): CampaignRaidTarget = target match {
+    case BoardTargetRef.PlayerPawn(player) => CampaignRaidTarget.Pawn(player)
+    case BoardTargetRef.PlayerRelic(player, relic) => CampaignRaidTarget.Relic(player, relic)
+    case BoardTargetRef.PlayerBanner(player, banner) => CampaignRaidTarget.Banner(player, banner)
+    case other => throw new IllegalArgumentException(
+      s"unsupported Campaign Raid target ${other.stableKey}")
+  }
+
+  private def protocolCampaignPlan(choice: CampaignPlanChoice): CampaignPlanSource =
+    choice.kind match {
+      case "adviser" => CampaignPlanSource.Adviser(choice.playerId.get, choice.cardId.get)
+      case "site-card" => CampaignPlanSource.SiteCard(choice.siteId.get, choice.cardId.get)
+      case "relic" => CampaignPlanSource.Relic(choice.playerId.get, choice.cardId.get)
+      case "title" => CampaignPlanSource.Title(choice.playerId.get)
+      case other => throw new IllegalArgumentException(s"unknown Campaign plan '$other'")
+    }
+
+  private def protocolNegotiationTerms(value: NegotiationTermsInput): NegotiationTerms =
+    NegotiationTerms(
+      value.transfers.map(v => NegotiationTransfer(
+        v.recipientPlayerId, v.favor, v.relicIds)),
+      value.disclosures.map { disclosure =>
+        val information: NegotiationInformation = disclosure.kind match {
+          case "adviser" => NegotiationInformation.Adviser(
+            disclosure.ownerPlayerId.get,
+            WorldCard(disclosure.cardKind.get, disclosure.cardId))
+          case "held-relic" => NegotiationInformation.HeldRelic(
+            disclosure.ownerPlayerId.get, disclosure.cardId)
+          case "site-relic" => NegotiationInformation.SiteRelic(
+            disclosure.siteId.get, disclosure.cardId)
+        }
+        NegotiationDisclosure(disclosure.recipientPlayerId, information)
+      })
 
   private def playerDisplayName(
       value: GameProjection,

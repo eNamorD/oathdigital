@@ -5,17 +5,13 @@ import scala.util.control.NonFatal
 import oathdigital.application.{
   BootstrapParticipant,
   FirstGameBootstrapConfig,
-  GameIntent,
   GameProjection
 }
+import oathdigital.protocol.ActorlessCommandRequest
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.PlayerColor
 
-final case class GameCommandRequest(
-    expectedNextSequence: Long,
-    intent: GameIntent
-)
 final case class FirstGameBootstrapRequest(
     expectedNextSequence: Long,
     config: FirstGameBootstrapConfig
@@ -30,6 +26,8 @@ object GameHttpWire {
     try {
       for {
         root <- objectValue(ujson.read(json), "$")
+        _ <- exactFields(root,
+          Set("expectedNextSequence", "participants", "firstPlayer"), "$")
         expectedValue <- field(root, "expectedNextSequence", "$")
         expected <- safeSequence(expectedValue, "$.expectedNextSequence")
         participantsValue <- field(root, "participants", "$")
@@ -42,6 +40,7 @@ object GameHttpWire {
             val path = s"$$.participants[$index]"
             for {
               obj <- objectValue(value, path)
+              _ <- exactFields(obj, Set("playerId", "lineageId", "color"), path)
               player <- stringField(obj, "playerId", path)
               lineage <- stringField(obj, "lineageId", path)
               color <- stringField(obj, "color", path)
@@ -65,9 +64,13 @@ object GameHttpWire {
     }
 
   def decodeCommand(json: String): Either[HttpInputError,
-    GameCommandRequest] =
-    AuthenticatedGameHttpWire.decodeCommand(json)
-      .map(value => GameCommandRequest(value.expectedNextSequence, value.intent))
+    ActorlessCommandRequest] = AuthenticatedGameHttpWire.decodeCommand(json)
+
+  private def exactFields(value: ujson.Obj, allowed: Set[String], path: String)
+      : Either[HttpInputError, Unit] =
+    value.value.keys.find(!allowed.contains(_))
+      .map(name => Left(HttpInputError(s"$path.$name", "field is not accepted")))
+      .getOrElse(Right(()))
 
   def encodeProjection(projection: GameProjection): String =
     ujson.write(

@@ -14,6 +14,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import org.slf4j.LoggerFactory
 
 import oathdigital.application._
+import oathdigital.protocol.ActorlessCommandRequest
 
 sealed trait AuthenticatedGameFailure extends Product with Serializable
 object AuthenticatedGameFailure {
@@ -24,6 +25,8 @@ object AuthenticatedGameFailure {
   final case class Identity(error: IdentityFailure)
       extends AuthenticatedGameFailure
   final case class BootstrapConfiguration(message: String)
+      extends AuthenticatedGameFailure
+  final case class InvalidIntent(error: GameIntentMappingFailure)
       extends AuthenticatedGameFailure
 }
 
@@ -59,14 +62,15 @@ final class AuthenticatedGameGateway(
   def submit(
       gameId: String,
       principal: AuthenticatedPrincipal,
-      request: AuthenticatedCommandRequest
+      request: ActorlessCommandRequest
   ): Either[AuthenticatedGameFailure, GameProjection] =
     authorization.authorizeCommand(gameId, principal)
       .left.map(Authorization)
       .flatMap { actor =>
-        val command = GameIntentMapper.bind(actor.access.playerId, request.intent)
-        service.handle(gameId, request.expectedNextSequence, command)
-          .left.map(Application)
+        GameIntentMapper.bind(actor.access.playerId, request.intent)
+          .left.map(InvalidIntent)
+          .flatMap(command => service.handle(gameId,
+            request.expectedNextSequence, command).left.map(Application))
           .map(accepted => projector.project(
             gameId,
             LoadedGame(accepted.state, accepted.nextSequence),
@@ -273,6 +277,9 @@ final class AuthenticatedGameRoutes(
     case _: AuthenticatedGameFailure.BootstrapConfiguration =>
       (StatusCodes.UnprocessableContent, "membership-configuration-mismatch",
         "participants must exactly match the provisioned player seats", false)
+    case AuthenticatedGameFailure.InvalidIntent(_) =>
+      (StatusCodes.BadRequest, "malformed-request",
+        "the command contains an invalid domain identifier", false)
     case AuthenticatedGameFailure.Application(error) => error match {
       case _: GameApplicationError.StreamNotFound =>
         (StatusCodes.NotFound, "stream-not-found",

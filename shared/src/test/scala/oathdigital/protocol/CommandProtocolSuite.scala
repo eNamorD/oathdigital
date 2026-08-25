@@ -1,19 +1,65 @@
 package oathdigital.protocol
 
 class CommandProtocolSuite extends munit.FunSuite {
-  test("actorless command envelopes round trip identically") {
-    val request = ActorlessCommandRequest(12,
-      ujson.Obj("type" -> "travel", "destinationSiteId" -> "S2"))
-    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
-      Right(request))
+  import GameIntent._
+
+  private val examples: Vector[GameIntent] = Vector(
+    PlacePawn("site:a"), TakeWealth("favor"), EndWake, BeginRest, FinishRest,
+    Travel("site:b"), Muster(EconomyTarget("denizen", "d1")),
+    Trade(EconomyTarget("edifice", "e1"), "secret"),
+    BeginSearch(SearchSource("world", None)), BeginRecover, BeginForge,
+    CompleteForge("forge-1", Vector(ForgeAssignment("site:a", "d1", "favor"))),
+    BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
+    CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
+    DiscardFacedownAdviser(WorldCard("denizen", "d1")),
+    PlayFacedownAdviser(WorldCard("denizen", "d1"), Placement("site", None)),
+    RevealVision("v1"), PlayConspiracy(Some(ConspiracyTarget.RelicSlot("p2", 0))),
+    ChooseConspiracySecretSite("c2", "site:b"), PeekSiteRelics,
+    RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
+    BeginNegotiation(Vector("p2", "p3")),
+    ReplaceNegotiationTerms("n1", NegotiationTerms(
+      Vector(NegotiationTransfer("p2", 1, Vector("r1"))),
+      Vector(NegotiationDisclosure("p2", NegotiationInformation.Adviser(
+        "p1", WorldCard("denizen", "d1")))))),
+    AcceptNegotiation("n1"), DeclineNegotiation("n1"), AddRecoverDice("r1"),
+    StopRecover("r1"), BeginCampaignConquest(Vector("site:a", "site:b"), 3),
+    BeginCampaignRaid(Vector(CampaignRaidTarget.Pawn("p2"),
+      CampaignRaidTarget.Relic("p2", "r1"),
+      CampaignRaidTarget.Banner("p2", "peoples-favor")), 3),
+    ChooseCampaignPlan("cp1", CampaignPlanSource.Adviser("p1", "d1")),
+    FinishCampaignPlans("cp1"), ChooseCampaignSacrifice("cp1", 1),
+    PlaceCampaignForce("cp1", Vector(CampaignForceAllocation("site:a", 2))),
+    RelocateCampaignRaidPawn("cp1", "site:c"),
+    ChooseOathkeeperRecipient("o1", "p2"),
+    ResolveCardDecision("d1", DecisionResolution.Search(
+      WorldCard("vision", "v1"), Vector(WorldCard("denizen", "d2")),
+      Placement("adviser-face-down", Some(CardRef("denizen", "d3")))))
+  )
+
+  test("every actorless command intent round trips through the shared codec") {
+    examples.zipWithIndex.foreach { case (intent, index) =>
+      val request = ActorlessCommandRequest(index.toLong, intent)
+      assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
+        Right(request), intent.toString)
+    }
   }
 
-  test("actor injection and non-exact envelopes have typed failures") {
-    val injected = """{"expectedNextSequence":0,"intent":{"type":"endWake","playerId":"spoof"}}"""
-    assertEquals(ActorlessCommandCodec.decode(injected).left.toOption.get.path,
-      "$.intent.playerId")
-    val extra = """{"expectedNextSequence":0,"intent":{"type":"endWake"},"actor":"spoof"}"""
-    assertEquals(ActorlessCommandCodec.decode(extra).left.toOption.get.path,
-      "$.actor")
+  test("actor injection is rejected at command identity fields") {
+    Vector("playerId", "actor", "actorId", "actorPlayerId").foreach { field =>
+      val json = s"""{"expectedNextSequence":0,"intent":{"type":"endWake","$field":"spoof"}}"""
+      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      assertEquals(failure.path, s"$$.intent.$field")
+      assert(failure.isInstanceOf[ProtocolDecodeFailure.ActorInjection])
+    }
+  }
+
+  test("malformed fields and structural duplicates retain exact paths") {
+    assertEquals(ActorlessCommandCodec.decode("{").left.toOption.get.path, "$")
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""
+    assertEquals(ActorlessCommandCodec.decode(missing).left.toOption.get.path,
+      "$.intent.destinationSiteId")
+    val duplicate = """{"expectedNextSequence":0,"intent":{"type":"beginNegotiation","participantPlayerIds":["p2","p2"]}}"""
+    assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
+      "$.intent.participantPlayerIds")
   }
 }
