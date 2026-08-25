@@ -13,12 +13,29 @@ object RuleSourceFace {
   case object Printed extends RuleSourceFace
   case object Active extends RuleSourceFace
   case object Inactive extends RuleSourceFace
+  case object Mob extends RuleSourceFace
+  case object GrandCouncil extends RuleSourceFace
+  case object WanderingFlame extends RuleSourceFace
+  case object Festival extends RuleSourceFace
+  case object Normal extends RuleSourceFace
+  case object Altered extends RuleSourceFace
+}
+
+/** Mutable facts carried by sources that are not catalog cards. */
+sealed trait RuleSourceState extends Product with Serializable
+object RuleSourceState {
+  case object Stateless extends RuleSourceState
+  final case class Banner(holder: Option[PlayerId], resources: Int)
+      extends RuleSourceState
+  final case class Foundation(alterationSources: Vector[LegacyId])
+      extends RuleSourceState
 }
 
 final case class IndexedRuleSource(
     source: RuleSourceRef,
     handlerIds: Vector[String],
-    face: RuleSourceFace
+    face: RuleSourceFace,
+    state: RuleSourceState = RuleSourceState.Stateless
 )
 
 /** Redaction-neutral inventory of runtime sources and their declared handlers.
@@ -51,7 +68,13 @@ object RuleSourceIndex {
                   RuleSourceFace.Intact else RuleSourceFace.Ruined)
           }
       }
-      printed ++ cards
+      val relics = current.map.sites(siteId).relics.flatMap { relic =>
+        catalog.relics.find(_.id.value == relic.id.value).toVector.map(
+          definition => IndexedRuleSource(
+            RuleSourceRef.SiteRelic(siteId, relic.id), definition.handlers,
+            orientation(relic.orientation)))
+      }
+      printed ++ cards ++ relics
     }
     val players = current.players.flatMap { player =>
       val advisers = player.advisers.collect { case denizen: DenizenState =>
@@ -77,7 +100,50 @@ object RuleSourceIndex {
               if (legacy.active) RuleSourceFace.Active else RuleSourceFace.Inactive))
         }
       }
-    sites ++ players ++ legacies
+    val banners = Vector(
+      IndexedRuleSource(
+        RuleSourceRef.Banner(Banner.PeoplesFavor.key),
+        current.banners.peoplesFavor.active match {
+          case PeoplesFavorFace.Mob => Vector.empty
+          case PeoplesFavorFace.GrandCouncil =>
+            Vector("banner.peoples-favor.grand-council")
+        },
+        current.banners.peoplesFavor.active match {
+          case PeoplesFavorFace.Mob => RuleSourceFace.Mob
+          case PeoplesFavorFace.GrandCouncil => RuleSourceFace.GrandCouncil
+        },
+        RuleSourceState.Banner(current.banners.peoplesFavor.holder,
+          current.banners.peoplesFavor.favor)),
+      IndexedRuleSource(
+        RuleSourceRef.Banner(Banner.DarkestSecret.key),
+        current.banners.darkestSecret.active match {
+          case DarkestSecretFace.WanderingFlame => Vector.empty
+          case DarkestSecretFace.Festival =>
+            Vector("banner.darkest-secret.festival")
+        },
+        current.banners.darkestSecret.active match {
+          case DarkestSecretFace.WanderingFlame => RuleSourceFace.WanderingFlame
+          case DarkestSecretFace.Festival => RuleSourceFace.Festival
+        },
+        RuleSourceState.Banner(current.banners.darkestSecret.holder,
+          current.banners.darkestSecret.secrets)))
+    val foundations = FoundationNumber.all.flatMap { number =>
+      ready.game.campaign.foundations.get(number).map { foundation =>
+        IndexedRuleSource(
+          RuleSourceRef.Foundation(number),
+          foundation.face match {
+            case FoundationFace.Normal => Vector.empty
+            case FoundationFace.Altered => Vector("foundation.altered")
+          },
+          foundation.face match {
+            case FoundationFace.Normal => RuleSourceFace.Normal
+            case FoundationFace.Altered => RuleSourceFace.Altered
+          },
+          RuleSourceState.Foundation(
+            foundation.alterationSources.toVector.sortBy(_.value)))
+      }
+    }
+    sites ++ players ++ banners ++ foundations ++ legacies
   }
 
   private def orientation(value: Orientation): RuleSourceFace = value match {

@@ -23,6 +23,9 @@ object RuleSourceRef {
   final case class Relic(playerId: PlayerId, id: RelicId) extends RuleSourceRef {
     def stableKey: String = s"relic:${playerId.value}:${id.value}"
   }
+  final case class SiteRelic(siteId: SiteId, id: RelicId) extends RuleSourceRef {
+    def stableKey: String = s"site-relic:${siteId.value}:${id.value}"
+  }
   final case class Edifice(siteId: SiteId, id: EdificeId) extends RuleSourceRef {
     def stableKey: String = s"edifice:${siteId.value}:${id.value}"
   }
