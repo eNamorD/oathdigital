@@ -21,6 +21,8 @@ import oathdigital.application.{
   InMemoryEventStreamRepository
 }
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
+  GameIntent}
 
 class GameRoutesSuite extends munit.FunSuite {
   test("health load malformed request and stale command status mappings") {
@@ -86,12 +88,22 @@ class GameRoutesSuite extends munit.FunSuite {
       val placed = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
-        s"""{"expectedNextSequence":1,"intent":{"type":"placePawn",
-           |"siteId":"${sites.head.value}"}}""".stripMargin
+        ActorlessCommandCodec.encode(ActorlessCommandRequest(
+          1L,
+          GameIntent.PlacePawn("site:ancient-city")
+        ))
       )
       assertEquals(placed.statusCode(), 200)
       assertEquals(ujson.read(placed.body())("phase").str,
         "awaiting-adviser")
+      val placedHistory = get(client,
+        s"$base/api/dev/first-games/route-game/events?limit=2")
+      assertEquals(placedHistory.statusCode(), 200)
+      assertEquals(ujson.read(placedHistory.body())("events").arr.size, 2)
+      assertEquals(
+        ujson.read(placedHistory.body())("events")(1)("sequence").num.toLong,
+        1L
+      )
 
       val adviser = plan.denizenOrder(9)
       val chosen = post(

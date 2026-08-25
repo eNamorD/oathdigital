@@ -5,6 +5,10 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 lazy val root = (project in file("."))
   .settings(
     name := "oathdigital-engine",
+    Compile / run := (Compile / run)
+      .dependsOn(frontend / Compile / fastLinkJS).evaluated,
+    Compile / runMain := (Compile / runMain)
+      .dependsOn(frontend / Compile / fastLinkJS).evaluated,
     Compile / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "main" / "scala",
     Test / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "test" / "scala",
     libraryDependencies ++= Seq(

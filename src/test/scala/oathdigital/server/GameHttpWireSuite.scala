@@ -3,17 +3,20 @@ package oathdigital.server
 import oathdigital.application.{GameCommand, GameIntentMapper}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model.PlayerId
-import oathdigital.protocol.GameIntent
+import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
+  GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
-    val json =
-      """{"expectedNextSequence":8,"intent":{"type":"travel","destinationSiteId":"site:b"}}"""
+    val json = ActorlessCommandCodec.encode(ActorlessCommandRequest(
+      8L,
+      GameIntent.PlacePawn("site:ancient-city")
+    ))
     val development = GameHttpWire.decodeCommand(json).toOption.get
     val authenticated = AuthenticatedGameHttpWire.decodeCommand(json).toOption.get
     assertEquals(development.expectedNextSequence, authenticated.expectedNextSequence)
     assertEquals(development.intent, authenticated.intent)
-    assertEquals(development.intent, GameIntent.Travel("site:b"))
+    assertEquals(development.intent, GameIntent.PlacePawn("site:ancient-city"))
   }
 
   test("actor injection is rejected by both transports") {

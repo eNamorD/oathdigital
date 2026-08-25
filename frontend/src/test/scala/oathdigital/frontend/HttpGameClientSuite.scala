@@ -4,6 +4,8 @@ import munit.FunSuite
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
+  GameIntent}
 
 class HttpGameClientSuite extends FunSuite {
   test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
@@ -194,8 +196,22 @@ class HttpGameClientSuite extends FunSuite {
   }
 
   test("pawn and adviser commands preserve explicit sequence and opaque IDs") {
-    val opaqueSite = "site:ABC-17/printed"
+    val opaqueSite = "site:ancient-city"
     val opaqueAdviser = "denizen:0612"
+    val target = BoardTargetRef.Site(opaqueSite)
+    val setupAction = BoardTargetAction(
+      "place-pawn",
+      "Choose a starting site",
+      1,
+      1,
+      autoActivate = true,
+      Vector(BoardTargetCandidate(target, "Ancient City"))
+    )
+    val setupCommand = ServerUiSupport.commandForSelection(
+      setupAction,
+      Vector(target),
+      "red-exile"
+    ).get
     val transport = new StubTransport(Vector(
       Right(TransportResponse(200, projectionJson(
         sequence = 2,
@@ -217,7 +233,7 @@ class HttpGameClientSuite extends FunSuite {
         "game-1",
         "red-exile",
         1L,
-        GameCommand.PlacePawn("red-exile", opaqueSite)
+        setupCommand
       )
       .flatMap { pawn =>
         val adviser = pawn.toOption.get.pendingCardDecision.get.cards.head
@@ -232,7 +248,11 @@ class HttpGameClientSuite extends FunSuite {
         )
       }
       .map { _ =>
-        assert(transport.requests.head._3.exists(_.contains(opaqueSite)))
+        val setupBody = transport.requests.head._3.get
+        assertEquals(ujson.read(setupBody).obj.keySet,
+          Set("expectedNextSequence", "intent"))
+        assertEquals(ActorlessCommandCodec.decode(setupBody),
+          Right(ActorlessCommandRequest(1L, GameIntent.PlacePawn(opaqueSite))))
         assert(transport.requests(1)._3.exists(_.contains(opaqueAdviser)))
         assert(transport.requests(1)._3.exists(
           _.contains("\"expectedNextSequence\":2")
