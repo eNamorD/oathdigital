@@ -7,10 +7,9 @@ been reviewed.
 
 ## Now
 
-**Pre-Phase 3 architecture review and refactor** is active. It removes obsolete
-parallel implementations, normalizes domain and gameplay ownership, unifies
-transport contracts, splits oversized backend/frontend modules, and establishes
-the typed extension boundaries needed before powers multiply the code surface.
+**Phase 3 — Powers and battle plans** is active. Add powers incrementally through
+the typed rule-source, handler-registry, decision, and event boundaries established
+by the completed architecture gate; keep unknown relevant handlers explicit.
 
 ## Next
 
@@ -47,18 +46,6 @@ phase/victory triggers, and then the remaining attacker, defender, and bandit
 battle plans. Add Foundation, Legacy, relic, edifice, banner, site, and Vision
 handlers through the same typed boundaries. Unknown relevant handlers continue
 to reject explicitly until implemented.
-
-### Pre-Phase 3 architecture gate
-
-1. [ ] Remove the historical v1 setup/action-authority stack and browser-memory
-   UI.
-2. [ ] Normalize aggregate, setup-procedure, transition, and Campaign module
-   ownership; centralize factual rule-source and catalog-handler discovery.
-3. [ ] Unify actorless JVM/Scala.js transport contracts and collapse the current
-   pre-release event stream to one format.
-4. [ ] Split projection, client, and UI monoliths without duplicating legality.
-5. [ ] Refresh architecture documentation, enforce dependency guardrails, and
-   pass the complete release gate before activating Phase 3.
 
 ### Phase 4 - Player-facing action history
 
@@ -132,6 +119,13 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 
 ## Done
 
+- [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
+  and browser-memory implementations; normalized gameplay ownership and factual
+  rule-source discovery; unified actorless shared transport contracts and the
+  pre-release event format; split the application projection, frontend client,
+  and UI monoliths; and added current architecture documentation and automated
+  dependency guardrails.
+
 - [x] **Phase 2 - Suspended decisions and action boundaries.** Setup, Search,
   Recover, Forge, Challenge, Campaign and Raid, Negotiation, Conspiracy,
   Oathkeeper ties, Rest, and round ending now share verified suspension and
@@ -146,7 +140,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   enters an explicit authoritative round-end phase. Rounds 1–7 advance without
   an end die, the Usurper Limiter leaves after round 3, and round 8 resolves
   Usurper, then a goal-qualified Visionary after at least three Visions drawn,
-  then Oathkeeper, then a server-selected random player. Event v13 records
+  then Oathkeeper, then a server-selected random player. Current events record
   round advancement, victory cause, Vision, and the canonical random domain for
   deterministic replay and tamper rejection. Persistence, public projection,
   and the Scala.js victory display preserve the terminal outcome. Rest-related
@@ -159,8 +153,9 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   least three Visions have been drawn and their printed goal is uniquely met.
   Conspiracy takes a co-located player's opaque relic slot or banner, applies
   banner ribbons through replay-validated decisions, and returns to the box.
-  Commands, event v12, persistence, scoped projection, authenticated transport,
-  and accessible Scala.js controls preserve hidden identities. Relevant Vision
+  Commands, current pre-release events, persistence, scoped projection,
+  authenticated transport, and accessible Scala.js controls preserve hidden
+  identities. Relevant Vision
   restrictions and triggers are catalog-wide inventory-audited and reject with
   stable source identities until their powers are implemented; altered
   Foundations and multi-Vision storage remain deferred.
@@ -338,7 +333,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   unaltered-Foundation Recover spends Supply for recorded pairs of typed defense
   dice, accumulates shields and doublers across rolls, permits an unsuccessful
   stop, and privately takes exactly one facedown site relic on success. Typed
-  pending procedure state, replay-validated v7 events, injected server
+  pending procedure state, replay-validated current events, injected server
   randomness, authenticated intents, viewer-relative projections, and inline
   Scala.js controls preserve deterministic replay and hidden information.
 
@@ -353,34 +348,36 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 
 - [x] **L6d — Bounded Economy action slice.** Exile-only, unaltered-Foundation
   Muster and Trade share authoritative denizen access, suit/adviser matching,
-  typed rule resolution, limited resource movement, replay-validated v6 events,
+  typed rule resolution, limited resource movement, replay-validated current events,
   persisted commands, scoped projections, HTTP intents, and Scala.js controls.
 
 - [x] **L6c — Rest and turn advancement.** Act lifecycle validation is
   action-neutral. Bounded exile Rest now returns controlled card resources,
   reveals secrets, refreshes Supply, clears per-turn state, advances the
-  player/round, and enters the next Wake through replay-validated v5 events,
-  persisted commands, scoped projections, HTTP routes, and Scala.js controls.
+  player/round, and enters the next Wake through replay-validated current
+  events, persisted commands, scoped projections, HTTP routes, and Scala.js
+  controls.
 
 - [x] Establish the Scala/Scala.js build, HRF reference baseline, core domain
   model, source-cited rules layer, and complete reviewed component catalog.
 - [x] Implement authoritative versioned events, deterministic replay,
-  optimistic application services, and the schema-v3 HSQLDB event/identity
+  optimistic application services, and the HSQLDB event/identity
   store with concurrency, restart, and malformed-history hardening.
 - [x] Deliver the exile-only introductory setup and responsive image-independent
   server UI, including player-scoped controls, reconnect/polling, restart, and
   authenticated membership/session/CSRF foundations.
-- [x] Implement bounded Wake, Travel, and Search through mixed v2-v4 history,
+- [x] Implement bounded Wake, Travel, and Search through the current pre-release
+  event stream,
   including typed Travel modifiers, server-prepared Search draws, private
   pending decisions, replay validation, and Scala.js controls.
 - [x] Modularize gameplay into `OathRules`, phase/action modules, typed rule
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The combined milestone passes 295 JVM tests, 84 Scala.js tests, the Scala.js
-linker, runtime-catalog validation, and a persisted three-player browser smoke
-test through Take Wealth, End Wake, Act selection, responsive site rendering,
-reload reconstruction, and disconnect/reconnect recovery.
+The architecture gate passes 318 JVM tests, 87 Scala.js tests, the optimized
+Scala.js linker, runtime-catalog validation and equality, architecture and
+documentation-link checks, and diff validation. Earlier persisted multiplayer
+browser acceptance remains covered by the completed gameplay milestones.
 
 ## Coordination rules
 
