@@ -156,6 +156,27 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(offenders, Vector.empty)
   }
 
+  test("application projection collaborators stay bounded and layer-independent") {
+    val root = Paths.get("src/main/scala/oathdigital/application")
+    val projectionFiles = Files.walk(root).iterator.asScala.filter(path =>
+      path.toString.endsWith(".scala") &&
+        (path.getFileName.toString.contains("Projection") ||
+          path.getFileName.toString.contains("Projector") ||
+          path.getFileName.toString == "ScopedProjectionContext.scala")).toVector
+    val forbidden = Vector("import oathdigital.server",
+      "import oathdigital.persistence", "import oathdigital.serialization")
+    val badImports = projectionFiles.filter(path => forbidden.exists(
+      Files.readString(path).contains)).map(_.toString).sorted
+    val oversized = projectionFiles.flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > 800)(s"$path:$lines")
+    }.sorted
+    assertEquals(badImports, Vector.empty)
+    assertEquals(oversized, Vector.empty)
+    assert(projectionFiles.exists(_.getFileName.toString ==
+      "ScopedProjectionContext.scala"))
+  }
+
   test("shared command protocol is compiled by both configured runtimes") {
     val build = Files.readString(Paths.get("build.sbt"))
     assert(build.contains("shared\" / \"src\" / \"main\" / \"scala"))

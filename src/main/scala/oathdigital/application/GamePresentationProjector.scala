@@ -1,0 +1,229 @@
+package oathdigital.application
+
+import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.setup.FirstGameParticipant
+import oathdigital.model._
+import oathdigital.protocol.projection._
+
+private[application] final class GamePresentationProjector(
+    catalog: ExecutableCatalog
+) {
+  private val siteNames = catalog.sites.map(site => site.id -> site.name).toMap
+  private val denizenNames = catalog.denizens.map(d =>
+    DenizenId(d.id.value) -> d.name).toMap
+  private val edificeNames = catalog.edifices.map { edifice =>
+    EdificeId(edifice.id.value) ->
+      (edifice.intact.name -> edifice.ruined.name)
+  }.toMap
+  private val siteDefinitions = catalog.sites.map(site => site.id -> site).toMap
+
+  def siteLabel(id: SiteId): String = siteNames.getOrElse(id, safeLabel(id.value))
+  def denizenLabel(id: DenizenId): String =
+    denizenNames.getOrElse(id, safeLabel(id.value))
+  def relicLabel(id: RelicId): String = catalog.relics.find(
+    _.id.value == id.value).map(_.name).getOrElse(safeLabel(id.value))
+  def edificeLabel(id: EdificeId, side: EdificeSide): String =
+    edificeNames.get(id).fold(safeLabel(id.value)) {
+      case (intact, ruined) => side match {
+        case EdificeSide.Intact => intact
+        case EdificeSide.Ruined => ruined
+      }
+    }
+
+  def setupPlayers(participants: Vector[FirstGameParticipant]) =
+    participants.map { participant =>
+      SetupPlayerProjection(participant.playerId.value,
+        safeLabel(participant.playerId.value), "exile", participant.color.value)
+    }
+
+  def readyPlayers(ready: ReadyGame) = ready.game.current.players.map { player =>
+    SetupPlayerProjection(player.player.value, safeLabel(player.player.value),
+      "exile", ready.playerColors(player.player).value)
+  }
+
+  def setupWorld(sites: Vector[SiteId]): Vector[SetupRegionProjection] = Vector(
+    region("cradle", sites.take(2)),
+    region("provinces", sites.slice(2, 5)),
+    region("hinterland", sites.slice(5, 8)))
+
+  def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) = {
+    val current = ready.game.current
+    Vector(
+      region("cradle", current.map.cradle, current.map.sites,
+        current.commonCards.discard(Region.Cradle), Some(ready), viewer),
+      region("provinces", current.map.provinces, current.map.sites,
+        current.commonCards.discard(Region.Provinces), Some(ready), viewer),
+      region("hinterland", current.map.hinterland, current.map.sites,
+        current.commonCards.discard(Region.Hinterland), Some(ready), viewer))
+  }
+
+  private def region(id: String, sites: Vector[SiteId],
+      states: Map[SiteId, SiteState] = Map.empty,
+      discard: Vector[CardId] = Vector.empty,
+      ready: Option[ReadyGame] = None,
+      viewer: Option[PlayerId] = None): SetupRegionProjection =
+    SetupRegionProjection(id, sites.map(site =>
+      siteProjection(site, states.get(site), ready, viewer)), discard.size,
+      discard.lastOption.map(cardKind))
+
+  private def siteProjection(siteId: SiteId, state: Option[SiteState],
+      ready: Option[ReadyGame], viewer: Option[PlayerId]): SetupSiteProjection = {
+    val definition = siteDefinitions.get(siteId)
+    SetupSiteProjection(siteId.value, siteLabel(siteId),
+      state.fold(0)(_.tokens.favor), state.fold(0)(_.tokens.secrets),
+      definition.fold(0)(_.capacity), definition.fold(0)(_.relicSlots),
+      state.toVector.flatMap(_.denizens).map { denizen =>
+        val label = denizen match {
+          case value: DenizenState => denizenLabel(value.id)
+          case value: EdificeState => edificeLabel(value.id, value.side)
+        }
+        val details = denizen match {
+          case value: DenizenState => Some(cardDetails(value.id,
+            Some(value.orientation), hidden = false).copy(
+              favor = value.tokens.favor, secrets = value.tokens.secrets))
+          case value: EdificeState => Some(CardDetailsProjection(
+            value.id.value, "edifice", label,
+            suit = catalog.edifices.find(_.id.value == value.id.value).map(_.suit.value),
+            side = Some(value.side match {
+              case EdificeSide.Intact => "intact"
+              case EdificeSide.Ruined => "ruined"
+            }), favor = value.tokens.favor, secrets = value.tokens.secrets))
+        }
+        SiteCardProjection(denizen.id.value, label, details)
+      },
+      SiteRelicsProjection(state.fold(0)(_.relics.size), for {
+        game <- ready.toVector
+        player <- viewer.toVector
+        known <- game.support.relicKnowledge.getOrElse(player, Map.empty)
+          .getOrElse(siteId, Vector.empty)
+        relic <- state.toVector.flatMap(_.relics).filter(_.id == known)
+      } yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
+      definition.fold(0)(_.defense),
+      definition.flatMap(site => Option.when(site.forgeRequirements.isEmpty)(
+        site.recoverDifficulty).flatten),
+      definition.flatMap(_.forgeRequirements).map(tokens =>
+        ForgeCostProjection(tokens.favor, tokens.secrets)),
+      definition.toVector.flatMap(_.handlers).map(sitePower),
+      for {
+        site <- state
+        game <- ready
+        occupied <- site.forces match {
+          case value: SiteForces.Occupied => Some(value)
+          case SiteForces.Empty => None
+        }
+      } yield forceProjection(occupied, game))
+  }
+
+  private def forceProjection(forces: SiteForces.Occupied,
+      ready: ReadyGame): SiteForcesProjection = {
+    val ruler = SiteRule.ruler(forces, ready.game.current.players).fold(
+      error => throw new IllegalStateException(s"invalid site ruler mapping: $error"),
+      identity)
+    forces.kind match {
+      case ForceKind.Exile(_) =>
+        val SiteRuler.Player(playerId) = ruler: @unchecked
+        val color = ready.playerColors.getOrElse(playerId,
+          throw new IllegalStateException(
+            s"missing color for site ruler ${playerId.value}"))
+        val colorLabel = color.value.headOption.fold(color.value)(head =>
+          s"${head.toUpper}${color.value.drop(1)}")
+        SiteForcesProjection("exile", forces.count, "player", Some(playerId.value),
+          s"$colorLabel Warbands", color.value)
+      case ForceKind.Imperial => SiteForcesProjection("imperial", forces.count,
+        "empire", None, "Imperial Warbands", "empire")
+      case ForceKind.Bandit => SiteForcesProjection("bandit", forces.count,
+        "bandit", None, "Bandit Warbands", "bandit")
+    }
+  }
+
+  def playerBoards(ready: ReadyGame, viewer: Option[PlayerId]) = {
+    val players = ready.game.current.players
+    val start = viewer.flatMap(id => Option(players.indexWhere(_.player == id))
+      .filter(_ >= 0)).getOrElse(0)
+    (players.drop(start) ++ players.take(start)).map { player =>
+      val owns = viewer.contains(player.player)
+      val knownAdvisers = viewer.toVector.flatMap(id =>
+        ready.support.adviserKnowledge.getOrElse(id, Vector.empty)).toSet
+      val knownRelics = viewer.toVector.flatMap(id =>
+        ready.support.heldRelicKnowledge.getOrElse(id, Vector.empty)).toSet
+      PlayerBoardProjection(player.player.value, player.board.warbands,
+        player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
+        player.board.supply.supply, player.pawnSite.map(_.value),
+        player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown &&
+            !owns && !knownAdvisers(card.id.asInstanceOf[WorldCardId]))
+          hiddenCard("adviser") else cardDetails(card.id,
+            Some(adviserOrientation(card)), hidden = false)),
+        player.relics.map(card => if (card.orientation == Orientation.FaceDown &&
+            !owns && !knownRelics(card.id))
+          hiddenCard("relic") else cardDetails(card.id,
+            Some(card.orientation), hidden = false)),
+        player.revealedVision.map(card => cardDetails(card.id,
+          Some(card.orientation), hidden = false)))
+    }
+  }
+
+  private def hiddenCard(kind: String) = CardDetailsProjection(
+    "hidden", kind, s"Facedown $kind", orientation = Some("face-down"), hidden = true)
+
+  def adviserOrientation(card: AdviserState): Orientation = card match {
+    case value: DenizenState => value.orientation
+    case value: VisionState => value.orientation
+  }
+  def orientationName(value: Orientation): String = value match {
+    case Orientation.FaceUp => "face-up"
+    case Orientation.FaceDown => "face-down"
+  }
+  def cardKind(card: CardId): String = card match {
+    case _: VisionId => "vision"
+    case _ => "denizen"
+  }
+
+  def cardDetails(id: CardId, orientation: Option[Orientation],
+      hidden: Boolean): CardDetailsProjection = id match {
+    case value: DenizenId => catalog.denizens.find(_.id.value == value.value).fold(
+      CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
+        orientation = orientation.map(orientationName), hidden = hidden)) { d =>
+      CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.value),
+        Some(restrictionName(d.restrictions)), Some(d.rulesText),
+        orientation.map(orientationName), hidden = hidden)
+    }
+    case value: VisionId => CardDetailsProjection(value.value, "vision",
+      safeLabel(value.value), orientation = orientation.map(orientationName), hidden = hidden)
+    case value: RelicId => catalog.relics.find(_.id.value == value.value).fold(
+      CardDetailsProjection(value.value, "relic", safeLabel(value.value),
+        orientation = orientation.map(orientationName), hidden = hidden)) { r =>
+      CardDetailsProjection(value.value, "relic", r.name, rulesText = Some(r.rulesText),
+        orientation = orientation.map(orientationName), relicValue = Some(r.value),
+        defense = Some(r.defense), hidden = hidden)
+    }
+    case other => CardDetailsProjection(other.value, other.getClass.getSimpleName,
+      safeLabel(other.value), orientation = orientation.map(orientationName), hidden = hidden)
+  }
+
+  private def restrictionName(value: CardRestrictions): String = value match {
+    case CardRestrictions.Unrestricted => "unrestricted"
+    case CardRestrictions.SiteOnly => "site-only"
+    case CardRestrictions.AdviserOnly => "adviser-only"
+    case CardRestrictions.LockedAdviserOnly => "locked-adviser-only"
+  }
+  def safeLabel(id: String): String = id.split(":").lastOption.getOrElse(id)
+    .split("-").map(_.capitalize).mkString(" ")
+  private def worldCardLabel(id: WorldCardId): String = id match {
+    case value: DenizenId => denizenLabel(value)
+    case value: VisionId => safeLabel(value.value)
+  }
+  private def sitePower(handler: String): SitePowerProjection = {
+    val kind = handler.split('.').lastOption.getOrElse(handler)
+    val known = Map(
+      "coast" -> ("Coast", "Travel along the Coast route."),
+      "mountain" -> ("Mountain", "Travel here costs additional Supply."),
+      "river" -> ("River", "Part of the River route."),
+      "island" -> ("Island", "Travel here follows Island travel rules."),
+      "pass" -> ("Pass", "Travel through the Pass is restricted."),
+      "plains" -> ("Plains", "This site has the Plains site power."))
+    known.get(kind).fold(SitePowerProjection(kind, safeLabel(kind), None)) {
+      case (label, description) => SitePowerProjection(kind, label, Some(description))
+    }
+  }
+}
