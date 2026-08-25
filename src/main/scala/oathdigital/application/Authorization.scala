@@ -59,7 +59,7 @@ final case class AuthorizedPlayer private (
   def chooseAdviser(adviserId: DenizenId): GameCommand =
     GameCommand.ChooseAdviser(access.playerId, adviserId)
 
-  def takeWealth(resource: oathdigital.setup.WakeResource): GameCommand =
+  def takeWealth(resource: oathdigital.gameplay.setup.WakeResource): GameCommand =
     GameCommand.TakeWealth(access.playerId, resource)
 
   def endWake: GameCommand =
@@ -74,7 +74,7 @@ final case class AuthorizedPlayer private (
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 
-  def trade(target: EconomyTargetRef, resource: oathdigital.setup.TradeResource): GameCommand =
+  def trade(target: EconomyTargetRef, resource: oathdigital.gameplay.setup.TradeResource): GameCommand =
     GameCommand.Trade(access.playerId, target, resource)
 
   def beginSearch(source: SearchSource): GameCommand =

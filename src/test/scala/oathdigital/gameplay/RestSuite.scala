@@ -3,11 +3,11 @@ package oathdigital.gameplay
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathEvent.{RestCompleted, RestStarted}
-import oathdigital.setup.OathState.Ready
-import oathdigital.setup.OathViolation.{RestOutcomeMismatch,
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathEvent.{RestCompleted, RestStarted}
+import oathdigital.gameplay.setup.OathState.Ready
+import oathdigital.gameplay.setup.OathViolation.{RestOutcomeMismatch,
   UnsupportedRoundEndCatalogInventory, UnsupportedRoundEndRule}
 
 class RestSuite extends munit.FunSuite {

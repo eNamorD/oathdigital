@@ -11,10 +11,10 @@ import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.OathState._
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.OathState._
+import oathdigital.gameplay.setup.OathViolation._
 
 /** Deterministic aggregate boundary for setup and gameplay routing. */
 final class OathRules(catalog: ExecutableCatalog,

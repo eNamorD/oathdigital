@@ -3,11 +3,11 @@ package oathdigital.gameplay
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{RecoverCommand, RecoverRules}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.OathState.Ready
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.OathState.Ready
+import oathdigital.gameplay.setup.OathViolation._
 
 class RecoverSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

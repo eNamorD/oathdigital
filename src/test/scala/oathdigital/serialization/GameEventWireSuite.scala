@@ -2,15 +2,15 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
-import oathdigital.setup._
+import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
+import oathdigital.gameplay.setup.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, RecoverRolled, RecoverStopped, RelicRecovered}
-import oathdigital.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
+import oathdigital.gameplay.setup.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
-import oathdigital.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
   test("v13 round ending and War Exhaustion preserve outcome and random domain") {

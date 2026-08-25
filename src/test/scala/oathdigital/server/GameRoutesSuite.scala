@@ -20,7 +20,7 @@ import oathdigital.application.{
   GameProjector,
   InMemoryEventStreamRepository
 }
-import oathdigital.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class GameRoutesSuite extends munit.FunSuite {
   test("health load malformed request and stale command status mappings") {

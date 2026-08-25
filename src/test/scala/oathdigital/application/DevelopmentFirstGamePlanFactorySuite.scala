@@ -10,12 +10,12 @@ import oathdigital.server.{
   GameHttpWire,
   GameServerGateway
 }
-import oathdigital.setup.{
+import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
   FirstGameSetupRules,
   OathState
 }
-import oathdigital.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
   private val config = FirstGameBootstrapConfig(

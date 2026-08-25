@@ -3,11 +3,11 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.{SearchCommand, SearchRules, TravelRules}
 
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathState.Ready
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathState.Ready
+import oathdigital.gameplay.setup.OathViolation._
 
 class SearchSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)

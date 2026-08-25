@@ -12,7 +12,7 @@ import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.serialization.{GameEventWire, WireError}
-import oathdigital.setup.{
+import oathdigital.gameplay.setup.{
   OathContinue,
   FirstGameSetupCommand,
   OathEvent,
@@ -172,25 +172,25 @@ object CardDecisionIds {
 
 trait SearchDrawPort {
   def prepare(
-      ready: oathdigital.setup.ReadyGame,
+      ready: oathdigital.gameplay.setup.ReadyGame,
       source: SearchSource,
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
 }
 
 trait RelicDrawPort {
-  def prepare(ready: oathdigital.setup.ReadyGame): Either[OathViolation, RelicId]
+  def prepare(ready: oathdigital.gameplay.setup.ReadyGame): Either[OathViolation, RelicId]
 }
 object RelicDrawPort {
   val authoritative: RelicDrawPort = new RelicDrawPort {
-    def prepare(ready: oathdigital.setup.ReadyGame) =
+    def prepare(ready: oathdigital.gameplay.setup.ReadyGame) =
       ready.game.current.commonCards.relicDeck.headOption
         .toRight(OathViolation.ForgeUnavailable("relic deck is empty"))
   }
 }
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
-    def prepare(ready: oathdigital.setup.ReadyGame, source: SearchSource,
+    def prepare(ready: oathdigital.gameplay.setup.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
   }
 }

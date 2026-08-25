@@ -2,11 +2,11 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.EconomyCommand
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathEvent.{Mustered, Traded}
-import oathdigital.setup.OathState.Ready
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathEvent.{Mustered, Traded}
+import oathdigital.gameplay.setup.OathState.Ready
+import oathdigital.gameplay.setup.OathViolation._
 
 class EconomySuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

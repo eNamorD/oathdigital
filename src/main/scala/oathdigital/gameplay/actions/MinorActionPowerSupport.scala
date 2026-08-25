@@ -5,9 +5,9 @@ import java.security.MessageDigest
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
-import oathdigital.setup.ReadyGame
-import oathdigital.setup.OathViolation
-import oathdigital.setup.OathViolation.{UnsupportedMinorActionCatalogInventory,
+import oathdigital.gameplay.setup.ReadyGame
+import oathdigital.gameplay.setup.OathViolation
+import oathdigital.gameplay.setup.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule, UnsupportedVisionRule}
 
 /** Transitional audited seam for component behavior relevant to base minor

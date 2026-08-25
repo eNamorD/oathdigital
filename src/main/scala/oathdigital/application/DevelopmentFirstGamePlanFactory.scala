@@ -6,7 +6,7 @@ import oathdigital.catalog.{
   Suit => CatalogSuit
 }
 import oathdigital.model._
-import oathdigital.setup.{
+import oathdigital.gameplay.setup.{
   FirstGameParticipant,
   FirstGameRulesData,
   FirstGameSetupPlan,

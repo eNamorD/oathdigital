@@ -3,11 +3,11 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay.{OathLifecycle, GameStateUpdates}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathContinue.ActActionSelection
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.OathState._
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathContinue.ActActionSelection
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.OathState._
+import oathdigital.gameplay.setup.OathViolation._
 
 sealed trait MinorActionCommand extends Product with Serializable
 object MinorActionCommand {

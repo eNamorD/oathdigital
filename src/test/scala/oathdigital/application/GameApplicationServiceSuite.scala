@@ -8,15 +8,15 @@ import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
 import oathdigital.serialization.WireError.UnsupportedFormatVersion
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathEvent.{
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathEvent.{
   GamePawnPlaced,
   FirstGameStarted
 }
-import oathdigital.setup.OathViolation.{CatalogMismatch, WrongPlayer}
-import oathdigital.setup.OathState.Ready
-import oathdigital.setup.WakeResource
-import oathdigital.setup.ReadyGame
+import oathdigital.gameplay.setup.OathViolation.{CatalogMismatch, WrongPlayer}
+import oathdigital.gameplay.setup.OathState.Ready
+import oathdigital.gameplay.setup.WakeResource
+import oathdigital.gameplay.setup.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
   test("minor adviser action persists and reloads through authoritative replay") {
@@ -89,7 +89,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       def prepare(ready: ReadyGame) = {
         prepared += 1
         ready.game.current.commonCards.relicDeck.headOption
-          .toRight(oathdigital.setup.OathViolation.ForgeUnavailable("empty"))
+          .toRight(oathdigital.gameplay.setup.OathViolation.ForgeUnavailable("empty"))
       }
     }
     val dice = new CampaignDicePort {
@@ -393,7 +393,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val started = service.handle("campaign-persist", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).toOption.get
     val startEvent = started.events.head.asInstanceOf[
-      oathdigital.setup.OathEvent.CampaignStarted]
+      oathdigital.gameplay.setup.OathEvent.CampaignStarted]
     assertEquals(startEvent.force, 0)
     val Ready(afterPartial) = started.state: @unchecked
     assertEquals(afterPartial.game.current.players.find(_.player == active).get
@@ -403,8 +403,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.FinishCampaignPlans(active,
         DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
     assertEquals(chosen.events.head.asInstanceOf[
-      oathdigital.setup.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
-    assert(chosen.events.head.isInstanceOf[oathdigital.setup.OathEvent.CampaignPlansFinished])
+      oathdigital.gameplay.setup.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
+    assert(chosen.events.head.isInstanceOf[oathdigital.gameplay.setup.OathEvent.CampaignPlansFinished])
     val reloaded = new GameApplicationService(catalog, repository,
       campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
     assertEquals(reloaded.state, chosen.state)
@@ -415,7 +415,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       service: GameApplicationService,
       gameId: String,
       placementSites: Vector[oathdigital.model.SiteId] = sites,
-      setupPlan: oathdigital.setup.FirstGameSetupPlan = plan
+      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan = plan
   ): GameAccepted = {
     var accepted =
       service.handle(gameId, 0L, GameCommand.Begin(setupPlan))

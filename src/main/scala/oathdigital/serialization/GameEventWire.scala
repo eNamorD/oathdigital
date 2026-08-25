@@ -4,8 +4,8 @@ import scala.util.control.NonFatal
 
 import oathdigital.engine.RecordedEvent
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathEvent._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathEvent._
 
 final case class GameEventEnvelope(
     formatVersion: Int,

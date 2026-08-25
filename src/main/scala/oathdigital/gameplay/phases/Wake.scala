@@ -2,11 +2,11 @@ package oathdigital.gameplay.phases
 
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, TakeWealthRules}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathContinue._
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.OathState._
-import oathdigital.setup.OathViolation._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathContinue._
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.OathState._
+import oathdigital.gameplay.setup.OathViolation._
 
 import GameStateUpdates.updateCurrent
 

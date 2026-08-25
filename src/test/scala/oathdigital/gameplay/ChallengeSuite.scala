@@ -4,10 +4,10 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{BannerRules, ChallengeCommand, ChallengeRules}
 import oathdigital.model._
-import oathdigital.setup._
-import oathdigital.setup.OathEvent._
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathState.Ready
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.OathEvent._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathState.Ready
 
 class ChallengeSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

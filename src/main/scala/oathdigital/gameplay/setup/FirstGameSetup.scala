@@ -1,4 +1,4 @@
-package oathdigital.setup
+package oathdigital.gameplay.setup
 
 import oathdigital.catalog.{ExecutableCatalog, Suit => CatalogSuit}
 import oathdigital.engine.EventEvolution

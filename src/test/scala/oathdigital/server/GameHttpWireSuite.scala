@@ -227,7 +227,7 @@ class GameHttpWireSuite extends munit.FunSuite {
       GameHttpWire.decodeCommand(wealth).toOption.get.command,
       GameCommand.TakeWealth(
         oathdigital.model.PlayerId("p2"),
-        oathdigital.setup.WakeResource.Favor
+        oathdigital.gameplay.setup.WakeResource.Favor
       )
     )
     assertEquals(
@@ -271,7 +271,7 @@ class GameHttpWireSuite extends munit.FunSuite {
       GameCommand.Muster(PlayerId("p2"), expected))
     assertEquals(GameHttpWire.decodeCommand(trade).toOption.get.command,
       GameCommand.Trade(PlayerId("p2"), expected,
-        oathdigital.setup.TradeResource.Favor))
+        oathdigital.gameplay.setup.TradeResource.Favor))
     val unsupported = ujson.read(muster).obj
     unsupported("command").obj("target").obj("kind") = "relic"
     assertEquals(GameHttpWire.decodeCommand(ujson.write(unsupported))

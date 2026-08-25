@@ -15,8 +15,8 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.persistence.HsqldbDatabaseOwner
-import oathdigital.setup.FirstGameSetupFixture._
-import oathdigital.setup.OathState
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.setup.OathState
 
 class AuthenticatedGameBootstrapRoutesSuite extends munit.FunSuite {
   test("owner bootstrap uses exactly the provisioned player memberships") {
