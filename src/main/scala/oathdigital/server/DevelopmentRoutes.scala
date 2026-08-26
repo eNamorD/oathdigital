@@ -4,8 +4,14 @@ import scala.concurrent.ExecutionContext
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.model.headers.RawHeader
 
 object DevelopmentRoutes {
+  private val DevelopmentAssetCacheControl = RawHeader(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, max-age=0"
+  )
+
   def route(
       firstGame: GameServerGateway,
       blockingExecutionContext: ExecutionContext,
@@ -24,9 +30,11 @@ object DevelopmentRoutes {
     if (!serveFrontend) api
     else
       api ~
-        pathEndOrSingleSlash {
-          getFromFile("frontend/index.html")
-        } ~
-        getFromDirectory("frontend")
+        respondWithHeader(DevelopmentAssetCacheControl) {
+          pathEndOrSingleSlash {
+            getFromFile("frontend/index.html")
+          } ~
+          getFromDirectory("frontend")
+        }
   }
 }

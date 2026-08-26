@@ -40,7 +40,7 @@ class GameRoutesSuite extends munit.FunSuite {
     )
     val binding = Await.result(
       Http().newServerAt("127.0.0.1", 0).bind(
-        DevelopmentRoutes.route(gateway, blocking, serveFrontend = false)
+        DevelopmentRoutes.route(gateway, blocking)
       ),
       10.seconds
     )
@@ -49,7 +49,19 @@ class GameRoutesSuite extends munit.FunSuite {
     val client = HttpClient.newHttpClient()
 
     try {
-      assertEquals(get(client, s"$base/health").statusCode(), 200)
+      val index = get(client, s"$base/")
+      assertEquals(index.statusCode(), 200)
+      assertEquals(cacheControl(index),
+        Some("no-store, no-cache, must-revalidate, max-age=0"))
+      assert(index.body().contains("main.js?dev-cache=no-store-v1"))
+      val stylesheet = get(client, s"$base/styles.css")
+      assertEquals(stylesheet.statusCode(), 200)
+      assertEquals(cacheControl(stylesheet),
+        Some("no-store, no-cache, must-revalidate, max-age=0"))
+
+      val health = get(client, s"$base/health")
+      assertEquals(health.statusCode(), 200)
+      assertEquals(cacheControl(health), None)
       val malformed = post(
         client,
         s"$base/api/dev/first-games/route-game/commands?playerId=p2",
@@ -63,6 +75,7 @@ class GameRoutesSuite extends munit.FunSuite {
         bootstrapBody()
       )
       assertEquals(started.statusCode(), 200)
+      assertEquals(cacheControl(started), None)
       assertEquals(ujson.read(started.body())("nextSequence").num.toLong, 1L)
       val history = get(client,
         s"$base/api/dev/first-games/route-game/events?limit=1")
@@ -155,6 +168,13 @@ class GameRoutesSuite extends munit.FunSuite {
       HttpRequest.newBuilder(URI.create(url)).GET().build(),
       JavaHttpResponse.BodyHandlers.ofString()
     )
+
+  private def cacheControl(
+      response: JavaHttpResponse[String]
+  ): Option[String] = {
+    val value = response.headers().firstValue("Cache-Control")
+    if (value.isPresent) Some(value.get()) else None
+  }
 
   private def post(
       client: HttpClient,
