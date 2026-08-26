@@ -140,6 +140,6 @@ class ForgeSuite extends munit.FunSuite {
         "denizen.future-forge-interaction")
     })
     assert(ForgeRules.validate(altered, ready, actor, site).left.toOption.get
-      .isInstanceOf[UnsupportedForgeState])
+      .isInstanceOf[UnsupportedRuleCatalog])
   }
 }

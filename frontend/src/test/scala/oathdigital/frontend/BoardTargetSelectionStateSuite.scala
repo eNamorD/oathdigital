@@ -28,6 +28,18 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(active.choose(siteB.target), BoardSelectionResult.Updated(active))
   }
 
+  test("Economy target mode requires explicit confirmation and supports cancel") {
+    val action = BoardTargetAction("trade-favor", "Trade", 1, 1,
+      autoActivate = false, Vector(siteA), explicitConfirm = true)
+    val active = BoardTargetSelectionState.reconcile(None, context,
+      Vector(action)).activate(action.actionKind)
+    val selected = active.choose(siteA.target)
+      .asInstanceOf[BoardSelectionResult.Updated].state
+    assert(selected.canConfirm)
+    assertEquals(selected.confirm.map(_.targets), Some(Vector(siteA.target)))
+    assertEquals(selected.cancel.activeAction, None)
+  }
+
   test("multi target selection toggles caps and confirms in candidate order") {
     val third = BoardTargetCandidate(BoardTargetRef.Site("c"), "C", Vector.empty)
     val action = BoardTargetAction("campaign-sites", "Targets", 1, 2,

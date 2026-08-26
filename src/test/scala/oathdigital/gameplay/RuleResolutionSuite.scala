@@ -62,4 +62,30 @@ class RuleResolutionSuite extends munit.FunSuite {
       (20, "site:z", "b")
     ))
   }
+
+  test("reviewed handlers classify optional mandatory triggered battle-plan and inherent behavior") {
+    assertEquals(MajorActionPowerShell.classify("denizen.map-library",
+      MajorActionKind.Trade).behavior, RuleBehavior.OptionalModifier)
+    assertEquals(MajorActionPowerShell.classify("denizen.relic-worship",
+      MajorActionKind.Recover).behavior, RuleBehavior.Mandatory)
+    assertEquals(MajorActionPowerShell.classify("denizen.insomnia",
+      MajorActionKind.Rest).behavior, RuleBehavior.Triggered)
+    assertEquals(MajorActionPowerShell.classify("site.fair-isle.island",
+      MajorActionKind.Travel), RuleClassification(MajorActionKind.Travel,
+      RuleTiming.Inherent, RuleBehavior.Inherent, implemented = true))
+    assertEquals(MajorActionPowerShell.classify("denizen.outriders",
+      MajorActionKind.Campaign).timing, RuleTiming.BattlePlan)
+    assertEquals(MajorActionPowerShell.classify("denizen.insomnia",
+      MajorActionKind.Travel).behavior, RuleBehavior.Irrelevant)
+  }
+
+  test("rule source stable keys round trip for durable diagnostics") {
+    val values = Vector[RuleSourceRef](RuleSourceRef.Site(SiteId("a")),
+      RuleSourceRef.SiteCard(SiteId("a"), DenizenId("d")),
+      RuleSourceRef.Adviser(PlayerId("p"), VisionId("v")),
+      RuleSourceRef.Relic(PlayerId("p"), RelicId("r")),
+      RuleSourceRef.Foundation(FoundationNumber.III),
+      RuleSourceRef.Legacy(LineageId("l"), LegacyId("x")))
+    assertEquals(values.map(v => RuleSourceRef.parse(v.stableKey)), values.map(Some(_)))
+  }
 }

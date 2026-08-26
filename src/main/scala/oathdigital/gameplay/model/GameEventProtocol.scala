@@ -5,6 +5,13 @@ import oathdigital.gameplay.setup.FirstGameSetupPlan
 
 sealed trait OathEvent extends Product with Serializable
 object OathEvent {
+  final case class IgnoredRulesRecorded(
+      playerId: PlayerId,
+      action: MajorActionKind,
+      diagnostics: Vector[IgnoredRuleDiagnostic]
+  ) extends OathEvent {
+    require(diagnostics.nonEmpty, "ignored-rule event must not be empty")
+  }
   final case class FirstGameStarted(plan: FirstGameSetupPlan)
       extends OathEvent
   final case class GamePawnPlaced(playerId: PlayerId, siteId: SiteId)

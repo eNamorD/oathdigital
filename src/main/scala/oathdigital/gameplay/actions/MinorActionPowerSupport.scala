@@ -16,23 +16,6 @@ object MinorActionPowerSupport {
   private val ExpectedInventory =
     "ebe0c1ad8fdc22834f96264b1036f6160e7072676ef1069bed447dd1a57e98d6"
 
-  private val WhenPlayed = Set(
-    "denizen.dazzle", "denizen.revelation", "denizen.threatening-roar",
-    "denizen.animal-host", "denizen.a-small-favor", "denizen.key-to-the-city",
-    "denizen.charlatan", "denizen.blackmail", "denizen.dissent",
-    "denizen.false-prophet", "denizen.family-heirloom", "denizen.fabled-feast",
-    "denizen.salad-days", "denizen.the-gathering", "denizen.faithful-friend",
-    "denizen.great-herd", "denizen.pilgrimage", "denizen.twin-brother",
-    "denizen.garrison", "denizen.royal-tax", "denizen.bewitch",
-    "denizen.wizard-s-conclave", "denizen.long-lost-heir", "denizen.true-oath",
-    "denizen.autumn-wind", "denizen.shifting-fog", "denizen.royal-ambitions",
-    "denizen.riots", "denizen.bandit-chief", "denizen.reliquary-raid",
-    "denizen.bandit-prince", "denizen.a-round-of-ale", "denizen.favored-son",
-    "denizen.town-meeting", "denizen.ancient-pact", "denizen.search-party",
-    "denizen.call-for-help")
-  private val SearchModifiers = Set(
-    "denizen.forced-labor", "denizen.hunting-party", "denizen.disciples",
-    "denizen.spinning-bee")
   val Conspiracy: VisionId = VisionId("vision:conspiracy")
 
   private val ActorVisionRestrictions = Set("denizen.vow-of-obedience")
@@ -49,17 +32,11 @@ object MinorActionPowerSupport {
 
   def validateAdviserPlay(catalog: ExecutableCatalog, source: CardId,
       handlers: Vector[String]): Either[OathViolation, Unit] =
-    validateInventory(catalog).flatMap { _ =>
-      val relevant = handlers.filter(WhenPlayed)
-      Either.cond(relevant.isEmpty, (), UnsupportedMinorActionRule(source, relevant))
-    }
+    validateInventory(catalog)
 
   def validateSearchModifier(catalog: ExecutableCatalog, source: DenizenId,
       handlers: Vector[String]): Either[OathViolation, Unit] =
-    validateInventory(catalog).flatMap { _ =>
-      val relevant = handlers.filter(SearchModifiers)
-      Either.cond(relevant.isEmpty, (), UnsupportedMinorActionRule(source, relevant))
-    }
+    validateInventory(catalog)
 
   def validateVisionPlay(catalog: ExecutableCatalog,
       source: VisionId): Either[OathViolation, Unit] =

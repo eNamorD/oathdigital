@@ -504,15 +504,14 @@ class CampaignSuite extends munit.FunSuite {
       })).isLeft)
   }
 
-  test("relevant facedown adviser fails explicitly") {
+  test("unimplemented optional facedown adviser does not block Campaign") {
     val (ready, player, site) = campaignReady
     val relevant = catalog.denizens.find(_.rulesText.toLowerCase.contains("campaign")).get
     val withPower = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(relevant.id.value),
           Orientation.FaceDown, Tokens.empty)))))))
-    assert(CampaignRules.validateStart(catalog, withPower, player.player, site, 1)
-      .left.toOption.get.isInstanceOf[UnsupportedCampaignState])
+    assert(CampaignRules.validateStart(catalog, withPower, player.player, site, 1).isRight)
   }
 
   test("faceup Vow of Peace is an exact-ID Campaign block") {
@@ -728,17 +727,14 @@ class CampaignSuite extends munit.FunSuite {
     assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
   }
 
-  test("Bag of Siegeworks is relevant to bandit-site defense dice and rejects") {
+  test("unimplemented Bag of Siegeworks does not block base Campaign") {
     val (ready, player, site) = campaignReady
     val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
     val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(relics = Vector(RelicState(RelicId(bag.id.value),
           Orientation.FaceUp, Tokens.empty)))))))
-    val error = CampaignRules.validateStart(catalog, state, player.player, site, 1)
-      .left.toOption.get.toString
-    assert(error.contains("relic.bag-of-siegeworks"))
-    assert(error.contains(s"relic:${player.player.value}:${bag.id.value}"))
+    assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
   }
 
   test("audited exact-ID bandit classifications remain conservative") {
@@ -821,11 +817,11 @@ class CampaignSuite extends munit.FunSuite {
           Orientation.FaceDown, Tokens.empty)))))))
     val error = CampaignRules.validateStart(changed, state, player.player, site, 1)
       .left.toOption.get.toString
-    assert(error.contains("denizen.future-plan"))
-    assert(error.contains(s"adviser:${player.player.value}:denizen:${original.id.value}"))
+    assert(error.contains("UnsupportedRuleCatalog") ||
+      error.contains("handler inventory is not reviewed"))
   }
 
-  test("relevant denizen at another actor-ruled site fails explicitly") {
+  test("unimplemented remote optional denizen does not block Campaign") {
     val (ready, player, target) = campaignReady
     val remote = ready.game.current.map.inPlay.find(_ != target).get
     val relevant = catalog.denizens.find(_.rulesText.toLowerCase.contains("campaign")).get
@@ -836,8 +832,7 @@ class CampaignSuite extends munit.FunSuite {
     val withPower = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(remote, remoteState)))))
-    assert(CampaignRules.validateStart(catalog, withPower, player.player, target, 1)
-      .left.toOption.get.isInstanceOf[UnsupportedCampaignState])
+    assert(CampaignRules.validateStart(catalog, withPower, player.player, target, 1).isRight)
   }
 
   test("corrupt remote site rule mapping rejects Campaign access scan") {

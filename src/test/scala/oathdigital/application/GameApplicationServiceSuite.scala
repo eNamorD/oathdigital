@@ -21,6 +21,27 @@ import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("major-action preview is stateless stale-safe and rejects unavailable modifiers") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val setup = execute(service, "game-preview")
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val act = service.handle("game-preview", setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val before = repository.load("game-preview").toOption.flatten.get.records
+    val preview = service.preview("game-preview", act.nextSequence, actor,
+      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).toOption.get
+    assertEquals(preview.loaded.nextSequence, act.nextSequence)
+    assertEquals(repository.load("game-preview").toOption.flatten.get.records, before)
+    assert(service.preview("game-preview", act.nextSequence - 1, actor,
+      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).left.toOption
+      .exists(_.isInstanceOf[GameApplicationError.StaleClientPosition]))
+    val forged = oathdigital.gameplay.OrderedRuleInvocation(
+      oathdigital.gameplay.RuleSourceRef.GameRule("forged"), "unknown")
+    assert(service.preview("game-preview", act.nextSequence, actor,
+      oathdigital.gameplay.MajorActionKind.Travel, Vector(forged)).isLeft)
+  }
   test("minor adviser action persists and reloads through authoritative replay") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)

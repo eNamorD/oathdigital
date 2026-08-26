@@ -1,6 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{TradeResource, WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
+  WakeResource}
 import oathdigital.model._
 import oathdigital.protocol.{GameIntent => Intent, _}
 
@@ -53,6 +54,42 @@ object GameIntentMapper {
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
     }
+  }
+
+  def bind(actorId: PlayerId, intent: Intent,
+      modifiers: Vector[ModifierInvocation]): Result[GameCommand] =
+    for {
+      command <- bind(actorId, intent)
+      ordered <- traverse(modifiers)(modifier(actorId, _))
+    } yield if (ordered.isEmpty) command else GameCommand.WithModifiers(command, ordered)
+
+  def bindModifiers(actorId: PlayerId, modifiers: Vector[ModifierInvocation])
+      : Result[Vector[OrderedRuleInvocation]] = traverse(modifiers)(modifier(actorId, _))
+
+  private def modifier(actor: PlayerId, value: ModifierInvocation)
+      : Result[OrderedRuleInvocation] = {
+    val source = value.sourceKind match {
+      case "site" => Right(RuleSourceRef.Site(SiteId(value.sourceId)))
+      case "site-card" => value.contextId.toRight(GameIntentMappingFailure(
+        "$.orderedModifiers.contextId", "site-card requires site context"))
+        .map(site => RuleSourceRef.SiteCard(SiteId(site), DenizenId(value.sourceId)))
+      case "adviser" => Right(RuleSourceRef.Adviser(actor, DenizenId(value.sourceId)))
+      case "relic" => Right(RuleSourceRef.Relic(actor, RelicId(value.sourceId)))
+      case "edifice" => value.contextId.toRight(GameIntentMappingFailure(
+        "$.orderedModifiers.contextId", "edifice requires site context"))
+        .map(site => RuleSourceRef.Edifice(SiteId(site), EdificeId(value.sourceId)))
+      case "banner" => Right(RuleSourceRef.Banner(value.sourceId))
+      case "foundation" => scala.util.Try(value.sourceId.toInt).toOption
+        .flatMap(n => FoundationNumber.all.find(_.value == n))
+        .map(n => RuleSourceRef.Foundation(n): RuleSourceRef).toRight(
+          GameIntentMappingFailure("$.orderedModifiers.sourceId", "unknown foundation"))
+      case "legacy" => value.contextId.toRight(GameIntentMappingFailure(
+        "$.orderedModifiers.contextId", "legacy requires lineage context"))
+        .map(lineage => RuleSourceRef.Legacy(LineageId(lineage), LegacyId(value.sourceId)))
+      case other => Left(GameIntentMappingFailure("$.orderedModifiers.sourceKind",
+        s"unknown modifier source '$other'"))
+    }
+    source.map(OrderedRuleInvocation(_, value.handlerId))
   }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))

@@ -172,12 +172,12 @@ class EconomySuite extends munit.FunSuite {
       Tokens(1, 0))
   }
 
-  test("intact Hallowed Spring Economy handler rejects base Trade explicitly") {
+  test("unimplemented optional Economy handler does not block base Trade") {
     val ready = spring(act(), EdificeSide.Intact)
     val actor = player(ready)
     val result = rules.handle(Ready(ready), EconomyCommand.Trade(actor.player,
       EconomyTargetRef.Edifice(springId), TradeResource.Secret))
-    assertEquals(result.left.toOption.get, UnsupportedEconomyState(
-      "unsupported relevant Economy handler edifice.e26.intact"))
+    assert(result.isRight)
+    assert(result.toOption.get.events.exists(_.isInstanceOf[Traded]))
   }
 }

@@ -17,6 +17,7 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
       case _: WakeEnded => WakeEndedType
       case _: RestStarted => RestStartedType
       case _: RestCompleted => RestCompletedType
+      case _: IgnoredRulesRecorded => IgnoredRulesRecordedType
   }
 
   protected final val lifecycleEncoder: PartialFunction[OathEvent, ujson.Value] = {
@@ -55,6 +56,14 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           "completedRound" -> round,
           "usurperLimited" -> limited
         )
+      case IgnoredRulesRecorded(player, action, diagnostics) => ujson.Obj(
+        "playerId" -> player.value,
+        "action" -> action.key,
+        "diagnostics" -> ujson.Arr.from(diagnostics.map(d => ujson.Obj(
+          "source" -> d.source.stableKey,
+          "handlerId" -> d.handlerId,
+          "timing" -> d.timing.key,
+          "reason" -> d.reason))))
   }
 
   protected final def lifecycleDecode(eventType: String, payload: ujson.Value,
@@ -129,6 +138,24 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
             PlayerId(payload("playerId").str), entries.toMap,
             returnedSecrets, refreshedSupply,
             PlayerId(payload("postRestActivePlayerId").str), completedRound, limited)
+        case IgnoredRulesRecordedType => for {
+          action <- MajorActionKind.fromKey(payload("action").str).toRight(
+            InvalidValue(s"$path.action", "unknown major action"))
+          diagnostics <- payload("diagnostics").arr.toVector.foldLeft[
+            Either[WireError, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
+            case (Right(acc), value) => for {
+              source <- RuleSourceRef.parse(value("source").str).toRight(
+                InvalidValue(s"$path.diagnostics.source", "unknown rule source"))
+              timing <- Vector(RuleTiming.Start, RuleTiming.Persistent,
+                RuleTiming.Trigger, RuleTiming.BattlePlan, RuleTiming.Inherent)
+                .find(_.key == value("timing").str).toRight(
+                  InvalidValue(s"$path.diagnostics.timing", "unknown timing"))
+            } yield acc :+ IgnoredRuleDiagnostic(source, value("handlerId").str,
+              action, timing, value("reason").str)
+            case (left @ Left(_), _) => left
+          }
+        } yield IgnoredRulesRecorded(PlayerId(payload("playerId").str), action,
+          diagnostics)
     }
     decoder.lift(eventType)
   }

@@ -1,8 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, RuleActivation, RuleOutcome,
-  RuleQueryContext, RuleSourceRef, RuntimeRuleRegistry}
+import oathdigital.gameplay.{MajorActionPowerShell, OathLifecycle, RuleSourceRef}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
@@ -153,24 +152,9 @@ object Economy {
       } yield (ready, player, siteId, card, suit)
     }
 
-  private val EconomyHandlers = Set(
-    "denizen.initiation-rite", "denizen.map-library",
-    "denizen.animal-playmates", "denizen.the-old-oak", "denizen.birdsong",
-    "denizen.small-friends", "denizen.vow-of-poverty",
-    "denizen.vow-of-beastkin", "denizen.downtrodden", "denizen.rowdy-pub",
-    "denizen.pressgangs", "denizen.curfew", "denizen.knights-errant",
-    "denizen.golem-legions", "denizen.defame", "denizen.friendly-familiar",
-    "denizen.old-songs", "denizen.village-idiot", "denizen.skilled-merchants",
-    "denizen.moving-market", "denizen.mounted-library", "relic.cup-of-plenty",
-    "relic.spiteful-mirror", "edifice.e26.intact", "legacy.beloved")
-
   private def validateSupportedState(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerState): Either[OathViolation, Unit] = {
     val game = ready.game
-    val adviserSources = player.advisers.collect {
-      case d: DenizenState if d.orientation == Orientation.FaceUp =>
-        RuleSourceRef.Adviser(player.player, d.id) -> handlersOf(catalog, d.id)
-    }
     val ruledSites = game.current.map.sites.toVector.foldLeft[
       Either[OathViolation, Vector[(SiteId, SiteState)]]](Right(Vector.empty)) {
       case (Right(acc), entry @ (_, site)) =>
@@ -185,39 +169,12 @@ object Economy {
       player.pawnSite.toVector.flatMap(siteId =>
         game.current.map.sites.get(siteId).map(siteId -> _)) ++ ruled
     }
-    val siteSources = accessibleSites.getOrElse(Vector.empty).flatMap { case (siteId, site) =>
-      site.denizens.collect {
-        case d: DenizenState =>
-          RuleSourceRef.SiteCard(siteId, d.id) -> handlersOf(catalog, d.id)
-        case e: EdificeState =>
-          RuleSourceRef.Edifice(siteId, e.id) -> edificeHandlers(catalog, e)
-      }
-    }
-    val relicSources = player.relics.collect {
-      case r if r.orientation == Orientation.FaceUp =>
-        RuleSourceRef.Relic(player.player, r.id) -> handlersOf(catalog, r.id)
-    }
-    val activations = (adviserSources ++ siteSources ++ relicSources).flatMap {
-      case (source, handlers) => handlers.filter(EconomyHandlers)
-        .map(RuleActivation(source, _, 0))
-    }
-    val unsupported = RuntimeRuleRegistry.default.resolve(activations,
-      RuleQueryContext.Economy(ready, player)).collectFirst {
-      case value if value.outcome.isInstanceOf[RuleOutcome.UnsupportedRelevantRule] =>
-        value.activation.handlerId
-    }
     if (accessibleSites.isLeft) accessibleSites.map(_ => ())
     else if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
       Left(UnsupportedEconomyState("altered Foundations are not supported"))
     else if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedEconomyState("Economy is limited to the exile-only first game"))
-    else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active)))
-      Left(UnsupportedEconomyState("active legacy Economy powers are not supported"))
-    else unsupported match {
-      case Some(handler) => Left(UnsupportedEconomyState(
-        s"unsupported relevant Economy handler $handler"))
-      case None => Right(())
-    }
+    else MajorActionPowerShell.requireAudited(catalog)
   }
 
   private def legalCards(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -297,16 +254,4 @@ object Economy {
     catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
       .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
       .flatMap(key => Suit.all.find(_.key == key))
-  private def handlersOf(catalog: ExecutableCatalog, id: CardId): Vector[String] =
-    catalog.denizens.find(_.id.value == id.value).map(_.handlers)
-      .orElse(catalog.relics.find(_.id.value == id.value).map(_.handlers))
-      .getOrElse(Vector.empty)
-  private def edificeHandlers(catalog: ExecutableCatalog,
-      state: EdificeState): Vector[String] =
-    catalog.edifices.find(_.id.value == state.id.value).toVector.flatMap {
-      definition => state.side match {
-        case EdificeSide.Intact => definition.intact.handlers
-        case EdificeSide.Ruined => definition.ruined.handlers
-      }
-    }
 }

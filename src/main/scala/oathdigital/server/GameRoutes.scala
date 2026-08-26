@@ -20,6 +20,8 @@ import oathdigital.application.{
   GameIntentMapper
 }
 import oathdigital.protocol.FirstGameBootstrapRequest
+import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewResponse,
+  PreviewIgnoredRule, PreviewModifier, PreviewTarget}
 import oathdigital.protocol.projection.GameProjection
 import oathdigital.model.PlayerId
 
@@ -28,6 +30,26 @@ final class GameServerGateway(
     projector: oathdigital.application.GameProjector,
     planFactory: oathdigital.application.DevelopmentFirstGamePlanFactory
 ) {
+  def preview(gameId: String, requestingPlayer: PlayerId,
+      request: MajorActionPreviewRequest)
+      : Either[GameApplicationError, MajorActionPreviewResponse] = for {
+    action <- oathdigital.gameplay.MajorActionKind.fromKey(request.action).toRight(
+      GameApplicationError.BootstrapFailure("unknown major action"))
+    selected <- GameIntentMapper.bindModifiers(requestingPlayer,
+      request.orderedModifiers).left.map(error =>
+        GameApplicationError.BootstrapFailure(s"${error.path}: ${error.message}"))
+    accepted <- service.preview(gameId, request.expectedNextSequence,
+      requestingPlayer, action, selected)
+    projection = projector.project(gameId, accepted.loaded, requestingPlayer)
+    _ <- Either.cond(projection.activeParticipantId.contains(requestingPlayer.value) &&
+      projection.actionSelectionOpen, (), GameApplicationError.CommandRejected(
+      oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+        "major-action preview is unavailable for this actor or phase")))
+  } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
+    accepted.options.map(v => PreviewModifier(v.source.stableKey, v.handlerId,
+      v.handlerId)), accepted.ignored.map(v => PreviewIgnoredRule(
+      v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
+    MajorActionPreviewTargets.from(projection, request))
   def rawEventHistory(gameId: String, limit: Int)
       : Either[GameApplicationError, Vector[String]] =
     service.rawEventHistory(gameId, limit)
@@ -76,6 +98,25 @@ final class GameServerGateway(
     }
 }
 
+private[server] object MajorActionPreviewTargets {
+  def from(projection: GameProjection,
+      request: MajorActionPreviewRequest): Vector[PreviewTarget] = request.action match {
+    case "travel" => projection.legalTravelDestinations.map(v =>
+      PreviewTarget(s"site:${v.siteId}", v.supplyCost, "Travel destination"))
+    case "search" => projection.legalSearchSources.map(v => PreviewTarget(
+      s"${v.kind}:${v.region.getOrElse("")}", v.supplyCost, "Search source"))
+    case "muster" => projection.legalMusters.map(v => PreviewTarget(
+      s"${v.targetKind}:${v.targetId}", v.supplyCost, v.label))
+    case "trade" => projection.legalTrades.filter(v => request.baseParameters
+      .get("resource").forall(_ == v.resource)).map(v => PreviewTarget(
+      s"${v.targetKind}:${v.targetId}", v.supplyCost, v.label))
+    case "campaign" => projection.boardTargetActions.filter(_.actionKind
+      .startsWith("campaign")).flatMap(_.candidates.map(v => PreviewTarget(
+      v.target.stableKey, 2, v.label)))
+    case _ => Vector.empty
+  }
+}
+
 final class GameRoutes(
     gateway: GameServerGateway,
     blockingExecutionContext: ExecutionContext
@@ -110,6 +151,18 @@ final class GameRoutes(
               ))
             }
           } ~
+            path("preview") {
+              post {
+                entity(as[String]) { body =>
+                  oathdigital.protocol.MajorActionPreviewCodec.decode(body) match {
+                    case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
+                      "malformed-request", s"${error.path}: ${error.message}"))
+                    case Right(request) => completePreview(gateway.preview(validGameId,
+                      PlayerId(validPlayerId), request))
+                  }
+                }
+              }
+            } ~
             path("commands") {
               post {
                 entity(as[String]) { body =>
@@ -121,7 +174,8 @@ final class GameRoutes(
                         s"${error.path}: ${error.message}"
                       ))
                     case Right(request) =>
-                      GameIntentMapper.bind(PlayerId(validPlayerId), request.intent) match {
+                      GameIntentMapper.bind(PlayerId(validPlayerId), request.intent,
+                        request.orderedModifiers) match {
                         case Left(error) => complete(jsonResponse(StatusCodes.BadRequest,
                           "malformed-request", s"${error.path}: ${error.message}"))
                         case Right(command) => completeAsync(gateway.submit(
@@ -154,6 +208,21 @@ final class GameRoutes(
             }
         }
       }
+    }
+
+  private def completePreview(operation: => Either[GameApplicationError,
+      MajorActionPreviewResponse]): Route =
+    onComplete(Future(operation)(blockingExecutionContext)) {
+      case Success(Right(value)) => complete(HttpResponse(StatusCodes.OK,
+        entity = HttpEntity(ContentTypes.`application/json`,
+          oathdigital.protocol.MajorActionPreviewCodec.encode(value))))
+      case Success(Left(error)) =>
+        val (status, code, message, _) = publicError(error)
+        complete(jsonResponse(status, code, message))
+      case Failure(error) =>
+        logger.error("Unhandled major-action preview failure", error)
+        complete(jsonResponse(StatusCodes.InternalServerError, "internal-error",
+          "the server could not complete the request"))
     }
 
   private def completeRawHistory(

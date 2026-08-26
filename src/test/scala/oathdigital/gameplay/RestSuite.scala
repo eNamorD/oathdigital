@@ -5,10 +5,10 @@ import oathdigital.gameplay.phases.{RestCommand, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent.{RestCompleted, RestStarted}
+import oathdigital.gameplay.OathEvent.{IgnoredRulesRecorded, RestCompleted, RestStarted}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation.{RestOutcomeMismatch,
-  UnsupportedRoundEndCatalogInventory, UnsupportedRoundEndRule}
+  UnsupportedRoundEndCatalogInventory, UnsupportedRuleCatalog}
 
 class RestSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -116,7 +116,7 @@ class RestSuite extends munit.FunSuite {
       supported.game.current.turn.activePlayer)).isRight)
   }
 
-  test("each relevant Rest handler blocks with stable adviser and site identities") {
+  test("each relevant Rest handler records fallback diagnostics without blocking") {
     val base = act
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -129,10 +129,15 @@ class RestSuite extends munit.FunSuite {
       val state = base.copy(game = base.game.copy(current = base.game.current.copy(
         players = base.game.current.players.map(p => if (p.player == actor.player)
           p.copy(advisers = Vector(adviser)) else p))))
-      val rejected = rules.handle(Ready(state), RestCommand.Begin(actor.player))
-        .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
-      assertEquals(rejected.handlerId, handler)
-      assert(rejected.sourceKey.startsWith(s"adviser:${actor.player.value}:"))
+      val accepted = rules.handle(Ready(state), RestCommand.Begin(actor.player)).toOption.get
+      val recorded = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]
+      assertEquals(recorded.diagnostics.head.handlerId, handler)
+      assert(recorded.diagnostics.head.source.stableKey
+        .startsWith(s"adviser:${actor.player.value}:"))
+      assertEquals(rules.evolve(Ready(state), recorded), Right(Ready(state)))
+      val tampered = recorded.copy(diagnostics = recorded.diagnostics.map(
+        _.copy(handlerId = "denizen.tampered")))
+      assert(rules.evolve(Ready(state), tampered).isLeft)
     }
     val handler = "denizen.insomnia"
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
@@ -142,9 +147,10 @@ class RestSuite extends munit.FunSuite {
         siteId, base.game.current.map.sites(siteId).copy(denizens = Vector(
           DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
             Tokens.empty))))))))
-    val siteRejected = rules.handle(Ready(siteState), RestCommand.Begin(actor.player))
-      .left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
-    assert(siteRejected.sourceKey.startsWith(s"site-card:${siteId.value}:"))
+    val siteAccepted = rules.handle(Ready(siteState), RestCommand.Begin(actor.player))
+      .toOption.get.events.head.asInstanceOf[IgnoredRulesRecorded]
+    assert(siteAccepted.diagnostics.head.source.stableKey
+      .startsWith(s"site-card:${siteId.value}:"))
   }
 
   test("changed inventory in every catalog family fails before runtime discovery") {
@@ -152,7 +158,9 @@ class RestSuite extends munit.FunSuite {
     val actor = base.game.current.turn.activePlayer
     def rejects(c: oathdigital.catalog.ExecutableCatalog) =
       new OathRules(c).handle(Ready(base), RestCommand.Begin(actor))
-        .left.toOption.exists(_.isInstanceOf[UnsupportedRoundEndCatalogInventory])
+        .left.toOption.exists(error =>
+          error.isInstanceOf[UnsupportedRoundEndCatalogInventory] ||
+          error.isInstanceOf[UnsupportedRuleCatalog])
     val changed = Vector(
       catalog.copy(denizens = catalog.denizens.updated(0,
         catalog.denizens.head.copy(handlers = catalog.denizens.head.handlers :+ "changed"))),
@@ -171,22 +179,23 @@ class RestSuite extends munit.FunSuite {
     assert(changed.forall(rejects))
   }
 
-  test("altered banner and Foundation types fail with stable identities") {
+  test("altered banner and Foundation types record stable fallback identities") {
     val base = act
     val actor = base.game.current.turn.activePlayer
-    def rejection(ready: ReadyGame) = rules.handle(Ready(ready),
-      RestCommand.Begin(actor)).left.toOption.get.asInstanceOf[UnsupportedRoundEndRule]
+    def diagnostic(ready: ReadyGame) = rules.handle(Ready(ready),
+      RestCommand.Begin(actor)).toOption.get.events.head
+      .asInstanceOf[IgnoredRulesRecorded].diagnostics.head
     val banner = base.copy(game = base.game.copy(current = base.game.current.copy(
       banners = base.game.current.banners.copy(peoplesFavor =
         base.game.current.banners.peoplesFavor.copy(
           active = PeoplesFavorFace.GrandCouncil)))))
-    assertEquals(rejection(banner).sourceKey, "banner:peoples-favor")
+    assertEquals(diagnostic(banner).source.stableKey, "banner:peoples-favor")
 
     val number = base.game.campaign.foundations.keys.head
     val foundation = base.copy(game = base.game.copy(campaign =
       base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
         number, FoundationState(FoundationFace.Altered, Set.empty)))))
-    assertEquals(rejection(foundation).sourceKey,
+    assertEquals(diagnostic(foundation).source.stableKey,
       s"foundation:${number.value}")
   }
 

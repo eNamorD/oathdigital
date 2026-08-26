@@ -239,7 +239,6 @@ class TravelSuite extends munit.FunSuite {
           case other => other
         })
       })))
-    assert(TravelRules.validateSupportedState(faceUp).left.toOption.get
-      .isInstanceOf[UnsupportedTravelState])
+    assert(TravelRules.validateSupportedState(catalog, faceUp).isRight)
   }
 }

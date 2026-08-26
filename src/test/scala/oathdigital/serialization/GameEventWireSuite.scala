@@ -14,6 +14,15 @@ import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class GameEventWireSuite extends munit.FunSuite {
+  test("ignored-rule diagnostics round trip durable source timing and reason") {
+    val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
+      MajorActionKind.Rest, Vector(IgnoredRuleDiagnostic(
+        RuleSourceRef.Adviser(PlayerId("red"), DenizenId("insomnia")),
+        "denizen.insomnia", MajorActionKind.Rest, RuleTiming.Trigger,
+        "reviewed-unimplemented-pre-alpha-fallback")))
+    val encoded = GameEventWire.encodeEvent("g", catalog.ref, 0, event).toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+  }
   test("v13 round ending and War Exhaustion preserve outcome and random domain") {
     val p1 = PlayerId("p1")
     val p2 = PlayerId("p2")

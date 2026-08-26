@@ -359,18 +359,7 @@ object CampaignRules {
 
   private def validateDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, defender: PlayerId, target: SiteId)
-      : Either[OathViolation, Unit] = {
-    {
-      val relevant = accessibleRules(catalog, ready, defender, target).filter {
-        case DiscoveredCampaignRule(_, HandlerSupport.Blocked(_), _) => true
-        case _ => false
-      }
-      relevant.headOption.toLeft(()).left.map { rule =>
-        CampaignUnavailable("player-defender battle plan or Campaign power " +
-          s"'${rule.activation.handlerId}' is not supported")
-      }
-    }
-  }
+      : Either[OathViolation, Unit] = MajorActionPowerShell.requireAudited(catalog)
 
   private def banditRules(catalog: ExecutableCatalog, ready: ReadyGame)
       : Vector[DiscoveredCampaignRule] = ready.game.current.map.inPlay.filter(site =>
@@ -388,15 +377,7 @@ object CampaignRules {
   private def validateBanditDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, attacker: PlayerId, sites: Vector[SiteId], force: Int)
       : Either[OathViolation, Unit] = {
-    val relevant = banditRules(catalog, ready).filter {
-      case DiscoveredCampaignRule(_, HandlerSupport.Blocked(_), _) => true
-      case DiscoveredCampaignRule(_, HandlerSupport.Executable(
-          CampaignTimingWindow.DefenderBattlePlansAndRoll), facedown) => facedown
-      case _ => false
-    }
-    relevant.headOption.toLeft(()).left.map(rule => CampaignUnavailable(
-      s"bandit battle plan '${rule.activation.handlerId}' at " +
-        s"${rule.activation.source.stableKey} is not deterministic")).flatMap { _ =>
+    MajorActionPowerShell.requireAudited(catalog).flatMap { _ =>
       val context = PendingProcedure.Campaign(DecisionId("bandit-validation"),
         attacker, sites, CampaignDefender.Bandits, force, Vector.empty,
         attackerPlansFinished = true, defenderPlansFinished = false,
@@ -445,7 +426,6 @@ object CampaignRules {
           game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty))
         Some("altered Foundations are not supported for Campaign")
       else if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Campaign is limited to the all-Exile first game")
-      else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active))) Some("active legacy Campaign powers are not supported")
       else None
     val ruledSites = game.current.map.inPlay.foldLeft[
       Either[SiteRuleError, Vector[SiteId]]](Right(Vector.empty)) {
@@ -459,15 +439,15 @@ object CampaignRules {
       s"cannot resolve Campaign access because site rule is corrupt: $error"))
       .flatMap { ruled =>
         val discovered = discover(catalog, ready, playerId, sites, ruled)
-        unsupportedBase.map(UnsupportedCampaignState).toLeft(()).flatMap { _ =>
+        unsupportedBase.map(UnsupportedCampaignState).toLeft(()).flatMap(_ =>
+          MajorActionPowerShell.requireAudited(catalog)).flatMap { _ =>
           discovered.sortBy(r => (r.activation.priority,
             r.activation.source.stableKey, r.activation.handlerId)).foldLeft[
               Either[OathViolation, Unit]](Right(())) {
             case (failure @ Left(_), _) => failure
             case (Right(_), rule) => rule.support match {
               case HandlerSupport.IrrelevantToBanditConquest => Right(())
-              case HandlerSupport.Blocked(reason) => Left(UnsupportedCampaignState(
-                s"Campaign handler '${rule.activation.handlerId}' at ${rule.activation.source.stableKey} is blocked: $reason"))
+              case HandlerSupport.Blocked(_) => Right(())
               case HandlerSupport.Executable(CampaignTimingWindow.AttackerBattlePlans) =>
                 Right(())
               case HandlerSupport.Executable(CampaignTimingWindow.DefenderBattlePlansAndRoll) =>

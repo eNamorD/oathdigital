@@ -32,23 +32,41 @@ final class OathRules(catalog: ExecutableCatalog,
       state: OathState,
       command: WakeCommand
   ): Either[OathViolation, OathTransition] =
-    Wake.handle(state, command)
+    command match {
+      case WakeCommand.EndWake(actor) => withFallback(state, actor,
+        MajorActionKind.Wake)(Wake.handle(state, command))
+      case _ => Wake.handle(state, command)
+    }
 
   def handle(
       state: OathState,
       command: TravelCommand
   ): Either[OathViolation, OathTransition] =
-    Travel.handle(catalog, state, command).flatMap(completeAction)
+    command match { case TravelCommand.Travel(actor, _) =>
+      withFallback(state, actor, MajorActionKind.Travel)(
+        Travel.handle(catalog, state, command)).flatMap(completeAction _)
+    }
 
   def handle(state: OathState, command: EconomyCommand)
       : Either[OathViolation, OathTransition] =
-    Economy.handle(catalog, state, command).flatMap(completeAction)
+    command match {
+      case value: EconomyCommand.Muster => withFallback(state, value.playerId,
+        MajorActionKind.Muster)(Economy.handle(catalog, state, command))
+        .flatMap(completeAction _)
+      case value: EconomyCommand.Trade => withFallback(state, value.playerId,
+        MajorActionKind.Trade)(Economy.handle(catalog, state, command))
+        .flatMap(completeAction _)
+    }
 
   def handle(
       state: OathState,
       command: SearchCommand
   ): Either[OathViolation, OathTransition] =
-    Search.handle(catalog, state, command).flatMap { transition =>
+    (command match {
+      case start: SearchCommand.Start => withFallback(state, start.playerId,
+        MajorActionKind.Search)(Search.handle(catalog, state, command))
+      case _ => Search.handle(catalog, state, command)
+    }).flatMap { transition =>
       command match {
         case _: SearchCommand.Complete if (transition.state match {
           case Ready(ready) => ready.game.current.pending.exists {
@@ -70,7 +88,11 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: RecoverCommand)
       : Either[OathViolation, OathTransition] =
-    Recover.handle(catalog, state, command).flatMap { transition =>
+    (command match {
+      case roll: RecoverCommand.Roll => withFallback(state, roll.playerId,
+        MajorActionKind.Recover)(Recover.handle(catalog, state, command))
+      case _ => Recover.handle(catalog, state, command)
+    }).flatMap { transition =>
       command match {
         case _: RecoverCommand.Stop | _: RecoverCommand.TakeRelic =>
           completeAction(transition)
@@ -80,7 +102,11 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: ForgeCommand)
       : Either[OathViolation, OathTransition] =
-    Forge.handle(catalog, state, command).flatMap { transition =>
+    (command match {
+      case begin: ForgeCommand.Begin => withFallback(state, begin.playerId,
+        MajorActionKind.Forge)(Forge.handle(catalog, state, command))
+      case _ => Forge.handle(catalog, state, command)
+    }).flatMap { transition =>
       command match {
         case _: ForgeCommand.Complete => completeAction(transition)
         case _ => Right(transition)
@@ -97,7 +123,12 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] =
-    MinorActions.handle(catalog, state, command).flatMap(completeAction)
+    (command match {
+      case play: MinorActionCommand.PlayFacedownAdviser => withFallback(state,
+        play.player, MajorActionKind.WhenPlayed)(
+        MinorActions.handle(catalog, state, command))
+      case _ => MinorActions.handle(catalog, state, command)
+    }).flatMap(completeAction _)
 
   def handle(state: OathState, command: VisionCommand)
       : Either[OathViolation, OathTransition] =
@@ -124,7 +155,15 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: CampaignCommand)
       : Either[OathViolation, OathTransition] =
-    Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
+    (command match {
+      case begin: CampaignCommand.Start => withFallback(state, begin.playerId,
+        MajorActionKind.Campaign)(Campaign.handle(catalog, state, command,
+          campaignLosingForceRegistry))
+      case begin: CampaignCommand.StartRaid => withFallback(state, begin.playerId,
+        MajorActionKind.Campaign)(Campaign.handle(catalog, state, command,
+          campaignLosingForceRegistry))
+      case _ => Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
+    })
       .flatMap { transition =>
       command match {
         case _: CampaignCommand.Place | _: CampaignCommand.RelocateRaidPawn =>
@@ -139,7 +178,12 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] =
-    Rest.handle(catalog, state, command, warExhaustionRandomPort).flatMap { transition =>
+    (command match {
+      case begin: RestCommand.Begin => withFallback(state, begin.playerId,
+        MajorActionKind.Rest)(Rest.handle(catalog, state, command,
+          warExhaustionRandomPort))
+      case _ => Rest.handle(catalog, state, command, warExhaustionRandomPort)
+    }).flatMap { transition =>
       command match {
         case _: RestCommand.Finish if (transition.state match {
           case Ready(ready) => ready.game.current.result.nonEmpty
@@ -160,6 +204,13 @@ final class OathRules(catalog: ExecutableCatalog,
       event: OathEvent
   ): Either[OathViolation, OathState] =
     event match {
+      case recorded: IgnoredRulesRecorded => state match {
+        case Ready(ready) => MajorActionPowerShell.ignored(catalog, ready,
+          recorded.playerId, recorded.action).flatMap(expected =>
+          Either.cond(expected == recorded.diagnostics, state,
+            InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
+        case _ => Left(GameNotStarted)
+      }
       case event: WealthTaken => Wake.evolve(state, event)
       case event: WakeEnded => Wake.evolve(state, event)
       case event: Traveled => Travel.evolve(catalog, state, event)
@@ -223,12 +274,38 @@ final class OathRules(catalog: ExecutableCatalog,
 
   private def completeAction(transition: OathTransition) =
     if (hasResult(transition.state)) Right(transition)
-    else appendEvaluation(transition,
-      StateBasedEvaluation.banditRefill(catalog, _))
+    else recordBoundaryFallback(transition).flatMap(afterDiagnostics =>
+      appendEvaluation(afterDiagnostics,
+      StateBasedEvaluation.banditRefill(catalog, _)))
       .flatMap { afterRefill =>
         if (hasResult(afterRefill.state)) Right(afterRefill)
         else appendEvaluation(afterRefill, StateBasedEvaluation.afterAction)
       }
+
+  private def recordBoundaryFallback(transition: OathTransition) =
+    transition.state match {
+      case Ready(ready) =>
+        val actor = ready.game.current.turn.activePlayer
+        MajorActionPowerShell.ignored(catalog, ready, actor,
+          MajorActionKind.ActionBoundary).map { diagnostics =>
+          if (diagnostics.isEmpty) transition else transition.copy(events =
+            transition.events :+ IgnoredRulesRecorded(actor,
+              MajorActionKind.ActionBoundary, diagnostics))
+        }
+      case _ => Right(transition)
+    }
+
+  private def withFallback(state: OathState, actor: PlayerId,
+      action: MajorActionKind)(operation: => Either[OathViolation, OathTransition]) =
+    state match {
+      case Ready(ready) => MajorActionPowerShell.ignored(catalog, ready, actor, action)
+        .flatMap { diagnostics => operation.map { transition =>
+          if (diagnostics.isEmpty) transition
+          else transition.copy(events = IgnoredRulesRecorded(actor, action,
+            diagnostics) +: transition.events)
+        }}
+      case _ => operation
+    }
 
   private def hasResult(state: OathState): Boolean = state match {
     case Ready(ready) => ready.game.current.result.nonEmpty
@@ -243,21 +320,30 @@ final class OathRules(catalog: ExecutableCatalog,
           case VisionVictory(winner, _) => OathContinue.GameFinished(winner)
           case _ => current.continue
         }))
-    StateBasedEvaluation.atWake(transition.state).flatMap {
-      case Some(win: UsurperVictory) => append(transition, win)
-      case Some(flip: UsurperFlipped) => append(transition, flip).flatMap { after =>
+    val prepared = transition.state match {
+      case Ready(ready) => MajorActionPowerShell.ignored(catalog, ready,
+        ready.game.current.turn.activePlayer, MajorActionKind.Wake).map { diagnostics =>
+        if (diagnostics.isEmpty) transition else transition.copy(events =
+          transition.events :+ IgnoredRulesRecorded(
+            ready.game.current.turn.activePlayer, MajorActionKind.Wake, diagnostics))
+      }
+      case _ => Right(transition)
+    }
+    prepared.flatMap(current => StateBasedEvaluation.atWake(current.state).flatMap {
+      case Some(win: UsurperVictory) => append(current, win)
+      case Some(flip: UsurperFlipped) => append(current, flip).flatMap { after =>
         StateBasedEvaluation.visionAtWake(after.state).flatMap {
           case Some(vision) => append(after, vision)
           case None => Right(after)
         }
       }
-      case None => StateBasedEvaluation.visionAtWake(transition.state).flatMap {
-        case Some(vision) => append(transition, vision)
-        case None => Right(transition)
+      case None => StateBasedEvaluation.visionAtWake(current.state).flatMap {
+        case Some(vision) => append(current, vision)
+        case None => Right(current)
       }
       case Some(other) => Left(InvalidEventOrder(
         s"unexpected Wake evaluation event: $other"))
-    }
+    })
   }
 
   private def appendEvaluation(transition: OathTransition,

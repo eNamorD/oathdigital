@@ -58,7 +58,7 @@ private[projection] object ActionProjectionCodec {
   def encodeAction(value: BoardTargetActionProjection): ujson.Value = ujson.Obj(
     "actionKind" -> value.actionKind, "decisionId" -> stringOption(value.decisionId),
     "prompt" -> value.prompt, "minimum" -> value.minimum, "maximum" -> value.maximum,
-    "autoActivate" -> value.autoActivate,
+    "autoActivate" -> value.autoActivate, "explicitConfirm" -> value.explicitConfirm,
     "requiredTargets" -> encoded(value.requiredTargets)(encodeTarget),
     "formation" -> option(value.formation)(f => ujson.Obj(
       "minimumForce" -> f.minimumForce, "maximumForce" -> f.maximumForce,
@@ -69,11 +69,12 @@ private[projection] object ActionProjectionCodec {
   def decodeAction(raw: ujson.Value, path: String): Result[BoardTargetActionProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("actionKind", "decisionId", "prompt", "minimum", "maximum",
-      "autoActivate", "requiredTargets", "formation", "candidates"), path)
+      "autoActivate", "explicitConfirm", "requiredTargets", "formation", "candidates"), path)
     kind <- string(value, "actionKind", path)
     decision <- optionalAbsent(value, "decisionId", path)(string)
     prompt <- string(value, "prompt", path); minimum <- int(value, "minimum", path)
     maximum <- int(value, "maximum", path); auto <- bool(value, "autoActivate", path)
+    explicit <- bool(value, "explicitConfirm", path)
     requiredRaws <- array(value, "requiredTargets", path)
     required <- traverse(requiredRaws, s"$path.requiredTargets")(decodeTarget)
     formation <- optionalAbsent(value, "formation", path) { (raw, child) => for {
@@ -89,7 +90,7 @@ private[projection] object ActionProjectionCodec {
       label <- string(row, "label", child); details <- strings(row, "details", child)
     } yield BoardTargetCandidateProjection(target, label, details) }
   } yield BoardTargetActionProjection(kind, prompt, minimum, maximum, auto, candidates,
-    formation, required, decision)
+    formation, required, decision, explicit)
 
   def encodeResolution(value: CardResolutionProjection): ujson.Value = ujson.Obj(
     "kind" -> value.kind, "orientation" -> stringOption(value.orientation),

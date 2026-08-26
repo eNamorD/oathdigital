@@ -62,4 +62,28 @@ class CommandProtocolSuite extends munit.FunSuite {
     assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
       "$.intent.participantPlayerIds")
   }
+
+  test("ordered modifier transport preserves click order and rejects duplicates") {
+    val modifiers = Vector(
+      ModifierInvocation("adviser", "d2", None, "denizen.second"),
+      ModifierInvocation("site-card", "d1", Some("s1"), "denizen.first"))
+    val request = ActorlessCommandRequest(9, Travel("s2"), modifiers)
+    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
+      Right(request))
+    val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,
+      modifiers.head))
+    assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(duplicate))
+      .left.toOption.get.path, "$.orderedModifiers")
+  }
+
+  test("major-action preview protocol is actorless and round trips a response") {
+    val request = MajorActionPreviewCodec.decode(
+      """{"expectedNextSequence":7,"action":"trade","baseParameters":{"resource":"favor"},"orderedModifiers":[]}""")
+    assertEquals(request, Right(MajorActionPreviewRequest(7, "trade",
+      Map("resource" -> "favor"))))
+    val encoded = MajorActionPreviewCodec.encode(MajorActionPreviewResponse(7,
+      "trade", Vector.empty, Vector.empty,
+      Vector(PreviewTarget("denizen:d1", 1, "D1"))))
+    assert(ujson.read(encoded)("targets").arr.nonEmpty)
+  }
 }

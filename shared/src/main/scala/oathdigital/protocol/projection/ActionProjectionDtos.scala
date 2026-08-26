@@ -57,7 +57,8 @@ final case class BoardTargetActionProjection(
     candidates: Vector[BoardTargetCandidateProjection],
     formation: Option[BoardTargetFormationProjection] = None,
     requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
-    decisionId: Option[String] = None
+    decisionId: Option[String] = None,
+    explicitConfirm: Boolean = false
 ) {
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")

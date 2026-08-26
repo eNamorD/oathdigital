@@ -71,7 +71,8 @@ private[frontend] final case class BoardTargetSelectionState(
         Vector(target),
         action.formation.get.maximumForce))
     case Some(action) if action.candidates.exists(_.target == target) &&
-        action.maximum == 1 => BoardSelectionResult.Submit(action, Vector(target))
+        action.maximum == 1 && !action.explicitConfirm =>
+      BoardSelectionResult.Submit(action, Vector(target))
     case Some(action) if action.candidates.exists(_.target == target) =>
       val key = target.stableKey
       val required = action.requiredTargets.map(_.stableKey).toSet
@@ -90,7 +91,8 @@ private[frontend] final case class BoardTargetSelectionState(
     selectedKeys.contains(target.stableKey)
 
   def canConfirm: Boolean = activeAction.exists(action =>
-    action.maximum > 1 && selectedKeys.size >= action.minimum &&
+    (action.maximum > 1 || action.explicitConfirm) &&
+      selectedKeys.size >= action.minimum &&
       selectedKeys.size <= action.maximum)
 
   def confirm: Option[BoardSelectionResult.Submit] = for {

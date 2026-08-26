@@ -123,7 +123,7 @@ class MinorActionsSuite extends munit.FunSuite {
       SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1))
   }
 
-  test("tampered event facts and unsupported adviser handlers fail replay evolution") {
+  test("tampered facts fail while reviewed When Played handlers record fallback") {
     val (base, actor, siteId, adviser, _) = ready()
     assert(MinorActions.evolve(catalog, Ready(base), WarbandsMoved(actor.player,
       siteId, toSite = true, 1, priorBoardWarbands = 99, priorSiteWarbands = 3)).isLeft)
@@ -132,8 +132,12 @@ class MinorActionsSuite extends munit.FunSuite {
     val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown, Tokens.empty))) else p))))
-    assert(rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, powered, SearchPlacement.Adviser(Orientation.FaceUp, None))).isLeft)
+    val accepted = rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
+      actor.player, powered, SearchPlacement.Adviser(Orientation.FaceUp, None)))
+      .toOption.get
+    val diagnostic = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]
+    assertEquals(diagnostic.action, MajorActionKind.WhenPlayed)
+    assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.dazzle"))
   }
 
   test("Conspiracy play is an explicit unsupported power in command and replay") {

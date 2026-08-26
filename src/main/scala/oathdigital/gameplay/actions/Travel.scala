@@ -110,7 +110,7 @@ object TravelRules {
   ): Either[OathViolation, Int] = {
     val map = ready.game.current.map
     for {
-      _ <- validateSupportedState(ready)
+      _ <- validateSupportedState(catalog, ready)
       from <- map.regionOf(source).toRight(SiteNotInPlay(source))
       to <- map.regionOf(destination).toRight(SiteNotInPlay(destination))
       _ <- if (source == destination) Left(SameTravelSite(source)) else Right(())
@@ -133,32 +133,20 @@ object TravelRules {
   }
 
   def validateSupportedState(
+      catalog: ExecutableCatalog,
       ready: ReadyGame
   ): Either[OathViolation, Unit] = {
     val game = ready.game
-    val current = game.current
     val reason =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile))
         Some("Travel is limited to the exile-only first game")
       else if (game.campaign.foundations.values.exists(f =>
         f.face != FoundationFace.Normal || f.alterationSources.nonEmpty))
         Some("altered Foundations are not supported for Travel")
-      else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active)))
-        Some("active legacy Travel modifiers are not supported")
-      else if (current.players.exists(_.advisers.exists {
-        case DenizenState(_, Orientation.FaceUp, _) => true
-        case _ => false
-      })) Some("face-up adviser Travel modifiers are not supported")
-      else if (current.players.exists(_.relics.nonEmpty))
-        Some("held relic Travel modifiers are not supported")
-      else if (current.map.sites.values.exists(_.denizens.exists {
-        case EdificeState(_, EdificeSide.Intact, _) => true
-        case _ => false
-      })) Some("intact edifice Travel modifiers are not supported")
       else None
     reason match {
       case Some(value) => Left(UnsupportedTravelState(value))
-      case None => Right(())
+      case None => MajorActionPowerShell.requireAudited(catalog)
     }
   }
 

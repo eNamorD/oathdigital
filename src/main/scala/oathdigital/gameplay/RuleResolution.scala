@@ -11,6 +11,26 @@ sealed trait RuleSourceRef extends Product with Serializable {
   def stableKey: String
 }
 object RuleSourceRef {
+  def parse(stableKey: String): Option[RuleSourceRef] = stableKey.split(':').toVector match {
+    case Vector("site", id) => Some(Site(SiteId(id)))
+    case Vector("site-card", site, "denizen", id) =>
+      Some(SiteCard(SiteId(site), DenizenId(id)))
+    case Vector("site-card", site, "vision", id) =>
+      Some(SiteCard(SiteId(site), VisionId(id)))
+    case Vector("adviser", player, "denizen", id) =>
+      Some(Adviser(PlayerId(player), DenizenId(id)))
+    case Vector("adviser", player, "vision", id) =>
+      Some(Adviser(PlayerId(player), VisionId(id)))
+    case Vector("relic", player, id) => Some(Relic(PlayerId(player), RelicId(id)))
+    case Vector("site-relic", site, id) => Some(SiteRelic(SiteId(site), RelicId(id)))
+    case Vector("edifice", site, id) => Some(Edifice(SiteId(site), EdificeId(id)))
+    case Vector("banner", id) => Some(Banner(id))
+    case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
+      .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation)
+    case Vector("legacy", lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))
+    case Vector("game", id) => Some(GameRule(id))
+    case _ => None
+  }
   final case class Site(id: SiteId) extends RuleSourceRef {
     def stableKey: String = s"site:${id.value}"
   }

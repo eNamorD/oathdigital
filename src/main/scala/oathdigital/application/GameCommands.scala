@@ -1,11 +1,13 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{TradeResource, WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource, WakeResource}
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 import oathdigital.model._
 
 sealed trait GameCommand extends Product with Serializable
 object GameCommand {
+  final case class WithModifiers(command: GameCommand,
+      ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
   final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
       extends GameCommand

@@ -4,7 +4,6 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle, StateBasedEvaluation}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
@@ -31,12 +30,6 @@ object WarExhaustionRandomPort {
 object Rest {
   private val ExpectedHandlerInventory =
     "ebe0c1ad8fdc22834f96264b1036f6160e7072676ef1069bed447dd1a57e98d6"
-  private val RelevantHandlers = Set(
-    "denizen.vow-of-poverty",
-    "denizen.naysayers",
-    "denizen.silver-tongue",
-    "denizen.insomnia",
-    "denizen.vow-of-obedience")
   private val ExileWarbands = 14
   private val ExileSupply = SupplyRules(
     SupplyTrack.Maximum,
@@ -109,22 +102,7 @@ object Rest {
 
   def validateSupportedState(catalog: ExecutableCatalog,
       ready: ReadyGame): Either[OathViolation, Unit] = {
-    val game = ready.game
-    if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
-      Left(UnsupportedRestState("altered Foundations are not supported for Rest"))
-    else game.campaign.foundations.collectFirst {
-      case (number, FoundationState(FoundationFace.Altered, _)) => number
-    } match {
-      case Some(number) => Left(UnsupportedRoundEndRule(
-        s"foundation:${number.value}", "foundation.altered"))
-      case None if game.current.banners.peoplesFavor.active != PeoplesFavorFace.Mob =>
-        Left(UnsupportedRoundEndRule("banner:peoples-favor",
-          "banner.peoples-favor.grand-council"))
-      case None if game.current.banners.darkestSecret.active !=
-          DarkestSecretFace.WanderingFlame => Left(UnsupportedRoundEndRule(
-        "banner:darkest-secret", "banner.darkest-secret.festival"))
-      case None => validateAllExileAndRules(catalog, ready)
-    }
+    validateAllExileAndRules(catalog, ready)
   }
 
   private def validateAllExileAndRules(catalog: ExecutableCatalog,
@@ -136,55 +114,7 @@ object Rest {
     else if (actualHandlerInventory != ExpectedHandlerInventory)
       Left(UnsupportedRoundEndCatalogInventory(ExpectedHandlerInventory,
         actualHandlerInventory))
-    else activeRoundEndRules(catalog, ready).headOption match {
-      case Some((source, handler)) =>
-        Left(UnsupportedRoundEndRule(source, handler))
-      case None => Right(())
-    }
-  }
-
-  private def activeRoundEndRules(catalog: ExecutableCatalog,
-      ready: ReadyGame): Vector[(String, String)] = {
-    val current = ready.game.current
-    val actor = current.players.find(_.player == current.turn.activePlayer).get
-    val accessibleSites = current.map.inPlay.filter { siteId =>
-      actor.pawnSite.contains(siteId) || SiteRule.ruledBy(
-        current.map.sites(siteId).forces, current.players,
-        actor.player).getOrElse(false)
-    }
-    def denizenHandlers(id: DenizenId) = catalog.denizens
-      .find(_.id.value == id.value).toVector.flatMap(_.handlers)
-    def edificeHandlers(card: EdificeState) = catalog.edifices
-      .find(_.id.value == card.id.value).toVector.flatMap { definition =>
-        if (card.side == EdificeSide.Intact) definition.intact.handlers
-        else definition.ruined.handlers
-      }
-    val sources = actor.advisers.collect {
-      case d: DenizenState if d.orientation == Orientation.FaceUp =>
-        oathdigital.gameplay.RuleSourceRef.Adviser(actor.player, d.id).stableKey ->
-          denizenHandlers(d.id)
-    } ++ accessibleSites.flatMap { siteId => current.map.sites(siteId).denizens.map {
-        case d: DenizenState if d.orientation == Orientation.FaceUp =>
-          oathdigital.gameplay.RuleSourceRef.SiteCard(siteId, d.id).stableKey ->
-            denizenHandlers(d.id)
-        case e: EdificeState =>
-          oathdigital.gameplay.RuleSourceRef.Edifice(siteId, e.id).stableKey ->
-            edificeHandlers(e)
-        case _ => "inactive" -> Vector.empty
-      }} ++ actor.relics.collect { case relic if relic.orientation == Orientation.FaceUp =>
-        oathdigital.gameplay.RuleSourceRef.Relic(actor.player, relic.id).stableKey ->
-          catalog.relics.find(_.id.value == relic.id.value).toVector.flatMap(_.handlers)
-      } ++ ready.game.campaign.lineages(actor.lineage).legacies.filter(_.active).map {
-        legacy => oathdigital.gameplay.RuleSourceRef.Legacy(actor.lineage,
-          legacy.id).stableKey -> catalog.legacies.find(_.id.value == legacy.id.value)
-          .toVector.flatMap(_.handlers)
-      } ++ accessibleSites.map { siteId =>
-        oathdigital.gameplay.RuleSourceRef.Site(siteId).stableKey ->
-          catalog.sites.find(_.id == siteId).toVector.flatMap(_.handlers)
-      }
-    sources.flatMap { case (source, handlers) =>
-      handlers.filter(RelevantHandlers).map(source -> _)
-    }.sortBy { case (source, handler) => source -> handler }
+    else Right(())
   }
 
   private def expected(catalog: ExecutableCatalog, ready: ReadyGame,

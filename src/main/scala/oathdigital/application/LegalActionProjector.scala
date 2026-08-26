@@ -256,9 +256,12 @@ private[application] final class LegalActionProjector(
         if (conspiracy.isEmpty) "Play Conspiracy" else "Choose an enemy asset for Conspiracy",
         if (conspiracy.isEmpty) 0 else 1, if (conspiracy.isEmpty) 0 else 1,
         autoActivate = false, conspiracy)),
-      selection("muster", "Choose a card to Muster from", musters),
-      selection("trade-favor", "Choose a card to Trade for favor", favor),
-      selection("trade-secret", "Choose a card to Trade for secrets", secret)).flatten
+      selection("muster", "Choose a card to Muster from", musters,
+        explicitConfirm = true),
+      selection("trade-favor", "Choose a card to Trade for favor", favor,
+        explicitConfirm = true),
+      selection("trade-secret", "Choose a card to Trade for secrets", secret,
+        explicitConfirm = true)).flatten
   }
 
   private def conspiracySecretSiteAction(ready: oathdigital.gameplay.ReadyGame,
@@ -291,9 +294,11 @@ private[application] final class LegalActionProjector(
       candidates: Vector[BoardTargetCandidateProjection],
       formation: Option[BoardTargetFormationProjection] = None,
       minimum: Int = 1, maximum: Int = 1,
-      requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty) =
+      requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
+      explicitConfirm: Boolean = false) =
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(kind, prompt,
-      minimum, maximum, autoActivate = false, candidates, formation, requiredTargets))
+      minimum, maximum, autoActivate = false, candidates, formation, requiredTargets,
+      explicitConfirm = explicitConfirm))
   private def economyLabel(target: EconomyTargetRef) = target match {
     case EconomyTargetRef.Denizen(id) => presentation.denizenLabel(id)
     case EconomyTargetRef.Edifice(id) => presentation.edificeLabel(id, EdificeSide.Ruined)

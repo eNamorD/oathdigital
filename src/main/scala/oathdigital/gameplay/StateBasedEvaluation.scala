@@ -7,7 +7,6 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.
@@ -245,9 +244,8 @@ object StateBasedEvaluation {
     }
 
   private def supported(state: OathState): Either[OathViolation, ReadyGame] = state match {
-    case Ready(ready)
-        if ready.support.foundationProfile == FirstGameFoundationProfile.FixedUnaltered &&
-          ready.game.campaign.lineages.values.forall(_.role == Role.Exile) => Right(ready)
+    case Ready(ready) if ready.game.campaign.lineages.values.forall(
+      _.role == Role.Exile) => Right(ready)
     case Ready(_) => Left(UnsupportedWakeVictoryState(
       "state-based Oathkeeper evaluation is limited to the fixed, unaltered all-Exile game"))
     case _ => Left(GameNotStarted)

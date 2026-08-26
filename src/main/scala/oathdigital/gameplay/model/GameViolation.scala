@@ -5,6 +5,9 @@ import oathdigital.gameplay.setup.PlayerColor
 
 sealed trait OathViolation extends Product with Serializable
 object OathViolation {
+  final case class UnsupportedRuleCatalog(expected: String, actual: String)
+      extends OathViolation
+  final case class InvalidModifierInvocation(message: String) extends OathViolation
   case object GameAlreadyExists extends OathViolation
   case object GameNotStarted extends OathViolation
   case object GameAlreadyReady extends OathViolation
@@ -160,4 +163,3 @@ object OathViolation {
   final case class InvalidAggregate(problems: Vector[DomainProblem])
       extends OathViolation
 }
-

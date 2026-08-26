@@ -44,7 +44,7 @@ object Search {
           origin <- player.pawnSite.flatMap(ready.game.current.map.regionOf)
             .toRight(PawnSiteMissing(playerId))
           cost <- SearchRules.cost(ready, source, origin)
-          _ <- SearchRules.validateSupportedState(ready)
+          _ <- SearchRules.validateSupportedState(catalog, ready)
           expected <- SearchRules.draw(ready, source, origin)
           _ <- if (drawn == expected) Right(()) else
             Left(SearchDrawMismatch("prepared draw does not match authoritative source order"))
@@ -140,6 +140,7 @@ object SearchRules {
   import oathdigital.catalog.CardRestrictions
 
   def validateSupportedState(
+      catalog: ExecutableCatalog,
       ready: ReadyGame
   ): Either[OathViolation, Unit] = {
     val game = ready.game
@@ -149,12 +150,9 @@ object SearchRules {
       else if (game.campaign.foundations.values.exists(f =>
         f.face != FoundationFace.Normal || f.alterationSources.nonEmpty))
         Some("altered Foundations are not supported for Search")
-      else if (game.campaign.lineages.values.exists(_.legacies.exists(_.active)))
-        Some("active legacy Search modifiers are not supported")
-      else if (game.current.players.exists(_.relics.nonEmpty))
-        Some("held relic Search modifiers are not supported")
       else None
-    reason.fold[Either[OathViolation, Unit]](Right(()))(
+    reason.fold[Either[OathViolation, Unit]](
+      MajorActionPowerShell.requireAudited(catalog))(
       value => Left(UnsupportedSearchState(value)))
   }
 
