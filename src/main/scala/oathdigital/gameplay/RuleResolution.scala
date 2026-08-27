@@ -11,7 +11,7 @@ sealed trait RuleSourceRef extends Product with Serializable {
   def stableKey: String
 }
 object RuleSourceRef {
-  def parse(stableKey: String): Option[RuleSourceRef] = stableKey.split(':').toVector match {
+  def parse(stableKey: String): Option[RuleSourceRef] = stableKey.split(":", 4).toVector match {
     case Vector("site", id) => Some(Site(SiteId(id)))
     case Vector("site-card", site, "denizen", id) =>
       Some(SiteCard(SiteId(site), DenizenId(id)))
@@ -22,13 +22,23 @@ object RuleSourceRef {
     case Vector("adviser", player, "vision", id) =>
       Some(Adviser(PlayerId(player), VisionId(id)))
     case Vector("relic", player, id) => Some(Relic(PlayerId(player), RelicId(id)))
+    case Vector("relic", player, head, tail) =>
+      Some(Relic(PlayerId(player), RelicId(s"$head:$tail")))
     case Vector("site-relic", site, id) => Some(SiteRelic(SiteId(site), RelicId(id)))
+    case Vector("site-relic", site, head, tail) =>
+      Some(SiteRelic(SiteId(site), RelicId(s"$head:$tail")))
     case Vector("edifice", site, id) => Some(Edifice(SiteId(site), EdificeId(id)))
+    case Vector("edifice", site, head, tail) =>
+      Some(Edifice(SiteId(site), EdificeId(s"$head:$tail")))
     case Vector("banner", id) => Some(Banner(id))
+    case Vector("banner", head, tail) => Some(Banner(s"$head:$tail"))
     case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
       .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation)
     case Vector("legacy", lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))
+    case Vector("legacy", lineage, head, tail) =>
+      Some(Legacy(LineageId(lineage), LegacyId(s"$head:$tail")))
     case Vector("game", id) => Some(GameRule(id))
+    case Vector("game", head, tail) => Some(GameRule(s"$head:$tail"))
     case _ => None
   }
   final case class Site(id: SiteId) extends RuleSourceRef {

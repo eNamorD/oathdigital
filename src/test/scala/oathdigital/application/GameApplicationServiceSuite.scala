@@ -21,6 +21,68 @@ import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.ReadyGame
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  test("all-Exile powered game persists and replays through round-eight victory") {
+    val repository = new InMemoryEventStreamRepository
+    val whenPlayedPower = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.dazzle")).get.id.value)
+    def place(order: Vector[DenizenId], index: Int, id: DenizenId) = {
+      val current = order.indexWhere(_.value == id.value)
+      if (current < 0) order.updated(index, id)
+      else order.updated(index, id).updated(current, order(index))
+    }
+    val p2Index = 6 + plan.participants.indexWhere(_.playerId == PlayerId("p2")) * 3
+    val poweredOrder = place(plan.denizenOrder, p2Index, whenPlayedPower)
+    val remaining = poweredOrder.drop(6 + plan.participants.size * 3)
+    val poweredWorldDeck = remaining.take(10) ++
+      oathdigital.gameplay.setup.FirstGameRulesData.visions.take(2) ++
+      remaining.slice(10, 25) ++
+      oathdigital.gameplay.setup.FirstGameRulesData.visions.drop(2) ++ remaining.drop(25)
+    val poweredPlan = plan.copy(denizenOrder = poweredOrder,
+      worldDeckOrder = poweredWorldDeck)
+    var service = new GameApplicationService(catalog, repository,
+      warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+        def choose(candidates: Vector[PlayerId]) = candidates.head
+      })
+    var accepted = execute(service, "powered-playability", setupPlan = poweredPlan)
+    var played = Set.empty[PlayerId]
+    var safety = 0
+    while ({
+      val Ready(ready) = accepted.state: @unchecked
+      ready.game.current.result.isEmpty
+    }) {
+      safety += 1
+      assert(safety <= 24, "all-Exile game should finish after eight rounds")
+      val Ready(wake) = accepted.state: @unchecked
+      val actor = wake.game.current.turn.activePlayer
+      accepted = service.handle("powered-playability", accepted.nextSequence,
+        GameCommand.EndWake(actor)).toOption.get
+      if (!played(actor)) {
+        val Ready(act) = accepted.state: @unchecked
+        val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
+          .asInstanceOf[WorldCardId]
+        accepted = service.handle("powered-playability", accepted.nextSequence,
+          GameCommand.PlayFacedownAdviser(actor, adviser,
+            SearchPlacement.Adviser(Orientation.FaceUp, None))).toOption.get
+        played += actor
+      }
+      accepted = service.handle("powered-playability", accepted.nextSequence,
+        GameCommand.BeginRest(actor)).toOption.get
+      accepted = service.handle("powered-playability", accepted.nextSequence,
+        GameCommand.FinishRest(actor)).toOption.get
+      service = new GameApplicationService(catalog, repository,
+        warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+          def choose(candidates: Vector[PlayerId]) = candidates.head
+        })
+      val reopened = service.load("powered-playability").toOption.flatten.get
+      assertEquals(reopened.state, accepted.state)
+      assertEquals(reopened.nextSequence, accepted.nextSequence)
+    }
+    val Ready(finished) = accepted.state: @unchecked
+    assert(finished.game.current.result.nonEmpty)
+    val raw = repository.load("powered-playability").toOption.flatten.get.records
+    assert(raw.exists(_.contains("diagnostic.ignored-rules-recorded")))
+    assert(raw.exists(_.contains("reviewed-unimplemented-pre-alpha-fallback")))
+  }
   test("major-action preview is stateless stale-safe and rejects unavailable modifiers") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
