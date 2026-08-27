@@ -66,7 +66,8 @@ final class OathRules(catalog: ExecutableCatalog,
       case start: SearchCommand.Start => withFallback(state, start.playerId,
         MajorActionKind.Search)(Search.handle(catalog, state, command))
       case _ => Search.handle(catalog, state, command)
-    }).flatMap { transition =>
+    }).flatMap(transition => recordSearchWhenPlayed(command, transition))
+      .flatMap { transition =>
       command match {
         case _: SearchCommand.Complete if (transition.state match {
           case Ready(ready) => ready.game.current.pending.exists {
@@ -84,6 +85,29 @@ final class OathRules(catalog: ExecutableCatalog,
         case _: SearchCommand.Complete => completeAction(transition)
         case _ => Right(transition)
       }
+    }
+
+  private def recordSearchWhenPlayed(command: SearchCommand,
+      transition: OathTransition): Either[OathViolation, OathTransition] =
+    (command, transition.state) match {
+      case (complete: SearchCommand.Complete, Ready(ready)) =>
+        val source = complete.placement match {
+          case SearchPlacement.Adviser(Orientation.FaceUp, _) =>
+            Some(RuleSourceRef.Adviser(complete.playerId, complete.kept))
+          case SearchPlacement.Site(_) => ready.game.current.players
+            .find(_.player == complete.playerId).flatMap(_.pawnSite)
+            .map(RuleSourceRef.SiteCard(_, complete.kept))
+          case _ => None
+        }
+        source.fold[Either[OathViolation, OathTransition]](Right(transition)) { ref =>
+          MajorActionPowerShell.ignoredAtSource(catalog, ready,
+            MajorActionKind.WhenPlayed, ref).map { diagnostics =>
+            if (diagnostics.isEmpty) transition else transition.copy(events =
+              transition.events :+ IgnoredRulesRecorded(complete.playerId,
+                MajorActionKind.WhenPlayed, diagnostics))
+          }
+        }
+      case _ => Right(transition)
     }
 
   def handle(state: OathState, command: RecoverCommand)

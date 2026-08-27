@@ -13,6 +13,7 @@ sealed trait RuleSourceRef extends Product with Serializable {
 object RuleSourceRef {
   def parse(stableKey: String): Option[RuleSourceRef] = stableKey.split(":", 4).toVector match {
     case Vector("site", id) => Some(Site(SiteId(id)))
+    case Vector("site", head, tail) => Some(Site(SiteId(s"$head:$tail")))
     case Vector("site-card", site, "denizen", id) =>
       Some(SiteCard(SiteId(site), DenizenId(id)))
     case Vector("site-card", site, "vision", id) =>

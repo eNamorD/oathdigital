@@ -81,7 +81,7 @@ class RuleResolutionSuite extends munit.FunSuite {
 
   test("rule source stable keys round trip for durable diagnostics") {
     val values = Vector[RuleSourceRef](RuleSourceRef.Site(SiteId("site:a")),
-      RuleSourceRef.SiteCard(SiteId("site:a"), DenizenId("denizen:d")),
+      RuleSourceRef.SiteCard(SiteId("a"), DenizenId("denizen:d")),
       RuleSourceRef.Adviser(PlayerId("p"), VisionId("vision:v")),
       RuleSourceRef.Relic(PlayerId("p"), RelicId("relic:r")),
       RuleSourceRef.Foundation(FoundationNumber.III),

@@ -137,16 +137,15 @@ object MajorActionPowerShell {
   def ignored(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       action: MajorActionKind): Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
     requireAudited(catalog).map { _ =>
-      accessible(RuleSourceIndex.enumerate(catalog, ready), ready, actor, action).flatMap { item =>
-        item.handlerIds.flatMap { handler =>
-          val c = classify(handler, action)
-          Option.when(!c.implemented && (c.behavior == RuleBehavior.Mandatory ||
-              c.behavior == RuleBehavior.Triggered))(IgnoredRuleDiagnostic(
-            item.source, handler, action, c.timing,
-            "reviewed-unimplemented-pre-alpha-fallback"))
-        }
-      }.sortBy(d => (d.source.stableKey, d.handlerId))
+      diagnostics(accessible(RuleSourceIndex.enumerate(catalog, ready), ready,
+        actor, action), action)
     }
+
+  def ignoredAtSource(catalog: ExecutableCatalog, ready: ReadyGame,
+      action: MajorActionKind, source: RuleSourceRef)
+      : Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
+    requireAudited(catalog).map(_ => diagnostics(
+      RuleSourceIndex.enumerate(catalog, ready).filter(_.source == source), action))
 
   def options(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       action: MajorActionKind): Either[OathViolation, Vector[OrderedRuleInvocation]] =
@@ -178,5 +177,14 @@ object MajorActionPowerShell {
       case _ => false
     }}
   }
+
+  private def diagnostics(items: Vector[IndexedRuleSource], action: MajorActionKind) =
+    items.flatMap { item => item.handlerIds.flatMap { handler =>
+      val c = classify(handler, action)
+      Option.when(!c.implemented && (c.behavior == RuleBehavior.Mandatory ||
+          c.behavior == RuleBehavior.Triggered))(IgnoredRuleDiagnostic(
+        item.source, handler, action, c.timing,
+        "reviewed-unimplemented-pre-alpha-fallback"))
+    }}.sortBy(d => (d.source.stableKey, d.handlerId))
 
 }
