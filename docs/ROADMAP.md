@@ -7,9 +7,10 @@ been reviewed.
 
 ## Now
 
-**Phase 3 — Powers and battle plans** is active. Add powers incrementally through
-the typed rule-source, handler-registry, decision, and event boundaries established
-by the completed architecture gate; keep unknown relevant handlers explicit.
+**Phase 3 — Powers and battle plans** is active. The playable major-action shell
+and reviewed pre-alpha fallback are complete. Add actual powers incrementally
+through those typed source, invocation, timing, decision, event, and replay
+boundaries; keep unknown relevant handlers explicit.
 
 ## Next
 
@@ -118,6 +119,19 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
     justifies the added server lifecycle complexity.
 
 ## Done
+
+- [x] **Phase 3 - Playable major-action power shell.** Travel, Search,
+  Campaign, Muster, Trade, Forge, and Recover now share stateless actorless
+  preview, ordered final modifier transport, and authoritative stale
+  revalidation while retaining their base procedures. Wake, Rest, When Played,
+  and action boundaries use a catalog-fingerprint-pinned fallback: optional
+  unimplemented rules are absent from choices, reached mandatory triggers emit
+  replay-validated diagnostics, and unaudited vocabulary rejects. Diagnostics
+  stay in durable history and loopback development responses, not ordinary
+  projections. Economy selection explicitly confirms, stale modifier drafts
+  clear, Campaign battle-plan timing and Travel topology remain separate, and
+  a powered all-Exile game persists/reopens through round-eight victory. This
+  milestone adds no component effects or universal effect DSL.
 
 - [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
   and browser-memory implementations; normalized gameplay ownership and factual

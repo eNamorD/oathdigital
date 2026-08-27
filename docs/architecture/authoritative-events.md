@@ -50,6 +50,14 @@ Replay never rerolls or redraws. It derives deterministic facts again and
 rejects tampering. Privileged events may contain hidden information and are not
 ordinary player projection data.
 
+Reviewed pre-alpha fallback decisions are also authoritative facts.
+`IgnoredRulesRecorded` stores stable source identity, handler, action, timing,
+and the fixed fallback reason; replay re-discovers the source and rejects a
+missing, newly implemented, differently classified, or otherwise tampered
+diagnostic. Raw diagnostics are available only through loopback development
+surfaces and the privileged event stream. Authenticated and ordinary public or
+player projections omit them so hidden component identity is not exposed.
+
 ## Application and adapters
 
 `application.GameEventCodec` is the representation-free port.

@@ -33,6 +33,31 @@ Implementation paths are abbreviated relative to
 `src/test/scala/oathdigital/`. “Model only” deliberately does not raise a row
 above **Unimplemented**.
 
+## Phase 3 playable-shell audit
+
+This milestone is infrastructure and reviewed fallback, not implementation of
+the listed component powers. All rows use the pinned full catalog vocabulary;
+unknown vocabulary remains an error.
+
+| Boundary | Implemented behavior retained | Reviewed pre-alpha fallback |
+|---|---|---|
+| Travel | Base costs and automatic Coast/Island/Mountain/Pass topology | Other accessible audited handlers cannot become selectable or block |
+| Search | Base draw, private decision, placement, persistence | Start modifiers are classified; reached When Played triggers record diagnostics |
+| Campaign | Base Conquest/Raid and Outriders, Brass Army, Watchdog, title plans | Other audited mandatory/plan rules are ignored without collapsing later battle-plan windows |
+| Muster / Trade | Base New Foundations yields, costs, target legality, explicit confirm | Optional audited Economy modifiers are omitted from options |
+| Forge | Base assignments, transfer, pending state and replay | Audited vocabulary has no executable optional modifier; shell still revalidates final order |
+| Recover | Base roll, pending choice and replay | Reviewed mandatory modifiers record durable diagnostics |
+| Wake / Rest / action boundary | Existing phase, title, Vision, refill and ending progression | Reached banner, Foundation and Rest triggers record durable diagnostics |
+| When Played | Existing placement restrictions and favor movement | Reviewed triggers record diagnostics instead of blocking play |
+
+`MajorActionPowerShell.scala`, application preview/command mapping, lifecycle
+event codec, server routes, and `frontend/ModifierSelectionState.scala` are the
+implementation evidence. Focused gameplay, wire, application replay,
+authenticated/development route, and Scala.js suites cover classification,
+ordering, stale revalidation, redaction, draft clearing, and replay tampering.
+`GameApplicationServiceSuite` additionally completes an all-Exile powered game
+through round-eight victory and reopens/replays after each Rest.
+
 ## Setup
 
 | Rule area | Status | Normative source / NF change | Implementation and test evidence | Dependencies / unresolved ambiguity |

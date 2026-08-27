@@ -9,7 +9,7 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
 
 class HttpGameClientSuite extends FunSuite {
   test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
-    val actions = """[{"actionKind":"conspiracy-secret-site","decisionId":"conspiracy-12","prompt":"Choose a site","minimum":1,"maximum":1,"autoActivate":true,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":[]}]}]"""
+    val actions = """[{"actionKind":"conspiracy-secret-site","decisionId":"conspiracy-12","prompt":"Choose a site","minimum":1,"maximum":1,"autoActivate":true,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":[]}]}]"""
     val json = projectionJson(sequence = 13, phase = "conspiracy-secret-site",
       ready = true, completed = false, choices = false)
       .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$actions")
@@ -322,7 +322,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(!encoded.contains("\"attackDice\":"))
     assert(!encoded.contains("defenseDice"))
 
-    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"requiredTargets":[{"kind":"site","siteId":"site:b"}],"formation":{"minimumForce":0,"maximumForce":3,"availableWarbands":3,"supplyCost":2},"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Choose 0 to 3 board warbands"]}]}]"""
+    val action = """[{"actionKind":"campaign-conquest","prompt":"Conquer Site B","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[{"kind":"site","siteId":"site:b"}],"formation":{"minimumForce":0,"maximumForce":3,"availableWarbands":3,"supplyCost":2},"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply","Choose 0 to 3 board warbands"]}]}]"""
     val projected = projectionJson(sequence = 17, choices = false)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$action")
@@ -443,7 +443,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(relocation.contains("\"decisionId\":\"raid-24\""))
     assert(relocation.contains("\"destinationSiteId\":\"site:c\""))
 
-    val action = """[{"actionKind":"campaign-raid","prompt":"Raid Blue","minimum":1,"maximum":3,"autoActivate":false,"requiredTargets":[{"kind":"player-pawn","playerId":"blue-exile"}],"formation":{"minimumForce":0,"maximumForce":2,"availableWarbands":2,"supplyCost":2},"candidates":[{"target":{"kind":"player-pawn","playerId":"blue-exile"},"label":"Blue pawn","details":[]},{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"R03"},"label":"Relic","details":[]},{"target":{"kind":"player-banner","playerId":"blue-exile","banner":"peoples-favor"},"label":"People's Favor","details":[]}]}]"""
+    val action = """[{"actionKind":"campaign-raid","prompt":"Raid Blue","minimum":1,"maximum":3,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[{"kind":"player-pawn","playerId":"blue-exile"}],"formation":{"minimumForce":0,"maximumForce":2,"availableWarbands":2,"supplyCost":2},"candidates":[{"target":{"kind":"player-pawn","playerId":"blue-exile"},"label":"Blue pawn","details":[]},{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"R03"},"label":"Relic","details":[]},{"target":{"kind":"player-banner","playerId":"blue-exile","banner":"peoples-favor"},"label":"People's Favor","details":[]}]}]"""
     val relocationProjection = """{"decisionId":"raid-24","actorPlayerId":"red-exile","defenderPlayerId":"blue-exile","originSiteId":"site:b","legalSiteIds":["site:a","site:c"]}"""
     val json = projectionJson(sequence = 24, choices = false)
       .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$action")
@@ -463,7 +463,7 @@ class HttpGameClientSuite extends FunSuite {
   }
 
   test("typed board-target actions decode sites cards advisers relics and reject malformed refs") {
-    val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"requiredTargets":[],"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
+    val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":4,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]},{"target":{"kind":"player-relic","playerId":"red-exile","relicId":"R1"},"label":"Relic","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$actions")

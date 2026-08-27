@@ -183,8 +183,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     }
     val forgeSite = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
       !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val sitePlayable = plan.worldDeckOrder.collect { case id: DenizenId
+        if catalog.denizens.find(_.id.value == id.value).exists(definition =>
+          definition.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted ||
+          definition.restrictions == oathdigital.catalog.CardRestrictions.SiteOnly) => id
+    }.take(6)
     val forgePlan = plan.copy(orderedSites = forgeSite +:
-      plan.orderedSites.filterNot(_ == forgeSite))
+      plan.orderedSites.filterNot(_ == forgeSite),
+      worldDeckOrder = sitePlayable ++ plan.worldDeckOrder.filterNot(sitePlayable.contains))
     val service = new GameApplicationService(catalog, repository,
       relicDrawPort = relicPort, campaignDicePort = dice)
     val gameId = "game-forge-persistence"
@@ -221,12 +227,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
 
     def searchOne(): Unit = {
       accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.BeginSearch(actor, SearchSource.WorldDeck)).toOption.get
+        GameCommand.BeginSearch(actor, SearchSource.WorldDeck))
+        .fold(error => fail(s"Search fixture rejected: $error"), identity)
       val Ready(pendingReady) = accepted.state: @unchecked
       val pending = pendingReady.game.current.pending.get
         .asInstanceOf[PendingProcedure.Search]
       val kept = pending.drawn.find(card => SearchRules.legalPlacements(
-        catalog, pendingReady, pending, card).contains(SearchPlacement.Site(None))).get
+        catalog, pendingReady, pending, card).contains(SearchPlacement.Site(None)))
+        .getOrElse(fail(s"no site-playable card in prepared draw ${pending.drawn}"))
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.CompleteSearch(actor, pending.decision, kept,
           pending.drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get

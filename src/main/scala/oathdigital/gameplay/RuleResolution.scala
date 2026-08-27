@@ -11,36 +11,61 @@ sealed trait RuleSourceRef extends Product with Serializable {
   def stableKey: String
 }
 object RuleSourceRef {
-  def parse(stableKey: String): Option[RuleSourceRef] = stableKey.split(":", 4).toVector match {
-    case Vector("site", id) => Some(Site(SiteId(id)))
-    case Vector("site", head, tail) => Some(Site(SiteId(s"$head:$tail")))
-    case Vector("site-card", site, "denizen", id) =>
-      Some(SiteCard(SiteId(site), DenizenId(id)))
-    case Vector("site-card", site, "vision", id) =>
-      Some(SiteCard(SiteId(site), VisionId(id)))
-    case Vector("adviser", player, "denizen", id) =>
-      Some(Adviser(PlayerId(player), DenizenId(id)))
-    case Vector("adviser", player, "vision", id) =>
-      Some(Adviser(PlayerId(player), VisionId(id)))
-    case Vector("relic", player, id) => Some(Relic(PlayerId(player), RelicId(id)))
-    case Vector("relic", player, head, tail) =>
-      Some(Relic(PlayerId(player), RelicId(s"$head:$tail")))
-    case Vector("site-relic", site, id) => Some(SiteRelic(SiteId(site), RelicId(id)))
-    case Vector("site-relic", site, head, tail) =>
-      Some(SiteRelic(SiteId(site), RelicId(s"$head:$tail")))
-    case Vector("edifice", site, id) => Some(Edifice(SiteId(site), EdificeId(id)))
-    case Vector("edifice", site, head, tail) =>
-      Some(Edifice(SiteId(site), EdificeId(s"$head:$tail")))
-    case Vector("banner", id) => Some(Banner(id))
-    case Vector("banner", head, tail) => Some(Banner(s"$head:$tail"))
-    case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
-      .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation)
-    case Vector("legacy", lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))
-    case Vector("legacy", lineage, head, tail) =>
-      Some(Legacy(LineageId(lineage), LegacyId(s"$head:$tail")))
-    case Vector("game", id) => Some(GameRule(id))
-    case Vector("game", head, tail) => Some(GameRule(s"$head:$tail"))
-    case _ => None
+  def parse(stableKey: String): Option[RuleSourceRef] = {
+    def splitTyped(prefix: String, kind: String) = {
+      val body = stableKey.stripPrefix(prefix)
+      val marker = s":$kind:"
+      val at = body.indexOf(marker)
+      Option.when(stableKey.startsWith(prefix) && at >= 0)(
+        body.take(at) -> body.drop(at + marker.length))
+    }
+    def splitLast(prefix: String) = {
+      val body = stableKey.stripPrefix(prefix)
+      val at = body.lastIndexOf(':')
+      Option.when(stableKey.startsWith(prefix) && at >= 0)(
+        body.take(at) -> body.drop(at + 1))
+    }
+    if (stableKey.startsWith("site-card:"))
+      splitTyped("site-card:", "denizen").map { case (site, id) =>
+        SiteCard(SiteId(site), DenizenId(id))
+      }.orElse(splitTyped("site-card:", "vision").map { case (site, id) =>
+        SiteCard(SiteId(site), VisionId(id))
+      })
+    else stableKey.split(":", 4).toVector match {
+      case Vector("adviser", player, "denizen", id) =>
+        Some(Adviser(PlayerId(player), DenizenId(id)))
+      case Vector("adviser", player, "vision", id) =>
+        Some(Adviser(PlayerId(player), VisionId(id)))
+      case _ if stableKey.startsWith("site:") => Some(Site(SiteId(
+        stableKey.stripPrefix("site:"))))
+      case _ if stableKey.startsWith("relic:") => stableKey
+        .stripPrefix("relic:").split(":", 2).toVector match {
+          case Vector(player, id) => Some(Relic(PlayerId(player), RelicId(id)))
+          case _ => None
+        }
+      case _ if stableKey.startsWith("site-relic:") =>
+        splitTyped("site-relic:", "relic").map { case (site, id) =>
+          SiteRelic(SiteId(site), RelicId(s"relic:$id"))
+        }.orElse(splitLast("site-relic:").map { case (site, id) =>
+          SiteRelic(SiteId(site), RelicId(id)) })
+      case _ if stableKey.startsWith("edifice:") =>
+        splitTyped("edifice:", "edifice").map { case (site, id) =>
+          Edifice(SiteId(site), EdificeId(s"edifice:$id"))
+        }.orElse(splitLast("edifice:").map { case (site, id) =>
+          Edifice(SiteId(site), EdificeId(id)) })
+      case _ if stableKey.startsWith("banner:") =>
+        Some(Banner(stableKey.stripPrefix("banner:")))
+      case Vector("foundation", number) => scala.util.Try(number.toInt).toOption
+        .flatMap(n => FoundationNumber.all.find(_.value == n)).map(Foundation)
+      case _ if stableKey.startsWith("legacy:") => stableKey
+        .stripPrefix("legacy:").split(":", 2).toVector match {
+          case Vector(lineage, id) => Some(Legacy(LineageId(lineage), LegacyId(id)))
+          case _ => None
+        }
+      case _ if stableKey.startsWith("game:") =>
+        Some(GameRule(stableKey.stripPrefix("game:")))
+      case _ => None
+    }
   }
   final case class Site(id: SiteId) extends RuleSourceRef {
     def stableKey: String = s"site:${id.value}"

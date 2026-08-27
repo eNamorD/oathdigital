@@ -229,8 +229,15 @@ final class OathRules(catalog: ExecutableCatalog,
   ): Either[OathViolation, OathState] =
     event match {
       case recorded: IgnoredRulesRecorded => state match {
-        case Ready(ready) => MajorActionPowerShell.ignored(catalog, ready,
-          recorded.playerId, recorded.action).flatMap(expected =>
+        case Ready(ready) => (if (recorded.action == MajorActionKind.WhenPlayed)
+          recorded.diagnostics.map(_.source).distinct.foldLeft[
+            Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
+              case (Right(found), source) => MajorActionPowerShell.ignoredAtSource(
+                catalog, ready, recorded.action, source).map(found ++ _)
+              case (failure @ Left(_), _) => failure
+            }
+          else MajorActionPowerShell.ignored(catalog, ready,
+            recorded.playerId, recorded.action)).flatMap(expected =>
           Either.cond(expected == recorded.diagnostics, state,
             InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
         case _ => Left(GameNotStarted)
