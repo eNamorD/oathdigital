@@ -93,13 +93,11 @@ object StateBasedEvaluation {
   def visionAtWake(state: OathState): Either[OathViolation, Option[OathEvent]] =
     supported(state).map { ready =>
       val current = ready.game.current
-      Option.when(current.tracks.visionsDrawn >= 3)(current.players.find(
-        _.player == current.turn.activePlayer).flatMap { actor =>
-        actor.revealedVision.flatMap(v => VisionRules.trueGoal(v.id).flatMap { goal =>
-          Option.when(qualifyingPlayers(goal, current) == Set(actor.player))(
-            VisionVictory(actor.player, v.id))
-        })
-      }).flatten
+      current.players.find(_.player == current.turn.activePlayer).flatMap { actor =>
+        actor.revealedVision.flatMap(v => Option.when(
+          VisionVictoryEligibility.qualifies(actor.player, current))(
+          VisionVictory(actor.player, v.id)))
+      }
     }
 
   def endRound(state: OathState, randomWinner: Vector[PlayerId] => PlayerId)
@@ -122,14 +120,12 @@ object StateBasedEvaluation {
           WarExhaustionResolved(player, VictoryKind.Usurper, None, Vector.empty))
         case _ => None
       }
-      val visionary = Option.when(current.tracks.visionsDrawn >= 3)(
-        visionPriority.iterator.flatMap { vision =>
+      val visionary = visionPriority.iterator.flatMap { vision =>
           current.players.find(p => p.revealedVision.exists(_.id == vision) &&
-            VisionRules.trueGoal(vision).exists(goal =>
-              qualifyingPlayers(goal, current).contains(p.player)))
+            VisionVictoryEligibility.qualifies(p.player, current))
             .map(p => WarExhaustionResolved(p.player, VictoryKind.Visionary,
               Some(vision), Vector.empty))
-        }.toSeq.headOption).flatten
+        }.toSeq.headOption
       val fallback = current.title.holder.map(player => WarExhaustionResolved(
         player, VictoryKind.Oathkeeper, None, Vector.empty)).getOrElse {
         val candidates = turnOrder
@@ -272,14 +268,12 @@ object StateBasedEvaluation {
       case OathkeeperState(Some(player), TitleSide.Usurper) => Right(ExactWar(
         WarExhaustionResolved(player, VictoryKind.Usurper, None, Vector.empty)))
       case _ =>
-        Option.when(current.tracks.visionsDrawn >= 3)(
-          visionPriority.iterator.flatMap { vision =>
+        visionPriority.iterator.flatMap { vision =>
             current.players.find(p => p.revealedVision.exists(_.id == vision) &&
-              VisionRules.trueGoal(vision).exists(goal =>
-                qualifyingPlayers(goal, current).contains(p.player)))
+              VisionVictoryEligibility.qualifies(p.player, current))
               .map(p => WarExhaustionResolved(p.player, VictoryKind.Visionary,
                 Some(vision), Vector.empty))
-          }.toSeq.headOption).flatten.orElse(current.title.holder.map(player =>
+          }.toSeq.headOption.orElse(current.title.holder.map(player =>
           WarExhaustionResolved(player, VictoryKind.Oathkeeper, None, Vector.empty))) match {
           case Some(value) => Right(ExactWar(value))
           case None =>
