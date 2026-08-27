@@ -16,6 +16,7 @@ private[application] final class GamePresentationProjector(
     EdificeId(edifice.id.value) ->
       (edifice.intact.name -> edifice.ruined.name)
   }.toMap
+  private val edificesById = catalog.edifices.map(e => e.id.value -> e).toMap
   private val siteDefinitions = catalog.sites.map(site => site.id -> site).toMap
 
   def siteLabel(id: SiteId): String = siteNames.getOrElse(id, safeLabel(id.value))
@@ -30,6 +31,22 @@ private[application] final class GamePresentationProjector(
         case EdificeSide.Ruined => ruined
       }
     }
+
+  private[application] def edificeCardDetails(value: EdificeState): CardDetailsProjection = {
+    val definition = edificesById.get(value.id.value)
+    val face = definition.map(e => value.side match {
+      case EdificeSide.Intact => e.intact
+      case EdificeSide.Ruined => e.ruined
+    })
+    CardDetailsProjection(value.id.value, "edifice", edificeLabel(value.id, value.side),
+      suit = definition.map(_.suit.value),
+      restrictions = definition.map(e => restrictionName(e.restrictions)),
+      rulesText = face.map(_.rulesText),
+      side = Some(value.side match {
+        case EdificeSide.Intact => "intact"
+        case EdificeSide.Ruined => "ruined"
+      }), favor = value.tokens.favor, secrets = value.tokens.secrets)
+  }
 
   def setupPlayers(participants: Vector[FirstGameParticipant]) =
     participants.map { participant =>
@@ -90,13 +107,7 @@ private[application] final class GamePresentationProjector(
           case value: DenizenState => Some(cardDetails(value.id,
             Some(value.orientation), hidden = false).copy(
               favor = value.tokens.favor, secrets = value.tokens.secrets))
-          case value: EdificeState => Some(CardDetailsProjection(
-            value.id.value, "edifice", label,
-            suit = catalog.edifices.find(_.id.value == value.id.value).map(_.suit.value),
-            side = Some(value.side match {
-              case EdificeSide.Intact => "intact"
-              case EdificeSide.Ruined => "ruined"
-            }), favor = value.tokens.favor, secrets = value.tokens.secrets))
+          case value: EdificeState => Some(edificeCardDetails(value))
         }
         SiteCardProjection(denizen.id.value, label, details)
       },
@@ -221,8 +232,13 @@ private[application] final class GamePresentationProjector(
         Some(restrictionName(d.restrictions)), Some(d.rulesText),
         orientation.map(orientationName), hidden = hidden)
     }
-    case value: VisionId => CardDetailsProjection(value.value, "vision",
-      safeLabel(value.value), orientation = orientation.map(orientationName), hidden = hidden)
+    case value: VisionId => VisionCardPresentation.byId.get(value.value).fold(
+      CardDetailsProjection(value.value, "vision", safeLabel(value.value),
+        orientation = orientation.map(orientationName), hidden = hidden)) { vision =>
+      CardDetailsProjection(value.value, "vision", vision.name,
+        rulesText = Some(vision.rulesText),
+        orientation = orientation.map(orientationName), hidden = hidden)
+    }
     case value: RelicId => catalog.relics.find(_.id.value == value.value).fold(
       CardDetailsProjection(value.value, "relic", safeLabel(value.value),
         orientation = orientation.map(orientationName), hidden = hidden)) { r =>

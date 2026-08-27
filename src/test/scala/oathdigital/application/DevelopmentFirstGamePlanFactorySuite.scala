@@ -3,7 +3,8 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
-import oathdigital.model.{PlayerId, RelicId}
+import oathdigital.model.{EdificeId, EdificeSide, EdificeState, PlayerId, RelicId,
+  Tokens, VisionId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.protocol.{
   BootstrapParticipantRequest,
@@ -66,6 +67,31 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     )
   }
 
+  test("every Vision card detail uses the authoritative printed presentation") {
+    val projector = new GamePresentationProjector(catalog)
+    val ids = Vector("vision:vision-of-conquest", "vision:vision-of-sanctuary",
+      "vision:vision-of-rebellion", "vision:vision-of-faith", "vision:conspiracy")
+    ids.foreach { id =>
+      val expected = oathdigital.protocol.projection.VisionCardPresentation.byId(id)
+      val details = projector.cardDetails(VisionId(id), None, hidden = false)
+      assertEquals(details.name, expected.name)
+      assertEquals(details.rulesText, Some(expected.rulesText))
+    }
+  }
+
+  test("edifice card details use intact and ruined catalog face text") {
+    val projector = new GamePresentationProjector(catalog)
+    val definition = catalog.edifices.head
+    val id = EdificeId(definition.id.value)
+    Vector(EdificeSide.Intact -> definition.intact,
+      EdificeSide.Ruined -> definition.ruined).foreach { case (side, face) =>
+      val details = projector.edificeCardDetails(EdificeState(id, side, Tokens.empty))
+      assertEquals(details.name, face.name)
+      assertEquals(details.rulesText, Some(face.rulesText))
+      assertEquals(details.restrictions, Some("unrestricted"))
+    }
+  }
+
   test("bootstrap persists normal v2 history and returns redacted projection") {
     val derived = new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
@@ -99,6 +125,14 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
     assert(projection.world.flatMap(_.sites).exists(_.denizens.exists(
       _.details.exists(details => details.cardKind == "edifice" &&
         details.side.contains("ruined")))))
+    val projectedEdifices = projection.world.flatMap(_.sites).flatMap(_.denizens)
+      .flatMap(_.details).filter(_.cardKind == "edifice")
+    assert(projectedEdifices.nonEmpty)
+    projectedEdifices.foreach { details =>
+      val definition = catalog.edifices.find(_.id.value == details.cardId).get
+      assertEquals(details.restrictions, Some("unrestricted"))
+      assertEquals(details.rulesText, Some(definition.ruined.rulesText))
+    }
     assertEquals(projection.world.map(_.discardCount), Vector(2, 2, 2))
     assertEquals(projection.favorBanks.map(_.suit).toSet,
       oathdigital.model.Suit.all.map(_.key).toSet)

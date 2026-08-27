@@ -120,6 +120,7 @@ private[frontend] object ServerUiSupport {
         })
       }
       shell.appendChild(card)
+      candidate.flatMap(candidateDetailBadge).foreach(shell.appendChild)
       denizens.appendChild(shell)
     }
     (site.denizens.size until site.denizenCapacity).foreach { _ =>
@@ -293,6 +294,28 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
     (candidate.label +: candidate.details).mkString(" · ")
+
+  private[frontend] def candidateDetailText(
+      candidate: BoardTargetCandidate): Option[String] =
+    Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))
+
+  private[frontend] def candidateDetailBadge(
+      candidate: BoardTargetCandidate): Option[dom.Element] =
+    candidateDetailText(candidate).map(value => text("span", "target-detail-badge", value))
+
+  private[frontend] def winnerColorClass(value: GameProjection,
+      playerId: String): String = value.players.find(_.playerId == playerId)
+    .fold[PlayerColorToken](PlayerColorToken.Neutral)(p =>
+      PlayerColorToken.fromKey(p.colorToken)).cssClass
+
+  private[frontend] def winnerBanner(value: GameProjection,
+      winner: String, victory: String): dom.Element = {
+    val banner = element("div", s"victory-banner ${winnerColorClass(value, winner)}")
+    banner.setAttribute("role", "status")
+    banner.appendChild(playerReference(value, winner))
+    banner.appendChild(dom.document.createTextNode(s" wins — $victory victory"))
+    banner
+  }
 
   private[frontend] def campaignPlanButtonLabel(choice: CampaignPlanChoice): String = {
     val cost = Vector(

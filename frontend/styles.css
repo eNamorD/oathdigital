@@ -67,11 +67,14 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .world { margin-top: 18px; }
-.round-tracker svg { display: block; width: 100%; max-width: 520px; }
+.round-tracker svg { display: block; width: min(100%, 300px); height: auto; }
 .round-segment { fill: #2b251d; stroke: #88775d; stroke-width: 2; }
 .round-current { fill: #d2a85e; stroke: #fff2d6; stroke-width: 3; }
 .round-tracker text { fill: #fff2d6; font-weight: 800; }
 .limiter-marker { fill: #ff8c7f !important; }
+.target-detail-badge { display: inline-block; margin-left: 0.4rem; padding: 0.08rem 0.35rem;
+  border: 1px solid #a98b58; border-radius: 999px; background: #17140f;
+  color: #f1c781; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
 .track-summary { margin: 0 0 12px; color: #c9bfa9; }
 .regions {
   display: grid;

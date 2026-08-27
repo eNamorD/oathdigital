@@ -1,10 +1,12 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
+import oathdigital.protocol.projection.VisionCardPresentation
 import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer {
  def players(value: GameProjection, ui: ServerUiView): dom.Element = {
+   import ui._
    val panel = element("section", "panel")
    panel.appendChild(text("h2", "", "Exile players"))
    val list = element("ul", "participants")
@@ -18,6 +20,10 @@ private[frontend] object WorldBoardRenderer {
        item.appendChild(dom.document.createTextNode(
          s" · pawn at ${siteLabel(value, pawn.siteId)}"
        )))
+     currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
+       _.target == BoardTargetRef.Player(player.playerId)))
+       .flatMap(candidate => candidateDetailBadge(candidate))
+       .foreach(badge => item.appendChild(badge))
      list.appendChild(item)
    }
    panel.appendChild(list)
@@ -25,6 +31,7 @@ private[frontend] object WorldBoardRenderer {
  }
 
  def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
+   import ui._
    val panel = element("section", "panel player-boards")
    panel.appendChild(text("h2", "", "Player boards"))
    if (value.playerBoards.isEmpty)
@@ -53,10 +60,14 @@ private[frontend] object WorldBoardRenderer {
      }
      section.appendChild(relics)
      board.banners.foreach { banner =>
+       val target = BoardTargetRef.PlayerBanner(board.playerId, banner.key)
        val row = targetable(text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
            s"resources ${banner.resources}"),
-         BoardTargetRef.PlayerBanner(board.playerId, banner.key), ui)
+         target, ui)
+       currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
+         _.target == target)).flatMap(candidate => candidateDetailBadge(candidate))
+         .foreach(badge => row.appendChild(badge))
        section.appendChild(row)
      }
      board.revealedVision.foreach(card => {
@@ -88,6 +99,7 @@ private[frontend] object WorldBoardRenderer {
      })
    }
    shell.appendChild(name)
+   candidate.flatMap(candidateDetailBadge).foreach(shell.appendChild)
    shell
  }
 
@@ -149,12 +161,16 @@ private[frontend] object WorldBoardRenderer {
        ))
        heading.appendChild(text("span", "site-name", site.label))
        control.appendChild(heading)
+       candidate.flatMap(candidateDetailBadge).foreach(control.appendChild)
        val pawns = element("div", "site-pawns")
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")
          marker.appendChild(dom.document.createTextNode("● "))
          marker.appendChild(targetable(playerReference(value, pawn.playerId),
            BoardTargetRef.PlayerPawn(pawn.playerId), ui))
+         currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
+           _.target == BoardTargetRef.PlayerPawn(pawn.playerId)))
+           .flatMap(candidateDetailBadge).foreach(marker.appendChild)
          pawns.appendChild(marker)
        }
        if (pawns.childNodes.length > 0) control.appendChild(pawns)
@@ -171,6 +187,30 @@ private[frontend] object WorldBoardRenderer {
    panel
  }
 
+ private[frontend] final case class RoundSegment(path: String, labelX: Double,
+     labelY: Double, markerX: Double, markerY: Double)
+
+ private[frontend] def roundSegment(round: Int): RoundSegment = {
+   val center = 100.0; val outer = 88.0; val inner = 49.0
+   val start = Math.toRadians(-90.0 + (round - 1) * 45.0 + 2.0)
+   val end = Math.toRadians(-90.0 + round * 45.0 - 2.0)
+   def point(radius: Double, angle: Double) =
+     (center + radius * Math.cos(angle), center + radius * Math.sin(angle))
+   val (outerStartX, outerStartY) = point(outer, start)
+   val (outerEndX, outerEndY) = point(outer, end)
+   val (innerEndX, innerEndY) = point(inner, end)
+   val (innerStartX, innerStartY) = point(inner, start)
+   val middle = (start + end) / 2.0
+   val (labelX, labelY) = point(68.0, middle)
+   val (markerX, markerY) = point(94.0, middle)
+   def n(value: Double) = f"$value%.2f"
+   RoundSegment(s"M ${n(outerStartX)} ${n(outerStartY)} " +
+     s"A ${n(outer)} ${n(outer)} 0 0 1 ${n(outerEndX)} ${n(outerEndY)} " +
+     s"L ${n(innerEndX)} ${n(innerEndY)} " +
+     s"A ${n(inner)} ${n(inner)} 0 0 0 ${n(innerStartX)} ${n(innerStartY)} Z",
+     labelX, labelY, markerX, markerY)
+ }
+
  private def roundTracker(value: GameProjection,
      track: oathdigital.protocol.projection.GameTracksProjection): dom.Element = {
    val section = element("section", "round-tracker")
@@ -178,25 +218,27 @@ private[frontend] object WorldBoardRenderer {
      s"Visions Drawn ${track.visionsDrawn}; first player ${track.firstPlayerId}")
    val svg = dom.document.createElementNS("http://www.w3.org/2000/svg", "svg")
      .asInstanceOf[dom.svg.SVG]
-   svg.setAttribute("viewBox", "0 0 520 64")
+   svg.setAttribute("viewBox", "0 0 200 200")
    svg.setAttribute("role", "img")
    svg.setAttribute("aria-label", s"Eight-segment round tracker, current round ${track.round}")
    (1 to 8).foreach { round =>
+     val segment = roundSegment(round)
      val group = dom.document.createElementNS("http://www.w3.org/2000/svg", "g")
-     val rect = dom.document.createElementNS("http://www.w3.org/2000/svg", "rect")
-     rect.setAttribute("x", ((round - 1) * 64 + 4).toString)
-     rect.setAttribute("y", "8"); rect.setAttribute("width", "56")
-     rect.setAttribute("height", "42"); rect.setAttribute("rx", "8")
-     rect.setAttribute("class", if (round == track.round) "round-current" else "round-segment")
+     group.setAttribute("data-round", round.toString)
+     val path = dom.document.createElementNS("http://www.w3.org/2000/svg", "path")
+     path.setAttribute("d", segment.path)
+     path.setAttribute("class", if (round == track.round) "round-current" else "round-segment")
      val label = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
-     label.setAttribute("x", ((round - 1) * 64 + 32).toString)
-     label.setAttribute("y", "35"); label.setAttribute("text-anchor", "middle")
+     label.setAttribute("x", segment.labelX.toString)
+     label.setAttribute("y", segment.labelY.toString)
+     label.setAttribute("text-anchor", "middle"); label.setAttribute("dominant-baseline", "middle")
      label.textContent = round.toString
-     group.appendChild(rect); group.appendChild(label)
+     group.appendChild(path); group.appendChild(label)
      if (track.usurperLimited && round == track.limiterRound) {
        val marker = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
-       marker.setAttribute("x", ((round - 1) * 64 + 50).toString)
-       marker.setAttribute("y", "17"); marker.setAttribute("class", "limiter-marker")
+       marker.setAttribute("x", segment.markerX.toString)
+       marker.setAttribute("y", segment.markerY.toString)
+       marker.setAttribute("text-anchor", "middle"); marker.setAttribute("class", "limiter-marker")
        marker.textContent = "◆"; group.appendChild(marker)
      }
      svg.appendChild(group)
@@ -219,12 +261,7 @@ private[frontend] object WorldBoardRenderer {
      s"shared-banner banner-${banner.key}",
      s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
        s"resources ${banner.resources}")))
-   section.appendChild(text("p", "vision-rules",
-     "Visions — Conquest: uniquely rule the most sites (at least one). " +
-       "Rebellion: hold the People's Favor. Sanctuary: uniquely hold the most relics " +
-       "(at least one). Faith: hold the Darkest Secret. A true Vision must be revealed " +
-       "and three Visions must have been drawn. Conspiracy is false: play it to take " +
-       "a relic or banner from a player whose pawn is at your site, then return it to the box."))
+   section.appendChild(text("p", "vision-rules", VisionCardPresentation.tableSummary))
    section
  }
 

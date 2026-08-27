@@ -422,6 +422,39 @@ class ServerModeUiSuite extends FunSuite {
       .contains("board-target-selected"))
   }
 
+  test("round tracker geometry is eight circular ring wedges") {
+    val segments = (1 to 8).map(WorldBoardRenderer.roundSegment)
+    assertEquals(segments.map(_.path).distinct.size, 8)
+    segments.foreach { segment =>
+      assert(segment.path.startsWith("M "))
+      assertEquals(" A ".r.findAllIn(segment.path).length, 2)
+      assert(segment.path.contains(" L "))
+      assert(segment.path.endsWith(" Z"))
+      assert(segment.labelX >= 30.0 && segment.labelX <= 170.0)
+      assert(segment.labelY >= 30.0 && segment.labelY <= 170.0)
+    }
+    val limiter = segments(3)
+    val markerRadius = Math.hypot(limiter.markerX - 100.0, limiter.markerY - 100.0)
+    val labelRadius = Math.hypot(limiter.labelX - 100.0, limiter.labelY - 100.0)
+    assert(markerRadius > labelRadius)
+  }
+
+  test("winner banner class resolves the winner's stable color token") {
+    assertEquals(ServerUiSupport.winnerColorClass(
+      projection(Set.empty), "red-exile"), "player-red")
+    assertEquals(ServerUiSupport.winnerColorClass(
+      projection(Set.empty), "missing"), "player-neutral")
+  }
+
+  test("visible target detail badges contain details without duplicating names") {
+    val candidate = BoardTargetCandidate(BoardTargetRef.Site("site:a"),
+      "Ancient City", Vector("2 Supply", "+1 warband"))
+    val badge = ServerUiSupport.candidateDetailText(candidate)
+    assertEquals(badge, Some("2 Supply · +1 warband"))
+    assert(!badge.get.contains(candidate.label))
+    assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
+  }
+
   test("populated site details render properties, stable IDs, and hidden relics") {
     val site = GameSite(
       "site:woods",

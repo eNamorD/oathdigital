@@ -53,10 +53,7 @@ private[frontend] object ActionDecisionRenderer {
    value.oathkeeper.flatMap(_.winnerPlayerId).foreach { winner =>
      val victory = value.oathkeeper.flatMap(_.winnerVictoryKind)
        .getOrElse("winner").replace('-', ' ')
-     val banner = text("div", s"victory-banner winner-${winner}",
-       s"${playerDisplayName(value, winner)} wins — $victory victory")
-     banner.setAttribute("role", "status")
-     panel.appendChild(banner)
+     panel.appendChild(winnerBanner(value, winner, victory))
    }
    if (value.privateAdviserPreview.nonEmpty) {
      val preview = element("section", "adviser-preview")
