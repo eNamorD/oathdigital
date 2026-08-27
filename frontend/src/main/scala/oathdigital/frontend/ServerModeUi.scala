@@ -79,7 +79,8 @@ object ServerModeUi {
     ): Unit =
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
-          modifierWorkflow = None
+          modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
+            gameId, selectedPlayer, displayed.nextSequence)
           boardSelectionState = Some(BoardTargetSelectionState.reconcile(
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
@@ -260,12 +261,55 @@ object ServerModeUi {
               current.nextSequence, action)
             val fingerprint = s"${response.nextSequence}:${response.action}:" +
               response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
-            modifierWorkflow = Some(ModifierWorkflow(command, parameters, response,
+            modifierWorkflow = Some(ModifierWorkflow(Some(command), None,
+              parameters, response,
               ModifierSelectionState.reconcile(modifierWorkflow.map(_.selection),
-                context, response.modifiers, fingerprint)))
+                context, response.modifiers, fingerprint),
+              ModifierWorkflowStage.Ordering))
             render()
           case Left(error) => failure = Some(error); render()
         }
+      }
+    }
+
+    def activatePreviewTargets(workflow: ModifierWorkflow,
+        response: MajorActionPreviewResponse): Unit = for {
+      current <- projection
+      actionKind <- workflow.actionKind
+      action <- ModifierWorkflow.targetAction(actionKind, response,
+        current.boardTargetActions)
+    } {
+      val context = BoardSelectionContext(gameId, selectedPlayer,
+        current.nextSequence)
+      boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
+        context, Vector(action)).activate(actionKind))
+      boardFormationState = None
+      modifierWorkflow = Some(workflow.showTargets(response))
+      render()
+    }
+
+    def startTargetedFlow(actionKind: String): Unit = for {
+      current <- projection
+      (action, parameters) <- ModifierWorkflow.targeted(actionKind)
+    } {
+      modifierWorkflow = None
+      boardSelectionState = boardSelectionState.map(_.cancel)
+      boardFormationState = None
+      val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
+      client.preview(gameId, selectedPlayer, request).foreach {
+        case Right(response) =>
+          val context = ModifierSelectionContext(gameId, selectedPlayer,
+            current.nextSequence, action)
+          val fingerprint = s"${response.nextSequence}:${response.action}:" +
+            response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
+          val workflow = ModifierWorkflow(None, Some(actionKind), parameters,
+            response, ModifierSelectionState.reconcile(None, context,
+              response.modifiers, fingerprint),
+            if (response.modifiers.nonEmpty) ModifierWorkflowStage.Ordering
+            else ModifierWorkflowStage.Targets)
+          if (workflow.ordering) { modifierWorkflow = Some(workflow); render() }
+          else activatePreviewTargets(workflow, response)
+        case Left(error) => failure = Some(error); render()
       }
     }
 
@@ -274,17 +318,28 @@ object ServerModeUi {
         workflow.selection.context.action, workflow.baseParameters,
         workflow.selection.invocations)
       client.preview(gameId, selectedPlayer, request).foreach {
-        case Right(_) =>
-          modifierWorkflow = None
-          boardSelectionState = None
-          boardFormationState = None
-          submitTransport(workflow.command, workflow.selection.invocations)
+        case Right(response) => workflow.command match {
+          case Some(command) =>
+            modifierWorkflow = None
+            submitTransport(command, workflow.selection.invocations)
+          case None => activatePreviewTargets(workflow, response)
+        }
         case Left(error) =>
           modifierWorkflow = None
           failure = Some(error)
           render()
       }
     }
+
+    def completeTargetCommand(command: GameCommand): Unit =
+      modifierWorkflow.filter(_.stage == ModifierWorkflowStage.Targets) match {
+        case Some(workflow) =>
+          modifierWorkflow = None
+          boardSelectionState = None
+          boardFormationState = None
+          submitTransport(command, workflow.selection.invocations)
+        case None => submit(command)
+      }
 
     def handleBoardSelection(result: BoardSelectionResult): Unit = result match {
       case BoardSelectionResult.Updated(state) =>
@@ -294,7 +349,7 @@ object ServerModeUi {
         val force = projection.toVector.flatMap(_.playerBoards)
           .find(_.playerId == selectedPlayer).map(_.warbands).getOrElse(0)
         commandForSelection(action, targets, selectedPlayer, force).foreach { command =>
-          submit(command)
+          completeTargetCommand(command)
         }
       case BoardSelectionResult.Form(state) =>
         boardFormationState = Some(state)
@@ -334,6 +389,22 @@ object ServerModeUi {
         boardFormationState = None
         render()
       }
+      def beginTargetedMajorAction(actionKind: String) =
+        startTargetedFlow(actionKind)
+      def backFromTargets() = modifierWorkflow.foreach { workflow =>
+        boardSelectionState = None
+        boardFormationState = None
+        modifierWorkflow = workflow.backFromTargets
+        render()
+      }
+      def cancelTargetAction() = {
+        modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
+        boardSelectionState = boardSelectionState.map(_.cancel)
+        boardFormationState = None
+        render()
+      }
+      def submitTargetCommand(command: GameCommand) =
+        completeTargetCommand(command)
       def canControl = controlsAvailable
       def rerender() = render()
       def submitCommand(command: GameCommand) = submit(command)

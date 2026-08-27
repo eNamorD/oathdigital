@@ -66,7 +66,7 @@ private[frontend] final case class BoardTargetSelectionState(
 
   def choose(target: BoardTargetRef): BoardSelectionResult = activeAction match {
     case Some(action) if action.candidates.exists(_.target == target) &&
-        action.maximum == 1 && action.formation.nonEmpty =>
+        action.maximum == 1 && action.formation.nonEmpty && !action.explicitConfirm =>
       BoardSelectionResult.Form(BoardTargetFormationState(context, action,
         Vector(target),
         action.formation.get.maximumForce))

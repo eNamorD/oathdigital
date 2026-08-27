@@ -25,6 +25,10 @@ private[frontend] trait ServerUiView {
   def confirmModifiers(): Unit
   def backFromModifiers(): Unit
   def cancelModifiers(): Unit
+  def beginTargetedMajorAction(actionKind: String): Unit
+  def backFromTargets(): Unit
+  def cancelTargetAction(): Unit
+  def submitTargetCommand(command: GameCommand): Unit
   def canControl: Boolean
   def rerender(): Unit
   def submitCommand(command: GameCommand): Unit

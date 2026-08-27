@@ -1,9 +1,7 @@
 package oathdigital.frontend
-
 import oathdigital.protocol.{GameIntent => GameCommand, _}
 import org.scalajs.dom
 import ServerUiSupport._
-
 private[frontend] object ActionDecisionRenderer {
  def status(value: GameProjection, ui: ServerUiView): dom.Element = {
    import ui._
@@ -101,7 +99,7 @@ private[frontend] object ActionDecisionRenderer {
    }
    if (showActActionControls(value, presentation)) {
      val selection = currentBoardSelection.flatMap(_.activeAction)
-     if (currentModifierWorkflow.nonEmpty) {
+     if (currentModifierWorkflow.exists(_.ordering)) {
        val workflow = currentModifierWorkflow.get
        panel.appendChild(text("h2", "", s"Order ${actionLabel(workflow.preview.action)} modifiers"))
        panel.appendChild(text("p", "modifier-instruction", "Choose optional modifiers in " +
@@ -181,18 +179,14 @@ private[frontend] object ActionDecisionRenderer {
        confirm.onclick = _ => {
          currentBoardFormation = None
          currentBoardSelection = None
-         commandForFormation(formation, currentPlayerId).foreach(submitCommand)
+         commandForFormation(formation, currentPlayerId).foreach(submitTargetCommand)
        }
        panel.appendChild(confirm)
        val back = button("Back to target selection", "campaign-force-back")
        back.onclick = _ => { currentBoardFormation = None; rerender() }
        panel.appendChild(back)
        val cancel = button("Cancel Campaign", "campaign-force-cancel")
-       cancel.onclick = _ => {
-         currentBoardFormation = None
-         currentBoardSelection = currentBoardSelection.map(_.cancel)
-         rerender()
-       }
+       cancel.onclick = _ => cancelTargetAction()
        panel.appendChild(cancel)
      } else if (selection.nonEmpty) {
        val action = selection.get
@@ -201,13 +195,15 @@ private[frontend] object ActionDecisionRenderer {
          cardinalityInstruction(action)))
        if (!action.autoActivate) {
          val cancel = button("Cancel", "cancel-board-selection")
-         cancel.onclick = _ => {
-           currentBoardSelection = currentBoardSelection.map(_.cancel)
-           rerender()
-         }
+         cancel.onclick = _ => cancelTargetAction()
          panel.appendChild(cancel)
+         currentModifierWorkflow.foreach { workflow =>
+           val back = button(if (workflow.hadModifierStage) "Back to modifiers"
+             else "Back to actions", "back-board-selection")
+           back.onclick = _ => backFromTargets(); panel.appendChild(back)
+         }
        }
-       if (action.maximum > 1) {
+       if (action.maximum > 1 || action.explicitConfirm) {
          val confirm = button("Confirm selection", "confirm-board-selection")
          confirm.disabled = !canControl ||
            !currentBoardSelection.exists(_.canConfirm)
@@ -324,9 +320,13 @@ private[frontend] object ActionDecisionRenderer {
            if (action.minimum == 0 && action.maximum == 0)
              commandForSelection(action, Vector.empty, currentPlayerId).foreach(submitCommand)
            else {
-             currentBoardSelection = currentBoardSelection.map(
-               _.activate(action.actionKind))
-             rerender()
+             if (ModifierWorkflow.targeted(action.actionKind).nonEmpty)
+               beginTargetedMajorAction(action.actionKind)
+             else {
+               currentBoardSelection = currentBoardSelection.map(
+                 _.activate(action.actionKind))
+               rerender()
+             }
            }
          }
          panel.appendChild(control)
