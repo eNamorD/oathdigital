@@ -120,6 +120,15 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
 
 ## Done
 
+- [x] **Gameplay table, selection, and victory correctness.** One pure
+  materializer now drives projected and completed first-game setup, including
+  the fully populated printed table and private adviser/discard continuity.
+  Exact projections carry banks, tracks, relic-deck count, banners, and private
+  previews. The Scala.js table renders direct accessible targets without
+  duplicate candidate controls, compact card-decision arrows, claimed banners,
+  printed Vision text, and an inspectable all-viewer winner state. Wake and War
+  Exhaustion share one true-Vision eligibility function and printed priority.
+
 - [x] **Phase 3 - Playable major-action power shell.** Travel, Search,
   Campaign, Muster, Trade, Forge, and Recover now share stateless actorless
   preview, ordered final modifier transport, and authoritative stale
@@ -388,7 +397,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The architecture gate passes 318 JVM tests, 87 Scala.js tests, the optimized
+The architecture gate passes 325 JVM tests, 98 Scala.js tests, the optimized
 Scala.js linker, runtime-catalog validation and equality, architecture and
 documentation-link checks, and diff validation. Earlier persisted multiplayer
 browser acceptance remains covered by the completed gameplay milestones.

@@ -19,6 +19,13 @@ the next region. Victory is evaluated only at the start of that player's Wake,
 after the printed Oathkeeper/Usurper step. The title and a revealed Vision may
 coexist and neither changes the other.
 
+`VisionVictoryEligibility` is the sole qualification implementation used by
+both Wake and War Exhaustion. This prevents unique-leader Wake rules from
+drifting into tied-leader War Exhaustion results. War Exhaustion retains the
+printed Conquest, Rebellion, Sanctuary, then Faith priority. Every scoped
+finished projection is `game-over`, suppresses controls and waiting state,
+publishes the winner and victory kind, and retains the inspectable final table.
+
 ## Conspiracy
 
 Conspiracy is not a victory Vision. Playing it faceup from a facedown adviser

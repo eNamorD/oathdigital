@@ -1,6 +1,5 @@
 package oathdigital.frontend
-import oathdigital.protocol.{GameIntent => GameCommand, _}
-import org.scalajs.dom
+import oathdigital.protocol.{GameIntent => GameCommand, _}; import org.scalajs.dom
 import ServerUiSupport._
 private[frontend] object ActionDecisionRenderer {
  def status(value: GameProjection, ui: ServerUiView): dom.Element = {
@@ -42,7 +41,6 @@ private[frontend] object ActionDecisionRenderer {
      }
    node
  }
-
  def actionsPanel(
      value: GameProjection,
      presentation: ViewerPresentation,
@@ -99,7 +97,6 @@ private[frontend] object ActionDecisionRenderer {
        control.onclick = _ => submitCommand(action.command)
        panel.appendChild(control)
      }
-
      val end = button("End Wake", "wake-action")
      end.disabled = !canControl ||
        !value.legalControls.contains("endWake")
@@ -641,7 +638,6 @@ private[frontend] object ActionDecisionRenderer {
      .foreach(decision => panel.appendChild(cardDecision(value, decision, ui)))
    panel
  }
-
  def cardDecision(
      value: GameProjection,
      decision: PendingCardDecision,
@@ -650,14 +646,12 @@ private[frontend] object ActionDecisionRenderer {
    import ui._
    val shell = element("section", "card-decision")
    shell.setAttribute("aria-labelledby", "card-decision-title")
-   shell.setAttribute("data-decision-kind", decision.kind)
-   shell.appendChild(text("h2", "", decision.prompt))
+   shell.setAttribute("data-decision-kind", decision.kind); shell.appendChild(text("h2", "", decision.prompt))
    shell.lastChild.asInstanceOf[dom.Element].id = "card-decision-title"
    decision.instructions.foreach(instruction =>
      shell.appendChild(text("p", "decision-instruction", instruction)))
    val state = currentCardDecision.filter(_.decisionId == decision.decisionId)
      .getOrElse(CardDecisionState.initial(decision))
-
    def update(next: CardDecisionState): Unit = {
      currentCardDecision = Some(next)
      rerender()
@@ -666,8 +660,7 @@ private[frontend] object ActionDecisionRenderer {
      val node = element("article", "decision-card")
      node.setAttribute("tabindex", "0")
      node.setAttribute("draggable", "true")
-     node.setAttribute("data-card-id", card.cardId)
-     node.setAttribute("aria-label", card.name)
+     node.setAttribute("data-card-id", card.cardId); node.setAttribute("aria-label", card.name)
      node.appendChild(cardDetailsPopover(card))
      val moveLabel = if (zone == "keep") s"Discard ${card.name}" else s"Keep ${card.name}"
      val move = if (zone == "keep") button("→", "move-discard")
@@ -702,7 +695,6 @@ private[frontend] object ActionDecisionRenderer {
      }
      node
    }
-
    def arrangementZones(showDiscardOrder: Boolean): dom.Element = {
      val zones = element("div", "decision-zones")
      val keep = element("section", "decision-zone keep-zone")
@@ -725,11 +717,9 @@ private[frontend] object ActionDecisionRenderer {
        update(dropOnDiscard(state, event.asInstanceOf[dom.DragEvent]
          .dataTransfer.getData("text/plain")))
      })
-     zones.appendChild(keep)
-     zones.appendChild(discard)
+     zones.appendChild(keep); zones.appendChild(discard)
      zones
    }
-
    if (decision.kind == "recover-relic") {
      decision.cards.foreach { card =>
        val choose = button(s"Take ${card.name} facedown", "resolution-choice")

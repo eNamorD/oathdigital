@@ -3,7 +3,9 @@
 Status: implemented and replay-tested, reviewed August 2026.
 
 `gameplay/setup/FirstGameSetup.scala` owns the introductory all-Exile setup
-state machine. It begins at `OathState.NoGame`, records a complete
+state machine, while `FirstGameSetupMaterializer` is the pure source of every
+physical table formula used by both in-progress projection and completion. It
+begins at `OathState.NoGame`, records a complete
 `FirstGameSetupPlan`, validates pawn placement and starting-adviser choices,
 and ends at `OathState.Ready(ReadyGame)` with the selected first player in
 Wake.
@@ -48,7 +50,12 @@ authorization and player seats from memberships. The application maps bootstrap
 configuration to domain setup and appends the same current event envelope used
 by gameplay.
 
-Player/public setup projections use `GameProjector`. Only the active adviser
-chooser sees candidate identities and controls; pawn candidates are projected
-as typed board targets. Replay, application, route, redaction, and shared codec
-tests cover the boundary.
+Player/public setup projections use `GameProjector`. During pawn placement only
+the active viewer receives their three preview-only adviser identities; the
+same cards become the actionable Keep/Discard decision after placement. Earlier
+rejections immediately extend the destination regional discard. Other viewers
+and public scope never receive the identities. The setup table already exposes
+populated sites, ruined Homeland edifices, decks, public pile tops, banks,
+banners, tracks, first player, and starting boards, so completion does not
+visually rebuild the world. Replay, redaction, codec, and continuity tests cover
+the boundary.
