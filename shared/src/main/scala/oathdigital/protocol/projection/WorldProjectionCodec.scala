@@ -145,11 +145,16 @@ private[projection] object WorldProjectionCodec {
     "supply" -> value.supply, "pawnSiteId" -> stringOption(value.pawnSiteId),
     "advisers" -> encoded(value.advisers)(encodeCard),
     "relics" -> encoded(value.relics)(encodeCard),
-    "revealedVision" -> option(value.revealedVision)(encodeCard))
+    "revealedVision" -> option(value.revealedVision)(encodeCard),
+    "banners" -> encoded(value.banners)(b => ujson.Obj(
+      "banner" -> b.key, "face" -> b.face,
+      "holderPlayerId" -> stringOption(b.holderPlayerId),
+      "resources" -> b.resources)))
   def decodeBoard(raw: ujson.Value, path: String): Result[PlayerBoardProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "warbands", "favor", "faceUpSecrets",
-      "faceDownSecrets", "supply", "pawnSiteId", "advisers", "relics", "revealedVision"), path)
+      "faceDownSecrets", "supply", "pawnSiteId", "advisers", "relics",
+      "revealedVision", "banners"), path)
     player <- string(value, "playerId", path); warbands <- int(value, "warbands", path)
     favor <- int(value, "favor", path); up <- int(value, "faceUpSecrets", path)
     down <- int(value, "faceDownSecrets", path); supply <- int(value, "supply", path)
@@ -158,6 +163,14 @@ private[projection] object WorldProjectionCodec {
     advisers <- traverse(adviserRaws, s"$path.advisers")(decodeCard)
     relicRaws <- array(value, "relics", path); relics <- traverse(relicRaws, s"$path.relics")(decodeCard)
     vision <- optional(value, "revealedVision", path)(decodeCard)
+    bannerRaws <- default(value, "banners", path, Vector.empty[ujson.Value])(array)
+    banners <- traverse(bannerRaws, s"$path.banners") { (raw, child) => for {
+      row <- obj(raw, child); _ <- exact(row,
+        Set("banner", "face", "holderPlayerId", "resources"), child)
+      key <- string(row, "banner", child); face <- string(row, "face", child)
+      holder <- optionalString(row, "holderPlayerId", child)
+      resources <- int(row, "resources", child)
+    } yield BannerProjection(key, face, holder, resources) }
   } yield PlayerBoardProjection(player, warbands, favor, up, down, supply, pawn,
-    advisers, relics, vision)
+    advisers, relics, vision, banners)
 }

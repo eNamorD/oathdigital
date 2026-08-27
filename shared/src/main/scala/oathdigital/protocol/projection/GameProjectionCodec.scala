@@ -17,7 +17,8 @@ object GameProjectionCodec {
     "boardTargetActions", "pendingCardDecision", "recover", "forge", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
-    "negotiation", "negotiationWaiting")
+    "negotiation", "negotiationWaiting", "favorBanks", "tracks",
+    "relicDeckCount", "privateAdviserPreview")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -92,7 +93,15 @@ object GameProjectionCodec {
       "minimumPlacement" -> c.minimumPlacement, "maximumPlacement" -> c.maximumPlacement)),
     "minorActions" -> option(value.minorActions)(encodeMinor),
     "negotiation" -> option(value.negotiation)(encodeNegotiation),
-    "negotiationWaiting" -> value.negotiationWaiting)
+    "negotiationWaiting" -> value.negotiationWaiting,
+    "favorBanks" -> encoded(value.favorBanks)(b => ujson.Obj(
+      "suit" -> b.suit, "count" -> b.count)),
+    "tracks" -> option(value.tracks)(t => ujson.Obj(
+      "round" -> t.round, "visionsDrawn" -> t.visionsDrawn,
+      "usurperLimited" -> t.usurperLimited, "limiterRound" -> t.limiterRound,
+      "firstPlayerId" -> t.firstPlayerId)),
+    "relicDeckCount" -> value.relicDeckCount,
+    "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -139,11 +148,27 @@ object GameProjectionCodec {
     minor <- optionalAbsent(value, "minorActions", path)(decodeMinor)
     negotiation <- optionalAbsent(value, "negotiation", path)(decodeNegotiation)
     waiting <- boolOr(value, "negotiationWaiting", path, false)
+    bankRaws <- default(value, "favorBanks", path, Vector.empty[ujson.Value])(array)
+    banks <- traverse(bankRaws, s"$path.favorBanks") { (raw, child) => for {
+      row <- obj(raw, child); _ <- exact(row, Set("suit", "count"), child)
+      suit <- string(row, "suit", child); count <- int(row, "count", child)
+    } yield FavorBankProjection(suit, count) }
+    tracks <- optionalAbsent(value, "tracks", path) { (raw, child) => for {
+      row <- obj(raw, child); _ <- exact(row, Set("round", "visionsDrawn",
+        "usurperLimited", "limiterRound", "firstPlayerId"), child)
+      round <- int(row, "round", child); visions <- int(row, "visionsDrawn", child)
+      limited <- bool(row, "usurperLimited", child); limiter <- int(row, "limiterRound", child)
+      first <- string(row, "firstPlayerId", child)
+    } yield GameTracksProjection(round, visions, limited, limiter, first) }
+    relicDeck <- intOr(value, "relicDeckCount", path, 0)
+    previewRaws <- default(value, "privateAdviserPreview", path,
+      Vector.empty[ujson.Value])(array)
+    preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, recover, forge, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
-    negotiation, waiting)
+    negotiation, waiting, banks, tracks, relicDeck, preview)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets", "supply"), path)

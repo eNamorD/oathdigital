@@ -79,6 +79,19 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     }
     val Ready(finished) = accepted.state: @unchecked
     assert(finished.game.current.result.nonEmpty)
+    val projector = new GameProjector(catalog)
+    finished.game.current.players.foreach { player =>
+      val view = projector.project("powered-playability",
+        LoadedGame(accepted.state, accepted.nextSequence),
+        player.player)
+      assertEquals(view.phase, "game-over")
+      assertEquals(view.legalControls, Vector.empty)
+      assert(!view.actionSelectionOpen)
+      assert(!view.negotiationWaiting)
+      assertEquals(view.oathkeeper.flatMap(_.winnerPlayerId),
+        finished.game.current.result.map(_.winner.value))
+      assert(view.world.flatMap(_.sites).nonEmpty)
+    }
     val raw = repository.load("powered-playability").toOption.flatten.get.records
     assert(raw.exists(_.contains("diagnostic.ignored-rules-recorded")))
     assert(raw.exists(_.contains("reviewed-unimplemented-pre-alpha-fallback")))
@@ -1120,6 +1133,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .encodeProjection(other)
 
     assertEquals(privateIds.size, 3)
+    assertEquals(own.privateAdviserPreview, Vector.empty)
     assertEquals(other.pendingCardDecision, None)
     val publicShape = ujson.read(otherJson).obj
     assert(!publicShape.contains("privateAdviserChoices"))
@@ -1135,6 +1149,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       exposedValues.intersect(plan.worldDeckOrder.map(_.value).toSet),
       Set.empty[String]
     )
+    val chosen = service.handle("game-private", placed.nextSequence,
+      GameCommand.ChooseAdviser(PlayerId("p2"), DenizenId(privateIds.head)))
+      .toOption.get
+    val continuedPublic = projector.projectPublic("game-private",
+      LoadedGame(chosen.state, chosen.nextSequence))
+    val continued = projector.project("game-private",
+      LoadedGame(chosen.state, chosen.nextSequence),
+      PlayerId(continuedPublic.activeParticipantId.get))
+    assertEquals(continued.phase, "awaiting-pawn")
+    assertEquals(continued.world.map(_.discardCount).sum, 8)
+    assertEquals(continued.privateAdviserPreview.size, 3)
   }
 
   private def jsonStrings(value: ujson.Value): Set[String] =

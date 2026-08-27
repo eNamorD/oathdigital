@@ -92,6 +92,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       .map(r => RelicId(r.id.value))
   private val edificesById =
     catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap
+  private val materializer = new FirstGameSetupMaterializer(catalog)
 
   def handle(
       state: OathState,
@@ -420,8 +421,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       plan: FirstGameSetupPlan,
       playerId: PlayerId
   ): Vector[DenizenId] = {
-    val index = plan.participants.indexWhere(_.playerId == playerId)
-    plan.denizenOrder.slice(6 + index * 3, 9 + index * 3)
+    materializer.handFor(plan, playerId)
   }
 
   private def expectedAdviserPlayer(
@@ -442,52 +442,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       progress: InProgress
   ): Either[OathViolation, ReadyGame] = {
     val plan = progress.plan
-    val placementMap = progress.placements.map(p => p.playerId -> p.siteId).toMap
-    val adviserMap = progress.adviserChoices.toMap
-    val relicsBySite = assignRelics(plan)
-    val edifices = plan.homelandEdifices.toMap
-    val map = MapState(
-      plan.orderedSites.take(2),
-      plan.orderedSites.slice(2, 5),
-      plan.orderedSites.slice(5, 8),
-      plan.orderedSites.map { siteId =>
-        val definition = sitesById(siteId)
-        val forces =
-          if (definition.capacity == 0) SiteForces.Empty
-          else SiteForces.Occupied(ForceKind.Bandit, definition.capacity)
-        val denizens = edifices.get(siteId).toVector.map { id =>
-          EdificeState(id, EdificeSide.Ruined, Tokens.empty)
-        }
-        val relics = relicsBySite.getOrElse(siteId, Vector.empty).map { id =>
-          RelicState(id, Orientation.FaceDown, Tokens.empty)
-        }
-        siteId -> SiteState(
-          forces,
-          denizens,
-          relics,
-          definition.startingResources
-        )
-      }.toMap
-    )
-    val regionalDiscards = initialDiscards(plan, placementMap, adviserMap)
-    val usedRelics = relicsBySite.valuesIterator.flatten.toSet
-    val players = plan.participants.map { participant =>
-      PlayerState(
-        participant.playerId,
-        participant.lineageId,
-        Some(placementMap(participant.playerId)),
-        PlayerBoardState(1, 1, 0, 3, SupplyTrack.full),
-        Vector(
-          DenizenState(
-            adviserMap(participant.playerId),
-            Orientation.FaceDown,
-            Tokens.empty
-          )
-        ),
-        Vector.empty,
-        None
-      )
-    }
+    val material = materializer.materialize(plan, progress.placements,
+      progress.adviserChoices)
     val lineages = plan.participants.map { participant =>
       participant.lineageId -> LineageState(
         participant.lineageId,
@@ -513,23 +469,10 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         EraState(20, lineages.keys.map(_ -> 0).toMap)
       ),
       CurrentGameState(
-        players,
-        map,
-        CardZones(
-          plan.worldDeckOrder,
-          plan.relicOrder.filterNot(usedRelics),
-          catalog.edifices.map(e => EdificeId(e.id.value))
-            .filterNot(edifices.values.toSet),
-          Vector.empty,
-          regionalDiscards
-        ),
-        BannersState(
-          PeoplesFavorState(PeoplesFavorFace.Mob, None, 1),
-          DarkestSecretState(DarkestSecretFace.WanderingFlame, None, 1)
-        ),
+        material.players, material.map, material.commonCards, material.banners,
         OathkeeperState(None, TitleSide.Oathkeeper),
         TurnState(plan.firstPlayer, Phase.Wake, Set.empty),
-        GameTracks(1, 0, usurperLimited = true),
+        material.tracks,
         None,
         None
       )
@@ -543,65 +486,11 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           plan.participants.map(p => p.playerId -> p.color).toMap,
           FirstGameSupportState(
             FirstGameFoundationProfile.FixedUnaltered,
-            favorBanks(plan),
+            material.favorBanks,
             plan.firstPlayer
           )
         )
       )
   }
 
-  private def assignRelics(
-      plan: FirstGameSetupPlan
-  ): Map[SiteId, Vector[RelicId]] = {
-    var offset = 0
-    plan.orderedSites.map { site =>
-      val count = sitesById(site).relicSlots
-      val assigned = plan.relicOrder.slice(offset, offset + count)
-      offset += count
-      site -> assigned
-    }.toMap
-  }
-
-  private def initialDiscards(
-      plan: FirstGameSetupPlan,
-      placements: Map[PlayerId, SiteId],
-      choices: Map[PlayerId, DenizenId]
-  ): Map[Region, Vector[WorldCardId]] = {
-    val seeded = Map[Region, Vector[WorldCardId]](
-      Region.Cradle -> plan.denizenOrder.slice(0, 2),
-      Region.Provinces -> plan.denizenOrder.slice(2, 4),
-      Region.Hinterland -> plan.denizenOrder.slice(4, 6)
-    )
-    plan.participants.foldLeft(seeded) { (discards, participant) =>
-      val rejected =
-        handFor(plan, participant.playerId).filterNot(
-          _ == choices(participant.playerId)
-        )
-      val destination =
-        regionOf(plan, placements(participant.playerId)) match {
-          case Region.Cradle => Region.Provinces
-          case Region.Provinces => Region.Hinterland
-          case Region.Hinterland => Region.Cradle
-        }
-      discards.updated(destination, discards(destination) ++ rejected)
-    }
-  }
-
-  private def regionOf(plan: FirstGameSetupPlan, site: SiteId): Region =
-    if (plan.orderedSites.take(2).contains(site)) Region.Cradle
-    else if (plan.orderedSites.slice(2, 5).contains(site)) Region.Provinces
-    else Region.Hinterland
-
-  private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] = {
-    val bonus = if (plan.participants.size >= 5) 1 else 0
-    val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
-      modelSuit(edificesById(id).suit.value)
-    }
-    Suit.all.map { suit =>
-      suit -> (3 + bonus + edificeSuits.count(_ == suit))
-    }.toMap
-  }
-
-  private def modelSuit(value: String): Suit =
-    Suit.all.find(_.key == value).get
 }

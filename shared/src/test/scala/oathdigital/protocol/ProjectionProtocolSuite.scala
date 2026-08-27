@@ -66,13 +66,19 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Vector("blue"), Vector(NegotiationTransferProjection("red", "blue", 1, 0, Vector.empty)),
       Vector(NegotiationDisclosureProjection("red", "blue", "adviser", Some(hidden))),
       2, Vector(known), Vector(hidden), Vector(known))),
-    negotiationWaiting = true)
+    negotiationWaiting = true,
+    favorBanks = Vector(FavorBankProjection("beast", 4)),
+    tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
+    relicDeckCount = 21,
+    privateAdviserPreview = Vector(known))
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),
       Right(projection))
     assert(projection.playerBoards.head.advisers.head.hidden)
     assertEquals(projection.playerBoards.head.advisers.head.name, "Unknown")
+    assertEquals(projection.tracks.map(_.round), Some(4))
+    assertEquals(projection.privateAdviserPreview.map(_.cardId), Vector("known"))
   }
 
   test("projection decoder reports exact nested paths and unexpected fields") {

@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.setup.FirstGameParticipant
+import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterial}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -46,6 +46,14 @@ private[application] final class GamePresentationProjector(
     region("cradle", sites.take(2)),
     region("provinces", sites.slice(2, 5)),
     region("hinterland", sites.slice(5, 8)))
+
+  def setupWorld(material: FirstGameSetupMaterial): Vector[SetupRegionProjection] = Vector(
+    region("cradle", material.map.cradle, material.map.sites,
+      material.commonCards.discard(Region.Cradle)),
+    region("provinces", material.map.provinces, material.map.sites,
+      material.commonCards.discard(Region.Provinces)),
+    region("hinterland", material.map.hinterland, material.map.sites,
+      material.commonCards.discard(Region.Hinterland)))
 
   def readyWorld(ready: ReadyGame, viewer: Option[PlayerId]) = {
     val current = ready.game.current
@@ -105,14 +113,16 @@ private[application] final class GamePresentationProjector(
       definition.flatMap(_.forgeRequirements).map(tokens =>
         ForgeCostProjection(tokens.favor, tokens.secrets)),
       definition.toVector.flatMap(_.handlers).map(sitePower),
-      for {
-        site <- state
-        game <- ready
-        occupied <- site.forces match {
-          case value: SiteForces.Occupied => Some(value)
-          case SiteForces.Empty => None
+      state.flatMap(_.forces match {
+        case value: SiteForces.Occupied => ready match {
+          case Some(game) => Some(forceProjection(value, game))
+          case None if value.kind == ForceKind.Bandit => Some(
+            SiteForcesProjection("bandit", value.count, "bandit", None,
+              "Bandit Warbands", "bandit"))
+          case None => None
         }
-      } yield forceProjection(occupied, game))
+        case SiteForces.Empty => None
+      }))
   }
 
   private def forceProjection(forces: SiteForces.Occupied,
@@ -159,8 +169,31 @@ private[application] final class GamePresentationProjector(
           hiddenCard("relic") else cardDetails(card.id,
             Some(card.orientation), hidden = false)),
         player.revealedVision.map(card => cardDetails(card.id,
-          Some(card.orientation), hidden = false)))
+          Some(card.orientation), hidden = false)),
+        banners(ready).filter(_.holderPlayerId.contains(player.player.value)))
     }
+  }
+
+  def setupPlayerBoards(material: FirstGameSetupMaterial): Vector[PlayerBoardProjection] =
+    material.players.map(player => PlayerBoardProjection(player.player.value,
+      player.board.warbands, player.board.favor, player.board.faceUpSecrets,
+      player.board.faceDownSecrets, player.board.supply.supply,
+      player.pawnSite.map(_.value),
+      player.advisers.map(card => hiddenCard("adviser")), Vector.empty, None))
+
+  def banners(ready: ReadyGame): Vector[BannerProjection] = {
+    val current = ready.game.current
+    Vector(
+      BannerProjection("peoples-favor", current.banners.peoplesFavor.active match {
+        case PeoplesFavorFace.Mob => "mob"
+        case PeoplesFavorFace.GrandCouncil => "grand-council"
+      }, current.banners.peoplesFavor.holder.map(_.value),
+        current.banners.peoplesFavor.favor),
+      BannerProjection("darkest-secret", current.banners.darkestSecret.active match {
+        case DarkestSecretFace.WanderingFlame => "wandering-flame"
+        case DarkestSecretFace.Festival => "festival"
+      }, current.banners.darkestSecret.holder.map(_.value),
+        current.banners.darkestSecret.secrets))
   }
 
   private def hiddenCard(kind: String) = CardDetailsProjection(

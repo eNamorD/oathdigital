@@ -67,6 +67,7 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
   }
 
   test("bootstrap persists normal v2 history and returns redacted projection") {
+    val derived = new DevelopmentFirstGamePlanFactory(catalog).build(config).toOption.get
     val path = Files.createTempDirectory("oathdigital-bootstrap-")
       .resolve("journal")
     val repository = OwnedHsqldbEventStreamRepository.open(path).toOption.get
@@ -90,6 +91,23 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
 
     assertEquals(projection.nextSequence, 1L)
     assertEquals(projection.phase, "awaiting-pawn")
+    assertEquals(projection.privateAdviserPreview.size, 3)
+    assertEquals(projection.playerBoards.size, config.participants.size)
+    assert(projection.world.flatMap(_.sites).exists(_.looseFavor > 0))
+    assert(projection.world.flatMap(_.sites).exists(_.relics.facedownCount > 0))
+    assert(projection.world.flatMap(_.sites).exists(_.forces.exists(_.forceKind == "bandit")))
+    assert(projection.world.flatMap(_.sites).exists(_.denizens.exists(
+      _.details.exists(details => details.cardKind == "edifice" &&
+        details.side.contains("ruined")))))
+    assertEquals(projection.world.map(_.discardCount), Vector(2, 2, 2))
+    assertEquals(projection.favorBanks.map(_.suit).toSet,
+      oathdigital.model.Suit.all.map(_.key).toSet)
+    assertEquals(projection.tracks.map(track =>
+      (track.round, track.visionsDrawn, track.usurperLimited, track.limiterRound,
+        track.firstPlayerId)), Some((1, 0, true, 4, "p2")))
+    assertEquals(projection.relicDeckCount +
+      projection.world.flatMap(_.sites).map(_.relics.facedownCount).sum,
+      derived.relicOrder.size)
     val placement = projection.boardTargetActions.head
     assertEquals(placement.actionKind, "place-pawn")
     assert(placement.autoActivate)
@@ -115,6 +133,11 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
         .load("bootstrap-game").toOption.flatten.get
       assertEquals(loaded.nextSequence, 1L)
       assert(loaded.state.isInstanceOf[OathState.InProgress])
+      val publicProjection = new GameProjector(catalog).projectPublic(
+        "bootstrap-game", loaded)
+      assertEquals(publicProjection.privateAdviserPreview, Vector.empty)
+      projection.privateAdviserPreview.foreach(card =>
+        assert(!GameHttpWire.encodeProjection(publicProjection).contains(card.cardId)))
     } finally reopened.close()
   }
 }

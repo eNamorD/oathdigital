@@ -145,7 +145,8 @@ final case class PlayerBoardProjection(
     pawnSiteId: Option[String],
     advisers: Vector[CardDetailsProjection],
     relics: Vector[CardDetailsProjection],
-    revealedVision: Option[CardDetailsProjection]
+    revealedVision: Option[CardDetailsProjection],
+    banners: Vector[BannerProjection] = Vector.empty
 )
 final case class MinorAdviserProjection(card: CardDetailsProjection,
     placements: Vector[CardResolutionProjection])

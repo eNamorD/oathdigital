@@ -36,4 +36,8 @@ final case class GameProjection(
     ,minorActions: Option[MinorActionsProjection] = None
     ,negotiation: Option[NegotiationProjection] = None
     ,negotiationWaiting: Boolean = false
+    ,favorBanks: Vector[FavorBankProjection] = Vector.empty
+    ,tracks: Option[GameTracksProjection] = None
+    ,relicDeckCount: Int = 0
+    ,privateAdviserPreview: Vector[CardDetailsProjection] = Vector.empty
 )
