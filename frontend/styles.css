@@ -247,6 +247,13 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   margin: 3px; place-items: center; border: 1px dashed #88775d; border-radius: 5px; }
 .player-boards { margin-top: 18px; }
 .player-board { margin-top: 12px; padding: 12px; border: 1px solid #40382c; border-radius: 9px; }
+.modifier-option { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.modifier-toggle { min-height: 44px; text-align: left; }
+.modifier-ordinal { display: inline-grid; width: 1.8rem; height: 1.8rem;
+  place-items: center; border-radius: 50%; background: #d2a85e; color: #17140f;
+  font-weight: 800; }
+.modifier-earlier, .modifier-later, .modifier-confirm, .modifier-back,
+.modifier-cancel { min-height: 44px; }
 
 @media (max-width: 640px) {
   .decision-zones { grid-template-columns: 1fr; }

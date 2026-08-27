@@ -32,24 +32,48 @@ private[frontend] final case class ModifierSelectionState(
     case index => Some(index + 1)
   }
   def invocations: Vector[ModifierInvocation] = selected.map { value =>
-    val parts = value.sourceKey.split(':').toVector
+    val parts = value.sourceKey.split(":", 4).toVector
     parts match {
-      case Vector("site", id) => ModifierInvocation("site", id, None, value.handlerId)
-      case Vector("site-card", site, _, id) =>
-        ModifierInvocation("site-card", id, Some(site), value.handlerId)
       case Vector("adviser", _, _, id) =>
         ModifierInvocation("adviser", id, None, value.handlerId)
-      case Vector("relic", _, id) => ModifierInvocation("relic", id, None, value.handlerId)
-      case Vector("edifice", site, id) =>
-        ModifierInvocation("edifice", id, Some(site), value.handlerId)
-      case Vector("banner", id) => ModifierInvocation("banner", id, None, value.handlerId)
+      case _ if value.sourceKey.startsWith("site-card:") =>
+        typed(value.sourceKey.stripPrefix("site-card:"), Vector("denizen", "vision"))
+          .map { case (site, id) => ModifierInvocation("site-card", id,
+            Some(site), value.handlerId) }.getOrElse(unsupported(value.sourceKey))
+      case _ if value.sourceKey.startsWith("site:") =>
+        ModifierInvocation("site", value.sourceKey.stripPrefix("site:"), None,
+          value.handlerId)
+      case _ if value.sourceKey.startsWith("relic:") =>
+        val fields = value.sourceKey.stripPrefix("relic:").split(":", 2)
+        ModifierInvocation("relic", fields.last, None, value.handlerId)
+      case _ if value.sourceKey.startsWith("edifice:") =>
+        typed(value.sourceKey.stripPrefix("edifice:"), Vector("edifice"))
+          .orElse(splitLast(value.sourceKey.stripPrefix("edifice:")))
+          .map { case (site, id) => ModifierInvocation("edifice", id,
+            Some(site), value.handlerId) }.getOrElse(unsupported(value.sourceKey))
+      case _ if value.sourceKey.startsWith("banner:") => ModifierInvocation(
+        "banner", value.sourceKey.stripPrefix("banner:"), None, value.handlerId)
       case Vector("foundation", id) =>
         ModifierInvocation("foundation", id, None, value.handlerId)
-      case Vector("legacy", lineage, id) =>
-        ModifierInvocation("legacy", id, Some(lineage), value.handlerId)
-      case _ => throw new IllegalStateException(s"unsupported modifier source ${value.sourceKey}")
+      case _ if value.sourceKey.startsWith("legacy:") =>
+        val fields = value.sourceKey.stripPrefix("legacy:").split(":", 2)
+        ModifierInvocation("legacy", fields.last, Some(fields.head), value.handlerId)
+      case _ => unsupported(value.sourceKey)
     }
   }
+
+  private def typed(value: String, kinds: Vector[String]) = kinds.iterator
+    .flatMap { kind =>
+      val marker = s":$kind:"
+      val at = value.indexOf(marker)
+      Option.when(at >= 0)(value.take(at) -> value.drop(at + marker.length))
+    }.toVector.headOption
+
+  private def splitLast(value: String) = Option(value.lastIndexOf(':'))
+    .filter(_ >= 0).map(at => value.take(at) -> value.drop(at + 1))
+
+  private def unsupported(source: String): Nothing =
+    throw new IllegalStateException(s"unsupported modifier source $source")
 
   private def move(value: PreviewModifier, delta: Int) = {
     val index = selected.indexOf(value)

@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.PreviewModifier
+import oathdigital.protocol.{GameIntent, PreviewModifier}
 
 class ModifierSelectionStateSuite extends munit.FunSuite {
   private val context = ModifierSelectionContext("g", "p", 4, "trade")
@@ -29,5 +29,19 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Vector(first, second), "preview-1").selected.isEmpty)
     assert(ModifierSelectionState.reconcile(Some(selected), context,
       Vector(first), "preview-2").selected.isEmpty)
+  }
+
+  test("production workflow routes every powered major-action start through preview") {
+    val commands = Vector[GameIntent](
+      GameIntent.Travel("site:a"),
+      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
+      GameIntent.BeginCampaignConquest(Vector("site:a"), 3),
+      GameIntent.Muster(oathdigital.protocol.EconomyTarget("denizen", "1")),
+      GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "1"), "favor"),
+      GameIntent.BeginForge,
+      GameIntent.BeginRecover)
+    assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
+      Vector("travel", "search", "campaign", "muster", "trade", "forge", "recover"))
+    assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
   }
 }

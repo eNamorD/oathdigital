@@ -82,6 +82,10 @@ object MajorActionPowerShell {
     "denizen.bandit-prince", "denizen.a-round-of-ale", "denizen.favored-son",
     "denizen.town-meeting", "denizen.ancient-pact", "denizen.search-party",
     "denizen.call-for-help")
+  private val reviewedSyntheticHandlers = Set(
+    "banner.peoples-favor.grand-council",
+    "banner.darkest-secret.festival",
+    "foundation.altered")
 
   def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] =
     Either.cond(CatalogHandlerInventory.fingerprint(catalog) ==
@@ -89,62 +93,88 @@ object MajorActionPowerShell {
       AuditedCatalogFingerprint, CatalogHandlerInventory.fingerprint(catalog)))
 
   def classify(handlerId: String, action: MajorActionKind)
-      : RuleClassification = {
+      : RuleClassification = action match {
+    case MajorActionKind.Travel => classifyTravel(handlerId)
+    case MajorActionKind.Campaign => classifyCampaign(handlerId)
+    case MajorActionKind.Muster | MajorActionKind.Trade =>
+      if (economy(handlerId)) RuleClassification(action, RuleTiming.Start,
+        RuleBehavior.OptionalModifier, implemented = false)
+      else irrelevant(action)
+    case MajorActionKind.Recover =>
+      if (recover(handlerId)) RuleClassification(action, RuleTiming.Persistent,
+        RuleBehavior.Mandatory, implemented = false) else irrelevant(action)
+    case MajorActionKind.Rest =>
+      if (rest(handlerId) || reviewedSyntheticHandlers(handlerId) ||
+          handlerId == "foundation.altered") RuleClassification(action,
+        RuleTiming.Trigger, RuleBehavior.Triggered, implemented = false)
+      else irrelevant(action)
+    case MajorActionKind.WhenPlayed =>
+      if (whenPlayed(handlerId)) RuleClassification(action, RuleTiming.Trigger,
+        RuleBehavior.Triggered, implemented = false) else irrelevant(action)
+    case MajorActionKind.Wake | MajorActionKind.ActionBoundary =>
+      if (reviewedSyntheticHandlers(handlerId))
+        RuleClassification(action, RuleTiming.Trigger, RuleBehavior.Triggered,
+          implemented = false) else irrelevant(action)
+    case MajorActionKind.Search | MajorActionKind.Forge => irrelevant(action)
+  }
+
+  private def classifyTravel(handlerId: String) = {
     val inherent = Set("site.broken-peaks.mountain", "site.desolate-shore.coast",
       "site.fair-isle.coast", "site.fair-isle.island", "site.green-shore.coast",
       "site.headwaters.mountain", "site.hidden-place.mountain",
       "site.mines.mountain", "site.narrow-pass.pass", "site.rocky-coast.coast",
       "site.sunken-isles.coast", "site.sunken-isles.island",
       "site.tidal-marshes.coast")
-    if (action == MajorActionKind.Travel && inherent(handlerId))
-      RuleClassification(action, RuleTiming.Inherent, RuleBehavior.Inherent,
+    if (inherent(handlerId))
+      RuleClassification(MajorActionKind.Travel, RuleTiming.Inherent, RuleBehavior.Inherent,
         implemented = true)
-    else if (action == MajorActionKind.Campaign && Set("denizen.outriders",
-        "relic.brass-army", "denizen.watchdog")(handlerId))
-      RuleClassification(action, RuleTiming.BattlePlan, RuleBehavior.BattlePlan,
-        implemented = true)
-    else if (action == MajorActionKind.Campaign &&
-        handlerId == "relic.bag-of-siegeworks")
-      RuleClassification(action, RuleTiming.BattlePlan, RuleBehavior.BattlePlan,
-        implemented = false)
-    else if (action == MajorActionKind.Campaign &&
-        handlerId == "denizen.vow-of-peace")
-      RuleClassification(action, RuleTiming.Persistent, RuleBehavior.Mandatory,
-        implemented = true)
-    else if ((action == MajorActionKind.Muster || action == MajorActionKind.Trade) &&
-        economy(handlerId))
-      RuleClassification(action, RuleTiming.Start, RuleBehavior.OptionalModifier,
-        implemented = false)
-    else if (action == MajorActionKind.Rest && (rest(handlerId) ||
-        handlerId.startsWith("banner.") || handlerId == "foundation.altered"))
-      RuleClassification(action, RuleTiming.Trigger, RuleBehavior.Triggered,
-        implemented = false)
-    else if (action == MajorActionKind.Recover && recover(handlerId))
-      RuleClassification(action, RuleTiming.Persistent, RuleBehavior.Mandatory,
-        implemented = false)
-    else if (action == MajorActionKind.WhenPlayed && whenPlayed(handlerId))
-      RuleClassification(action, RuleTiming.Trigger, RuleBehavior.Triggered,
-        implemented = false)
-    else if ((action == MajorActionKind.Wake ||
-        action == MajorActionKind.ActionBoundary) &&
-        (handlerId.startsWith("banner.") || handlerId == "foundation.altered"))
-      RuleClassification(action, RuleTiming.Trigger, RuleBehavior.Triggered,
-        implemented = false)
-    else RuleClassification(action, RuleTiming.Start, RuleBehavior.Irrelevant,
-      implemented = false)
+    else irrelevant(MajorActionKind.Travel)
   }
+
+  private def classifyCampaign(handlerId: String) =
+    if (Set("denizen.outriders",
+        "relic.brass-army", "denizen.watchdog")(handlerId))
+      RuleClassification(MajorActionKind.Campaign, RuleTiming.BattlePlan,
+        RuleBehavior.BattlePlan,
+        implemented = true)
+    else if (handlerId == "relic.bag-of-siegeworks")
+      RuleClassification(MajorActionKind.Campaign, RuleTiming.BattlePlan,
+        RuleBehavior.BattlePlan,
+        implemented = false)
+    else if (handlerId == "denizen.vow-of-peace")
+      RuleClassification(MajorActionKind.Campaign, RuleTiming.Persistent,
+        RuleBehavior.Mandatory,
+        implemented = true)
+    else irrelevant(MajorActionKind.Campaign)
+
+  private def irrelevant(action: MajorActionKind) = RuleClassification(action,
+    RuleTiming.Start, RuleBehavior.Irrelevant, implemented = false)
+
+  private def checkedClassification(catalog: ExecutableCatalog, handler: String,
+      action: MajorActionKind): Either[OathViolation, RuleClassification] =
+    if (CatalogHandlerInventory.handlerIds(catalog).contains(handler) ||
+        reviewedSyntheticHandlers(handler))
+      Right(classify(handler, action))
+    else Left(OathViolation.UnsupportedRuleCatalog(AuditedCatalogFingerprint,
+      s"unclassified-handler-action:${action.key}:$handler"))
+
+  private[gameplay] def classifyAudited(catalog: ExecutableCatalog,
+      handler: String, action: MajorActionKind) = for {
+    _ <- requireAudited(catalog)
+    classification <- checkedClassification(catalog, handler, action)
+  } yield classification
 
   def ignored(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       action: MajorActionKind): Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
     requireAudited(catalog).map { _ =>
-      diagnostics(accessible(RuleSourceIndex.enumerate(catalog, ready), ready,
+      diagnostics(catalog, accessible(RuleSourceIndex.enumerate(catalog, ready), ready,
         actor, action), action)
     }
 
   def ignoredAtSource(catalog: ExecutableCatalog, ready: ReadyGame,
       action: MajorActionKind, source: RuleSourceRef)
       : Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
-    requireAudited(catalog).map(_ => diagnostics(
+    requireAudited(catalog).map(_ => diagnostics(catalog,
       RuleSourceIndex.enumerate(catalog, ready).filter(_.source == source), action))
 
   def options(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
@@ -152,7 +182,7 @@ object MajorActionPowerShell {
     requireAudited(catalog).map { _ =>
       accessible(RuleSourceIndex.enumerate(catalog, ready), ready, actor, action).flatMap { item =>
         item.handlerIds.flatMap { handler =>
-          val c = classify(handler, action)
+          val c = checkedClassification(catalog, handler, action).toOption.get
           Option.when(c.implemented && c.behavior == RuleBehavior.OptionalModifier)(
             OrderedRuleInvocation(item.source, handler))
         }
@@ -178,9 +208,10 @@ object MajorActionPowerShell {
     }}
   }
 
-  private def diagnostics(items: Vector[IndexedRuleSource], action: MajorActionKind) =
+  private def diagnostics(catalog: ExecutableCatalog,
+      items: Vector[IndexedRuleSource], action: MajorActionKind) =
     items.flatMap { item => item.handlerIds.flatMap { handler =>
-      val c = classify(handler, action)
+      val c = checkedClassification(catalog, handler, action).toOption.get
       Option.when(!c.implemented && (c.behavior == RuleBehavior.Mandatory ||
           c.behavior == RuleBehavior.Triggered))(IgnoredRuleDiagnostic(
         item.source, handler, action, c.timing,

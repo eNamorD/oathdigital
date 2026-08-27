@@ -101,7 +101,52 @@ private[frontend] object ActionDecisionRenderer {
    }
    if (showActActionControls(value, presentation)) {
      val selection = currentBoardSelection.flatMap(_.activeAction)
-     if (currentBoardFormation.nonEmpty) {
+     if (currentModifierWorkflow.nonEmpty) {
+       val workflow = currentModifierWorkflow.get
+       panel.appendChild(text("h2", "", s"Order ${actionLabel(workflow.preview.action)} modifiers"))
+       panel.appendChild(text("p", "modifier-instruction",
+         "Choose optional modifiers in resolution order. Numbered badges show that order."))
+       workflow.selection.candidates.foreach { modifier =>
+         val row = element("div", "modifier-option")
+         val ordinal = workflow.selection.ordinal(modifier)
+         val choose = button(ordinal.fold(modifier.description)(n =>
+           s"$n. ${modifier.description}"), "modifier-toggle")
+         choose.setAttribute("aria-pressed", ordinal.nonEmpty.toString)
+         choose.setAttribute("data-source-key", modifier.sourceKey)
+         choose.onclick = _ => toggleModifier(modifier)
+         choose.onkeydown = event => event.key match {
+           case "Enter" | " " => event.preventDefault(); toggleModifier(modifier)
+           case "ArrowUp" => event.preventDefault(); moveModifier(modifier, -1)
+           case "ArrowDown" => event.preventDefault(); moveModifier(modifier, 1)
+           case _ => ()
+         }
+         row.appendChild(choose)
+         ordinal.foreach { number =>
+           val badge = text("span", "modifier-ordinal", number.toString)
+           badge.setAttribute("aria-label", s"Resolution order $number")
+           row.appendChild(badge)
+           val earlier = button("Earlier", "modifier-earlier")
+           earlier.disabled = number == 1
+           earlier.onclick = _ => moveModifier(modifier, -1)
+           row.appendChild(earlier)
+           val later = button("Later", "modifier-later")
+           later.disabled = number == workflow.selection.selected.size
+           later.onclick = _ => moveModifier(modifier, 1)
+           row.appendChild(later)
+         }
+         panel.appendChild(row)
+       }
+       val confirm = button("Confirm modifier order", "modifier-confirm")
+       confirm.disabled = !canControl
+       confirm.onclick = _ => confirmModifiers()
+       panel.appendChild(confirm)
+       val back = button("Back", "modifier-back")
+       back.onclick = _ => backFromModifiers()
+       panel.appendChild(back)
+       val cancel = button("Cancel action", "modifier-cancel")
+       cancel.onclick = _ => cancelModifiers()
+       panel.appendChild(cancel)
+     } else if (currentBoardFormation.nonEmpty) {
        val formation = currentBoardFormation.get
        val targetLabel = formation.targets.map { target =>
          formation.action.candidates.find(_.target == target)

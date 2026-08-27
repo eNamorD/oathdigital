@@ -19,6 +19,12 @@ private[frontend] trait ServerUiView {
   def currentForgeAssignment_=(value: Option[ForgeAssignmentState]): Unit
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
+  def currentModifierWorkflow: Option[ModifierWorkflow]
+  def toggleModifier(value: PreviewModifier): Unit
+  def moveModifier(value: PreviewModifier, delta: Int): Unit
+  def confirmModifiers(): Unit
+  def backFromModifiers(): Unit
+  def cancelModifiers(): Unit
   def canControl: Boolean
   def rerender(): Unit
   def submitCommand(command: GameCommand): Unit

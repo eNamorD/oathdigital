@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class RuleResolutionSuite extends munit.FunSuite {
   test("Campaign timing windows preserve the printed procedure order") {
@@ -77,6 +78,10 @@ class RuleResolutionSuite extends munit.FunSuite {
       MajorActionKind.Campaign).timing, RuleTiming.BattlePlan)
     assertEquals(MajorActionPowerShell.classify("denizen.insomnia",
       MajorActionKind.Travel).behavior, RuleBehavior.Irrelevant)
+    assert(MajorActionPowerShell.classifyAudited(catalog, "denizen.insomnia",
+      MajorActionKind.Travel).exists(_.behavior == RuleBehavior.Irrelevant))
+    assert(MajorActionPowerShell.classifyAudited(catalog, "denizen.not-a-rule",
+      MajorActionKind.Travel).isLeft)
   }
 
   test("rule source stable keys round trip for durable diagnostics") {

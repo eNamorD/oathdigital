@@ -5,9 +5,30 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  GameIntent}
+  GameIntent, MajorActionPreviewRequest, ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
+  test("production client previews and submits the same ordered modifiers") {
+    val previewJson = """{"nextSequence":7,"action":"trade","modifiers":[{"sourceKey":"adviser:red-exile:denizen:35","handlerId":"h.one","description":"First"},{"sourceKey":"site-card:site:a:denizen:36","handlerId":"h.two","description":"Second"}],"ignoredRules":[],"targets":[]}"""
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(200, previewJson)),
+      Right(TransportResponse(200, projectionJson(sequence = 8)))))
+    val client = new HttpGameClient(transport)
+    val ordered = Vector(ModifierInvocation("adviser", "35", None, "h.one"),
+      ModifierInvocation("site-card", "36", Some("site:a"), "h.two"))
+    client.preview("game-1", "red-exile", MajorActionPreviewRequest(7, "trade",
+      Map("resource" -> "favor"))).flatMap { result =>
+      assertEquals(result.toOption.get.modifiers.map(_.handlerId), Vector("h.one", "h.two"))
+      client.submit("game-1", "red-exile", 7,
+        GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "10"), "favor"),
+        ordered)
+    }.map { _ =>
+      assert(transport.requests.head._2.endsWith("/preview?playerId=red-exile"))
+      val submitted = ActorlessCommandCodec.decode(transport.requests(1)._3.get).toOption.get
+      assertEquals(submitted.orderedModifiers, ordered)
+    }
+  }
+
   test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
     val actions = """[{"actionKind":"conspiracy-secret-site","decisionId":"conspiracy-12","prompt":"Choose a site","minimum":1,"maximum":1,"autoActivate":true,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":[]}]}]"""
     val json = projectionJson(sequence = 13, phase = "conspiracy-secret-site",

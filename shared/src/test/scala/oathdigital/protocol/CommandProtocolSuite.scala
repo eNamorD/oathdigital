@@ -77,13 +77,16 @@ class CommandProtocolSuite extends munit.FunSuite {
   }
 
   test("major-action preview protocol is actorless and round trips a response") {
-    val request = MajorActionPreviewCodec.decode(
-      """{"expectedNextSequence":7,"action":"trade","baseParameters":{"resource":"favor"},"orderedModifiers":[]}""")
-    assertEquals(request, Right(MajorActionPreviewRequest(7, "trade",
-      Map("resource" -> "favor"))))
-    val encoded = MajorActionPreviewCodec.encode(MajorActionPreviewResponse(7,
-      "trade", Vector.empty, Vector.empty,
-      Vector(PreviewTarget("denizen:d1", 1, "D1"))))
-    assert(ujson.read(encoded)("targets").arr.nonEmpty)
+    val request = MajorActionPreviewRequest(7, "trade",
+      Map("resource" -> "favor"), Vector(
+        ModifierInvocation("adviser", "d2", None, "denizen.second")))
+    assertEquals(MajorActionPreviewCodec.decode(
+      MajorActionPreviewCodec.encodeRequest(request)), Right(request))
+    val response = MajorActionPreviewResponse(7, "trade",
+      Vector(PreviewModifier("adviser:p1:d2", "denizen.second", "Second")),
+      Vector(PreviewIgnoredRule("site-card:s1:d1", "denizen.first", "start",
+        "not implemented")), Vector(PreviewTarget("denizen:d1", 1, "D1")))
+    assertEquals(MajorActionPreviewCodec.decodeResponse(
+      MajorActionPreviewCodec.encode(response)), Right(response))
   }
 }

@@ -30,6 +30,7 @@ object ServerModeUi {
     var campaignPlacementState = Option.empty[CampaignPlacementState]
     var forgeAssignmentState = Option.empty[ForgeAssignmentState]
     var cardDecisionState = Option.empty[CardDecisionState]
+    var modifierWorkflow = Option.empty[ModifierWorkflow]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
 
@@ -78,6 +79,7 @@ object ServerModeUi {
     ): Unit =
       coordinator.route(request, value, notice).foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
+          modifierWorkflow = None
           boardSelectionState = Some(BoardTargetSelectionState.reconcile(
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
@@ -118,6 +120,7 @@ object ServerModeUi {
           boardFormationState = None
           campaignPlacementState = None
           cardDecisionState = None
+          modifierWorkflow = None
           polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
@@ -152,6 +155,7 @@ object ServerModeUi {
       boardFormationState = None
       campaignPlacementState = None
       cardDecisionState = None
+      modifierWorkflow = None
       rawEvents = Vector.empty
       rawHistorySequence = None
       failure = None
@@ -174,6 +178,7 @@ object ServerModeUi {
       boardFormationState = None
       campaignPlacementState = None
       cardDecisionState = None
+      modifierWorkflow = None
       rawEvents = Vector.empty
       rawHistorySequence = None
       failure = None
@@ -222,17 +227,19 @@ object ServerModeUi {
           if (accepted) accept(request, Left(error))
       }
 
-    def submit(command: GameCommand): Unit =
+    def submitTransport(command: GameCommand,
+        modifiers: Vector[ModifierInvocation] = Vector.empty): Unit =
       projection.foreach { current =>
         val request = coordinator.capture
         client
-          .submit(gameId, selectedPlayer, current.nextSequence, command)
+          .submit(gameId, selectedPlayer, current.nextSequence, command, modifiers)
           .foreach {
             case Left(stale: GameClientFailure.StalePosition)
                 if coordinator.accepts(request) =>
               boardSelectionState = None
               boardFormationState = None
               campaignPlacementState = None
+              modifierWorkflow = None
               failure = Some(stale)
               client.load(gameId, selectedPlayer).foreach {
                 refreshed => accept(request, refreshed, Some(stale))
@@ -240,6 +247,44 @@ object ServerModeUi {
             case other => accept(request, other)
           }
       }
+
+    def submit(command: GameCommand): Unit = ModifierWorkflow.action(command) match {
+      case None => submitTransport(command)
+      case Some((action, parameters)) => projection.foreach { current =>
+        val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
+        client.preview(gameId, selectedPlayer, request).foreach {
+          case Right(response) if response.modifiers.isEmpty =>
+            submitTransport(command)
+          case Right(response) =>
+            val context = ModifierSelectionContext(gameId, selectedPlayer,
+              current.nextSequence, action)
+            val fingerprint = s"${response.nextSequence}:${response.action}:" +
+              response.modifiers.map(m => s"${m.sourceKey}/${m.handlerId}").mkString("|")
+            modifierWorkflow = Some(ModifierWorkflow(command, parameters, response,
+              ModifierSelectionState.reconcile(modifierWorkflow.map(_.selection),
+                context, response.modifiers, fingerprint)))
+            render()
+          case Left(error) => failure = Some(error); render()
+        }
+      }
+    }
+
+    def confirmModifierSelection(): Unit = modifierWorkflow.foreach { workflow =>
+      val request = MajorActionPreviewRequest(workflow.selection.context.sequence,
+        workflow.selection.context.action, workflow.baseParameters,
+        workflow.selection.invocations)
+      client.preview(gameId, selectedPlayer, request).foreach {
+        case Right(_) =>
+          modifierWorkflow = None
+          boardSelectionState = None
+          boardFormationState = None
+          submitTransport(workflow.command, workflow.selection.invocations)
+        case Left(error) =>
+          modifierWorkflow = None
+          failure = Some(error)
+          render()
+      }
+    }
 
     def handleBoardSelection(result: BoardSelectionResult): Unit = result match {
       case BoardSelectionResult.Updated(state) =>
@@ -249,7 +294,6 @@ object ServerModeUi {
         val force = projection.toVector.flatMap(_.playerBoards)
           .find(_.playerId == selectedPlayer).map(_.warbands).getOrElse(0)
         commandForSelection(action, targets, selectedPlayer, force).foreach { command =>
-          boardSelectionState = None
           submit(command)
         }
       case BoardSelectionResult.Form(state) =>
@@ -272,6 +316,24 @@ object ServerModeUi {
       def currentForgeAssignment_=(value: Option[ForgeAssignmentState]) = forgeAssignmentState = value
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
+      def currentModifierWorkflow = modifierWorkflow
+      def toggleModifier(value: PreviewModifier) = {
+        modifierWorkflow = modifierWorkflow.map(workflow => workflow.copy(
+          selection = workflow.selection.toggle(value))); render()
+      }
+      def moveModifier(value: PreviewModifier, delta: Int) = {
+        modifierWorkflow = modifierWorkflow.map(workflow => workflow.copy(selection =
+          if (delta < 0) workflow.selection.moveEarlier(value)
+          else workflow.selection.moveLater(value))); render()
+      }
+      def confirmModifiers() = confirmModifierSelection()
+      def backFromModifiers() = { modifierWorkflow = None; render() }
+      def cancelModifiers() = {
+        modifierWorkflow = None
+        boardSelectionState = boardSelectionState.map(_.cancel)
+        boardFormationState = None
+        render()
+      }
       def canControl = controlsAvailable
       def rerender() = render()
       def submitCommand(command: GameCommand) = submit(command)
