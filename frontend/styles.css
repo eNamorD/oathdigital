@@ -34,6 +34,8 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .status { padding: 14px 16px; margin: 22px 0; }
+.victory-banner { margin: 12px 0; padding: 18px; border: 3px solid currentColor;
+  border-radius: 10px; background: #17140f; font-size: 1.25rem; font-weight: 900; }
 .panel { padding: 18px; min-width: 0; }
 .participants, .events { margin: 0; padding-left: 22px; }
 .participant-active { font-weight: 800; }
@@ -65,6 +67,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 }
 
 .world { margin-top: 18px; }
+.round-tracker svg { display: block; width: 100%; max-width: 520px; }
+.round-segment { fill: #2b251d; stroke: #88775d; stroke-width: 2; }
+.round-current { fill: #d2a85e; stroke: #fff2d6; stroke-width: 3; }
+.round-tracker text { fill: #fff2d6; font-weight: 800; }
+.limiter-marker { fill: #ff8c7f !important; }
+.track-summary { margin: 0 0 12px; color: #c9bfa9; }
 .regions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -246,6 +254,11 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .empty-denizen-slot, .facedown-relic { display: inline-grid; width: 2rem; height: 2rem;
   margin: 3px; place-items: center; border: 1px dashed #88775d; border-radius: 5px; }
 .player-boards { margin-top: 18px; }
+.shared-bank { margin-top: 16px; padding-top: 16px; border-top: 1px solid #675a43; }
+.favor-banks { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.favor-bank { padding: 7px; border: 1px solid #675a43; border-radius: 6px;
+  text-align: center; font-weight: 800; }
+.vision-rules { max-width: 78ch; color: #d9cdb5; line-height: 1.45; }
 .player-board { margin-top: 12px; padding: 12px; border: 1px solid #40382c; border-radius: 9px; }
 .modifier-option { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .modifier-toggle { min-height: 44px; text-align: left; }

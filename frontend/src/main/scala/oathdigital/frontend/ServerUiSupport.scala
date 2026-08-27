@@ -104,15 +104,22 @@ private[frontend] object ServerUiSupport {
         presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
         "site-card"))(cardDetailsPopover)
       card.setAttribute("data-denizen-id", denizen.denizenId)
-      shell.appendChild(card)
       candidate.foreach { value =>
-        val choose = button(candidateButtonLabel(value), "board-target-control")
-        choose.setAttribute("data-target-ref", target.stableKey)
-        choose.setAttribute("aria-pressed",
+        card.classList.add("board-target")
+        card.setAttribute("aria-pressed",
           selection.exists(_.selected(target)).toString)
-        choose.onclick = _ => chooseTarget(target)
-        shell.appendChild(choose)
+        card.setAttribute("title", candidateButtonLabel(value))
+        card.addEventListener("click", (event: dom.Event) => {
+          event.stopPropagation(); chooseTarget(target)
+        })
+        card.addEventListener("keydown", (event: dom.Event) => {
+          val key = event.asInstanceOf[dom.KeyboardEvent].key
+          if (key == "Enter" || key == " ") {
+            event.preventDefault(); event.stopPropagation(); chooseTarget(target)
+          }
+        })
       }
+      shell.appendChild(card)
       denizens.appendChild(shell)
     }
     (site.denizens.size until site.denizenCapacity).foreach { _ =>
@@ -238,6 +245,9 @@ private[frontend] object ServerUiSupport {
       value: GameProjection,
       playerId: String
   ): ViewerPresentation = {
+    if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
+      return ViewerPresentation(showGameplayControls = false,
+        waitingForPlayerId = None, waitingForDisplayName = None)
     val controllingPlayer = value.campaign.filter(!_.plansFinished)
       .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
     controllingPlayer match {

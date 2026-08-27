@@ -52,6 +52,22 @@ private[frontend] object ActionDecisionRenderer {
    val panel = element("section", "panel wake-actions")
    panel.appendChild(text("h2", "", "Available actions"))
    panel.appendChild(status(value, ui))
+   value.oathkeeper.flatMap(_.winnerPlayerId).foreach { winner =>
+     val victory = value.oathkeeper.flatMap(_.winnerVictoryKind)
+       .getOrElse("winner").replace('-', ' ')
+     val banner = text("div", s"victory-banner winner-${winner}",
+       s"${playerDisplayName(value, winner)} wins — $victory victory")
+     banner.setAttribute("role", "status")
+     panel.appendChild(banner)
+   }
+   if (value.privateAdviserPreview.nonEmpty) {
+     val preview = element("section", "adviser-preview")
+     preview.appendChild(text("h3", "", "Your adviser options"))
+     preview.appendChild(text("p", "decision-instruction",
+       "Preview only. Place your pawn, then choose one to keep."))
+     value.privateAdviserPreview.foreach(card => preview.appendChild(cardDetailsPopover(card)))
+     panel.appendChild(preview)
+   }
    value.oathkeeper.foreach { oath =>
      val holder = oath.holderPlayerId.getOrElse("unheld")
      val limiter = if (oath.usurperLimited) " · Usurper locked until round 4" else ""
@@ -210,17 +226,6 @@ private[frontend] object ActionDecisionRenderer {
          confirm.onclick = _ => currentBoardSelection.flatMap(_.confirmResult)
            .foreach(handleSelection)
          panel.appendChild(confirm)
-       }
-       action.candidates.foreach { candidate =>
-         val choose = button(candidateButtonLabel(candidate),
-           "board-target-control raid-target-control")
-         choose.setAttribute("data-target-ref", candidate.target.stableKey)
-         choose.setAttribute("aria-pressed", currentBoardSelection.exists(
-           _.selected(candidate.target)).toString)
-         choose.disabled = !canControl
-         choose.onclick = _ => currentBoardSelection.foreach(state =>
-           handleSelection(state.choose(candidate.target)))
-         panel.appendChild(choose)
        }
      } else {
        value.legalSearchSources.foreach { source =>
@@ -663,10 +668,11 @@ private[frontend] object ActionDecisionRenderer {
      node.setAttribute("draggable", "true")
      node.setAttribute("data-card-id", card.cardId)
      node.setAttribute("aria-label", card.name)
-     node.appendChild(text("strong", "card-name", card.name))
      node.appendChild(cardDetailsPopover(card))
-     val move = if (zone == "keep") button("Move to Discard", "move-discard")
-       else button("Move to Keep", "move-keep")
+     val moveLabel = if (zone == "keep") s"Discard ${card.name}" else s"Keep ${card.name}"
+     val move = if (zone == "keep") button("→", "move-discard")
+       else button("←", "move-keep")
+     move.setAttribute("aria-label", moveLabel); move.setAttribute("title", moveLabel)
      move.onclick = _ => if (zone == "keep") update(state.moveToDiscard(card.cardId))
        else update(state.moveToKeep(card.cardId))
      node.appendChild(move)
@@ -674,10 +680,14 @@ private[frontend] object ActionDecisionRenderer {
        event.asInstanceOf[dom.DragEvent].dataTransfer
          .setData("text/plain", card.cardId))
      if (zone == "discard") {
-       val left = button("Move Left", "move-left")
+       val left = button("‹", "move-left")
+       left.setAttribute("aria-label", s"Move ${card.name} left")
+       left.setAttribute("title", s"Move ${card.name} left")
        left.disabled = state.discard.headOption.contains(card)
        left.onclick = _ => update(state.move(card.cardId, -1))
-       val right = button("Move Right", "move-right")
+       val right = button("›", "move-right")
+       right.setAttribute("aria-label", s"Move ${card.name} right")
+       right.setAttribute("title", s"Move ${card.name} right")
        right.disabled = state.discard.lastOption.contains(card)
        right.onclick = _ => update(state.move(card.cardId, 1))
        node.appendChild(left); node.appendChild(right)

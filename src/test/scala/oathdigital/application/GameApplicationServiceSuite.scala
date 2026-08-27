@@ -178,6 +178,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(after) = completed.state: @unchecked
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor))
     assertEquals(after.game.current.banners.peoplesFavor.favor, 2)
+    val claimed = projector.project(gameId,
+      LoadedGame(completed.state, completed.nextSequence), actor)
+    assert(!claimed.banners.exists(_.key == "peoples-favor"))
+    assertEquals(claimed.playerBoards.find(_.playerId == actor.value).toVector
+      .flatMap(_.banners).map(banner => banner.key -> banner.resources),
+      Vector("peoples-favor" -> 2))
   }
 
   test("Forge persists private pending and completed state and prepares relic once") {

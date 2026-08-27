@@ -10,7 +10,8 @@ private[frontend] object WorldBoardRenderer {
    val list = element("ul", "participants")
    value.players.foreach { player =>
      val item = dom.document.createElement("li")
-     val reference = playerReference(value, player.playerId)
+     val reference = targetable(playerReference(value, player.playerId),
+       BoardTargetRef.Player(player.playerId), ui)
      item.appendChild(reference)
      item.appendChild(dom.document.createTextNode(s" · role: ${player.role}"))
      value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
@@ -51,6 +52,13 @@ private[frontend] object WorldBoardRenderer {
          BoardTargetRef.PlayerRelic(board.playerId, card.cardId), ui))
      }
      section.appendChild(relics)
+     board.banners.foreach { banner =>
+       val row = targetable(text("p", s"player-banner banner-${banner.key}",
+         s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
+           s"resources ${banner.resources}"),
+         BoardTargetRef.PlayerBanner(board.playerId, banner.key), ui)
+       section.appendChild(row)
+     }
      board.revealedVision.foreach(card => {
        section.appendChild(text("strong", "", "Revealed Vision"))
        section.appendChild(cardDetailsPopover(card))
@@ -68,16 +76,18 @@ private[frontend] object WorldBoardRenderer {
    val shell = element("span", cardTargetClasses(candidate.nonEmpty,
      currentBoardSelection.exists(_.selected(target))))
    shell.setAttribute("data-target-ref", target.stableKey)
-   shell.appendChild(cardDetailsPopover(card))
+   val name = cardDetailsPopover(card)
    candidate.foreach { value =>
-     val choose = button(candidateButtonLabel(value), "board-target-control")
-     choose.setAttribute("data-target-ref", target.stableKey)
-     choose.setAttribute("aria-pressed",
+     name.classList.add("board-target")
+     name.setAttribute("title", candidateButtonLabel(value))
+     name.setAttribute("aria-pressed",
        currentBoardSelection.exists(_.selected(target)).toString)
-     choose.onclick = _ => currentBoardSelection.foreach(state =>
-       handleSelection(state.choose(target)))
-     shell.appendChild(choose)
+     name.addEventListener("click", (event: dom.Event) => {
+       event.stopPropagation()
+       currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
+     })
    }
+   shell.appendChild(name)
    shell
  }
 
@@ -90,6 +100,7 @@ private[frontend] object WorldBoardRenderer {
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
    panel.appendChild(text("h2", "", "The World"))
+   value.tracks.foreach(track => panel.appendChild(roundTracker(value, track)))
    panel.appendChild(pileDisplay("World deck", value.worldDeckCount,
      value.worldDeckTopCardKind))
    val regions = element("div", "regions")
@@ -115,6 +126,22 @@ private[frontend] object WorldBoardRenderer {
          isSelected))
        control.setAttribute("aria-label", site.label)
        control.setAttribute("data-target-ref", siteTarget.stableKey)
+       candidate.foreach { _ =>
+         control.setAttribute("role", "button")
+         control.setAttribute("tabindex", "0")
+         control.setAttribute("aria-pressed", isSelected.toString)
+         control.addEventListener("click", (_: dom.Event) =>
+           currentBoardSelection.foreach(state =>
+             handleSelection(state.choose(siteTarget))))
+         control.addEventListener("keydown", (event: dom.Event) => {
+           val key = event.asInstanceOf[dom.KeyboardEvent].key
+           if (key == "Enter" || key == " ") {
+             event.preventDefault()
+             currentBoardSelection.foreach(state =>
+               handleSelection(state.choose(siteTarget)))
+           }
+         })
+       }
        val heading = element("div", "site-heading")
        heading.appendChild(VisualDomRenderer.render(
          SiteCardPresentation.from(site).siteVisual,
@@ -122,20 +149,12 @@ private[frontend] object WorldBoardRenderer {
        ))
        heading.appendChild(text("span", "site-name", site.label))
        control.appendChild(heading)
-       candidate.foreach { value =>
-         val choose = button(candidateButtonLabel(value), "board-target-control")
-         choose.setAttribute("data-target-ref", siteTarget.stableKey)
-         choose.setAttribute("aria-pressed", isSelected.toString)
-         choose.disabled = !canControl || !presentation.showGameplayControls
-         choose.onclick = _ => currentBoardSelection.foreach(state =>
-           handleSelection(state.choose(siteTarget)))
-         control.appendChild(choose)
-       }
        val pawns = element("div", "site-pawns")
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")
          marker.appendChild(dom.document.createTextNode("● "))
-         marker.appendChild(playerReference(value, pawn.playerId))
+         marker.appendChild(targetable(playerReference(value, pawn.playerId),
+           BoardTargetRef.PlayerPawn(pawn.playerId), ui))
          pawns.appendChild(marker)
        }
        if (pawns.childNodes.length > 0) control.appendChild(pawns)
@@ -148,6 +167,91 @@ private[frontend] object WorldBoardRenderer {
      regions.appendChild(section)
    }
    panel.appendChild(regions)
+   panel.appendChild(sharedBank(value))
    panel
+ }
+
+ private def roundTracker(value: GameProjection,
+     track: oathdigital.protocol.projection.GameTracksProjection): dom.Element = {
+   val section = element("section", "round-tracker")
+   section.setAttribute("aria-label", s"Round ${track.round} of 8; " +
+     s"Visions Drawn ${track.visionsDrawn}; first player ${track.firstPlayerId}")
+   val svg = dom.document.createElementNS("http://www.w3.org/2000/svg", "svg")
+     .asInstanceOf[dom.svg.SVG]
+   svg.setAttribute("viewBox", "0 0 520 64")
+   svg.setAttribute("role", "img")
+   svg.setAttribute("aria-label", s"Eight-segment round tracker, current round ${track.round}")
+   (1 to 8).foreach { round =>
+     val group = dom.document.createElementNS("http://www.w3.org/2000/svg", "g")
+     val rect = dom.document.createElementNS("http://www.w3.org/2000/svg", "rect")
+     rect.setAttribute("x", ((round - 1) * 64 + 4).toString)
+     rect.setAttribute("y", "8"); rect.setAttribute("width", "56")
+     rect.setAttribute("height", "42"); rect.setAttribute("rx", "8")
+     rect.setAttribute("class", if (round == track.round) "round-current" else "round-segment")
+     val label = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
+     label.setAttribute("x", ((round - 1) * 64 + 32).toString)
+     label.setAttribute("y", "35"); label.setAttribute("text-anchor", "middle")
+     label.textContent = round.toString
+     group.appendChild(rect); group.appendChild(label)
+     if (track.usurperLimited && round == track.limiterRound) {
+       val marker = dom.document.createElementNS("http://www.w3.org/2000/svg", "text")
+       marker.setAttribute("x", ((round - 1) * 64 + 50).toString)
+       marker.setAttribute("y", "17"); marker.setAttribute("class", "limiter-marker")
+       marker.textContent = "◆"; group.appendChild(marker)
+     }
+     svg.appendChild(group)
+   }
+   section.appendChild(svg)
+   section.appendChild(text("p", "track-summary",
+     s"Visions Drawn ${track.visionsDrawn} · First player ${track.firstPlayerId}"))
+   section
+ }
+
+ private def sharedBank(value: GameProjection): dom.Element = {
+   val section = element("section", "shared-bank")
+   section.appendChild(text("h3", "", "Shared bank"))
+   val banks = element("div", "favor-banks")
+   value.favorBanks.foreach(bank => banks.appendChild(text("span",
+     s"favor-bank suit-${bank.suit}", s"${bank.suit.capitalize}: ${bank.count}")))
+   section.appendChild(banks)
+   section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
+   value.banners.foreach(banner => section.appendChild(text("p",
+     s"shared-banner banner-${banner.key}",
+     s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
+       s"resources ${banner.resources}")))
+   section.appendChild(text("p", "vision-rules",
+     "Visions — Conquest: uniquely rule the most sites (at least one). " +
+       "Rebellion: hold the People's Favor. Sanctuary: uniquely hold the most relics " +
+       "(at least one). Faith: hold the Darkest Secret. A true Vision must be revealed " +
+       "and three Visions must have been drawn. Conspiracy is false: play it to take " +
+       "a relic or banner from a player whose pawn is at your site, then return it to the box."))
+   section
+ }
+
+ private def targetable(node: dom.Element, target: BoardTargetRef,
+     ui: ServerUiView): dom.Element = {
+   import ui._
+   currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
+     _.target == target)).foreach { candidate =>
+     node.classList.add("board-target")
+     node.setAttribute("role", "button")
+     node.setAttribute("tabindex", "0")
+     node.setAttribute("data-target-ref", target.stableKey)
+     node.setAttribute("title", candidateButtonLabel(candidate))
+     node.setAttribute("aria-pressed",
+       currentBoardSelection.exists(_.selected(target)).toString)
+     node.addEventListener("click", (event: dom.Event) => {
+       event.stopPropagation()
+       currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
+     })
+     node.addEventListener("keydown", (event: dom.Event) => {
+       val key = event.asInstanceOf[dom.KeyboardEvent].key
+       if (key == "Enter" || key == " ") {
+         event.preventDefault(); event.stopPropagation()
+         currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
+       }
+     })
+   }
+   node
  }
 }
