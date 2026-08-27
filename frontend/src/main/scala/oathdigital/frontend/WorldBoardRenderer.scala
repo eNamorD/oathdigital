@@ -6,7 +6,6 @@ import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer {
  def players(value: GameProjection, ui: ServerUiView): dom.Element = {
-   import ui._
    val panel = element("section", "panel")
    panel.appendChild(text("h2", "", "Exile players"))
    val list = element("ul", "participants")
@@ -20,10 +19,6 @@ private[frontend] object WorldBoardRenderer {
        item.appendChild(dom.document.createTextNode(
          s" · pawn at ${siteLabel(value, pawn.siteId)}"
        )))
-     currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
-       _.target == BoardTargetRef.Player(player.playerId)))
-       .flatMap(candidate => candidateDetailBadge(candidate))
-       .foreach(badge => item.appendChild(badge))
      list.appendChild(item)
    }
    panel.appendChild(list)
@@ -31,7 +26,6 @@ private[frontend] object WorldBoardRenderer {
  }
 
  def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
-   import ui._
    val panel = element("section", "panel player-boards")
    panel.appendChild(text("h2", "", "Player boards"))
    if (value.playerBoards.isEmpty)
@@ -65,9 +59,6 @@ private[frontend] object WorldBoardRenderer {
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
            s"resources ${banner.resources}"),
          target, ui)
-       currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
-         _.target == target)).flatMap(candidate => candidateDetailBadge(candidate))
-         .foreach(badge => row.appendChild(badge))
        section.appendChild(row)
      }
      board.revealedVision.foreach(card => {
@@ -168,9 +159,6 @@ private[frontend] object WorldBoardRenderer {
          marker.appendChild(dom.document.createTextNode("● "))
          marker.appendChild(targetable(playerReference(value, pawn.playerId),
            BoardTargetRef.PlayerPawn(pawn.playerId), ui))
-         currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
-           _.target == BoardTargetRef.PlayerPawn(pawn.playerId)))
-           .flatMap(candidateDetailBadge).foreach(marker.appendChild)
          pawns.appendChild(marker)
        }
        if (pawns.childNodes.length > 0) control.appendChild(pawns)
@@ -288,6 +276,8 @@ private[frontend] object WorldBoardRenderer {
          currentBoardSelection.foreach(state => handleSelection(state.choose(target)))
        }
      })
+     candidateDetailBadgeTexts(candidate).foreach(value =>
+       node.appendChild(text("span", "target-detail-badge", value)))
    }
    node
  }

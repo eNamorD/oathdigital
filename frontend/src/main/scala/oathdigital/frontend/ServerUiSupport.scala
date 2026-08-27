@@ -299,6 +299,10 @@ private[frontend] object ServerUiSupport {
       candidate: BoardTargetCandidate): Option[String] =
     Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))
 
+  private[frontend] def candidateDetailBadgeTexts(
+      candidate: BoardTargetCandidate): Vector[String] =
+    candidateDetailText(candidate).toVector
+
   private[frontend] def candidateDetailBadge(
       candidate: BoardTargetCandidate): Option[dom.Element] =
     candidateDetailText(candidate).map(value => text("span", "target-detail-badge", value))

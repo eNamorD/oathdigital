@@ -455,6 +455,15 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
   }
 
+  test("targetable players and banners render exactly one detail badge") {
+    val candidates = Vector(
+      BoardTargetCandidate(BoardTargetRef.Player("blue"), "Blue", Vector("1 Favor")),
+      BoardTargetCandidate(BoardTargetRef.PlayerBanner("blue", "peoples-favor"),
+        "People's Favor", Vector("2 Defense", "3 Favor")))
+    candidates.foreach(candidate => assertEquals(
+      ServerUiSupport.candidateDetailBadgeTexts(candidate).size, 1))
+  }
+
   test("populated site details render properties, stable IDs, and hidden relics") {
     val site = GameSite(
       "site:woods",
