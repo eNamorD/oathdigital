@@ -1,7 +1,7 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.{PlayerResourceSources, ReadyGame}
 import oathdigital.model._
 
 final case class RestCleanupPlan(playerId: PlayerId,
@@ -12,19 +12,10 @@ final case class RestCleanupPlan(playerId: PlayerId,
 object RestCleanupPlan {
   def derive(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId): Either[String, RestCleanupPlan] = {
-    val current = ready.game.current
-    current.players.find(_.player == playerId).toRight(
-      s"unknown Rest player ${playerId.value}").flatMap { player =>
-      val ruled = current.map.sites.collect {
-        case (id, site) if (site.forces match {
-          case SiteForces.Occupied(ForceKind.Exile(owner), _) => owner == player.lineage
-          case _ => false
-        }) => id
-      }.toSet
-      val sites = ruled ++ player.pawnSite
-      val advisers = player.advisers.collect { case value: DenizenState => value }
-      val siteCards = sites.toVector.sortBy(_.value).flatMap(id =>
-        current.map.sites.get(id).toVector.flatMap(_.denizens))
+    PlayerResourceSources.discover(ready, playerId).flatMap { sources =>
+      val player = sources.player
+      val advisers = sources.adviserDenizens
+      val siteCards = sources.siteCards
       val favorCards = advisers.map(v => (v.id: CardId) -> v.tokens) ++
         siteCards.map(v => v.id -> v.tokens)
       favorCards.foldLeft[Either[String, Map[Suit, Int]]](
@@ -37,9 +28,9 @@ object RestCleanupPlan {
         }
       }.map(_.filter(_._2 > 0)).map { returned =>
         RestCleanupPlan(playerId, advisers.map(_.id).toSet,
-          player.relics.map(_.id).toSet, sites, returned,
+          sources.heldRelics.map(_.id).toSet, sources.siteIds, returned,
           advisers.map(_.tokens.secrets).sum + siteCards.map(_.tokens.secrets).sum +
-            player.relics.map(_.tokens.secrets).sum,
+            sources.heldRelics.map(_.tokens.secrets).sum,
           player.board.faceDownSecrets)
       }
     }

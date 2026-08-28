@@ -10,24 +10,23 @@ final case class PlayerSecretSummary(available: Int, facedown: Int, committed: I
 
 object PlayerSecretSummary {
   def derive(ready: ReadyGame, playerId: PlayerId): Either[String, PlayerSecretSummary] = {
-    val current = ready.game.current
-    current.players.find(_.player == playerId).toRight(
-      s"unknown player ${playerId.value}").map { player =>
-      val owned = player.advisers.collect {
+    val active = ready.game.current.turn.activePlayer == playerId
+    if (active) PlayerResourceSources.discover(ready, playerId).map { sources =>
+      val committed = sources.adviserDenizens.map(_.tokens.secrets).sum +
+        sources.heldRelics.map(_.tokens.secrets).sum +
+        sources.siteCards.map(_.tokens.secrets).sum
+      PlayerSecretSummary(sources.player.board.faceUpSecrets,
+        sources.player.board.faceDownSecrets, committed)
+    } else PlayerResourceSources.player(ready, playerId).flatMap { player =>
+      val adviserSecrets = player.advisers.collect {
         case value: DenizenState => value.tokens.secrets
-      }.sum + player.relics.map(_.tokens.secrets).sum
-      val accessibleSites = if (current.turn.activePlayer != playerId) Set.empty[SiteId]
-      else current.map.sites.collect {
-        case (id, site) if (site.forces match {
-          case SiteForces.Occupied(ForceKind.Exile(owner), _) => owner == player.lineage
-          case _ => false
-        }) => id
-      }.toSet ++ player.pawnSite
-      val siteCommitted = accessibleSites.toVector.distinct.flatMap(id =>
-        current.map.sites.get(id).toVector.flatMap(_.denizens))
-        .map(_.tokens.secrets).sum
-      PlayerSecretSummary(player.board.faceUpSecrets,
-        player.board.faceDownSecrets, owned + siteCommitted)
+      }.sum
+      val relicSecrets = player.relics.map(_.tokens.secrets).sum
+      Either.cond(adviserSecrets == 0 && relicSecrets == 0,
+        PlayerSecretSummary(player.board.faceUpSecrets,
+          player.board.faceDownSecrets, committed = 0),
+        s"inactive player ${playerId.value} has ambiguous committed secrets " +
+          s"on owned cards (advisers=$adviserSecrets, relics=$relicSecrets)")
     }
   }
 }

@@ -402,10 +402,11 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   resolution, and consistently named runtime application, wire, server, and
   frontend boundaries while retaining then-current replay behavior.
 
-The architecture gate passes 325 JVM tests, 98 Scala.js tests, the optimized
-Scala.js linker, runtime-catalog validation and equality, architecture and
-documentation-link checks, and diff validation. Earlier persisted multiplayer
-browser acceptance remains covered by the completed gameplay milestones.
+The maintained verification gate includes the complete JVM and Scala.js suites,
+the optimized Scala.js linker, runtime-catalog validation and equality,
+architecture and documentation-link checks, and diff validation. Earlier
+persisted multiplayer browser acceptance remains covered by the completed
+gameplay milestones.
 
 ## Coordination rules
 
