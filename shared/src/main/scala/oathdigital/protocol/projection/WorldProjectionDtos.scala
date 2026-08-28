@@ -66,6 +66,8 @@ final case class ActivePlayerResourcesProjection(
     favor: Int,
     faceUpSecrets: Int,
     faceDownSecrets: Int,
+    committedSecrets: Int,
+    totalSecrets: Int,
     supply: Int
 )
 final case class CurrentSiteResourcesProjection(

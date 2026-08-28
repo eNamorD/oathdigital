@@ -40,6 +40,10 @@ private[frontend] trait ServerUiView {
   def createGame(): Unit
 }
 private[frontend] object ServerUiSupport {
+  private[frontend] def secretSummaryLabel(available: Int, total: Int,
+      facedown: Int, committed: Int): String =
+    s"$available available of $total owned; $facedown facedown and $committed committed"
+
   private[frontend] def siteLabel(value: GameProjection, siteId: String): String =
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)

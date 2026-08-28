@@ -34,10 +34,14 @@ private[frontend] object WorldBoardRenderer {
      val heading = element("h3", "")
      heading.appendChild(playerReference(value, board.playerId))
      section.appendChild(heading)
-     section.appendChild(text("p", "resources",
+     val resources = text("p", "resources",
        s"Warbands ${board.warbands} · Favor ${board.favor} · Secrets " +
-         s"${board.faceUpSecrets} face up / ${board.faceDownSecrets} face down · " +
-         s"Supply ${board.supply}"))
+         s"${board.faceUpSecrets}/${board.totalSecrets} · Supply ${board.supply}")
+     resources.setAttribute("title", secretSummaryLabel(board.faceUpSecrets,
+       board.totalSecrets, board.faceDownSecrets, board.committedSecrets))
+     resources.setAttribute("aria-label", resources.textContent + ". " +
+       resources.getAttribute("title"))
+     section.appendChild(resources)
      val advisers = element("div", "board-cards advisers")
      advisers.appendChild(text("strong", "", "Advisers"))
      board.advisers.foreach { card =>

@@ -37,7 +37,9 @@ object GameProjectionCodec {
     "ready" -> value.ready, "completed" -> value.completed,
     "activePlayerResources" -> option(value.activePlayerResources)(r => ujson.Obj(
       "favor" -> r.favor, "faceUpSecrets" -> r.faceUpSecrets,
-      "faceDownSecrets" -> r.faceDownSecrets, "supply" -> r.supply)),
+      "faceDownSecrets" -> r.faceDownSecrets,
+      "committedSecrets" -> r.committedSecrets,
+      "totalSecrets" -> r.totalSecrets, "supply" -> r.supply)),
     "currentSiteResources" -> option(value.currentSiteResources)(r => ujson.Obj(
       "siteId" -> r.siteId, "favor" -> r.favor, "secrets" -> r.secrets)),
     "actionSelectionOpen" -> value.actionSelectionOpen,
@@ -171,10 +173,13 @@ object GameProjectionCodec {
     negotiation, waiting, banks, tracks, relicDeck, preview)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets", "supply"), path)
+    v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",
+      "committedSecrets", "totalSecrets", "supply"), path)
     favor <- int(v, "favor", path); up <- int(v, "faceUpSecrets", path)
-    down <- int(v, "faceDownSecrets", path); supply <- int(v, "supply", path)
-  } yield ActivePlayerResourcesProjection(favor, up, down, supply)
+    down <- int(v, "faceDownSecrets", path)
+    committed <- int(v, "committedSecrets", path)
+    total <- int(v, "totalSecrets", path); supply <- int(v, "supply", path)
+  } yield ActivePlayerResourcesProjection(favor, up, down, committed, total, supply)
   private def decodeSiteResources(raw: ujson.Value, path: String): Result[CurrentSiteResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("siteId", "favor", "secrets"), path)
     site <- string(v, "siteId", path); favor <- int(v, "favor", path); secrets <- int(v, "secrets", path)

@@ -4,6 +4,16 @@ import munit.FunSuite
 import oathdigital.presentation._
 
 class ServerModeUiSuite extends FunSuite {
+  test("secret summaries lead with available over total and explain unavailable tokens") {
+    assertEquals(ServerUiSupport.secretSummaryLabel(1, 1, 0, 0),
+      "1 available of 1 owned; 0 facedown and 0 committed")
+    assertEquals(ServerUiSupport.secretSummaryLabel(0, 1, 0, 1),
+      "0 available of 1 owned; 0 facedown and 1 committed")
+    assertEquals(ServerUiSupport.secretSummaryLabel(0, 1, 1, 0),
+      "0 available of 1 owned; 1 facedown and 0 committed")
+    assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
+      "1 available of 2 owned; 0 facedown and 1 committed")
+  }
   test("Negotiation editor restores only authored relic and disclosure selections") {
     val relic = CardDetails("R1", "relic", "Public Relic")
     val adviser = CardDetails("D1", "denizen", "Hidden Adviser")

@@ -377,11 +377,14 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   persisted commands, scoped projections, HTTP intents, and Scala.js controls.
 
 - [x] **L6c — Rest and turn advancement.** Act lifecycle validation is
-  action-neutral. Bounded exile Rest now returns controlled card resources,
-  reveals secrets, refreshes Supply, clears per-turn state, advances the
+  action-neutral. Bounded exile Rest now uses one replay-validated cleanup plan
+  to return adviser, relic, pawn-site, and deduplicated ruled-site resources,
+  reveals secrets, refreshes Supply, clears only scoped card tokens, advances the
   player/round, and enters the next Wake through replay-validated current
   events, persisted commands, scoped projections, HTTP routes, and Scala.js
-  controls.
+  controls. Derived available/facedown/committed secret totals drive the
+  player-facing `Secrets available/total` display without replacing physical
+  token locations.
 
 - [x] Establish the Scala/Scala.js build, HRF reference baseline, core domain
   model, source-cited rules layer, and complete reviewed component catalog.

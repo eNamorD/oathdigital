@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
-import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.{PlayerSecretSummary, ReadyGame}
 import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterial}
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -163,6 +163,8 @@ private[application] final class GamePresentationProjector(
     val start = viewer.flatMap(id => Option(players.indexWhere(_.player == id))
       .filter(_ >= 0)).getOrElse(0)
     (players.drop(start) ++ players.take(start)).map { player =>
+      val secrets = PlayerSecretSummary.derive(ready, player.player)
+        .fold(error => throw new IllegalStateException(error), identity)
       val owns = viewer.contains(player.player)
       val knownAdvisers = viewer.toVector.flatMap(id =>
         ready.support.adviserKnowledge.getOrElse(id, Vector.empty)).toSet
@@ -170,6 +172,7 @@ private[application] final class GamePresentationProjector(
         ready.support.heldRelicKnowledge.getOrElse(id, Vector.empty)).toSet
       PlayerBoardProjection(player.player.value, player.board.warbands,
         player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
+        secrets.committed, secrets.totalSecrets,
         player.board.supply.supply, player.pawnSite.map(_.value),
         player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown &&
             !owns && !knownAdvisers(card.id.asInstanceOf[WorldCardId]))
@@ -188,7 +191,9 @@ private[application] final class GamePresentationProjector(
   def setupPlayerBoards(material: FirstGameSetupMaterial): Vector[PlayerBoardProjection] =
     material.players.map(player => PlayerBoardProjection(player.player.value,
       player.board.warbands, player.board.favor, player.board.faceUpSecrets,
-      player.board.faceDownSecrets, player.board.supply.supply,
+      player.board.faceDownSecrets, 0,
+      player.board.faceUpSecrets + player.board.faceDownSecrets,
+      player.board.supply.supply,
       player.pawnSite.map(_.value),
       player.advisers.map(card => hiddenCard("adviser")), Vector.empty, None))
 

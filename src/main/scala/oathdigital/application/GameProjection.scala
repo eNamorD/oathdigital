@@ -2,6 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
+import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterializer}
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -103,9 +104,14 @@ final class GameProjector(catalog: ExecutableCatalog) {
         PawnLocationProjection(player.player.value, site.value))),
       if (current.result.nonEmpty) Vector.empty else legal.controls,
       ready = true, completed = true,
-      activePlayerResources = Some(ActivePlayerResourcesProjection(
+      activePlayerResources = Some({
+        val secrets = PlayerSecretSummary.derive(context.ready, active.player)
+          .fold(error => throw new IllegalStateException(error), identity)
+        ActivePlayerResourcesProjection(
         active.board.favor, active.board.faceUpSecrets,
-        active.board.faceDownSecrets, active.board.supply.supply)),
+        active.board.faceDownSecrets, secrets.committed, secrets.totalSecrets,
+        active.board.supply.supply)
+      }),
       currentSiteResources = active.pawnSite.flatMap(siteId => site.map(state =>
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),

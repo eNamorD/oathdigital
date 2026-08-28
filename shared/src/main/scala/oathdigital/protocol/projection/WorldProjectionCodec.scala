@@ -142,6 +142,7 @@ private[projection] object WorldProjectionCodec {
   def encodeBoard(value: PlayerBoardProjection): ujson.Value = ujson.Obj(
     "playerId" -> value.playerId, "warbands" -> value.warbands, "favor" -> value.favor,
     "faceUpSecrets" -> value.faceUpSecrets, "faceDownSecrets" -> value.faceDownSecrets,
+    "committedSecrets" -> value.committedSecrets, "totalSecrets" -> value.totalSecrets,
     "supply" -> value.supply, "pawnSiteId" -> stringOption(value.pawnSiteId),
     "advisers" -> encoded(value.advisers)(encodeCard),
     "relics" -> encoded(value.relics)(encodeCard),
@@ -153,11 +154,13 @@ private[projection] object WorldProjectionCodec {
   def decodeBoard(raw: ujson.Value, path: String): Result[PlayerBoardProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("playerId", "warbands", "favor", "faceUpSecrets",
-      "faceDownSecrets", "supply", "pawnSiteId", "advisers", "relics",
+      "faceDownSecrets", "committedSecrets", "totalSecrets", "supply", "pawnSiteId", "advisers", "relics",
       "revealedVision", "banners"), path)
     player <- string(value, "playerId", path); warbands <- int(value, "warbands", path)
     favor <- int(value, "favor", path); up <- int(value, "faceUpSecrets", path)
-    down <- int(value, "faceDownSecrets", path); supply <- int(value, "supply", path)
+    down <- int(value, "faceDownSecrets", path)
+    committed <- int(value, "committedSecrets", path)
+    total <- int(value, "totalSecrets", path); supply <- int(value, "supply", path)
     pawn <- optionalString(value, "pawnSiteId", path)
     adviserRaws <- array(value, "advisers", path)
     advisers <- traverse(adviserRaws, s"$path.advisers")(decodeCard)
@@ -171,6 +174,6 @@ private[projection] object WorldProjectionCodec {
       holder <- optionalString(row, "holderPlayerId", child)
       resources <- int(row, "resources", child)
     } yield BannerProjection(key, face, holder, resources) }
-  } yield PlayerBoardProjection(player, warbands, favor, up, down, supply, pawn,
+  } yield PlayerBoardProjection(player, warbands, favor, up, down, committed, total, supply, pawn,
     advisers, relics, vision, banners)
 }

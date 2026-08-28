@@ -71,13 +71,17 @@ private[frontend] object ActionDecisionRenderer {
        s"Oath of Supremacy · ${oath.side.capitalize}: $holder$limiter$winner"))
    }
    value.activePlayerResources.foreach { resources =>
-     panel.appendChild(text(
+     val summary = text(
        "p",
        "resources",
-       s"Favor ${resources.favor} · Secrets ${resources.faceUpSecrets} " +
-         s"face up / ${resources.faceDownSecrets} face down · " +
+       s"Favor ${resources.favor} · Secrets ${resources.faceUpSecrets}/${resources.totalSecrets} · " +
          s"Supply ${resources.supply}"
-     ))
+     )
+     summary.setAttribute("title", secretSummaryLabel(resources.faceUpSecrets,
+       resources.totalSecrets, resources.faceDownSecrets, resources.committedSecrets))
+     summary.setAttribute("aria-label", summary.textContent + ". " +
+       summary.getAttribute("title"))
+     panel.appendChild(summary)
    }
    value.currentSiteResources.foreach { resources =>
      panel.appendChild(text(

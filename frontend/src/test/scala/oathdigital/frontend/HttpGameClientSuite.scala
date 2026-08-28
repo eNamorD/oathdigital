@@ -310,7 +310,8 @@ class HttpGameClientSuite extends FunSuite {
       "\"pendingCardDecision\":null," +
         "\"activePlayerResources\":{" +
         "\"favor\":2,\"faceUpSecrets\":1," +
-        "\"faceDownSecrets\":0,\"supply\":7}," +
+        "\"faceDownSecrets\":0,\"committedSecrets\":1," +
+        "\"totalSecrets\":2,\"supply\":7}," +
         "\"currentSiteResources\":{" +
         "\"siteId\":\"site:001\",\"favor\":0,\"secrets\":1}," +
         "\"actionSelectionOpen\":true," +

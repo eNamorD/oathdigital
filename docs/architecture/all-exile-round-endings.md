@@ -16,6 +16,21 @@ end die and no ending check in rounds 5 through 7.
 At the end of round 8, do not begin another Wake and do not advance beyond the
 printed track. Resolve War Exhaustion in this strict order:
 
+Every Rest completion first derives one immutable cleanup plan from physical
+token locations. Its source set is the resting player's denizen advisers and
+held relics, plus denizens and edifices at the pawn site and every ruled site;
+site IDs are deduplicated. Favor on denizens/edifices returns by printed suit,
+secrets from those cards and held relics return to the player, relic favor is
+left in place, and facedown board secrets flip faceup. Command handling and
+replay derive the same plan before validating and evolving `RestCompleted`.
+
+`PlayerSecretSummary` is derived rather than stored: available means faceup
+board secrets, facedown means facedown board secrets, committed means secrets
+on attributable cards, and `totalSecrets` is their sum. During a player's turn,
+site attribution uses the same deduplicated pawn/ruled access set; inactive
+players include only their own advisers and relics. Projections publish these
+aggregate counts without exposing hidden card identities.
+
 1. If an Exile holds the Usurper title, that player wins.
 2. Otherwise, once at least three Visions have been drawn, each Exile with a
    revealed Vision who meets its goal is eligible. If fewer than three Visions

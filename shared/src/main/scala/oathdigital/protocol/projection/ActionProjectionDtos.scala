@@ -141,6 +141,8 @@ final case class PlayerBoardProjection(
     favor: Int,
     faceUpSecrets: Int,
     faceDownSecrets: Int,
+    committedSecrets: Int,
+    totalSecrets: Int,
     supply: Int,
     pawnSiteId: Option[String],
     advisers: Vector[CardDetailsProjection],
