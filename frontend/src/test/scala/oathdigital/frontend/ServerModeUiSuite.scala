@@ -145,23 +145,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
   }
 
-  test("minor adviser controls map only projected typed placements") {
-    val card = CardDetails("D1", "denizen", "The Adviser")
-    val replacement = CardDetails("D2", "denizen", "The Old Denizen")
-    val adviser = MinorAdviser(card, Vector.empty)
-    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
-      MinorAdviserPlacement("discard"), "red"),
-      Some(GameCommand.DiscardFacedownAdviser("red", card)))
-    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
-      MinorAdviserPlacement("play-adviser"), "red"),
-      Some(GameCommand.PlayFacedownAdviser("red", card, "adviser-face-up")))
-    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
-      MinorAdviserPlacement("play-site", Some(replacement)), "red"),
-      Some(GameCommand.PlayFacedownAdviser("red", card, "site", Some(replacement))))
-    assertEquals(ServerUiSupport.minorAdviserCommand(adviser,
-      MinorAdviserPlacement("unsupported"), "red"), None)
-  }
-
   test("facedown adviser draft supports zero one and multiple choices and only faceup outcomes") {
     val context = BoardSelectionContext("game", "red", 7)
     val card = CardDetails("D1", "denizen", "The Adviser")

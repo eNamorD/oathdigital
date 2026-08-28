@@ -95,10 +95,15 @@ class HttpGameClientSuite extends FunSuite {
     val decoded = GameJson.decodeProjection(json).toOption.get
     assertEquals(decoded.minorActions.map(_.maxSiteToBoard), Some(2))
     val adviser = decoded.minorActions.get.advisers.head.card
-    assert(GameJson.encodeCommand(40, GameCommand.DiscardFacedownAdviser(
-      "red-exile", adviser)).contains("discardFacedownAdviser"))
-    assert(GameJson.encodeCommand(40, GameCommand.PlayFacedownAdviser(
-      "red-exile", adviser, "adviser-face-up")).contains("adviser-face-up"))
+    assert(GameJson.encodeCommand(40,
+      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
+        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId), None))
+      .contains("resolveFacedownAdviser"))
+    assert(GameJson.encodeCommand(40,
+      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
+        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId),
+        Some(oathdigital.protocol.Placement("adviser-face-up", None))))
+      .contains("adviser-face-up"))
     assert(GameJson.encodeCommand(40, GameCommand.PeekSiteRelics(
       "red-exile")).contains("peekSiteRelics"))
     assert(GameJson.encodeCommand(40, GameCommand.MoveWarbands(

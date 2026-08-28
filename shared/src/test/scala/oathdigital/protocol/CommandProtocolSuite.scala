@@ -11,8 +11,6 @@ class CommandProtocolSuite extends munit.FunSuite {
     CompleteForge("forge-1", Vector(ForgeAssignment("site:a", "d1", "favor"))),
     BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
     CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
-    DiscardFacedownAdviser(WorldCard("denizen", "d1")),
-    PlayFacedownAdviser(WorldCard("denizen", "d1"), Placement("site", None)),
     ResolveFacedownAdviser(WorldCard("denizen", "d1"), None),
     ResolveFacedownAdviser(WorldCard("denizen", "d1"),
       Some(Placement("adviser-face-up", None))),
@@ -53,6 +51,17 @@ class CommandProtocolSuite extends munit.FunSuite {
       val failure = ActorlessCommandCodec.decode(json).left.toOption.get
       assertEquals(failure.path, s"$$.intent.$field")
       assert(failure.isInstanceOf[ProtocolDecodeFailure.ActorInjection])
+    }
+  }
+
+  test("retired facedown adviser wire intents are rejected") {
+    Vector(
+      """{"expectedNextSequence":0,"intent":{"type":"discardFacedownAdviser","adviser":{"kind":"denizen","id":"d1"}}}""",
+      """{"expectedNextSequence":0,"intent":{"type":"playFacedownAdviser","adviser":{"kind":"denizen","id":"d1"},"placement":{"kind":"site","replace":null}}}"""
+    ).foreach { json =>
+      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      assertEquals(failure.path, "$.intent.type")
+      assert(failure.message.contains("unknown intent type"))
     }
   }
 

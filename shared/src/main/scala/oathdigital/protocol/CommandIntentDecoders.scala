@@ -45,12 +45,6 @@ private[protocol] object CommandIntentDecoders {
       banner <- string(value, "banner", path)
       amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield PlaceBannerResource(banner, amount)
-    case "discardFacedownAdviser" => nested(value, path, "adviser")(world).map(DiscardFacedownAdviser)
-    case "playFacedownAdviser" => for {
-      _ <- exact(value, Set("type", "adviser", "placement"), path)
-      adviser <- field(value, "adviser", path).flatMap(world(_, s"$path.adviser"))
-      placement <- field(value, "placement", path).flatMap(place(_, s"$path.placement"))
-    } yield PlayFacedownAdviser(adviser, placement)
     case "resolveFacedownAdviser" => for {
       _ <- exact(value, Set("type", "adviser", "placement"), path)
       adviser <- field(value, "adviser", path).flatMap(world(_, s"$path.adviser"))

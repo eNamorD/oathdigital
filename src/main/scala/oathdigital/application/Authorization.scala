@@ -98,11 +98,6 @@ final case class AuthorizedPlayer private (
     GameCommand.CompleteChallenge(access.playerId, decision, amount)
   def placeBannerResource(banner: Banner, amount: Int): GameCommand =
     GameCommand.PlaceBannerResource(access.playerId, banner, amount)
-  def discardFacedownAdviser(adviser: WorldCardId): GameCommand =
-    GameCommand.DiscardFacedownAdviser(access.playerId, adviser)
-  def playFacedownAdviser(adviser: WorldCardId,
-      placement: SearchPlacement): GameCommand =
-    GameCommand.PlayFacedownAdviser(access.playerId, adviser, placement)
   def resolveFacedownAdviser(adviser: WorldCardId,
       placement: Option[SearchPlacement]): GameCommand =
     GameCommand.ResolveFacedownAdviser(access.playerId, adviser, placement)

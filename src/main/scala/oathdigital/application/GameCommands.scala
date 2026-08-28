@@ -36,10 +36,6 @@ object GameCommand {
       amount: Int) extends GameCommand
   final case class PlaceBannerResource(playerId: PlayerId, banner: Banner,
       amount: Int) extends GameCommand
-  final case class DiscardFacedownAdviser(playerId: PlayerId, adviser: WorldCardId)
-      extends GameCommand
-  final case class PlayFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
-      placement: SearchPlacement) extends GameCommand
   final case class ResolveFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
       placement: Option[SearchPlacement]) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand

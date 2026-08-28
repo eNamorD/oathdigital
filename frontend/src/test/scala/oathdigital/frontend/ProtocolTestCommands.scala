@@ -44,8 +44,6 @@ private[frontend] object GameCommand {
   def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
   def ChooseChallengeSecretSite(actor: String, id: String, site: String) = Intent.ChooseChallengeSecretSite(id, site)
   def CompleteChallenge(actor: String, id: String, amount: Int) = Intent.CompleteChallenge(id, amount)
-  def DiscardFacedownAdviser(actor: String, card: CardDetails) = Intent.DiscardFacedownAdviser(world(card))
-  def PlayFacedownAdviser(actor: String, card: CardDetails, kind: String, replacement: Option[CardDetails] = None) = Intent.PlayFacedownAdviser(world(card), Placement(kind, replacement.map(v => CardRef(v.cardKind, v.cardId))))
   def PeekSiteRelics(actor: String) = Intent.PeekSiteRelics
   def BeginNegotiation(actor: String, participants: Vector[String]) = Intent.BeginNegotiation(participants)
   def MoveWarbands(actor: String, toSite: Boolean, amount: Int) = Intent.MoveWarbands(toSite, amount)
@@ -59,7 +57,6 @@ private[frontend] object GameCommand {
   def AddRecoverDice(actor: String, id: String) = Intent.AddRecoverDice(id)
   def StopRecover(actor: String, id: String) = Intent.StopRecover(id)
   def ResolveCardDecision(actor: String, id: String, value: DecisionResolution.Value) = Intent.ResolveCardDecision(id, value.intent)
-  private def world(v: CardDetails) = WorldCard(v.cardKind, v.cardId)
 }
 
 private[frontend] object ConspiracyTarget {

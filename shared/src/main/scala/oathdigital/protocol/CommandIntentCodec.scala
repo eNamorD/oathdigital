@@ -23,8 +23,6 @@ private[protocol] object CommandIntentCodec {
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
     case PlaceBannerResource(banner, amount) => tagged("placeBannerResource", "banner" -> banner, "amount" -> amount)
-    case DiscardFacedownAdviser(adviser) => tagged("discardFacedownAdviser", "adviser" -> world(adviser))
-    case PlayFacedownAdviser(adviser, placement) => tagged("playFacedownAdviser", "adviser" -> world(adviser), "placement" -> place(placement))
     case ResolveFacedownAdviser(adviser, placement) => tagged(
       "resolveFacedownAdviser", "adviser" -> world(adviser),
       "placement" -> placement.map(place).getOrElse(ujson.Null))

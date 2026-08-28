@@ -308,11 +308,6 @@ final class GameApplicationService(
         rules.handle(state, ChallengeCommand.Complete(playerId, decision, amount))
       case GameCommand.PlaceBannerResource(playerId, banner, amount) =>
         rules.handle(state, ChallengeCommand.PlaceResource(playerId, banner, amount))
-      case GameCommand.DiscardFacedownAdviser(playerId, adviser) =>
-        rules.handle(state, MinorActionCommand.DiscardFacedownAdviser(playerId, adviser))
-      case GameCommand.PlayFacedownAdviser(playerId, adviser, placement) =>
-        rules.handle(state, MinorActionCommand.PlayFacedownAdviser(
-          playerId, adviser, placement))
       case GameCommand.ResolveFacedownAdviser(playerId, adviser, placement) =>
         placement.fold(rules.handle(state,
           MinorActionCommand.DiscardFacedownAdviser(playerId, adviser)))(selected =>

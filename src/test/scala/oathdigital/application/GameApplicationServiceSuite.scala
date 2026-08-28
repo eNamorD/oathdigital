@@ -61,8 +61,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
           .asInstanceOf[WorldCardId]
         accepted = service.handle("powered-playability", accepted.nextSequence,
-          GameCommand.PlayFacedownAdviser(actor, adviser,
-            SearchPlacement.Adviser(Orientation.FaceUp, None))).toOption.get
+          GameCommand.ResolveFacedownAdviser(actor, adviser,
+            Some(SearchPlacement.Adviser(Orientation.FaceUp, None)))).toOption.get
         played += actor
       }
       accepted = service.handle("powered-playability", accepted.nextSequence,

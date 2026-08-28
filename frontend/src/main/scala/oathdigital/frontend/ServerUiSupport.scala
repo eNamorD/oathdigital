@@ -555,19 +555,6 @@ private[frontend] object ServerUiSupport {
     node
   }
 
-  private[frontend] def minorAdviserCommand(adviser: MinorAdviser,
-      placement: MinorAdviserPlacement, playerId: String): Option[GameCommand] =
-    placement.kind match {
-      case "discard" => Some(GameCommand.DiscardFacedownAdviser(
-        protocolWorldCard(adviser.card)))
-      case "play-adviser" => Some(GameCommand.PlayFacedownAdviser(
-        protocolWorldCard(adviser.card), Placement("adviser-face-up", None)))
-      case "play-site" => Some(GameCommand.PlayFacedownAdviser(
-        protocolWorldCard(adviser.card), Placement("site", placement.replacement.map(
-          card => CardRef(card.cardKind, card.cardId)))))
-      case _ => None
-    }
-
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
     if (minor.advisers.exists(_.placements.nonEmpty)) 1 else 0
 
