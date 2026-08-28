@@ -113,6 +113,10 @@ private[frontend] final case class BoardTargetSelectionState(
 }
 
 private[frontend] object BoardTargetSelectionState {
+  def restore(context: BoardSelectionContext,
+      actions: Vector[BoardTargetAction]): BoardTargetSelectionState =
+    reconcile(None, context, actions)
+
   def reconcile(previous: Option[BoardTargetSelectionState],
       context: BoardSelectionContext, actions: Vector[BoardTargetAction])
       : BoardTargetSelectionState = previous match {

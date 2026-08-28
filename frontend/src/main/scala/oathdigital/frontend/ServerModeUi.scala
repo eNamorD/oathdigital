@@ -354,6 +354,13 @@ object ServerModeUi {
         case None => submit(command)
       }
 
+    def restoreBoardTargetActions(): Unit =
+      boardSelectionState = projection.map { current =>
+        BoardTargetSelectionState.restore(
+          BoardSelectionContext(gameId, selectedPlayer, current.nextSequence),
+          current.boardTargetActions)
+      }
+
     def handleBoardSelection(result: BoardSelectionResult): Unit = result match {
       case BoardSelectionResult.Updated(state) =>
         boardSelectionState = Some(state)
@@ -403,7 +410,7 @@ object ServerModeUi {
       def cancelModifiers() = {
         modifierWorkflow = None
         facedownAdviserDraft = None
-        boardSelectionState = boardSelectionState.map(_.cancel)
+        restoreBoardTargetActions()
         boardFormationState = None
         render()
       }
@@ -419,7 +426,7 @@ object ServerModeUi {
       def cancelTargetAction() = {
         modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
         facedownAdviserDraft = None
-        boardSelectionState = boardSelectionState.map(_.cancel)
+        restoreBoardTargetActions()
         boardFormationState = None
         render()
       }

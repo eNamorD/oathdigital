@@ -28,6 +28,26 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(active.choose(siteB.target), BoardSelectionResult.Updated(active))
   }
 
+  test("restoring projected actions after preview cancellation permits another action") {
+    val travel = BoardTargetAction("travel", "Travel", 1, 1,
+      autoActivate = false, Vector(siteA))
+    val banner = BoardTargetCandidate(
+      BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor"),
+      "People's Favor", Vector("1 Supply"))
+    val challenge = BoardTargetAction("challenge", "Challenge", 1, 1,
+      autoActivate = false, Vector(banner))
+    val previewSelection = BoardTargetSelectionState.reconcile(None, context,
+      Vector(travel)).activate("travel")
+
+    val restored = BoardTargetSelectionState.restore(context,
+      Vector(travel, challenge)).activate("challenge")
+
+    assertEquals(previewSelection.cancel.activeAction, None)
+    assertEquals(restored.activeAction, Some(challenge))
+    assertEquals(restored.choose(banner.target),
+      BoardSelectionResult.Submit(challenge, Vector(banner.target)))
+  }
+
   test("Economy target mode requires explicit confirmation and supports cancel") {
     val action = BoardTargetAction("trade-favor", "Trade", 1, 1,
       autoActivate = false, Vector(siteA), explicitConfirm = true)
