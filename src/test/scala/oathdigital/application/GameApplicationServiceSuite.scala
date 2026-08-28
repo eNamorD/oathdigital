@@ -1199,6 +1199,37 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
+  test("HSQL reopen preserves completed Rest cleanup and secret summary") {
+    val path = Files.createTempDirectory("oathdigital-rest-reopen-").resolve("journal")
+    val gameId = "game-hsql-rest-cleanup"
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val finished = try {
+      val service = new GameApplicationService(catalog, first)
+      val setup = execute(service, gameId)
+      val Ready(ready) = setup.state: @unchecked
+      val actor = ready.game.current.turn.activePlayer
+      val act = service.handle(gameId, setup.nextSequence,
+        GameCommand.EndWake(actor)).toOption.get
+      val begun = service.handle(gameId, act.nextSequence,
+        GameCommand.BeginRest(actor)).toOption.get
+      service.handle(gameId, begun.nextSequence,
+        GameCommand.FinishRest(actor)).toOption.get
+    } finally first.close()
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, finished.state)
+      val Ready(ready) = loaded.state: @unchecked
+      val rested = ready.game.current.players.find(_.player !=
+        ready.game.current.turn.activePlayer).get
+      val summary = oathdigital.gameplay.PlayerSecretSummary
+        .derive(ready, rested.player).toOption.get
+      assertEquals(summary.facedown, 0)
+      assertEquals(summary.totalSecrets, summary.available + summary.committed)
+    } finally reopened.close()
+  }
+
   test("HSQL reopen preserves private minor-action relic knowledge") {
     val path = Files.createTempDirectory("oathdigital-minor-reopen-").resolve("journal")
     val gameId = "game-hsql-minor-relics"

@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand,
-  WarExhaustionRandomPort}
+  RestCleanupPlan, WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -70,6 +70,72 @@ class RestSuite extends munit.FunSuite {
       prepared.support.favorBanks.values.sum + 3)
   }
 
+  test("Rest cleans pawn site without rule once and all other authoritative sources") {
+    val base = act
+    val actor = base.game.current.players.find(
+      _.player == base.game.current.turn.activePlayer).get
+    val pawn = actor.pawnSite.get
+    val ruled = base.game.current.map.sites.keys.find(_ != pawn).get
+    val outside = base.game.current.map.sites.keys.find(id => id != pawn && id != ruled).get
+    val adviserDefinition = catalog.denizens.head
+    val pawnDefinition = catalog.denizens.find(_.suit != adviserDefinition.suit).get
+    val ruledDefinition = catalog.denizens.find(d =>
+      d.suit != adviserDefinition.suit && d.suit != pawnDefinition.suit).get
+    val edificeDefinition = catalog.edifices.head
+    val adviser = DenizenState(DenizenId(adviserDefinition.id.value),
+      Orientation.FaceUp, Tokens(1, 1))
+    val pawnCard = DenizenState(DenizenId(pawnDefinition.id.value),
+      Orientation.FaceUp, Tokens(2, 2))
+    val pawnEdifice = EdificeState(EdificeId(edificeDefinition.id.value),
+      EdificeSide.Ruined, Tokens(1, 1))
+    val ruledCard = DenizenState(DenizenId(ruledDefinition.id.value),
+      Orientation.FaceUp, Tokens(3, 3))
+    val outsideCard = DenizenState(DenizenId(catalog.denizens.last.id.value),
+      Orientation.FaceUp, Tokens(4, 4))
+    val relic = RelicState(RelicId(catalog.relics.head.id.value),
+      Orientation.FaceUp, Tokens(7, 2))
+    val otherBefore = base.game.current.players.find(_.player != actor.player).get
+    val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
+      map = base.game.current.map.copy(sites = base.game.current.map.sites
+        .updated(pawn, base.game.current.map.sites(pawn).copy(
+          forces = SiteForces.Occupied(ForceKind.Bandit, 1),
+          denizens = Vector(pawnCard, pawnEdifice)))
+        .updated(ruled, base.game.current.map.sites(ruled).copy(
+          forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1),
+          denizens = Vector(ruledCard)))
+        .updated(outside, base.game.current.map.sites(outside).copy(
+          forces = SiteForces.Occupied(ForceKind.Bandit, 1),
+          denizens = Vector(outsideCard)))),
+      players = base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
+          relics = Vector(relic)) else p))))
+    val plan = RestCleanupPlan.derive(catalog, prepared, actor.player).toOption.get
+    assertEquals(plan.siteIds, Set(pawn, ruled))
+    assertEquals(plan.returnedSecrets, 9)
+    assertEquals(plan.returnedFavor.values.sum, 7)
+    val began = rules.handle(Ready(prepared), RestCommand.Begin(actor.player)).toOption.get
+    val finished = rules.handle(began.state, RestCommand.Finish(actor.player)).toOption.get
+    val Ready(after) = finished.state: @unchecked
+    val rested = after.game.current.players.find(_.player == actor.player).get
+    assertEquals(rested.board.faceDownSecrets, 0)
+    assertEquals(rested.board.faceUpSecrets,
+      actor.board.faceUpSecrets + 2 + plan.returnedSecrets)
+    assertEquals(rested.advisers.collect { case d: DenizenState => d.tokens },
+      Vector(Tokens.empty))
+    assertEquals(rested.relics.head.tokens, Tokens(7, 0))
+    assert(after.game.current.map.sites(pawn).denizens.forall(_.tokens.isEmpty))
+    assert(after.game.current.map.sites(ruled).denizens.forall(_.tokens.isEmpty))
+    assertEquals(after.game.current.map.sites(outside).denizens.head.tokens,
+      outsideCard.tokens)
+    plan.returnedFavor.foreach { case (suit, amount) =>
+      assertEquals(after.support.favorBanks(suit),
+        prepared.support.favorBanks(suit) + amount)
+    }
+    assert(plan.returnedFavor.size >= 2)
+    assertEquals(after.game.current.players.find(_.player == otherBefore.player).get,
+      otherBefore)
+  }
+
   test("replay validates recorded Rest outcome and advances the round") {
     var state: OathState = Ready(act)
     val participants = act.game.current.players.map(_.player)
@@ -82,6 +148,13 @@ class RestSuite extends munit.FunSuite {
       val event = accepted.events.head.asInstanceOf[RestCompleted]
       val tampered = event.copy(refreshedSupply = event.refreshedSupply - 1)
       assert(rules.evolve(began.state, tampered).left.toOption.get
+        .isInstanceOf[RestOutcomeMismatch])
+      assert(rules.evolve(began.state, event.copy(
+        returnedSecrets = event.returnedSecrets + 1)).left.toOption.get
+        .isInstanceOf[RestOutcomeMismatch])
+      assert(rules.evolve(began.state, event.copy(returnedFavor =
+        event.returnedFavor.updated(Suit.Beast,
+          event.returnedFavor.getOrElse(Suit.Beast, 0) + 1))).left.toOption.get
         .isInstanceOf[RestOutcomeMismatch])
       state = accepted.events.foldLeft[Either[OathViolation, OathState]](
         Right(began.state))((next, recorded) => next.flatMap(rules.evolve(_, recorded)))

@@ -71,7 +71,9 @@ object Rest {
         expected(catalog, ready, recorded.playerId).flatMap { wanted =>
           if (wanted != recorded)
             Left(RestOutcomeMismatch(s"expected $wanted but recorded $recorded"))
-          else Right(Ready(applyCompletion(ready, recorded)))
+          else RestCleanupPlan.derive(catalog, ready, recorded.playerId)
+            .left.map(UnsupportedRestState).map(plan =>
+              Ready(applyCompletion(ready, recorded, plan)))
         }
       }
     case _ => Left(InvalidEventOrder("Rest received a non-Rest event"))
@@ -128,14 +130,6 @@ object Rest {
         case _ => false
       }) => id -> site
     }
-    val denizens = player.advisers.collect { case value: DenizenState => value } ++
-      ruledSites.valuesIterator.flatMap(_.denizens).toVector
-    val favor = denizens.foldLeft(Map.empty[Suit, Int].withDefaultValue(0)) {
-      case (acc, card) => suitOf(catalog, card.id).fold(acc)(suit =>
-        acc.updated(suit, acc(suit) + card.tokens.favor))
-    }.filter(_._2 > 0)
-    val secrets = denizens.map(_.tokens.secrets).sum +
-      player.relics.map(_.tokens.secrets).sum
     val siteWarbands = ruledSites.valuesIterator.map(_.forces).collect {
       case SiteForces.Occupied(ForceKind.Exile(owner), count)
           if owner == lineage => count
@@ -143,24 +137,25 @@ object Rest {
     val banked = math.max(0, ExileWarbands - player.board.warbands - siteWarbands)
     val refreshed = ExileSupply.refresh(banked, player.board.supply.supply)
       .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
-    refreshed.map { supply =>
+    for {
+      supply <- refreshed
+      cleanup <- RestCleanupPlan.derive(catalog, ready, playerId)
+        .left.map(UnsupportedRestState)
+    } yield {
       val order = turnOrder(ready)
       val index = order.indexOf(playerId)
       val last = index == order.size - 1
-      RestCompleted(playerId, favor, secrets, supply.supply,
+      RestCompleted(playerId, cleanup.returnedFavor, cleanup.returnedSecrets,
+        supply.supply,
         if (last) order.head else order(index + 1),
         current.tracks.round,
         current.tracks.usurperLimited)
     }
   }
 
-  private def applyCompletion(ready: ReadyGame, event: RestCompleted): ReadyGame = {
+  private def applyCompletion(ready: ReadyGame, event: RestCompleted,
+      plan: RestCleanupPlan): ReadyGame = {
     val current = ready.game.current
-    val player = current.players.find(_.player == event.playerId).get
-    val ruled = current.map.sites.collect {
-      case (id, site @ SiteState(SiteForces.Occupied(
-          ForceKind.Exile(owner), _), _, _, _)) if owner == player.lineage => id
-    }.toSet
     def clear(card: SiteDenizenState): SiteDenizenState = card match {
       case value: DenizenState => value.copy(tokens = Tokens.empty)
       case value: EdificeState => value.copy(tokens = Tokens.empty)
@@ -174,14 +169,15 @@ object Rest {
           faceDownSecrets = 0,
           supply = SupplyTrack(event.refreshedSupply)),
         advisers = candidate.advisers.map {
-          case value: DenizenState => value.copy(tokens = Tokens.empty)
+          case value: DenizenState if plan.adviserIds(value.id) =>
+            value.copy(tokens = Tokens.empty)
           case other => other
         },
-        relics = candidate.relics.map(relic => relic.copy(
-          tokens = Tokens(relic.tokens.favor, 0))))
+        relics = candidate.relics.map(relic => if (plan.relicIds(relic.id))
+          relic.copy(tokens = Tokens(relic.tokens.favor, 0)) else relic))
     }
     val sites = current.map.sites.map { case (id, site) =>
-      id -> (if (ruled(id)) site.copy(denizens = site.denizens.map(clear)) else site)
+      id -> (if (plan.siteIds(id)) site.copy(denizens = site.denizens.map(clear)) else site)
     }
     val support = ready.support.copy(favorBanks = event.returnedFavor.foldLeft(
       ready.support.favorBanks) { case (banks, (suit, amount)) =>
@@ -197,12 +193,6 @@ object Rest {
           if (turnOrder(ready).last == event.playerId) Phase.RoundEnd else Phase.Wake,
           Set.empty),
         pending = None)))
-  }
-
-  private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] = {
-    val key = catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
-      .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
-    key.flatMap(value => Suit.all.find(_.key == value))
   }
 
   private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
