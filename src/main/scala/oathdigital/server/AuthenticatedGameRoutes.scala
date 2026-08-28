@@ -97,6 +97,7 @@ final class AuthenticatedGameGateway(
           GameApplicationError.CommandRejected(
             oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
               "major-action preview is unavailable in this phase"))))
+        _ <- MajorActionPreviewTargets.validate(projection, request).left.map(Application)
       } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.options.map(v => PreviewModifier(
           v.source.stableKey, v.handlerId, v.handlerId)),

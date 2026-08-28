@@ -31,6 +31,7 @@ object ServerModeUi {
     var forgeAssignmentState = Option.empty[ForgeAssignmentState]
     var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
+    var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
 
@@ -81,6 +82,9 @@ object ServerModeUi {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
           modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
             gameId, selectedPlayer, displayed.nextSequence)
+          facedownAdviserDraft = FacedownAdviserDraft.reconcile(facedownAdviserDraft,
+            BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
+            displayed.minorActions)
           boardSelectionState = Some(BoardTargetSelectionState.reconcile(
             boardSelectionState,
             BoardSelectionContext(gameId, selectedPlayer, displayed.nextSequence),
@@ -122,6 +126,7 @@ object ServerModeUi {
           campaignPlacementState = None
           cardDecisionState = None
           modifierWorkflow = None
+          facedownAdviserDraft = None
           polling.foreach(_.stop())
           projection = Some(displayed)
           failure = retainedNotice
@@ -276,13 +281,18 @@ object ServerModeUi {
         response: MajorActionPreviewResponse): Unit = for {
       current <- projection
       actionKind <- workflow.actionKind
-      action <- ModifierWorkflow.targetAction(actionKind, response,
-        current.boardTargetActions)
     } {
       val context = BoardSelectionContext(gameId, selectedPlayer,
         current.nextSequence)
-      boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
-        context, Vector(action)).activate(actionKind))
+      if (actionKind == "play-facedown-adviser") {
+        facedownAdviserDraft = current.minorActions.flatMap(
+          FacedownAdviserDraft.initial(context, _))
+        boardSelectionState = None
+      } else ModifierWorkflow.targetAction(actionKind, response,
+        current.boardTargetActions).foreach { action =>
+        boardSelectionState = Some(BoardTargetSelectionState.reconcile(None,
+          context, Vector(action)).activate(actionKind))
+      }
       boardFormationState = None
       modifierWorkflow = Some(workflow.showTargets(response))
       render()
@@ -293,6 +303,7 @@ object ServerModeUi {
       (action, parameters) <- ModifierWorkflow.targeted(actionKind)
     } {
       modifierWorkflow = None
+      facedownAdviserDraft = None
       boardSelectionState = boardSelectionState.map(_.cancel)
       boardFormationState = None
       val request = MajorActionPreviewRequest(current.nextSequence, action, parameters)
@@ -326,6 +337,7 @@ object ServerModeUi {
         }
         case Left(error) =>
           modifierWorkflow = None
+          facedownAdviserDraft = None
           failure = Some(error)
           render()
       }
@@ -335,6 +347,7 @@ object ServerModeUi {
       modifierWorkflow.filter(_.stage == ModifierWorkflowStage.Targets) match {
         case Some(workflow) =>
           modifierWorkflow = None
+          facedownAdviserDraft = None
           boardSelectionState = None
           boardFormationState = None
           submitTransport(command, workflow.selection.invocations)
@@ -372,6 +385,10 @@ object ServerModeUi {
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow
+      def currentFacedownAdviserDraft = facedownAdviserDraft
+      def chooseFacedownAdviser(cardId: String) = {
+        facedownAdviserDraft = facedownAdviserDraft.map(_.choose(cardId)); render()
+      }
       def toggleModifier(value: PreviewModifier) = {
         modifierWorkflow = modifierWorkflow.map(workflow => workflow.copy(
           selection = workflow.selection.toggle(value))); render()
@@ -385,6 +402,7 @@ object ServerModeUi {
       def backFromModifiers() = { modifierWorkflow = None; render() }
       def cancelModifiers() = {
         modifierWorkflow = None
+        facedownAdviserDraft = None
         boardSelectionState = boardSelectionState.map(_.cancel)
         boardFormationState = None
         render()
@@ -392,6 +410,7 @@ object ServerModeUi {
       def beginTargetedMajorAction(actionKind: String) =
         startTargetedFlow(actionKind)
       def backFromTargets() = modifierWorkflow.foreach { workflow =>
+        facedownAdviserDraft = None
         boardSelectionState = None
         boardFormationState = None
         modifierWorkflow = workflow.backFromTargets
@@ -399,6 +418,7 @@ object ServerModeUi {
       }
       def cancelTargetAction() = {
         modifierWorkflow = modifierWorkflow.flatMap(_.cancel)
+        facedownAdviserDraft = None
         boardSelectionState = boardSelectionState.map(_.cancel)
         boardFormationState = None
         render()

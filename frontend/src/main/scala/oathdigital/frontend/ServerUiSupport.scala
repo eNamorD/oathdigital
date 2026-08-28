@@ -20,6 +20,8 @@ private[frontend] trait ServerUiView {
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
+  def currentFacedownAdviserDraft: Option[FacedownAdviserDraft]
+  def chooseFacedownAdviser(cardId: String): Unit
   def toggleModifier(value: PreviewModifier): Unit
   def moveModifier(value: PreviewModifier, delta: Int): Unit
   def confirmModifiers(): Unit
@@ -135,7 +137,9 @@ private[frontend] object ServerUiSupport {
     relics.appendChild(text("strong", "", "Relics: "))
     if (site.relics.facedownCount == 0)
       relics.appendChild(dom.document.createTextNode("None"))
-    (0 until site.relics.facedownCount).foreach { _ =>
+    presentation.peekedRelics.foreach(value =>
+      relics.appendChild(peekedRelic(value.card)))
+    (0 until presentation.unknownRelicCount).foreach { _ =>
       val relic = text("span", "facedown-relic", "▣")
       relic.setAttribute("role", "img")
       relic.setAttribute("aria-label", "Facedown relic")
@@ -209,6 +213,20 @@ private[frontend] object ServerUiSupport {
     }
     node.appendChild(details)
     node
+  }
+
+  private[frontend] def peekedRelic(card: CardDetails): dom.Element = {
+    val shell = element("span", "peeked-relic")
+    val back = text("span", "facedown-relic peeked-relic-back", "▣")
+    back.setAttribute("aria-hidden", "true")
+    val reveal = cardDetailsPopover(card)
+    reveal.classList.add("peeked-relic-reveal")
+    reveal.setAttribute("aria-label", s"Peek at ${card.name}")
+    reveal.asInstanceOf[dom.html.Button].onmouseup = _ =>
+      reveal.asInstanceOf[dom.html.Button].blur()
+    reveal.addEventListener("touchend", (_: dom.Event) =>
+      reveal.asInstanceOf[dom.html.Button].blur())
+    shell.appendChild(back); shell.appendChild(reveal); shell
   }
 
   private[frontend] def pileDisplay(
@@ -301,26 +319,39 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def actionCategory(kind: String): String = kind match {
     case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
-        "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" => "major"
-    case "challenge" | "negotiation" | "reveal-vision" | "play-conspiracy" |
+        "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
+        "challenge" => "major"
+    case "negotiation" | "reveal-vision" | "play-conspiracy" |
         "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
         "reveal-owned-relic" | "move-warbands" => "minor"
     case _ => "powers"
+  }
+
+  private[frontend] val majorFamilyOrder: Vector[String] = Vector(
+    "search", "travel", "campaign", "muster", "trade", "forge", "recover", "challenge")
+
+  private[frontend] def actionFamily(kind: String): String = kind match {
+    case "campaign-conquest" | "campaign-raid" => "campaign"
+    case "trade-favor" | "trade-secret" => "trade"
+    case other => other
   }
 
   private[frontend] val actionCategoryOrder: Vector[(String, String)] =
     Vector("major" -> "Major actions", "minor" -> "Minor actions", "powers" -> "Powers")
 
   private[frontend] final class ActionSections {
-    private val contents = scala.collection.mutable.Map.empty[String, dom.Element]
-    def append(category: String, node: dom.Node): Unit = {
-      val section = contents.getOrElseUpdate(category, element("section",
-        s"available-action-group action-group-$category"))
-      section.appendChild(node)
-    }
+    private val contents = scala.collection.mutable.Map.empty[String,
+      scala.collection.mutable.ArrayBuffer[(String, dom.Node)]]
+    def appendKind(kind: String, node: dom.Node): Unit = contents
+      .getOrElseUpdate(actionCategory(kind), scala.collection.mutable.ArrayBuffer.empty)
+      .append(actionFamily(kind) -> node)
     def appendTo(panel: dom.Element): Unit = actionCategoryOrder.foreach { case (key, heading) =>
-      contents.get(key).foreach { section =>
-        section.insertBefore(text("h3", "action-group-heading", heading), section.firstChild)
+      contents.get(key).filter(_.nonEmpty).foreach { nodes =>
+        val section = element("section", s"available-action-group action-group-$key")
+        section.appendChild(text("h3", "action-group-heading", heading))
+        val order = if (key == "major") majorFamilyOrder else nodes.map(_._1).distinct.toVector
+        order.foreach(family => nodes.filter(_._1 == family).foreach(entry =>
+          section.appendChild(entry._2)))
         panel.appendChild(section)
       }
     }
@@ -536,6 +567,9 @@ private[frontend] object ServerUiSupport {
           card => CardRef(card.cardKind, card.cardId)))))
       case _ => None
     }
+
+  private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
+    if (minor.advisers.exists(_.placements.nonEmpty)) 1 else 0
 
   private[frontend] def protocolWorldCard(card: CardDetails): WorldCard =
     WorldCard(card.cardKind, card.cardId)

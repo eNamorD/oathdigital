@@ -34,14 +34,16 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
 
   test("targeted actions preview before commands while direct actions retain their stage") {
     assertEquals(Vector("travel", "campaign-conquest", "campaign-raid", "muster",
-      "trade-favor", "trade-secret").flatMap(ModifierWorkflow.targeted).map(_._1),
-      Vector("travel", "campaign", "campaign", "muster", "trade", "trade"))
+      "trade-favor", "trade-secret", "play-facedown-adviser")
+      .flatMap(ModifierWorkflow.targeted).map(_._1),
+      Vector("travel", "campaign", "campaign", "muster", "trade", "trade", "search"))
     val commands = Vector[GameIntent](
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
       GameIntent.BeginForge,
-      GameIntent.BeginRecover)
+      GameIntent.BeginRecover,
+      GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "forge", "recover"))
+      Vector("search", "forge", "recover", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
   }

@@ -31,7 +31,8 @@ private[frontend] object ModifierWorkflow {
     "campaign-raid" -> ("campaign" -> Map("kind" -> "raid")),
     "muster" -> ("muster" -> Map.empty[String, String]),
     "trade-favor" -> ("trade" -> Map("resource" -> "favor")),
-    "trade-secret" -> ("trade" -> Map("resource" -> "secret")))
+    "trade-secret" -> ("trade" -> Map("resource" -> "secret")),
+    "play-facedown-adviser" -> ("search" -> Map("procedure" -> "facedown-adviser")))
 
   def targeted(actionKind: String): Option[(String, Map[String, String])] =
     targetedActions.get(actionKind)
@@ -49,6 +50,8 @@ private[frontend] object ModifierWorkflow {
       (Map("source" -> source.source) ++ source.region.map("region" -> _)))
     case GameIntent.BeginForge => Some("forge" -> Map.empty)
     case GameIntent.BeginRecover => Some("recover" -> Map.empty)
+    case GameIntent.ResolveFacedownAdviser(_, _) =>
+      Some("search" -> Map("procedure" -> "facedown-adviser"))
     case _ => None
   }
 

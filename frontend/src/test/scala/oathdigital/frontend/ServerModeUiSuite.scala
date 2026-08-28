@@ -162,6 +162,41 @@ class ServerModeUiSuite extends FunSuite {
       MinorAdviserPlacement("unsupported"), "red"), None)
   }
 
+  test("facedown adviser draft supports zero one and multiple choices and only faceup outcomes") {
+    val context = BoardSelectionContext("game", "red", 7)
+    val card = CardDetails("D1", "denizen", "The Adviser")
+    val other = CardDetails("D2", "denizen", "The Other Adviser")
+    val replacement = CardDetails("D3", "denizen", "Old Denizen")
+    val placements = Vector(MinorAdviserPlacement("discard"),
+      MinorAdviserPlacement("play-adviser"),
+      MinorAdviserPlacement("play-site", Some(replacement)))
+    def minor(advisers: Vector[MinorAdviser]) = MinorActionsState(advisers,
+      canPeekSiteRelics = false, Vector.empty, Some("site:a"), 0, 0)
+    assertEquals(FacedownAdviserDraft.initial(context, minor(Vector.empty)), None)
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(minor(Vector.empty)), 0)
+    val one = FacedownAdviserDraft.initial(context,
+      minor(Vector(MinorAdviser(card, placements)))).get
+    assertEquals(one.selectedCardId, Some("D1"))
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
+      minor(Vector(MinorAdviser(card, placements)))), 1)
+    assertEquals(one.command(placements(0)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
+      oathdigital.protocol.WorldCard("denizen", "D1"), None)))
+    assertEquals(one.command(placements(1)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
+      oathdigital.protocol.WorldCard("denizen", "D1"),
+      Some(oathdigital.protocol.Placement("adviser-face-up", None)))))
+    assertEquals(one.command(placements(2)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
+      oathdigital.protocol.WorldCard("denizen", "D1"),
+      Some(oathdigital.protocol.Placement("site", Some(
+        oathdigital.protocol.CardRef("denizen", "D3")))))))
+    assertEquals(one.command(MinorAdviserPlacement("adviser-face-down")), None)
+    val many = FacedownAdviserDraft.initial(context, minor(Vector(
+      MinorAdviser(card, placements), MinorAdviser(other, placements)))).get
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(minor(Vector(
+      MinorAdviser(card, placements), MinorAdviser(other, placements)))), 1)
+    assertEquals(many.selected, None)
+    assertEquals(many.choose("D2").selected.map(_.card.cardId), Some("D2"))
+  }
+
   test("selection copy exposes details and non-color cardinality instructions") {
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
@@ -238,8 +273,14 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
       Vector("Major actions", "Minor actions", "Powers"))
     assertEquals(ServerUiSupport.actionCategory("travel"), "major")
-    assertEquals(ServerUiSupport.actionCategory("challenge"), "minor")
+    assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
     assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "powers")
+    assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
+      "muster", "trade", "forge", "recover", "challenge"))
+    assertEquals(Vector("campaign-conquest", "campaign-raid").map(
+      ServerUiSupport.actionFamily), Vector("campaign", "campaign"))
+    assertEquals(Vector("trade-favor", "trade-secret").map(
+      ServerUiSupport.actionFamily), Vector("trade", "trade"))
   }
 
   test("Campaign placement distributes locally and clears stale context") {
@@ -523,6 +564,22 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(site.denizens.map(_.denizenId),
       Vector("denizen:fox", "denizen:owl"))
     assertEquals(details.relicSummary, "2 facedown relics")
+    assertEquals(details.unknownRelicCount, 2)
+  }
+
+  test("peeked site relics replace opaque slots only for the scoped viewer") {
+    val known = CardDetails("R1", "relic", "Ancient Crown", rulesText = Some("Rule"))
+    val owner = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
+      Vector.empty, GameSiteRelics(2, Vector(known))))
+    val other = SiteCardPresentation.from(GameSite("site", "Site", 0, 0, 0, 2,
+      Vector.empty, GameSiteRelics(2)))
+    assertEquals(owner.unknownRelicCount, 1)
+    assertEquals(other.unknownRelicCount, 2)
+    assertEquals(owner.peekedRelics.map(_.card.name), Vector("Ancient Crown"))
+    assert(owner.peekedRelics.forall(_.concealedAtRest))
+    assertEquals(owner.peekedRelics.head.revealInteractions,
+      Vector("hover", "focus", "press-and-hold"))
+    assertEquals(other.peekedRelics, Vector.empty)
   }
 
   test("empty site details have image-independent empty states") {

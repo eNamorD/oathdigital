@@ -214,7 +214,9 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   and relevant printed modifiers reject through an audited transitional power
   registry until Phase 3. Authenticated transport, owner redaction, persistence
   and reopen, action-boundary evaluation, and accessible Scala.js controls are
-  covered.
+  covered. The UI now exposes one Search-derived adviser workflow with a single
+  authoritative final resolution, and known site relics reveal temporarily for
+  inspection while remaining facedown at rest.
 
 - [x] **Phase 1 - Bounded banners and Challenge.** The fixed Mob and Wandering
   Flame faces now support typed public holder/resource state, the common

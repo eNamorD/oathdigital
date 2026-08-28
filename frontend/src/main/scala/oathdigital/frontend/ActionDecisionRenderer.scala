@@ -147,7 +147,10 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(back)
        val cancel = button("Cancel action", "modifier-cancel"); cancel.onclick = _ =>
          cancelModifiers(); panel.appendChild(cancel)
-     } else if (currentBoardFormation.nonEmpty) {
+    } else if (currentFacedownAdviserDraft.nonEmpty) {
+      panel.appendChild(FacedownAdviserRenderer.render(
+        currentFacedownAdviserDraft.get, ui))
+    } else if (currentBoardFormation.nonEmpty) {
        val formation = currentBoardFormation.get
        val targetLabel = formation.targets.map { target =>
          formation.action.candidates.find(_.target == target)
@@ -232,19 +235,19 @@ private[frontend] object ActionDecisionRenderer {
          search.disabled = !canControl || !presentation.showGameplayControls
          search.onclick = _ => submitCommand(GameCommand.BeginSearch(
            SearchSource(source.kind, source.region)))
-         groups.append("major", search)
+         groups.appendKind("search", search)
        }
        if (value.legalControls.contains("beginRecover")) {
          val recover = button("Recover (1 Supply)", "act-action recover-action")
          recover.disabled = !canControl
          recover.onclick = _ => submitCommand(GameCommand.BeginRecover)
-         groups.append("major", recover)
+         groups.appendKind("recover", recover)
        }
        if (value.legalControls.contains("beginForge")) {
          val forge = button("Forge (1 Supply)", "act-action forge-action")
          forge.disabled = !canControl
          forge.onclick = _ => submitCommand(GameCommand.BeginForge)
-         groups.append("major", forge)
+         groups.appendKind("forge", forge)
        }
        if (value.legalControls.contains("placeBannerResource")) {
          value.banners.filter(_.holderPlayerId.contains(currentPlayerId)).foreach { banner =>
@@ -253,45 +256,32 @@ private[frontend] object ActionDecisionRenderer {
            val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
            amount.`type` = "number"; amount.min = "1"; amount.value = "1"
            amount.setAttribute("aria-label", s"Resources to add to ${actionLabel(banner.banner)}")
-           label.appendChild(amount); groups.append("minor", label)
+           label.appendChild(amount); groups.appendKind("place-banner-resource", label)
            val place = button("Place resources (0 Supply)", "banner-place-resource")
            place.disabled = !canControl
            place.onclick = _ => submitCommand(GameCommand.PlaceBannerResource(
              banner.banner, amount.value.toInt))
-           groups.append("minor", place)
+           groups.appendKind("place-banner-resource", place)
          }
        }
        value.minorActions.foreach { minor =>
-         if (minor.advisers.nonEmpty) {
-           groups.append("minor", text("h4", "", "Facedown advisers"))
-           minor.advisers.foreach { adviser =>
-             adviser.placements.foreach { placement =>
-               val label = placement.kind match {
-                 case "discard" => s"Discard ${adviser.card.name}"
-                 case "play-adviser" => s"Play ${adviser.card.name} as adviser"
-                 case "play-site" if placement.replacement.nonEmpty =>
-                   s"Play ${adviser.card.name}; discard ${placement.replacement.get.name}"
-                 case _ => s"Play ${adviser.card.name} at your site"
-               }
-               val control = button(label, s"minor-adviser-${placement.kind}")
-               control.disabled = !canControl
-               control.onclick = _ => minorAdviserCommand(
-                 adviser, placement, currentPlayerId).foreach(submitCommand)
-               groups.append("minor", control)
-             }
-           }
+         if (facedownAdviserLaunchCount(minor) == 1) {
+           val play = button("Play facedown adviser", "minor-adviser-launch")
+           play.disabled = !canControl
+           play.onclick = _ => beginTargetedMajorAction("play-facedown-adviser")
+           groups.appendKind("facedown-adviser", play)
          }
          if (minor.canPeekSiteRelics) {
            val peek = button("Peek at relics at your site", "minor-peek-relics")
            peek.disabled = !canControl
            peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
-           groups.append("minor", peek)
+           groups.appendKind("peek-site-relics", peek)
          }
          minor.facedownRelics.foreach { relic =>
            val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
            reveal.disabled = !canControl
            reveal.onclick = _ => submitCommand(GameCommand.RevealOwnedRelic(relic.cardId))
-           groups.append("minor", reveal)
+           groups.appendKind("reveal-owned-relic", reveal)
          }
          Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
            .filter(_._2 > 0).foreach { case (toSite, maximum) =>
@@ -301,12 +291,12 @@ private[frontend] object ActionDecisionRenderer {
              val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
              amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
              amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
-             label.appendChild(amount); groups.append("minor", label)
+             label.appendChild(amount); groups.appendKind("move-warbands", label)
              val move = button("Move warbands", "minor-move-warband")
              move.disabled = !canControl
              move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
                toSite, amount.value.toInt))
-             groups.append("minor", move)
+             groups.appendKind("move-warbands", move)
            }
        }
        value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
@@ -328,7 +318,7 @@ private[frontend] object ActionDecisionRenderer {
              }
            }
          }
-         groups.append(actionCategory(action.actionKind), control)
+         groups.appendKind(action.actionKind, control)
        }
        groups.appendTo(panel)
        panel.appendChild(text("p", "informational",

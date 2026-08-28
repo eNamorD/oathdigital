@@ -45,6 +45,7 @@ final class GameServerGateway(
       projection.actionSelectionOpen, (), GameApplicationError.CommandRejected(
       oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
         "major-action preview is unavailable for this actor or phase")))
+    _ <- MajorActionPreviewTargets.validate(projection, request)
   } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
     accepted.options.map(v => PreviewModifier(v.source.stableKey, v.handlerId,
       v.handlerId)), accepted.ignored.map(v => PreviewIgnoredRule(
@@ -99,10 +100,26 @@ final class GameServerGateway(
 }
 
 private[server] object MajorActionPreviewTargets {
+  def validate(projection: GameProjection, request: MajorActionPreviewRequest)
+      : Either[GameApplicationError, Unit] =
+    request.baseParameters.get("procedure") match {
+      case Some("facedown-adviser") if request.action == "search" =>
+        Either.cond(projection.minorActions.exists(_.advisers.exists(
+          _.placements.nonEmpty)), (), GameApplicationError.CommandRejected(
+          oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+            "no facedown adviser can legally be resolved")))
+      case Some(_) => Left(GameApplicationError.CommandRejected(
+        oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+          "unknown major-action procedure")))
+      case None => Right(())
+    }
+
   def from(projection: GameProjection,
       request: MajorActionPreviewRequest): Vector[PreviewTarget] = request.action match {
     case "travel" => projection.legalTravelDestinations.map(v =>
       PreviewTarget(s"site:${v.siteId}", v.supplyCost, "Travel destination"))
+    case "search" if request.baseParameters.get("procedure")
+        .contains("facedown-adviser") => Vector.empty
     case "search" => projection.legalSearchSources.map(v => PreviewTarget(
       s"${v.kind}:${v.region.getOrElse("")}", v.supplyCost, "Search source"))
     case "muster" => projection.legalMusters.map(v => PreviewTarget(

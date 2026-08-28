@@ -299,3 +299,12 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
   .sites { grid-template-columns: 1fr; }
   .panel { padding: 13px; }
 }
+.peeked-relic { display: inline-grid; vertical-align: middle; }
+.peeked-relic > * { grid-area: 1 / 1; }
+.peeked-relic-reveal { opacity: 0; position: relative; z-index: 1; }
+.peeked-relic-back { align-self: center; justify-self: center; }
+.peeked-relic:hover .peeked-relic-reveal,
+.peeked-relic:focus-within .peeked-relic-reveal,
+.peeked-relic-reveal:active { opacity: 1; }
+.peeked-relic:hover .peeked-relic-back,
+.peeked-relic:focus-within .peeked-relic-back { opacity: 0; }

@@ -3,6 +3,9 @@ package oathdigital.frontend
 import oathdigital.presentation._
 
 private[frontend] final case class SiteMetric(label: String, value: String)
+private[frontend] final case class PeekedRelicPresentation(card: CardDetails,
+    concealedAtRest: Boolean = true,
+    revealInteractions: Vector[String] = Vector("hover", "focus", "press-and-hold"))
 
 private[frontend] final case class VisualRenderPlan(
     instruction: VisualInstruction,
@@ -28,7 +31,9 @@ private[frontend] final case class SiteCardPresentation(
     metrics: Vector[SiteMetric],
     denizenVisuals: Vector[(String, VisualRenderPlan)],
     denizenEmpty: String,
-    relicSummary: String
+    relicSummary: String,
+    unknownRelicCount: Int,
+    peekedRelics: Vector[PeekedRelicPresentation]
 )
 
 private[frontend] object SiteCardPresentation {
@@ -71,7 +76,10 @@ private[frontend] object SiteCardPresentation {
       relicSummary =
         if (site.relics.facedownCount == 0) "None"
         else if (site.relics.facedownCount == 1) "1 facedown relic"
-        else s"${site.relics.facedownCount} facedown relics"
+        else s"${site.relics.facedownCount} facedown relics",
+      unknownRelicCount = math.max(0,
+        site.relics.facedownCount - site.relics.knownRelics.size),
+      peekedRelics = site.relics.knownRelics.map(PeekedRelicPresentation(_))
     )
   }
 
