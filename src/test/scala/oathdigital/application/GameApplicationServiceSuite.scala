@@ -128,7 +128,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val act = service.handle("game-minor-replay", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     val discarded = service.handle("game-minor-replay", act.nextSequence,
-      GameCommand.DiscardFacedownAdviser(actor, adviser)).toOption.get
+      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).toOption.get
     val reloaded = new GameApplicationService(catalog, repository)
       .load("game-minor-replay").toOption.flatten.get
     assertEquals(reloaded.state, discarded.state)

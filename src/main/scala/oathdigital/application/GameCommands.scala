@@ -40,6 +40,8 @@ object GameCommand {
       extends GameCommand
   final case class PlayFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
       placement: SearchPlacement) extends GameCommand
+  final case class ResolveFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
+      placement: Option[SearchPlacement]) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand

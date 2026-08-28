@@ -25,6 +25,9 @@ private[protocol] object CommandIntentCodec {
     case PlaceBannerResource(banner, amount) => tagged("placeBannerResource", "banner" -> banner, "amount" -> amount)
     case DiscardFacedownAdviser(adviser) => tagged("discardFacedownAdviser", "adviser" -> world(adviser))
     case PlayFacedownAdviser(adviser, placement) => tagged("playFacedownAdviser", "adviser" -> world(adviser), "placement" -> place(placement))
+    case ResolveFacedownAdviser(adviser, placement) => tagged(
+      "resolveFacedownAdviser", "adviser" -> world(adviser),
+      "placement" -> placement.map(place).getOrElse(ujson.Null))
     case RevealVision(id) => tagged("revealVision", "visionId" -> id)
     case PlayConspiracy(target) => tagged("playConspiracy", "target" -> target.map(conspiracy).getOrElse(ujson.Null))
     case ChooseConspiracySecretSite(id, site) => tagged("chooseConspiracySecretSite", "decisionId" -> id, "siteId" -> site)

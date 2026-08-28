@@ -103,6 +103,9 @@ final case class AuthorizedPlayer private (
   def playFacedownAdviser(adviser: WorldCardId,
       placement: SearchPlacement): GameCommand =
     GameCommand.PlayFacedownAdviser(access.playerId, adviser, placement)
+  def resolveFacedownAdviser(adviser: WorldCardId,
+      placement: Option[SearchPlacement]): GameCommand =
+    GameCommand.ResolveFacedownAdviser(access.playerId, adviser, placement)
   def revealVision(vision: VisionId): GameCommand =
     GameCommand.RevealVision(access.playerId, vision)
   def playConspiracy(target: Option[ConspiracyTargetRef]): GameCommand =

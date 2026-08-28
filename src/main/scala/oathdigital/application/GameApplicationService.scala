@@ -313,6 +313,11 @@ final class GameApplicationService(
       case GameCommand.PlayFacedownAdviser(playerId, adviser, placement) =>
         rules.handle(state, MinorActionCommand.PlayFacedownAdviser(
           playerId, adviser, placement))
+      case GameCommand.ResolveFacedownAdviser(playerId, adviser, placement) =>
+        placement.fold(rules.handle(state,
+          MinorActionCommand.DiscardFacedownAdviser(playerId, adviser)))(selected =>
+          rules.handle(state, MinorActionCommand.PlayFacedownAdviser(
+            playerId, adviser, selected)))
       case GameCommand.PeekSiteRelics(playerId) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
       case GameCommand.RevealOwnedRelic(playerId, relic) =>
@@ -414,6 +419,8 @@ final class GameApplicationService(
       case GameCommand.Muster(actor, _) => Some(actor -> MajorActionKind.Muster)
       case GameCommand.Trade(actor, _, _) => Some(actor -> MajorActionKind.Trade)
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
+      case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
+        Some(actor -> MajorActionKind.Search)
       case GameCommand.BeginRecover(actor) => Some(actor -> MajorActionKind.Recover)
       case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>

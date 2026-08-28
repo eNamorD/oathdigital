@@ -51,6 +51,14 @@ private[protocol] object CommandIntentDecoders {
       adviser <- field(value, "adviser", path).flatMap(world(_, s"$path.adviser"))
       placement <- field(value, "placement", path).flatMap(place(_, s"$path.placement"))
     } yield PlayFacedownAdviser(adviser, placement)
+    case "resolveFacedownAdviser" => for {
+      _ <- exact(value, Set("type", "adviser", "placement"), path)
+      adviser <- field(value, "adviser", path).flatMap(world(_, s"$path.adviser"))
+      placement <- field(value, "placement", path).flatMap {
+        case ujson.Null => Right(None)
+        case selected => place(selected, s"$path.placement").map(Some(_))
+      }
+    } yield ResolveFacedownAdviser(adviser, placement)
     case "revealVision" => one(value, path, "visionId")(RevealVision)
     case "playConspiracy" => for {
       _ <- exact(value, Set("type", "target"), path)

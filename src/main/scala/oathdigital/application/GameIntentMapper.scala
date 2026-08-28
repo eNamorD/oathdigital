@@ -32,6 +32,10 @@ object GameIntentMapper {
       case Intent.PlaceBannerResource(value, amount) => banner(value).map(actor.placeBannerResource(_, amount))
       case Intent.DiscardFacedownAdviser(value) => world(value, "$.intent.adviser").map(actor.discardFacedownAdviser)
       case Intent.PlayFacedownAdviser(value, selected) => for { adviser <- world(value, "$.intent.adviser"); p <- placement(selected) } yield actor.playFacedownAdviser(adviser, p)
+      case Intent.ResolveFacedownAdviser(value, selected) => for {
+        adviser <- world(value, "$.intent.adviser")
+        p <- option(selected)(placement)
+      } yield actor.resolveFacedownAdviser(adviser, p)
       case Intent.RevealVision(id) => Right(actor.revealVision(VisionId(id)))
       case Intent.PlayConspiracy(value) => option(value)(conspiracy).map(actor.playConspiracy)
       case Intent.ChooseConspiracySecretSite(id, site) => Right(actor.chooseConspiracySecretSite(DecisionId(id), SiteId(site)))

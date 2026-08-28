@@ -27,6 +27,8 @@ object GameIntent {
   final case class DiscardFacedownAdviser(adviser: WorldCard) extends GameIntent
   final case class PlayFacedownAdviser(adviser: WorldCard, placement: Placement)
       extends GameIntent
+  final case class ResolveFacedownAdviser(adviser: WorldCard,
+      placement: Option[Placement]) extends GameIntent
   final case class RevealVision(visionId: String) extends GameIntent
   final case class PlayConspiracy(target: Option[ConspiracyTarget]) extends GameIntent
   final case class ChooseConspiracySecretSite(decisionId: String, siteId: String)
