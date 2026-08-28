@@ -463,8 +463,9 @@ private[frontend] object ActionDecisionRenderer {
            disclosures += ((recipient, kind, card, check))
          }
        }
-       val save = button(negotiationControlLabels(0), "negotiation-save")
-       save.disabled = !canControl
+       val save = button("Save Deal Changes", "negotiation-save")
+       save.disabled = !canControl ||
+         !value.legalControls.contains("replaceNegotiationTerms")
        save.onclick = _ => {
          val terms = NegotiationTermsInput(favors.map { case (recipient, input) =>
            NegotiationTransferInput(recipient, input.value.toInt,
@@ -479,17 +480,16 @@ private[frontend] object ActionDecisionRenderer {
            protocolNegotiationTerms(terms)))
        }
        panel.appendChild(save)
-       val accept = button(negotiationControlLabels(1), "negotiation-accept")
+       val accept = button("Accept Current Deal", "negotiation-accept")
        accept.disabled = !canControl ||
          !value.legalControls.contains("acceptNegotiation")
        accept.onclick = _ => submitCommand(GameCommand.AcceptNegotiation(
          deal.decisionId)); panel.appendChild(accept)
-       val decline = button(negotiationControlLabels(2), "negotiation-decline")
-       decline.disabled = !canControl
+       val decline = button("End/Decline", "negotiation-decline")
+       decline.disabled = !canControl ||
+         !value.legalControls.contains("declineNegotiation")
        decline.onclick = _ => submitCommand(GameCommand.DeclineNegotiation(
          deal.decisionId)); panel.appendChild(decline)
-     case None if value.negotiationWaiting =>
-       panel.appendChild(text("p", "informational", "Waiting for the negotiation to finish."))
      case _ => ()
    }
    value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>

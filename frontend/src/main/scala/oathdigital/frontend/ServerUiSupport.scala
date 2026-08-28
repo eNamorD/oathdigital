@@ -309,9 +309,6 @@ private[frontend] object ServerUiSupport {
     }
   }
 
-  private[frontend] val negotiationControlLabels: Vector[String] = Vector(
-    "Save Deal Changes", "Accept Current Deal", "End/Decline")
-
   private[frontend] def showNegotiationControls(
       value: GameProjection,
       presentation: ViewerPresentation

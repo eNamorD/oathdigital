@@ -415,9 +415,6 @@ class ServerModeUiSuite extends FunSuite {
     assert(ServerUiSupport.showNegotiationControls(participantView, offTurn))
     assertEquals(offTurn.waitingForPlayerId, None)
     assertEquals(offTurn.procedureStatus, Some("Negotiation in progress."))
-    assertEquals(ServerUiSupport.negotiationControlLabels,
-      Vector("Save Deal Changes", "Accept Current Deal", "End/Decline"))
-
     val nonparticipant = ServerUiSupport.viewerPresentation(
       participantView.copy(negotiation = None, negotiationWaiting = true), "yellow-exile")
     assert(!nonparticipant.showGameplayControls)
