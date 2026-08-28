@@ -273,7 +273,8 @@ private[frontend] object ServerUiSupport {
   private[frontend] final case class ViewerPresentation(
       showGameplayControls: Boolean,
       waitingForPlayerId: Option[String],
-      waitingForDisplayName: Option[String]
+      waitingForDisplayName: Option[String],
+      procedureStatus: Option[String] = None
   )
 
   private[frontend] def viewerPresentation(
@@ -283,6 +284,14 @@ private[frontend] object ServerUiSupport {
     if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = None, waitingForDisplayName = None)
+    if (value.negotiation.exists(_.participantPlayerIds.contains(playerId)))
+      return ViewerPresentation(showGameplayControls = true,
+        waitingForPlayerId = None, waitingForDisplayName = None,
+        procedureStatus = Some("Negotiation in progress."))
+    if (value.negotiationWaiting)
+      return ViewerPresentation(showGameplayControls = false,
+        waitingForPlayerId = None, waitingForDisplayName = None,
+        procedureStatus = Some("Waiting for the negotiation to finish."))
     val controllingPlayer = value.campaign.filter(!_.plansFinished)
       .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
     controllingPlayer match {
@@ -299,6 +308,14 @@ private[frontend] object ServerUiSupport {
       )
     }
   }
+
+  private[frontend] val negotiationControlLabels: Vector[String] = Vector(
+    "Save Deal Changes", "Accept Current Deal", "End/Decline")
+
+  private[frontend] def showNegotiationControls(
+      value: GameProjection,
+      presentation: ViewerPresentation
+  ): Boolean = value.negotiation.nonEmpty && presentation.showGameplayControls
 
   private[frontend] def showActActionControls(
       value: GameProjection,

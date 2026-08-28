@@ -6,7 +6,9 @@ private[frontend] object ActionDecisionRenderer {
    import ui._
    val node = element("div", "status")
    val presentation = viewerPresentation(value, currentPlayerId)
-   presentation.waitingForPlayerId match {
+   presentation.procedureStatus match {
+     case Some(message) => node.textContent = message
+     case None => presentation.waitingForPlayerId match {
      case Some(playerId) =>
        node.appendChild(dom.document.createTextNode("Waiting for "))
        node.appendChild(playerReference(value, playerId))
@@ -39,6 +41,7 @@ private[frontend] object ActionDecisionRenderer {
          case None => node.appendChild(dom.document.createTextNode("none"))
        }
      }
+   }
    node
  }
  def actionsPanel(
@@ -410,7 +413,7 @@ private[frontend] object ActionDecisionRenderer {
      }
    }
    value.negotiation match {
-     case Some(deal) if presentation.showGameplayControls =>
+     case Some(deal) if showNegotiationControls(value, presentation) =>
        panel.appendChild(text("h2", "", "Negotiation"))
        panel.appendChild(text("p", "negotiation-status",
          deal.participantPlayerIds.map(id => s"$id: ${if (deal.acceptedPlayerIds.contains(id))
@@ -460,7 +463,7 @@ private[frontend] object ActionDecisionRenderer {
            disclosures += ((recipient, kind, card, check))
          }
        }
-       val save = button("Save Deal Changes", "negotiation-save")
+       val save = button(negotiationControlLabels(0), "negotiation-save")
        save.disabled = !canControl
        save.onclick = _ => {
          val terms = NegotiationTermsInput(favors.map { case (recipient, input) =>
@@ -476,12 +479,12 @@ private[frontend] object ActionDecisionRenderer {
            protocolNegotiationTerms(terms)))
        }
        panel.appendChild(save)
-       val accept = button("Accept Current Deal", "negotiation-accept")
+       val accept = button(negotiationControlLabels(1), "negotiation-accept")
        accept.disabled = !canControl ||
          !value.legalControls.contains("acceptNegotiation")
        accept.onclick = _ => submitCommand(GameCommand.AcceptNegotiation(
          deal.decisionId)); panel.appendChild(accept)
-       val decline = button("End/Decline", "negotiation-decline")
+       val decline = button(negotiationControlLabels(2), "negotiation-decline")
        decline.disabled = !canControl
        decline.onclick = _ => submitCommand(GameCommand.DeclineNegotiation(
          deal.decisionId)); panel.appendChild(decline)

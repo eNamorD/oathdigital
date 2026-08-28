@@ -400,6 +400,34 @@ class ServerModeUiSuite extends FunSuite {
     )
   }
 
+  test("Negotiation participants control the procedure regardless of active turn") {
+    val deal = NegotiationState("deal", "red-exile", "site:1",
+      Vector("red-exile", "blue-exile"), Vector.empty, Vector.empty,
+      Vector.empty, 3, Vector.empty, Vector.empty, Vector.empty)
+    val participantView = projection(
+      Set("replaceNegotiationTerms", "acceptNegotiation", "declineNegotiation"))
+      .copy(negotiation = Some(deal))
+
+    val active = ServerUiSupport.viewerPresentation(participantView, "red-exile")
+    val offTurn = ServerUiSupport.viewerPresentation(participantView, "blue-exile")
+    assert(active.showGameplayControls)
+    assert(offTurn.showGameplayControls)
+    assert(ServerUiSupport.showNegotiationControls(participantView, offTurn))
+    assertEquals(offTurn.waitingForPlayerId, None)
+    assertEquals(offTurn.procedureStatus, Some("Negotiation in progress."))
+    assertEquals(ServerUiSupport.negotiationControlLabels,
+      Vector("Save Deal Changes", "Accept Current Deal", "End/Decline"))
+
+    val nonparticipant = ServerUiSupport.viewerPresentation(
+      participantView.copy(negotiation = None, negotiationWaiting = true), "yellow-exile")
+    assert(!nonparticipant.showGameplayControls)
+    assert(!ServerUiSupport.showNegotiationControls(
+      participantView.copy(negotiation = None, negotiationWaiting = true), nonparticipant))
+    assertEquals(nonparticipant.waitingForPlayerId, None)
+    assertEquals(nonparticipant.procedureStatus,
+      Some("Waiting for the negotiation to finish."))
+  }
+
   test("inactive Act viewer sees no action-selection controls") {
     val value = projection(Set("beginRest"), phase = "act-action-selection")
       .copy(actionSelectionOpen = true,

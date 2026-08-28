@@ -22,7 +22,7 @@ class NegotiationSuite extends munit.FunSuite {
     val players = base.game.current.players.zipWithIndex.map { case (p, index) =>
       p.copy(pawnSite = Some(siteId), board = p.board.copy(favor = 5),
         relics = Vector(RelicState(relics(index), Orientation.FaceDown,
-          Tokens(index, index + 1))))
+          if (index == 0) Tokens(0, 1) else Tokens.empty)))
     }
     val current = base.game.current.copy(players = players,
       map = base.game.current.map.copy(sites = base.game.current.map.sites.map {
@@ -123,6 +123,31 @@ class NegotiationSuite extends munit.FunSuite {
     assert(after.support.relicKnowledge(players(1).player)(site).contains(siteRelic))
     assert(!after.support.adviserKnowledge.getOrElse(players(2).player, Vector.empty)
       .contains(adviser))
+  }
+
+  test("projection gives every participant only participant Negotiation controls") {
+    val (base, players, _, _, _) = ready()
+    val started = begin(base, Vector(players(1).player))
+    val changed = Negotiation.handle(catalog, started.state,
+      NegotiationCommand.ReplaceTerms(players.head.player, DecisionId("deal"),
+        NegotiationTerms(Vector(NegotiationTransfer(players(1).player, 1,
+          Vector.empty))))).toOption.get
+    val projector = new oathdigital.application.GameProjector(catalog)
+    val loaded = oathdigital.application.LoadedGame(changed.state, 2)
+
+    val active = projector.project("deal", loaded, players.head.player)
+    val offTurn = projector.project("deal", loaded, players(1).player)
+    val nonparticipant = projector.project("deal", loaded, players(2).player)
+    Vector(active, offTurn).foreach { view =>
+      assert(view.negotiation.nonEmpty)
+      assert(view.legalControls.contains("replaceNegotiationTerms"))
+      assert(view.legalControls.contains("acceptNegotiation"))
+      assert(view.legalControls.contains("declineNegotiation"))
+      assert(!view.negotiationWaiting)
+    }
+    assertEquals(nonparticipant.negotiation, None)
+    assertEquals(nonparticipant.legalControls, Vector.empty)
+    assert(nonparticipant.negotiationWaiting)
   }
 
   test("information-for-assets deal supports held-relic disclosure") {
