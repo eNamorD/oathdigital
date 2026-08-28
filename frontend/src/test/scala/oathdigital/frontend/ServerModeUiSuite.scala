@@ -234,6 +234,14 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignRaid("red", raid.targets, 2)))
   }
 
+  test("available controls use durable ordered presentation categories") {
+    assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
+      Vector("Major actions", "Minor actions", "Powers"))
+    assertEquals(ServerUiSupport.actionCategory("travel"), "major")
+    assertEquals(ServerUiSupport.actionCategory("challenge"), "minor")
+    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "powers")
+  }
+
   test("Campaign placement distributes locally and clears stale context") {
     val context = BoardSelectionContext("game", "red", 9)
     val targets = Vector(CampaignPlacementTarget("site:a", "Site A"),
@@ -455,6 +463,19 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.candidateDetailText(candidate.copy(details = Vector.empty)), None)
   }
 
+  test("card-decision zone helpers are specific to starting advisers") {
+    val adviser = PendingCardDecision("d", "starting-adviser", "red", "Choose",
+      Vector.empty, Vector(CardDetails("a", "denizen", "A")), 1, 1, false, Map.empty)
+    val search = adviser.copy(kind = "search", prompt = "Resolve search",
+      orderingRequired = true)
+    assertEquals(ServerUiSupport.cardDecisionZoneHelpers(adviser),
+      ServerUiSupport.CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
+        "The remaining candidates are discarded in order."))
+    assertEquals(ServerUiSupport.cardDecisionZoneHelpers(search).discard,
+      "The remaining cards are discarded in order.")
+    assert(!ServerUiSupport.cardDecisionZoneHelpers(search).keep.contains("adviser"))
+  }
+
   test("targetable players and banners render exactly one detail badge") {
     val candidates = Vector(
       BoardTargetCandidate(BoardTargetRef.Player("blue"), "Blue", Vector("1 Favor")),
@@ -462,6 +483,19 @@ class ServerModeUiSuite extends FunSuite {
         "People's Favor", Vector("2 Defense", "3 Favor")))
     candidates.foreach(candidate => assertEquals(
       ServerUiSupport.candidateDetailBadgeTexts(candidate).size, 1))
+  }
+
+  test("shared-bank Challenge target identity selects only projected legal banners") {
+    val legal = BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")
+    val illegal = BoardTargetRef.PlayerBanner("shared-bank", "darkest-secret")
+    val action = BoardTargetAction("challenge", "Choose a banner", 1, 1,
+      autoActivate = false, Vector(BoardTargetCandidate(legal,
+        "People's Favor", Vector("1 Supply"))))
+    val state = BoardTargetSelectionState.reconcile(None,
+      BoardSelectionContext("game", "red", 2), Vector(action))
+      .activate("challenge")
+    assert(ServerUiSupport.candidateForTarget(Some(state), legal).nonEmpty)
+    assertEquals(ServerUiSupport.candidateForTarget(Some(state), illegal), None)
   }
 
   test("populated site details render properties, stable IDs, and hidden relics") {

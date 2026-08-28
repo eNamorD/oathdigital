@@ -1,7 +1,6 @@
 package oathdigital.frontend
 
 import org.scalajs.dom
-import oathdigital.protocol.projection.VisionCardPresentation
 import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer {
@@ -103,7 +102,6 @@ private[frontend] object WorldBoardRenderer {
    val panel = element("section", "panel world")
    panel.setAttribute("aria-label", "The World")
    panel.appendChild(text("h2", "", "The World"))
-   value.tracks.foreach(track => panel.appendChild(roundTracker(value, track)))
    panel.appendChild(pileDisplay("World deck", value.worldDeckCount,
      value.worldDeckTopCardKind))
    val regions = element("div", "regions")
@@ -168,10 +166,13 @@ private[frontend] object WorldBoardRenderer {
        sites.appendChild(control)
      }
      section.appendChild(sites)
+     if (region.regionId == "cradle")
+       value.tracks.foreach(track => section.appendChild(roundTracker(value, track)))
      regions.appendChild(section)
    }
    panel.appendChild(regions)
-   panel.appendChild(sharedBank(value))
+   panel.appendChild(favorBanks(value))
+   panel.appendChild(sharedBank(value, ui))
    panel
  }
 
@@ -237,27 +238,31 @@ private[frontend] object WorldBoardRenderer {
    section
  }
 
- private def sharedBank(value: GameProjection): dom.Element = {
-   val section = element("section", "shared-bank")
-   section.appendChild(text("h3", "", "Shared bank"))
+ private def favorBanks(value: GameProjection): dom.Element = {
    val banks = element("div", "favor-banks")
+   banks.setAttribute("aria-label", "Favor banks")
    value.favorBanks.foreach(bank => banks.appendChild(text("span",
      s"favor-bank suit-${bank.suit}", s"${bank.suit.capitalize}: ${bank.count}")))
-   section.appendChild(banks)
+   banks
+ }
+
+ private def sharedBank(value: GameProjection, ui: ServerUiView): dom.Element = {
+   val section = element("section", "shared-bank")
+   section.appendChild(text("h3", "", "Shared Bank"))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
-   value.banners.foreach(banner => section.appendChild(text("p",
-     s"shared-banner banner-${banner.key}",
-     s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-       s"resources ${banner.resources}")))
-   section.appendChild(text("p", "vision-rules", VisionCardPresentation.tableSummary))
+   value.banners.foreach { banner =>
+     val target = BoardTargetRef.PlayerBanner("shared-bank", banner.key)
+     section.appendChild(targetable(text("p", s"shared-banner banner-${banner.key}",
+       s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
+         s"resources ${banner.resources}"), target, ui))
+   }
    section
  }
 
  private def targetable(node: dom.Element, target: BoardTargetRef,
      ui: ServerUiView): dom.Element = {
    import ui._
-   currentBoardSelection.flatMap(_.activeAction).flatMap(_.candidates.find(
-     _.target == target)).foreach { candidate =>
+   candidateForTarget(currentBoardSelection, target).foreach { candidate =>
      node.classList.add("board-target")
      node.setAttribute("role", "button")
      node.setAttribute("tabindex", "0")

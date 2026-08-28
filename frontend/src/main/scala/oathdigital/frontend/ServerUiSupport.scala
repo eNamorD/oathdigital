@@ -173,6 +173,18 @@ private[frontend] object ServerUiSupport {
     inDiscard.arrangeDrop(cardId, Some(beforeCardId))
   }
 
+  private[frontend] final case class CardDecisionZoneHelpers(
+      keep: String, discard: String)
+
+  private[frontend] def cardDecisionZoneHelpers(
+      decision: PendingCardDecision): CardDecisionZoneHelpers =
+    if (decision.kind == "starting-adviser") CardDecisionZoneHelpers(
+      "Move exactly one adviser to Keep.",
+      "The remaining candidates are discarded in order.")
+    else CardDecisionZoneHelpers(
+      "Move the card you want to resolve to Keep.",
+      "The remaining cards are discarded in order.")
+
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
     val node = element("button", "card-detail")
     node.setAttribute("type", "button")
@@ -287,6 +299,33 @@ private[frontend] object ServerUiSupport {
     case other => other
   }
 
+  private[frontend] def actionCategory(kind: String): String = kind match {
+    case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
+        "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" => "major"
+    case "challenge" | "negotiation" | "reveal-vision" | "play-conspiracy" |
+        "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
+        "reveal-owned-relic" | "move-warbands" => "minor"
+    case _ => "powers"
+  }
+
+  private[frontend] val actionCategoryOrder: Vector[(String, String)] =
+    Vector("major" -> "Major actions", "minor" -> "Minor actions", "powers" -> "Powers")
+
+  private[frontend] final class ActionSections {
+    private val contents = scala.collection.mutable.Map.empty[String, dom.Element]
+    def append(category: String, node: dom.Node): Unit = {
+      val section = contents.getOrElseUpdate(category, element("section",
+        s"available-action-group action-group-$category"))
+      section.appendChild(node)
+    }
+    def appendTo(panel: dom.Element): Unit = actionCategoryOrder.foreach { case (key, heading) =>
+      contents.get(key).foreach { section =>
+        section.insertBefore(text("h3", "action-group-heading", heading), section.firstChild)
+        panel.appendChild(section)
+      }
+    }
+  }
+
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
     if (action.maximum == 0) "No target is available; confirm to play this action."
     else if (action.maximum == 1) "Choose one target. Selection submits immediately."
@@ -302,6 +341,11 @@ private[frontend] object ServerUiSupport {
   private[frontend] def candidateDetailBadgeTexts(
       candidate: BoardTargetCandidate): Vector[String] =
     candidateDetailText(candidate).toVector
+
+  private[frontend] def candidateForTarget(
+      selection: Option[BoardTargetSelectionState],
+      target: BoardTargetRef): Option[BoardTargetCandidate] =
+    selection.flatMap(_.activeAction.flatMap(_.candidates.find(_.target == target)))
 
   private[frontend] def candidateDetailBadge(
       candidate: BoardTargetCandidate): Option[dom.Element] =

@@ -222,7 +222,7 @@ private[frontend] object ActionDecisionRenderer {
          panel.appendChild(confirm)
        }
      } else {
-       value.legalSearchSources.foreach { source =>
+       val groups = new ActionSections; value.legalSearchSources.foreach { source =>
          val label = source.kind match {
            case "world" => s"Search world deck (${source.supplyCost} Supply)"
            case _ => s"Search ${source.region.getOrElse("regional")} discard " +
@@ -232,19 +232,19 @@ private[frontend] object ActionDecisionRenderer {
          search.disabled = !canControl || !presentation.showGameplayControls
          search.onclick = _ => submitCommand(GameCommand.BeginSearch(
            SearchSource(source.kind, source.region)))
-         panel.appendChild(search)
+         groups.append("major", search)
        }
        if (value.legalControls.contains("beginRecover")) {
          val recover = button("Recover (1 Supply)", "act-action recover-action")
          recover.disabled = !canControl
          recover.onclick = _ => submitCommand(GameCommand.BeginRecover)
-         panel.appendChild(recover)
+         groups.append("major", recover)
        }
        if (value.legalControls.contains("beginForge")) {
          val forge = button("Forge (1 Supply)", "act-action forge-action")
          forge.disabled = !canControl
          forge.onclick = _ => submitCommand(GameCommand.BeginForge)
-         panel.appendChild(forge)
+         groups.append("major", forge)
        }
        if (value.legalControls.contains("placeBannerResource")) {
          value.banners.filter(_.holderPlayerId.contains(currentPlayerId)).foreach { banner =>
@@ -253,17 +253,17 @@ private[frontend] object ActionDecisionRenderer {
            val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
            amount.`type` = "number"; amount.min = "1"; amount.value = "1"
            amount.setAttribute("aria-label", s"Resources to add to ${actionLabel(banner.banner)}")
-           label.appendChild(amount); panel.appendChild(label)
+           label.appendChild(amount); groups.append("minor", label)
            val place = button("Place resources (0 Supply)", "banner-place-resource")
            place.disabled = !canControl
            place.onclick = _ => submitCommand(GameCommand.PlaceBannerResource(
              banner.banner, amount.value.toInt))
-           panel.appendChild(place)
+           groups.append("minor", place)
          }
        }
        value.minorActions.foreach { minor =>
          if (minor.advisers.nonEmpty) {
-           panel.appendChild(text("h2", "", "Facedown advisers"))
+           groups.append("minor", text("h4", "", "Facedown advisers"))
            minor.advisers.foreach { adviser =>
              adviser.placements.foreach { placement =>
                val label = placement.kind match {
@@ -277,7 +277,7 @@ private[frontend] object ActionDecisionRenderer {
                control.disabled = !canControl
                control.onclick = _ => minorAdviserCommand(
                  adviser, placement, currentPlayerId).foreach(submitCommand)
-               panel.appendChild(control)
+               groups.append("minor", control)
              }
            }
          }
@@ -285,13 +285,13 @@ private[frontend] object ActionDecisionRenderer {
            val peek = button("Peek at relics at your site", "minor-peek-relics")
            peek.disabled = !canControl
            peek.onclick = _ => submitCommand(GameCommand.PeekSiteRelics)
-           panel.appendChild(peek)
+           groups.append("minor", peek)
          }
          minor.facedownRelics.foreach { relic =>
            val reveal = button(s"Reveal ${relic.name}", "minor-reveal-relic")
            reveal.disabled = !canControl
            reveal.onclick = _ => submitCommand(GameCommand.RevealOwnedRelic(relic.cardId))
-           panel.appendChild(reveal)
+           groups.append("minor", reveal)
          }
          Vector(true -> minor.maxBoardToSite, false -> minor.maxSiteToBoard)
            .filter(_._2 > 0).foreach { case (toSite, maximum) =>
@@ -301,12 +301,12 @@ private[frontend] object ActionDecisionRenderer {
              val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
              amount.`type` = "number"; amount.min = "1"; amount.max = maximum.toString
              amount.value = "1"; amount.setAttribute("aria-label", label.textContent)
-             label.appendChild(amount); panel.appendChild(label)
+             label.appendChild(amount); groups.append("minor", label)
              val move = button("Move warbands", "minor-move-warband")
              move.disabled = !canControl
              move.onclick = _ => submitCommand(GameCommand.MoveWarbands(
                toSite, amount.value.toInt))
-             panel.appendChild(move)
+             groups.append("minor", move)
            }
        }
        value.boardTargetActions.filterNot(_.autoActivate).foreach { action =>
@@ -328,8 +328,9 @@ private[frontend] object ActionDecisionRenderer {
              }
            }
          }
-         panel.appendChild(control)
+         groups.append(actionCategory(action.actionKind), control)
        }
+       groups.appendTo(panel)
        panel.appendChild(text("p", "informational",
          "Other normal action families are not yet implemented."))
        if (value.legalControls.contains("beginRest")) {
@@ -645,7 +646,7 @@ private[frontend] object ActionDecisionRenderer {
    shell.setAttribute("aria-labelledby", "card-decision-title")
    shell.setAttribute("data-decision-kind", decision.kind); shell.appendChild(text("h2", "", decision.prompt))
    shell.lastChild.asInstanceOf[dom.Element].id = "card-decision-title"
-   decision.instructions.foreach(instruction =>
+   if (decision.kind != "starting-adviser") decision.instructions.foreach(instruction =>
      shell.appendChild(text("p", "decision-instruction", instruction)))
    val state = currentCardDecision.filter(_.decisionId == decision.decisionId)
      .getOrElse(CardDecisionState.initial(decision))
@@ -693,9 +694,10 @@ private[frontend] object ActionDecisionRenderer {
      node
    }
    def arrangementZones(showDiscardOrder: Boolean): dom.Element = {
+     val helpers = cardDecisionZoneHelpers(decision)
      val zones = element("div", "decision-zones")
      val keep = element("section", "decision-zone keep-zone")
-     keep.appendChild(text("h3", "", "Keep"))
+     keep.appendChild(text("h3", "", "Keep")); keep.appendChild(text("p", "decision-zone-helper", helpers.keep))
      state.keep.foreach(card => keep.appendChild(cardNode(card, "keep")))
      keep.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
      keep.addEventListener("drop", (event: dom.Event) => {
@@ -703,10 +705,11 @@ private[frontend] object ActionDecisionRenderer {
        update(dropOnKeep(state, event.asInstanceOf[dom.DragEvent]
          .dataTransfer.getData("text/plain")))
      })
-     val discard = element("section", "decision-zone discard-zone")
-     discard.appendChild(text("h3", "", "Discard"))
-     if (showDiscardOrder) discard.appendChild(text("p", "discard-order",
-       "Remaining cards are discarded from left to right."))
+     val discard = element("section", "decision-zone discard-zone"); val discardHeading = element("div", "decision-zone-heading")
+     discardHeading.appendChild(text("h3", "", "Discard"))
+     if (showDiscardOrder || decision.kind == "starting-adviser")
+       discardHeading.appendChild(text("p", "decision-zone-helper", helpers.discard))
+     discard.appendChild(discardHeading)
      state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
      discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
      discard.addEventListener("drop", (event: dom.Event) => {
