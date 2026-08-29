@@ -14,7 +14,7 @@ object PlayerResourceSources {
     ready.game.current.players.find(_.player == playerId).toRight(
       s"unknown player ${playerId.value}")
 
-  /** Printed access set used for the active player's commitments and Rest. */
+  /** Printed access set used by actions whose legality depends on access. */
   def discover(ready: ReadyGame,
       playerId: PlayerId): Either[String, PlayerResourceSources] = player(ready,
     playerId).map { resolved =>

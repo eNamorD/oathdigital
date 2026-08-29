@@ -72,8 +72,8 @@ object Rest {
           if (wanted != recorded)
             Left(RestOutcomeMismatch(s"expected $wanted but recorded $recorded"))
           else RestCleanupPlan.derive(catalog, ready, recorded.playerId)
-            .left.map(UnsupportedRestState).map(plan =>
-              Ready(applyCompletion(ready, recorded, plan)))
+            .left.map(UnsupportedRestState).map(_ =>
+              Ready(applyCompletion(ready, recorded)))
         }
       }
     case _ => Left(InvalidEventOrder("Rest received a non-Rest event"))
@@ -153,31 +153,35 @@ object Rest {
     }
   }
 
-  private def applyCompletion(ready: ReadyGame, event: RestCompleted,
-      plan: RestCleanupPlan): ReadyGame = {
+  private def applyCompletion(ready: ReadyGame, event: RestCompleted): ReadyGame = {
     val current = ready.game.current
     def clear(card: SiteDenizenState): SiteDenizenState = card match {
       case value: DenizenState => value.copy(tokens = Tokens.empty)
       case value: EdificeState => value.copy(tokens = Tokens.empty)
     }
     val players = current.players.map { candidate =>
-      if (candidate.player != event.playerId) candidate
-      else candidate.copy(
-        board = candidate.board.copy(
+      val board = if (candidate.player == event.playerId)
+        candidate.board.copy(
           faceUpSecrets = candidate.board.faceUpSecrets +
             candidate.board.faceDownSecrets + event.returnedSecrets,
           faceDownSecrets = 0,
-          supply = SupplyTrack(event.refreshedSupply)),
+          supply = SupplyTrack(event.refreshedSupply))
+      else candidate.board
+      candidate.copy(
+        board = board,
         advisers = candidate.advisers.map {
-          case value: DenizenState if plan.adviserIds(value.id) =>
+          case value: DenizenState =>
             value.copy(tokens = Tokens.empty)
           case other => other
         },
-        relics = candidate.relics.map(relic => if (plan.relicIds(relic.id))
-          relic.copy(tokens = Tokens(relic.tokens.favor, 0)) else relic))
+        relics = candidate.relics.map(relic =>
+          relic.copy(tokens = Tokens(relic.tokens.favor, 0))))
     }
     val sites = current.map.sites.map { case (id, site) =>
-      id -> (if (plan.siteIds(id)) site.copy(denizens = site.denizens.map(clear)) else site)
+      id -> site.copy(
+        denizens = site.denizens.map(clear),
+        relics = site.relics.map(relic =>
+          relic.copy(tokens = Tokens(relic.tokens.favor, 0))))
     }
     val support = ready.support.copy(favorBanks = event.returnedFavor.foldLeft(
       ready.support.favorBanks) { case (banks, (suit, amount)) =>

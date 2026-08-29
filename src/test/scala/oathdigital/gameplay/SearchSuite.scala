@@ -22,6 +22,18 @@ class SearchSuite extends munit.FunSuite {
   private def active(ready: ReadyGame) = ready.game.current.players.find(
     _.player == ready.game.current.turn.activePlayer).get
 
+  test("world Search cost follows the Visions Drawn track bands") {
+    Vector(0 -> 2, 1 -> 3, 2 -> 3, 3 -> 4, 4 -> 4, 5 -> 4).foreach {
+      case (visions, expected) =>
+        val ready = act.copy(game = act.game.copy(current = act.game.current.copy(
+          tracks = act.game.current.tracks.copy(visionsDrawn = visions))))
+        assertEquals(SearchRules.cost(ready, SearchSource.WorldDeck, Region.Cradle),
+          Right(expected), s"Visions Drawn $visions")
+        assertEquals(SearchRules.cost(ready,
+          SearchSource.RegionalDiscard(Region.Cradle), Region.Cradle), Right(2))
+    }
+  }
+
   test("world Search spends track cost draws in order and stops on a Vision") {
     val base = act
     val player = active(base)

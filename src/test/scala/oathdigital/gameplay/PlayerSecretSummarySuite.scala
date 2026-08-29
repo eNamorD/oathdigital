@@ -57,32 +57,33 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       actor.player).toOption.get.committed, 1)
   }
 
-  test("inactive adviser secret commitment is a derivation failure") {
+  test("active total includes a committed secret on another player's adviser") {
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val card = DenizenState(DenizenId(catalog.denizens.head.id.value),
       Orientation.FaceUp, Tokens(0, 1))
     val corrupt = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p => if (p.player == inactive.player)
         p.copy(advisers = Vector(card)) else p))))
-    val failure = PlayerSecretSummary.derive(corrupt, inactive.player).left.toOption.get
-    assert(failure.contains("inactive player"))
-    assert(failure.contains("advisers=1"))
+    assertEquals(PlayerSecretSummary.derive(corrupt,
+      actor.player).toOption.get.committed, 1)
+    assertEquals(PlayerSecretSummary.derive(corrupt,
+      inactive.player).toOption.get.committed, 0)
   }
 
-  test("inactive relic secret commitment is a derivation failure") {
+  test("active total includes a committed secret on another player's relic") {
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceUp, Tokens(0, 2))
     val corrupt = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p => if (p.player == inactive.player)
         p.copy(relics = Vector(relic)) else p))))
-    val failure = PlayerSecretSummary.derive(corrupt, inactive.player).left.toOption.get
-    assert(failure.contains("inactive player"))
-    assert(failure.contains("relics=2"))
-    val projected = intercept[IllegalStateException] {
-      new oathdigital.application.GameProjector(catalog).projectPublic(
-        "corrupt-secrets", oathdigital.application.LoadedGame(Ready(corrupt), 9L))
-    }
-    assert(projected.getMessage.contains("ambiguous committed secrets"))
+    assertEquals(PlayerSecretSummary.derive(corrupt,
+      actor.player).toOption.get.committed, 2)
+    assertEquals(PlayerSecretSummary.derive(corrupt,
+      inactive.player).toOption.get.committed, 0)
+    val projected = new oathdigital.application.GameProjector(catalog).projectPublic(
+      "cross-player-secrets", oathdigital.application.LoadedGame(Ready(corrupt), 9L))
+    assertEquals(projected.playerBoards.find(_.playerId == actor.player.value)
+      .map(_.committedSecrets), Some(2))
   }
 }

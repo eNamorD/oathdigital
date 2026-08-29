@@ -70,7 +70,7 @@ class RestSuite extends munit.FunSuite {
       prepared.support.favorBanks.values.sum + 3)
   }
 
-  test("Rest cleans pawn site without rule once and all other authoritative sources") {
+  test("Rest globally cleans every in-play denizen and relic") {
     val base = act
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
@@ -95,6 +95,12 @@ class RestSuite extends munit.FunSuite {
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceUp, Tokens(7, 2))
     val otherBefore = base.game.current.players.find(_.player != actor.player).get
+    val otherAdviser = DenizenState(DenizenId(catalog.denizens.drop(4).head.id.value),
+      Orientation.FaceUp, Tokens(5, 5))
+    val otherRelic = RelicState(RelicId(catalog.relics.drop(1).head.id.value),
+      Orientation.FaceUp, Tokens(0, 6))
+    val siteRelic = RelicState(RelicId(catalog.relics.drop(2).head.id.value),
+      Orientation.FaceDown, Tokens(0, 7))
     val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites
         .updated(pawn, base.game.current.map.sites(pawn).copy(
@@ -105,14 +111,18 @@ class RestSuite extends munit.FunSuite {
           denizens = Vector(ruledCard)))
         .updated(outside, base.game.current.map.sites(outside).copy(
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
-          denizens = Vector(outsideCard)))),
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
-          relics = Vector(relic)) else p))))
+          denizens = Vector(outsideCard), relics = Vector(siteRelic)))),
+      players = base.game.current.players.map { p =>
+        if (p.player == actor.player)
+          p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
+            relics = Vector(relic))
+        else if (p.player == otherBefore.player)
+          p.copy(advisers = Vector(otherAdviser), relics = Vector(otherRelic))
+        else p
+      })))
     val plan = RestCleanupPlan.derive(catalog, prepared, actor.player).toOption.get
-    assertEquals(plan.siteIds, Set(pawn, ruled))
-    assertEquals(plan.returnedSecrets, 9)
-    assertEquals(plan.returnedFavor.values.sum, 7)
+    assertEquals(plan.returnedSecrets, 31)
+    assertEquals(plan.returnedFavor.values.sum, 16)
     val began = rules.handle(Ready(prepared), RestCommand.Begin(actor.player)).toOption.get
     val finished = rules.handle(began.state, RestCommand.Finish(actor.player)).toOption.get
     val Ready(after) = finished.state: @unchecked
@@ -125,15 +135,20 @@ class RestSuite extends munit.FunSuite {
     assertEquals(rested.relics.head.tokens, Tokens(7, 0))
     assert(after.game.current.map.sites(pawn).denizens.forall(_.tokens.isEmpty))
     assert(after.game.current.map.sites(ruled).denizens.forall(_.tokens.isEmpty))
-    assertEquals(after.game.current.map.sites(outside).denizens.head.tokens,
-      outsideCard.tokens)
+    assert(after.game.current.map.sites(outside).denizens.forall(_.tokens.isEmpty))
+    assertEquals(after.game.current.map.sites(outside).relics.head.tokens,
+      Tokens.empty)
     plan.returnedFavor.foreach { case (suit, amount) =>
       assertEquals(after.support.favorBanks(suit),
         prepared.support.favorBanks(suit) + amount)
     }
     assert(plan.returnedFavor.size >= 2)
-    assertEquals(after.game.current.players.find(_.player == otherBefore.player).get,
-      otherBefore)
+    val otherAfter = after.game.current.players.find(_.player == otherBefore.player).get
+    assertEquals(otherAfter.board, otherBefore.board)
+    assert(otherAfter.advisers.collect {
+      case denizen: DenizenState => denizen.tokens
+    }.forall(_.isEmpty))
+    assert(otherAfter.relics.forall(_.tokens.isEmpty))
   }
 
   test("replay validates recorded Rest outcome and advances the round") {

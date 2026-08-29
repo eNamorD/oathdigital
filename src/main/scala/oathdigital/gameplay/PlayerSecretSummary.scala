@@ -10,23 +10,11 @@ final case class PlayerSecretSummary(available: Int, facedown: Int, committed: I
 
 object PlayerSecretSummary {
   def derive(ready: ReadyGame, playerId: PlayerId): Either[String, PlayerSecretSummary] = {
-    val active = ready.game.current.turn.activePlayer == playerId
-    if (active) PlayerResourceSources.discover(ready, playerId).map { sources =>
-      val committed = sources.adviserDenizens.map(_.tokens.secrets).sum +
-        sources.heldRelics.map(_.tokens.secrets).sum +
-        sources.siteCards.map(_.tokens.secrets).sum
-      PlayerSecretSummary(sources.player.board.faceUpSecrets,
-        sources.player.board.faceDownSecrets, committed)
-    } else PlayerResourceSources.player(ready, playerId).flatMap { player =>
-      val adviserSecrets = player.advisers.collect {
-        case value: DenizenState => value.tokens.secrets
-      }.sum
-      val relicSecrets = player.relics.map(_.tokens.secrets).sum
-      Either.cond(adviserSecrets == 0 && relicSecrets == 0,
-        PlayerSecretSummary(player.board.faceUpSecrets,
-          player.board.faceDownSecrets, committed = 0),
-        s"inactive player ${playerId.value} has ambiguous committed secrets " +
-          s"on owned cards (advisers=$adviserSecrets, relics=$relicSecrets)")
+    PlayerResourceSources.player(ready, playerId).map { player =>
+      val committed = if (ready.game.current.turn.activePlayer == playerId)
+        InPlayCardResources.discover(ready).secrets else 0
+      PlayerSecretSummary(player.board.faceUpSecrets,
+        player.board.faceDownSecrets, committed)
     }
   }
 }

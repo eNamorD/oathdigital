@@ -162,7 +162,11 @@ object SearchRules {
       origin: Region
   ): Either[OathViolation, Int] = source match {
     case SearchSource.WorldDeck =>
-      Right(math.min(4, 2 + ready.game.current.tracks.visionsDrawn))
+      Right(ready.game.current.tracks.visionsDrawn match {
+        case 0 => 2
+        case 1 | 2 => 3
+        case _ => 4
+      })
     case SearchSource.RegionalDiscard(region) if region == origin => Right(2)
     case SearchSource.RegionalDiscard(_) => Left(SearchSourceUnavailable(source))
   }
