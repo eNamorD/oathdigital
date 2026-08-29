@@ -4,7 +4,8 @@ import oathdigital.gameplay.RuleSourceRef
 import oathdigital.model.PlayerId
 
 final case class PowerId(value: String) {
-  require(value.trim.nonEmpty, "power ID must not be blank")
+  require(value.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
+    s"invalid stable power ID $value")
 }
 
 sealed trait MajorActionType extends Product with Serializable { def key: String }
@@ -22,59 +23,75 @@ object MajorActionType {
     Search, Travel, Campaign, Muster, Trade, Forge, Recover, Challenge)
 }
 
-/** A procedure point, not a persistence or relevance category. */
-sealed trait PowerWindow extends Product with Serializable { def key: String }
+/** A procedure point, not a persistence or relevance category. The stable key
+  * is presentation/serialization data; semantic validation uses the typed
+  * major-action association.
+  */
+sealed trait PowerWindow extends Product with Serializable {
+  def key: String
+  def associatedMajorAction: Option[MajorActionType]
+}
 object PowerWindow {
-  case object SearchActionEligibility extends PowerWindow { val key = "search.action-eligibility" }
-  case object SearchModifierSelection extends PowerWindow { val key = "search.modifier-selection" }
-  case object TravelActionEligibility extends PowerWindow { val key = "travel.action-eligibility" }
-  case object TravelModifierSelection extends PowerWindow { val key = "travel.modifier-selection" }
-  case object CampaignActionEligibility extends PowerWindow { val key = "campaign.action-eligibility" }
-  case object CampaignModifierSelection extends PowerWindow { val key = "campaign.modifier-selection" }
-  case object MusterActionEligibility extends PowerWindow { val key = "muster.action-eligibility" }
-  case object MusterModifierSelection extends PowerWindow { val key = "muster.modifier-selection" }
-  case object TradeActionEligibility extends PowerWindow { val key = "trade.action-eligibility" }
-  case object TradeModifierSelection extends PowerWindow { val key = "trade.modifier-selection" }
-  case object ForgeActionEligibility extends PowerWindow { val key = "forge.action-eligibility" }
-  case object ForgeModifierSelection extends PowerWindow { val key = "forge.modifier-selection" }
-  case object RecoverActionEligibility extends PowerWindow { val key = "recover.action-eligibility" }
-  case object RecoverModifierSelection extends PowerWindow { val key = "recover.modifier-selection" }
-  case object ChallengeActionEligibility extends PowerWindow { val key = "challenge.action-eligibility" }
-  case object ChallengeModifierSelection extends PowerWindow { val key = "challenge.modifier-selection" }
-  case object WakeTakeWealth extends PowerWindow { val key = "wake.take-wealth" }
-  case object SearchEligibility extends PowerWindow { val key = "search.eligibility" }
-  case object SearchCost extends PowerWindow { val key = "search.cost" }
-  case object SearchBeforeDraw extends PowerWindow { val key = "search.before-draw" }
-  case object SearchPlayToSite extends PowerWindow { val key = "search.play-to-site" }
-  case object SearchPlayFacedownAdviser extends PowerWindow {
+  sealed trait SearchWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Search) }
+  sealed trait TravelWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Travel) }
+  sealed trait CampaignWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Campaign) }
+  sealed trait MusterWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Muster) }
+  sealed trait TradeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Trade) }
+  sealed trait ForgeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Forge) }
+  sealed trait RecoverWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Recover) }
+  sealed trait ChallengeWindow extends PowerWindow { final val associatedMajorAction = Some(MajorActionType.Challenge) }
+  sealed trait OtherWindow extends PowerWindow { final val associatedMajorAction = None }
+
+  case object SearchActionEligibility extends SearchWindow { val key = "search.action-eligibility" }
+  case object SearchModifierSelection extends SearchWindow { val key = "search.modifier-selection" }
+  case object TravelActionEligibility extends TravelWindow { val key = "travel.action-eligibility" }
+  case object TravelModifierSelection extends TravelWindow { val key = "travel.modifier-selection" }
+  case object CampaignActionEligibility extends CampaignWindow { val key = "campaign.action-eligibility" }
+  case object CampaignModifierSelection extends CampaignWindow { val key = "campaign.modifier-selection" }
+  case object MusterActionEligibility extends MusterWindow { val key = "muster.action-eligibility" }
+  case object MusterModifierSelection extends MusterWindow { val key = "muster.modifier-selection" }
+  case object TradeActionEligibility extends TradeWindow { val key = "trade.action-eligibility" }
+  case object TradeModifierSelection extends TradeWindow { val key = "trade.modifier-selection" }
+  case object ForgeActionEligibility extends ForgeWindow { val key = "forge.action-eligibility" }
+  case object ForgeModifierSelection extends ForgeWindow { val key = "forge.modifier-selection" }
+  case object RecoverActionEligibility extends RecoverWindow { val key = "recover.action-eligibility" }
+  case object RecoverModifierSelection extends RecoverWindow { val key = "recover.modifier-selection" }
+  case object ChallengeActionEligibility extends ChallengeWindow { val key = "challenge.action-eligibility" }
+  case object ChallengeModifierSelection extends ChallengeWindow { val key = "challenge.modifier-selection" }
+  case object WakeTakeWealth extends OtherWindow { val key = "wake.take-wealth" }
+  case object SearchEligibility extends SearchWindow { val key = "search.eligibility" }
+  case object SearchCost extends SearchWindow { val key = "search.cost" }
+  case object SearchBeforeDraw extends SearchWindow { val key = "search.before-draw" }
+  case object SearchPlayToSite extends SearchWindow { val key = "search.play-to-site" }
+  case object SearchPlayFacedownAdviser extends SearchWindow {
     val key = "search.play-facedown-adviser"
   }
-  case object TravelCost extends PowerWindow { val key = "travel.cost" }
-  case object CampaignBeforeTargets extends PowerWindow {
+  case object TravelCost extends TravelWindow { val key = "travel.cost" }
+  case object CampaignBeforeTargets extends CampaignWindow {
     val key = "campaign.before-targets"
   }
-  case object CampaignAttackerBattlePlans extends PowerWindow {
+  case object CampaignAttackerBattlePlans extends CampaignWindow {
     val key = "campaign.attacker-battle-plans"
   }
-  case object CampaignDefenderBattlePlans extends PowerWindow {
+  case object CampaignDefenderBattlePlans extends CampaignWindow {
     val key = "campaign.defender-battle-plans"
   }
-  case object CampaignAfterOutcome extends PowerWindow {
+  case object CampaignAfterOutcome extends CampaignWindow {
     val key = "campaign.after-outcome"
   }
-  case object MusterCost extends PowerWindow { val key = "muster.cost" }
-  case object TradeCost extends PowerWindow { val key = "trade.cost" }
-  case object ForgeCost extends PowerWindow { val key = "forge.cost" }
-  case object RecoverEligibility extends PowerWindow { val key = "recover.eligibility" }
-  case object RecoverBeforeFirstRoll extends PowerWindow {
+  case object MusterCost extends MusterWindow { val key = "muster.cost" }
+  case object TradeCost extends TradeWindow { val key = "trade.cost" }
+  case object ForgeCost extends ForgeWindow { val key = "forge.cost" }
+  case object RecoverEligibility extends RecoverWindow { val key = "recover.eligibility" }
+  case object RecoverBeforeFirstRoll extends RecoverWindow {
     val key = "recover.before-first-roll"
   }
-  case object RecoverAfterRelic extends PowerWindow { val key = "recover.after-relic" }
-  case object RestStart extends PowerWindow { val key = "rest.start" }
-  case object RestReturnFavor extends PowerWindow { val key = "rest.return-favor" }
-  case object RestReturnSecrets extends PowerWindow { val key = "rest.return-secrets" }
-  case object RestEnd extends PowerWindow { val key = "rest.end" }
-  case object NegotiationOffer extends PowerWindow { val key = "negotiation.offer" }
+  case object RecoverAfterRelic extends RecoverWindow { val key = "recover.after-relic" }
+  case object RestStart extends OtherWindow { val key = "rest.start" }
+  case object RestReturnFavor extends OtherWindow { val key = "rest.return-favor" }
+  case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }
+  case object RestEnd extends OtherWindow { val key = "rest.end" }
+  case object NegotiationOffer extends OtherWindow { val key = "negotiation.offer" }
 }
 
 sealed trait PowerResolution extends Product with Serializable
@@ -102,10 +119,8 @@ final case class PowerDefinition(
 }
 
 object PowerDefinition {
-  private def belongsTo(action: MajorActionType, window: PowerWindow): Boolean = {
-    val prefix = action.key + "."
-    window.key.startsWith(prefix)
-  }
+  private def belongsTo(action: MajorActionType, window: PowerWindow): Boolean =
+    window.associatedMajorAction.contains(action)
 }
 
 final case class PowerInspection(
@@ -118,17 +133,24 @@ final case class PowerInspection(
   * Their typed costs, targets, contributions, and effects remain owned there.
   */
 trait PowerFacts extends Product with Serializable
+case object NoFacts extends PowerFacts
 
 final case class PowerContext(window: PowerWindow, source: RuleSourceRef,
     facts: PowerFacts)
 
-trait PowerHandler {
+trait PowerInspector {
   def inspect(context: PowerContext): PowerInspection
 }
 
+/** Marker for procedure-owned executable mechanics. Concrete action modules
+  * define and interpret their own typed handler/effect vocabulary.
+  */
+trait PowerHandler
+
 final case class RegisteredPower(
     definition: PowerDefinition,
-    handler: Option[PowerHandler]
+    inspector: PowerInspector,
+    implementation: Option[PowerHandler]
 )
 
 final case class PowerInvocation(source: RuleSourceRef, powerId: PowerId,

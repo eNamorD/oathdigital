@@ -25,11 +25,11 @@ final class PowerResolver(registry: PowerRegistry) {
       Right(PowerResolutionResult(Vector.empty, Vector.empty, Vector.empty))) {
       case (result, (source, id)) => result.flatMap { current =>
         registry.lookup(id).toRight(UnknownAbility(source, id)).map { registered =>
-          registered.handler match {
-            case Some(handler) =>
-              val inspection = handler.inspect(PowerContext(window, source, facts))
-              if (!inspection.applicable) current
-              else registered.definition.resolution match {
+          val inspection = registered.inspector.inspect(
+            PowerContext(window, source, facts))
+          if (!inspection.applicable) current
+          else registered.implementation match {
+            case Some(_) => registered.definition.resolution match {
                 case PlayerSelected => current.copy(offered = current.offered :+
                   PowerInvocation(source, id, inspection))
                 case Automatic => current.copy(automatic = current.automatic :+
@@ -38,7 +38,7 @@ final class PowerResolver(registry: PowerRegistry) {
             case None if registered.definition.resolution == Automatic =>
               current.copy(diagnostics = current.diagnostics :+ PowerDiagnostic(
                 source, id, window, "reviewed-unimplemented-pre-alpha-fallback"))
-            case None => current // selected, unimplemented powers are not offered
+            case None => current // applicable selected, unimplemented powers are omitted
           }
         }
       }
