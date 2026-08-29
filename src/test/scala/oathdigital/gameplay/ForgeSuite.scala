@@ -8,6 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
+import oathdigital.catalog.CatalogPower
 
 class ForgeSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -136,8 +137,8 @@ class ForgeSuite extends munit.FunSuite {
     val active = targets.head.denizenId
     val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
       if (definition.id.value != active.value) definition
-      else definition.copy(handlers = definition.handlers :+
-        "denizen.future-forge-interaction")
+      else definition.copy(powers = definition.powers :+ CatalogPower(
+        "denizen.future-forge-interaction", persistent = false, ""))
     })
     assert(ForgeRules.validate(altered, ready, actor, site).left.toOption.get
       .isInstanceOf[UnsupportedRuleCatalog])

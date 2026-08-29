@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.1.0",
+  "schemaVersion": "1.2.0",
   "catalogVersion": "fixture-1",
   "denizens": [
     {
@@ -7,10 +7,13 @@
       "name": "Fixture Denizen",
       "suit": "arcane",
       "restrictions": null,
-      "handlers": [
-        "denizen.fixture-denizen"
-      ],
-      "rulesText": "ACTION: Perform the fixture action."
+      "powers": [
+        {
+          "id": "denizen.fixture-denizen",
+          "persistent": false,
+          "rulesText": "ACTION: Perform the fixture action."
+        }
+      ]
     }
   ],
   "relics": [
@@ -20,10 +23,13 @@
       "role": "ordinary",
       "value": 42,
       "defense": 2,
-      "handlers": [
-        "relic.fixture-relic"
-      ],
-      "rulesText": "Use the fixture relic."
+      "powers": [
+        {
+          "id": "relic.fixture-relic",
+          "persistent": false,
+          "rulesText": "Use the fixture relic."
+        }
+      ]
     }
   ],
   "edifices": [
@@ -33,17 +39,23 @@
       "restrictions": null,
       "intact": {
         "name": "Fixture Edifice",
-        "handlers": [
-          "edifice.e01.intact"
-        ],
-        "rulesText": "The intact fixture rule."
+        "powers": [
+          {
+            "id": "edifice.e01.intact",
+            "persistent": false,
+            "rulesText": "The intact fixture rule."
+          }
+        ]
       },
       "ruined": {
         "name": "Ruined Fixture",
-        "handlers": [
-          "edifice.e01.ruined"
-        ],
-        "rulesText": "The ruined fixture rule."
+        "powers": [
+          {
+            "id": "edifice.e01.ruined",
+            "persistent": false,
+            "rulesText": "The ruined fixture rule."
+          }
+        ]
       }
     }
   ],
@@ -51,10 +63,13 @@
     {
       "id": "L01",
       "name": "Fixture Legacy",
-      "handlers": [
-        "legacy.fixture-legacy"
-      ],
-      "rulesText": "The fixture legacy rule."
+      "powers": [
+        {
+          "id": "legacy.fixture-legacy",
+          "persistent": false,
+          "rulesText": "The fixture legacy rule."
+        }
+      ]
     }
   ],
   "sites": [

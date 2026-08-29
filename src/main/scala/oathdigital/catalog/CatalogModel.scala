@@ -23,14 +23,24 @@ object Suit {
 
 }
 
+final case class CatalogPower(id: String, persistent: Boolean, rulesText: String) {
+  require(id.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
+    s"invalid stable power ID $id")
+}
+
+trait CatalogPoweredDefinition {
+  def powers: Vector[CatalogPower]
+  final def handlers: Vector[String] = powers.map(_.id)
+  final def rulesText: String = powers.map(_.rulesText).mkString("\n\n")
+}
+
 final case class DenizenDefinition(
     id: DefinitionId,
     name: String,
     suit: Suit,
     restrictions: CardRestrictions,
-    handlers: Vector[String],
-    rulesText: String
-)
+    powers: Vector[CatalogPower]
+) extends CatalogPoweredDefinition
 
 sealed trait CardRestrictions extends Product with Serializable
 object CardRestrictions {
@@ -52,15 +62,13 @@ final case class RelicDefinition(
     role: RelicRole,
     value: Int,
     defense: Int,
-    handlers: Vector[String],
-    rulesText: String
-)
+    powers: Vector[CatalogPower]
+) extends CatalogPoweredDefinition
 
 final case class EdificeFaceDefinition(
     name: String,
-    handlers: Vector[String],
-    rulesText: String
-)
+    powers: Vector[CatalogPower]
+) extends CatalogPoweredDefinition
 
 final case class EdificeDefinition(
     id: DefinitionId,
@@ -73,9 +81,8 @@ final case class EdificeDefinition(
 final case class LegacyDefinition(
     id: DefinitionId,
     name: String,
-    handlers: Vector[String],
-    rulesText: String
-)
+    powers: Vector[CatalogPower]
+) extends CatalogPoweredDefinition
 
 final case class SiteDefinition(
     id: SiteId,

@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.catalog.CatalogPower
 
 class NegotiationSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -198,8 +199,9 @@ class NegotiationSuite extends munit.FunSuite {
   test("changed catalog handler inventory blocks Negotiation explicitly") {
     val (base, players, _, _, _) = ready()
     val first = catalog.relics.head
-    val changed = catalog.copy(relics = first.copy(
-      handlers = first.handlers :+ "relic.future-negotiation") +: catalog.relics.tail)
+    val changed = catalog.copy(relics = first.copy(powers = first.powers :+
+      CatalogPower("relic.future-negotiation", persistent = false, "")) +:
+      catalog.relics.tail)
     assert(Negotiation.handle(changed, Ready(base), NegotiationCommand.Begin(
       players.head.player, DecisionId("changed"), Vector(players(1).player)))
       .left.toOption.exists(_.isInstanceOf[

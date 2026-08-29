@@ -48,13 +48,76 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assertEquals(catalog.sites.head.forgeRequirements, None)
   }
 
+  test("ordered powers preserve IDs text and persistence") {
+    val value = ujson.read(fixture)
+    value("denizens")(0)("powers").arr.append(ujson.Obj(
+      "id" -> "denizen.fixture-second",
+      "persistent" -> true,
+      "rulesText" -> "Second exact paragraph."
+    ))
+    val powers = CatalogLoader.load(value.render()).toOption.get.denizens.head.powers
+    assertEquals(powers, Vector(
+      CatalogPower("denizen.fixture-denizen", persistent = false,
+        "ACTION: Perform the fixture action."),
+      CatalogPower("denizen.fixture-second", persistent = true,
+        "Second exact paragraph.")
+    ))
+    assertEquals(powers.map(_.id), Vector("denizen.fixture-denizen",
+      "denizen.fixture-second"))
+  }
+
+  test("production power text exactly equals checked-in JSON in source order") {
+    val raw = ujson.read(Files.readString(
+      Paths.get("docs/catalog/new-foundations-component-catalog.json")))
+    val loaded = CatalogLoader.load(raw.render()).toOption.get
+    val rawDenizens = raw("denizens").arr.map(component => component("id").str ->
+      component("powers").arr.map(power => (power("id").str,
+        power("persistent").bool, power("rulesText").str)).toVector).toMap
+    assertEquals(loaded.denizens.map(component => component.id.value ->
+      component.powers.map(power =>
+        (power.id, power.persistent, power.rulesText))).toMap, rawDenizens)
+  }
+
+  test("malformed empty duplicate and incomplete powers report exact paths") {
+    def changed(update: ujson.Value => Unit) = {
+      val value = ujson.read(fixture)
+      update(value("denizens")(0))
+      CatalogLoader.load(value.render()).left.toOption.get
+    }
+    assert(changed(component => component("powers") = ujson.Arr()).exists {
+      case InvalidValue(path, _) => path == "$.denizens[0].powers"
+      case _ => false
+    })
+    assert(changed(component => component("powers")(0).obj.remove("persistent"))
+      .exists {
+        case MissingField(path) => path == "$.denizens[0].powers[0].persistent"
+        case _ => false
+      })
+    assert(changed(component => component("powers")(0)("persistent") = "yes")
+      .exists {
+        case WrongType(path, _, _) =>
+          path == "$.denizens[0].powers[0].persistent"
+        case _ => false
+      })
+    assert(changed(component => component("powers").arr.append(
+      component("powers")(0))).exists {
+        case InvalidValue(path, _) => path == "$.denizens[0].powers"
+        case _ => false
+      })
+    assert(changed(component => component("powers")(0)("id") = "bad")
+      .exists {
+        case InvalidValue(path, _) => path == "$.denizens[0].powers[0]"
+        case _ => false
+      })
+  }
+
   test("the production catalog contains only the final runtime corpus") {
     val catalog = CatalogLoader
       .load(
         Paths.get("docs/catalog/new-foundations-component-catalog.json"),
         CatalogLoadRequest(
           expectedCatalog = Some(
-            CatalogRef("oath-new-foundations", "2026.08.03-pre3")
+            CatalogRef("oath-new-foundations", "2026.08.29-pre4")
           )
         )
       )
@@ -218,7 +281,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assert(
       result.left.toOption.get.exists {
         case IncompatibleCatalog(_, `expected`, actual) =>
-          actual == CatalogRef("oath-new-foundations", "2026.08.03-pre3")
+          actual == CatalogRef("oath-new-foundations", "2026.08.29-pre4")
         case _ => false
       }
     )
@@ -264,8 +327,8 @@ class CatalogLoaderSuite extends munit.FunSuite {
       )
     val empty = restricted("[]")
     val missing = fixture.replace(
-      "      \"restrictions\": null,\n      \"handlers\": [",
-      "      \"handlers\": ["
+      "      \"restrictions\": null,\n      \"powers\": [",
+      "      \"powers\": ["
     )
     val lockedAlone = fixture.replace(
       unrestrictedDenizen,
@@ -304,7 +367,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
   test("schema versions and malformed JSON have explicit errors") {
     val unsupported =
       fixture.replace(
-        "\"schemaVersion\": \"1.1.0\"",
+        "\"schemaVersion\": \"1.2.0\"",
         "\"schemaVersion\": \"2.0.0\""
       )
 
@@ -333,8 +396,11 @@ class CatalogLoaderSuite extends munit.FunSuite {
         |      "name": "Duplicate Denizen",
         |      "suit": "beast",
         |      "restrictions": null,
-        |      "handlers": ["denizen.duplicate-denizen"],
-        |      "rulesText": ""
+        |      "powers": [{
+        |        "id": "denizen.duplicate-denizen",
+        |        "persistent": false,
+        |        "rulesText": ""
+        |      }]
         |    },""".stripMargin
     val duplicateId =
       fixture.replace(

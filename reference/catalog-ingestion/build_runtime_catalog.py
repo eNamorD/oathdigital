@@ -31,6 +31,13 @@ EDIFICE_RULE_OVERRIDES = (
     ROOT / "reference/catalog-ingestion/edifice-rule-overrides.json"
 )
 OUTPUT = ROOT / "docs/catalog/new-foundations-component-catalog.json"
+PERSISTENT_POWER_IDS = {
+    "denizen.vow-of-peace",
+    "denizen.relic-worship",
+    "edifice.e13.ruined",
+    "edifice.e17.intact",
+    "edifice.e17.ruined",
+}
 
 def slug(value):
     return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
@@ -92,6 +99,14 @@ def rules_text(lines, kind):
 def handler(kind, identifier, face=None):
     base = f"{kind}.{identifier}"
     return f"{base}.{face}" if face else base
+
+
+def power(power_id, text):
+    return {
+        "id": power_id,
+        "persistent": power_id in PERSISTENT_POWER_IDS,
+        "rulesText": text,
+    }
 
 
 def indexed_by_name(records):
@@ -174,8 +189,10 @@ def main():
                 "role": "grand-scepter" if is_grand_scepter else "ordinary",
                 "value": transcription["value"],
                 "defense": transcription["defense"],
-                "handlers": [handler("relic", slug(component["name"]))],
-                "rulesText": transcription["rulesText"],
+                "powers": [power(
+                    handler("relic", slug(component["name"])),
+                    transcription["rulesText"],
+                )],
             }
         )
 
@@ -189,11 +206,13 @@ def main():
         lines = ocr.get(crop, [])
         faces_by_id.setdefault(printed_id, {})[face] = {
             "name": component["name"],
-            "handlers": [handler("edifice", printed_id.lower(), face)],
-            "rulesText": edifice_rule_overrides.get(
-                component["name"],
-                normalized_markdown(rules_text(lines, "edifice-face")),
-            ),
+            "powers": [power(
+                handler("edifice", printed_id.lower(), face),
+                edifice_rule_overrides.get(
+                    component["name"],
+                    normalized_markdown(rules_text(lines, "edifice-face")),
+                ),
+            )],
         }
 
     edifices = []
@@ -230,8 +249,10 @@ def main():
             {
                 "id": identifier,
                 "name": transcription["name"],
-                "handlers": [handler("legacy", slug(component["name"]))],
-                "rulesText": transcription["rulesText"],
+                "powers": [power(
+                    handler("legacy", slug(component["name"])),
+                    transcription["rulesText"],
+                )],
             }
         )
 
@@ -271,8 +292,8 @@ def main():
         )
 
     catalog = {
-        "schemaVersion": "1.1.0",
-        "catalogVersion": "2026.08.03-pre3",
+        "schemaVersion": "1.2.0",
+        "catalogVersion": "2026.08.29-pre4",
         "denizens": denizens,
         "relics": relics,
         "edifices": edifices,

@@ -15,7 +15,7 @@ import oathdigital.gameplay.OathViolation._
 
 object FirstGameSetupFixture {
   val catalogRef =
-    CatalogRef("oath-new-foundations", "2026.08.03-pre3")
+    CatalogRef("oath-new-foundations", "2026.08.29-pre4")
   val catalog: ExecutableCatalog =
     CatalogLoader
       .load(

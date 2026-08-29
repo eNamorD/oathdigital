@@ -9,6 +9,7 @@ import oathdigital.gameplay.OathEvent.{IgnoredRulesRecorded, RestCompleted, Rest
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation.{RestOutcomeMismatch,
   UnsupportedRoundEndCatalogInventory, UnsupportedRuleCatalog}
+import oathdigital.catalog.CatalogPower
 
 class RestSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -251,17 +252,22 @@ class RestSuite extends munit.FunSuite {
           error.isInstanceOf[UnsupportedRuleCatalog])
     val changed = Vector(
       catalog.copy(denizens = catalog.denizens.updated(0,
-        catalog.denizens.head.copy(handlers = catalog.denizens.head.handlers :+ "changed"))),
+        catalog.denizens.head.copy(powers = catalog.denizens.head.powers :+
+          CatalogPower("test.changed-denizen", persistent = false, "")))),
       catalog.copy(relics = catalog.relics.updated(0,
-        catalog.relics.head.copy(handlers = catalog.relics.head.handlers :+ "changed"))),
+        catalog.relics.head.copy(powers = catalog.relics.head.powers :+
+          CatalogPower("test.changed-relic", persistent = false, "")))),
       catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
         intact = catalog.edifices.head.intact.copy(
-          handlers = catalog.edifices.head.intact.handlers :+ "changed")))),
+          powers = catalog.edifices.head.intact.powers :+
+            CatalogPower("test.changed-intact", persistent = false, ""))))),
       catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
         ruined = catalog.edifices.head.ruined.copy(
-          handlers = catalog.edifices.head.ruined.handlers :+ "changed")))),
+          powers = catalog.edifices.head.ruined.powers :+
+            CatalogPower("test.changed-ruined", persistent = false, ""))))),
       catalog.copy(legacies = catalog.legacies.updated(0,
-        catalog.legacies.head.copy(handlers = catalog.legacies.head.handlers :+ "changed"))),
+        catalog.legacies.head.copy(powers = catalog.legacies.head.powers :+
+          CatalogPower("test.changed-legacy", persistent = false, "")))),
       catalog.copy(sites = catalog.sites.updated(0,
         catalog.sites.head.copy(handlers = catalog.sites.head.handlers :+ "changed"))))
     assert(changed.forall(rejects))

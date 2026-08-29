@@ -7,10 +7,10 @@ import scala.util.control.NonFatal
 
 import oathdigital.catalog.CatalogLoadError._
 import oathdigital.model.{CatalogRef, SiteId, Tokens}
-import ujson.{Arr, Null, Obj, Str, Value}
+import ujson.{Arr, Bool, Null, Obj, Str, Value}
 
 object CatalogLoader {
-  val SupportedSchemaVersion: String = "1.1.0"
+  val SupportedSchemaVersion: String = "1.2.0"
   val RulesetId: String = "oath-new-foundations"
 
   private type Result[A] = Either[Vector[CatalogLoadError], A]
@@ -126,15 +126,13 @@ object CatalogLoader {
       name <- requiredString(obj, "name", path)
       suit <- decodeSuit(obj, path)
       restrictions <- decodeDenizenRestrictions(obj, path)
-      handlers <- decodeHandlers(obj, path)
-      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
+      powers <- decodePowers(obj, path)
     } yield DenizenDefinition(
       id,
       name,
       suit,
       restrictions,
-      handlers,
-      rulesText
+      powers
     )
 
   private def decodeDenizenRestrictions(
@@ -216,9 +214,8 @@ object CatalogLoader {
           nonNegative(defense, s"$path.defense")
         )
       ).map(_ => ())
-      handlers <- decodeHandlers(obj, path)
-      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
-    } yield RelicDefinition(id, name, role, value, defense, handlers, rulesText)
+      powers <- decodePowers(obj, path)
+    } yield RelicDefinition(id, name, role, value, defense, powers)
 
   private def decodeEdifice(obj: Obj, path: String): Result[EdificeDefinition] =
     for {
@@ -263,9 +260,8 @@ object CatalogLoader {
   ): Result[EdificeFaceDefinition] =
     for {
       name <- requiredString(obj, "name", path)
-      handlers <- decodeHandlers(obj, path)
-      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
-    } yield EdificeFaceDefinition(name, handlers, rulesText)
+      powers <- decodePowers(obj, path)
+    } yield EdificeFaceDefinition(name, powers)
 
   private def decodeLegacy(obj: Obj, path: String): Result[LegacyDefinition] =
     for {
@@ -277,9 +273,8 @@ object CatalogLoader {
         s"$path.id"
       )
       name <- requiredString(obj, "name", path)
-      handlers <- decodeHandlers(obj, path)
-      rulesText <- requiredString(obj, "rulesText", path, allowBlank = true)
-    } yield LegacyDefinition(id, name, handlers, rulesText)
+      powers <- decodePowers(obj, path)
+    } yield LegacyDefinition(id, name, powers)
 
   private def decodeSite(obj: Obj, path: String): Result[SiteDefinition] =
     for {
@@ -342,7 +337,7 @@ object CatalogLoader {
   private def decodeHandlers(
       obj: Obj,
       path: String,
-      allowEmpty: Boolean = false
+      allowEmpty: Boolean
   ): Result[Vector[String]] =
     requiredStringArray(obj, "handlers", path).flatMap { handlers =>
       val invalid = handlers.filterNot(
@@ -358,6 +353,36 @@ object CatalogLoader {
         Left(Vector(InvalidValue(s"$path.handlers", "must not be empty")))
       else Right(handlers)
     }
+
+  private def decodePowers(obj: Obj, path: String): Result[Vector[CatalogPower]] =
+    requiredArray(obj, "powers", path).flatMap { values =>
+      if (values.value.isEmpty)
+        Left(Vector(InvalidValue(s"$path.powers", "must not be empty")))
+      else collectResults(values.value.zipWithIndex.map { case (value, index) =>
+        val powerPath = s"$path.powers[$index]"
+        asObject(value, powerPath).flatMap { power => for {
+          id <- requiredString(power, "id", powerPath)
+          persistent <- requiredBoolean(power, "persistent", powerPath)
+          rulesText <- requiredString(power, "rulesText", powerPath, allowBlank = true)
+          result <- construct(powerPath, CatalogPower(id, persistent, rulesText))
+        } yield result }
+      }.toVector).flatMap { powers =>
+        val duplicates = powers.groupBy(_.id).collect {
+          case (id, matches) if matches.size > 1 => id
+        }.toVector.sorted
+        if (duplicates.isEmpty) Right(powers)
+        else Left(duplicates.map(id => InvalidValue(s"$path.powers",
+          s"duplicate power ID $id")))
+      }
+    }
+
+  private def requiredBoolean(obj: Obj, field: String, path: String)
+      : Result[Boolean] = obj.value.get(field) match {
+    case None => Left(Vector(MissingField(s"$path.$field")))
+    case Some(Bool(value)) => Right(value)
+    case Some(value) => Left(Vector(WrongType(s"$path.$field", "boolean",
+      typeName(value))))
+  }
 
   private def decodeTokens(obj: Obj, path: String): Result[Tokens] =
     for {

@@ -3,7 +3,7 @@
     "formatVersion": 1,
     "gameId": "search",
     "sequence": 9,
-    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},
+    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.29-pre4"},
     "eventType": "gameplay.search-started",
     "payload": {
       "playerId": "p2",
@@ -21,7 +21,7 @@
     "formatVersion": 1,
     "gameId": "search",
     "sequence": 10,
-    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.03-pre3"},
+    "catalog": {"ruleset": "oath-new-foundations", "version": "2026.08.29-pre4"},
     "eventType": "gameplay.search-completed",
     "payload": {
       "playerId": "p2",

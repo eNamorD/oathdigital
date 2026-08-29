@@ -36,7 +36,7 @@ ingestion_fields = {
     "reviewStatus",
     "confidence",
 }
-handler_pattern = re.compile(r"^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)+$")
+power_id_pattern = re.compile(r"^[a-z][a-z0-9-]*(?:\.[a-z0-9-]+)+$")
 expected_denizen_ids = {
     str(number)
     for number in range(1, 259)
@@ -97,7 +97,7 @@ def walk_ingestion_fields(value, path="$"):
 walk_ingestion_fields(catalog)
 
 ids = {}
-handlers = {}
+powers_by_id = {}
 for family in families:
     components = catalog.get(family)
     if not isinstance(components, list):
@@ -117,23 +117,27 @@ for family in families:
         else:
             ids[identifier] = path
 
-        component_handlers = []
+        component_powers = []
         if family == "edifices":
             for face in ("intact", "ruined"):
-                component_handlers.extend(
-                    component.get(face, {}).get("handlers", [])
-                )
+                component_powers.extend(component.get(face, {}).get("powers", []))
+        elif family == "sites":
+            component_powers = [
+                {"id": handler, "persistent": False, "rulesText": ""}
+                for handler in component.get("handlers", [])
+            ]
         else:
-            component_handlers = component.get("handlers", [])
-        for handler in component_handlers:
-            if not isinstance(handler, str) or not handler_pattern.fullmatch(handler):
-                errors.append(f"{path}: malformed handler key {handler!r}")
-            elif handler in handlers:
+            component_powers = component.get("powers", [])
+        for power in component_powers:
+            power_id = power.get("id") if isinstance(power, dict) else None
+            if not isinstance(power_id, str) or not power_id_pattern.fullmatch(power_id):
+                errors.append(f"{path}: malformed power ID {power_id!r}")
+            elif power_id in powers_by_id:
                 errors.append(
-                    f"{path}: duplicate handler key also used by {handlers[handler]}"
+                    f"{path}: duplicate power ID also used by {powers_by_id[power_id]}"
                 )
             else:
-                handlers[handler] = path
+                powers_by_id[power_id] = path
 
 for index, component in enumerate(catalog.get("denizens", [])):
     if component.get("id") not in expected_denizen_ids:
@@ -142,8 +146,8 @@ for index, component in enumerate(catalog.get("denizens", [])):
         "arcane", "beast", "discord", "hearth", "nomad", "order"
     }:
         errors.append(f"denizens[{index}]: invalid suit")
-    if len(component.get("handlers", [])) != 1:
-        errors.append(f"denizens[{index}]: expected one stable handler key")
+    if not component.get("powers"):
+        errors.append(f"denizens[{index}]: expected non-empty powers")
     restrictions = component.get("restrictions", "__missing__")
     if restrictions == "__missing__":
         errors.append(f"denizens[{index}]: restrictions is required")
@@ -193,9 +197,9 @@ for index, component in enumerate(catalog.get("edifices", [])):
         definition = component.get(face)
         if not isinstance(definition, dict):
             errors.append(f"edifices[{index}]: missing {face} face")
-        elif len(definition.get("handlers", [])) != 1:
+        elif not definition.get("powers"):
             errors.append(
-                f"edifices[{index}].{face}: expected one stable handler key"
+                f"edifices[{index}].{face}: expected non-empty powers"
             )
 
 if {item.get("id") for item in catalog.get("legacies", [])} != expected_legacy_ids:
@@ -213,15 +217,32 @@ def validate_rules_text(text, path):
         errors.append(f"{path}: contains an unreviewed OCR glyph")
 
 
+def validate_powers(component, path):
+    powers = component.get("powers")
+    if not isinstance(powers, list) or not powers:
+        errors.append(f"{path}: powers must be a non-empty array")
+        return
+    local_ids = set()
+    for index, power in enumerate(powers):
+        power_path = f"{path}.powers[{index}]"
+        if not isinstance(power, dict):
+            errors.append(f"{power_path}: power must be an object")
+            continue
+        power_id = power.get("id")
+        if power_id in local_ids:
+            errors.append(f"{path}.powers: duplicate power ID {power_id}")
+        local_ids.add(power_id)
+        if not isinstance(power.get("persistent"), bool):
+            errors.append(f"{power_path}: persistent must be a boolean")
+        validate_rules_text(power.get("rulesText"), power_path)
+
+
 for family in ("denizens", "relics", "legacies"):
     for index, component in enumerate(catalog.get(family, [])):
-        validate_rules_text(component.get("rulesText"), f"{family}[{index}]")
+        validate_powers(component, f"{family}[{index}]")
 for index, component in enumerate(catalog.get("edifices", [])):
     for face in ("intact", "ruined"):
-        validate_rules_text(
-            component.get(face, {}).get("rulesText"),
-            f"edifices[{index}].{face}",
-        )
+        validate_powers(component.get(face, {}), f"edifices[{index}].{face}")
 
 for index, site in enumerate(catalog.get("sites", [])):
     path = f"sites[{index}]"

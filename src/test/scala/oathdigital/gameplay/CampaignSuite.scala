@@ -10,6 +10,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.catalog.CatalogPower
 import oathdigital.gameplay.OathViolation._
 
 class CampaignSuite extends munit.FunSuite {
@@ -809,8 +810,8 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, site) = campaignReady
     val original = catalog.denizens.head
     val changed = catalog.copy(denizens = catalog.denizens.updated(0,
-      original.copy(handlers = Vector("denizen.future-plan"),
-        rulesText = "+2 [attack-die]")))
+      original.copy(powers = Vector(CatalogPower("denizen.future-plan",
+        persistent = false, "+2 [attack-die]")))))
     val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(original.id.value),
@@ -1117,8 +1118,8 @@ class CampaignSuite extends munit.FunSuite {
 
     val original = catalog.denizens.head
     val changedCatalog = catalog.copy(denizens = catalog.denizens.updated(0,
-      original.copy(handlers = Vector("denizen.future-defender-plan"),
-        rulesText = "+2 [defense-die]")))
+      original.copy(powers = Vector(CatalogPower("denizen.future-defender-plan",
+        persistent = false, "+2 [defense-die]")))))
     val unsupported = state.copy(game = state.game.copy(current =
       state.game.current.copy(players = state.game.current.players.map {
         case p if p.player == defender.player => p.copy(advisers = Vector(

@@ -10,6 +10,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule}
+import oathdigital.catalog.CatalogPower
 
 class MinorActionsSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -211,8 +212,9 @@ class MinorActionsSuite extends munit.FunSuite {
 
   test("audited minor-action power inventory rejects changed handler vocabulary") {
     val first = catalog.denizens.head
-    val changed = catalog.copy(denizens = first.copy(
-      handlers = first.handlers :+ "denizen.future-handler") +: catalog.denizens.tail)
+    val changed = catalog.copy(denizens = first.copy(powers = first.powers :+
+      CatalogPower("denizen.future-handler", persistent = false, "")) +:
+      catalog.denizens.tail)
     assert(MinorActionPowerSupport.validateInventory(changed).left.toOption.exists(
       _.isInstanceOf[UnsupportedMinorActionCatalogInventory]))
   }
@@ -220,18 +222,22 @@ class MinorActionsSuite extends munit.FunSuite {
   test("Vision inventory fingerprint covers every runtime handler family and edifice face") {
     val changed = Vector(
       catalog.copy(relics = catalog.relics.head.copy(
-        handlers = catalog.relics.head.handlers :+ "relic.future-vision") +:
+        powers = catalog.relics.head.powers :+ CatalogPower(
+          "relic.future-vision", persistent = false, "")) +:
           catalog.relics.tail),
       catalog.copy(edifices = catalog.edifices.head.copy(intact =
-        catalog.edifices.head.intact.copy(handlers =
-          catalog.edifices.head.intact.handlers :+ "edifice.future-vision")) +:
+        catalog.edifices.head.intact.copy(powers =
+          catalog.edifices.head.intact.powers :+ CatalogPower(
+            "edifice.future-vision", persistent = false, ""))) +:
           catalog.edifices.tail),
       catalog.copy(edifices = catalog.edifices.head.copy(ruined =
-        catalog.edifices.head.ruined.copy(handlers =
-          catalog.edifices.head.ruined.handlers :+ "edifice.future-ruined-vision")) +:
+        catalog.edifices.head.ruined.copy(powers =
+          catalog.edifices.head.ruined.powers :+ CatalogPower(
+            "edifice.future-ruined-vision", persistent = false, ""))) +:
           catalog.edifices.tail),
       catalog.copy(legacies = catalog.legacies.head.copy(
-        handlers = catalog.legacies.head.handlers :+ "legacy.future-vision") +:
+        powers = catalog.legacies.head.powers :+ CatalogPower(
+          "legacy.future-vision", persistent = false, "")) +:
           catalog.legacies.tail),
       catalog.copy(sites = catalog.sites.head.copy(
         handlers = catalog.sites.head.handlers :+ "site.future-vision") +:
