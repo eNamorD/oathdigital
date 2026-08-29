@@ -1,6 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.catalog.CatalogPower
+import oathdigital.gameplay.powerresolver.PowerId
 import oathdigital.model._
 
 /** Orientation is a factual property only; callers still own activation rules. */
@@ -33,10 +35,15 @@ object RuleSourceState {
 
 final case class IndexedRuleSource(
     source: RuleSourceRef,
-    handlerIds: Vector[String],
+    powerIds: Vector[PowerId],
     face: RuleSourceFace,
     state: RuleSourceState = RuleSourceState.Stateless
-)
+) {
+  /** Temporary compatibility projection for callers not yet migrated to the
+    * window resolver. Factual source identity is typed at this boundary.
+    */
+  def handlerIds: Vector[String] = powerIds.map(_.value)
+}
 
 /** Redaction-neutral inventory of runtime sources and their declared handlers.
   * This index deliberately makes no accessibility, relevance, or activation
@@ -50,13 +57,13 @@ object RuleSourceIndex {
     val current = ready.game.current
     val sites = current.map.inPlay.flatMap { siteId =>
       val printed = catalog.sites.find(_.id == siteId).toVector.map(definition =>
-        IndexedRuleSource(RuleSourceRef.Site(siteId), definition.handlers,
+        IndexedRuleSource(RuleSourceRef.Site(siteId), ids(definition.handlers),
           RuleSourceFace.Printed))
       val cards = current.map.sites(siteId).denizens.flatMap {
         case denizen: DenizenState =>
           catalog.denizens.find(_.id.value == denizen.id.value).toVector.map(
             definition => IndexedRuleSource(
-              RuleSourceRef.SiteCard(siteId, denizen.id), definition.handlers,
+              RuleSourceRef.SiteCard(siteId, denizen.id), ids(definition.powers),
               orientation(denizen.orientation)))
         case edifice: EdificeState =>
           catalog.edifices.find(_.id.value == edifice.id.value).toVector.map {
@@ -64,14 +71,14 @@ object RuleSourceIndex {
               val face = if (edifice.side == EdificeSide.Intact)
                 definition.intact else definition.ruined
               IndexedRuleSource(RuleSourceRef.Edifice(siteId, edifice.id),
-                face.handlers, if (edifice.side == EdificeSide.Intact)
+                ids(face.powers), if (edifice.side == EdificeSide.Intact)
                   RuleSourceFace.Intact else RuleSourceFace.Ruined)
           }
       }
       val relics = current.map.sites(siteId).relics.flatMap { relic =>
         catalog.relics.find(_.id.value == relic.id.value).toVector.map(
           definition => IndexedRuleSource(
-            RuleSourceRef.SiteRelic(siteId, relic.id), definition.handlers,
+            RuleSourceRef.SiteRelic(siteId, relic.id), ids(definition.powers),
             orientation(relic.orientation)))
       }
       printed ++ cards ++ relics
@@ -80,13 +87,13 @@ object RuleSourceIndex {
       val advisers = player.advisers.collect { case denizen: DenizenState =>
         catalog.denizens.find(_.id.value == denizen.id.value).toVector.map(
           definition => IndexedRuleSource(
-            RuleSourceRef.Adviser(player.player, denizen.id), definition.handlers,
+            RuleSourceRef.Adviser(player.player, denizen.id), ids(definition.powers),
             orientation(denizen.orientation)))
       }.flatten
       val relics = player.relics.flatMap { relic =>
         catalog.relics.find(_.id.value == relic.id.value).toVector.map(
           definition => IndexedRuleSource(
-            RuleSourceRef.Relic(player.player, relic.id), definition.handlers,
+            RuleSourceRef.Relic(player.player, relic.id), ids(definition.powers),
             orientation(relic.orientation)))
       }
       advisers ++ relics
@@ -96,7 +103,7 @@ object RuleSourceIndex {
         lineage.legacies.flatMap { legacy =>
           catalog.legacies.find(_.id.value == legacy.id.value).toVector.map(
             definition => IndexedRuleSource(
-              RuleSourceRef.Legacy(lineageId, legacy.id), definition.handlers,
+              RuleSourceRef.Legacy(lineageId, legacy.id), ids(definition.powers),
               if (legacy.active) RuleSourceFace.Active else RuleSourceFace.Inactive))
         }
       }
@@ -106,7 +113,7 @@ object RuleSourceIndex {
         current.banners.peoplesFavor.active match {
           case PeoplesFavorFace.Mob => Vector.empty
           case PeoplesFavorFace.GrandCouncil =>
-            Vector("banner.peoples-favor.grand-council")
+            ids(Vector("banner.peoples-favor.grand-council"))
         },
         current.banners.peoplesFavor.active match {
           case PeoplesFavorFace.Mob => RuleSourceFace.Mob
@@ -119,7 +126,7 @@ object RuleSourceIndex {
         current.banners.darkestSecret.active match {
           case DarkestSecretFace.WanderingFlame => Vector.empty
           case DarkestSecretFace.Festival =>
-            Vector("banner.darkest-secret.festival")
+            ids(Vector("banner.darkest-secret.festival"))
         },
         current.banners.darkestSecret.active match {
           case DarkestSecretFace.WanderingFlame => RuleSourceFace.WanderingFlame
@@ -133,7 +140,7 @@ object RuleSourceIndex {
           RuleSourceRef.Foundation(number),
           foundation.face match {
             case FoundationFace.Normal => Vector.empty
-            case FoundationFace.Altered => Vector("foundation.altered")
+            case FoundationFace.Altered => ids(Vector("foundation.altered"))
           },
           foundation.face match {
             case FoundationFace.Normal => RuleSourceFace.Normal
@@ -150,4 +157,8 @@ object RuleSourceIndex {
     case Orientation.FaceUp => RuleSourceFace.FaceUp
     case Orientation.FaceDown => RuleSourceFace.FaceDown
   }
+
+  private def ids(values: Vector[String]): Vector[PowerId] = values.map(PowerId)
+  private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
+    values.map(power => PowerId(power.id))
 }
