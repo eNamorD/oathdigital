@@ -3,6 +3,10 @@ package oathdigital.gameplay.powerresolver
 import oathdigital.gameplay.RuleSourceRef
 import oathdigital.model.PlayerId
 
+final case class PowerId(value: String) {
+  require(value.trim.nonEmpty, "power ID must not be blank")
+}
+
 sealed trait MajorActionType extends Product with Serializable { def key: String }
 object MajorActionType {
   case object Search extends MajorActionType { val key = "search" }
@@ -21,8 +25,22 @@ object MajorActionType {
 /** A procedure point, not a persistence or relevance category. */
 sealed trait PowerWindow extends Product with Serializable { def key: String }
 object PowerWindow {
-  case object ActionEligibility extends PowerWindow { val key = "action.eligibility" }
-  case object ActionChosen extends PowerWindow { val key = "action.chosen" }
+  case object SearchActionEligibility extends PowerWindow { val key = "search.action-eligibility" }
+  case object SearchModifierSelection extends PowerWindow { val key = "search.modifier-selection" }
+  case object TravelActionEligibility extends PowerWindow { val key = "travel.action-eligibility" }
+  case object TravelModifierSelection extends PowerWindow { val key = "travel.modifier-selection" }
+  case object CampaignActionEligibility extends PowerWindow { val key = "campaign.action-eligibility" }
+  case object CampaignModifierSelection extends PowerWindow { val key = "campaign.modifier-selection" }
+  case object MusterActionEligibility extends PowerWindow { val key = "muster.action-eligibility" }
+  case object MusterModifierSelection extends PowerWindow { val key = "muster.modifier-selection" }
+  case object TradeActionEligibility extends PowerWindow { val key = "trade.action-eligibility" }
+  case object TradeModifierSelection extends PowerWindow { val key = "trade.modifier-selection" }
+  case object ForgeActionEligibility extends PowerWindow { val key = "forge.action-eligibility" }
+  case object ForgeModifierSelection extends PowerWindow { val key = "forge.modifier-selection" }
+  case object RecoverActionEligibility extends PowerWindow { val key = "recover.action-eligibility" }
+  case object RecoverModifierSelection extends PowerWindow { val key = "recover.modifier-selection" }
+  case object ChallengeActionEligibility extends PowerWindow { val key = "challenge.action-eligibility" }
+  case object ChallengeModifierSelection extends PowerWindow { val key = "challenge.modifier-selection" }
   case object WakeTakeWealth extends PowerWindow { val key = "wake.take-wealth" }
   case object SearchEligibility extends PowerWindow { val key = "search.eligibility" }
   case object SearchCost extends PowerWindow { val key = "search.cost" }
@@ -66,12 +84,14 @@ object PowerResolution {
 }
 
 final case class PowerDefinition(
-    id: String,
+    id: PowerId,
     modifier: Option[MajorActionType],
     windows: Vector[PowerWindow],
     resolution: PowerResolution
 ) {
-  require(id.trim.nonEmpty, "power ID must not be blank")
+  /** Vector plus these invariants intentionally avoids adding a collection
+    * dependency solely for NonEmptyVector during this foundation gate.
+    */
   require(windows.nonEmpty, s"power $id must declare at least one window")
   require(windows.distinct.size == windows.size,
     s"power $id must not repeat a window")
@@ -84,30 +104,23 @@ final case class PowerDefinition(
 object PowerDefinition {
   private def belongsTo(action: MajorActionType, window: PowerWindow): Boolean = {
     val prefix = action.key + "."
-    window.key.startsWith(prefix) || window == PowerWindow.ActionEligibility ||
-      window == PowerWindow.ActionChosen
-  }
-}
-
-sealed trait PowerEffect extends Product with Serializable
-object PowerEffect {
-  final case class Typed(name: String, values: Map[String, String] = Map.empty)
-      extends PowerEffect {
-    require(name.trim.nonEmpty, "typed effect name must not be blank")
+    window.key.startsWith(prefix)
   }
 }
 
 final case class PowerInspection(
     applicable: Boolean,
     eligiblePlayer: Option[PlayerId] = None,
-    decisionPlayer: Option[PlayerId] = None,
-    cost: Vector[PowerEffect] = Vector.empty,
-    targets: Vector[String] = Vector.empty,
-    effects: Vector[PowerEffect] = Vector.empty
+    decisionPlayer: Option[PlayerId] = None
 )
 
+/** Action and phase modules add final case classes extending this marker.
+  * Their typed costs, targets, contributions, and effects remain owned there.
+  */
+trait PowerFacts extends Product with Serializable
+
 final case class PowerContext(window: PowerWindow, source: RuleSourceRef,
-    facts: Any)
+    facts: PowerFacts)
 
 trait PowerHandler {
   def inspect(context: PowerContext): PowerInspection
@@ -118,10 +131,10 @@ final case class RegisteredPower(
     handler: Option[PowerHandler]
 )
 
-final case class PowerInvocation(source: RuleSourceRef, powerId: String,
+final case class PowerInvocation(source: RuleSourceRef, powerId: PowerId,
     inspection: PowerInspection)
 
-final case class PowerDiagnostic(source: RuleSourceRef, powerId: String,
+final case class PowerDiagnostic(source: RuleSourceRef, powerId: PowerId,
     window: PowerWindow, reason: String)
 
 final case class PowerResolutionResult(
@@ -132,6 +145,6 @@ final case class PowerResolutionResult(
 
 sealed trait PowerResolverError extends Product with Serializable
 object PowerResolverError {
-  final case class UnknownAbility(source: RuleSourceRef, powerId: String)
+  final case class UnknownAbility(source: RuleSourceRef, powerId: PowerId)
       extends PowerResolverError
 }

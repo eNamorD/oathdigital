@@ -8,17 +8,18 @@ import oathdigital.gameplay.powerresolver.PowerResolverError._
   * supplies factual ability IDs; handlers alone decide dynamic applicability.
   */
 final class PowerResolver(registry: PowerRegistry) {
-  def resolve(window: PowerWindow, sources: Vector[(RuleSourceRef, Vector[String])],
-      facts: Any): Either[PowerResolverError, PowerResolutionResult] =
+  def resolve(window: PowerWindow,
+      sources: Vector[(RuleSourceRef, Vector[PowerId])], facts: PowerFacts)
+      : Either[PowerResolverError, PowerResolutionResult] =
     validateSources(sources).flatMap(_ => resolveKnown(window, sources, facts))
 
   private def resolveKnown(window: PowerWindow,
-      sources: Vector[(RuleSourceRef, Vector[String])], facts: Any)
+      sources: Vector[(RuleSourceRef, Vector[PowerId])], facts: PowerFacts)
       : Either[PowerResolverError, PowerResolutionResult] = {
     val declaredAtWindow = registry.at(window).map(_.definition.id).toSet
     val candidates = sources.flatMap { case (source, ids) =>
       ids.filter(declaredAtWindow).map(source -> _)
-    }.sortBy { case (source, id) => (source.stableKey, id) }
+    }.sortBy { case (source, id) => (source.stableKey, id.value) }
 
     candidates.foldLeft[Either[PowerResolverError, PowerResolutionResult]](
       Right(PowerResolutionResult(Vector.empty, Vector.empty, Vector.empty))) {
@@ -44,7 +45,7 @@ final class PowerResolver(registry: PowerRegistry) {
     }
   }
 
-  def validateSources(sources: Vector[(RuleSourceRef, Vector[String])])
+  def validateSources(sources: Vector[(RuleSourceRef, Vector[PowerId])])
       : Either[PowerResolverError, Unit] = sources.iterator.flatMap {
     case (source, ids) => ids.iterator.map(source -> _)
   }.find { case (_, id) => registry.lookup(id).isEmpty } match {

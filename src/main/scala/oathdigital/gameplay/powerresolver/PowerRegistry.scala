@@ -1,10 +1,10 @@
 package oathdigital.gameplay.powerresolver
 
 final class PowerRegistry private (
-    private val byId: Map[String, RegisteredPower],
+    private val byId: Map[PowerId, RegisteredPower],
     private val byWindow: Map[PowerWindow, Vector[RegisteredPower]]
 ) {
-  def lookup(id: String): Option[RegisteredPower] = byId.get(id)
+  def lookup(id: PowerId): Option[RegisteredPower] = byId.get(id)
 
   def at(window: PowerWindow): Vector[RegisteredPower] =
     byWindow.getOrElse(window, Vector.empty)
@@ -17,7 +17,7 @@ object PowerRegistry {
     val ordered = entries.toVector
     val windows = ordered.flatMap(power => power.definition.windows.map(_ -> power))
       .groupBy(_._1).map { case (window, values) =>
-        window -> values.map(_._2).sortBy(_.definition.id)
+        window -> values.map(_._2).sortBy(_.definition.id.value)
       }
     new PowerRegistry(ordered.map(power => power.definition.id -> power).toMap,
       windows)
