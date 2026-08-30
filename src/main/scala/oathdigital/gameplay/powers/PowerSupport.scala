@@ -5,6 +5,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.model.{PlayerId, PowerId}
 
 final case class ReviewedPowerFacts(
+    catalog: oathdigital.catalog.ExecutableCatalog,
     ready: ReadyGame,
     actor: PlayerId,
     sources: Map[RuleSourceRef, IndexedRuleSource]

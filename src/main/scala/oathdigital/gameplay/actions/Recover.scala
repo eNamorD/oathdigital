@@ -11,6 +11,9 @@ import oathdigital.gameplay.OathViolation._
 
 sealed trait RecoverCommand extends Product with Serializable
 object RecoverCommand {
+  final case class Start(playerId: PlayerId, decision: DecisionId,
+      dice: Vector[DefenseDieFace], catacombs: Option[CatacombsActivation])
+      extends RecoverCommand
   final case class Roll(playerId: PlayerId, decision: DecisionId,
       dice: Vector[DefenseDieFace]) extends RecoverCommand
   final case class Stop(playerId: PlayerId, decision: DecisionId)
@@ -19,9 +22,29 @@ object RecoverCommand {
       relicId: RelicId) extends RecoverCommand
 }
 
+final case class CatacombsActivation(siteId: SiteId, catacombsId: DenizenId,
+    relicId: RelicId)
+
 object Recover {
   def handle(catalog: ExecutableCatalog, state: OathState,
       command: RecoverCommand): Either[OathViolation, OathTransition] = command match {
+    case RecoverCommand.Start(player, decision, dice, None) =>
+      handle(catalog, state, RecoverCommand.Roll(player, decision, dice))
+    case RecoverCommand.Start(player, decision, dice, Some(value)) => for {
+      ready <- state match {
+        case Ready(found) => Right(found)
+        case _ => Left(GameNotStarted)
+      }
+      source = RuleSourceRef.SiteCard(value.siteId, value.catacombsId)
+      _ <- RecoverRules.validateCatacombs(catalog, ready, player, source,
+        value.relicId)
+      activation = CatacombsActivated(player, decision, value.siteId,
+        value.catacombsId, value.relicId, 1, 1, dice)
+      next <- transition(catalog, state, Vector(activation),
+        if (RecoverRules.score(dice) >= RecoverRules.difficulty(catalog,
+            value.siteId).get) AwaitingRecoverRelic(player, decision)
+        else AwaitingRecoverRoll(player, decision))
+    } yield next
     case RecoverCommand.Roll(player, decision, dice) =>
       val readyResult = state match {
         case Ready(ready) if ready.game.current.pending.isEmpty =>
@@ -84,6 +107,39 @@ object Recover {
 
   def evolve(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent): Either[OathViolation, OathState] = event match {
+    case e: CatacombsActivated => state match {
+      case Ready(ready) => RecoverRules.validateCatacombs(catalog, ready,
+        e.playerId, RuleSourceRef.SiteCard(e.siteId, e.catacombsId), e.relicId)
+        .flatMap { _ =>
+          val current = ready.game.current
+          val site = current.map.sites(e.siteId)
+          Either.cond(e.secretSpent == 1, (), RecoverOutcomeMismatch(
+            "Catacombs must spend exactly one secret")).flatMap(_ =>
+            Either.cond(e.supplySpent == 1 && e.dice.size == 2, (),
+              RecoverOutcomeMismatch("Catacombs must begin one ordinary Recover roll")))
+            .map { _ =>
+            val difficulty = RecoverRules.difficulty(catalog, e.siteId).get
+            val pending = PendingProcedure.Recover(e.decision, e.playerId,
+              e.siteId, difficulty, Vector(e.dice), 1,
+              RecoverRules.score(e.dice) >= difficulty)
+            Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
+              commonCards = current.commonCards.copy(
+                relicDeck = current.commonCards.relicDeck.tail),
+              players = current.players.map(p => if (p.player != e.playerId) p
+                else p.copy(board = p.board.copy(
+                  faceUpSecrets = p.board.faceUpSecrets - 1,
+                  supply = SupplyTrack(p.board.supply.supply - 1)))),
+              map = current.map.copy(sites = current.map.sites.updated(e.siteId,
+                site.copy(denizens = site.denizens.map {
+                  case d: DenizenState if d.id == e.catacombsId => d.copy(
+                    tokens = d.tokens.copy(secrets = d.tokens.secrets + 1))
+                  case other => other
+                }, relics = site.relics :+ RelicState(e.relicId,
+                  Orientation.FaceDown, Tokens.empty)))), pending = Some(pending))))
+          }
+        }
+      case _ => Left(GameNotStarted)
+    }
     case e: RecoverRolled =>
       val readyResult = state match {
         case Ready(ready) if ready.game.current.pending.isEmpty => OathLifecycle.validateAct(state, e.playerId)
@@ -179,4 +235,50 @@ object RecoverRules {
       else Right(())
     }
   }
+
+  def validatePotential(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerState, siteId: SiteId): Either[OathViolation, Unit] =
+    validate(catalog, ready, player, siteId).orElse(
+      PowerRuntime.options(catalog, ready, player.player, MajorActionKind.Recover)
+        .flatMap(options => Either.cond(options.exists(_.handlerId ==
+          "denizen.catacombs"), (), RecoverUnavailable(
+          "site has no facedown relic or usable Catacombs"))))
+
+  def validateCatacombs(catalog: ExecutableCatalog, ready: ReadyGame,
+      playerId: PlayerId, source: RuleSourceRef.SiteCard, relicId: RelicId)
+      : Either[OathViolation, Unit] = for {
+    _ <- OathLifecycle.validateAct(Ready(ready), playerId).map(_ => ())
+    _ <- Either.cond(ready.game.campaign.lineages.values.forall(_.role == Role.Exile),
+      (), UnsupportedRecoverState("Recover is limited to the exile-only first game"))
+    _ <- Either.cond(ready.game.campaign.foundations.values.forall(f =>
+      f.face == FoundationFace.Normal && f.alterationSources.isEmpty), (),
+      UnsupportedRecoverState("altered Foundations are not supported for Recover"))
+    player <- ready.game.current.players.find(_.player == playerId)
+      .toRight(WrongPlayer(ready.game.current.turn.activePlayer, playerId))
+    _ <- Either.cond(player.pawnSite.contains(source.siteId), (),
+      RecoverUnavailable("pawn is not at Catacombs"))
+    site <- ready.game.current.map.sites.get(source.siteId)
+      .toRight(SiteNotInPlay(source.siteId))
+    card <- site.denizens.collectFirst {
+      case d: DenizenState if d.id == source.id && d.orientation == Orientation.FaceUp => d
+    }.toRight(RecoverUnavailable("Catacombs is not accessible faceup at the site"))
+    definition <- catalog.denizens.find(_.id.value == card.id.value)
+      .toRight(RecoverUnavailable("Catacombs definition is missing"))
+    _ <- Either.cond(definition.powers.exists(_.id.value == "denizen.catacombs"), (),
+      RecoverUnavailable("selected source is not Catacombs"))
+    siteDefinition <- catalog.sites.find(_.id == source.siteId)
+      .toRight(RecoverUnavailable("site definition is missing"))
+    _ <- Either.cond(siteDefinition.recoverDifficulty.nonEmpty, (),
+      RecoverUnavailable("site has no Recover Difficulty"))
+    _ <- Either.cond(site.relics.size < siteDefinition.relicSlots, (),
+      RecoverUnavailable("site has no empty relic slot"))
+    _ <- Either.cond(player.board.faceUpSecrets >= 1, (),
+      InsufficientSecrets(1, player.board.faceUpSecrets))
+    _ <- Either.cond(player.board.supply.supply >= 1, (),
+      InsufficientSupply(1, player.board.supply.supply))
+    top <- ready.game.current.commonCards.relicDeck.headOption
+      .toRight(RecoverUnavailable("relic deck is empty"))
+    _ <- Either.cond(top == relicId, (), RecoverOutcomeMismatch(
+      "Catacombs relic is not the top of the relic deck"))
+  } yield ()
 }

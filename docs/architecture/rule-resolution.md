@@ -83,6 +83,14 @@ stable request and diagnostic protocol labels live separately in
 `RuleFallbackProtocol`. No component effect or universal effect language is
 introduced by this layer, and modifier metadata remains descriptive only.
 
+Catacombs is the first executable vertical slice. Its Recover-owned inspector
+checks the precise site card, pawn, secret, empty relic slot, Recover Difficulty,
+Supply, and relic-deck facts. The selected invocation is revalidated before
+randomness is prepared; one atomic activation-and-first-roll event spends the
+secret onto the card, places the recorded top relic facedown, pays Supply, and
+records the ordinary defense dice. All later retry, success, hidden choice, and
+transfer behavior continues through the existing Recover procedure.
+
 ## Adding a power
 
 1. Verify the exact catalog handler and printed source.

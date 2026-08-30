@@ -39,7 +39,8 @@ object ReviewedPowerCatalog {
   def facts(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId)
       : ReviewedPowerFacts = {
     val sources = RuleSourceIndex.enumerate(catalog, ready)
-    ReviewedPowerFacts(ready, actor, sources.map(source => source.source -> source).toMap)
+    ReviewedPowerFacts(catalog, ready, actor,
+      sources.map(source => source.source -> source).toMap)
   }
 
   def sources(catalog: ExecutableCatalog, ready: ReadyGame)

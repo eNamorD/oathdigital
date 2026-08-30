@@ -40,6 +40,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val RestStartedType = "gameplay.rest-started"
   val RestCompletedType = "gameplay.rest-completed"
   val RecoverRolledType = "gameplay.recover-rolled"
+  val CatacombsActivatedType = "gameplay.catacombs-activated"
   val RecoverStoppedType = "gameplay.recover-stopped"
   val RelicRecoveredType = "gameplay.relic-recovered"
   val ForgeStartedType = "gameplay.forge-started"

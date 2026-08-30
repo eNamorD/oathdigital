@@ -84,7 +84,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
       ReviewedPowerInspector, Some(new PowerHandler {}))
     val result = new PowerResolver(PowerRegistry(registration)).resolve(
       PowerWindow.RestStart, Vector(source -> Vector(registration.definition.id)),
-      ReviewedPowerFacts(changed, actor, Map(source -> indexed))).toOption.get
+      ReviewedPowerFacts(catalog, changed, actor, Map(source -> indexed))).toOption.get
     assertEquals(result.offered.map(_.source), Vector(source))
   }
 

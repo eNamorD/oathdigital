@@ -15,6 +15,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
       case _: SearchStarted => SearchStartedType
       case _: SearchCompleted => SearchCompletedType
       case _: RecoverRolled => RecoverRolledType
+      case _: CatacombsActivated => CatacombsActivatedType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
       case _: ForgeStarted => ForgeStartedType
@@ -79,6 +80,13 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent,
         "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
+      case CatacombsActivated(player, decision, site, card, relic, spent,
+          supply, dice) =>
+        ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
+          "siteId" -> site.value, "catacombsId" -> card.value,
+          "relicId" -> relic.value, "secretSpent" -> spent,
+          "supplySpent" -> supply,
+          "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
       case RecoverStopped(player, decision) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value)
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
@@ -240,6 +248,15 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         } yield RecoverRolled(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
           spent, dice)
+        case CatacombsActivatedType => for {
+          spent <- safeIntField(payload.obj, "secretSpent", path)
+          supply <- safeIntField(payload.obj, "supplySpent", path)
+          dice <- traverse(payload("dice").arr.toVector)(v =>
+            decodeDefenseFace(v.str, s"$path.dice"))
+        } yield CatacombsActivated(PlayerId(payload("playerId").str),
+          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
+          DenizenId(payload("catacombsId").str), RelicId(payload("relicId").str),
+          spent, supply, dice)
         case RecoverStoppedType => Right(RecoverStopped(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
         case RelicRecoveredType => Right(RelicRecovered(

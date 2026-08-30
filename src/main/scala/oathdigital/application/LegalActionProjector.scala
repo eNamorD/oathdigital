@@ -91,7 +91,7 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site => RecoverRules.validate(
+          Option.when(active.pawnSite.exists(site => RecoverRules.validatePotential(
             catalog, context.ready, active, site).isRight))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),

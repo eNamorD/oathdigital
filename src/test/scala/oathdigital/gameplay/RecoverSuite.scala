@@ -31,6 +31,22 @@ class RecoverSuite extends munit.FunSuite {
     (ready, moved, siteId, relic)
   }
 
+  private def catacombsReady: (ReadyGame, PlayerState, SiteId, DenizenId, RelicId) = {
+    val (base, actor0, siteId, _) = recoverable
+    val definition = catalog.denizens.find(_.powers.exists(
+      _.id.value == "denizen.catacombs")).get
+    val cardId = DenizenId(definition.id.value)
+    val actor = actor0.copy(board = actor0.board.copy(faceUpSecrets = 2))
+    val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty,
+      denizens = Vector(DenizenState(cardId, Orientation.FaceUp, Tokens.empty)))
+    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p =>
+        if (p.player == actor.player) actor else p),
+      map = base.game.current.map.copy(sites =
+        base.game.current.map.sites.updated(siteId, site)))))
+    (ready, actor, siteId, cardId, ready.game.current.commonCards.relicDeck.head)
+  }
+
   test("defense faces accumulate shields then apply every doubler") {
     assertEquals(RecoverRules.score(Vector(DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler,
@@ -109,5 +125,47 @@ class RecoverSuite extends munit.FunSuite {
     assert(rules.handle(started.state, RecoverCommand.TakeRelic(player.player,
       id, RelicId("not-there"))).left.toOption.get
       .isInstanceOf[RecoverOutcomeMismatch])
+  }
+
+  test("Catacombs enables empty-site Recover then enters the ordinary roll") {
+    val (ready, actor, siteId, cardId, relicId) = catacombsReady
+    val source = RuleSourceRef.SiteCard(siteId, cardId)
+    assert(RecoverRules.validate(catalog, ready, actor, siteId).isLeft)
+    assert(RecoverRules.validatePotential(catalog, ready, actor, siteId).isRight)
+    val projection = new GameProjector(catalog).project("catacombs",
+      LoadedGame(Ready(ready), 1), actor.player)
+    assert(projection.legalControls.contains("beginRecover"))
+    assertEquals(PowerRuntime.options(catalog, ready, actor.player,
+      MajorActionKind.Recover).toOption.get,
+      Vector(OrderedRuleInvocation(source, "denizen.catacombs")))
+
+    val decision = DecisionId("recover-catacombs")
+    val started = rules.handle(Ready(ready), RecoverCommand.Start(actor.player,
+      decision, Vector(DefenseDieFace.Blank, DefenseDieFace.OneShield),
+      Some(oathdigital.gameplay.actions.CatacombsActivation(
+        siteId, cardId, relicId)))).toOption.get
+    assertEquals(started.events.head.getClass.getSimpleName, "CatacombsActivated")
+    val Ready(after) = started.state: @unchecked
+    assertEquals(after.game.current.commonCards.relicDeck,
+      ready.game.current.commonCards.relicDeck.tail)
+    assertEquals(after.game.current.map.sites(siteId).relics.map(r =>
+      r.id -> r.orientation), Vector(relicId -> Orientation.FaceDown))
+    assertEquals(after.game.current.map.sites(siteId).denizens.head.tokens.secrets, 1)
+    assertEquals(after.game.current.players.find(_.player == actor.player).get
+      .board.faceUpSecrets, 1)
+    assert(after.game.current.pending.exists(_.isInstanceOf[PendingProcedure.Recover]))
+    assert(rules.handle(Ready(ready), RecoverCommand.Start(actor.player, decision,
+      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank), None)).isLeft)
+  }
+
+  test("Catacombs replay rejects wrong top relic and recorded cost") {
+    val (ready, actor, siteId, cardId, relicId) = catacombsReady
+    val decision = DecisionId("recover-catacombs-tamper")
+    assert(rules.evolve(Ready(ready), CatacombsActivated(actor.player, decision,
+      siteId, cardId, RelicId("wrong"), 1, 1,
+      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))).isLeft)
+    assert(rules.evolve(Ready(ready), CatacombsActivated(actor.player, decision,
+      siteId, cardId, relicId, 0, 1,
+      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))).isLeft)
   }
 }
