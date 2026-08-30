@@ -81,8 +81,8 @@ object CampaignRules {
     "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
     "denizen.true-names", "denizen.wrestlers",
     "relic.bandit-standard", "relic.fearsome-shield",
-    "relic.sticky-fire", "relic.obsidian-cage",
-    "relic.the-grand-scepter"
+    "relic.sticky-fire", "relic.obsidian-cage.campaign",
+    "relic.the-grand-scepter.campaign"
   )
 
   private[gameplay] def classify(handlerId: String,

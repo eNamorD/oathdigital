@@ -5,7 +5,7 @@ package oathdigital.gameplay.actions
   */
 private[gameplay] object CampaignHandlerClassifications {
   val AuditedCatalogFingerprint =
-    "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97"
+    "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2"
 
   val RelevantHandlerIds: Set[String] = Set(
     "denizen.arcane-armor",
@@ -73,7 +73,7 @@ private[gameplay] object CampaignHandlerClassifications {
     "denizen.unstable-summon",
     "denizen.village-constable",
     "denizen.vow-of-peace",
-    "denizen.vow-of-union",
+    "denizen.vow-of-union.campaign",
     "denizen.walled-garden",
     "denizen.war-tortoise",
     "denizen.watchdog",
@@ -93,14 +93,14 @@ private[gameplay] object CampaignHandlerClassifications {
     "relic.bandit-standard",
     "relic.black-sword",
     "relic.bone-dice",
-    "relic.brass-army",
+    "relic.brass-army.campaign",
     "relic.cursed-cauldron",
     "relic.fearsome-shield",
     "relic.grand-mask",
     "relic.keeping-banner",
-    "relic.obsidian-cage",
+    "relic.obsidian-cage.campaign",
     "relic.silver-charm",
     "relic.sticky-fire",
-    "relic.the-grand-scepter",
+    "relic.the-grand-scepter.campaign",
   )
 }

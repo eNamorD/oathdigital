@@ -189,10 +189,8 @@ actual_edifice_ids = {
 if actual_edifice_ids != expected_edifice_ids:
     errors.append("edifices must contain exactly E01 through E30")
 for index, component in enumerate(catalog.get("edifices", [])):
-    if "restrictions" not in component:
-        errors.append(f"edifices[{index}]: restrictions is required")
-    elif component["restrictions"] is not None:
-        errors.append(f"edifices[{index}]: restrictions must be null")
+    if "restrictions" in component:
+        errors.append(f"edifices[{index}]: top-level restrictions is forbidden")
     for face in ("intact", "ruined"):
         definition = component.get(face)
         if not isinstance(definition, dict):
@@ -200,6 +198,14 @@ for index, component in enumerate(catalog.get("edifices", [])):
         elif not definition.get("powers"):
             errors.append(
                 f"edifices[{index}].{face}: expected non-empty powers"
+            )
+        elif face == "intact" and definition.get("restrictions") != ["locked"]:
+            errors.append(
+                f"edifices[{index}].intact: restrictions must be [locked]"
+            )
+        elif face == "ruined" and definition.get("restrictions") is not None:
+            errors.append(
+                f"edifices[{index}].ruined: restrictions must be null"
             )
 
 if {item.get("id") for item in catalog.get("legacies", [])} != expected_legacy_ids:

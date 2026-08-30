@@ -1,0 +1,3143 @@
+{
+  "denizens": {
+    "9": [
+      {
+        "id": "denizen.alchemist",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** Gain [favor] [favor] [favor] [favor] from any favor bank or banks."
+      }
+    ],
+    "32": [
+      {
+        "id": "denizen.magicians-code",
+        "persistent": false,
+        "rulesText": "[favor] [favor] If you're challenging the Darkest Secret, gain [secret] [secret] and place them on the banner along with any other [secret] you're placing _(even none)_."
+      }
+    ],
+    "31": [
+      {
+        "id": "denizen.fire-talkers",
+        "persistent": false,
+        "rulesText": "[secret] ±3 [attack-die] if you hold the Darkest Secret."
+      }
+    ],
+    "33": [
+      {
+        "id": "denizen.spirit-snare",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Take [favor] from any one favor bank."
+      }
+    ],
+    "34": [
+      {
+        "id": "denizen.wizard-school",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Gain [secret], then end your Act Phase."
+      }
+    ],
+    "35": [
+      {
+        "id": "denizen.dazzle",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** discard all [suit-hearth] and [suit-order] cards at sites in your region."
+      }
+    ],
+    "36": [
+      {
+        "id": "denizen.acting-troupe",
+        "persistent": false,
+        "rulesText": "Act as if Acting Troupe is a [suit-beast] or [suit-order] card instead."
+      }
+    ],
+    "37": [
+      {
+        "id": "denizen.taming-charm",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Discard a [suit-beast] or [suit-nomad] card at your site to gain [favor] [favor] from the matching favor bank."
+      }
+    ],
+    "55": [
+      {
+        "id": "denizen.secret-signal",
+        "persistent": false,
+        "rulesText": "If you gain only one [favor], gain one more [favor]."
+      }
+    ],
+    "56": [
+      {
+        "id": "denizen.augury",
+        "persistent": false,
+        "rulesText": "Draw one more card. _(Stop after a Vision as normal.)_"
+      }
+    ],
+    "57": [
+      {
+        "id": "denizen.rusting-ray",
+        "persistent": false,
+        "rulesText": "[secret] If you hold the Darkest Secret, **ignore** all your enemy's rolls of hollow swords [hollow-sword]."
+      }
+    ],
+    "59": [
+      {
+        "id": "denizen.billowing-fog",
+        "persistent": false,
+        "rulesText": "[secret] If you're defeated, kill no warbands in your force. **Ignore** powers that kill all of your force."
+      }
+    ],
+    "60": [
+      {
+        "id": "denizen.kindred-warriors",
+        "persistent": false,
+        "rulesText": "[secret] Ignore all skulls [skull] you roll. ±X [attack-die] up to the number of other suits you rule."
+      }
+    ],
+    "61": [
+      {
+        "id": "denizen.terror-spells",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Kill any two warbands in your region _(at sites or on boards, even yours)_ if you hold the Darkest Secret."
+      }
+    ],
+    "62": [
+      {
+        "id": "denizen.blood-pact",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Sacrifice an even number of warbands on your board. For every two you sacrifice, gain [secret]."
+      }
+    ],
+    "63": [
+      {
+        "id": "denizen.revelation",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** each player, following turn order, may burn any number of [favor] to gain an equal number of [secret]."
+      }
+    ],
+    "64": [
+      {
+        "id": "denizen.observatory",
+        "persistent": false,
+        "rulesText": "While your pawn is here, you may draw from any one discard pile."
+      }
+    ],
+    "65": [
+      {
+        "id": "denizen.plague-engines",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** Each player _(even you)_ places one [favor] per site they rule into the [suit-arcane] bank."
+      }
+    ],
+    "66": [
+      {
+        "id": "denizen.gleaming-armor",
+        "persistent": true,
+        "rulesText": "Your enemy's battle plans have an added cost of [secret]."
+      }
+    ],
+    "68": [
+      {
+        "id": "denizen.jinx",
+        "persistent": true,
+        "rulesText": "[secret] If you rule Jinx, after you roll [attack-die] or [defense-die] for any reason, you may use this power to reroll all those dice once. _(This is not a battle plan!)_"
+      }
+    ],
+    "69": [
+      {
+        "id": "denizen.tutor",
+        "persistent": false,
+        "rulesText": "[favor] [secret] **ACTION:** Gain [secret]"
+      }
+    ],
+    "70": [
+      {
+        "id": "denizen.dream-thief",
+        "persistent": false,
+        "rulesText": "[favor] [favor] **ACTION:** Swap any two facedown advisers."
+      }
+    ],
+    "71": [
+      {
+        "id": "denizen.cracking-ground",
+        "persistent": false,
+        "rulesText": "± [attack-die] per site targeted."
+      }
+    ],
+    "72": [
+      {
+        "id": "denizen.sealing-ward",
+        "persistent": true,
+        "rulesText": "Your relics add one more [defense-die] when targeted."
+      }
+    ],
+    "73": [
+      {
+        "id": "denizen.initiation-rite",
+        "persistent": false,
+        "rulesText": "To muster, you **must** place [secret] instead of [favor]."
+      }
+    ],
+    "76": [
+      {
+        "id": "denizen.map-library",
+        "persistent": false,
+        "rulesText": "While your pawn is at this site, you may trade with a card at any site in your region."
+      }
+    ],
+    "77": [
+      {
+        "id": "denizen.witchs-bargain",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Give [secret] to a player whose pawn is at your site to take [favor] [favor] from them, or give [favor] [favor] for [secret], any number of times."
+      }
+    ],
+    "78": [
+      {
+        "id": "denizen.master-of-disguise",
+        "persistent": false,
+        "rulesText": "[secret] Act as if you had another player's advisers instead. _(You can't use your other advisers.)_"
+      }
+    ],
+    "11": [
+      {
+        "id": "denizen.errand-boy",
+        "persistent": false,
+        "rulesText": "[favor] You may draw from a discard pile in a different region instead of yours."
+      }
+    ],
+    "39": [
+      {
+        "id": "denizen.wolves",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Kill one warband _(even yours)_ on any one board."
+      }
+    ],
+    "40": [
+      {
+        "id": "denizen.animal-playmates",
+        "persistent": false,
+        "rulesText": "Spend no Supply if you're mustering on a [suit-beast] card."
+      }
+    ],
+    "41": [
+      {
+        "id": "denizen.true-names",
+        "persistent": true,
+        "rulesText": "Your enemy **cannot** use battle plans that match any of your advisers against you."
+      }
+    ],
+    "42": [
+      {
+        "id": "denizen.the-old-oak",
+        "persistent": false,
+        "rulesText": "If trading with The Old Oak for [secret], gain one more [secret] if you have any [suit-beast] advisers."
+      }
+    ],
+    "43": [
+      {
+        "id": "denizen.forest-paths",
+        "persistent": false,
+        "rulesText": "[favor] Spend no Supply and ignore the powers of sites if you're traveling to a site with a [suit-beast] card."
+      }
+    ],
+    "45": [
+      {
+        "id": "denizen.rangers",
+        "persistent": false,
+        "rulesText": "[favor] Ignore all skulls [skull] you roll. +2 [attack-die] if the defense pool has 4+ [defense-die]."
+      }
+    ],
+    "46": [
+      {
+        "id": "denizen.roving-terror",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Discard a denizen card at any other site and move this card there."
+      }
+    ],
+    "175": [
+      {
+        "id": "denizen.nature-worship",
+        "persistent": false,
+        "rulesText": "[secret] ± [attack-die] per [suit-beast] adviser you have."
+      }
+    ],
+    "176": [
+      {
+        "id": "denizen.birdsong",
+        "persistent": false,
+        "rulesText": "Spend no Supply if you're trading with a [suit-beast] or [suit-nomad] card."
+      }
+    ],
+    "177": [
+      {
+        "id": "denizen.small-friends",
+        "persistent": false,
+        "rulesText": "Act as if your pawn is at any site with a [suit-beast] card. _(You may use Trade modifiers there.)_"
+      }
+    ],
+    "178": [
+      {
+        "id": "denizen.grasping-vines",
+        "persistent": true,
+        "rulesText": "Enemies traveling from any site ruled by Grasping Vines' ruler **must** kill one warband on their board if able."
+      }
+    ],
+    "179": [
+      {
+        "id": "denizen.threatening-roar",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** discard all [suit-nomad] and [suit-beast] cards at sites in your region."
+      }
+    ],
+    "180": [
+      {
+        "id": "denizen.fae-merchant",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Draw a relic and take it. Put any relic you hold except the Grand Scepter on the bottom of the relic deck."
+      }
+    ],
+    "181": [
+      {
+        "id": "denizen.second-chance",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Kill one warband on the board of a player who has an [suit-order] or [suit-discord] adviser to gain one warband."
+      }
+    ],
+    "182": [
+      {
+        "id": "denizen.pied-piper",
+        "persistent": false,
+        "rulesText": "[secret] This card ignores the adviser limit. **ACTION:** Move this card to any other player's advisers. Take [favor] [favor] from them."
+      }
+    ],
+    "183": [
+      {
+        "id": "denizen.mushrooms",
+        "persistent": false,
+        "rulesText": "[secret] Spend no Supply, but draw only one card _(not three)_ from the bottom of your region's discard pile."
+      }
+    ],
+    "184": [
+      {
+        "id": "denizen.insect-swarm",
+        "persistent": true,
+        "rulesText": "Your enemy's battle plans each have an added cost of [favor-burnt]."
+      }
+    ],
+    "187": [
+      {
+        "id": "denizen.war-tortoise",
+        "persistent": false,
+        "rulesText": "[favor] **Ignore** all attack or defense added by your enemy's rolls of [sword] [sword] [skull] or [shield] [shield]. _(Any [skull] they roll still kill their warbands.)_"
+      }
+    ],
+    "188": [
+      {
+        "id": "denizen.new-growth",
+        "persistent": false,
+        "rulesText": "You may play [suit-beast] and [suit-hearth] cards to any site _(that has space)_."
+      }
+    ],
+    "189": [
+      {
+        "id": "denizen.wild-cry",
+        "persistent": false,
+        "rulesText": "If you play a [suit-beast] card, gain 1 Supply and 2 warbands."
+      }
+    ],
+    "190": [
+      {
+        "id": "denizen.animal-host",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** gain warbands equal to the total number of [suit-beast] cards _(including Animal Host)_ at any sites _(regardless of rule)_."
+      }
+    ],
+    "191": [
+      {
+        "id": "denizen.memory-of-nature",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Move a total of X [favor] from any favor banks to the [suit-beast] bank. X is the number of [suit-beast] cards on the map."
+      }
+    ],
+    "192": [
+      {
+        "id": "denizen.marsh-spirit",
+        "persistent": true,
+        "rulesText": "Players who target this site **cannot** use battle plans."
+      }
+    ],
+    "193": [
+      {
+        "id": "denizen.vow-of-poverty",
+        "persistent": false,
+        "rulesText": "You **cannot** gain [favor] from Trade. **REST:** If you have no [favor], take [favor] [favor] from any one favor bank."
+      }
+    ],
+    "195": [
+      {
+        "id": "denizen.walled-garden",
+        "persistent": false,
+        "rulesText": "+[defense-die] per [suit-beast] at any sites if this site is targeted."
+      }
+    ],
+    "196": [
+      {
+        "id": "denizen.vow-of-beastkin",
+        "persistent": false,
+        "rulesText": "You **must** muster on a card matching any of your advisers, but you gain one more warband."
+      }
+    ],
+    "198": [
+      {
+        "id": "denizen.wild-allies",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Campaign at any site with a [suit-beast] card. Act as if your pawn is there. Spend no Supply and add your warbands there to your force."
+      }
+    ],
+    "12": [
+      {
+        "id": "denizen.mercenaries",
+        "persistent": false,
+        "rulesText": "[favor] ±3 [attack-die] If you're defeated while using this power, discard Mercenaries."
+      }
+    ],
+    "15": [
+      {
+        "id": "denizen.a-small-favor",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** Gain four warbands."
+      }
+    ],
+    "16": [
+      {
+        "id": "denizen.second-wind",
+        "persistent": false,
+        "rulesText": "[secret] [favor-burnt] After you're victorious, you may travel and then may campaign, spending no Supply for either."
+      }
+    ],
+    "17": [
+      {
+        "id": "denizen.sleight-of-hand",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Take [secret] from a player whose pawn is at your site. You cannot take their last [secret]."
+      }
+    ],
+    "18": [
+      {
+        "id": "denizen.key-to-the-city",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** if the ruler's pawn is not at this site, kill any warbands at this site, then gain a warband and place it here."
+      }
+    ],
+    "19": [
+      {
+        "id": "denizen.scryer",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Peek at any one discard pile."
+      }
+    ],
+    "21": [
+      {
+        "id": "denizen.naysayers",
+        "persistent": false,
+        "rulesText": "**REST:** If any Exile is the Oathkeeper or Usurper, take [favor] from the Chancellor."
+      }
+    ],
+    "79": [
+      {
+        "id": "denizen.charlatan",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** burn all [secret] but one from the Darkest Secret."
+      }
+    ],
+    "80": [
+      {
+        "id": "denizen.assassin",
+        "persistent": false,
+        "rulesText": "[favor] You can only have two advisers. **ACTION:** Discard a faceup adviser of a player whose pawn is at your site."
+      }
+    ],
+    "81": [
+      {
+        "id": "denizen.downtrodden",
+        "persistent": false,
+        "rulesText": "Gain two more warbands if mustering on a card whose favor bank has the least [favor] _(not tied)_."
+      }
+    ],
+    "82": [
+      {
+        "id": "denizen.blackmail",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** choose a relic held by a player whose pawn is at your site. You take the relic unless they give you [favor] [favor] [favor]."
+      }
+    ],
+    "83": [
+      {
+        "id": "denizen.cracked-sage",
+        "persistent": false,
+        "rulesText": "[secret] [favor-burnt] ±4 [attack-die] if your enemy has an [suit-arcane] adviser."
+      }
+    ],
+    "84": [
+      {
+        "id": "denizen.dissent",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** each player, except the holder of the People's Favor, places one [favor] on this card for each suit of card they rule."
+      }
+    ],
+    "85": [
+      {
+        "id": "denizen.false-prophet",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** if you're an Exile, gain one warband and put it on any revealed Vision. You now also have it revealed. If it is ever discarded, kill the warband and play or discard the Vision as if you had searched."
+      }
+    ],
+    "87": [
+      {
+        "id": "denizen.zealots",
+        "persistent": false,
+        "rulesText": "[favor] If the defending force is larger than your force, each warband you sacrifice will add three _(not one)_ to your attack."
+      }
+    ],
+    "90": [
+      {
+        "id": "denizen.beast-tamer",
+        "persistent": true,
+        "rulesText": "Enemies cannot use [suit-beast] or [suit-nomad] battle plans against you."
+      }
+    ],
+    "92": [
+      {
+        "id": "denizen.silver-tongue",
+        "persistent": false,
+        "rulesText": "You can only have two advisers. **REST:** Take [favor] from a favor bank matching a card at your site."
+      }
+    ],
+    "93": [
+      {
+        "id": "denizen.gambling-hall",
+        "persistent": false,
+        "rulesText": "[favor] [favor] **ACTION:** Roll 4 [defense-die] and take X [favor] equal to the total [shield] result from any one favor bank."
+      }
+    ],
+    "96": [
+      {
+        "id": "denizen.enchantress",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Swap this card with any faceup adviser."
+      }
+    ],
+    "97": [
+      {
+        "id": "denizen.insomnia",
+        "persistent": false,
+        "rulesText": "You can only have two advisers. **REST:** Gain [secret]."
+      }
+    ],
+    "98": [
+      {
+        "id": "denizen.sneak-attack",
+        "persistent": true,
+        "rulesText": "After another player's campaign, you may campaign, spending no Supply, if you declare them as the defender."
+      }
+    ],
+    "101": [
+      {
+        "id": "denizen.chaos-cult",
+        "persistent": true,
+        "rulesText": "After another player takes the Oathkeeper title, you take [favor] from them."
+      }
+    ],
+    "47": [
+      {
+        "id": "denizen.wayside-inn",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Gain 2 Supply."
+      }
+    ],
+    "48": [
+      {
+        "id": "denizen.extra-provisions",
+        "persistent": false,
+        "rulesText": "[favor] + [defense-die]"
+      }
+    ],
+    "50": [
+      {
+        "id": "denizen.welcoming-party",
+        "persistent": false,
+        "rulesText": "If you play a denizen card that was not a facedown adviser, gain [favor] from the [suit-hearth] bank."
+      }
+    ],
+    "51": [
+      {
+        "id": "denizen.traveling-doctor",
+        "persistent": false,
+        "rulesText": "If you're defeated, kill no warbands in your force and discard Traveling Doctor. **Ignore** powers that kill all of your force."
+      }
+    ],
+    "52": [
+      {
+        "id": "denizen.storyteller",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Place [secret] from the shared bank on the Darkest Secret."
+      }
+    ],
+    "53": [
+      {
+        "id": "denizen.armed-mob",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Discard a faceup adviser from a player who holds the Darkest Secret but not the People's Favor."
+      }
+    ],
+    "54": [
+      {
+        "id": "denizen.tavern-songs",
+        "persistent": false,
+        "rulesText": "**ACTION:** Peek at the top three cards of your region's discard pile."
+      }
+    ],
+    "127": [
+      {
+        "id": "denizen.homesteaders",
+        "persistent": false,
+        "rulesText": "**ACTION:** Move one of your faceup advisers to your site."
+      }
+    ],
+    "128": [
+      {
+        "id": "denizen.crop-rotation",
+        "persistent": false,
+        "rulesText": "If playing to a site, you may discard a denizen there first."
+      }
+    ],
+    "130": [
+      {
+        "id": "denizen.land-garden",
+        "persistent": false,
+        "rulesText": "[favor] You may play two cards you draw _(instead of one)_ if you play at least one card to a site."
+      }
+    ],
+    "131": [
+      {
+        "id": "denizen.charming-friend",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Take [favor] from a player whose pawn is at your site."
+      }
+    ],
+    "132": [
+      {
+        "id": "denizen.village-constable",
+        "persistent": false,
+        "rulesText": "±2 [attack-die] unless your enemy has the People's Favor."
+      }
+    ],
+    "133": [
+      {
+        "id": "denizen.family-heirloom",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** draw a relic. Take it or put it on the bottom of the relic deck."
+      }
+    ],
+    "134": [
+      {
+        "id": "denizen.news-from-alfar",
+        "persistent": false,
+        "rulesText": "[favor] [favor] Spend no Supply."
+      }
+    ],
+    "135": [
+      {
+        "id": "denizen.levelers",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Move [favor] [favor] from the favor bank with the most [favor] to that with the least [favor]. You decide ties."
+      }
+    ],
+    "136": [
+      {
+        "id": "denizen.fabled-feast",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** take X [favor] equal to the number of [suit-hearth] cards you rule _(including Fabled Feast)_ from any one favor bank."
+      }
+    ],
+    "137": [
+      {
+        "id": "denizen.the-great-levy",
+        "persistent": false,
+        "rulesText": "[favor] [favor] ±3 [attack-die] and **ignore** all skulls [skull] you roll, unless your enemy has the People's Favor."
+      }
+    ],
+    "138": [
+      {
+        "id": "denizen.hearts-and-minds",
+        "persistent": false,
+        "rulesText": "[favor] [favor] [favor] As defender, you're victorious now. At end, discard Hearts and Minds unless you hold the People's Favor."
+      }
+    ],
+    "140": [
+      {
+        "id": "denizen.book-binders",
+        "persistent": true,
+        "rulesText": "After another player plays a Vision faceup, you gain [favor] [favor] from any one favor bank."
+      }
+    ],
+    "142": [
+      {
+        "id": "denizen.saddle-makers",
+        "persistent": true,
+        "rulesText": "After another player plays a [suit-nomad] or [suit-order] card, you gain [favor] [favor] from the matching favor bank."
+      }
+    ],
+    "143": [
+      {
+        "id": "denizen.herald",
+        "persistent": true,
+        "rulesText": "After another player campaigns against a player _(not bandits)_, you gain [favor] from any favor bank."
+      }
+    ],
+    "144": [
+      {
+        "id": "denizen.rowdy-pub",
+        "persistent": false,
+        "rulesText": "Gain one more warband if mustering from Rowdy Pub."
+      }
+    ],
+    "145": [
+      {
+        "id": "denizen.vow-of-peace",
+        "persistent": true,
+        "rulesText": "You **cannot** campaign. Attackers **cannot** sacrifice warbands to increase their attack against you."
+      }
+    ],
+    "147": [
+      {
+        "id": "denizen.salad-days",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** gain [favor] [favor] [favor]- one each from three different favor banks."
+      }
+    ],
+    "148": [
+      {
+        "id": "denizen.marriage",
+        "persistent": true,
+        "rulesText": "Marriage counts as two [suit-hearth] advisers, but only counts as one toward your adviser limit."
+      }
+    ],
+    "149": [
+      {
+        "id": "denizen.hospital",
+        "persistent": false,
+        "rulesText": "If any of your warbands would be killed, place them on Hospital's site instead if you still rule it."
+      }
+    ],
+    "150": [
+      {
+        "id": "denizen.awaited-return",
+        "persistent": false,
+        "rulesText": "Spend no Supply if you sacrifice one warband from your board."
+      }
+    ],
+    "14": [
+      {
+        "id": "denizen.rain-boots",
+        "persistent": false,
+        "rulesText": "Ignore all your enemy's rolls of single shields [shield]. At end, discard Rain Boots."
+      }
+    ],
+    "23": [
+      {
+        "id": "denizen.ancient-binding",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** Each player burns all [secret] from their board and cards except their last [secret]. _(Keep only your [secret] here.)_"
+      }
+    ],
+    "24": [
+      {
+        "id": "denizen.horse-archers",
+        "persistent": false,
+        "rulesText": "±3 [attack-die] At end, discard Horse Archers."
+      }
+    ],
+    "25": [
+      {
+        "id": "denizen.warning-signals",
+        "persistent": false,
+        "rulesText": "Move any warbands to and from your board and any sites you rule _(except the last warband from a site)_. At end, discard Warning Signals."
+      }
+    ],
+    "26": [
+      {
+        "id": "denizen.elders",
+        "persistent": false,
+        "rulesText": "[favor] [favor] **ACTION:** Gain [secret]."
+      }
+    ],
+    "27": [
+      {
+        "id": "denizen.the-gathering",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** any players in turn order may put their pawn on this site. Then, players with pawns here may negotiate binding exchanges of [favor], [secret], relics, and advisers."
+      }
+    ],
+    "28": [
+      {
+        "id": "denizen.faithful-friend",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** gain 4 Supply."
+      }
+    ],
+    "29": [
+      {
+        "id": "denizen.tents",
+        "persistent": false,
+        "rulesText": "[favor] Spend no Supply if you're traveling to a site in your region."
+      }
+    ],
+    "30": [
+      {
+        "id": "denizen.great-herd",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** you may swap Great Herd with a [suit-nomad] card at any site."
+      }
+    ],
+    "151": [
+      {
+        "id": "denizen.convoys",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Take another region's discard pile and put it on top of your region's discard pile _(even if empty)_."
+      }
+    ],
+    "152": [
+      {
+        "id": "denizen.vow-of-kinship",
+        "persistent": false,
+        "rulesText": "Move all of your [favor] to the [suit-nomad] bank. Any [favor] you gain or take is put in the [suit-nomad] bank. You can use [favor] in the [suit-nomad] bank as if it is on your board."
+      }
+    ],
+    "153": [
+      {
+        "id": "denizen.wild-mounts",
+        "persistent": false,
+        "rulesText": "If you would discard any number of [suit-nomad] battle plans, you may instead discard any one [suit-beast] card you rule."
+      }
+    ],
+    "154": [
+      {
+        "id": "denizen.lancers",
+        "persistent": false,
+        "rulesText": "Double your total attack roll. At end, discard Lancers."
+      }
+    ],
+    "155": [
+      {
+        "id": "denizen.mountain-giant",
+        "persistent": false,
+        "rulesText": "[secret] ±1 [attack-die] or ±3 At end, discard."
+      }
+    ],
+    "156": [
+      {
+        "id": "denizen.rival-khan",
+        "persistent": false,
+        "rulesText": "±4 [attack-die] if your enemy has a [suit-nomad] adviser. At end, discard Rival Khan."
+      }
+    ],
+    "157": [
+      {
+        "id": "denizen.lost-tongue",
+        "persistent": true,
+        "rulesText": "Other players **cannot** target or take your relics or banners in any way unless they rule a [suit-nomad] card."
+      }
+    ],
+    "158": [
+      {
+        "id": "denizen.special-envoy",
+        "persistent": false,
+        "rulesText": "Spend no Supply. After traveling, end your Act Phase."
+      }
+    ],
+    "159": [
+      {
+        "id": "denizen.resettle",
+        "persistent": false,
+        "rulesText": "**ACTION:** Move a faceup [suit-nomad] card from any player's advisers to any site."
+      }
+    ],
+    "160": [
+      {
+        "id": "denizen.oracle",
+        "persistent": false,
+        "rulesText": "[secret] [secret] **ACTION:** Draw the Vision closest to the top of the world deck. Play or discard it as if you searched."
+      }
+    ],
+    "161": [
+      {
+        "id": "denizen.pilgrimage",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** move all denizens at your site to the Dispossessed. Shuffle and draw denizens from the Dispossessed equal to the number you moved. Peek at them and put them on your region's discard pile."
+      }
+    ],
+    "162": [
+      {
+        "id": "denizen.spell-breaker",
+        "persistent": true,
+        "rulesText": "Enemies of Spell Breaker's ruler **cannot** use powers that cost any [secret] or [secret-burnt]."
+      }
+    ],
+    "163": [
+      {
+        "id": "denizen.mounted-patrol",
+        "persistent": false,
+        "rulesText": "The attacker rolls only half the [attack-die] in their attack pool, rounded down. At end, discard Mounted Patrol."
+      }
+    ],
+    "164": [
+      {
+        "id": "denizen.great-crusade",
+        "persistent": false,
+        "rulesText": "± [attack-die] per [suit-nomad] card you rule. At end, discard Great Crusade."
+      }
+    ],
+    "165": [
+      {
+        "id": "denizen.ancient-bloodline",
+        "persistent": true,
+        "rulesText": "Your enemies act as if denizens and relics at sites you rule are **locked**."
+      }
+    ],
+    "167": [
+      {
+        "id": "denizen.storm-caller",
+        "persistent": false,
+        "rulesText": "+2 [defense-die] At end, discard Storm Caller."
+      }
+    ],
+    "169": [
+      {
+        "id": "denizen.way-station",
+        "persistent": true,
+        "rulesText": "Spend no Supply if you're traveling to this site and either rule Way Station or choose to give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+      }
+    ],
+    "170": [
+      {
+        "id": "denizen.twin-brother",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** you may swap this card with a faceup [suit-nomad] adviser of another player."
+      }
+    ],
+    "171": [
+      {
+        "id": "denizen.hospitality",
+        "persistent": false,
+        "rulesText": "After traveling, gain [favor] from one favor bank that matches both a card at your site and one of your advisers."
+      }
+    ],
+    "172": [
+      {
+        "id": "denizen.old-fast-steed",
+        "persistent": false,
+        "rulesText": "[favor] Spend no Supply if you have three or fewer warbands on your board."
+      }
+    ],
+    "1": [
+      {
+        "id": "denizen.wrestlers",
+        "persistent": false,
+        "rulesText": "+ [defense-die] if you sacrifice one warband in your force."
+      }
+    ],
+    "2": [
+      {
+        "id": "denizen.battle-honors",
+        "persistent": false,
+        "rulesText": "If you're victorious, gain [favor] [favor] from the [suit-order] bank."
+      }
+    ],
+    "3": [
+      {
+        "id": "denizen.bear-traps",
+        "persistent": false,
+        "rulesText": "- [attack-die] Kill one warband on the attacker's board."
+      }
+    ],
+    "4": [
+      {
+        "id": "denizen.longbows",
+        "persistent": false,
+        "rulesText": "± [attack-die]"
+      }
+    ],
+    "6": [
+      {
+        "id": "denizen.pressgangs",
+        "persistent": false,
+        "rulesText": "You can muster on cards that already have [favor] or [secret] on them."
+      }
+    ],
+    "7": [
+      {
+        "id": "denizen.garrison",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:** gain one warband per site you rule, and put one warband from your board on each site you rule."
+      }
+    ],
+    "8": [
+      {
+        "id": "denizen.scouts",
+        "persistent": false,
+        "rulesText": "Gain 1 Supply."
+      }
+    ],
+    "103": [
+      {
+        "id": "denizen.code-of-honor",
+        "persistent": false,
+        "rulesText": "±2 [attack-die] but you **cannot** use other battle plans."
+      }
+    ],
+    "104": [
+      {
+        "id": "denizen.outriders",
+        "persistent": false,
+        "rulesText": "Ignore all skulls [skull] you roll."
+      }
+    ],
+    "105": [
+      {
+        "id": "denizen.messenger",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Move any warbands to and from your board and any sites you rule _(except the last warband from a site)_."
+      }
+    ],
+    "106": [
+      {
+        "id": "denizen.field-promotion",
+        "persistent": false,
+        "rulesText": "[favor] If you're victorious, gain three warbands."
+      }
+    ],
+    "107": [
+      {
+        "id": "denizen.palanquin",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Choose a player whose pawn is at your site. Put your pawn on a site that they can travel to. Make them travel to that site, spending no Supply."
+      }
+    ],
+    "108": [
+      {
+        "id": "denizen.shield-wall",
+        "persistent": false,
+        "rulesText": "[favor] +2 [defense-die] If you're defeated, kill all of your force."
+      }
+    ],
+    "109": [
+      {
+        "id": "denizen.military-parade",
+        "persistent": false,
+        "rulesText": "If you're victorious, gain [favor] from the favor banks matching each adviser of your enemy _(including Imperial Allies)_."
+      }
+    ],
+    "111": [
+      {
+        "id": "denizen.tyrant",
+        "persistent": false,
+        "rulesText": "You **must** kill a warband _(even your own)_ at the site you travel to, if able."
+      }
+    ],
+    "112": [
+      {
+        "id": "denizen.forced-labor",
+        "persistent": true,
+        "rulesText": "Enemies **cannot** search if their pawn is at any site ruled by Forced Labor's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+      }
+    ],
+    "113": [
+      {
+        "id": "denizen.secret-police",
+        "persistent": true,
+        "rulesText": "Enemies **cannot** play Visions faceup while their pawn is at any site ruled by Secret Police's ruler."
+      }
+    ],
+    "114": [
+      {
+        "id": "denizen.specialist",
+        "persistent": false,
+        "rulesText": "[favor] [favor] The defender **cannot** use battle plans."
+      }
+    ],
+    "115": [
+      {
+        "id": "denizen.captains",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Campaign at any site you rule. Act as if your pawn is there. Spend no Supply and add your warbands there to your force."
+      }
+    ],
+    "116": [
+      {
+        "id": "denizen.siege-engines",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Kill two warbands _(even yours)_ at any one site in your region."
+      }
+    ],
+    "117": [
+      {
+        "id": "denizen.royal-tax",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED:**: take [favor] [favor] from each player whose pawn is at a site you rule in your pawn's region."
+      }
+    ],
+    "118": [
+      {
+        "id": "denizen.toll-roads",
+        "persistent": true,
+        "rulesText": "Enemies **cannot** travel to sites ruled by Toll Roads' ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+      }
+    ],
+    "119": [
+      {
+        "id": "denizen.curfew",
+        "persistent": true,
+        "rulesText": "Enemies **cannot** trade with cards ruled by Curfew's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
+      }
+    ],
+    "120": [
+      {
+        "id": "denizen.knights-errant",
+        "persistent": false,
+        "rulesText": "After mustering, you may campaign, spending no Supply."
+      }
+    ],
+    "121": [
+      {
+        "id": "denizen.vow-of-obedience",
+        "persistent": false,
+        "rulesText": "You **cannot** play Visions faceup. **REST:** Take [favor] from any one favor bank."
+      }
+    ],
+    "122": [
+      {
+        "id": "denizen.hunting-party",
+        "persistent": false,
+        "rulesText": "After searching the world deck, you may campaign, spending no Supply."
+      }
+    ],
+    "123": [
+      {
+        "id": "denizen.council-seat",
+        "persistent": true,
+        "rulesText": "If you're a Citizen, you **cannot** be exiled, even by yourself."
+      }
+    ],
+    "124": [
+      {
+        "id": "denizen.encirclement",
+        "persistent": false,
+        "rulesText": "[favor] ±2 [attack-die] if your force is larger than your enemy's."
+      }
+    ],
+    "125": [
+      {
+        "id": "denizen.peace-envoy",
+        "persistent": false,
+        "rulesText": "[favor] You **cannot** use other battle plans. If your enemy's pawn is at your site, give them one [favor] per [defense-die] in the pool. You're victorious now. **Ignore** killing warbands."
+      }
+    ],
+    "126": [
+      {
+        "id": "denizen.relic-hunter",
+        "persistent": false,
+        "rulesText": "You may target facedown relics at targeted sites, adding 1 [defense-die] per relic. You may put any relics you take on the bottom of the relic deck."
+      }
+    ],
+    "38": [
+      {
+        "id": "denizen.inquisitor",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Guess the name of a facedown Vision _(even the Conspiracy)_ held by a player whose pawn is at your site. If you are correct, discard it."
+      }
+    ],
+    "58": [
+      {
+        "id": "denizen.quick-exit",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Place an enemy pawn at your site onto any other site."
+      }
+    ],
+    "67": [
+      {
+        "id": "denizen.bewitch",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** if you're an Exile and have the most [secret] _(even on cards)_, you may take a random relic from the Reliquary and become a Citizen. _Follow the steps in the rules and end your Act Phase._"
+      }
+    ],
+    "74": [
+      {
+        "id": "denizen.vow-of-silence",
+        "persistent": true,
+        "rulesText": "You **cannot** challenge the Darkest Secret. Whenever an enemy burns [secret-burnt], you take those secrets."
+      }
+    ],
+    "75": [
+      {
+        "id": "denizen.forgotten-vault",
+        "persistent": true,
+        "rulesText": "Enemies of Forgotten Vault's ruler **cannot** target relics held by its ruler. If ruled by Empire, all Imperials have this power."
+      }
+    ],
+    "199": [
+      {
+        "id": "denizen.golem-legions",
+        "persistent": false,
+        "rulesText": "You may muster by placing [favor] on Golem Legions. _It counts itself as a matching adviser._"
+      }
+    ],
+    "200": [
+      {
+        "id": "denizen.council-arbiter",
+        "persistent": false,
+        "rulesText": "**WHEN NEGOTIATING:** You may give, receive, and swap advisers. _You cannot exchange locked advisers. You still follow your adviser limit._"
+      }
+    ],
+    "201": [
+      {
+        "id": "denizen.catacombs",
+        "persistent": false,
+        "rulesText": "[secret] If this site has an empty relic slot, draw a relic from the relic deck and place it here facedown."
+      }
+    ],
+    "202": [
+      {
+        "id": "denizen.ward-of-silence",
+        "persistent": false,
+        "rulesText": "X [secret] **ACTION:** Choose a player whose pawn is at your site. Flip X [secret] on their board facedown."
+      }
+    ],
+    "203": [
+      {
+        "id": "denizen.vow-of-wisdom",
+        "persistent": true,
+        "rulesText": "You **must** gain [secret] instead of [favor] when you play to a site."
+      }
+    ],
+    "204": [
+      {
+        "id": "denizen.arcane-brokers",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Discard a relic you hold to gain [secret] [secret]."
+      }
+    ],
+    "205": [
+      {
+        "id": "denizen.disciples",
+        "persistent": false,
+        "rulesText": "If you have the Darkest Secret, spend only 2 Supply if you're searching the world deck."
+      }
+    ],
+    "206": [
+      {
+        "id": "denizen.arcane-armor",
+        "persistent": false,
+        "rulesText": "X [secret] Set X [defense-die] you have collected to their [shield][shield] face instead of rolling them."
+      }
+    ],
+    "207": [
+      {
+        "id": "denizen.glamor",
+        "persistent": false,
+        "rulesText": "You may also target [secret] on your enemy's board except their last. Add [defense-die] for each targeted. If you're victorious, take them."
+      }
+    ],
+    "208": [
+      {
+        "id": "denizen.wizard-s-conclave",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** the player who rules the most [suit-arcane] cards takes the Darkest Secret. You decide ties. _Don't remove secrets from it._"
+      }
+    ],
+    "44": [
+      {
+        "id": "denizen.long-lost-heir",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** if you're an Exile, you may become a Citizen. _Follow the steps in the rules and end your Act Phase._"
+      }
+    ],
+    "185": [
+      {
+        "id": "denizen.vow-of-union.campaign",
+        "persistent": true,
+        "rulesText": "At the start of **any** campaign, you may move any number of warbands from sites you rule in your region to your board or vice versa."
+      },
+      {
+        "id": "denizen.vow-of-union.restriction",
+        "persistent": true,
+        "rulesText": "You may only have [suit-beast] advisers—-bury other advisers you have or would gain."
+      }
+    ],
+    "186": [
+      {
+        "id": "denizen.giant-python.action",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** If you hold the Darkest Secret, move Giant Python to another site, and you may discard a card there first."
+      },
+      {
+        "id": "denizen.giant-python.restriction",
+        "persistent": true,
+        "rulesText": "Other cards at this site **cannot** be used for non-persistent powers or placing [favor] / [secret]."
+      }
+    ],
+    "194": [
+      {
+        "id": "denizen.forest-council",
+        "persistent": true,
+        "rulesText": "Enemies of Forest Council's ruler **cannot** place [favor] / [secret] on [suit-beast] cards or use their non-persistent powers."
+      }
+    ],
+    "197": [
+      {
+        "id": "denizen.bracken",
+        "persistent": false,
+        "rulesText": "[secret] You may put all of the cards you discard on the top or bottom of any one discard pile _(even your region's)_."
+      }
+    ],
+    "209": [
+      {
+        "id": "denizen.true-oath",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** if you rule at least three other [suit-beast] cards, you may change the Oathkeeper goal."
+      }
+    ],
+    "210": [
+      {
+        "id": "denizen.bog",
+        "persistent": false,
+        "rulesText": "**ACTION:** Discard a relic you hold to gain [favor] [favor] [favor] from the [suit-beast] bank."
+      }
+    ],
+    "211": [
+      {
+        "id": "denizen.whispering-leaves",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Choose a player whose pawn is at your site. They **must** place [favor] [favor] on this card."
+      }
+    ],
+    "212": [
+      {
+        "id": "denizen.bed-of-roots",
+        "persistent": false,
+        "rulesText": "[favor-burnt] [favor-burnt] [favor-burnt] **ACTION:** Bury a faceup adviser you have _(even if locked)_ to gain [secret] [secret]."
+      }
+    ],
+    "213": [
+      {
+        "id": "denizen.autumn-wind",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** shuffle together all discard piles, then deal these cards to the discard piles as evenly as possible. You decide ties."
+      }
+    ],
+    "214": [
+      {
+        "id": "denizen.shifting-fog",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** move all favor in each favor bank to the next bank to the right. [suit-nomad] moves to [suit-discord]."
+      }
+    ],
+    "215": [
+      {
+        "id": "denizen.fae-battalion",
+        "persistent": false,
+        "rulesText": "If you have the Darkest Secret, you may count each [hollow-sword] as a [sword] instead."
+      }
+    ],
+    "216": [
+      {
+        "id": "denizen.hunger",
+        "persistent": false,
+        "rulesText": "**WAKE:** You **must** bury an adviser held by a player whose pawn is at your site _(even yourself)_, but cannot bury this card."
+      }
+    ],
+    "217": [
+      {
+        "id": "denizen.signal-trees",
+        "persistent": false,
+        "rulesText": "[secret] Reveal the top three cards of your region's discard pile. ±2 [attack-die] per revealed [suit-beast]. Discard all of the revealed cards."
+      }
+    ],
+    "218": [
+      {
+        "id": "denizen.forest-warden",
+        "persistent": false,
+        "rulesText": "If you play a [suit-beast] card to a site, you may bury a card at the site first."
+      }
+    ],
+    "20": [
+      {
+        "id": "denizen.disgraced-captain",
+        "persistent": false,
+        "rulesText": "[favor] [favor-burnt] ±4 [attack-die] if the defender rules an [suit-order] card _(even an adviser)_."
+      }
+    ],
+    "22": [
+      {
+        "id": "denizen.book-burning",
+        "persistent": false,
+        "rulesText": "If you're victorious in a raid, burn all [secret] on the defender's board except their last [secret]."
+      }
+    ],
+    "86": [
+      {
+        "id": "denizen.vow-of-division",
+        "persistent": true,
+        "rulesText": "You **cannot** take the Challenge action. Whenever an enemy burns [favor-burnt], you take that favor unless it was burned by a raid targeting you."
+      }
+    ],
+    "88": [
+      {
+        "id": "denizen.royal-ambitions",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** if you're an Exile and rule the most sites, you may take a random relic from the Reliquary and become a Citizen. _Follow the steps in the rules and end your Act Phase._"
+      }
+    ],
+    "89": [
+      {
+        "id": "denizen.salt-the-earth",
+        "persistent": false,
+        "rulesText": "If you're victorious in a conquest, bury all cards at one site you targeted."
+      }
+    ],
+    "91": [
+      {
+        "id": "denizen.riots",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** discard all denizens at sites in this region. Burn the same number of [favor] from the People's Favor."
+      }
+    ],
+    "95": [
+      {
+        "id": "denizen.relic-thief",
+        "persistent": false,
+        "rulesText": "[favor] [secret] **ACTION:** Choose a faceup relic held by a player whose pawn is at your site. Roll [defense-die] equal to its defense. If you roll no [shield], take it."
+      }
+    ],
+    "99": [
+      {
+        "id": "denizen.gossip",
+        "persistent": true,
+        "rulesText": "After an enemy plays an adviser facedown _(including a Vision)_, gain [favor] from the [suit-discord] bank."
+      }
+    ],
+    "100": [
+      {
+        "id": "denizen.bandit-chief",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** kill one warband at each site not ruled by the bandits."
+      }
+    ],
+    "102": [
+      {
+        "id": "denizen.defame",
+        "persistent": false,
+        "rulesText": "After trading with a [suit-discord] card, burn [favor-burnt] from any player board."
+      }
+    ],
+    "219": [
+      {
+        "id": "denizen.bandit-paymaster",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Remove a bandit from your site except the last to gain 3 warbands."
+      }
+    ],
+    "220": [
+      {
+        "id": "denizen.reliquary-raid",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** take a random relic from the Reliquary."
+      }
+    ],
+    "221": [
+      {
+        "id": "denizen.tracker",
+        "persistent": false,
+        "rulesText": "**ACTION:** Choose an enemy pawn at your site and end your Act Phase. **WAKE:** If you chose a pawn last turn, you may place your pawn at their site."
+      }
+    ],
+    "222": [
+      {
+        "id": "denizen.banner-breakers",
+        "persistent": false,
+        "rulesText": "[favor] [favor-burnt] +3 [attack-die] if the defender has the Darkest Secret or People's Favor."
+      }
+    ],
+    "223": [
+      {
+        "id": "denizen.pledge-to-discord",
+        "persistent": true,
+        "rulesText": "Your advisers all have the [suit-discord] suit instead of their printed suit. _Marriage counts as two [suit-discord]._"
+      }
+    ],
+    "224": [
+      {
+        "id": "denizen.friendly-familiar",
+        "persistent": false,
+        "rulesText": "[secret] Act as if your pawn is at any site. _You may use Trade modifiers at the site._"
+      }
+    ],
+    "225": [
+      {
+        "id": "denizen.unstable-summon",
+        "persistent": false,
+        "rulesText": "If you hold the Darkest Secret, burn X [secret] from it to collect X [attack-die]."
+      }
+    ],
+    "226": [
+      {
+        "id": "denizen.bandit-prince",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** you may replace all bandits at any sites you choose with your warbands."
+      }
+    ],
+    "227": [
+      {
+        "id": "denizen.dark-enforcer",
+        "persistent": false,
+        "rulesText": "[favor-burnt] **ACTION:** Discard all [suit-order] and [suit-hearth] cards from your site."
+      }
+    ],
+    "228": [
+      {
+        "id": "denizen.spoiled-supplies",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Enemies with a pawn at your site each lose 1 Supply."
+      }
+    ],
+    "13": [
+      {
+        "id": "denizen.tinker-s-fair",
+        "persistent": false,
+        "rulesText": "[favor] [favor] [favor] **ACTION:** Draw a relic from the relic deck."
+      }
+    ],
+    "49": [
+      {
+        "id": "denizen.memory-of-home",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** Move all [favor] from any one favor bank to the [suit-hearth] bank."
+      }
+    ],
+    "129": [
+      {
+        "id": "denizen.a-round-of-ale",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** return all [favor] and [secret], and flip your [secret], as in the Rest Phase."
+      }
+    ],
+    "139": [
+      {
+        "id": "denizen.relic-breaker",
+        "persistent": false,
+        "rulesText": "**ACTION:** Bury a relic you hold to gain [secret]."
+      }
+    ],
+    "141": [
+      {
+        "id": "denizen.ballot-box",
+        "persistent": false,
+        "rulesText": "[favor] [favor] **ACTION:** If you have an adviser matching a card at this site, replace all warbands on this site with your warbands. Remove any that can't be replaced."
+      }
+    ],
+    "146": [
+      {
+        "id": "denizen.deed-writer",
+        "persistent": false,
+        "rulesText": "**WHEN NEGOTIATING:** You may give, receive, and swap sites. Old ruler moves warbands from site to their board, and new ruler moves warbands to site from their board."
+      }
+    ],
+    "229": [
+      {
+        "id": "denizen.old-songs",
+        "persistent": false,
+        "rulesText": "You may trade with cards that have exactly one [secret] on them."
+      }
+    ],
+    "230": [
+      {
+        "id": "denizen.diplomat",
+        "persistent": true,
+        "rulesText": "Players **cannot** campaign against you unless they rule a [suit-hearth] card."
+      }
+    ],
+    "231": [
+      {
+        "id": "denizen.village-idiot",
+        "persistent": false,
+        "rulesText": "After mustering with this card, gain [favor] from the [suit-hearth] bank."
+      }
+    ],
+    "232": [
+      {
+        "id": "denizen.spinning-bee",
+        "persistent": false,
+        "rulesText": "Declare a suit. Draw from your discard pile until you draw a matching card. If you draw none, discard them all. You **cannot** use other Search modifiers."
+      }
+    ],
+    "233": [
+      {
+        "id": "denizen.firebrand",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Add [favor] to the People's Favor from any favor bank, or burn [favor-burnt] from the People's Favor."
+      }
+    ],
+    "234": [
+      {
+        "id": "denizen.watchdog",
+        "persistent": false,
+        "rulesText": "+[defense-die] if any target is in the Cradle."
+      }
+    ],
+    "235": [
+      {
+        "id": "denizen.favored-son",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** take the People's Favor. If you do, adjust its [favor] using its left ribbon."
+      }
+    ],
+    "236": [
+      {
+        "id": "denizen.town-meeting",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** gain [favor] from any favor bank for each [suit-hearth] card you rule. _This includes your advisers, even Town Meeting._"
+      }
+    ],
+    "237": [
+      {
+        "id": "denizen.league-treaty",
+        "persistent": true,
+        "rulesText": "During the Rest Phase of any player, League Treaty's ruler may move any [favor] from cards in its region to any one favor bank."
+      }
+    ],
+    "238": [
+      {
+        "id": "denizen.skilled-merchants",
+        "persistent": false,
+        "rulesText": "You may trade with any denizens in your region."
+      }
+    ],
+    "166": [
+      {
+        "id": "denizen.ancient-pact",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** if you're an Exile and hold the Darkest Secret, you may take a random relic from the Reliquary and become a Citizen. _Follow the steps in the rules and end your Act Phase._"
+      }
+    ],
+    "168": [
+      {
+        "id": "denizen.family-wagon",
+        "persistent": true,
+        "rulesText": "You have no adviser limit but may only have [suit-nomad] advisers-—bury other advisers you have or would gain."
+      }
+    ],
+    "173": [
+      {
+        "id": "denizen.relic-worship",
+        "persistent": true,
+        "rulesText": "[secret] After recovering a relic, gain 2 Supply."
+      }
+    ],
+    "239": [
+      {
+        "id": "denizen.tribute-spoils",
+        "persistent": false,
+        "rulesText": "[favor] If you're victorious in a conquest, take [favor] for each card at targeted sites from the matching favor bank."
+      }
+    ],
+    "240": [
+      {
+        "id": "denizen.search-party",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** peek at the bottom 3 cards of a discard pile and play one as if you searched. _Return the rest._"
+      }
+    ],
+    "241": [
+      {
+        "id": "denizen.moving-market",
+        "persistent": false,
+        "rulesText": "After trading with Moving Market, you may move this card to any site with capacity. If you do, gain [favor] from the [suit-nomad] bank."
+      }
+    ],
+    "242": [
+      {
+        "id": "denizen.traveling-negotiator",
+        "persistent": false,
+        "rulesText": "**WHEN NEGOTIATING:** You may negotiate with any player."
+      }
+    ],
+    "243": [
+      {
+        "id": "denizen.pledge-of-defense",
+        "persistent": false,
+        "rulesText": "+X [defense-die] X equals all [suit-nomad] cards you rule. At end, discard this card."
+      }
+    ],
+    "244": [
+      {
+        "id": "denizen.the-red-seer",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] [secret-burnt] **ACTION:** If you hold the Darkest Secret, change the Oathkeeper goal to anything but Devotion."
+      }
+    ],
+    "245": [
+      {
+        "id": "denizen.royal-stables",
+        "persistent": false,
+        "rulesText": "Travel costs one less Supply _(minimum 1)_."
+      }
+    ],
+    "246": [
+      {
+        "id": "denizen.call-for-help",
+        "persistent": false,
+        "rulesText": "**WHEN PLAYED,** reveal and discard up to 6 cards from your region's discard pile. Gain 2 warbands for each revealed [suit-nomad] card."
+      }
+    ],
+    "247": [
+      {
+        "id": "denizen.vow-of-wandering.muster",
+        "persistent": false,
+        "rulesText": "Gain two more warbands."
+      },
+      {
+        "id": "denizen.vow-of-wandering",
+        "persistent": true,
+        "rulesText": "You **cannot** place warbands on sites."
+      }
+    ],
+    "248": [
+      {
+        "id": "denizen.mounted-library",
+        "persistent": false,
+        "rulesText": "If trading on Mounted Library for [secret], gain double the [secret], then discard Mounted Library."
+      }
+    ],
+    "5": [
+      {
+        "id": "denizen.keep",
+        "persistent": false,
+        "rulesText": "If defeated in a raid, after the attacker takes what they targeted, place your pawn at this site and end the action. _Do not burn favor, move pawn, etc._"
+      }
+    ],
+    "10": [
+      {
+        "id": "denizen.martial-culture",
+        "persistent": false,
+        "rulesText": "If you're an Exile and defeat another Exile, you may become a Citizen. _Follow the steps in the rules and end your Act Phase._"
+      }
+    ],
+    "249": [
+      {
+        "id": "denizen.master-at-arms",
+        "persistent": false,
+        "rulesText": "You may reroll any number of dice that show hollow swords [hollow-sword] once."
+      }
+    ],
+    "250": [
+      {
+        "id": "denizen.baron",
+        "persistent": false,
+        "rulesText": "You may play to any site you rule, and you may discard a card from that site first."
+      }
+    ],
+    "251": [
+      {
+        "id": "denizen.honor-guard",
+        "persistent": false,
+        "rulesText": "[favor] [favor] [favor-burnt] **ACTION:** Choose a player with no [suit-order] advisers whose pawn is at your site. Bury a faceup adviser they have."
+      }
+    ],
+    "252": [
+      {
+        "id": "denizen.city-wall",
+        "persistent": true,
+        "rulesText": "While at this site, enemies of City Wall's ruler **cannot** place [favor] / [secret] on cards or use non-persistent powers."
+      }
+    ],
+    "253": [
+      {
+        "id": "denizen.fearsome-general",
+        "persistent": false,
+        "rulesText": "Each [skull] you roll adds two more [sword] _(4 total)_, even if the [skull] is ignored _(Outriders, etc.)_."
+      }
+    ],
+    "254": [
+      {
+        "id": "denizen.careful-plans",
+        "persistent": false,
+        "rulesText": "[favor] The defender **must** roll their [defense-die] before the attacker rolls their [attack-die]."
+      }
+    ],
+    "255": [
+      {
+        "id": "denizen.garrison-armory",
+        "persistent": false,
+        "rulesText": "[favor] In a conquest, warbands on targeted sites each add +2 defense _(instead of +1)_."
+      }
+    ],
+    "256": [
+      {
+        "id": "denizen.battle-axes",
+        "persistent": false,
+        "rulesText": "±2 [attack-die] if your enemy rules a [suit-beast] card."
+      }
+    ],
+    "257": [
+      {
+        "id": "denizen.great-feast",
+        "persistent": false,
+        "rulesText": "[favor] **ACTION:** Discard a [suit-beast] card at your site to gain 3 Supply."
+      }
+    ],
+    "258": [
+      {
+        "id": "denizen.quartermaster",
+        "persistent": false,
+        "rulesText": "**WAKE:** If you rule this card, gain 1 Supply."
+      }
+    ]
+  },
+  "relics": {
+    "R01": [
+      {
+        "id": "relic.sticky-fire",
+        "persistent": false,
+        "rulesText": "If you're victorious, you may kill all the warbands in your enemy's force. If you do, you **must** give them [favor] if able."
+      }
+    ],
+    "R02": [
+      {
+        "id": "relic.cursed-cauldron",
+        "persistent": false,
+        "rulesText": "If you're victorious, gain 1 warband per enemy warband killed in this campaign."
+      }
+    ],
+    "R04": [
+      {
+        "id": "relic.truthful-harp",
+        "persistent": false,
+        "rulesText": "You may draw 2 more cards. If you do, you **must** reveal every card you draw and the card you keep."
+      }
+    ],
+    "R05": [
+      {
+        "id": "relic.grand-mask",
+        "persistent": true,
+        "rulesText": "If you're an Exile, during your turn you rule cards except battle plans at Imperial sites, and Imperial players do not."
+      }
+    ],
+    "R07": [
+      {
+        "id": "relic.cup-of-plenty",
+        "persistent": false,
+        "rulesText": "Spend no Supply if you're trading with a card that does not match any of your advisers."
+      }
+    ],
+    "R08": [
+      {
+        "id": "relic.whistle",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Take a pawn from another site, place it at your site, and give them the [secret] here."
+      }
+    ],
+    "R10": [
+      {
+        "id": "relic.cracked-horn",
+        "persistent": false,
+        "rulesText": "You may put all of the cards you discard on the bottom of the world deck."
+      }
+    ],
+    "R11": [
+      {
+        "id": "relic.bandit-crown",
+        "persistent": true,
+        "rulesText": "You may use cards at sites ruled by bandits as if you ruled them. _You may use these battle plans against bandits._"
+      }
+    ],
+    "R03": [
+      {
+        "id": "relic.brass-horse",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Reveal the top card of your region's discard pile. Place your pawn at a different site with a matching card. If you **cannot**, place it at any site."
+      }
+    ],
+    "R06": [
+      {
+        "id": "relic.horned-mask",
+        "persistent": false,
+        "rulesText": "**WAKE:** You may take a non-edifice denizen from your site as a facedown adviser _(once per turn, like all Wake powers)_."
+      }
+    ],
+    "R09": [
+      {
+        "id": "relic.dowsing-sticks",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] [secret-burnt] **ACTION:** Draw a relic from the relic deck and take it. _(You may keep it facedown.)_"
+      }
+    ],
+    "R12": [
+      {
+        "id": "relic.king-of-devotion",
+        "persistent": false,
+        "rulesText": "You may discard cards to your region's discard pile instead of the next region out."
+      }
+    ],
+    "R13": [
+      {
+        "id": "relic.skeleton-key",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** If your pawn is at a Hinterland site, take a relic from your site."
+      }
+    ],
+    "R14": [
+      {
+        "id": "relic.oracular-pig",
+        "persistent": false,
+        "rulesText": "**ACTION:** Peek at the top 3 cards of the world deck."
+      }
+    ],
+    "R16": [
+      {
+        "id": "relic.ivory-eye",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Peek at any facedown adviser. _(This includes Visions.)_"
+      }
+    ],
+    "R17": [
+      {
+        "id": "relic.shifting-map",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Gain 1 Supply."
+      }
+    ],
+    "R19": [
+      {
+        "id": "relic.book-of-records",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] [secret-burnt] **ACTION:** Take [favor] [favor] or [secret] [secret] from a banner held by a player whose pawn is at your site."
+      }
+    ],
+    "R20": [
+      {
+        "id": "relic.dragonskin-drum",
+        "persistent": false,
+        "rulesText": "After traveling, gain one warband."
+      }
+    ],
+    "R22": [
+      {
+        "id": "relic.ancient-grit",
+        "persistent": false,
+        "rulesText": "**ACTION:** Bury this to draw 3 legacy cards, keep 1 facedown, and discard the other 2."
+      }
+    ],
+    "R23": [
+      {
+        "id": "relic.painted-trumpet",
+        "persistent": false,
+        "rulesText": "Instead of drawing from one discard pile, you may draw the top card from each discard pile. This draw amount **cannot** be modified."
+      }
+    ],
+    "R15": [
+      {
+        "id": "relic.circlet-of-command",
+        "persistent": true,
+        "rulesText": "Players **cannot** target your banners or your other relics."
+      }
+    ],
+    "R18": [
+      {
+        "id": "relic.obsidian-cage.campaign",
+        "persistent": false,
+        "rulesText": "If you're victorious, move all unkilled warbands in your enemy's force to Obsidian Cage."
+      },
+      {
+        "id": "relic.obsidian-cage.action",
+        "persistent": false,
+        "rulesText": "**ACTION:** Move any number of warbands from Obsidian Cage to any board of the same color."
+      }
+    ],
+    "R21": [
+      {
+        "id": "relic.crystal-vial",
+        "persistent": false,
+        "rulesText": "[secret] [secret-burnt] **ACTION:** Bury an adviser of yours or a denizen at your site. _(Bury ignores the locked restriction.)_"
+      }
+    ],
+    "R24": [
+      {
+        "id": "relic.bone-dice",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Roll [attack-die] [attack-die]. Gain 1 Supply for each [sword] rolled, then bury this relic if you rolled any [skull]."
+      }
+    ],
+    "R25": [
+      {
+        "id": "relic.brass-army.campaign",
+        "persistent": false,
+        "rulesText": "[secret] +4 [attack-die]"
+      },
+      {
+        "id": "relic.brass-army.restriction",
+        "persistent": true,
+        "rulesText": "Whenever your pawn moves _(travel or place)_, bury this or flip a secret you have facedown."
+      }
+    ],
+    "R26": [
+      {
+        "id": "relic.imperial-seal",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** If no Imperial pawns are at your site, move any number of Imperial warbands from your site to any Imperial site or Imperial player board."
+      }
+    ],
+    "R28": [
+      {
+        "id": "relic.singing-mask",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Choose a denizen at your site. Move up to [favor] [favor] between the matching favor bank and the People's Favor."
+      }
+    ],
+    "R29": [
+      {
+        "id": "relic.lost-tapestry",
+        "persistent": true,
+        "rulesText": "Facedown Visions do not count against your adviser limit."
+      }
+    ],
+    "R31": [
+      {
+        "id": "relic.silver-charm",
+        "persistent": false,
+        "rulesText": "Each time you spend Supply to roll [attack-die], you may also reroll any number of previous [attack-die] at the same time."
+      }
+    ],
+    "R32": [
+      {
+        "id": "relic.amber-flame",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Burn [favor-burnt] or [secret-burnt] from a banner held by a player whose pawn is at your site."
+      }
+    ],
+    "R34": [
+      {
+        "id": "relic.whispering-stone",
+        "persistent": false,
+        "rulesText": "[secret] **ACTION:** Negotiate with any one player in private, even if their pawn is not at your site."
+      }
+    ],
+    "R35": [
+      {
+        "id": "relic.black-sword",
+        "persistent": false,
+        "rulesText": "[secret-burnt] [secret-burnt] +5 [attack-die]"
+      }
+    ],
+    "R27": [
+      {
+        "id": "relic.fearsome-shield",
+        "persistent": false,
+        "rulesText": "[secret-burnt] [secret-burnt] +2 [defense-die]"
+      }
+    ],
+    "R30": [
+      {
+        "id": "relic.bandit-standard",
+        "persistent": false,
+        "rulesText": "+ [attack-die] for each bandit in your region. This **cannot** be used while targeting sites ruled by bandits."
+      }
+    ],
+    "R33": [
+      {
+        "id": "relic.wine-of-welcome",
+        "persistent": false,
+        "rulesText": "Draw from the bottom of the world deck instead of the top."
+      }
+    ],
+    "R36": [
+      {
+        "id": "relic.barbed-net",
+        "persistent": false,
+        "rulesText": "[secret-burnt] [secret-burnt] [secret-burnt] **ACTION:** Take a relic from your site. _(You may keep it facedown.)_"
+      }
+    ],
+    "R37": [
+      {
+        "id": "relic.bag-of-siegeworks",
+        "persistent": false,
+        "rulesText": "[secret] If you're targeting sites, ignore [defense-die] rolls with a single [shield]."
+      }
+    ],
+    "R38": [
+      {
+        "id": "relic.secret-testament",
+        "persistent": true,
+        "rulesText": "When an enemy takes a banner from you, take all [favor] or [secret] on the banner."
+      }
+    ],
+    "R40": [
+      {
+        "id": "relic.yew-staff",
+        "persistent": true,
+        "rulesText": "When using card powers, you may act as if you hold the Darkest Secret."
+      }
+    ],
+    "R39": [
+      {
+        "id": "relic.magic-carpet",
+        "persistent": false,
+        "rulesText": "**ACTION:** Place your pawn at any site. Then, discard Magic Carpet or give it to a player at a different site."
+      }
+    ],
+    "R43": [
+      {
+        "id": "relic.sigil-of-the-eye",
+        "persistent": false,
+        "rulesText": "You may challenge the Darkest Secret from any site."
+      }
+    ],
+    "R41": [
+      {
+        "id": "relic.spiteful-mirror",
+        "persistent": false,
+        "rulesText": "[secret] This turn, you may act as if any cards you use to trade or muster are [suit-discord] cards."
+      }
+    ],
+    "R46": [
+      {
+        "id": "relic.demon-tail",
+        "persistent": false,
+        "rulesText": "[secret-burnt] [secret-burnt] [secret-burnt] **ACTION:** Gain 2 Supply."
+      }
+    ],
+    "R47": [
+      {
+        "id": "relic.clay-rattle",
+        "persistent": false,
+        "rulesText": "[secret] [secret] **ACTION:** Shuffle the world deck or any region's discard pile."
+      }
+    ],
+    "R42": [
+      {
+        "id": "relic.keeping-banner",
+        "persistent": false,
+        "rulesText": "[secret] The attacker **must** resolve another [skull] for each [skull] rolled."
+      }
+    ],
+    "R44": [
+      {
+        "id": "relic.sigil-of-the-heart",
+        "persistent": false,
+        "rulesText": "You may challenge the People's Favor from any site."
+      }
+    ],
+    "R45": [
+      {
+        "id": "relic.magic-waterskin",
+        "persistent": false,
+        "rulesText": "**ACTION:** Bury this relic to gain 4 Supply."
+      }
+    ],
+    "grand-scepter": [
+      {
+        "id": "relic.the-grand-scepter.restriction",
+        "persistent": false,
+        "rulesText": "This relic **cannot** be removed from play or added to a lineage."
+      },
+      {
+        "id": "relic.the-grand-scepter.campaign",
+        "persistent": false,
+        "rulesText": "[favor-burnt][favor-burnt][favor-burnt] If you are Imperial and victorious against a Citizen, you exile them."
+      },
+      {
+        "id": "relic.the-grand-scepter.action",
+        "persistent": false,
+        "rulesText": "**ACTION:** You may become a Citizen if an Exile. **IN NEGOTIATION:** May offer Citizenship."
+      },
+      {
+        "id": "relic.the-grand-scepter.negotiation",
+        "persistent": false,
+        "rulesText": "**IN NEGOTIATION:** May offer Citizenship."
+      }
+    ]
+  },
+  "edifices": {
+    "E01": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e01.intact",
+            "persistent": true,
+            "rulesText": "If this card's ruler holds the People's Favor, their enemies **cannot** target the People's Favor. If ruled by Empire, all Imperials have this power."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e01.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [favor] [favor] [favor] [favor] on the People's Favor and move it to the shared bank—-players **cannot** start with it. Burn [favor-burnt] from each favor bank."
+          }
+        ]
+      }
+    },
+    "E02": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e02.intact",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [favor] on this site for each denizen _(including this)_ in this region. _Players may take it in Wake._"
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e02.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [favor] on each site ruled by the bandits. _(Players may take it in Wake.)_ Burn [favor-burnt] from each favor bank."
+          }
+        ]
+      }
+    },
+    "E03": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e03.intact",
+            "persistent": true,
+            "rulesText": "Act as if this site is a Coast along with its other powers."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e03.ruined",
+            "persistent": true,
+            "rulesText": "Act as if this site is an Island along with its other powers."
+          }
+        ]
+      }
+    },
+    "E04": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e04.intact",
+            "persistent": true,
+            "rulesText": "CHRONICLE (SUN): Players with a pawn at this site do not discard their dormant legacies."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e04.ruined",
+            "persistent": true,
+            "rulesText": "CHRONICLE (SUN): Exiles at this site don't need to meet the goals of their active legacies to keep them active."
+          }
+        ]
+      }
+    },
+    "E05": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e05.intact",
+            "persistent": false,
+            "rulesText": "SETUP / **WHEN EXPLORED:** If you place your pawn here, you may discard all of your legacies (even dormant) to draw 2 dormant legacies and activate one."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e05.ruined",
+            "persistent": false,
+            "rulesText": "SETUP / **WHEN EXPLORED:** If you place your pawn here, draw a dormant legacy, then discard one you hold."
+          }
+        ]
+      }
+    },
+    "E06": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e06.intact",
+            "persistent": false,
+            "rulesText": "SETUP / **WHEN EXPLORED:** If you place your pawn here, draw a relic from the relic deck and take it facedown."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e06.ruined",
+            "persistent": false,
+            "rulesText": "SETUP / **WHEN EXPLORED:** If you place your pawn here, discard all relics at sites in this region."
+          }
+        ]
+      }
+    },
+    "E07": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e07.intact",
+            "persistent": true,
+            "rulesText": "Whenever this card's ruler would discard a [suit-nomad] card from a power, they may instead pay [favor] to the [suit-nomad] bank."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e07.ruined",
+            "persistent": true,
+            "rulesText": "**CHRONICLE (START OF THRONE):** Bury all [suit-nomad] cards on the map unless the winner rules this card."
+          }
+        ]
+      }
+    },
+    "E08": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e08.intact",
+            "persistent": true,
+            "rulesText": "Players **cannot** play Visions, except the Conspiracy, faceup unless their pawn is at this site."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e08.ruined",
+            "persistent": true,
+            "rulesText": "If an Exile reveals a Vision while their pawn is at this site, they do not discard their current revealed Vision. _They can have any number!_"
+          }
+        ]
+      }
+    },
+    "E09": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e09.intact",
+            "persistent": false,
+            "rulesText": "[secret] **ACTION:** Move this card to another site, then place your pawn there."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e09.ruined",
+            "persistent": false,
+            "rulesText": "[favor] [secret] [secret] **ACTION:** Bury a denizen at any site _(even here)_. If you do, move Giant's Rampage to that site and place your pawn there."
+          }
+        ]
+      }
+    },
+    "E10": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e10.intact",
+            "persistent": false,
+            "rulesText": "[favor] **ACTION:** Draw a card from the bottom of the world deck and play it to your advisers or discard it, as if you searched."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e10.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP / WHEN EXPLORED:** If you place your pawn here, you may burn [secret-burnt]. If you do and then win the game, score double the legacy points and take rule of all bandit sites."
+          }
+        ]
+      }
+    },
+    "E11": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e11.intact",
+            "persistent": false,
+            "rulesText": "[secret] **ACTION:** Add 3 random cards from the Dispossessed to this region's discard pile, then add the bottom 3 denizens from that pile to the Dispossessed."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e11.ruined",
+            "persistent": false,
+            "rulesText": "SETUP (END) / **WHEN EXPLORED:** Swap denizens in this region's discard pile with the same number of random cards from the Dispossessed. Then, shuffle these cards with any Visions in this pile."
+          }
+        ]
+      }
+    },
+    "E12": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e12.intact",
+            "persistent": false,
+            "rulesText": "[favor] [secret] [secret] [secret-burnt] **ACTION:** Advance the round marker once, if possible. _Do not roll [round-die]. This cannot end the game._"
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e12.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Advance the round marker once, if possible. _Do not roll [round-die]. This cannot end the game._"
+          }
+        ]
+      }
+    },
+    "E13": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e13.intact",
+            "persistent": false,
+            "rulesText": "[favor] **ACTION:** Peek at all relics in this region, then swap one with a relic you have, placing it facedown."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e13.ruined",
+            "persistent": false,
+            "rulesText": "[secret] If your pawn is at this site, you may recover the top card of the relic deck instead. Its recover difficulty is 5."
+          }
+        ]
+      }
+    },
+    "E14": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e14.intact",
+            "persistent": false,
+            "rulesText": "[secret] **ACTION:** If your pawn is at this site, place your pawn on another site. If your pawn is not at this site, place your pawn at this site."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e14.ruined",
+            "persistent": false,
+            "rulesText": "[secret] **ACTION:** If your pawn is at this site, roll [round-die] and place your pawn that many sites Hinterward. The bottom Hinterland site wraps to the top Cradle site."
+          }
+        ]
+      }
+    },
+    "E15": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e15.intact",
+            "persistent": false,
+            "rulesText": "**WAKE:** If your pawn is at this site, refresh your Supply marker to the leftmost space."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e15.ruined",
+            "persistent": false,
+            "rulesText": "[secret] **ACTION:** If your pawn is at this site, roll 2 [defense-die] and gain Supply equal to the total [shield] rolled. If you roll none, end your Act Phase."
+          }
+        ]
+      }
+    },
+    "E16": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e16.intact",
+            "persistent": true,
+            "rulesText": "Enemies of this card's ruler **cannot** discard cards from sites ruled by this card's ruler. _They can still be buried._"
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e16.ruined",
+            "persistent": true,
+            "rulesText": "**CHRONICLE:** Ruined edifices ruled by bandits are not discarded."
+          }
+        ]
+      }
+    },
+    "E17": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e17.intact",
+            "persistent": true,
+            "rulesText": "Enemies of this card's ruler **cannot** recover relics at sites ruled by this card's ruler."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e17.ruined",
+            "persistent": true,
+            "rulesText": "Enemies of this card's ruler **cannot** recover relics at sites ruled by bandits."
+          }
+        ]
+      }
+    },
+    "E18": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e18.intact",
+            "persistent": true,
+            "rulesText": "If this card's ruler holds the Darkest Secret, their enemies **cannot** target the Darkest Secret. If ruled by Empire, all Imperials have this power."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e18.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [secret] [secret] [secret] on the Darkest Secret and move it to the shared bank. Players **cannot** start with it."
+          }
+        ]
+      }
+    },
+    "E19": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e19.intact",
+            "persistent": false,
+            "rulesText": "**WHEN NEGOTIATING:** You may negotiate with players at any sites. Players may make binding promises, even into later games."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e19.ruined",
+            "persistent": true,
+            "rulesText": "**WHEN NEGOTIATING:** Players at sites ruled by bandits may negotiate with each other."
+          }
+        ]
+      }
+    },
+    "E20": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e20.intact",
+            "persistent": false,
+            "rulesText": "+2 [defense-die] if your pawn is at this site or this site is targeted."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e20.ruined",
+            "persistent": false,
+            "rulesText": "+1 [defense-die] if this site is targeted."
+          }
+        ]
+      }
+    },
+    "E21": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e21.intact",
+            "persistent": false,
+            "rulesText": "**WHEN NEGOTIATING:** Players may give, receive, and swap advisers. _Players must follow their adviser limits._"
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e21.ruined",
+            "persistent": false,
+            "rulesText": "[favor] [favor-burnt] **ACTION:** Discard any number of facedown advisers you have. Draw that many denizens from the bottom of the world deck as facedown advisers."
+          }
+        ]
+      }
+    },
+    "E22": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e22.intact",
+            "persistent": false,
+            "rulesText": "SETUP / **WHEN EXPLORED:** If you place your pawn here, gain three warbands."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e22.ruined",
+            "persistent": false,
+            "rulesText": "SETUP (END) / **WHEN EXPLORED:** Discard all other denizens in this region."
+          }
+        ]
+      }
+    },
+    "E23": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e23.intact",
+            "persistent": false,
+            "rulesText": "If you're victorious in a raid, place the defender's pawn on this site, and they lose 2 Supply."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e23.ruined",
+            "persistent": false,
+            "rulesText": "If you're victorious, place the attacker's pawn on this site, and they lose 2 Supply. _Bandits will use this._"
+          }
+        ]
+      }
+    },
+    "E24": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e24.intact",
+            "persistent": false,
+            "rulesText": "If you travel to this site and do not rule this card, you **must** kill 2 warbands on your board if able."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e24.ruined",
+            "persistent": true,
+            "rulesText": "Cards **cannot** be played to this site. _This card can still be discarded by People's Favor, etc._"
+          }
+        ]
+      }
+    },
+    "E25": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e25.intact",
+            "persistent": false,
+            "rulesText": "**WAKE:** If your pawn is at this site and its ruler consents, place your pawn on any site."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e25.ruined",
+            "persistent": false,
+            "rulesText": "**WAKE:** If your pawn is at this site, you may burn [favor-burnt] to place your pawn on any site."
+          }
+        ]
+      }
+    },
+    "E26": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e26.intact",
+            "persistent": true,
+            "rulesText": "When trading at this site for [secret], you **must** place both [favor] on the card you are trading with _(instead of burning one)_."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e26.ruined",
+            "persistent": true,
+            "rulesText": "CHRONICLE (THRONE): This site's ruler may secretly keep a relic they have facedown. They start the next game with it."
+          }
+        ]
+      }
+    },
+    "E27": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e27.intact",
+            "persistent": false,
+            "rulesText": "You may challenge a banner held by an enemy even if your pawn is not at their pawn's site."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e27.ruined",
+            "persistent": false,
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [secret] on each site ruled by the bandits. _Players may take it in Wake._"
+          }
+        ]
+      }
+    },
+    "E28": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e28.intact",
+            "persistent": true,
+            "rulesText": "While this card's ruler is at this site, they **cannot** be targeted by a challenge or a raid campaign. If ruled by Empire, all Imperials have this power."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e28.ruined",
+            "persistent": true,
+            "rulesText": "Players at this site **cannot** be targeted by a challenge or a raid campaign, unless the targeting player has a [suit-beast] adviser."
+          }
+        ]
+      }
+    },
+    "E29": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e29.intact",
+            "persistent": true,
+            "rulesText": "Enemies of this card's ruler **cannot** travel to this site unless they have a [suit-beast] adviser."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e29.ruined",
+            "persistent": true,
+            "rulesText": "Imperials **cannot** place [favor]/[secret] on cards ruled by bandits or use their non-persistent powers."
+          }
+        ]
+      }
+    },
+    "E30": {
+      "intact": {
+        "restrictions": [
+          "locked"
+        ],
+        "powers": [
+          {
+            "id": "edifice.e30.intact",
+            "persistent": false,
+            "rulesText": "[secret] [secret] **ACTION:** Choose a region. Discard all non-[suit-beast] denizens at sites in that region."
+          }
+        ]
+      },
+      "ruined": {
+        "restrictions": null,
+        "powers": [
+          {
+            "id": "edifice.e30.ruined",
+            "persistent": false,
+            "rulesText": "SETUP (END) / **WHEN EXPLORED:** Bury this region's discard pile."
+          }
+        ]
+      }
+    }
+  },
+  "legacies": {
+    "L01": [
+      {
+        "id": "legacy.iron-hand",
+        "persistent": false,
+        "rulesText": "**If you are Imperial, discard Iron Hand.**\n\n**SETUP:** If you were in the previous game, you place one warband on all sites coming from the Atlas until the Empire divider, and players may place their pawn at any site.\n\n**CHRONICLE:** Score your legacies in addition to the winner, and perform Shape Empire and Build Edifice (Throne). Your sites are stored in place of the Empire (Stars)."
+      }
+    ],
+    "L02": [
+      {
+        "id": "legacy.chronicler",
+        "persistent": false,
+        "rulesText": "**CHRONICLE (SUN):** After Resolve Legacies, you may declare that all players score their legacies now. _Each legacy may only be scored once per game._"
+      }
+    ],
+    "L03": [
+      {
+        "id": "legacy.steadfast",
+        "persistent": false,
+        "rulesText": "**CHRONICLE:** Your other legacies **cannot** become dormant—they always stay active."
+      }
+    ],
+    "L04": [
+      {
+        "id": "legacy.peacemaker",
+        "persistent": false,
+        "rulesText": "**ACTION:** Return a banner you hold to the shared bank. _Do not adjust its [favor] or [secret]._ If you do, remove all warbands except the last _(including bandits)_ from each site and player board, even yours."
+      }
+    ],
+    "L05": [
+      {
+        "id": "legacy.the-needle",
+        "persistent": false,
+        "rulesText": "After you take a banner in any way, you may flip it to its other side."
+      }
+    ],
+    "L06": [
+      {
+        "id": "legacy.circle-of-swords",
+        "persistent": false,
+        "rulesText": "**SETUP:** You gain eight starting warbands _(instead of three)_. If you're Imperial and other Imperials would gain fewer than three, you gain less."
+      }
+    ],
+    "L07": [
+      {
+        "id": "legacy.great-architect",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE AN IMPERIAL:** **CHRONICLE (THRONE):** You perform Build Edifice and may build any edifice _(not just a matching one)_. Do this even if the Iron Hand is in play."
+      }
+    ],
+    "L08": [
+      {
+        "id": "legacy.ancestral-lands",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE AN IMPERIAL:** **TRAVEL:** Traveling to the Cradle costs you only 1 Supply."
+      }
+    ],
+    "L09": [
+      {
+        "id": "legacy.scepter-bearer",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE AN IMPERIAL:** **SETUP:** You start with the Grand Scepter _(instead of the Chancellor)_."
+      }
+    ],
+    "L10": [
+      {
+        "id": "legacy.royal-line",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE A CITIZEN:** **CHRONICLE (SUN):** You may choose which Imperial meets the Successor goal. _Ignore the printed goal. You may choose no one._"
+      }
+    ],
+    "L11": [
+      {
+        "id": "legacy.keeper-of-order",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE AN IMPERIAL:** **BATTLE PLAN:** If your enemy is an Imperial, ±2 [attack-die] and you ignore all [skull] you roll when attacking."
+      }
+    ],
+    "L12": [
+      {
+        "id": "legacy.golden-key",
+        "persistent": false,
+        "rulesText": "**IF YOU ARE AN IMPERIAL:** You may always peek at the Reliquary. **ACTION:** Burn [secret-burnt] [favor-burnt] to take a relic from the Reliquary."
+      }
+    ],
+    "L13": [
+      {
+        "id": "legacy.world-crafter",
+        "persistent": false,
+        "rulesText": "**SETUP:** For the Imperial Maps foundation, you fill site slots, using any mix of Recent and Forgotten Sites _(after resolving the Rival legacy)_. For the Wide Horizons foundation, when anyone explores, you fill the slot with a Recent or Forgotten Site."
+      }
+    ],
+    "L14": [
+      {
+        "id": "legacy.matchmaker",
+        "persistent": false,
+        "rulesText": "Whenever players draw legacies from the deck and choose one to keep, you draw and choose for them instead. _The Amber Doors edifice does not trigger this._"
+      }
+    ],
+    "L15": [
+      {
+        "id": "legacy.revolutionary",
+        "persistent": false,
+        "rulesText": "**CHRONICLE (THRONE):** After Build Edifice, you may discard any number of denizens at Imperial sites."
+      }
+    ],
+    "L16": [
+      {
+        "id": "legacy.populist",
+        "persistent": false,
+        "rulesText": "**SETUP:** When setting up the favor banks, you may choose to divide the favor among the banks evenly. If you do, take any remainder. _For example, dividing 19 favor among the banks leaves you one favor._"
+      }
+    ],
+    "L17": [
+      {
+        "id": "legacy.rival",
+        "persistent": false,
+        "rulesText": "**CHRONICLE (THRONE):** In Shape Empire, you may prevent any number of denizens from being discarded.\n\n**IF YOU ARE AN EXILE:** **SETUP:** Before resolving foundations, fill the three Cradlemost empty site slots using the Empire setup rules, but place one warband of yours on each _(not an Imperial warband)_. You may place your pawn on these sites."
+      }
+    ],
+    "L19": [
+      {
+        "id": "legacy.the-ear",
+        "persistent": false,
+        "rulesText": "**ACTION:** You may peek at the relics at any site. **CHRONICLE (THRONE):** In Scatter Relics, you examine the relics and choose which sites they go to."
+      }
+    ],
+    "L21": [
+      {
+        "id": "legacy.high-priest",
+        "persistent": false,
+        "rulesText": "**ACTION:** If you have the Darkest Secret, you may move any number of [secret] from the Darkest Secret to your player board. **WHEN NEGOTIATING:** You may give [secret]."
+      }
+    ],
+    "L23": [
+      {
+        "id": "legacy.arbiter",
+        "persistent": false,
+        "rulesText": "**END OF ROUND:** Before the end die is rolled, you may choose to modify the roll by −1 to +3."
+      }
+    ],
+    "L18": [
+      {
+        "id": "legacy.the-standard-bearer",
+        "persistent": false,
+        "rulesText": "**SETUP:** After placing your pawn, you may take a banner from the shared bank and place two more [favor] or [secret] on it from the shared bank."
+      }
+    ],
+    "L20": [
+      {
+        "id": "legacy.heirloom",
+        "persistent": false,
+        "rulesText": "**CHRONICLE (THRONE):** Before Scatter Relics, secretly choose one of your relics to keep facedown. You will start the next game with it."
+      }
+    ],
+    "L22": [
+      {
+        "id": "legacy.seer",
+        "persistent": false,
+        "rulesText": "**SETUP:** When building the world deck, peek at the Visions and secretly place them in any positions."
+      }
+    ],
+    "L24": [
+      {
+        "id": "legacy.the-bright-beacon",
+        "persistent": false,
+        "rulesText": "**CHRONICLE (BEACON):** If you're resolving the Beacon, you may take any six cards from the Dispossessed _(instead of choosing suits and taking from their matching dividers)_."
+      }
+    ],
+    "L25": [
+      {
+        "id": "legacy.oaths-of-loyalty",
+        "persistent": false,
+        "rulesText": "When you would gain a starting adviser, bury it, except for—**CHRONICLE (WORLD):** In Gather Denizens, keep your faceup advisers. They will be your facedown starting advisers in the next game."
+      }
+    ],
+    "L26": [
+      {
+        "id": "legacy.conspirator",
+        "persistent": false,
+        "rulesText": "**WAKE:** On your first turn, secretly write down which round the game will end on and who will win. If you are correct, you win instead. _This even beats a Successor win._"
+      }
+    ],
+    "L27": [
+      {
+        "id": "legacy.light-fingers",
+        "persistent": false,
+        "rulesText": "**WAKE:** When you Take Wealth, you may take [favor] or [secret] from your site even if enemy pawns are there."
+      }
+    ],
+    "L28": [
+      {
+        "id": "legacy.secret-society",
+        "persistent": false,
+        "rulesText": "**SETUP:** Before building the world deck, you may secretly choose a Vision except the Conspiracy to take as a facedown adviser _(discard excess advisers)_. If you do, advance the Visions Drawn marker once."
+      }
+    ],
+    "L29": [
+      {
+        "id": "legacy.ruthless",
+        "persistent": false,
+        "rulesText": "**ACTION:** Burn [favor-burnt] [favor-burnt] to bury a denizen at your site."
+      }
+    ],
+    "L30": [
+      {
+        "id": "legacy.quest-to-distant-lands",
+        "persistent": false,
+        "rulesText": "**SETUP:** You may choose to not place your pawn. If you do, you may choose one card from the Dispossessed and swap it with a starting adviser or card you drew in Foundation IV. _It is not buried by the Oaths of Loyalty legacy._ **WAKE:** On your first turn, you **must** place your pawn at any site."
+      }
+    ],
+    "L31": [
+      {
+        "id": "legacy.wealthy",
+        "persistent": false,
+        "rulesText": "Set Foundation II to Movers and Shakers. **SETUP:** After placing your pawn, take [favor] from two players or take [favor] [favor] [favor] from the shared bank."
+      }
+    ],
+    "L32": [
+      {
+        "id": "legacy.gatekeeper",
+        "persistent": false,
+        "rulesText": "Set Foundation III to Public Ambitions. **CHRONICLE (SUN):** Before players resolve legacies, you may take one active legacy from an enemy if you meet its goal."
+      }
+    ],
+    "L33": [
+      {
+        "id": "legacy.beloved",
+        "persistent": false,
+        "rulesText": "Set Foundation IV to Teeming World. **WHEN TRADING:** You may trade with advisers held by other players whose pawns are at your site."
+      }
+    ],
+    "L34": [
+      {
+        "id": "legacy.the-mouth",
+        "persistent": false,
+        "rulesText": "Set Foundation VI to Festival. **ACTION:** Burn [favor-burnt] [favor-burnt] to activate a dormant legacy if you meet its goal. _You can even activate legacies in the Public Ambitions foundation._"
+      }
+    ],
+    "L35": [
+      {
+        "id": "legacy.reformer",
+        "persistent": false,
+        "rulesText": "Set Foundation V to Grand Council. **CHRONICLE (START OF THRONE):** If you won, you may move and swap denizens at sites you rule, ignoring the locked restriction."
+      }
+    ],
+    "L36": [
+      {
+        "id": "legacy.pathfinder",
+        "persistent": false,
+        "rulesText": "Set Foundation I to Wide Horizons. **TRAVEL:** You may ignore the Mountain, Island, and Pass powers."
+      }
+    ]
+  }
+}

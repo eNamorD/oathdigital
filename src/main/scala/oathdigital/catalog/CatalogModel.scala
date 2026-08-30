@@ -48,6 +48,7 @@ final case class DenizenDefinition(
 sealed trait CardRestrictions extends Product with Serializable
 object CardRestrictions {
   case object Unrestricted extends CardRestrictions
+  case object Locked extends CardRestrictions
   case object SiteOnly extends CardRestrictions
   case object AdviserOnly extends CardRestrictions
   case object LockedAdviserOnly extends CardRestrictions
@@ -70,13 +71,13 @@ final case class RelicDefinition(
 
 final case class EdificeFaceDefinition(
     name: String,
+    restrictions: CardRestrictions,
     powers: Vector[CatalogPower]
 ) extends CatalogPoweredDefinition
 
 final case class EdificeDefinition(
     id: DefinitionId,
     suit: Suit,
-    restrictions: CardRestrictions,
     intact: EdificeFaceDefinition,
     ruined: EdificeFaceDefinition
 )

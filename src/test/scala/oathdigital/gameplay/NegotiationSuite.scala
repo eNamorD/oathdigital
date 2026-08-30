@@ -229,7 +229,7 @@ class NegotiationSuite extends munit.FunSuite {
     assertEquals(Negotiation.handle(catalog, Ready(withRelic), NegotiationCommand.Begin(
       players.head.player, DecisionId("relic"), Vector(players(1).player))).left.toOption,
       Some(oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(
-        s"relic:${players(1).player.value}:grand-scepter", "relic.the-grand-scepter")))
+        s"relic:${players(1).player.value}:grand-scepter", "relic.the-grand-scepter.negotiation")))
   }
 
   test("active Negotiation legacy blocks while separate Negotiation actions do not") {

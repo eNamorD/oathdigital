@@ -31,6 +31,9 @@ EDIFICE_RULE_OVERRIDES = (
     ROOT / "reference/catalog-ingestion/edifice-rule-overrides.json"
 )
 OUTPUT = ROOT / "docs/catalog/new-foundations-component-catalog.json"
+REVIEWED_RUNTIME_POWERS = (
+    ROOT / "reference/catalog-ingestion/reviewed-runtime-powers.json"
+)
 PERSISTENT_POWER_IDS = {
     "denizen.vow-of-peace",
     "denizen.relic-worship",
@@ -113,6 +116,24 @@ def indexed_by_name(records):
     return {normalized(record["name"]): record for record in records}
 
 
+def apply_reviewed_powers(records, reviewed, family):
+    by_id = {record["id"]: record for record in records}
+    if set(by_id) != set(reviewed):
+        raise ValueError(f"reviewed {family} power identities do not match runtime metadata")
+    for identifier, powers in reviewed.items():
+        by_id[identifier]["powers"] = powers
+
+
+def apply_reviewed_edifice_faces(records, reviewed):
+    by_id = {record["id"]: record for record in records}
+    if set(by_id) != set(reviewed):
+        raise ValueError("reviewed edifice power identities do not match runtime metadata")
+    for identifier, faces in reviewed.items():
+        for face in ("intact", "ruined"):
+            by_id[identifier][face]["restrictions"] = faces[face]["restrictions"]
+            by_id[identifier][face]["powers"] = faces[face]["powers"]
+
+
 def normalized_markdown(text):
     text = re.sub(r"\s+(?:[EL][O0]?\d{1,2})$", "", text)
     headings = (
@@ -161,6 +182,7 @@ def main():
         json.loads(LEGACY_TRANSCRIPTIONS.read_text())
     )
     edifice_rule_overrides = json.loads(EDIFICE_RULE_OVERRIDES.read_text())
+    reviewed_powers = json.loads(REVIEWED_RUNTIME_POWERS.read_text())
     for archived_name, printed_name in (
         ("Ancient Grit", "Ancient Writ"),
         ("Keeping Banner", "Weeping Banner"),
@@ -232,7 +254,6 @@ def main():
             {
                 "id": printed_id,
                 "suit": suit,
-                "restrictions": None,
                 "intact": faces["intact"],
                 "ruined": faces["ruined"],
             }
@@ -291,9 +312,14 @@ def main():
             }
         )
 
+    apply_reviewed_powers(denizens, reviewed_powers["denizens"], "denizen")
+    apply_reviewed_powers(relics, reviewed_powers["relics"], "relic")
+    apply_reviewed_edifice_faces(edifices, reviewed_powers["edifices"])
+    apply_reviewed_powers(legacies, reviewed_powers["legacies"], "legacy")
+
     catalog = {
-        "schemaVersion": "1.2.0",
-        "catalogVersion": "2026.08.29-pre4",
+        "schemaVersion": "1.3.0",
+        "catalogVersion": "2026.08.29-pre5",
         "denizens": denizens,
         "relics": relics,
         "edifices": edifices,

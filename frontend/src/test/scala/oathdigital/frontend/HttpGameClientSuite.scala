@@ -420,14 +420,14 @@ class HttpGameClientSuite extends FunSuite {
         s"\"pendingCardDecision\":null,\"campaign\":$value")
     val brassPending = planPending.replace(
       "{\"kind\":\"adviser\",\"sourceKey\":\"adviser:red-exile:denizen:143\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"143\",\"label\":\"Outriders\",\"handlerId\":\"denizen.outriders\",\"favorCost\":0,\"secretCost\":0,\"mechanicalResult\":\"Ignore all attack-roll skull losses\"}",
-      "{\"kind\":\"relic\",\"sourceKey\":\"relic:red-exile:R25\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"R25\",\"label\":\"Brass Army\",\"handlerId\":\"relic.brass-army\",\"favorCost\":0,\"secretCost\":1,\"mechanicalResult\":\"Add 4 attack dice\"}")
+      "{\"kind\":\"relic\",\"sourceKey\":\"relic:red-exile:R25\",\"playerId\":\"red-exile\",\"siteId\":null,\"cardId\":\"R25\",\"label\":\"Brass Army\",\"handlerId\":\"relic.brass-army.campaign\",\"favorCost\":0,\"secretCost\":1,\"mechanicalResult\":\"Add 4 attack dice\"}")
     val brassChoice = GameJson.decodeProjection(projectionWithPlan(brassPending))
       .toOption.get.campaign.get.planChoices.head
     val brassCommand = GameJson.encodeCommand(18, GameCommand.ChooseCampaignPlan(
       "red-exile", "campaign-17", brassChoice))
     assert(brassCommand.contains("\"kind\":\"relic\""))
     assert(brassCommand.contains("\"cardId\":\"R25\""))
-    assert(!brassCommand.contains("relic.brass-army"))
+    assert(!brassCommand.contains("relic.brass-army.campaign"))
     val titlePending = planPending
       .replace("\"force\":3", "\"force\":3,\"planSide\":\"defender\",\"decisionOwnerPlayerId\":\"blue-exile\"")
       .replace(adviserJson,

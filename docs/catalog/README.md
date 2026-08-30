@@ -43,22 +43,20 @@ explicit representation of an unrestricted denizen; an empty array is not
 accepted. The only restricted forms are `["site-only"]`,
 `["adviser-only"]`, and `["adviser-only", "locked"]`. A locked card is always
 adviser-only, so `locked` is invalid by itself or in any other combination.
-Edifices also preserve an explicit `restrictions: null` field, but restricted
-values are invalid for them.
+Edifice restrictions are face-specific: every intact face is `["locked"]` and
+every ruined face is `null`. Edifices have no top-level restriction field.
 
-Schema `1.2.0` replaces each rendered component's handler array and combined
+Schema `1.3.0` stores edifice restrictions on each face: intact faces are
+locked and ruined faces are unrestricted. Schema `1.2.0` replaced each
+rendered component's handler array and combined
 rules text with ordered `{id, persistent, rulesText}` power entries. Catalog
-`2026.08.29-pre4` is intentionally incompatible with the earlier prerelease
+`2026.08.29-pre5` is intentionally incompatible with the earlier prerelease
 format; no migration is provided because no production data uses it.
 
-The initial segmentation and persistence values are provisional. They were
-derived only from the checked-in transcription and Scala classifications, with
-no reference-PDF review: every existing record remains one power so its stable
-ID and exact combined text are preserved. Only `denizen.vow-of-peace`,
-`denizen.relic-worship`, `edifice.e13.ruined`, `edifice.e17.intact`, and
-`edifice.e17.ruined` are marked persistent from existing explicit runtime
-classifications. All other flags conservatively default to false until manual
-component review splits clauses and corrects braid status.
+The ordered power clauses, stable IDs, exact text, and persistence flags are the
+completed manual runtime review. They are authoritative for runtime behavior
+discovery and presentation; older ingestion transcriptions must not rederive or
+collapse them.
 
 ## Manual power review
 
@@ -68,9 +66,12 @@ timed clauses, retain a stable base and assign stable suffixed IDs; set
 `persistent` for each clause from its printed black braid. Changing or splitting
 an ID requires later registry and handler-fingerprint reconciliation.
 
-The reference-ingestion mirror and generator may temporarily differ from the
-reviewed runtime catalog. They will be reconciled after review rather than used
-to overwrite in-progress catalog edits.
+`reference/catalog-ingestion/reviewed-runtime-powers.json` is the authoritative
+generator mirror for reviewed power IDs, order, text, persistence, and edifice
+face restrictions. The generator may still derive non-power component metadata
+from ingestion inputs, but it replaces all generated powers with this keyed
+mirror before comparing or writing output. This prevents stale transcription
+records from overwriting reviewed clause boundaries.
 
 Run:
 
@@ -78,9 +79,8 @@ Run:
 python3 scripts/validate-component-catalog.py
 ```
 
-The reviewed runtime denizen records are mirrored in
-`reference/catalog-ingestion/runtime-denizen-definitions.json`. Running the
-reference generator with no arguments is a non-writing equality check:
+Running the reference generator with no arguments is a non-writing structural
+equality check:
 
 ```sh
 python3 reference/catalog-ingestion/build_runtime_catalog.py

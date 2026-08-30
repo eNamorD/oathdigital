@@ -88,7 +88,10 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       val details = projector.edificeCardDetails(EdificeState(id, side, Tokens.empty))
       assertEquals(details.name, face.name)
       assertEquals(details.rulesText, Some(face.rulesText))
-      assertEquals(details.restrictions, Some("unrestricted"))
+      assertEquals(details.restrictions, Some(side match {
+        case EdificeSide.Intact => "locked"
+        case EdificeSide.Ruined => "unrestricted"
+      }))
     }
   }
 

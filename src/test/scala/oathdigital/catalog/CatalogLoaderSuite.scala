@@ -125,6 +125,53 @@ class CatalogLoaderSuite extends munit.FunSuite {
         (power.id.value, power.persistent, power.rulesText))).toMap, rawDenizens)
   }
 
+  test("reviewed runtime-power mirror exactly preserves authoritative structures") {
+    val runtime = ujson.read(Files.readString(
+      Paths.get("docs/catalog/new-foundations-component-catalog.json")))
+    val mirror = ujson.read(Files.readString(
+      Paths.get("reference/catalog-ingestion/reviewed-runtime-powers.json")))
+    def powersById(family: String) = ujson.Obj.from(
+      runtime(family).arr.map(component => component("id").str -> component("powers")))
+    val edificeFaces = ujson.Obj.from(runtime("edifices").arr.map { component =>
+      component("id").str -> ujson.Obj(
+        "intact" -> ujson.Obj(
+          "restrictions" -> component("intact")("restrictions"),
+          "powers" -> component("intact")("powers")),
+        "ruined" -> ujson.Obj(
+          "restrictions" -> component("ruined")("restrictions"),
+          "powers" -> component("ruined")("powers")))
+    })
+    assertEquals(mirror("denizens"), powersById("denizens"))
+    assertEquals(mirror("relics"), powersById("relics"))
+    assertEquals(mirror("edifices"), edificeFaces)
+    assertEquals(mirror("legacies"), powersById("legacies"))
+  }
+
+  test("edifice face restrictions are exact and typed") {
+    val catalog = CatalogLoader.load(fixture).toOption.get
+    assertEquals(catalog.edifices.head.intact.restrictions,
+      CardRestrictions.Locked)
+    assertEquals(catalog.edifices.head.ruined.restrictions,
+      CardRestrictions.Unrestricted)
+
+    val topLevel = fixture.replace("\"suit\": \"discord\",",
+      "\"suit\": \"discord\",\n      \"restrictions\": null,")
+    assert(CatalogLoader.load(topLevel).isLeft)
+    val wrongIntact = fixture.replace("\"restrictions\": [\"locked\"]",
+      "\"restrictions\": null")
+    assert(CatalogLoader.load(wrongIntact).left.toOption.get.exists {
+      case InvalidValue(path, _) => path == "$.edifices[0].intact.restrictions"
+      case _ => false
+    })
+    val wrongRuined = fixture.replace(
+      "\"name\": \"Ruined Fixture\",\n        \"restrictions\": null",
+      "\"name\": \"Ruined Fixture\",\n        \"restrictions\": [\"locked\"]")
+    assert(CatalogLoader.load(wrongRuined).left.toOption.get.exists {
+      case InvalidValue(path, _) => path == "$.edifices[0].ruined.restrictions"
+      case _ => false
+    })
+  }
+
   test("malformed empty duplicate and incomplete powers report exact paths") {
     def changed(update: ujson.Value => Unit) = {
       val value = ujson.read(fixture)
@@ -164,7 +211,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
         Paths.get("docs/catalog/new-foundations-component-catalog.json"),
         CatalogLoadRequest(
           expectedCatalog = Some(
-            CatalogRef("oath-new-foundations", "2026.08.29-pre4")
+            CatalogRef("oath-new-foundations", "2026.08.29-pre5")
           )
         )
       )
@@ -328,7 +375,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
     assert(
       result.left.toOption.get.exists {
         case IncompatibleCatalog(_, `expected`, actual) =>
-          actual == CatalogRef("oath-new-foundations", "2026.08.29-pre4")
+          actual == CatalogRef("oath-new-foundations", "2026.08.29-pre5")
         case _ => false
       }
     )
@@ -414,7 +461,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
   test("schema versions and malformed JSON have explicit errors") {
     val unsupported =
       fixture.replace(
-        "\"schemaVersion\": \"1.2.0\"",
+        "\"schemaVersion\": \"1.3.0\"",
         "\"schemaVersion\": \"2.0.0\""
       )
 

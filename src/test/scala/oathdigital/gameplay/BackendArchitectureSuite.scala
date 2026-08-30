@@ -130,7 +130,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
         e.intact.handlers ++ e.ruined.handlers)).distinct.sorted
     assertEquals(CatalogHandlerInventory.handlerIds(catalog), expected)
     assertEquals(CatalogHandlerInventory.fingerprint(catalog),
-      "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97")
+      "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2")
   }
 
   test("Recover and Campaign relevance is exact handler-ID data") {

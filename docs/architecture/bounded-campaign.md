@@ -26,7 +26,7 @@ The source-verified inventory for this boundary is:
 - safely executable now: the mandatory `denizen.vow-of-peace` Campaign block
   at target and force formation, and optional attacker plan
   `denizen.outriders` (“Ignore all skulls you roll”) and the paid
-  `relic.brass-army` (`[secret] +4 [attack-die]`) at the attacker battle-plan
+  `relic.brass-army.campaign` (`[secret] +4 [attack-die]`) at the attacker battle-plan
   window; the title defender plan (+1 die, or +2 on its Usurper side); and
   cost-free, choice-free bandit `denizen.watchdog` where applicable;
 - blocked by missing decisions or data: every other optional attacker battle plan;

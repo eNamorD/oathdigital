@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.2.0",
+  "schemaVersion": "1.3.0",
   "catalogVersion": "fixture-1",
   "denizens": [
     {
@@ -36,9 +36,9 @@
     {
       "id": "E01",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Fixture Edifice",
+        "restrictions": ["locked"],
         "powers": [
           {
             "id": "edifice.e01.intact",
@@ -49,6 +49,7 @@
       },
       "ruined": {
         "name": "Ruined Fixture",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e01.ruined",

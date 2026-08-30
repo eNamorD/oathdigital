@@ -390,7 +390,7 @@ class CampaignSuite extends munit.FunSuite {
 
   test("empty force can use Brass Army with and without Outriders") {
     val (ready, player, site) = campaignReady
-    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army")).get
+    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
     val brassSource = PendingProcedure.CampaignPlanSource.Relic(player.player,
       RelicId(brass.id.value))
@@ -592,7 +592,7 @@ class CampaignSuite extends munit.FunSuite {
 
   test("Brass Army shares the plan choice, pays onto the relic, and adds four dice") {
     val (ready, player, site) = campaignReady
-    val brass = catalog.relics.find(_.handlers == Vector("relic.brass-army")).get
+    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
     val brassId = RelicId(brass.id.value)
     val brassSource = PendingProcedure.CampaignPlanSource.Relic(player.player, brassId)
@@ -622,7 +622,7 @@ class CampaignSuite extends munit.FunSuite {
     val selected = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
       pending.decision, brassSource)).toOption.get
     val event = selected.events.head.asInstanceOf[CampaignPlanChosen]
-    assertEquals(event.handlerId, "relic.brass-army")
+    assertEquals(event.handlerId, "relic.brass-army.campaign")
     assertEquals(event.addedAttackDice, 4)
     val finished = rules.handle(selected.state, CampaignCommand.FinishPlans(player.player,
       pending.decision, dice)).toOption.get
@@ -641,7 +641,7 @@ class CampaignSuite extends munit.FunSuite {
 
   test("Brass Army is offered only held faceup, empty, and payable") {
     val (ready, player, site) = campaignReady
-    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army")).get
+    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
     val id = RelicId(brass.id.value)
     def choices(orientation: Orientation, tokens: Tokens, secrets: Int) = {
       val actor = player.copy(board = player.board.copy(faceUpSecrets = secrets),
@@ -666,7 +666,7 @@ class CampaignSuite extends munit.FunSuite {
   test("Outriders and Brass Army resolve once each in either chosen order") {
     val (ready, player, site) = campaignReady
     val brassId = RelicId(catalog.relics.find(
-      _.handlers.contains("relic.brass-army")).get.id.value)
+      _.handlers.contains("relic.brass-army.campaign")).get.id.value)
     val outridersId = DenizenId(catalog.denizens.find(
       _.handlers.contains("denizen.outriders")).get.id.value)
     val outriders = PendingProcedure.CampaignPlanSource.Adviser(
@@ -747,7 +747,7 @@ class CampaignSuite extends munit.FunSuite {
       "denizen.relic-hunter", "denizen.sealing-ward", "denizen.specialist",
       "denizen.true-names", "denizen.wrestlers",
       "relic.bandit-standard", "relic.fearsome-shield", "relic.sticky-fire",
-      "relic.obsidian-cage", "relic.the-grand-scepter")
+      "relic.obsidian-cage.campaign", "relic.the-grand-scepter.campaign")
     irrelevant.foreach { id =>
       assertEquals(CampaignRules.classify(id, catalog),
         HandlerSupport.IrrelevantToBanditConquest, id)
@@ -1103,7 +1103,7 @@ class CampaignSuite extends munit.FunSuite {
     val vow = catalog.denizens.find(
       _.handlers.contains("denizen.vow-of-peace")).get
     val brass = catalog.relics.find(
-      _.handlers.contains("relic.brass-army")).get
+      _.handlers.contains("relic.brass-army.campaign")).get
     val attackerOnly = state.copy(game = state.game.copy(current =
       state.game.current.copy(players = state.game.current.players.map {
         case p if p.player == defender.player => p.copy(

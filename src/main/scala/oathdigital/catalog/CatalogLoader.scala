@@ -10,7 +10,7 @@ import oathdigital.model.{CatalogRef, PowerId, SiteId, Tokens}
 import ujson.{Arr, Bool, Null, Obj, Str, Value}
 
 object CatalogLoader {
-  val SupportedSchemaVersion: String = "1.2.0"
+  val SupportedSchemaVersion: String = "1.3.0"
   val RulesetId: String = "oath-new-foundations"
 
   private type Result[A] = Either[Vector[CatalogLoadError], A]
@@ -228,41 +228,52 @@ object CatalogLoader {
         s"$path.id"
       )
       suit <- decodeSuit(obj, path)
-      restrictions <- decodeUnrestrictedEdifice(obj, path)
+      _ <- if (obj.value.contains("restrictions"))
+        Left(Vector(InvalidValue(s"$path.restrictions",
+          "edifice restrictions belong on each face")))
+      else Right(())
       intactObject <- requiredObject(obj, "intact", path)
-      intact <- decodeEdificeFace(intactObject, s"$path.intact")
+      intact <- decodeEdificeFace(intactObject, s"$path.intact",
+        CardRestrictions.Locked)
       ruinedObject <- requiredObject(obj, "ruined", path)
-      ruined <- decodeEdificeFace(ruinedObject, s"$path.ruined")
-    } yield EdificeDefinition(id, suit, restrictions, intact, ruined)
+      ruined <- decodeEdificeFace(ruinedObject, s"$path.ruined",
+        CardRestrictions.Unrestricted)
+    } yield EdificeDefinition(id, suit, intact, ruined)
 
-  private def decodeUnrestrictedEdifice(
+  private def decodeEdificeRestrictions(
       obj: Obj,
-      path: String
+      path: String,
+      expected: CardRestrictions
   ): Result[CardRestrictions] = {
     val fieldPath = s"$path.restrictions"
-    obj.value.get("restrictions") match {
-      case None => Left(Vector(MissingField(fieldPath)))
-      case Some(Null) => Right(CardRestrictions.Unrestricted)
-      case Some(value) =>
-        Left(
-          Vector(
-            InvalidValue(
-              fieldPath,
-              s"edifice restrictions must be null, found ${typeName(value)}"
-            )
-          )
-        )
+    (obj.value.get("restrictions"), expected) match {
+      case (None, _) => Left(Vector(MissingField(fieldPath)))
+      case (Some(Null), CardRestrictions.Unrestricted) =>
+        Right(CardRestrictions.Unrestricted)
+      case (Some(values: Arr), CardRestrictions.Locked)
+          if values.value == Vector(Str("locked")) =>
+        Right(CardRestrictions.Locked)
+      case (Some(value), CardRestrictions.Locked) =>
+        Left(Vector(InvalidValue(fieldPath,
+          s"intact edifice restrictions must be [locked], found ${typeName(value)}")))
+      case (Some(value), CardRestrictions.Unrestricted) =>
+        Left(Vector(InvalidValue(fieldPath,
+          s"ruined edifice restrictions must be null, found ${typeName(value)}")))
+      case (_, _) => Left(Vector(InvalidValue(fieldPath,
+        "unsupported edifice restriction expectation")))
     }
   }
 
   private def decodeEdificeFace(
       obj: Obj,
-      path: String
+      path: String,
+      expectedRestrictions: CardRestrictions
   ): Result[EdificeFaceDefinition] =
     for {
       name <- requiredString(obj, "name", path)
+      restrictions <- decodeEdificeRestrictions(obj, path, expectedRestrictions)
       powers <- decodePowers(obj, path)
-    } yield EdificeFaceDefinition(name, powers)
+    } yield EdificeFaceDefinition(name, restrictions, powers)
 
   private def decodeLegacy(obj: Obj, path: String): Result[LegacyDefinition] =
     for {

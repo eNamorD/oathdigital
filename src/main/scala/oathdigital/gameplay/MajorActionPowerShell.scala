@@ -52,7 +52,7 @@ final case class IgnoredRuleDiagnostic(source: RuleSourceRef, handlerId: String,
   */
 object MajorActionPowerShell {
   val AuditedCatalogFingerprint =
-    "70b57be7a3a4751e81d5235e033fdb62d1773f1e90fa2354d1c275e3e9d12f97"
+    "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2"
 
   private val economy = Set(
     "denizen.initiation-rite", "denizen.map-library", "denizen.animal-playmates",
@@ -133,7 +133,7 @@ object MajorActionPowerShell {
 
   private def classifyCampaign(handlerId: String) =
     if (Set("denizen.outriders",
-        "relic.brass-army", "denizen.watchdog")(handlerId))
+        "relic.brass-army.campaign", "denizen.watchdog")(handlerId))
       RuleClassification(MajorActionKind.Campaign, RuleTiming.BattlePlan,
         RuleBehavior.BattlePlan,
         implemented = true)

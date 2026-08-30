@@ -40,7 +40,7 @@ private[application] final class GamePresentationProjector(
     })
     CardDetailsProjection(value.id.value, "edifice", edificeLabel(value.id, value.side),
       suit = definition.map(_.suit.value),
-      restrictions = definition.map(e => restrictionName(e.restrictions)),
+      restrictions = face.map(e => restrictionName(e.restrictions)),
       rulesText = face.map(_.rulesText),
       side = Some(value.side match {
         case EdificeSide.Intact => "intact"
@@ -257,6 +257,7 @@ private[application] final class GamePresentationProjector(
 
   private def restrictionName(value: CardRestrictions): String = value match {
     case CardRestrictions.Unrestricted => "unrestricted"
+    case CardRestrictions.Locked => "locked"
     case CardRestrictions.SiteOnly => "site-only"
     case CardRestrictions.AdviserOnly => "adviser-only"
     case CardRestrictions.LockedAdviserOnly => "locked-adviser-only"

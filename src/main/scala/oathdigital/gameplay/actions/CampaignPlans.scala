@@ -207,7 +207,7 @@ private object CampaignPlanHandlers {
   }
 
   object BrassArmy extends CampaignPlanHandler {
-    val id = "relic.brass-army"
+    val id = "relic.brass-army.campaign"
     val side = CampaignPlanSide.Attacker
     def option(context: CampaignPlanContext, activation: RuleActivation) =
       CampaignPlanRegistry.sourceOf(activation) match {

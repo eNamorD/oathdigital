@@ -1,6 +1,6 @@
 {
-  "schemaVersion": "1.2.0",
-  "catalogVersion": "2026.08.29-pre4",
+  "schemaVersion": "1.3.0",
+  "catalogVersion": "2026.08.29-pre5",
   "denizens": [
     {
       "id": "9",
@@ -256,7 +256,7 @@
       "powers": [
         {
           "id": "denizen.gleaming-armor",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your enemy's battle plans have an added cost of [secret]."
         }
       ]
@@ -269,7 +269,7 @@
       "powers": [
         {
           "id": "denizen.jinx",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "[secret] If you rule Jinx, after you roll [attack-die] or [defense-die] for any reason, you may use this power to reroll all those dice once. _(This is not a battle plan!)_"
         }
       ]
@@ -326,7 +326,7 @@
       "powers": [
         {
           "id": "denizen.sealing-ward",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your relics add one more [defense-die] when targeted."
         }
       ]
@@ -441,7 +441,7 @@
       "powers": [
         {
           "id": "denizen.true-names",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your enemy **cannot** use battle plans that match any of your advisers against you."
         }
       ]
@@ -555,7 +555,7 @@
       "powers": [
         {
           "id": "denizen.grasping-vines",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies traveling from any site ruled by Grasping Vines' ruler **must** kill one warband on their board if able."
         }
       ]
@@ -639,7 +639,7 @@
       "powers": [
         {
           "id": "denizen.insect-swarm",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your enemy's battle plans each have an added cost of [favor-burnt]."
         }
       ]
@@ -719,7 +719,7 @@
       "powers": [
         {
           "id": "denizen.marsh-spirit",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Players who target this site **cannot** use battle plans."
         }
       ]
@@ -1004,7 +1004,7 @@
       "powers": [
         {
           "id": "denizen.beast-tamer",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies cannot use [suit-beast] or [suit-nomad] battle plans against you."
         }
       ]
@@ -1081,7 +1081,7 @@
       "powers": [
         {
           "id": "denizen.sneak-attack",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After another player's campaign, you may campaign, spending no Supply, if you declare them as the defender."
         }
       ]
@@ -1096,7 +1096,7 @@
       "powers": [
         {
           "id": "denizen.chaos-cult",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After another player takes the Oathkeeper title, you take [favor] from them."
         }
       ]
@@ -1360,7 +1360,7 @@
       "powers": [
         {
           "id": "denizen.book-binders",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After another player plays a Vision faceup, you gain [favor] [favor] from any one favor bank."
         }
       ]
@@ -1375,7 +1375,7 @@
       "powers": [
         {
           "id": "denizen.saddle-makers",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After another player plays a [suit-nomad] or [suit-order] card, you gain [favor] [favor] from the matching favor bank."
         }
       ]
@@ -1390,7 +1390,7 @@
       "powers": [
         {
           "id": "denizen.herald",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After another player campaigns against a player _(not bandits)_, you gain [favor] from any favor bank."
         }
       ]
@@ -1450,7 +1450,7 @@
       "powers": [
         {
           "id": "denizen.marriage",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Marriage counts as two [suit-hearth] advisers, but only counts as one toward your adviser limit."
         }
       ]
@@ -1700,7 +1700,7 @@
       "powers": [
         {
           "id": "denizen.lost-tongue",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Other players **cannot** target or take your relics or banners in any way unless they rule a [suit-nomad] card."
         }
       ]
@@ -1773,7 +1773,7 @@
       "powers": [
         {
           "id": "denizen.spell-breaker",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies of Spell Breaker's ruler **cannot** use powers that cost any [secret] or [secret-burnt]."
         }
       ]
@@ -1814,7 +1814,7 @@
       "powers": [
         {
           "id": "denizen.ancient-bloodline",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your enemies act as if denizens and relics at sites you rule are **locked**."
         }
       ]
@@ -1842,7 +1842,7 @@
       "powers": [
         {
           "id": "denizen.way-station",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Spend no Supply if you're traveling to this site and either rule Way Station or choose to give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
         }
       ]
@@ -2102,7 +2102,7 @@
       "powers": [
         {
           "id": "denizen.forced-labor",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies **cannot** search if their pawn is at any site ruled by Forced Labor's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
         }
       ]
@@ -2117,7 +2117,7 @@
       "powers": [
         {
           "id": "denizen.secret-police",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies **cannot** play Visions faceup while their pawn is at any site ruled by Secret Police's ruler."
         }
       ]
@@ -2186,7 +2186,7 @@
       "powers": [
         {
           "id": "denizen.toll-roads",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies **cannot** travel to sites ruled by Toll Roads' ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
         }
       ]
@@ -2201,7 +2201,7 @@
       "powers": [
         {
           "id": "denizen.curfew",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies **cannot** trade with cards ruled by Curfew's ruler unless they give [favor] to its ruler. _(Give it to Chancellor if Empire, burn it if bandits.)_"
         }
       ]
@@ -2259,7 +2259,7 @@
       "powers": [
         {
           "id": "denizen.council-seat",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "If you're a Citizen, you **cannot** be exiled, even by yourself."
         }
       ]
@@ -2353,7 +2353,7 @@
       "powers": [
         {
           "id": "denizen.vow-of-silence",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "You **cannot** challenge the Darkest Secret. Whenever an enemy burns [secret-burnt], you take those secrets."
         }
       ]
@@ -2368,7 +2368,7 @@
       "powers": [
         {
           "id": "denizen.forgotten-vault",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies of Forgotten Vault's ruler **cannot** target relics held by its ruler. If ruled by Empire, all Imperials have this power."
         }
       ]
@@ -2441,7 +2441,7 @@
       "powers": [
         {
           "id": "denizen.vow-of-wisdom",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "You **must** gain [secret] instead of [favor] when you play to a site."
         }
       ]
@@ -2537,9 +2537,14 @@
       ],
       "powers": [
         {
-          "id": "denizen.vow-of-union",
-          "persistent": false,
-          "rulesText": "At the start of **any** campaign, you may move any number of warbands from sites you rule in your region to your board or vice versa.\n\nYou may only have [suit-beast] advisers—-bury other advisers you have or would gain."
+          "id": "denizen.vow-of-union.campaign",
+          "persistent": true,
+          "rulesText": "At the start of **any** campaign, you may move any number of warbands from sites you rule in your region to your board or vice versa."
+        },
+        {
+          "id": "denizen.vow-of-union.restriction",
+          "persistent": true,
+          "rulesText": "You may only have [suit-beast] advisers—-bury other advisers you have or would gain."
         }
       ]
     },
@@ -2552,9 +2557,14 @@
       ],
       "powers": [
         {
-          "id": "denizen.giant-python",
+          "id": "denizen.giant-python.action",
           "persistent": false,
-          "rulesText": "[secret] **ACTION:** If you hold the Darkest Secret, move Giant Python to another site, and you may discard a card there first.\n\nOther cards at this site **cannot** be used for non-persistent powers or placing [favor] / [secret]."
+          "rulesText": "[secret] **ACTION:** If you hold the Darkest Secret, move Giant Python to another site, and you may discard a card there first."
+        },
+        {
+          "id": "denizen.giant-python.restriction",
+          "persistent": true,
+          "rulesText": "Other cards at this site **cannot** be used for non-persistent powers or placing [favor] / [secret]."
         }
       ]
     },
@@ -2568,7 +2578,7 @@
       "powers": [
         {
           "id": "denizen.forest-council",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Enemies of Forest Council's ruler **cannot** place [favor] / [secret] on [suit-beast] cards or use their non-persistent powers."
         }
       ]
@@ -2765,7 +2775,7 @@
       "powers": [
         {
           "id": "denizen.vow-of-division",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "You **cannot** take the Challenge action. Whenever an enemy burns [favor-burnt], you take that favor unless it was burned by a raid targeting you."
         }
       ]
@@ -2837,7 +2847,7 @@
       "powers": [
         {
           "id": "denizen.gossip",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "After an enemy plays an adviser facedown _(including a Vision)_, gain [favor] from the [suit-discord] bank."
         }
       ]
@@ -2938,7 +2948,7 @@
       "powers": [
         {
           "id": "denizen.pledge-to-discord",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Your advisers all have the [suit-discord] suit instead of their printed suit. _Marriage counts as two [suit-discord]._"
         }
       ]
@@ -3120,7 +3130,7 @@
       "powers": [
         {
           "id": "denizen.diplomat",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Players **cannot** campaign against you unless they rule a [suit-hearth] card."
         }
       ]
@@ -3218,7 +3228,7 @@
       "powers": [
         {
           "id": "denizen.league-treaty",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "During the Rest Phase of any player, League Treaty's ruler may move any [favor] from cards in its region to any one favor bank."
         }
       ]
@@ -3264,7 +3274,7 @@
       "powers": [
         {
           "id": "denizen.family-wagon",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "You have no adviser limit but may only have [suit-nomad] advisers-—bury other advisers you have or would gain."
         }
       ]
@@ -3405,9 +3415,14 @@
       ],
       "powers": [
         {
-          "id": "denizen.vow-of-wandering",
+          "id": "denizen.vow-of-wandering.muster",
           "persistent": false,
-          "rulesText": "Gain two more warbands.\n\nYou **cannot** place warbands on sites."
+          "rulesText": "Gain two more warbands."
+        },
+        {
+          "id": "denizen.vow-of-wandering",
+          "persistent": true,
+          "rulesText": "You **cannot** place warbands on sites."
         }
       ]
     },
@@ -3507,7 +3522,7 @@
       "powers": [
         {
           "id": "denizen.city-wall",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "While at this site, enemies of City Wall's ruler **cannot** place [favor] / [secret] on cards or use non-persistent powers."
         }
       ]
@@ -3645,7 +3660,7 @@
       "powers": [
         {
           "id": "relic.grand-mask",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "If you're an Exile, during your turn you rule cards except battle plans at Imperial sites, and Imperial players do not."
         }
       ]
@@ -3701,7 +3716,7 @@
       "powers": [
         {
           "id": "relic.bandit-crown",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "You may use cards at sites ruled by bandits as if you ruled them. _You may use these battle plans against bandits._"
         }
       ]
@@ -3883,7 +3898,7 @@
       "powers": [
         {
           "id": "relic.circlet-of-command",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Players **cannot** target your banners or your other relics."
         }
       ]
@@ -3896,9 +3911,14 @@
       "defense": 3,
       "powers": [
         {
-          "id": "relic.obsidian-cage",
+          "id": "relic.obsidian-cage.campaign",
           "persistent": false,
-          "rulesText": "If you're victorious, move all unkilled warbands in your enemy's force to Obsidian Cage.\n\n**ACTION:** Move any number of warbands from Obsidian Cage to any board of the same color."
+          "rulesText": "If you're victorious, move all unkilled warbands in your enemy's force to Obsidian Cage."
+        },
+        {
+          "id": "relic.obsidian-cage.action",
+          "persistent": false,
+          "rulesText": "**ACTION:** Move any number of warbands from Obsidian Cage to any board of the same color."
         }
       ]
     },
@@ -3938,9 +3958,14 @@
       "defense": 3,
       "powers": [
         {
-          "id": "relic.brass-army",
+          "id": "relic.brass-army.campaign",
           "persistent": false,
-          "rulesText": "[secret] +4 [attack-die]\n\nWhenever your pawn moves _(travel or place)_, bury this or flip a secret you have facedown."
+          "rulesText": "[secret] +4 [attack-die]"
+        },
+        {
+          "id": "relic.brass-army.restriction",
+          "persistent": true,
+          "rulesText": "Whenever your pawn moves _(travel or place)_, bury this or flip a secret you have facedown."
         }
       ]
     },
@@ -3981,7 +4006,7 @@
       "powers": [
         {
           "id": "relic.lost-tapestry",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "Facedown Visions do not count against your adviser limit."
         }
       ]
@@ -4121,7 +4146,7 @@
       "powers": [
         {
           "id": "relic.secret-testament",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "When an enemy takes a banner from you, take all [favor] or [secret] on the banner."
         }
       ]
@@ -4135,7 +4160,7 @@
       "powers": [
         {
           "id": "relic.yew-staff",
-          "persistent": false,
+          "persistent": true,
           "rulesText": "When using card powers, you may act as if you hold the Darkest Secret."
         }
       ]
@@ -4260,9 +4285,24 @@
       "defense": 3,
       "powers": [
         {
-          "id": "relic.the-grand-scepter",
+          "id": "relic.the-grand-scepter.restriction",
           "persistent": false,
-          "rulesText": "This relic **cannot** be removed from play or added to a lineage.\n\nIf you are Imperial and victorious against a Citizen, you may [favor-burnt] [favor-burnt] to exile them.\n\n**ACTION:** You may become a Citizen if an Exile. **IN NEGOTIATION:** May offer Citizenship."
+          "rulesText": "This relic **cannot** be removed from play or added to a lineage."
+        },
+        {
+          "id": "relic.the-grand-scepter.campaign",
+          "persistent": false,
+          "rulesText": "[favor-burnt][favor-burnt][favor-burnt] If you are Imperial and victorious against a Citizen, you exile them."
+        },
+        {
+          "id": "relic.the-grand-scepter.action",
+          "persistent": false,
+          "rulesText": "**ACTION:** You may become a Citizen if an Exile. **IN NEGOTIATION:** May offer Citizenship."
+        },
+        {
+          "id": "relic.the-grand-scepter.negotiation",
+          "persistent": false,
+          "rulesText": "**IN NEGOTIATION:** May offer Citizenship."
         }
       ]
     }
@@ -4271,24 +4311,27 @@
     {
       "id": "E01",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Hall of Debate",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e01.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "If this card's ruler holds the People's Favor, their enemies **cannot** target the People's Favor. If ruled by Empire, all Imperials have this power."
           }
         ]
       },
       "ruined": {
         "name": "Hall of Mockery",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e01.ruined",
             "persistent": false,
-            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [favor] [favor] [favor] [favor] on the People's Favor and move it to the shared bank—players **cannot** start with it. Burn [favor-burnt] from each favor bank."
+            "rulesText": "**SETUP (END) / WHEN EXPLORED:** Place [favor] [favor] [favor] [favor] on the People's Favor and move it to the shared bank—-players **cannot** start with it. Burn [favor-burnt] from each favor bank."
           }
         ]
       }
@@ -4296,9 +4339,11 @@
     {
       "id": "E02",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Great Market",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e02.intact",
@@ -4309,6 +4354,7 @@
       },
       "ruined": {
         "name": "Bandit Market",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e02.ruined",
@@ -4321,23 +4367,26 @@
     {
       "id": "E03",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Grand Canal",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e03.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Act as if this site is a Coast along with its other powers."
           }
         ]
       },
       "ruined": {
         "name": "Lost Lagoon",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e03.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Act as if this site is an Island along with its other powers."
           }
         ]
@@ -4346,23 +4395,26 @@
     {
       "id": "E04",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Stone Baths",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e04.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "CHRONICLE (SUN): Players with a pawn at this site do not discard their dormant legacies."
           }
         ]
       },
       "ruined": {
         "name": "Ruined Baths",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e04.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "CHRONICLE (SUN): Exiles at this site don't need to meet the goals of their active legacies to keep them active."
           }
         ]
@@ -4371,9 +4423,11 @@
     {
       "id": "E05",
       "suit": "discord",
-      "restrictions": null,
       "intact": {
         "name": "Amber Doors",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e05.intact",
@@ -4384,6 +4438,7 @@
       },
       "ruined": {
         "name": "Lost Doors",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e05.ruined",
@@ -4396,9 +4451,11 @@
     {
       "id": "E06",
       "suit": "nomad",
-      "restrictions": null,
       "intact": {
         "name": "Great Forge",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e06.intact",
@@ -4409,6 +4466,7 @@
       },
       "ruined": {
         "name": "Broken Forge",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e06.ruined",
@@ -4421,23 +4479,26 @@
     {
       "id": "E07",
       "suit": "nomad",
-      "restrictions": null,
       "intact": {
         "name": "Wild Pastures",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e07.intact",
-            "persistent": false,
-            "rulesText": "Whenever this card's ruler would discard a [suit-beast] card from a power, they may instead pay [favor] to the [suit-beast] bank."
+            "persistent": true,
+            "rulesText": "Whenever this card's ruler would discard a [suit-nomad] card from a power, they may instead pay [favor] to the [suit-nomad] bank."
           }
         ]
       },
       "ruined": {
         "name": "Blasted Pastures",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e07.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "**CHRONICLE (START OF THRONE):** Bury all [suit-nomad] cards on the map unless the winner rules this card."
           }
         ]
@@ -4446,23 +4507,26 @@
     {
       "id": "E08",
       "suit": "nomad",
-      "restrictions": null,
       "intact": {
         "name": "Sacred Ground",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e08.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Players **cannot** play Visions, except the Conspiracy, faceup unless their pawn is at this site."
           }
         ]
       },
       "ruined": {
         "name": "Desecrated Ground",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e08.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "If an Exile reveals a Vision while their pawn is at this site, they do not discard their current revealed Vision. _They can have any number!_"
           }
         ]
@@ -4471,9 +4535,11 @@
     {
       "id": "E09",
       "suit": "nomad",
-      "restrictions": null,
       "intact": {
         "name": "Giant's Path",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e09.intact",
@@ -4484,6 +4550,7 @@
       },
       "ruined": {
         "name": "Giant's Rampage",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e09.ruined",
@@ -4496,9 +4563,11 @@
     {
       "id": "E10",
       "suit": "nomad",
-      "restrictions": null,
       "intact": {
         "name": "Temple of Ancestors",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e10.intact",
@@ -4509,6 +4578,7 @@
       },
       "ruined": {
         "name": "Ruined Temple",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e10.ruined",
@@ -4521,19 +4591,22 @@
     {
       "id": "E11",
       "suit": "arcane",
-      "restrictions": null,
       "intact": {
         "name": "Great Spire",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e11.intact",
             "persistent": false,
-            "rulesText": "**ACTION:** Add 3 random cards from the Dispossessed to this region's discard pile, then add the bottom 3 denizens from that pile to the Dispossessed."
+            "rulesText": "[secret] **ACTION:** Add 3 random cards from the Dispossessed to this region's discard pile, then add the bottom 3 denizens from that pile to the Dispossessed."
           }
         ]
       },
       "ruined": {
         "name": "Fallen Spire",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e11.ruined",
@@ -4546,9 +4619,11 @@
     {
       "id": "E12",
       "suit": "arcane",
-      "restrictions": null,
       "intact": {
         "name": "Great Clock",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e12.intact",
@@ -4559,6 +4634,7 @@
       },
       "ruined": {
         "name": "Broken Clock",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e12.ruined",
@@ -4571,24 +4647,27 @@
     {
       "id": "E13",
       "suit": "arcane",
-      "restrictions": null,
       "intact": {
         "name": "Underground Library",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e13.intact",
             "persistent": false,
-            "rulesText": "**ACTION:** Peek at all relics in this region, then swap one with a relic you have, placing it facedown."
+            "rulesText": "[favor] **ACTION:** Peek at all relics in this region, then swap one with a relic you have, placing it facedown."
           }
         ]
       },
       "ruined": {
         "name": "Drowned Library",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e13.ruined",
-            "persistent": true,
-            "rulesText": "If your pawn is at this site, you may recover the top card of the relic deck instead. Its recover difficulty is 5."
+            "persistent": false,
+            "rulesText": "[secret] If your pawn is at this site, you may recover the top card of the relic deck instead. Its recover difficulty is 5."
           }
         ]
       }
@@ -4596,19 +4675,22 @@
     {
       "id": "E14",
       "suit": "arcane",
-      "restrictions": null,
       "intact": {
         "name": "Stone Portal",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e14.intact",
             "persistent": false,
-            "rulesText": "**ACTION:** If your pawn is at this site, place your pawn on another site. If your pawn is not at this site, place your pawn at this site."
+            "rulesText": "[secret] **ACTION:** If your pawn is at this site, place your pawn on another site. If your pawn is not at this site, place your pawn at this site."
           }
         ]
       },
       "ruined": {
         "name": "Shattered Portal",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e14.ruined",
@@ -4621,9 +4703,11 @@
     {
       "id": "E15",
       "suit": "arcane",
-      "restrictions": null,
       "intact": {
         "name": "Marble Fountains",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e15.intact",
@@ -4634,6 +4718,7 @@
       },
       "ruined": {
         "name": "Murky Fountain",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e15.ruined",
@@ -4646,24 +4731,27 @@
     {
       "id": "E16",
       "suit": "order",
-      "restrictions": null,
       "intact": {
         "name": "Hall of Ministers",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e16.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Enemies of this card's ruler **cannot** discard cards from sites ruled by this card's ruler. _They can still be buried._"
           }
         ]
       },
       "ruined": {
         "name": "Hall of Bandits",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e16.ruined",
-            "persistent": false,
-            "rulesText": "**CHRONICLE:** Ruined edifices ruled by bandits are not discarded"
+            "persistent": true,
+            "rulesText": "**CHRONICLE:** Ruined edifices ruled by bandits are not discarded."
           }
         ]
       }
@@ -4671,9 +4759,11 @@
     {
       "id": "E17",
       "suit": "order",
-      "restrictions": null,
       "intact": {
         "name": "Relic Patrols",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e17.intact",
@@ -4684,6 +4774,7 @@
       },
       "ruined": {
         "name": "Bandit Patrols",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e17.ruined",
@@ -4696,19 +4787,22 @@
     {
       "id": "E18",
       "suit": "order",
-      "restrictions": null,
       "intact": {
         "name": "Tome Guardians",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e18.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "If this card's ruler holds the Darkest Secret, their enemies **cannot** target the Darkest Secret. If ruled by Empire, all Imperials have this power."
           }
         ]
       },
       "ruined": {
         "name": "Lost Guardians",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e18.ruined",
@@ -4721,9 +4815,11 @@
     {
       "id": "E19",
       "suit": "order",
-      "restrictions": null,
       "intact": {
         "name": "The Tribunal",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e19.intact",
@@ -4734,10 +4830,11 @@
       },
       "ruined": {
         "name": "Bandit Tribunal",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e19.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "**WHEN NEGOTIATING:** Players at sites ruled by bandits may negotiate with each other."
           }
         ]
@@ -4746,9 +4843,11 @@
     {
       "id": "E20",
       "suit": "order",
-      "restrictions": null,
       "intact": {
         "name": "Towering Rampart",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e20.intact",
@@ -4759,6 +4858,7 @@
       },
       "ruined": {
         "name": "Cracked Rampart",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e20.ruined",
@@ -4771,9 +4871,11 @@
     {
       "id": "E21",
       "suit": "hearth",
-      "restrictions": null,
       "intact": {
         "name": "Festival District",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e21.intact",
@@ -4784,6 +4886,7 @@
       },
       "ruined": {
         "name": "Squalid District",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e21.ruined",
@@ -4796,9 +4899,11 @@
     {
       "id": "E22",
       "suit": "hearth",
-      "restrictions": null,
       "intact": {
         "name": "Proving Grounds",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e22.intact",
@@ -4809,6 +4914,7 @@
       },
       "ruined": {
         "name": "Empty Grounds",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e22.ruined",
@@ -4821,9 +4927,11 @@
     {
       "id": "E23",
       "suit": "hearth",
-      "restrictions": null,
       "intact": {
         "name": "Spiral Castle",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e23.intact",
@@ -4834,11 +4942,12 @@
       },
       "ruined": {
         "name": "Spiral Dungeons",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e23.ruined",
             "persistent": false,
-            "rulesText": "If you're victorious, place the attacker's pawn on this site, and they lose 2 Supply. Bandits will use this."
+            "rulesText": "If you're victorious, place the attacker's pawn on this site, and they lose 2 Supply. _Bandits will use this._"
           }
         ]
       }
@@ -4846,9 +4955,11 @@
     {
       "id": "E24",
       "suit": "hearth",
-      "restrictions": null,
       "intact": {
         "name": "Boiling Lake",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e24.intact",
@@ -4859,10 +4970,11 @@
       },
       "ruined": {
         "name": "Still Boiling Lake",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e24.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Cards **cannot** be played to this site. _This card can still be discarded by People's Favor, etc._"
           }
         ]
@@ -4871,9 +4983,11 @@
     {
       "id": "E25",
       "suit": "hearth",
-      "restrictions": null,
       "intact": {
         "name": "Hidden Passages",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e25.intact",
@@ -4884,6 +4998,7 @@
       },
       "ruined": {
         "name": "Sinking Passages",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e25.ruined",
@@ -4896,23 +5011,26 @@
     {
       "id": "E26",
       "suit": "beast",
-      "restrictions": null,
       "intact": {
         "name": "Hallowed Spring",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e26.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "When trading at this site for [secret], you **must** place both [favor] on the card you are trading with _(instead of burning one)_."
           }
         ]
       },
       "ruined": {
         "name": "Hiding Place",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e26.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "CHRONICLE (THRONE): This site's ruler may secretly keep a relic they have facedown. They start the next game with it."
           }
         ]
@@ -4921,9 +5039,11 @@
     {
       "id": "E27",
       "suit": "beast",
-      "restrictions": null,
       "intact": {
         "name": "School of Vines",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e27.intact",
@@ -4934,6 +5054,7 @@
       },
       "ruined": {
         "name": "Ruined School",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e27.ruined",
@@ -4946,23 +5067,26 @@
     {
       "id": "E28",
       "suit": "beast",
-      "restrictions": null,
       "intact": {
         "name": "Oaken Fortress",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e28.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "While this card's ruler is at this site, they **cannot** be targeted by a challenge or a raid campaign. If ruled by Empire, all Imperials have this power."
           }
         ]
       },
       "ruined": {
         "name": "Rotting Fortress",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e28.ruined",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Players at this site **cannot** be targeted by a challenge or a raid campaign, unless the targeting player has a [suit-beast] adviser."
           }
         ]
@@ -4971,24 +5095,27 @@
     {
       "id": "E29",
       "suit": "beast",
-      "restrictions": null,
       "intact": {
         "name": "Forbidden Forest",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e29.intact",
-            "persistent": false,
+            "persistent": true,
             "rulesText": "Enemies of this card's ruler **cannot** travel to this site unless they have a [suit-beast] adviser."
           }
         ]
       },
       "ruined": {
         "name": "Bandit Forest",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e29.ruined",
-            "persistent": false,
-            "rulesText": "Imperials **cannot** place [favor] or [secret] on cards ruled by bandits or use their non-persistent powers."
+            "persistent": true,
+            "rulesText": "Imperials **cannot** place [favor]/[secret] on cards ruled by bandits or use their non-persistent powers."
           }
         ]
       }
@@ -4996,9 +5123,11 @@
     {
       "id": "E30",
       "suit": "beast",
-      "restrictions": null,
       "intact": {
         "name": "Forest Horn",
+        "restrictions": [
+          "locked"
+        ],
         "powers": [
           {
             "id": "edifice.e30.intact",
@@ -5009,6 +5138,7 @@
       },
       "ruined": {
         "name": "Broken Horn",
+        "restrictions": null,
         "powers": [
           {
             "id": "edifice.e30.ruined",

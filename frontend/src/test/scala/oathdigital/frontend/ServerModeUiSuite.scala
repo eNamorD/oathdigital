@@ -225,7 +225,7 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.campaignPlanButtonLabel(skip), "Use no battle plan")
     assertEquals(ServerUiSupport.campaignPlanButtonLabel(outriders), "Outriders")
     val brass = CampaignPlanChoice("relic", Some("relic:red:R25"), Some("red"),
-      None, Some("R25"), "Brass Army", Some("relic.brass-army"), 0, 1,
+      None, Some("R25"), "Brass Army", Some("relic.brass-army.campaign"), 0, 1,
       "Add 4 attack dice")
     assertEquals(ServerUiSupport.campaignPlanButtonLabel(brass),
       "Brass Army (Place 1 Secret)")

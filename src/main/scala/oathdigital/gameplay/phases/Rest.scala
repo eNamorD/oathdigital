@@ -29,7 +29,7 @@ object WarExhaustionRandomPort {
 
 object Rest {
   private val ExpectedHandlerInventory =
-    "ebe0c1ad8fdc22834f96264b1036f6160e7072676ef1069bed447dd1a57e98d6"
+    "5fc88b0d9622a3f523722c288ea7a78d0ec09b7ce191bdabc7f471139ec85898"
   private val ExileWarbands = 14
   private val ExileSupply = SupplyRules(
     SupplyTrack.Maximum,
