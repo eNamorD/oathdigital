@@ -50,7 +50,7 @@ final class PowerResolver(registry: PowerRegistry) {
   def validateSources(sources: Vector[(RuleSourceRef, Vector[PowerId])])
       : Either[PowerResolverError, Unit] = sources.iterator.flatMap {
     case (source, ids) => ids.iterator.map(source -> _)
-  }.find { case (_, id) => registry.lookup(id).isEmpty } match {
+  }.find { case (_, id) => !registry.isAudited(id) } match {
     case Some((source, id)) => Left(UnknownAbility(source, id))
     case None => Right(())
   }

@@ -49,7 +49,12 @@ final case class IgnoredRuleDiagnostic(source: RuleSourceRef, handlerId: String,
 
 /** Reviewed pre-alpha policy. Catalog vocabulary is pinned independently of
   * runtime presence; a changed vocabulary never enters the fallback path.
+  *
+  * @deprecated Production and test callers use PowerRuntime. This dead
+  * compatibility implementation remains only until its wire-label types move
+  * to a neutral source file.
   */
+@deprecated("use PowerRuntime; retained only with current wire-label types", "pre-alpha")
 object MajorActionPowerShell {
   val AuditedCatalogFingerprint =
     "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2"

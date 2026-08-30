@@ -180,7 +180,7 @@ object ForgeRules {
       else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Forge")
       else None
     blocked.map(UnsupportedForgeState).toLeft(()).flatMap(_ =>
-      MajorActionPowerShell.requireAudited(catalog)).flatMap { _ =>
+      PowerRuntime.requireAudited(catalog)).flatMap { _ =>
       for {
         s <- site.toRight(SiteNotInPlay(siteId))
         ruled <- SiteRule.ruledBy(s.forces, game.current.players, player.player)

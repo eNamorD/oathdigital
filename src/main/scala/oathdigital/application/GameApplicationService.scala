@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
-  MajorActionPowerShell, OathContinue, OathEvent, OathRules, OathState,
+  PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules, ChallengeCommand,
   EconomyCommand, Forge, ForgeCommand, RecoverCommand, SearchCommand, TravelCommand}
@@ -114,13 +114,13 @@ final class GameApplicationService(
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
       case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) => for {
-        options <- MajorActionPowerShell.options(catalog, ready, actor, action)
+        options <- PowerRuntime.options(catalog, ready, actor, action)
           .left.map(CommandRejected)
         _ <- Either.cond(selected.distinct.size == selected.size &&
           selected.forall(options.contains), (), CommandRejected(
           OathViolation.InvalidModifierInvocation(
             "preview contains a duplicate or unavailable modifier")))
-        ignored <- MajorActionPowerShell.ignored(catalog, ready, actor, action)
+        ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
           .left.map(CommandRejected)
       } yield MajorActionPreviewAccepted(loaded, options, ignored)
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
@@ -242,7 +242,7 @@ final class GameApplicationService(
           OathViolation.InvalidModifierInvocation(
             "ordered modifiers are only valid on a major-action start"))
           .flatMap { case (actor, action) =>
-            MajorActionPowerShell.options(catalog, ready, actor, action).flatMap { options =>
+            PowerRuntime.options(catalog, ready, actor, action).flatMap { options =>
               val duplicate = ordered.distinct.size != ordered.size
               val unavailable = ordered.find(value => !options.contains(value))
               if (duplicate) Left(OathViolation.InvalidModifierInvocation(

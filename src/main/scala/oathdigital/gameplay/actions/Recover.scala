@@ -172,7 +172,7 @@ object RecoverRules {
       else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Recover")
       else None
     reason.map(OathViolation.UnsupportedRecoverState).toLeft(()).flatMap(_ =>
-      MajorActionPowerShell.requireAudited(catalog)).flatMap { _ =>
+      PowerRuntime.requireAudited(catalog)).flatMap { _ =>
       if (difficulty(catalog, siteId).isEmpty) Left(OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
       else if (site.forall(_.relics.isEmpty)) Left(OathViolation.RecoverUnavailable("site has no facedown relic"))
       else if (player.board.supply.supply < 1) Left(OathViolation.InsufficientSupply(1, player.board.supply.supply))

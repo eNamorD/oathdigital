@@ -146,7 +146,7 @@ object TravelRules {
       else None
     reason match {
       case Some(value) => Left(UnsupportedTravelState(value))
-      case None => MajorActionPowerShell.requireAudited(catalog)
+      case None => PowerRuntime.requireAudited(catalog)
     }
   }
 

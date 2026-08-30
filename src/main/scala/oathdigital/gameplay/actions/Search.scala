@@ -152,7 +152,7 @@ object SearchRules {
         Some("altered Foundations are not supported for Search")
       else None
     reason.fold[Either[OathViolation, Unit]](
-      MajorActionPowerShell.requireAudited(catalog))(
+      PowerRuntime.requireAudited(catalog))(
       value => Left(UnsupportedSearchState(value)))
   }
 

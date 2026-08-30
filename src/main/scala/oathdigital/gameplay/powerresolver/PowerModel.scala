@@ -54,6 +54,11 @@ object PowerWindow {
   case object ChallengeActionEligibility extends ChallengeWindow { val key = "challenge.action-eligibility" }
   case object ChallengeModifierSelection extends ChallengeWindow { val key = "challenge.modifier-selection" }
   case object WakeTakeWealth extends OtherWindow { val key = "wake.take-wealth" }
+  case object WakeBoundary extends OtherWindow { val key = "wake.boundary" }
+  case object ActionCardPlayed extends OtherWindow { val key = "action.card-played" }
+  case object ActionAfterMajorAction extends OtherWindow {
+    val key = "action.after-major-action"
+  }
   case object SearchEligibility extends SearchWindow { val key = "search.eligibility" }
   case object SearchCost extends SearchWindow { val key = "search.cost" }
   case object SearchBeforeDraw extends SearchWindow { val key = "search.before-draw" }

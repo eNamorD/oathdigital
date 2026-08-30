@@ -1,6 +1,8 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
+import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 
 class RuleResolutionSuite extends munit.FunSuite {
@@ -64,24 +66,25 @@ class RuleResolutionSuite extends munit.FunSuite {
     ))
   }
 
-  test("reviewed handlers classify optional mandatory triggered battle-plan and inherent behavior") {
-    assertEquals(MajorActionPowerShell.classify("denizen.map-library",
-      MajorActionKind.Trade).behavior, RuleBehavior.OptionalModifier)
-    assertEquals(MajorActionPowerShell.classify("denizen.relic-worship",
-      MajorActionKind.Recover).behavior, RuleBehavior.Mandatory)
-    assertEquals(MajorActionPowerShell.classify("denizen.insomnia",
-      MajorActionKind.Rest).behavior, RuleBehavior.Triggered)
-    assertEquals(MajorActionPowerShell.classify("site.fair-isle.island",
-      MajorActionKind.Travel), RuleClassification(MajorActionKind.Travel,
-      RuleTiming.Inherent, RuleBehavior.Inherent, implemented = true))
-    assertEquals(MajorActionPowerShell.classify("denizen.outriders",
-      MajorActionKind.Campaign).timing, RuleTiming.BattlePlan)
-    assertEquals(MajorActionPowerShell.classify("denizen.insomnia",
-      MajorActionKind.Travel).behavior, RuleBehavior.Irrelevant)
-    assert(MajorActionPowerShell.classifyAudited(catalog, "denizen.insomnia",
-      MajorActionKind.Travel).exists(_.behavior == RuleBehavior.Irrelevant))
-    assert(MajorActionPowerShell.classifyAudited(catalog, "denizen.not-a-rule",
-      MajorActionKind.Travel).isLeft)
+  test("reviewed handlers use precise windows resolution and implementations") {
+    val byId = ReviewedPowerCatalog.registrations.map(value =>
+      value.definition.id -> value).toMap
+    assert(byId(PowerId("denizen.map-library")).definition.windows.contains(
+      PowerWindow.TradeModifierSelection))
+    assertEquals(byId(PowerId("denizen.map-library")).definition.resolution,
+      PowerResolution.PlayerSelected)
+    assertEquals(byId(PowerId("denizen.relic-worship")).definition.windows,
+      Vector(PowerWindow.RecoverBeforeFirstRoll))
+    assertEquals(byId(PowerId("denizen.insomnia")).definition.windows,
+      Vector(PowerWindow.RestStart))
+    assert(byId(PowerId("site.fair-isle.island")).implementation.nonEmpty)
+    assertEquals(byId(PowerId("denizen.outriders")).definition.windows,
+      Vector(PowerWindow.CampaignAttackerBattlePlans))
+    assert(!byId(PowerId("denizen.insomnia")).definition.windows.contains(
+      PowerWindow.TravelModifierSelection))
+    assert(ReviewedPowerCatalog.resolver(catalog).toOption.get.validateSources(
+      Vector(RuleSourceRef.GameRule("test") ->
+        Vector(PowerId("denizen.not-a-rule")))).isLeft)
   }
 
   test("rule source stable keys round trip for durable diagnostics") {

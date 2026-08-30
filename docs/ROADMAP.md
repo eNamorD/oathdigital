@@ -7,8 +7,8 @@ been reviewed.
 
 ## Now
 
-**Phase 3 — Powers and battle plans** is active. The playable major-action shell
-and reviewed pre-alpha fallback are complete. Add actual powers incrementally
+**Phase 3 — Powers and battle plans** is active. The precise window-driven
+resolver and reviewed pre-alpha fallback are complete. Add actual powers incrementally
 through those typed source, invocation, timing, decision, event, and replay
 boundaries; keep unknown relevant handlers explicit.
 
@@ -129,7 +129,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   printed Vision text, and an inspectable all-viewer winner state. Wake and War
   Exhaustion share one true-Vision eligibility function and printed priority.
 
-- [x] **Phase 3 - Playable major-action power shell.** Travel, Search,
+- [x] **Phase 3 - Window-driven power resolver.** Travel, Search,
   Campaign, Muster, Trade, Forge, and Recover now share stateless actorless
   preview, ordered final modifier transport, and authoritative stale
   revalidation while retaining their base procedures. Wake, Rest, When Played,
@@ -140,7 +140,11 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   projections. Economy selection explicitly confirms, stale modifier drafts
   clear, Campaign battle-plan timing and Travel topology remain separate, and
   a powered all-Exile game persists/reopens through round-eight victory. This
-  milestone adds no component effects or universal effect DSL.
+  Procedure-owned registrations route solely by precise `PowerWindow`; modifier
+  metadata remains descriptive. This milestone adds no component effects or
+  universal effect DSL. The now-unused legacy shell implementation remains
+  isolated removal debt because its file still owns current wire compatibility
+  labels.
 
 - [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
   and browser-memory implementations; normalized gameplay ownership and factual

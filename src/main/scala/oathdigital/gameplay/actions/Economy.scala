@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{MajorActionPowerShell, OathLifecycle, RuleSourceRef}
+import oathdigital.gameplay.{PowerRuntime, OathLifecycle, RuleSourceRef}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
@@ -174,7 +174,7 @@ object Economy {
       Left(UnsupportedEconomyState("altered Foundations are not supported"))
     else if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedEconomyState("Economy is limited to the exile-only first game"))
-    else MajorActionPowerShell.requireAudited(catalog)
+    else PowerRuntime.requireAudited(catalog)
   }
 
   private def legalCards(catalog: ExecutableCatalog, ready: ReadyGame,

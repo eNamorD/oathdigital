@@ -359,7 +359,7 @@ object CampaignRules {
 
   private def validateDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, defender: PlayerId, target: SiteId)
-      : Either[OathViolation, Unit] = MajorActionPowerShell.requireAudited(catalog)
+      : Either[OathViolation, Unit] = PowerRuntime.requireAudited(catalog)
 
   private def banditRules(catalog: ExecutableCatalog, ready: ReadyGame)
       : Vector[DiscoveredCampaignRule] = ready.game.current.map.inPlay.filter(site =>
@@ -377,7 +377,7 @@ object CampaignRules {
   private def validateBanditDefenderSupported(catalog: ExecutableCatalog,
       ready: ReadyGame, attacker: PlayerId, sites: Vector[SiteId], force: Int)
       : Either[OathViolation, Unit] = {
-    MajorActionPowerShell.requireAudited(catalog).flatMap { _ =>
+    PowerRuntime.requireAudited(catalog).flatMap { _ =>
       val context = PendingProcedure.Campaign(DecisionId("bandit-validation"),
         attacker, sites, CampaignDefender.Bandits, force, Vector.empty,
         attackerPlansFinished = true, defenderPlansFinished = false,
@@ -440,7 +440,7 @@ object CampaignRules {
       .flatMap { ruled =>
         val discovered = discover(catalog, ready, playerId, sites, ruled)
         unsupportedBase.map(UnsupportedCampaignState).toLeft(()).flatMap(_ =>
-          MajorActionPowerShell.requireAudited(catalog)).flatMap { _ =>
+          PowerRuntime.requireAudited(catalog)).flatMap { _ =>
           discovered.sortBy(r => (r.activation.priority,
             r.activation.source.stableKey, r.activation.handlerId)).foldLeft[
               Either[OathViolation, Unit]](Right(())) {

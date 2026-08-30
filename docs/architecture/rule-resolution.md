@@ -51,12 +51,13 @@ Campaign defender decisions can belong to a non-active player. Bandit choices
 use a deterministic policy only for cost-free, choice-free registered options;
 paid, ambiguous, or unsupported relevant behavior blocks.
 
-## Playable major-action shell
+## Window-driven power runtime
 
-`MajorActionPowerShell` keeps four concepts separate: factual sources discovered
-by `RuleSourceIndex`, player-ordered modifier invocations, handlers with an
-implemented executor, and reviewed handlers that the pre-alpha deliberately
-ignores. Its audited catalog fingerprint makes that last category closed:
+`PowerRegistry` and `PowerResolver` keep four concepts separate: factual sources
+discovered by `RuleSourceIndex`, precise procedure windows, implemented typed
+handlers, and reviewed powers that the pre-alpha deliberately ignores. Reviewed
+definitions live under `gameplay/powers`. Their audited catalog fingerprint
+makes that last category closed:
 optional unimplemented handlers are neither options nor blockers, reached
 mandatory/triggered handlers emit durable `IgnoredRulesRecorded` diagnostics,
 and a changed handler vocabulary still rejects.
@@ -69,12 +70,19 @@ authoritative state. Empty option sets skip the modifier stage; the frontend
 selection model nevertheless preserves click order, keyboard reordering, and
 clears stale drafts when context, candidates, or preview identity changes.
 
-The shell is connected to Travel, Search, Campaign, Muster, Trade, Forge, and
-Recover plus Wake, Rest, When Played, and post-action boundaries. It does not
+The runtime is connected to Travel, Search, Campaign, Muster, Trade, Forge, and
+Recover plus Wake, Rest, card-play, and post-action windows; reviewed
+Negotiation definitions are indexed for its existing explicit blocking boundary.
+It does not
 replace action ownership: Travel still resolves automatic Coast/Island/
 Mountain/Pass topology, Campaign retains its later attacker/defender/bandit
 battle-plan windows, and Economy target choice remains an explicit confirm.
-No component effect or universal effect language is introduced by this layer.
+`PowerRuntime` translates precise resolver results into the current command and
+durable-event shapes. `MajorActionPowerShell` has no production or test callers;
+its old implementation remains only as removal debt while the stable
+`MajorActionKind`, `RuleTiming`, invocation, and diagnostic wire types still
+share that source file. No component effect or universal effect language is
+introduced by this layer.
 
 ## Adding a power
 

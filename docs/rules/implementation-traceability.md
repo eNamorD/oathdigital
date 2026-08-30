@@ -50,8 +50,9 @@ unknown vocabulary remains an error.
 | Wake / Rest / action boundary | Existing phase, title, Vision, refill and ending progression | Reached banner, Foundation and Rest triggers record durable diagnostics |
 | When Played | Existing placement restrictions and favor movement | Reviewed triggers record diagnostics instead of blocking play |
 
-`MajorActionPowerShell.scala`, application preview/command mapping, lifecycle
-event codec, server routes, and `frontend/ModifierSelectionState.scala` are the
+`gameplay/powers`, `PowerRegistry`, `PowerResolver`, `PowerRuntime`, application
+preview/command mapping, lifecycle event codec, server routes, and
+`frontend/ModifierSelectionState.scala` are the
 implementation evidence. Focused gameplay, wire, application replay,
 authenticated/development route, and Scala.js suites cover classification,
 ordering, stale revalidation, redaction, draft clearing, and replay tampering.
