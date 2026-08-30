@@ -1,6 +1,6 @@
 package oathdigital.catalog
 
-import oathdigital.model.{CatalogRef, SiteId, SupplyRules, Tokens, VisionId}
+import oathdigital.model.{CatalogRef, PowerId, SiteId, SupplyRules, Tokens, VisionId}
 
 final case class DefinitionId(value: String) {
   require(value.trim.nonEmpty, "catalog definition ID must not be blank")
@@ -23,14 +23,17 @@ object Suit {
 
 }
 
-final case class CatalogPower(id: String, persistent: Boolean, rulesText: String) {
-  require(id.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
-    s"invalid stable power ID $id")
+final case class CatalogPower(id: PowerId, persistent: Boolean, rulesText: String) {
+  require(rulesText.trim.nonEmpty, "power rules text must not be blank")
+}
+object CatalogPower {
+  def apply(id: String, persistent: Boolean, rulesText: String): CatalogPower =
+    CatalogPower(PowerId(id), persistent, rulesText)
 }
 
 trait CatalogPoweredDefinition {
   def powers: Vector[CatalogPower]
-  final def handlers: Vector[String] = powers.map(_.id)
+  final def handlers: Vector[String] = powers.map(_.id.value)
   final def rulesText: String = powers.map(_.rulesText).mkString("\n\n")
 }
 
@@ -196,5 +199,14 @@ object CatalogLoadError {
   final case class DuplicateDefinitionId(path: String, id: DefinitionId)
       extends CatalogLoadError {
     override val message: String = s"duplicate definition ID ${id.value}"
+  }
+
+  final case class DuplicatePowerId(
+      path: String,
+      id: PowerId,
+      firstPath: String
+  ) extends CatalogLoadError {
+    override val message: String =
+      s"duplicate power ID ${id.value}; first declared at $firstPath"
   }
 }

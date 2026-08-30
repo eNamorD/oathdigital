@@ -60,6 +60,18 @@ ID and exact combined text are preserved. Only `denizen.vow-of-peace`,
 classifications. All other flags conservatively default to false until manual
 component review splits clauses and corrects braid status.
 
+## Manual power review
+
+Edit only `docs/catalog/new-foundations-component-catalog.json` during manual
+review, and preserve each component's power order. When splitting independently
+timed clauses, retain a stable base and assign stable suffixed IDs; set
+`persistent` for each clause from its printed black braid. Changing or splitting
+an ID requires later registry and handler-fingerprint reconciliation.
+
+The reference-ingestion mirror and generator may temporarily differ from the
+reviewed runtime catalog. They will be reconciled after review rather than used
+to overwrite in-progress catalog edits.
+
 Run:
 
 ```sh

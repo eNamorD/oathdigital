@@ -18,7 +18,8 @@ final case class DecisionId(value: String) {
 }
 
 final case class PowerId(value: String) {
-  IdentityValidation.nonBlank("power ID", value)
+  require(value.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
+    s"invalid stable power ID $value")
 }
 
 final case class CatalogRef(ruleset: String, version: String) {

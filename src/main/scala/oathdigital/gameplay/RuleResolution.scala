@@ -315,7 +315,7 @@ object TakeWealthRules {
   ): Either[OathViolation, Unit] = {
     val context = RuleQueryContext.TakeWealth(ready, player, siteId, resource)
     val power = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(siteId),
-      PowerId("take-wealth"))
+      PowerId("site.take-wealth"))
     val enemies = ready.game.current.players.collect {
       case other if other.player != player.player &&
           other.pawnSite.contains(siteId) => other.player

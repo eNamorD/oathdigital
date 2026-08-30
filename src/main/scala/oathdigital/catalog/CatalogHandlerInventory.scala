@@ -8,24 +8,24 @@ import java.security.MessageDigest
   */
 object CatalogHandlerInventory {
   def handlerIds(catalog: ExecutableCatalog): Vector[String] =
-    (catalog.denizens.flatMap(_.powers.map(_.id)) ++
-      catalog.relics.flatMap(_.powers.map(_.id)) ++
-      catalog.legacies.flatMap(_.powers.map(_.id)) ++
+    (catalog.denizens.flatMap(_.powers.map(_.id.value)) ++
+      catalog.relics.flatMap(_.powers.map(_.id.value)) ++
+      catalog.legacies.flatMap(_.powers.map(_.id.value)) ++
       catalog.sites.flatMap(_.handlers) ++
-      catalog.edifices.flatMap(e => e.intact.powers.map(_.id) ++
-        e.ruined.powers.map(_.id)))
+      catalog.edifices.flatMap(e => e.intact.powers.map(_.id.value) ++
+        e.ruined.powers.map(_.id.value)))
       .distinct.sorted
 
   def entries(catalog: ExecutableCatalog): Vector[String] =
     (catalog.denizens.sortBy(_.id.value).map(d =>
-      s"denizen|${d.id.value}|${d.powers.map(_.id).sorted.mkString(",")}") ++
+      s"denizen|${d.id.value}|${d.powers.map(_.id.value).sorted.mkString(",")}") ++
       catalog.relics.sortBy(_.id.value).map(r =>
-        s"relic|${r.id.value}|${r.powers.map(_.id).sorted.mkString(",")}") ++
+        s"relic|${r.id.value}|${r.powers.map(_.id.value).sorted.mkString(",")}") ++
       catalog.edifices.sortBy(_.id.value).flatMap(e => Vector(
-        s"edifice-intact|${e.id.value}|${e.intact.powers.map(_.id).sorted.mkString(",")}",
-        s"edifice-ruined|${e.id.value}|${e.ruined.powers.map(_.id).sorted.mkString(",")}")) ++
+        s"edifice-intact|${e.id.value}|${e.intact.powers.map(_.id.value).sorted.mkString(",")}",
+        s"edifice-ruined|${e.id.value}|${e.ruined.powers.map(_.id.value).sorted.mkString(",")}")) ++
       catalog.legacies.sortBy(_.id.value).map(l =>
-        s"legacy|${l.id.value}|${l.powers.map(_.id).sorted.mkString(",")}") ++
+        s"legacy|${l.id.value}|${l.powers.map(_.id.value).sorted.mkString(",")}") ++
       catalog.sites.sortBy(_.id.value).map(s =>
         s"site|${s.id.value}|${s.handlers.sorted.mkString(",")}"))
 

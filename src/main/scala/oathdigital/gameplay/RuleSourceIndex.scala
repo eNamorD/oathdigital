@@ -2,7 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogPower
-import oathdigital.gameplay.powerresolver.PowerId
 import oathdigital.model._
 
 /** Orientation is a factual property only; callers still own activation rules. */
@@ -160,5 +159,5 @@ object RuleSourceIndex {
 
   private def ids(values: Vector[String]): Vector[PowerId] = values.map(PowerId)
   private def ids(values: Vector[CatalogPower]): Vector[PowerId] =
-    values.map(power => PowerId(power.id))
+    values.map(_.id)
 }

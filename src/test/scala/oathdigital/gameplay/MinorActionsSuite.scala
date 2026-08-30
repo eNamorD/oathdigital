@@ -213,7 +213,7 @@ class MinorActionsSuite extends munit.FunSuite {
   test("audited minor-action power inventory rejects changed handler vocabulary") {
     val first = catalog.denizens.head
     val changed = catalog.copy(denizens = first.copy(powers = first.powers :+
-      CatalogPower("denizen.future-handler", persistent = false, "")) +:
+      CatalogPower("denizen.future-handler", persistent = false, "Future power.")) +:
       catalog.denizens.tail)
     assert(MinorActionPowerSupport.validateInventory(changed).left.toOption.exists(
       _.isInstanceOf[UnsupportedMinorActionCatalogInventory]))
@@ -223,21 +223,21 @@ class MinorActionsSuite extends munit.FunSuite {
     val changed = Vector(
       catalog.copy(relics = catalog.relics.head.copy(
         powers = catalog.relics.head.powers :+ CatalogPower(
-          "relic.future-vision", persistent = false, "")) +:
+          "relic.future-vision", persistent = false, "Future power.")) +:
           catalog.relics.tail),
       catalog.copy(edifices = catalog.edifices.head.copy(intact =
         catalog.edifices.head.intact.copy(powers =
           catalog.edifices.head.intact.powers :+ CatalogPower(
-            "edifice.future-vision", persistent = false, ""))) +:
+            "edifice.future-vision", persistent = false, "Future power."))) +:
           catalog.edifices.tail),
       catalog.copy(edifices = catalog.edifices.head.copy(ruined =
         catalog.edifices.head.ruined.copy(powers =
           catalog.edifices.head.ruined.powers :+ CatalogPower(
-            "edifice.future-ruined-vision", persistent = false, ""))) +:
+            "edifice.future-ruined-vision", persistent = false, "Future power."))) +:
           catalog.edifices.tail),
       catalog.copy(legacies = catalog.legacies.head.copy(
         powers = catalog.legacies.head.powers :+ CatalogPower(
-          "legacy.future-vision", persistent = false, "")) +:
+          "legacy.future-vision", persistent = false, "Future power.")) +:
           catalog.legacies.tail),
       catalog.copy(sites = catalog.sites.head.copy(
         handlers = catalog.sites.head.handlers :+ "site.future-vision") +:

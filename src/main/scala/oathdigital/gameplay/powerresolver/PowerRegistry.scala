@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
+import oathdigital.model.PowerId
+
 final class PowerRegistry private (
     private val byId: Map[PowerId, RegisteredPower],
     private val byWindow: Map[PowerWindow, Vector[RegisteredPower]]

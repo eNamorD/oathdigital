@@ -5,6 +5,7 @@ import java.nio.file.{Files, Paths}
 
 import oathdigital.catalog.CatalogLoadError.{
   DuplicateDefinitionId,
+  DuplicatePowerId,
   IncompatibleCatalog,
   InvalidJson,
   InvalidValue,
@@ -12,7 +13,7 @@ import oathdigital.catalog.CatalogLoadError.{
   UnsupportedSchemaVersion,
   WrongType
 }
-import oathdigital.model.{CatalogRef, SiteId, Tokens}
+import oathdigital.model.{CatalogRef, PowerId, SiteId, Tokens}
 
 class CatalogLoaderSuite extends munit.FunSuite {
   private val fixturePath =
@@ -57,13 +58,59 @@ class CatalogLoaderSuite extends munit.FunSuite {
     ))
     val powers = CatalogLoader.load(value.render()).toOption.get.denizens.head.powers
     assertEquals(powers, Vector(
-      CatalogPower("denizen.fixture-denizen", persistent = false,
+      CatalogPower(PowerId("denizen.fixture-denizen"), persistent = false,
         "ACTION: Perform the fixture action."),
-      CatalogPower("denizen.fixture-second", persistent = true,
+      CatalogPower(PowerId("denizen.fixture-second"), persistent = true,
         "Second exact paragraph.")
     ))
-    assertEquals(powers.map(_.id), Vector("denizen.fixture-denizen",
-      "denizen.fixture-second"))
+    assertEquals(powers.map(_.id), Vector(PowerId("denizen.fixture-denizen"),
+      PowerId("denizen.fixture-second")))
+  }
+
+  test("catalog powers round-trip the shared PowerId type") {
+    val power = CatalogLoader.load(fixture).toOption.get.denizens.head.powers.head
+    assertEquals(power.id, PowerId("denizen.fixture-denizen"))
+    assertEquals(power.id.value, "denizen.fixture-denizen")
+  }
+
+  test("power IDs are globally unique across rendered component families") {
+    val value = ujson.read(fixture)
+    value("relics")(0)("powers")(0)("id") = "denizen.fixture-denizen"
+    val errors = CatalogLoader.load(value.render()).left.toOption.get
+    assert(errors.exists {
+      case DuplicatePowerId(path, PowerId("denizen.fixture-denizen"), first) =>
+        path == "$.relics[0].powers[0].id" &&
+          first == "$.denizens[0].powers[0].id"
+      case _ => false
+    })
+  }
+
+  test("site handler IDs share the rendered power namespace") {
+    val value = ujson.read(fixture)
+    value("sites")(0)("handlers")(0) = "denizen.fixture-denizen"
+    val errors = CatalogLoader.load(value.render()).left.toOption.get
+    assert(errors.exists {
+      case DuplicatePowerId(path, PowerId("denizen.fixture-denizen"), first) =>
+        path == "$.sites[0].handlers[0]" &&
+          first == "$.denizens[0].powers[0].id"
+      case _ => false
+    })
+  }
+
+  test("power rules text must contain a non-whitespace character") {
+    Vector("", "  \n\t ").foreach { invalid =>
+      val value = ujson.read(fixture)
+      value("denizens")(0)("powers")(0)("rulesText") = invalid
+      val errors = CatalogLoader.load(value.render()).left.toOption.get
+      assert(errors.exists {
+        case InvalidValue(path, detail) =>
+          path == "$.denizens[0].powers[0].rulesText" &&
+            detail.contains("blank")
+        case _ => false
+      })
+    }
+    intercept[IllegalArgumentException](
+      CatalogPower(PowerId("test.blank"), persistent = false, " \t "))
   }
 
   test("production power text exactly equals checked-in JSON in source order") {
@@ -75,7 +122,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
         power("persistent").bool, power("rulesText").str)).toVector).toMap
     assertEquals(loaded.denizens.map(component => component.id.value ->
       component.powers.map(power =>
-        (power.id, power.persistent, power.rulesText))).toMap, rawDenizens)
+        (power.id.value, power.persistent, power.rulesText))).toMap, rawDenizens)
   }
 
   test("malformed empty duplicate and incomplete powers report exact paths") {
@@ -106,7 +153,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
       })
     assert(changed(component => component("powers")(0)("id") = "bad")
       .exists {
-        case InvalidValue(path, _) => path == "$.denizens[0].powers[0]"
+        case InvalidValue(path, _) => path == "$.denizens[0].powers[0].id"
         case _ => false
       })
   }
@@ -399,7 +446,7 @@ class CatalogLoaderSuite extends munit.FunSuite {
         |      "powers": [{
         |        "id": "denizen.duplicate-denizen",
         |        "persistent": false,
-        |        "rulesText": ""
+        |        "rulesText": "Duplicate rule."
         |      }]
         |    },""".stripMargin
     val duplicateId =

@@ -118,6 +118,6 @@ object Wake {
     PowerUseRef(
       PowerTiming.Wake,
       PowerSourceRef.Site(siteId),
-      PowerId("take-wealth")
+      PowerId("site.take-wealth")
     )
 }

@@ -138,7 +138,7 @@ class ForgeSuite extends munit.FunSuite {
     val altered = catalog.copy(denizens = catalog.denizens.map { definition =>
       if (definition.id.value != active.value) definition
       else definition.copy(powers = definition.powers :+ CatalogPower(
-        "denizen.future-forge-interaction", persistent = false, ""))
+        "denizen.future-forge-interaction", persistent = false, "Future power."))
     })
     assert(ForgeRules.validate(altered, ready, actor, site).left.toOption.get
       .isInstanceOf[UnsupportedRuleCatalog])

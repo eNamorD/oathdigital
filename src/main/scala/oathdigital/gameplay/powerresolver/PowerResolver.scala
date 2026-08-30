@@ -1,5 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
+import oathdigital.model.PowerId
+
 import oathdigital.gameplay.RuleSourceRef
 import oathdigital.gameplay.powerresolver.PowerResolution._
 import oathdigital.gameplay.powerresolver.PowerResolverError._

@@ -1,12 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.gameplay.RuleSourceRef
-import oathdigital.model.PlayerId
-
-final case class PowerId(value: String) {
-  require(value.matches("[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+"),
-    s"invalid stable power ID $value")
-}
+import oathdigital.model.{PlayerId, PowerId}
 
 sealed trait MajorActionType extends Product with Serializable { def key: String }
 object MajorActionType {

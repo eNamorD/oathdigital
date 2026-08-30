@@ -4,7 +4,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powerresolver.MajorActionType._
 import oathdigital.gameplay.powerresolver.PowerResolution._
 import oathdigital.gameplay.powerresolver.PowerWindow._
-import oathdigital.model.{PlayerId, SiteId}
+import oathdigital.model.{PlayerId, PowerId, SiteId}
 
 private object PowerResolverSuiteFixtures {
   final case class RecoverFacts(actor: PlayerId, emptySlot: Boolean)

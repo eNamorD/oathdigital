@@ -6,7 +6,7 @@ import java.nio.file.{Files, Path}
 import scala.util.control.NonFatal
 
 import oathdigital.catalog.CatalogLoadError._
-import oathdigital.model.{CatalogRef, SiteId, Tokens}
+import oathdigital.model.{CatalogRef, PowerId, SiteId, Tokens}
 import ujson.{Arr, Bool, Null, Obj, Str, Value}
 
 object CatalogLoader {
@@ -94,6 +94,7 @@ object CatalogLoader {
           legacies.map(_.id) ++
           sites.map(site => DefinitionId(site.id.value))
       )
+      _ <- validateUniquePowerIds(denizens, relics, edifices, legacies, sites)
     } yield ExecutableCatalog(
       schemaVersion,
       ref,
@@ -363,16 +364,17 @@ object CatalogLoader {
         asObject(value, powerPath).flatMap { power => for {
           id <- requiredString(power, "id", powerPath)
           persistent <- requiredBoolean(power, "persistent", powerPath)
-          rulesText <- requiredString(power, "rulesText", powerPath, allowBlank = true)
-          result <- construct(powerPath, CatalogPower(id, persistent, rulesText))
+          rulesText <- requiredString(power, "rulesText", powerPath)
+          powerId <- construct(s"$powerPath.id", PowerId(id))
+          result <- construct(powerPath, CatalogPower(powerId, persistent, rulesText))
         } yield result }
       }.toVector).flatMap { powers =>
         val duplicates = powers.groupBy(_.id).collect {
           case (id, matches) if matches.size > 1 => id
-        }.toVector.sorted
+        }.toVector.sortBy(_.value)
         if (duplicates.isEmpty) Right(powers)
         else Left(duplicates.map(id => InvalidValue(s"$path.powers",
-          s"duplicate power ID $id")))
+          s"duplicate power ID ${id.value}")))
       }
     }
 
@@ -427,6 +429,48 @@ object CatalogLoader {
       Left(
         duplicates.map(id => DuplicateDefinitionId("$.components", id))
       )
+  }
+
+  private def validateUniquePowerIds(
+      denizens: Vector[DenizenDefinition],
+      relics: Vector[RelicDefinition],
+      edifices: Vector[EdificeDefinition],
+      legacies: Vector[LegacyDefinition],
+      sites: Vector[SiteDefinition]
+  ): Result[Unit] = {
+    val rendered =
+      denizens.zipWithIndex.flatMap { case (definition, i) =>
+        definition.powers.zipWithIndex.map { case (power, j) =>
+          power.id -> s"$$.denizens[$i].powers[$j].id"
+        }
+      } ++ relics.zipWithIndex.flatMap { case (definition, i) =>
+        definition.powers.zipWithIndex.map { case (power, j) =>
+          power.id -> s"$$.relics[$i].powers[$j].id"
+        }
+      } ++ edifices.zipWithIndex.flatMap { case (definition, i) =>
+        definition.intact.powers.zipWithIndex.map { case (power, j) =>
+          power.id -> s"$$.edifices[$i].intact.powers[$j].id"
+        } ++ definition.ruined.powers.zipWithIndex.map { case (power, j) =>
+          power.id -> s"$$.edifices[$i].ruined.powers[$j].id"
+        }
+      } ++ legacies.zipWithIndex.flatMap { case (definition, i) =>
+        definition.powers.zipWithIndex.map { case (power, j) =>
+          power.id -> s"$$.legacies[$i].powers[$j].id"
+        }
+      }
+    val all = rendered ++ sites.zipWithIndex.flatMap { case (site, i) =>
+      site.handlers.zipWithIndex.map { case (id, j) =>
+        PowerId(id) -> s"$$.sites[$i].handlers[$j]"
+      }
+    }
+    val firstPaths = scala.collection.mutable.Map.empty[PowerId, String]
+    val errors = all.flatMap { case (id, path) =>
+      firstPaths.get(id) match {
+        case Some(firstPath) => Some(DuplicatePowerId(path, id, firstPath))
+        case None => firstPaths.update(id, path); None
+      }
+    }
+    if (errors.isEmpty) Right(()) else Left(errors)
   }
 
   private def requirePattern(

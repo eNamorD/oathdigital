@@ -210,6 +210,9 @@ def validate_rules_text(text, path):
     if not isinstance(text, str):
         errors.append(f"{path}: rulesText must be a string")
         return
+    if not text.strip():
+        errors.append(f"{path}: rulesText must not be blank")
+        return
     for symbol in re.findall(r"\[([^\]]+)\]", text):
         if symbol not in allowed_symbols:
             errors.append(f"{path}: unsupported symbol [{symbol}]")

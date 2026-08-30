@@ -253,21 +253,21 @@ class RestSuite extends munit.FunSuite {
     val changed = Vector(
       catalog.copy(denizens = catalog.denizens.updated(0,
         catalog.denizens.head.copy(powers = catalog.denizens.head.powers :+
-          CatalogPower("test.changed-denizen", persistent = false, "")))),
+          CatalogPower("test.changed-denizen", persistent = false, "Changed.")))),
       catalog.copy(relics = catalog.relics.updated(0,
         catalog.relics.head.copy(powers = catalog.relics.head.powers :+
-          CatalogPower("test.changed-relic", persistent = false, "")))),
+          CatalogPower("test.changed-relic", persistent = false, "Changed.")))),
       catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
         intact = catalog.edifices.head.intact.copy(
           powers = catalog.edifices.head.intact.powers :+
-            CatalogPower("test.changed-intact", persistent = false, ""))))),
+            CatalogPower("test.changed-intact", persistent = false, "Changed."))))),
       catalog.copy(edifices = catalog.edifices.updated(0, catalog.edifices.head.copy(
         ruined = catalog.edifices.head.ruined.copy(
           powers = catalog.edifices.head.ruined.powers :+
-            CatalogPower("test.changed-ruined", persistent = false, ""))))),
+            CatalogPower("test.changed-ruined", persistent = false, "Changed."))))),
       catalog.copy(legacies = catalog.legacies.updated(0,
         catalog.legacies.head.copy(powers = catalog.legacies.head.powers :+
-          CatalogPower("test.changed-legacy", persistent = false, "")))),
+          CatalogPower("test.changed-legacy", persistent = false, "Changed.")))),
       catalog.copy(sites = catalog.sites.updated(0,
         catalog.sites.head.copy(handlers = catalog.sites.head.handlers :+ "changed"))))
     assert(changed.forall(rejects))

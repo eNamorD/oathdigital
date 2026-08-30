@@ -200,7 +200,7 @@ class NegotiationSuite extends munit.FunSuite {
     val (base, players, _, _, _) = ready()
     val first = catalog.relics.head
     val changed = catalog.copy(relics = first.copy(powers = first.powers :+
-      CatalogPower("relic.future-negotiation", persistent = false, "")) +:
+      CatalogPower("relic.future-negotiation", persistent = false, "Future power.")) +:
       catalog.relics.tail)
     assert(Negotiation.handle(changed, Ready(base), NegotiationCommand.Begin(
       players.head.player, DecisionId("changed"), Vector(players(1).player)))

@@ -76,7 +76,8 @@
       }
     },
     "rulesText": {
-      "type": "string"
+      "type": "string",
+      "pattern": "\\S"
     },
     "power": {
       "type": "object",

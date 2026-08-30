@@ -5,7 +5,6 @@ import scala.jdk.CollectionConverters._
 
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
-import oathdigital.gameplay.powerresolver.PowerId
 import oathdigital.gameplay.setup.{FirstGameSetupRules, FirstGameSetupFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -54,7 +53,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
       catalog.relics.find(_.id.value == relic.id.value).get.handlers)
     assertEquals(indexed.powerIds,
       catalog.relics.find(_.id.value == relic.id.value).get.powers.map(power =>
-        PowerId(power.id)))
+        power.id))
     assertEquals(indexed.face, relic.orientation match {
       case Orientation.FaceUp => RuleSourceFace.FaceUp
       case Orientation.FaceDown => RuleSourceFace.FaceDown
