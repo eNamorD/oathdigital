@@ -141,6 +141,26 @@ class MinorActionsSuite extends munit.FunSuite {
     assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.dazzle"))
   }
 
+  test("source-scoped fallback and replay use the recorded off-turn actor") {
+    val (base, active, _, _, _) = ready()
+    val other0 = base.game.current.players.find(_.player != active.player).get
+    val powered = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.dazzle")).get.id.value)
+    val other = other0.copy(advisers = Vector(
+      DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
+    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(player =>
+        if (player.player == other.player) other else player))))
+    val source = RuleSourceRef.Adviser(other.player, powered)
+    val expected = PowerRuntime.ignoredAtSource(catalog, changed, other.player,
+      MajorActionKind.WhenPlayed, source).toOption.get
+    assertEquals(expected.map(_.handlerId), Vector("denizen.dazzle"))
+    assertEquals(PowerRuntime.ignoredAtSource(catalog, changed, active.player,
+      MajorActionKind.WhenPlayed, source).toOption.get, Vector.empty)
+    val event = IgnoredRulesRecorded(other.player, MajorActionKind.WhenPlayed, expected)
+    assert(rules.evolve(Ready(changed), event).isRight)
+  }
+
   test("Conspiracy play is an explicit unsupported power in command and replay") {
     val (base, actor, _, _, _) = ready()
     val conspiracy = MinorActionPowerSupport.Conspiracy

@@ -10,7 +10,7 @@ final case class ReviewedPowerFacts(
     sources: Map[RuleSourceRef, IndexedRuleSource]
 ) extends PowerFacts
 
-private[powers] object ReviewedPowerInspector extends PowerInspector {
+private[gameplay] object ReviewedPowerInspector extends PowerInspector {
   override def inspect(context: PowerContext): PowerInspection =
     context.facts match {
       case facts: ReviewedPowerFacts => PowerInspection(
@@ -28,6 +28,8 @@ private[powers] object ReviewedPowerInspector extends PowerInspector {
     ref match {
       case RuleSourceRef.Site(id) => pawn.contains(id)
       case RuleSourceRef.SiteCard(id, _) =>
+        pawn.contains(id) && source.face == RuleSourceFace.FaceUp
+      case RuleSourceRef.SiteRelic(id, _) =>
         pawn.contains(id) && source.face == RuleSourceFace.FaceUp
       case RuleSourceRef.Edifice(id, _) =>
         pawn.contains(id) && source.face == RuleSourceFace.Intact

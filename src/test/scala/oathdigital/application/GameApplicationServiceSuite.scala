@@ -116,6 +116,10 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       oathdigital.gameplay.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
       oathdigital.gameplay.MajorActionKind.Travel, Vector(forged)).isLeft)
+    val challenge = service.preview("game-preview", act.nextSequence, actor,
+      oathdigital.gameplay.MajorActionKind.Challenge, Vector.empty).toOption.get
+    assertEquals(challenge.options, Vector.empty)
+    assertEquals(challenge.ignored, Vector.empty)
   }
   test("minor adviser action persists and reloads through authoritative replay") {
     val repository = new InMemoryEventStreamRepository

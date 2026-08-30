@@ -70,19 +70,18 @@ authoritative state. Empty option sets skip the modifier stage; the frontend
 selection model nevertheless preserves click order, keyboard reordering, and
 clears stale drafts when context, candidates, or preview identity changes.
 
-The runtime is connected to Travel, Search, Campaign, Muster, Trade, Forge, and
-Recover plus Wake, Rest, card-play, and post-action windows; reviewed
+The runtime is connected to Travel, Search, Campaign, Muster, Trade, Forge,
+Recover, and Challenge plus Wake, Rest, card-play, and post-action windows; reviewed
 Negotiation definitions are indexed for its existing explicit blocking boundary.
 It does not
 replace action ownership: Travel still resolves automatic Coast/Island/
 Mountain/Pass topology, Campaign retains its later attacker/defender/bandit
 battle-plan windows, and Economy target choice remains an explicit confirm.
 `PowerRuntime` translates precise resolver results into the current command and
-durable-event shapes. `MajorActionPowerShell` has no production or test callers;
-its old implementation remains only as removal debt while the stable
-`MajorActionKind`, `RuleTiming`, invocation, and diagnostic wire types still
-share that source file. No component effect or universal effect language is
-introduced by this layer.
+durable-event shapes. The legacy central classification switch has been removed;
+stable request and diagnostic protocol labels live separately in
+`RuleFallbackProtocol`. No component effect or universal effect language is
+introduced by this layer, and modifier metadata remains descriptive only.
 
 ## Adding a power
 

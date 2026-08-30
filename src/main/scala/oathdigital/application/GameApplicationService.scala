@@ -418,6 +418,8 @@ final class GameApplicationService(
         Some(actor -> MajorActionKind.Search)
       case GameCommand.BeginRecover(actor) => Some(actor -> MajorActionKind.Recover)
       case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
+      case GameCommand.BeginChallenge(actor, _) =>
+        Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>
         Some(actor -> MajorActionKind.Campaign)
       case GameCommand.BeginCampaignRaid(actor, _, _) =>

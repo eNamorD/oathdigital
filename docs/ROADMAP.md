@@ -130,7 +130,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   Exhaustion share one true-Vision eligibility function and printed priority.
 
 - [x] **Phase 3 - Window-driven power resolver.** Travel, Search,
-  Campaign, Muster, Trade, Forge, and Recover now share stateless actorless
+  Campaign, Muster, Trade, Forge, Recover, and Challenge now share stateless actorless
   preview, ordered final modifier transport, and authoritative stale
   revalidation while retaining their base procedures. Wake, Rest, When Played,
   and action boundaries use a catalog-fingerprint-pinned fallback: optional
@@ -142,9 +142,9 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   a powered all-Exile game persists/reopens through round-eight victory. This
   Procedure-owned registrations route solely by precise `PowerWindow`; modifier
   metadata remains descriptive. This milestone adds no component effects or
-  universal effect DSL. The now-unused legacy shell implementation remains
-  isolated removal debt because its file still owns current wire compatibility
-  labels.
+  universal effect DSL. The legacy central classification switch is removed;
+  stable request and diagnostic compatibility labels live in a neutral protocol
+  file.
 
 - [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
   and browser-memory implementations; normalized gameplay ownership and factual

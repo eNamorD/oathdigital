@@ -5,6 +5,8 @@ import scala.jdk.CollectionConverters._
 
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
+import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.powers.{ReviewedPowerFacts, ReviewedPowerInspector}
 import oathdigital.gameplay.setup.{FirstGameSetupRules, FirstGameSetupFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -58,6 +60,32 @@ class BackendArchitectureSuite extends munit.FunSuite {
       case Orientation.FaceUp => RuleSourceFace.FaceUp
       case Orientation.FaceDown => RuleSourceFace.FaceDown
     })
+  }
+
+  test("resolver treats a faceup relic at the actor pawn site as accessible") {
+    val OathState.Ready(base) =
+      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val actor = base.game.current.turn.activePlayer
+    val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
+      base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
+    val players = base.game.current.players.map(player =>
+      if (player.player == actor) player.copy(pawnSite = Some(siteId)) else player)
+    val site = base.game.current.map.sites(siteId)
+    val faceup = relic.copy(orientation = Orientation.FaceUp)
+    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = players, map = base.game.current.map.copy(sites =
+        base.game.current.map.sites.updated(siteId, site.copy(relics =
+          faceup +: site.relics.tail))))))
+    val source = RuleSourceRef.SiteRelic(siteId, relic.id)
+    val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
+      RuleSourceFace.FaceUp)
+    val registration = RegisteredPower(PowerDefinition(PowerId("test.site-relic"),
+      None, Vector(PowerWindow.RestStart), PowerResolution.PlayerSelected),
+      ReviewedPowerInspector, Some(new PowerHandler {}))
+    val result = new PowerResolver(PowerRegistry(registration)).resolve(
+      PowerWindow.RestStart, Vector(source -> Vector(registration.definition.id)),
+      ReviewedPowerFacts(changed, actor, Map(source -> indexed))).toOption.get
+    assertEquals(result.offered.map(_.source), Vector(source))
   }
 
   test("both banners expose faces, holdings, and exact synthetic handlers") {
@@ -147,6 +175,16 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val offenders = Files.walk(root).iterator.asScala.filter(path =>
       path.toString.endsWith(".scala") &&
         Files.readString(path).contains("rulesText")).map(_.toString).toVector
+    assertEquals(offenders, Vector.empty)
+  }
+
+  test("legacy central power shell cannot return") {
+    val root = Paths.get("src/main/scala/oathdigital/gameplay")
+    assert(!Files.exists(root.resolve("MajorActionPowerShell.scala")))
+    val offenders = Files.walk(root).iterator.asScala.filter(path =>
+      path.toString.endsWith(".scala") &&
+        Files.readString(path).contains("object MajorActionPowerShell"))
+      .map(_.toString).toVector
     assertEquals(offenders, Vector.empty)
   }
 

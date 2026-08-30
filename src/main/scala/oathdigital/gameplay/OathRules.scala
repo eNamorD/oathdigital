@@ -100,7 +100,7 @@ final class OathRules(catalog: ExecutableCatalog,
           case _ => None
         }
         source.fold[Either[OathViolation, OathTransition]](Right(transition)) { ref =>
-          PowerRuntime.ignoredAtSource(catalog, ready,
+          PowerRuntime.ignoredAtSource(catalog, ready, complete.playerId,
             MajorActionKind.WhenPlayed, ref).map { diagnostics =>
             if (diagnostics.isEmpty) transition else transition.copy(events =
               transition.events :+ IgnoredRulesRecorded(complete.playerId,
@@ -139,7 +139,11 @@ final class OathRules(catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: ChallengeCommand)
       : Either[OathViolation, OathTransition] =
-    Challenge.handle(catalog, state, command).flatMap { transition => command match {
+    (command match {
+      case begin: ChallengeCommand.Begin => withFallback(state, begin.player,
+        MajorActionKind.Challenge)(Challenge.handle(catalog, state, command))
+      case _ => Challenge.handle(catalog, state, command)
+    }).flatMap { transition => command match {
       case _: ChallengeCommand.Complete | _: ChallengeCommand.PlaceResource =>
         completeAction(transition)
       case _ => Right(transition)
@@ -233,7 +237,8 @@ final class OathRules(catalog: ExecutableCatalog,
           recorded.diagnostics.map(_.source).distinct.foldLeft[
             Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
               case (Right(found), source) => PowerRuntime.ignoredAtSource(
-                catalog, ready, recorded.action, source).map(found ++ _)
+                catalog, ready, recorded.playerId, recorded.action, source)
+                .map(found ++ _)
               case (failure @ Left(_), _) => failure
             }
           else PowerRuntime.ignored(catalog, ready,

@@ -24,9 +24,9 @@ object PowerRuntime {
       diagnostic(action, value)))
 
   def ignoredAtSource(catalog: ExecutableCatalog, ready: ReadyGame,
-      action: MajorActionKind, source: RuleSourceRef)
+      actor: PlayerId, action: MajorActionKind, source: RuleSourceRef)
       : Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
-    resolve(catalog, ready, ready.game.current.turn.activePlayer, window(action),
+    resolve(catalog, ready, actor, window(action),
       Some(source)).map(_.diagnostics.map(value => diagnostic(action, value)))
 
   private def resolve(catalog: ExecutableCatalog, ready: ReadyGame,
@@ -53,6 +53,7 @@ object PowerRuntime {
     case MajorActionKind.Trade => PowerWindow.TradeModifierSelection
     case MajorActionKind.Forge => PowerWindow.ForgeModifierSelection
     case MajorActionKind.Recover => PowerWindow.RecoverBeforeFirstRoll
+    case MajorActionKind.Challenge => PowerWindow.ChallengeModifierSelection
     case MajorActionKind.Rest => PowerWindow.RestStart
     case MajorActionKind.WhenPlayed => PowerWindow.ActionCardPlayed
     case MajorActionKind.Wake => PowerWindow.WakeBoundary
