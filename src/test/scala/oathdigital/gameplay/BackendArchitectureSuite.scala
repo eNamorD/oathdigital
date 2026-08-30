@@ -188,6 +188,16 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(offenders, Vector.empty)
   }
 
+  test("Catacombs mechanics remain owned by Recover powers") {
+    Vector(
+      Paths.get("src/main/scala/oathdigital/gameplay/actions/Recover.scala"),
+      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala")
+    ).foreach { path =>
+      assert(!Files.readString(path).toLowerCase.contains("catacombs"),
+        s"$path must use the typed Recover power boundary")
+    }
+  }
+
   test("application never imports server or serialization layers") {
     val root = Paths.get("src/main/scala/oathdigital/application")
     val forbidden = Vector("import oathdigital.server", "import oathdigital.persistence",

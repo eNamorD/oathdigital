@@ -8,6 +8,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.powers.RecoverPowers
 
 class RecoverSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -131,7 +132,7 @@ class RecoverSuite extends munit.FunSuite {
     val (ready, actor, siteId, cardId, relicId) = catacombsReady
     val source = RuleSourceRef.SiteCard(siteId, cardId)
     assert(RecoverRules.validate(catalog, ready, actor, siteId).isLeft)
-    assert(RecoverRules.validatePotential(catalog, ready, actor, siteId).isRight)
+    assert(RecoverPowers.validatePotential(catalog, ready, actor, siteId).isRight)
     val projection = new GameProjector(catalog).project("catacombs",
       LoadedGame(Ready(ready), 1), actor.player)
     assert(projection.legalControls.contains("beginRecover"))
@@ -140,11 +141,14 @@ class RecoverSuite extends munit.FunSuite {
       Vector(OrderedRuleInvocation(source, "denizen.catacombs")))
 
     val decision = DecisionId("recover-catacombs")
+    val contribution = RecoverPowers.prepare(catalog, ready, actor.player,
+      Vector(OrderedRuleInvocation(source, "denizen.catacombs")),
+      () => Right(relicId)).toOption.get
     val started = rules.handle(Ready(ready), RecoverCommand.Start(actor.player,
       decision, Vector(DefenseDieFace.Blank, DefenseDieFace.OneShield),
-      Some(oathdigital.gameplay.actions.CatacombsActivation(
-        siteId, cardId, relicId)))).toOption.get
-    assertEquals(started.events.head.getClass.getSimpleName, "CatacombsActivated")
+      contribution)).toOption.get
+    assertEquals(started.events.take(2).map(_.getClass.getSimpleName),
+      Vector("CatacombsActivated", "RecoverRolled"))
     val Ready(after) = started.state: @unchecked
     assertEquals(after.game.current.commonCards.relicDeck,
       ready.game.current.commonCards.relicDeck.tail)
@@ -162,10 +166,8 @@ class RecoverSuite extends munit.FunSuite {
     val (ready, actor, siteId, cardId, relicId) = catacombsReady
     val decision = DecisionId("recover-catacombs-tamper")
     assert(rules.evolve(Ready(ready), CatacombsActivated(actor.player, decision,
-      siteId, cardId, RelicId("wrong"), 1, 1,
-      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))).isLeft)
+      siteId, cardId, RelicId("wrong"), 1)).isLeft)
     assert(rules.evolve(Ready(ready), CatacombsActivated(actor.player, decision,
-      siteId, cardId, relicId, 0, 1,
-      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))).isLeft)
+      siteId, cardId, relicId, 0)).isLeft)
   }
 }

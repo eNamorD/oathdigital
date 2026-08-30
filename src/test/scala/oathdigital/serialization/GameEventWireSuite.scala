@@ -255,11 +255,10 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
   }
 
-  test("v7 Recover events round-trip exact dice costs and chosen relic") {
+  test("current Recover events round-trip exact dice costs and chosen relic") {
     val events = Vector[OathEvent](
       CatacombsActivated(PlayerId("red"), DecisionId("recover-1"),
-        SiteId("site"), DenizenId("201"), RelicId("relic"), 1, 1,
-        Vector(DefenseDieFace.Blank, DefenseDieFace.OneShield)),
+        SiteId("site"), DenizenId("201"), RelicId("relic"), 1),
       RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
         Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
       RecoverStopped(PlayerId("red"), DecisionId("recover-1")),

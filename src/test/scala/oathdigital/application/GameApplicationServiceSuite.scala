@@ -19,8 +19,114 @@ import oathdigital.gameplay.OathViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.{MajorActionKind, OrderedRuleInvocation, RuleSourceRef}
 
 class GameApplicationServiceSuite extends munit.FunSuite {
+  private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
+    _.id.value == "denizen.catacombs")).get.id.value)
+
+  private def catacombsPlan = {
+    val recoverSite = catalog.sites.find(site => site.recoverDifficulty.nonEmpty &&
+      site.relicSlots == 1 && !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val actorIndex = plan.participants.indexWhere(_.playerId == PlayerId("p2"))
+    val adviserIndex = 6 + actorIndex * 3
+    val oldIndex = plan.denizenOrder.indexWhere(_.value == catacombsId.value)
+    val order = if (oldIndex < 0) plan.denizenOrder.updated(adviserIndex, catacombsId)
+      else plan.denizenOrder.updated(adviserIndex, catacombsId)
+        .updated(oldIndex, plan.denizenOrder(adviserIndex))
+    plan.copy(orderedSites = recoverSite +: plan.orderedSites.filterNot(_ == recoverSite),
+      denizenOrder = order)
+  }
+
+  private final class CountingRecoverDice extends DefenseDicePort {
+    var calls = 0
+    def rollTwo() = {
+      calls += 1
+      Vector(DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
+    }
+  }
+
+  private def prepareCatacombs(service: GameApplicationService, gameId: String,
+      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan)
+      : (GameAccepted, PlayerId, OrderedRuleInvocation) = {
+    val setup = execute(service, gameId, setupPlan.orderedSites.take(3), setupPlan)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val recovered = service.handle(gameId, act.nextSequence,
+      GameCommand.BeginRecover(actor)).toOption.get
+    val Ready(recoverReady) = recovered.state: @unchecked
+    val pending = recoverReady.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Recover]
+    val relic = recoverReady.game.current.map.sites(pending.site).relics.head.id
+    val emptied = service.handle(gameId, recovered.nextSequence,
+      GameCommand.ResolveCardDecision(actor, pending.decision,
+        CardDecisionResolution.TakeFacedownRelic(relic))).toOption.get
+    val played = service.handle(gameId, emptied.nextSequence,
+      GameCommand.ResolveFacedownAdviser(actor, catacombsId,
+        Some(SearchPlacement.Site(None)))).toOption.get
+    val Ready(atCatacombs) = played.state: @unchecked
+    val site = atCatacombs.game.current.players.find(_.player == actor).get.pawnSite.get
+    (played, actor, OrderedRuleInvocation(
+      RuleSourceRef.SiteCard(site, catacombsId), "denizen.catacombs"))
+  }
+
+  test("Catacombs preview revalidates and starts ordinary Recover authoritatively") {
+    val repository = new InMemoryEventStreamRepository
+    val dice = new CountingRecoverDice
+    var relicPrepares = 0
+    val relics = new RelicDrawPort {
+      def prepare(ready: ReadyGame) = {
+        relicPrepares += 1
+        ready.game.current.commonCards.relicDeck.headOption.toRight(
+          oathdigital.gameplay.OathViolation.RecoverUnavailable("empty relic deck"))
+      }
+    }
+    val service = new GameApplicationService(catalog, repository,
+      relicDrawPort = relics, defenseDicePort = dice)
+    val gameId = "catacombs-application"
+    val (prepared, actor, invocation) = prepareCatacombs(service, gameId,
+      catacombsPlan)
+    val before = repository.load(gameId).toOption.flatten.get.records
+    val preview = service.preview(gameId, prepared.nextSequence, actor,
+      MajorActionKind.Recover, Vector.empty).toOption.get
+    assertEquals(preview.options, Vector(invocation))
+    assert(service.preview(gameId, prepared.nextSequence - 1, actor,
+      MajorActionKind.Recover, Vector.empty).isLeft)
+    assert(service.handle(gameId, prepared.nextSequence - 1,
+      GameCommand.WithModifiers(GameCommand.BeginRecover(actor),
+        Vector(invocation))).isLeft)
+    val forged = invocation.copy(source = RuleSourceRef.SiteCard(
+      invocation.source.asInstanceOf[RuleSourceRef.SiteCard].siteId,
+      DenizenId("forged")))
+    assert(service.handle(gameId, prepared.nextSequence,
+      GameCommand.WithModifiers(GameCommand.BeginRecover(actor), Vector(forged))).isLeft)
+    assertEquals(repository.load(gameId).toOption.flatten.get.records, before)
+    assertEquals(dice.calls, 1)
+    assertEquals(relicPrepares, 0)
+
+    val Ready(prior) = prepared.state: @unchecked
+    val priorPlayer = prior.game.current.players.find(_.player == actor).get
+    val top = prior.game.current.commonCards.relicDeck.head
+    val started = service.handle(gameId, prepared.nextSequence,
+      GameCommand.WithModifiers(GameCommand.BeginRecover(actor), Vector(invocation)))
+      .toOption.get
+    val Ready(after) = started.state: @unchecked
+    assertEquals(started.events.take(2).map(_.getClass.getSimpleName),
+      Vector("CatacombsActivated", "RecoverRolled"))
+    val siteId = invocation.source.asInstanceOf[RuleSourceRef.SiteCard].siteId
+    val player = after.game.current.players.find(_.player == actor).get
+    assertEquals(player.board.faceUpSecrets, priorPlayer.board.faceUpSecrets - 1)
+    assertEquals(player.board.supply.supply, priorPlayer.board.supply.supply - 1)
+    assertEquals(after.game.current.commonCards.relicDeck,
+      prior.game.current.commonCards.relicDeck.tail)
+    assertEquals(after.game.current.map.sites(siteId).relics.map(r =>
+      r.id -> r.orientation), Vector(top -> Orientation.FaceDown))
+    assert(after.game.current.pending.exists(_.isInstanceOf[PendingProcedure.Recover]))
+    assertEquals(dice.calls, 2)
+    assertEquals(relicPrepares, 1)
+  }
   test("all-Exile powered game persists and replays through round-eight victory") {
     val repository = new InMemoryEventStreamRepository
     val whenPlayedPower = DenizenId(catalog.denizens.find(
@@ -1200,6 +1306,44 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         .load("game-hsql-v2").toOption.flatten.get
       assertEquals(loaded.state, accepted.state)
       assertEquals(loaded.nextSequence, 8L)
+    } finally reopened.close()
+  }
+
+  test("HSQL reopen preserves Catacombs Recover and owner-only relic identity") {
+    val path = Files.createTempDirectory("oathdigital-catacombs-reopen-")
+      .resolve("journal")
+    val gameId = "game-hsql-catacombs"
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val started = try {
+      val service = new GameApplicationService(catalog, first,
+        defenseDicePort = new CountingRecoverDice)
+      val (prepared, actor, invocation) = prepareCatacombs(service, gameId,
+        catacombsPlan)
+      service.handle(gameId, prepared.nextSequence,
+        GameCommand.WithModifiers(GameCommand.BeginRecover(actor),
+          Vector(invocation))).toOption.get
+    } finally first.close()
+
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, started.state)
+      assertEquals(loaded.nextSequence, started.nextSequence)
+      val Ready(ready) = loaded.state: @unchecked
+      val pending = ready.game.current.pending.get
+        .asInstanceOf[PendingProcedure.Recover]
+      val actor = pending.actor
+      val other = ready.game.current.players.find(_.player != actor).get.player
+      val projector = new GameProjector(catalog)
+      val owner = projector.project(gameId, loaded, actor)
+      val hidden = projector.project(gameId, loaded, other)
+      assertEquals(owner.pendingCardDecision.map(_.cards.map(_.cardId)),
+        Some(ready.game.current.map.sites(pending.site).relics.map(_.id.value)))
+      assertEquals(hidden.pendingCardDecision, None)
+      assertEquals(hidden.recover, None)
+      assertEquals(hidden.world.flatMap(_.sites).find(_.siteId == pending.site.value)
+        .get.relics.knownRelics, Vector.empty)
     } finally reopened.close()
   }
 

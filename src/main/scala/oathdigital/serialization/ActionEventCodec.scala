@@ -80,13 +80,10 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent,
         "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
-      case CatacombsActivated(player, decision, site, card, relic, spent,
-          supply, dice) =>
+      case CatacombsActivated(player, decision, site, card, relic, spent) =>
         ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
           "siteId" -> site.value, "catacombsId" -> card.value,
-          "relicId" -> relic.value, "secretSpent" -> spent,
-          "supplySpent" -> supply,
-          "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
+          "relicId" -> relic.value, "secretSpent" -> spent)
       case RecoverStopped(player, decision) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value)
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
@@ -250,13 +247,10 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           spent, dice)
         case CatacombsActivatedType => for {
           spent <- safeIntField(payload.obj, "secretSpent", path)
-          supply <- safeIntField(payload.obj, "supplySpent", path)
-          dice <- traverse(payload("dice").arr.toVector)(v =>
-            decodeDefenseFace(v.str, s"$path.dice"))
         } yield CatacombsActivated(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
           DenizenId(payload("catacombsId").str), RelicId(payload("relicId").str),
-          spent, supply, dice)
+          spent)
         case RecoverStoppedType => Right(RecoverStopped(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
         case RelicRecoveredType => Right(RelicRecovered(

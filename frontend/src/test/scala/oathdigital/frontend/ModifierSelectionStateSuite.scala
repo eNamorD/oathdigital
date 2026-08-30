@@ -1,7 +1,8 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse,
-  PreviewModifier, PreviewTarget}
+  PreviewModifier, PreviewTarget, ActorlessCommandCodec, ActorlessCommandRequest,
+  ModifierInvocation}
 
 class ModifierSelectionStateSuite extends munit.FunSuite {
   private val context = ModifierSelectionContext("g", "p", 4, "trade")
@@ -104,5 +105,30 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Some(targets))
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "other", 4), None)
+  }
+
+  test("empty-site Recover uses the generic ordered Catacombs modifier flow") {
+    val catacombs = PreviewModifier("site-card:site:a:denizen:201",
+      "denizen.catacombs", "Catacombs")
+    val response = MajorActionPreviewResponse(4, "recover", Vector(catacombs),
+      Vector.empty, Vector.empty)
+    assertEquals(ModifierWorkflow.action(GameIntent.BeginRecover),
+      Some("recover" -> Map.empty[String, String]))
+    val selection = ModifierSelectionState.reconcile(None,
+      context.copy(action = "recover"), response.modifiers, "catacombs-preview")
+      .toggle(catacombs)
+    val workflow = ModifierWorkflow(Some(GameIntent.BeginRecover), Some("recover"),
+      Map.empty, response, selection, ModifierWorkflowStage.Ordering)
+    assert(workflow.ordering)
+    val targets = workflow.showTargets(response)
+    assert(targets.backFromTargets.exists(_.ordering))
+    assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
+    val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
+      catacombs.handlerId)
+    val encoded = ActorlessCommandCodec.encode(ActorlessCommandRequest(4,
+      GameIntent.BeginRecover, Vector(invocation)))
+    val decoded = ActorlessCommandCodec.decode(encoded).toOption.get
+    assertEquals(decoded.intent, GameIntent.BeginRecover)
+    assertEquals(decoded.orderedModifiers, Vector(invocation))
   }
 }

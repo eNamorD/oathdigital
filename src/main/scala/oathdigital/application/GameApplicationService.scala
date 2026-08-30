@@ -6,8 +6,9 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  CatacombsActivation, ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
+  ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
   RecoverCommand, SearchCommand, TravelCommand}
+import oathdigital.gameplay.powers.RecoverPowers
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -251,21 +252,12 @@ final class GameApplicationService(
               else unavailable.map(value => Left(OathViolation.InvalidModifierInvocation(
                 s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
                 .getOrElse((inner, ordered) match {
-                  case (GameCommand.BeginRecover(player), Vector(value))
-                      if value.handlerId == "denizen.catacombs" =>
-                    value.source match {
-                      case oathdigital.gameplay.RuleSourceRef.SiteCard(site, id: DenizenId) =>
-                        relicDrawPort.prepare(ready).flatMap(relic => rules.handle(state,
-                          RecoverCommand.Start(player,
-                            DecisionId(s"recover-$nextSequence"),
-                            defenseDicePort.rollTwo(), Some(CatacombsActivation(
-                              site, id, relic)))))
-                      case _ => Left(OathViolation.InvalidModifierInvocation(
-                        "Catacombs must be selected from its site card"))
-                    }
-                  case (GameCommand.BeginRecover(_), values) if values.nonEmpty =>
-                    Left(OathViolation.InvalidModifierInvocation(
-                      "Recover has an unsupported modifier combination"))
+                  case (GameCommand.BeginRecover(player), values) =>
+                    RecoverPowers.prepare(catalog, ready, player, values,
+                      () => relicDrawPort.prepare(ready)).flatMap(modifier =>
+                      rules.handle(state, RecoverCommand.Start(player,
+                        DecisionId(s"recover-$nextSequence"),
+                        defenseDicePort.rollTwo(), modifier)))
                   case _ => applyCommand(state, inner, nextSequence)
                 })
             }

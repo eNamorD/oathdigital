@@ -71,8 +71,7 @@ object OathEvent {
   ) extends OathEvent
   final case class CatacombsActivated(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      catacombsId: DenizenId, relicId: RelicId, secretSpent: Int,
-      supplySpent: Int, dice: Vector[DefenseDieFace]
+      catacombsId: DenizenId, relicId: RelicId, secretSpent: Int
   ) extends OathEvent
   final case class RecoverStopped(playerId: PlayerId, decision: DecisionId)
       extends OathEvent

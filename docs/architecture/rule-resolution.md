@@ -86,10 +86,11 @@ introduced by this layer, and modifier metadata remains descriptive only.
 Catacombs is the first executable vertical slice. Its Recover-owned inspector
 checks the precise site card, pawn, secret, empty relic slot, Recover Difficulty,
 Supply, and relic-deck facts. The selected invocation is revalidated before
-randomness is prepared; one atomic activation-and-first-roll event spends the
-secret onto the card, places the recorded top relic facedown, pays Supply, and
-records the ordinary defense dice. All later retry, success, hidden choice, and
-transfer behavior continues through the existing Recover procedure.
+randomness is prepared; one command atomically appends a power-owned activation
+event that spends the secret and places the recorded top relic facedown, followed
+by the ordinary `RecoverRolled` event that pays Supply, records defense dice, and
+creates the normal pending procedure. All later retry, success, hidden choice,
+and transfer behavior continues through the existing Recover procedure.
 
 ## Adding a power
 

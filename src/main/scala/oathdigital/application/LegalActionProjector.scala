@@ -4,9 +4,10 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{TakeWealthRules, WakeResource}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules,
+  Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
   VisionRules, Visions}
 import oathdigital.gameplay.phases.Rest
+import oathdigital.gameplay.powers.RecoverPowers
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -91,7 +92,7 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site => RecoverRules.validatePotential(
+          Option.when(active.pawnSite.exists(site => RecoverPowers.validatePotential(
             catalog, context.ready, active, site).isRight))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
