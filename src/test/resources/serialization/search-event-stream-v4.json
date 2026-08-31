@@ -28,7 +28,10 @@
       "decisionId": "search-9",
       "kept": {"kind": "denizen", "id": "denizen:a"},
       "discardedInOrder": [{"kind": "vision", "id": "vision:b"}],
-      "placement": {"kind": "adviser", "orientation": "face-down", "replace": null}
+      "placement": {"kind": "adviser", "orientation": "face-down", "replace": null},
+      "favorGained": 0,
+      "discardedWorld": [],
+      "discardedEdifices": []
     }
   }
 ]

@@ -71,7 +71,10 @@ object OathEvent {
       decision: DecisionId,
       kept: WorldCardId,
       discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement
+      placement: SearchPlacement,
+      favorGained: Int = 0,
+      discardedWorld: Vector[WorldCardId] = Vector.empty,
+      discardedEdifices: Vector[EdificeId] = Vector.empty
   ) extends OathEvent
   final case class RecoverRolled(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,

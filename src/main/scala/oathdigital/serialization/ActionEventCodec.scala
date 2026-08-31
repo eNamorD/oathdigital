@@ -70,13 +70,18 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           "supplySpent" -> spent,
           "drawn" -> ujson.Arr.from(drawn.map(encodeWorldCard))
         )
-      case SearchCompleted(playerId, decision, kept, discarded, placement) =>
+      case SearchCompleted(playerId, decision, kept, discarded, placement,
+          favorGained, discardedWorld, discardedEdifices) =>
         ujson.Obj(
           "playerId" -> playerId.value,
           "decisionId" -> decision.value,
           "kept" -> encodeWorldCard(kept),
           "discardedInOrder" -> ujson.Arr.from(discarded.map(encodeWorldCard)),
-          "placement" -> encodeSearchPlacement(placement)
+          "placement" -> encodeSearchPlacement(placement),
+          "favorGained" -> favorGained,
+          "discardedWorld" -> ujson.Arr.from(discardedWorld.map(encodeWorldCard)),
+          "discardedEdifices" -> ujson.Arr.from(discardedEdifices.map(id =>
+            ujson.Str(id.value)))
         )
       case RecoverRolled(player, decision, site, spent, dice) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -249,9 +254,15 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
             discarded <- traverse(payload("discardedInOrder").arr.toVector)(
               decodeWorldCard(_, s"$path.discardedInOrder"))
             placement <- decodeSearchPlacement(payload("placement"), s"$path.placement")
+            favor <- safeIntField(payload.obj, "favorGained", path)
+            discardedWorld <- traverse(payload("discardedWorld").arr.toVector)(
+              decodeWorldCard(_, s"$path.discardedWorld"))
+            discardedEdifices = payload("discardedEdifices").arr.toVector.map(value =>
+              EdificeId(value.str))
           } yield SearchCompleted(
             PlayerId(payload("playerId").str),
-            DecisionId(payload("decisionId").str), kept, discarded, placement)
+            DecisionId(payload("decisionId").str), kept, discarded, placement,
+            favor, discardedWorld, discardedEdifices)
         case RecoverRolledType => for {
           spent <- safeIntField(payload.obj, "supplySpent", path)
           dice <- traverse(payload("dice").arr.toVector)(v =>

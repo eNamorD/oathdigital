@@ -208,8 +208,13 @@ class SearchSuite extends munit.FunSuite {
     assertEquals(encoded.head("replacementTargets").arr.size, 3)
     val completed = rules.evolve(Ready(ready), SearchCompleted(player.player,
       DecisionId("replace"), ids(3), Vector(ids(4)),
-      SearchPlacement.Adviser(Orientation.FaceDown, Some(ids.head))))
+      SearchPlacement.Adviser(Orientation.FaceDown, Some(ids.head)),
+      discardedWorld = Vector(ids.head)))
       .toOption.get
+    assert(rules.evolve(Ready(ready), SearchCompleted(player.player,
+      DecisionId("replace"), ids(3), Vector(ids(4)),
+      SearchPlacement.Adviser(Orientation.FaceDown, Some(ids.head)),
+      discardedWorld = Vector.empty)).isLeft)
     val Ready(after) = completed: @unchecked
     val destination = origin match {
       case Region.Cradle => Region.Provinces
