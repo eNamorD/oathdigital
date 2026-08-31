@@ -95,7 +95,7 @@ final class OathRules(catalog: ExecutableCatalog,
     (command, transition.state) match {
       case (complete: SearchCommand.Complete, Ready(ready)) =>
         SearchPowers.recordPlayHooks(catalog, transition, ready, complete.playerId,
-          complete.kept, complete.placement, prepend = false)
+          complete.kept, complete.placement)
       case _ => Right(transition)
     }
 
@@ -157,8 +157,7 @@ final class OathRules(catalog: ExecutableCatalog,
       (command, transition.state) match {
         case (play: MinorActionCommand.PlayFacedownAdviser, Ready(ready)) =>
           SearchPowers.recordPlayHooks(catalog, transition, ready, play.player,
-            play.adviser,
-            play.placement, prepend = true)
+            play.adviser, play.placement)
         case _ => Right(transition)
       }
     }.flatMap(completeAction _)

@@ -136,9 +136,38 @@ class MinorActionsSuite extends munit.FunSuite {
     val accepted = rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
       actor.player, powered, SearchPlacement.Adviser(Orientation.FaceUp, None)))
       .toOption.get
-    val diagnostic = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]
+    assert(accepted.events.head.isInstanceOf[FacedownAdviserPlayed])
+    val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
     assertEquals(diagnostic.action, MajorActionKind.WhenPlayed)
     assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.dazzle"))
+  }
+
+  test("site play records primary event before replay-valid When Played fallback") {
+    val (base, actor, siteId, _, _) = ready()
+    val powered = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.dazzle")).get.id.value)
+    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+      players = base.game.current.players.map(p => if (p.player == actor.player)
+        p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown,
+          Tokens.empty))) else p))))
+    val accepted = rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
+      actor.player, powered, SearchPlacement.Site(None))).toOption.get
+    val played = accepted.events.head.asInstanceOf[FacedownAdviserPlayed]
+    val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
+    assertEquals(diagnostic.diagnostics.map(_.source),
+      Vector(RuleSourceRef.SiteCard(siteId, powered)))
+
+    val replayed = accepted.events.foldLeft[
+      Either[OathViolation, OathState]](Right(Ready(modified))) {
+      case (Right(state), event) => rules.evolve(state, event)
+      case (failure @ Left(_), _) => failure
+    }
+    assertEquals(replayed, Right(accepted.state))
+
+    val afterPlay = rules.evolve(Ready(modified), played).toOption.get
+    val tampered = diagnostic.copy(diagnostics = diagnostic.diagnostics.map(_.copy(
+      source = RuleSourceRef.GameRule("tampered"))))
+    assert(rules.evolve(afterPlay, tampered).isLeft)
   }
 
   test("source-scoped fallback and replay use the recorded off-turn actor") {

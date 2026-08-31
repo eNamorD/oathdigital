@@ -107,6 +107,30 @@ class SearchSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Act)
   }
 
+  test("Search placement evolves before source-scoped When Played fallback") {
+    val base = act
+    val player = active(base)
+    val powered = DenizenId(catalog.denizens.find(
+      _.handlers.contains("denizen.dazzle")).get.id.value)
+    val origin = player.pawnSite.flatMap(base.game.current.map.regionOf).get
+    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+      pending = Some(PendingProcedure.Search(DecisionId("powered-search"),
+        player.player, SearchSource.WorldDeck, origin, 2, Vector(powered))))))
+    val accepted = rules.handle(Ready(ready), SearchCommand.Complete(player.player,
+      DecisionId("powered-search"), powered, Vector.empty,
+      SearchPlacement.Adviser(Orientation.FaceUp, None))).toOption.get
+    assert(accepted.events.head.isInstanceOf[SearchCompleted])
+    val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
+    assertEquals(diagnostic.diagnostics.map(_.source),
+      Vector(RuleSourceRef.Adviser(player.player, powered)))
+    val replayed = accepted.events.foldLeft[
+      Either[OathViolation, OathState]](Right(Ready(ready))) {
+      case (Right(state), event) => rules.evolve(state, event)
+      case (failure @ Left(_), _) => failure
+    }
+    assertEquals(replayed, Right(accepted.state))
+  }
+
   test("replay rejects tampered draw cost decision and card permutation") {
     val base = act
     val player = active(base)

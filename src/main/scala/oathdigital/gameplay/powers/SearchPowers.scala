@@ -23,22 +23,21 @@ object SearchPowers {
     */
   def recordPlayHooks(catalog: ExecutableCatalog, transition: OathTransition,
       ready: ReadyGame, player: PlayerId, card: WorldCardId,
-      placement: SearchPlacement, prepend: Boolean)
+      placement: SearchPlacement)
       : Either[OathViolation, OathTransition] =
     CardPlay.playedSource(ready, player, card, placement)
       .fold[Either[OathViolation, OathTransition]](Right(transition)) { source =>
         PowerRuntime.ignoredAtSource(catalog, ready, player,
           MajorActionKind.WhenPlayed, source).map { diagnostics =>
-          appendDiagnostics(transition, player, diagnostics, prepend)
+          appendDiagnostics(transition, player, diagnostics)
         }
       }
 
   private def appendDiagnostics(transition: OathTransition, player: PlayerId,
-      diagnostics: Vector[IgnoredRuleDiagnostic], prepend: Boolean) =
+      diagnostics: Vector[IgnoredRuleDiagnostic]) =
     if (diagnostics.isEmpty) transition else {
       val event = OathEvent.IgnoredRulesRecorded(player,
         MajorActionKind.WhenPlayed, diagnostics)
-      transition.copy(events = if (prepend) event +: transition.events
-        else transition.events :+ event)
+      transition.copy(events = transition.events :+ event)
     }
 }
