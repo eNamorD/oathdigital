@@ -142,11 +142,14 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   projections. Economy selection explicitly confirms, stale modifier drafts
   clear, Campaign battle-plan timing and Travel topology remain separate, and
   a powered all-Exile game persists/reopens through round-eight victory. This
-  Procedure-owned registrations route solely by precise `PowerWindow`; modifier
-  metadata remains descriptive. This milestone adds no component effects or
-  universal effect DSL. The legacy central classification switch is removed;
-  stable request and diagnostic compatibility labels live in a neutral protocol
-  file.
+  Procedure-owned, individually named `Power` objects route solely by precise
+  `PowerWindow`; every window handler owns its resolution mode, applicability,
+  and executable status, while modifier metadata remains descriptive. There is
+  no universal effect DSL. Catacombs is the first executable example: its
+  Recover-owned handler composes typed cost payment, top-relic draw validation,
+  and facedown site placement operations before the ordinary Recover roll. The
+  legacy central classification switch is removed; stable request and diagnostic
+  compatibility labels live in a neutral protocol file.
 
 - [x] **Pre-Phase 3 architecture gate.** Removed obsolete setup, action-authority,
   and browser-memory implementations; normalized gameplay ownership and factual

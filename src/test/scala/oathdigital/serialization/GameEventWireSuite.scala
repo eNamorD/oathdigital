@@ -7,7 +7,9 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken, CatacombsActivated, RecoverRolled, RecoverStopped, RelicRecovered}
+  WealthTaken, CostsPaid, RelicPlacedAtSite, RecoverRolled, RecoverStopped,
+  RelicRecovered}
+import oathdigital.gameplay.operations.{CostDisposition, ResourceCost, ResourceKind}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
@@ -255,10 +257,13 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
   }
 
-  test("current Recover events round-trip exact dice costs and chosen relic") {
+  test("current Recover and operation events round-trip exact typed data") {
     val events = Vector[OathEvent](
-      CatacombsActivated(PlayerId("red"), DecisionId("recover-1"),
-        SiteId("site"), DenizenId("201"), RelicId("relic"), 1),
+      CostsPaid(PlayerId("red"), RuleSourceRef.SiteCard(SiteId("site"),
+        DenizenId("201")), Vector(ResourceCost(ResourceKind.Secret, 1,
+        CostDisposition.PlaceOnSource))),
+      RelicPlacedAtSite(PlayerId("red"), RelicId("relic"), SiteId("site"),
+        Orientation.FaceDown),
       RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
         Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
       RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
@@ -271,8 +276,14 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.event), events)
     val tampered = ujson.read(encoded).arr
-    tampered(1)("payload")("dice")(0) = "opaque-integer"
+    tampered(2)("payload")("dice")(0) = "opaque-integer"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
+    val malformedCost = ujson.read(encoded).arr
+    malformedCost(0)("payload")("costs")(0)("amount") = 0
+    assert(GameEventWire.decodeStream(ujson.write(malformedCost)).isLeft)
+    val malformedDisposition = ujson.read(encoded).arr
+    malformedDisposition(0)("payload")("costs")(0)("disposition") = "lose"
+    assert(GameEventWire.decodeStream(ujson.write(malformedDisposition)).isLeft)
   }
 
   test("v6 Economy events round-trip source cost yield and NF resource mode") {

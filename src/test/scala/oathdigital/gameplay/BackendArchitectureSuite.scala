@@ -4,9 +4,10 @@ import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
+import oathdigital.gameplay.actions.CampaignRules
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.{ReviewedPowerFacts, ReviewedPowerInspector}
+import oathdigital.gameplay.powers.{ReviewedPowerCatalog, ReviewedPowerFacts,
+  ReviewedPowerInspector}
 import oathdigital.gameplay.setup.{FirstGameSetupRules, FirstGameSetupFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -79,11 +80,19 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val source = RuleSourceRef.SiteRelic(siteId, relic.id)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
-    val registration = RegisteredPower(PowerDefinition(PowerId("test.site-relic"),
-      None, Vector(PowerWindow.RestStart), PowerResolution.PlayerSelected),
-      ReviewedPowerInspector, Some(new PowerHandler {}))
-    val result = new PowerResolver(PowerRegistry(registration)).resolve(
-      PowerWindow.RestStart, Vector(source -> Vector(registration.definition.id)),
+    val handler = new PowerHandler {
+      val window = PowerWindow.RestStart
+      val resolution = PowerResolution.PlayerSelected
+      val implemented = true
+      def inspect(context: PowerContext) = ReviewedPowerInspector.inspect(context)
+    }
+    val power = new Power {
+      val id = PowerId("test.site-relic")
+      val modifier = None
+      val handlers = Vector(handler)
+    }
+    val result = new PowerResolver(PowerRegistry(power)).resolve(
+      PowerWindow.RestStart, Vector(source -> Vector(power.id)),
       ReviewedPowerFacts(catalog, changed, actor, Map(source -> indexed))).toOption.get
     assertEquals(result.offered.map(_.source), Vector(source))
   }
@@ -161,9 +170,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2")
   }
 
-  test("Recover and Campaign relevance is exact handler-ID data") {
-    assert(RecoverRules.isRelevantHandler("edifice.e17.intact"))
-    assert(!RecoverRules.isRelevantHandler("denizen.future-recover-text"))
+  test("Recover registry and Campaign relevance use exact power-ID data") {
+    val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
+    assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
+    assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)
     assert(CampaignRules.classify("relic.bag-of-siegeworks", catalog)
       .isInstanceOf[CampaignRules.HandlerSupport.Blocked])
     assertEquals(CampaignRules.classify("denizen.extra-provisions", catalog),
@@ -196,6 +206,17 @@ class BackendArchitectureSuite extends munit.FunSuite {
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")
     }
+  }
+
+  test("procedure power inventories use named Power objects, not raw ID tables") {
+    val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val offenders = Files.walk(root).iterator.asScala.filter(path =>
+      path.getFileName.toString.endsWith("Powers.scala") && {
+        val text = Files.readString(path)
+        text.contains("Set(") || text.contains("Map(") ||
+          text.contains("handlerId match")
+      }).map(_.toString).toVector
+    assertEquals(offenders, Vector.empty)
   }
 
   test("application never imports server or serialization layers") {

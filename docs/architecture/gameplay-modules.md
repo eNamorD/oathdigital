@@ -109,7 +109,12 @@ Commands are transient. See [authoritative events](authoritative-events.md) and
 - Do not duplicate legality in application projections or frontend renderers.
 - Do not interpret catalog prose or handler-name fragments.
 - Do not silently ignore a relevant unsupported power.
-- Prefer table-driven explicit registrations for small modifiers.
+- Represent each reviewed printed ability as an individually named `Power`
+  object with exact-window handlers; do not rebuild classification inventories
+  from raw ID maps or sets.
+- Keep generic operations typed and semantic (for example paying a resource or
+  placing a relic), while procedure modules own their contribution vocabulary
+  and power-specific composition.
 - Introduce abstractions only after multiple implemented rules prove the seam.
 - Preserve replay, deterministic ordering, and hidden-information boundaries.
 - Keep every production Scala file at or below 800 lines.

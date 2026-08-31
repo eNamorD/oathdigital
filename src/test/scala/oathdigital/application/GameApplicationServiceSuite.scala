@@ -113,8 +113,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.WithModifiers(GameCommand.BeginRecover(actor), Vector(invocation)))
       .toOption.get
     val Ready(after) = started.state: @unchecked
-    assertEquals(started.events.take(2).map(_.getClass.getSimpleName),
-      Vector("CatacombsActivated", "RecoverRolled"))
+    assertEquals(started.events.take(3).map(_.getClass.getSimpleName),
+      Vector("CostsPaid", "RelicPlacedAtSite", "RecoverRolled"))
     val siteId = invocation.source.asInstanceOf[RuleSourceRef.SiteCard].siteId
     val player = after.game.current.players.find(_.player == actor).get
     assertEquals(player.board.faceUpSecrets, priorPlayer.board.faceUpSecrets - 1)

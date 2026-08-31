@@ -67,20 +67,19 @@ class RuleResolutionSuite extends munit.FunSuite {
   }
 
   test("reviewed handlers use precise windows resolution and implementations") {
-    val byId = ReviewedPowerCatalog.registrations.map(value =>
-      value.definition.id -> value).toMap
-    assert(byId(PowerId("denizen.map-library")).definition.windows.contains(
+    val byId = ReviewedPowerCatalog.powers.map(value => value.id -> value).toMap
+    assert(byId(PowerId("denizen.map-library")).handlers.map(_.window).contains(
       PowerWindow.TradeModifierSelection))
-    assertEquals(byId(PowerId("denizen.map-library")).definition.resolution,
+    assertEquals(byId(PowerId("denizen.map-library")).handlers.head.resolution,
       PowerResolution.PlayerSelected)
-    assertEquals(byId(PowerId("denizen.relic-worship")).definition.windows,
+    assertEquals(byId(PowerId("denizen.relic-worship")).handlers.map(_.window),
       Vector(PowerWindow.RecoverBeforeFirstRoll))
-    assertEquals(byId(PowerId("denizen.insomnia")).definition.windows,
+    assertEquals(byId(PowerId("denizen.insomnia")).handlers.map(_.window),
       Vector(PowerWindow.RestStart))
-    assert(byId(PowerId("site.fair-isle.island")).implementation.nonEmpty)
-    assertEquals(byId(PowerId("denizen.outriders")).definition.windows,
+    assert(byId(PowerId("site.fair-isle.island")).handlers.forall(_.implemented))
+    assertEquals(byId(PowerId("denizen.outriders")).handlers.map(_.window),
       Vector(PowerWindow.CampaignAttackerBattlePlans))
-    assert(!byId(PowerId("denizen.insomnia")).definition.windows.contains(
+    assert(!byId(PowerId("denizen.insomnia")).handlers.map(_.window).contains(
       PowerWindow.TravelModifierSelection))
     assert(ReviewedPowerCatalog.resolver(catalog).toOption.get.validateSources(
       Vector(RuleSourceRef.GameRule("test") ->

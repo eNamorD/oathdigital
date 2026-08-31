@@ -17,33 +17,32 @@ class PowerResolverSuite extends munit.FunSuite {
   private val sourceA = RuleSourceRef.Site(SiteId("a"))
   private val sourceZ = RuleSourceRef.Site(SiteId("z"))
 
-  private object AlwaysApplicable extends PowerInspector {
-    def inspect(context: PowerContext) = PowerInspection(applicable = true)
+  private final class TestHandler(val window: PowerWindow,
+      val resolution: PowerResolution, val implemented: Boolean,
+      inspectFn: PowerContext => PowerInspection) extends PowerHandler {
+    def inspect(context: PowerContext) = inspectFn(context)
   }
-  private object NeverApplicable extends PowerInspector {
-    def inspect(context: PowerContext) = PowerInspection(applicable = false)
-  }
-  private object RecoverInspector extends PowerInspector {
-    def inspect(context: PowerContext) = context.facts match {
+  private final case class TestPower(id: PowerId,
+      modifier: Option[MajorActionType], handlers: Vector[PowerHandler])
+      extends Power
+
+  private val always: PowerContext => PowerInspection = _ =>
+    PowerInspection(applicable = true)
+  private val never: PowerContext => PowerInspection = _ =>
+    PowerInspection(applicable = false)
+  private val recover: PowerContext => PowerInspection = context =>
+    context.facts match {
       case facts: RecoverFacts => PowerInspection(facts.emptySlot,
         eligiblePlayer = Some(facts.actor), decisionPlayer = Some(facts.actor))
       case _ => PowerInspection(applicable = false)
     }
-  }
-  private object Implemented extends PowerHandler
 
-  private def definition(id: String, windows: Vector[PowerWindow],
-      resolution: PowerResolution = PlayerSelected,
-      modifier: Option[MajorActionType] = None) =
-    PowerDefinition(PowerId(id), modifier, windows, resolution)
-
-  private def registered(id: String, windows: Vector[PowerWindow],
-      inspector: PowerInspector = AlwaysApplicable,
+  private def power(id: String, windows: Vector[PowerWindow],
+      inspect: PowerContext => PowerInspection = always,
       implemented: Boolean = true,
       resolution: PowerResolution = PlayerSelected,
-      modifier: Option[MajorActionType] = None) =
-    RegisteredPower(definition(id, windows, resolution, modifier), inspector,
-      Option.when(implemented)(Implemented))
+      modifier: Option[MajorActionType] = None): Power = TestPower(PowerId(id),
+    modifier, windows.map(new TestHandler(_, resolution, implemented, inspect)))
 
   test("major action vocabulary contains only selectable major actions") {
     assertEquals(MajorActionType.values.map(_.key), Vector("search", "travel",
@@ -65,27 +64,26 @@ class PowerResolverSuite extends munit.FunSuite {
     assertEquals(NegotiationOffer.associatedMajorAction, None)
   }
 
-  test("definitions require non-empty unique windows and typed modifier consistency") {
-    intercept[IllegalArgumentException](definition("test.empty", Vector.empty))
-    intercept[IllegalArgumentException](definition("test.duplicate",
-      Vector(RecoverEligibility, RecoverEligibility)))
-    intercept[IllegalArgumentException](definition("test.wrong",
-      Vector(RecoverEligibility), modifier = Some(Search)))
-    intercept[IllegalArgumentException](definition("test.non-action",
-      Vector(RestStart), modifier = Some(Recover)))
-    assertEquals(definition("test.right", Vector(RecoverActionEligibility,
+  test("powers require non-empty unique windows and typed modifier consistency") {
+    intercept[IllegalArgumentException](PowerRegistry(power("test.empty", Vector.empty)))
+    intercept[IllegalArgumentException](PowerRegistry(power("test.duplicate",
+      Vector(RecoverEligibility, RecoverEligibility))))
+    intercept[IllegalArgumentException](PowerRegistry(power("test.wrong",
+      Vector(RecoverEligibility), modifier = Some(Search))))
+    intercept[IllegalArgumentException](PowerRegistry(power("test.non-action",
+      Vector(RestStart), modifier = Some(Recover))))
+    assertEquals(power("test.right", Vector(RecoverActionEligibility,
       RecoverModifierSelection, RecoverEligibility), modifier = Some(Recover))
       .modifier, Some(Recover))
   }
 
   test("resolver routing uses only the precise window and ignores modifier metadata") {
-    val withModifier = registered("test.with-modifier", Vector(RecoverEligibility),
-      RecoverInspector, modifier = Some(Recover))
-    val withoutModifier = registered("test.without-modifier",
-      Vector(RecoverEligibility), RecoverInspector)
+    val withModifier = power("test.with-modifier", Vector(RecoverEligibility),
+      recover, modifier = Some(Recover))
+    val withoutModifier = power("test.without-modifier",
+      Vector(RecoverEligibility), recover)
     val resolver = new PowerResolver(PowerRegistry(withModifier, withoutModifier))
-    val sources = Vector(sourceA -> Vector(withModifier.definition.id,
-      withoutModifier.definition.id))
+    val sources = Vector(sourceA -> Vector(withModifier.id, withoutModifier.id))
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
     assertEquals(resolver.resolve(SearchEligibility, sources, facts).toOption.get
       .offered, Vector.empty)
@@ -95,14 +93,12 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("typed facts reach inspectors and inapplicable implemented powers disappear") {
-    val applicable = registered("test.applicable", Vector(RecoverEligibility),
-      RecoverInspector)
-    val inapplicable = registered("test.inapplicable", Vector(RecoverEligibility),
-      NeverApplicable)
+    val applicable = power("test.applicable", Vector(RecoverEligibility), recover)
+    val inapplicable = power("test.inapplicable", Vector(RecoverEligibility), never)
     val resolver = new PowerResolver(PowerRegistry(applicable, inapplicable))
     val actor = PlayerId("p1")
     val result = resolver.resolve(RecoverEligibility, Vector(sourceA -> Vector(
-      applicable.definition.id, inapplicable.definition.id)),
+      applicable.id, inapplicable.id)),
       RecoverFacts(actor, emptySlot = true)).toOption.get
     assertEquals(result.offered.map(_.powerId), Vector(PowerId("test.applicable")))
     assertEquals(result.offered.head.inspection.eligiblePlayer, Some(actor))
@@ -110,19 +106,19 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("fallback diagnoses only applicable unimplemented automatic powers") {
-    val selected = registered("test.selected", Vector(RestStart),
+    val selected = power("test.selected", Vector(RestStart),
       implemented = false)
-    val applicableAutomatic = registered("test.applicable-automatic",
+    val applicableAutomatic = power("test.applicable-automatic",
       Vector(RestStart), implemented = false, resolution = Automatic)
-    val inapplicableAutomatic = registered("test.inapplicable-automatic",
-      Vector(RestStart), NeverApplicable, implemented = false,
+    val inapplicableAutomatic = power("test.inapplicable-automatic",
+      Vector(RestStart), never, implemented = false,
       resolution = Automatic)
-    val implementedAutomatic = registered("test.implemented-automatic",
+    val implementedAutomatic = power("test.implemented-automatic",
       Vector(RestStart), resolution = Automatic)
     val powers = Vector(selected, applicableAutomatic, inapplicableAutomatic,
       implementedAutomatic)
     val result = new PowerResolver(PowerRegistry(powers: _*)).resolve(RestStart,
-      Vector(sourceA -> powers.map(_.definition.id)), NoFacts).toOption.get
+      Vector(sourceA -> powers.map(_.id)), NoFacts).toOption.get
     assertEquals(result.offered, Vector.empty)
     assertEquals(result.automatic.map(_.powerId),
       Vector(PowerId("test.implemented-automatic")))
@@ -131,12 +127,12 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("resolution order is stable source identity then typed power ID") {
-    val alpha = registered("test.alpha", Vector(RecoverEligibility), RecoverInspector)
-    val beta = registered("test.beta", Vector(RecoverEligibility), RecoverInspector)
+    val alpha = power("test.alpha", Vector(RecoverEligibility), recover)
+    val beta = power("test.beta", Vector(RecoverEligibility), recover)
     val facts = RecoverFacts(PlayerId("p1"), emptySlot = true)
     val result = new PowerResolver(PowerRegistry(beta, alpha)).resolve(
-      RecoverEligibility, Vector(sourceZ -> Vector(beta.definition.id,
-        alpha.definition.id), sourceA -> Vector(beta.definition.id)), facts)
+      RecoverEligibility, Vector(sourceZ -> Vector(beta.id,
+        alpha.id), sourceA -> Vector(beta.id)), facts)
       .toOption.get
     assertEquals(result.offered.map(i => i.source.stableKey -> i.powerId), Vector(
       "site:a" -> PowerId("test.beta"), "site:z" -> PowerId("test.alpha"),
@@ -144,12 +140,24 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("registry rejects duplicates and unknown abilities fail before routing") {
-    val first = registered("test.same", Vector(RestStart))
-    val second = registered("test.same", Vector(RestEnd))
+    val first = power("test.same", Vector(RestStart))
+    val second = power("test.same", Vector(RestEnd))
     intercept[IllegalArgumentException](PowerRegistry(first, second))
     val resolver = new PowerResolver(PowerRegistry())
     val sources = Vector(sourceA -> Vector(PowerId("test.unknown")))
     assert(resolver.validateSources(sources).isLeft)
     assert(resolver.resolve(RestStart, sources, NoFacts).isLeft)
+  }
+
+  test("one power may use different resolution modes at distinct windows") {
+    val multi = TestPower(PowerId("test.multi"), None, Vector(
+      new TestHandler(RestStart, Automatic, implemented = true, always),
+      new TestHandler(RestEnd, PlayerSelected, implemented = true, always)))
+    val resolver = new PowerResolver(PowerRegistry(multi))
+    val sources = Vector(sourceA -> Vector(multi.id))
+    assertEquals(resolver.resolve(RestStart, sources, NoFacts).toOption.get
+      .automatic.map(_.powerId), Vector(multi.id))
+    assertEquals(resolver.resolve(RestEnd, sources, NoFacts).toOption.get
+      .offered.map(_.powerId), Vector(multi.id))
   }
 }
