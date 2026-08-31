@@ -127,6 +127,10 @@ package object frontend {
   val NegotiationDisclosureState = protocol.projection.NegotiationDisclosureProjection
   type NegotiationState = protocol.projection.NegotiationProjection
   val NegotiationState = protocol.projection.NegotiationProjection
+  type RestFavorSourceState = protocol.projection.RestFavorSourceProjection
+  val RestFavorSourceState = protocol.projection.RestFavorSourceProjection
+  type RestPowerState = protocol.projection.RestPowerProjection
+  val RestPowerState = protocol.projection.RestPowerProjection
   type PlayerBoard = protocol.projection.PlayerBoardProjection
   val PlayerBoard = protocol.projection.PlayerBoardProjection
   type OathkeeperStatus = protocol.projection.OathkeeperProjection

@@ -14,6 +14,9 @@ boundaries; keep unknown relevant handlers explicit. Catacombs is the first
 complete slice: its selected Recover modifier pays and places a facedown relic,
 records one replay-validated procedure outcome, then delegates entirely to the
 matching ordinary Recover roll and choice.
+League Treaty is the first executable Rest hook: its current site ruler owns
+the optional choice even during another player's Rest, moves bounded favor from
+regional cards to one bank, and then resumes the ordinary Rest procedure.
 
 ## Next
 
@@ -151,6 +154,11 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   and facedown site placement operations before the ordinary Recover roll. The
   ordinary Search and Search-derived facedown-adviser paths now share one typed
   authoritative card-play procedure and source-scoped When Played dispatch. The
+  Rest procedure now opens ordered resolver hooks before cleanup; League Treaty
+  dynamically assigns its off-turn decision to the Treaty site's current ruler,
+  revalidates regional card favor and the destination bank, preserves facedown
+  relic identity through slot references, records concrete events, and resumes
+  normal Rest after resolution or decline. The
   legacy central classification switch is removed; stable request and diagnostic
   compatibility labels live in a neutral protocol file.
 
@@ -180,7 +188,7 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   deterministic replay and tamper rejection. Persistence, public projection,
   and the Scala.js victory display preserve the terminal outcome. Rest-related
   handlers use an exact cross-family inventory audit; Empire endings, altered
-  banners/Foundations, executable Rest powers, and Chronicle remain deferred.
+  banners/Foundations, remaining Rest powers, and Chronicle remain deferred.
 
 - [x] **Phase 2 - Visions and Conspiracy.** Exiles can reveal any of the four
   true Visions through one authoritative direct/Search legality path, replace

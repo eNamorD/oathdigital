@@ -97,6 +97,11 @@ object GameCommand {
   ) extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class FinishRest(playerId: PlayerId) extends GameCommand
+  final case class ResolveRestPower(playerId: PlayerId, decision: DecisionId,
+      allocations: Vector[FavorAllocation], destinationBank: Suit)
+      extends GameCommand
+  final case class DeclineRestPower(playerId: PlayerId, decision: DecisionId)
+      extends GameCommand
 }
 
 sealed trait CardDecisionResolution extends Product with Serializable

@@ -168,3 +168,8 @@ final case class NegotiationProjection(decisionId: String, actorPlayerId: String
     editableFavor: Int, editableRelics: Vector[CardDetailsProjection],
     editableAdvisers: Vector[CardDetailsProjection],
     editableSiteRelics: Vector[CardDetailsProjection])
+final case class RestFavorSourceProjection(kind: String, siteId: String,
+    sourceId: String, label: String, availableFavor: Int)
+final case class RestPowerProjection(decisionId: String,
+    restActorPlayerId: String, decisionOwnerPlayerId: String, powerId: String,
+    sources: Vector[RestFavorSourceProjection], legalBanks: Vector[String])

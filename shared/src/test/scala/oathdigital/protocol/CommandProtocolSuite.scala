@@ -5,6 +5,9 @@ class CommandProtocolSuite extends munit.FunSuite {
 
   private val examples: Vector[GameIntent] = Vector(
     PlacePawn("site:a"), TakeWealth("favor"), EndWake, BeginRest, FinishRest,
+    ResolveRestPower("rest-1", Vector(RestFavorAllocation(
+      RestFavorSource("relic-slot", "site:a", "0"), 2)), "hearth"),
+    DeclineRestPower("rest-1"),
     Travel("site:b"), Muster(EconomyTarget("denizen", "d1")),
     Trade(EconomyTarget("edifice", "e1"), "secret"),
     BeginSearch(SearchSource("world", None)), BeginRecover, BeginForge,

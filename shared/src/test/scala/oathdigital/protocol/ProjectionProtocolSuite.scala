@@ -70,7 +70,12 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     favorBanks = Vector(FavorBankProjection("beast", 4)),
     tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
     relicDeckCount = 21,
-    privateAdviserPreview = Vector(known))
+    privateAdviserPreview = Vector(known),
+    restPower = Some(RestPowerProjection("rest-power", "red", "blue",
+      "denizen.league-treaty", Vector(RestFavorSourceProjection(
+        "denizen", "site:a", "known", "Known", 2)),
+      Vector("beast", "hearth"))),
+    restPowerWaiting = true)
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),

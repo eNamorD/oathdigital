@@ -418,6 +418,11 @@ final class GameApplicationService(
         rules.handle(state, RestCommand.Begin(playerId))
       case GameCommand.FinishRest(playerId) =>
         rules.handle(state, RestCommand.Finish(playerId))
+      case GameCommand.ResolveRestPower(playerId, decision, allocations, bank) =>
+        rules.handle(state, RestCommand.ResolvePower(playerId, decision,
+          allocations, bank))
+      case GameCommand.DeclineRestPower(playerId, decision) =>
+        rules.handle(state, RestCommand.DeclinePower(playerId, decision))
     }
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =

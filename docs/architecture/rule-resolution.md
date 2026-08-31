@@ -92,6 +92,15 @@ by the ordinary `RecoverRolled` event that pays Supply, records defense dice, an
 creates the normal pending procedure. All later retry, success, hidden choice,
 and transfer behavior continues through the existing Recover procedure.
 
+League Treaty is the corresponding Rest-owned slice. At the precise
+`RestReturnFavor` window its handler inspects a faceup site source, current site
+ruler, Rest actor, regional favor-bearing cards, and legal favor banks. The
+ruler—not necessarily the active Rest player—owns the optional decision.
+Resolution revalidates every source and amount, moves favor atomically, records
+typed events, and returns control to ordered Rest hooks before ordinary cleanup.
+Facedown site relics are addressed by site slot, so neither projection nor
+transport exposes their identity.
+
 ## Adding a power
 
 1. Verify the exact catalog handler and printed source.

@@ -2,7 +2,7 @@ package oathdigital.server
 
 import oathdigital.application.{GameCommand, GameIntentMapper}
 import oathdigital.gameplay.WakeResource
-import oathdigital.model.PlayerId
+import oathdigital.model._
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   GameIntent}
 
@@ -34,6 +34,15 @@ class GameHttpWireSuite extends munit.FunSuite {
       Right(GameCommand.TakeWealth(PlayerId("dev-selected"), WakeResource.Favor)))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
+    val rest = GameIntent.ResolveRestPower("rest-1", Vector(
+      oathdigital.protocol.RestFavorAllocation(
+        oathdigital.protocol.RestFavorSource("relic-slot", "site:a", "0"), 2)),
+      "hearth")
+    assertEquals(GameIntentMapper.bind(PlayerId("off-turn-owner"), rest), Right(
+      GameCommand.ResolveRestPower(PlayerId("off-turn-owner"),
+        DecisionId("rest-1"), Vector(FavorAllocation(
+          SiteFavorSource.Relic(SiteId("site:a"), 0), 2)),
+        Suit.Hearth)))
   }
 
   test("domain conversion rejects unknown protocol identifiers without throwing") {

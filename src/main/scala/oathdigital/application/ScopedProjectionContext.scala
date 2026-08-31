@@ -35,5 +35,7 @@ private[application] final case class PendingProjection(
     oathkeeperRecipient: Option[OathkeeperRecipientProjection],
     challenge: Option[ChallengeProjection],
     negotiation: Option[NegotiationProjection],
-    negotiationWaiting: Boolean
+    negotiationWaiting: Boolean,
+    restPower: Option[RestPowerProjection],
+    restPowerWaiting: Boolean
 )

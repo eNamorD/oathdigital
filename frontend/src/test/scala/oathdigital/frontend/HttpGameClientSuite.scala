@@ -192,6 +192,15 @@ class HttpGameClientSuite extends FunSuite {
     assert(finish.contains("\"type\":\"finishRest\""))
     assert(!finish.contains("\"playerId\""))
     assert(finish.contains("\"intent\""))
+    val resolve = GameJson.encodeCommand(14L, GameCommand.ResolveRestPower(
+      "blue-exile", "rest-13", Vector(oathdigital.protocol.RestFavorAllocation(
+        oathdigital.protocol.RestFavorSource("relic-slot", "site:a", "0"), 2)),
+      "hearth"))
+    assert(resolve.contains("\"type\":\"resolveRestPower\""))
+    assert(resolve.contains("\"sourceId\":\"0\""))
+    assert(!resolve.contains("blue-exile"))
+    assert(GameJson.encodeCommand(15L, GameCommand.DeclineRestPower(
+      "blue-exile", "rest-13")).contains("\"type\":\"declineRestPower\""))
   }
   private val bootstrap = oathdigital.protocol.FirstGameBootstrapRequest(
     0,

@@ -40,4 +40,6 @@ final case class GameProjection(
     ,tracks: Option[GameTracksProjection] = None
     ,relicDeckCount: Int = 0
     ,privateAdviserPreview: Vector[CardDetailsProjection] = Vector.empty
+    ,restPower: Option[RestPowerProjection] = None
+    ,restPowerWaiting: Boolean = false
 )

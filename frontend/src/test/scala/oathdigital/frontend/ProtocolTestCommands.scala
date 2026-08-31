@@ -12,6 +12,10 @@ private[frontend] object GameCommand {
   def EndWake(actor: String) = Intent.EndWake
   def BeginRest(actor: String) = Intent.BeginRest
   def FinishRest(actor: String) = Intent.FinishRest
+  def ResolveRestPower(actor: String, id: String,
+      allocations: Vector[RestFavorAllocation], bank: String) =
+    Intent.ResolveRestPower(id, allocations, bank)
+  def DeclineRestPower(actor: String, id: String) = Intent.DeclineRestPower(id)
   def Travel(actor: String, site: String) = Intent.Travel(site)
   def CampaignConquest(actor: String, site: String, count: Int) = Intent.BeginCampaignConquest(Vector(site), count)
   def CampaignConquest(actor: String, sites: Vector[String], count: Int) = Intent.BeginCampaignConquest(sites, count)
