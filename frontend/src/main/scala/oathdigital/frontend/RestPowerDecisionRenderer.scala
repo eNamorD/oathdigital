@@ -7,6 +7,10 @@ private[frontend] object RestPowerDecisionRenderer {
   def render(value: GameProjection, decision: RestPowerState,
       ui: ServerUiView): dom.Element = {
     import ServerUiSupport._
+    val (sources, legalBanks) = decision.payload match {
+      case oathdigital.protocol.projection.LeagueTreatyProjection(s, banks) =>
+        s -> banks
+    }
     val section = element("section", "rest-power-decision")
     section.setAttribute("aria-labelledby", "rest-power-title")
     val title = text("h2", "", "League Treaty")
@@ -14,7 +18,7 @@ private[frontend] object RestPowerDecisionRenderer {
     section.appendChild(title)
     section.appendChild(text("p", "decision-instruction",
       "Move any amount of favor from eligible regional cards to one favor bank, or decline."))
-    val inputs = decision.sources.map { source =>
+    val inputs = sources.map { source =>
       val row = element("div", "rest-power-source")
       val inputId = s"rest-favor-${source.kind}-${source.siteId}-${source.sourceId}"
       val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
@@ -38,7 +42,7 @@ private[frontend] object RestPowerDecisionRenderer {
     bankLabel.textContent = "Destination favor bank"
     val bank = dom.document.createElement("select").asInstanceOf[dom.html.Select]
     bank.id = "rest-power-bank"
-    decision.legalBanks.foreach { suit =>
+    legalBanks.foreach { suit =>
       val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
       option.value = suit
       option.textContent = suit.capitalize

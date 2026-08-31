@@ -368,12 +368,16 @@ class RestSuite extends munit.FunSuite {
     assertEquals(ownerView.phase, "rest-power-decision")
     assertEquals(ownerView.restPower.map(_.decisionOwnerPlayerId),
       Some(owner.player.value))
-    assertEquals(ownerView.restPower.toVector.flatMap(_.sources)
+    val projectedSources = ownerView.restPower.toVector.flatMap(_.payload match {
+      case oathdigital.protocol.projection.LeagueTreatyProjection(sources, _) =>
+        sources
+    })
+    assertEquals(projectedSources
       .map(_.availableFavor), Vector(1, 2, 3, 4))
-    assertEquals(ownerView.restPower.toVector.flatMap(_.sources).lastOption
+    assertEquals(projectedSources.lastOption
       .map(source => source.kind -> source.label),
       Some("relic-slot" -> "Facedown relic 1"))
-    assert(!ownerView.restPower.toVector.flatMap(_.sources)
+    assert(!projectedSources
       .exists(_.sourceId == relic.id.value))
     val actorView = projector.project("league", loaded, restActor)
     assertEquals(actorView.phase, "rest-power-waiting")

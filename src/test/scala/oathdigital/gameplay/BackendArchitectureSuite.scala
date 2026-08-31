@@ -233,6 +233,18 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assert(!source.contains("GameStateUpdates"))
   }
 
+  test("Rest registry cannot own procedure orchestration or state mutation") {
+    val source = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/powers/RestPowers.scala"))
+    Vector("def begin", "def evolve", "OathTransition", "PendingProcedure",
+      ".copy(").foreach { forbidden =>
+      assert(!source.contains(forbidden),
+        s"RestPowers must leave '$forbidden' to typed handlers/integration")
+    }
+    assert(Files.exists(Paths.get(
+      "src/main/scala/oathdigital/gameplay/powers/rest/RestPowerIntegration.scala")))
+  }
+
   test("procedure power inventories use named Power objects, not raw ID tables") {
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
     val offenders = Files.walk(root).iterator.asScala.filter(path =>

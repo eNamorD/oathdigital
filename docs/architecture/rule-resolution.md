@@ -99,7 +99,10 @@ ruler—not necessarily the active Rest player—owns the optional decision.
 Resolution revalidates every source and amount, moves favor atomically, records
 typed events, and returns control to ordered Rest hooks before ordinary cleanup.
 Facedown site relics are addressed by site slot, so neither projection nor
-transport exposes their identity.
+transport exposes their identity. `RestPowerIntegration` owns resolver ordering
+and continuation; the registered typed handler owns only League Treaty's
+decision payload, concrete events, validation, and state effect. `RestPowers`
+remains a reviewed registry and contains no procedure lifecycle or state mutation.
 
 ## Adding a power
 

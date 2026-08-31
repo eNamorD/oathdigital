@@ -17,6 +17,11 @@ sealed trait RestPowerEvent extends OathEvent {
   def decision: DecisionId
   def powerId: PowerId
 }
+sealed trait RestPowerDecisionStarted extends RestPowerEvent {
+  def decisionOwner: PlayerId
+  def remaining: Vector[RestPowerInvocationRef]
+}
+sealed trait RestPowerDecisionCompleted extends RestPowerEvent
 object OathEvent {
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
@@ -253,7 +258,7 @@ object OathEvent {
       remaining: Vector[RestPowerInvocationRef],
       eligibleSources: Vector[SiteFavorSource],
       legalBanks: Vector[Suit]
-  ) extends RestPowerEvent
+  ) extends RestPowerDecisionStarted
   final case class LeagueTreatyResolved(
       restActor: PlayerId,
       decision: DecisionId,
@@ -262,14 +267,14 @@ object OathEvent {
       decisionOwner: PlayerId,
       allocations: Vector[FavorAllocation],
       destinationBank: Suit
-  ) extends RestPowerEvent
+  ) extends RestPowerDecisionCompleted
   final case class LeagueTreatyDeclined(
       restActor: PlayerId,
       decision: DecisionId,
       powerId: PowerId,
       source: SiteDenizenTarget,
       decisionOwner: PlayerId
-  ) extends RestPowerEvent
+  ) extends RestPowerDecisionCompleted
   final case class RestCompleted(
       playerId: PlayerId,
       returnedFavor: Map[Suit, Int],

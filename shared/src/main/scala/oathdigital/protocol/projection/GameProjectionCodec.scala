@@ -176,16 +176,20 @@ object GameProjectionCodec {
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting)
 
-  private def encodeRestPower(value: RestPowerProjection): ujson.Value = ujson.Obj(
-    "decisionId" -> value.decisionId,
-    "restActorPlayerId" -> value.restActorPlayerId,
-    "decisionOwnerPlayerId" -> value.decisionOwnerPlayerId,
-    "powerId" -> value.powerId,
-    "sources" -> encoded(value.sources)(source => ujson.Obj(
-      "kind" -> source.kind, "siteId" -> source.siteId,
-      "sourceId" -> source.sourceId, "label" -> source.label,
-      "availableFavor" -> source.availableFavor)),
-    "legalBanks" -> encoded(value.legalBanks)(ujson.Str(_)))
+  private def encodeRestPower(value: RestPowerProjection): ujson.Value = {
+    value.payload match {
+      case LeagueTreatyProjection(sources, legalBanks) => ujson.Obj(
+        "decisionId" -> value.decisionId,
+        "restActorPlayerId" -> value.restActorPlayerId,
+        "decisionOwnerPlayerId" -> value.decisionOwnerPlayerId,
+        "powerId" -> value.powerId,
+        "sources" -> encoded(sources)(source => ujson.Obj(
+          "kind" -> source.kind, "siteId" -> source.siteId,
+          "sourceId" -> source.sourceId, "label" -> source.label,
+          "availableFavor" -> source.availableFavor)),
+        "legalBanks" -> encoded(legalBanks)(ujson.Str(_)))
+    }
+  }
 
   private def decodeRestPower(raw: ujson.Value, path: String)
       : Result[RestPowerProjection] = for {
@@ -208,7 +212,8 @@ object GameProjectionCodec {
       favor <- int(row, "availableFavor", child)
     } yield RestFavorSourceProjection(kind, site, sourceId, label, favor) }
     banks <- strings(value, "legalBanks", path)
-  } yield RestPowerProjection(decision, actor, owner, power, sources, banks)
+  } yield RestPowerProjection(decision, actor, owner, power,
+    LeagueTreatyProjection(sources, banks))
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

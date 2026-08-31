@@ -39,10 +39,13 @@ private[application] final class PendingProcedureProjector(
     context.current.pending.collect {
       case pending: PendingProcedure.RestPowerDecision
           if context.viewer.contains(pending.current.decisionOwner) =>
-        RestPowerProjection(pending.decision.value, pending.restActor.value,
-          pending.current.decisionOwner.value, pending.current.powerId.value,
-          pending.eligibleSources.map(restSourceProjection(context, _)),
-          pending.legalBanks.map(_.key))
+        pending.payload match {
+          case payload: RestPowerDecisionPayload.LeagueTreaty =>
+            RestPowerProjection(pending.decision.value, pending.restActor.value,
+              pending.current.decisionOwner.value, pending.current.powerId.value,
+              LeagueTreatyProjection(payload.eligibleSources.map(
+                restSourceProjection(context, _)), payload.legalBanks.map(_.key)))
+        }
     }
 
   private def restSourceProjection(context: ScopedProjectionContext,

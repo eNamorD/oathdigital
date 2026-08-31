@@ -231,13 +231,83 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
 
   private def encodeRestInvocation(value: RestPowerInvocationRef) = ujson.Obj(
     "powerId" -> value.powerId.value,
-    "source" -> encodeTreatySource(value.source),
+    "source" -> encodeRestSource(value.source),
     "decisionOwnerPlayerId" -> value.decisionOwner.value)
 
   private def decodeRestInvocation(value: ujson.Value, path: String) =
-    decodeTreatySource(value("source"), s"$path.source").map(source =>
+    decodeRestSource(value("source"), s"$path.source").map(source =>
       RestPowerInvocationRef(PowerId(value("powerId").str), source,
         PlayerId(value("decisionOwnerPlayerId").str)))
+
+  private def encodeRestSource(value: RestPowerSourceRef): ujson.Value = value match {
+    case RestPowerSourceRef.SiteCard(site, id: DenizenId) =>
+      encodeTreatySource(SiteDenizenTarget(site, id))
+    case RestPowerSourceRef.Site(id) => ujson.Obj(
+      "kind" -> "site", "siteId" -> id.value)
+    case RestPowerSourceRef.SiteCard(site, id) => ujson.Obj(
+      "kind" -> "site-card", "siteId" -> site.value,
+      "cardKind" -> id.kind, "cardId" -> id.value)
+    case RestPowerSourceRef.Adviser(player, id) => ujson.Obj(
+      "kind" -> "adviser", "playerId" -> player.value,
+      "cardKind" -> id.kind, "cardId" -> id.value)
+    case RestPowerSourceRef.Relic(player, id) => ujson.Obj(
+      "kind" -> "relic", "playerId" -> player.value, "relicId" -> id.value)
+    case RestPowerSourceRef.SiteRelic(site, id) => ujson.Obj(
+      "kind" -> "site-relic", "siteId" -> site.value, "relicId" -> id.value)
+    case RestPowerSourceRef.Edifice(site, id) => ujson.Obj(
+      "kind" -> "edifice", "siteId" -> site.value, "edificeId" -> id.value)
+    case RestPowerSourceRef.Banner(id) => ujson.Obj(
+      "kind" -> "banner", "banner" -> id.key)
+    case RestPowerSourceRef.Foundation(number) => ujson.Obj(
+      "kind" -> "foundation", "number" -> number.value)
+    case RestPowerSourceRef.Legacy(lineage, id) => ujson.Obj(
+      "kind" -> "legacy", "lineageId" -> lineage.value,
+      "legacyId" -> id.value)
+    case RestPowerSourceRef.GameRule(id) => ujson.Obj(
+      "kind" -> "game", "ruleId" -> id)
+  }
+
+  private def decodeRestSource(value: ujson.Value, path: String)
+      : Either[WireError, RestPowerSourceRef] = {
+    val fields = value.obj
+    if (fields.contains("denizenId")) decodeTreatySource(value, path).map(source =>
+      RestPowerSourceRef.SiteCard(source.siteId, source.denizenId))
+    else fields("kind").str match {
+      case "site" => Right(RestPowerSourceRef.Site(SiteId(fields("siteId").str)))
+      case "site-card" => decodeCardId(fields("cardKind").str,
+        fields("cardId").str, path).map(id => RestPowerSourceRef.SiteCard(
+          SiteId(fields("siteId").str), id))
+      case "adviser" => decodeCardId(fields("cardKind").str,
+        fields("cardId").str, path).map(id => RestPowerSourceRef.Adviser(
+          PlayerId(fields("playerId").str), id))
+      case "relic" => Right(RestPowerSourceRef.Relic(
+        PlayerId(fields("playerId").str), RelicId(fields("relicId").str)))
+      case "site-relic" => Right(RestPowerSourceRef.SiteRelic(
+        SiteId(fields("siteId").str), RelicId(fields("relicId").str)))
+      case "edifice" => Right(RestPowerSourceRef.Edifice(
+        SiteId(fields("siteId").str), EdificeId(fields("edificeId").str)))
+      case "banner" => Banner.fromKey(fields("banner").str)
+        .map(RestPowerSourceRef.Banner).toRight(InvalidValue(s"$path.banner",
+          s"unknown banner '${fields("banner").str}'"))
+      case "foundation" => safeIntField(fields, "number", path).flatMap(number =>
+        FoundationNumber.all.find(_.value == number)
+          .map(RestPowerSourceRef.Foundation).toRight(InvalidValue(
+            s"$path.number", s"unknown Foundation $number")))
+      case "legacy" => Right(RestPowerSourceRef.Legacy(
+        LineageId(fields("lineageId").str), LegacyId(fields("legacyId").str)))
+      case "game" => Right(RestPowerSourceRef.GameRule(fields("ruleId").str))
+      case other => Left(InvalidValue(s"$path.kind",
+        s"unknown Rest power source '$other'"))
+    }
+  }
+
+  private def decodeCardId(kind: String, id: String, path: String)
+      : Either[WireError, CardId] = kind match {
+    case "denizen" => Right(DenizenId(id))
+    case "vision" => Right(VisionId(id))
+    case other => Left(InvalidValue(s"$path.cardKind",
+      s"unknown card kind '$other'"))
+  }
 
   private def encodeFavorSource(value: SiteFavorSource): ujson.Value = value match {
     case SiteFavorSource.Denizen(site, id) => ujson.Obj(

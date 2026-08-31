@@ -347,9 +347,12 @@ class GameEventWireSuite extends munit.FunSuite {
       SiteFavorSource.Denizen(SiteId("site-a"), DenizenId("237")),
       SiteFavorSource.Edifice(SiteId("site-b"), EdificeId("E1")),
       SiteFavorSource.Relic(SiteId("site-b"), 0))
+    val remaining = Vector(RestPowerInvocationRef(
+      PowerId("banner.darkest-secret.festival"),
+      RestPowerSourceRef.Banner(Banner.DarkestSecret), owner))
     val events = Vector[OathEvent](
       OathEvent.LeagueTreatyDecisionStarted(actor, decision, power, source,
-        owner, Vector.empty, favorSources, Suit.all),
+        owner, remaining, favorSources, Suit.all),
       OathEvent.LeagueTreatyResolved(actor, decision, power, source, owner,
         Vector(FavorAllocation(favorSources.head, 1),
           FavorAllocation(favorSources.last, 2)), Suit.Hearth),

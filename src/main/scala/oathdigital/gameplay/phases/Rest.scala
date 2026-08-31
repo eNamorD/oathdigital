@@ -9,7 +9,7 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.powers.RestPowers
+import oathdigital.gameplay.powers.rest.RestPowerIntegration
 
 sealed trait RestCommand extends Product with Serializable
 object RestCommand {
@@ -53,7 +53,7 @@ object Rest {
       validateBegin(catalog, state, playerId).flatMap(_ =>
         transition(catalog, state, Vector(RestStarted(playerId)),
           AwaitingRestAction(playerId))).flatMap { started =>
-          RestPowers.begin(catalog, started.state, playerId).map { powers =>
+          RestPowerIntegration.begin(catalog, started.state, playerId).map { powers =>
             powers.copy(events = started.events ++ powers.events)
           }
         }
@@ -68,9 +68,10 @@ object Rest {
         }
       }
     case RestCommand.ResolvePower(playerId, decision, allocations, bank) =>
-      RestPowers.resolve(catalog, state, playerId, decision, allocations, bank)
+      RestPowerIntegration.resolveLeagueTreaty(catalog, state, playerId,
+        decision, allocations, bank)
     case RestCommand.DeclinePower(playerId, decision) =>
-      RestPowers.decline(catalog, state, playerId, decision)
+      RestPowerIntegration.decline(catalog, state, playerId, decision)
   }
 
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
@@ -90,7 +91,8 @@ object Rest {
               Ready(applyCompletion(ready, recorded)))
         }
       }
-    case power: RestPowerEvent => RestPowers.evolve(catalog, state, power)
+    case power: RestPowerEvent =>
+      RestPowerIntegration.evolve(catalog, state, power)
     case _ => Left(InvalidEventOrder("Rest received a non-Rest event"))
   }
 

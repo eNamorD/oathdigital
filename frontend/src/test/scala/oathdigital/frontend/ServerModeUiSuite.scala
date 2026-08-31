@@ -434,9 +434,9 @@ class ServerModeUiSuite extends FunSuite {
 
   test("Rest power owner controls the off-turn choice while other viewers wait") {
     val decision = RestPowerState("rest-1", "red-exile", "blue-exile",
-      "denizen.league-treaty", Vector(RestFavorSourceState(
+      "denizen.league-treaty", LeagueTreatyState(Vector(RestFavorSourceState(
         "relic-slot", "site:1", "0", "Facedown relic 1", 2)),
-      Vector("beast", "hearth"))
+        Vector("beast", "hearth")))
     val ownerView = projection(Set.empty, phase = "rest-power-decision")
       .copy(restPower = Some(decision))
     val owner = ServerUiSupport.viewerPresentation(ownerView, "blue-exile")

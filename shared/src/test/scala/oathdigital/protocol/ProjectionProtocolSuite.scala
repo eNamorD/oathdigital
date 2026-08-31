@@ -72,9 +72,9 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     relicDeckCount = 21,
     privateAdviserPreview = Vector(known),
     restPower = Some(RestPowerProjection("rest-power", "red", "blue",
-      "denizen.league-treaty", Vector(RestFavorSourceProjection(
-        "denizen", "site:a", "known", "Known", 2)),
-      Vector("beast", "hearth"))),
+      "denizen.league-treaty", LeagueTreatyProjection(Vector(
+        RestFavorSourceProjection("denizen", "site:a", "known", "Known", 2)),
+        Vector("beast", "hearth")))),
     restPowerWaiting = true)
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {

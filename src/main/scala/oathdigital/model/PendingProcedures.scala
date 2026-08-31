@@ -64,11 +64,69 @@ final case class FavorAllocation(source: SiteFavorSource, amount: Int) {
   require(amount > 0, "favor allocation must be positive")
 }
 
-/** Stable identity and dynamic owner for one selected Rest hook. */
+sealed trait RestPowerSourceRef extends Product with Serializable {
+  def stableKey: String
+}
+object RestPowerSourceRef {
+  final case class Site(id: SiteId) extends RestPowerSourceRef {
+    def stableKey = s"site:${id.value}"
+  }
+  final case class SiteCard(siteId: SiteId, id: CardId)
+      extends RestPowerSourceRef {
+    def stableKey = s"site-card:${siteId.value}:${id.kind}:${id.value}"
+  }
+  final case class Adviser(playerId: PlayerId, id: CardId)
+      extends RestPowerSourceRef {
+    def stableKey = s"adviser:${playerId.value}:${id.kind}:${id.value}"
+  }
+  final case class Relic(playerId: PlayerId, id: RelicId)
+      extends RestPowerSourceRef {
+    def stableKey = s"relic:${playerId.value}:${id.value}"
+  }
+  final case class SiteRelic(siteId: SiteId, id: RelicId)
+      extends RestPowerSourceRef {
+    def stableKey = s"site-relic:${siteId.value}:${id.value}"
+  }
+  final case class Edifice(siteId: SiteId, id: EdificeId)
+      extends RestPowerSourceRef {
+    def stableKey = s"edifice:${siteId.value}:${id.value}"
+  }
+  final case class Banner(id: oathdigital.model.Banner)
+      extends RestPowerSourceRef {
+    def stableKey = s"banner:${id.key}"
+  }
+  final case class Foundation(number: FoundationNumber)
+      extends RestPowerSourceRef {
+    def stableKey = s"foundation:${number.value}"
+  }
+  final case class Legacy(lineageId: LineageId, id: LegacyId)
+      extends RestPowerSourceRef {
+    def stableKey = s"legacy:${lineageId.value}:${id.value}"
+  }
+  final case class GameRule(id: String) extends RestPowerSourceRef {
+    def stableKey = s"game:$id"
+  }
+}
+
+/** Stable typed source identity and dynamic owner for one selected Rest hook. */
 final case class RestPowerInvocationRef(
     powerId: PowerId,
-    source: SiteDenizenTarget,
+    source: RestPowerSourceRef,
     decisionOwner: PlayerId)
+
+sealed trait RestPowerDecisionPayload extends Product with Serializable
+object RestPowerDecisionPayload {
+  final case class LeagueTreaty(
+      eligibleSources: Vector[SiteFavorSource],
+      legalBanks: Vector[Suit]
+  ) extends RestPowerDecisionPayload {
+    require(eligibleSources.nonEmpty &&
+      eligibleSources.map(_.stableKey).distinct.size == eligibleSources.size,
+      "League Treaty favor sources must be non-empty and distinct")
+    require(legalBanks.nonEmpty && legalBanks.distinct.size == legalBanks.size,
+      "League Treaty favor banks must be non-empty and distinct")
+  }
+}
 
 sealed trait ForgeResource extends Product with Serializable { def key: String }
 object ForgeResource {
@@ -324,15 +382,8 @@ object PendingProcedure {
       restActor: PlayerId,
       current: RestPowerInvocationRef,
       remaining: Vector[RestPowerInvocationRef],
-      eligibleSources: Vector[SiteFavorSource],
-      legalBanks: Vector[Suit]
-  ) extends PendingProcedure {
-    require(eligibleSources.nonEmpty &&
-      eligibleSources.map(_.stableKey).distinct.size == eligibleSources.size,
-      "Rest power favor sources must be non-empty and distinct")
-    require(legalBanks.nonEmpty && legalBanks.distinct.size == legalBanks.size,
-      "Rest power favor banks must be non-empty and distinct")
-  }
+      payload: RestPowerDecisionPayload
+  ) extends PendingProcedure
 
   /** Internal replay marker between deterministically ordered Rest hooks. */
   final case class RestPowerContinuation(
