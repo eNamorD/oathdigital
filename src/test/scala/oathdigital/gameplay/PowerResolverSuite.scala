@@ -17,11 +17,6 @@ class PowerResolverSuite extends munit.FunSuite {
   private val sourceA = RuleSourceRef.Site(SiteId("a"))
   private val sourceZ = RuleSourceRef.Site(SiteId("z"))
 
-  private final class TestHandler(val window: PowerWindow,
-      val resolution: PowerResolution, val implemented: Boolean,
-      inspectFn: PowerContext => PowerInspection) extends PowerHandler {
-    def inspect(context: PowerContext) = inspectFn(context)
-  }
   private final case class TestPower(id: PowerId,
       modifier: Option[MajorActionType], handlers: Vector[PowerHandler])
       extends Power
@@ -41,8 +36,13 @@ class PowerResolverSuite extends munit.FunSuite {
       inspect: PowerContext => PowerInspection = always,
       implemented: Boolean = true,
       resolution: PowerResolution = PlayerSelected,
-      modifier: Option[MajorActionType] = None): Power = TestPower(PowerId(id),
-    modifier, windows.map(new TestHandler(_, resolution, implemented, inspect)))
+      modifier: Option[MajorActionType] = None): Power = {
+    val inspector = PowerInspector(inspect)
+    TestPower(PowerId(id), modifier, windows.map(window => resolution match {
+      case Automatic => PowerHandlers.automatic(window, implemented)(inspector)
+      case PlayerSelected => PowerHandlers.selected(window, implemented)(inspector)
+    }))
+  }
 
   test("major action vocabulary contains only selectable major actions") {
     assertEquals(MajorActionType.values.map(_.key), Vector("search", "travel",
@@ -150,14 +150,33 @@ class PowerResolverSuite extends munit.FunSuite {
   }
 
   test("one power may use different resolution modes at distinct windows") {
+    val inspector = PowerInspector(always)
     val multi = TestPower(PowerId("test.multi"), None, Vector(
-      new TestHandler(RestStart, Automatic, implemented = true, always),
-      new TestHandler(RestEnd, PlayerSelected, implemented = true, always)))
+      PowerHandlers.automatic(RestStart)(inspector),
+      PowerHandlers.selected(RestEnd)(inspector)))
     val resolver = new PowerResolver(PowerRegistry(multi))
     val sources = Vector(sourceA -> Vector(multi.id))
     assertEquals(resolver.resolve(RestStart, sources, NoFacts).toOption.get
       .automatic.map(_.powerId), Vector(multi.id))
     assertEquals(resolver.resolve(RestEnd, sources, NoFacts).toOption.get
       .offered.map(_.powerId), Vector(multi.id))
+  }
+
+  test("partial inspectors safely reject unrelated facts and factory modes persist") {
+    val inspector = PowerInspector.partial {
+      case PowerContext(_, _, facts: RecoverFacts) =>
+        PowerInspection(facts.emptySlot, Some(facts.actor), Some(facts.actor))
+    }
+    val automatic = PowerHandlers.automatic(RecoverEligibility)(inspector)
+    val selected = PowerHandlers.selected(RecoverModifierSelection,
+      implemented = false)(inspector)
+    assertEquals(automatic.resolution, Automatic)
+    assertEquals(automatic.implemented, true)
+    assertEquals(selected.resolution, PlayerSelected)
+    assertEquals(selected.implemented, false)
+    assertEquals(automatic.inspect(PowerContext(RecoverEligibility, sourceA,
+      NoFacts)), PowerInspection(applicable = false))
+    assert(automatic.inspect(PowerContext(RecoverEligibility, sourceA,
+      RecoverFacts(PlayerId("p1"), emptySlot = true))).applicable)
   }
 }

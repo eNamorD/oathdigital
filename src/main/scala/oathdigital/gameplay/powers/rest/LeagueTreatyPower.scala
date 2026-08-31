@@ -11,62 +11,55 @@ import oathdigital.model._
 object LeagueTreatyPower extends Power {
   val id = PowerId("denizen.league-treaty")
   val modifier = None
-  val handlers: Vector[PowerHandler] = Vector(Handler)
 
-  private object Handler extends LeagueTreatyPowerHandler {
-    val window = PowerWindow.RestReturnFavor
-    val resolution = PowerResolution.PlayerSelected
-    val implemented = true
+  private val inspectPower = PowerInspector.partial {
+    case PowerContext(_, source @ RuleSourceRef.SiteCard(siteId, _: DenizenId),
+        facts: RestPowerFacts)
+        if facts.sources.get(source).exists(indexed =>
+          indexed.powerIds.contains(id) &&
+            indexed.face == RuleSourceFace.FaceUp) =>
+      val owner = (for {
+        site <- facts.ready.game.current.map.sites.get(siteId)
+        ruler <- SiteRule.ruler(site.forces,
+          facts.ready.game.current.players).toOption
+      } yield ruler).collect { case SiteRuler.Player(playerId) => playerId }
+      PowerInspection(owner.nonEmpty &&
+        eligibleSources(facts.ready, siteId).nonEmpty, owner, owner)
+  }
 
-    def inspect(context: PowerContext): PowerInspection = context.facts match {
-      case facts: RestPowerFacts => context.source match {
-        case source @ RuleSourceRef.SiteCard(siteId, _: DenizenId)
-            if facts.sources.get(source).exists(indexed =>
-              indexed.powerIds.contains(id) && indexed.face == RuleSourceFace.FaceUp) =>
-          val owner = (for {
-            site <- facts.ready.game.current.map.sites.get(siteId)
-            ruler <- SiteRule.ruler(site.forces,
-              facts.ready.game.current.players).toOption
-          } yield ruler).collect { case SiteRuler.Player(playerId) => playerId }
-          PowerInspection(owner.nonEmpty &&
-            eligibleSources(facts.ready, siteId).nonEmpty, owner, owner)
-        case _ => PowerInspection(applicable = false)
-      }
-      case _ => PowerInspection(applicable = false)
+  private def preparePower(input: RestPowerPreparation)
+      : Either[OathViolation, Option[RestPowerDecisionStarted]] =
+    input.invocation.source match {
+      case RestPowerSourceRef.SiteCard(siteId, denizenId: DenizenId) =>
+        snapshotFor(input.ready, input.invocation).fold(_ => Right(None), snapshot =>
+          Right(Some(LeagueTreatyDecisionStarted(input.restActor,
+            decisionId(input.ready, input.restActor, siteId, denizenId), id,
+            SiteDenizenTarget(siteId, denizenId),
+            input.invocation.decisionOwner, input.remaining,
+            snapshot._1, snapshot._2))))
+      case _ => Right(None)
     }
 
-    def prepare(input: RestPowerPreparation)
-        : Either[OathViolation, Option[RestPowerDecisionStarted]] =
-      input.invocation.source match {
-        case RestPowerSourceRef.SiteCard(siteId, denizenId: DenizenId) =>
-          snapshotFor(input.ready, input.invocation).fold(_ => Right(None), snapshot =>
-            Right(Some(LeagueTreatyDecisionStarted(input.restActor,
-              decisionId(input.ready, input.restActor, siteId, denizenId), id,
-              SiteDenizenTarget(siteId, denizenId),
-              input.invocation.decisionOwner, input.remaining,
-              snapshot._1, snapshot._2))))
-        case _ => Right(None)
-      }
+  private def resolvePower(input: LeagueTreatyResolutionPreparation)
+      : Either[OathViolation, RestPowerDecisionCompleted] = for {
+    _ <- treatyPayload(input.pending)
+    source <- treatySource(input.pending.current)
+  } yield LeagueTreatyResolved(
+    input.pending.restActor, input.pending.decision,
+    input.pending.current.powerId, source, input.actor,
+    input.allocations, input.destinationBank)
 
-    def resolve(input: LeagueTreatyResolutionPreparation)
-        : Either[OathViolation, RestPowerDecisionCompleted] = for {
-      _ <- treatyPayload(input.pending)
-      source <- treatySource(input.pending.current)
-    } yield LeagueTreatyResolved(
-        input.pending.restActor, input.pending.decision,
-        input.pending.current.powerId, source, input.actor,
-        input.allocations, input.destinationBank)
+  private def declinePower(input: RestPowerDeclinePreparation)
+      : Either[OathViolation, RestPowerDecisionCompleted] = for {
+    _ <- treatyPayload(input.pending)
+    source <- treatySource(input.pending.current)
+  } yield LeagueTreatyDeclined(
+    input.pending.restActor, input.pending.decision,
+    input.pending.current.powerId, source, input.actor)
 
-    def decline(input: RestPowerDeclinePreparation)
-        : Either[OathViolation, RestPowerDecisionCompleted] = for {
-      _ <- treatyPayload(input.pending)
-      source <- treatySource(input.pending.current)
-    } yield LeagueTreatyDeclined(
-        input.pending.restActor, input.pending.decision,
-        input.pending.current.powerId, source, input.actor)
-
-    def evolve(catalog: oathdigital.catalog.ExecutableCatalog, state: OathState,
-        event: RestPowerEvent): Either[OathViolation, OathState] = event match {
+  private def evolvePower(catalog: oathdigital.catalog.ExecutableCatalog,
+      state: OathState, event: RestPowerEvent)
+      : Either[OathViolation, OathState] = event match {
       case started: LeagueTreatyDecisionStarted => state match {
         case Ready(ready) => Right(Ready(ready.copy(game = ready.game.copy(current =
           ready.game.current.copy(pending = Some(PendingProcedure.RestPowerDecision(
@@ -100,7 +93,11 @@ object LeagueTreatyPower extends Power {
       case _ => Left(InvalidEventOrder(
         "League Treaty handler received another Rest power event"))
     }
-  }
+
+  private val handler = LeagueTreatyPowerHandler.functional(
+    PowerWindow.RestReturnFavor, inspectPower)(preparePower, resolvePower,
+    declinePower, evolvePower)
+  val handlers: Vector[PowerHandler] = Vector(handler)
 
   private def treatyPayload(pending: PendingProcedure.RestPowerDecision)
       : Either[OathViolation, RestPowerDecisionPayload.LeagueTreaty] =

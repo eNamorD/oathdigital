@@ -83,6 +83,26 @@ stable request and diagnostic protocol labels live separately in
 `RuleFallbackProtocol`. No component effect or universal effect language is
 introduced by this layer, and modifier metadata remains descriptive only.
 
+### Compact handler declarations
+
+Power definitions use immutable function bundles rather than bespoke handler
+classes. `PowerInspector.partial` turns a focused context pattern into a total
+inspector whose unmatched facts are safely inapplicable. `PowerHandlers`
+supplies automatic and player-selected declarations; procedure-specific
+factories add typed preparation and replay callbacks only where needed.
+
+Operation-backed power events still record concrete outcomes. During replay,
+the owning adapter reconstructs the canonical typed operation sequence,
+compares it with the recorded payload, and applies it in order. This removes
+dispatch and mismatch boilerplate without turning operations into independent
+events or a generic effects language.
+
+This borrows HRF's useful compact behavior-registration style, but not its
+mutable expansion dispatcher. HRF commonly routes recorded actions through a
+large expansion pattern match and checks persistent effects directly inside
+base procedures. Oath Digital retains precise windows, procedure ownership,
+server-authored events, and replay validation instead.
+
 Catacombs is the first executable vertical slice. Its Recover-owned inspector
 checks the precise site card, pawn, secret, empty relic slot, Recover Difficulty,
 Supply, and relic-deck facts. The selected invocation is revalidated before
@@ -109,7 +129,10 @@ remains a reviewed registry and contains no procedure lifecycle or state mutatio
 1. Verify the exact catalog handler and printed source.
 2. Confirm `RuleSourceIndex` exposes the needed factual state and
    `CatalogHandlerInventory` covers the family.
-3. Add an explicit typed registration/classification in the owning action or
-   timing module.
-4. Reuse the owning legality/evolution path for commands, projection, and replay.
-5. Test ordering, inactive sources, replay tampering, and unsupported inventory.
+3. Declare automatic or selected windows with `PowerHandlers`; reuse one
+   focused inspector when applicability is identical across windows.
+4. Use the owning procedure's functional adapter for preparation and replay.
+   Compose recorded semantic operations only when they represent the effect
+   honestly; keep specialized decision reducers explicit.
+5. Reuse the owning legality/evolution path for commands and projection.
+6. Test ordering, inactive sources, replay tampering, and unsupported inventory.

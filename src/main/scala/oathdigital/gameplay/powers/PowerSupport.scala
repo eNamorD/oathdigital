@@ -48,17 +48,6 @@ private[gameplay] object ReviewedPowerInspector {
   }
 }
 
-private[powers] final class ReviewedHandler(
-    val window: PowerWindow,
-    val resolution: PowerResolution,
-    val implemented: Boolean,
-    active: Boolean = true
-) extends PowerHandler {
-  def inspect(context: PowerContext): PowerInspection =
-    if (active) ReviewedPowerInspector.inspect(context)
-    else PowerInspection(applicable = false)
-}
-
 private[powers] abstract class ReviewedPower(
     idValue: String,
     val modifier: Option[MajorActionType],
@@ -68,9 +57,12 @@ private[powers] abstract class ReviewedPower(
 }
 
 private[powers] object ReviewedHandler {
+  private val reviewed = PowerInspector(ReviewedPowerInspector.inspect)
+  private val inactive = PowerInspector(_ => PowerInspection(applicable = false))
+
   def automatic(window: PowerWindow, implemented: Boolean = false,
-      active: Boolean = true): PowerHandler = new ReviewedHandler(window,
-    PowerResolution.Automatic, implemented, active)
+      active: Boolean = true): PowerHandler = PowerHandlers.automatic(window,
+    implemented)(if (active) reviewed else inactive)
   def selected(window: PowerWindow, implemented: Boolean = false): PowerHandler =
-    new ReviewedHandler(window, PowerResolution.PlayerSelected, implemented)
+    PowerHandlers.selected(window, implemented)(reviewed)
 }

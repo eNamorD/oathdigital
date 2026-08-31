@@ -223,14 +223,17 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assert(protocol.contains("case class CatacombsResolved"))
   }
 
-  test("Catacombs inspection contains only power-specific applicability") {
-    val source = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/powers/RecoverPowers.scala"))
-    val inspector = source.substring(source.indexOf(
-      "private final class CatacombsInspectorHandler"), source.indexOf(
-      "private object CatacombsExecution"))
-    assert(!inspector.contains("RecoverRules.validate"))
-    assert(!source.contains("GameStateUpdates"))
+  test("individual power definitions use factories instead of handler subclasses") {
+    val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val powerDefinition = "\\bobject\\s+[A-Za-z0-9_]+\\s+extends\\s+Power\\b".r
+    val bespokeHandler = "\\bextends\\s+[A-Za-z0-9_]*PowerHandler\\b".r
+    val offenders = Files.walk(root).iterator.asScala.filter(
+      _.toString.endsWith(".scala")).flatMap { path =>
+      val source = Files.readString(path)
+      Option.when(powerDefinition.findFirstIn(source).nonEmpty &&
+        bespokeHandler.findFirstIn(source).nonEmpty)(path.toString)
+    }.toVector
+    assertEquals(offenders, Vector.empty)
   }
 
   test("Rest registry cannot own procedure orchestration or state mutation") {

@@ -31,6 +31,30 @@ final case class Payment(playerId: PlayerId, source: RuleSourceRef,
 final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
     siteId: SiteId, orientation: Orientation)
 
+/** Concrete semantic mutations recorded by operation-backed power events.
+  * Power-specific adapters remain responsible for reconstructing the expected
+  * sequence before these operations are applied.
+  */
+sealed trait RecordedPowerOperation extends Product with Serializable
+object RecordedPowerOperation {
+  final case class Pay(payment: Payment) extends RecordedPowerOperation
+  final case class PlaceRelic(placement: RelicPlacement)
+      extends RecordedPowerOperation
+
+  def evolve(catalog: ExecutableCatalog, state: OathState,
+      operations: Vector[RecordedPowerOperation])
+      : Either[OathViolation, OathState] = for {
+    _ <- Either.cond(operations.nonEmpty, (),
+      InvalidEventOrder("recorded power operation list is empty"))
+    evolved <- operations.foldLeft[Either[OathViolation, OathState]](Right(state)) {
+      case (current, Pay(payment)) =>
+        current.flatMap(PayCosts.evolve(_, payment))
+      case (current, PlaceRelic(placement)) =>
+        current.flatMap(PlaceRelicAtSite.evolve(catalog, _, placement))
+    }
+  } yield evolved
+}
+
 object PayCosts {
   def describe(costs: Vector[ResourceCost]): Vector[CostDescription] =
     costs.map(cost => CostDescription(cost.resource.key, cost.amount,

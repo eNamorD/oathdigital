@@ -95,4 +95,30 @@ class PowerOperationsSuite extends munit.FunSuite {
       RelicPlacement(actor.player, relic, siteId,
         Orientation.FaceDown)).isLeft)
   }
+
+  test("recorded power operations apply in order and fail without a partial result") {
+    val (ready, actor, siteId, denizenId) = operationReady
+    val source = RuleSourceRef.SiteCard(siteId, denizenId)
+    val payment = PayCosts.plan(ready, actor.player, source, Vector(ResourceCost(
+      ResourceKind.Secret, 1, CostDisposition.PlaceOnSource))).toOption.get
+    val relic = DrawTopRelic.plan(ready).toOption.get
+    val placement = PlaceRelicAtSite.plan(catalog, ready, actor.player, relic,
+      siteId, Orientation.FaceDown).toOption.get
+    val operations = Vector(RecordedPowerOperation.Pay(payment),
+      RecordedPowerOperation.PlaceRelic(placement))
+    val Ready(after) = RecordedPowerOperation.evolve(catalog, Ready(ready),
+      operations).toOption.get: @unchecked
+    assertEquals(after.game.current.players.find(_.player == actor.player).get
+      .board.faceUpSecrets, actor.board.faceUpSecrets - 1)
+    assertEquals(after.game.current.map.sites(siteId).relics.head.id, relic)
+
+    val invalid = placement.copy(orientation = Orientation.FaceUp)
+    assert(RecordedPowerOperation.evolve(catalog, Ready(ready), Vector(
+      RecordedPowerOperation.Pay(payment),
+      RecordedPowerOperation.PlaceRelic(invalid))).isLeft)
+    assertEquals(ready.game.current.players.find(_.player == actor.player).get
+      .board.faceUpSecrets, actor.board.faceUpSecrets)
+    assert(RecordedPowerOperation.evolve(catalog, Ready(ready),
+      Vector.empty).isLeft)
+  }
 }

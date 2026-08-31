@@ -71,6 +71,18 @@ for path in scala_sources(ROOT / "src/main/scala/oathdigital/gameplay"):
     if "rulesText" in path.read_text(encoding="utf-8"):
         errors.append(f"{relative(path)}: gameplay must not inspect catalog rulesText")
 
+power_root = ROOT / "src/main/scala/oathdigital/gameplay/powers"
+bespoke_handler = re.compile(
+    r"\bextends\s+[A-Za-z0-9_]*PowerHandler\b"
+)
+power_definition = re.compile(r"\bobject\s+[A-Za-z0-9_]+\s+extends\s+Power\b")
+for path in scala_sources(power_root):
+    text = path.read_text(encoding="utf-8")
+    if power_definition.search(text) and bespoke_handler.search(text):
+        errors.append(
+            f"{relative(path)}: individual power must use a handler factory"
+        )
+
 legacy_patterns = {
     r"\boathdigital\.setup\b": "legacy setup package",
     r"\bSetupEventWire\b": "deleted setup wire",

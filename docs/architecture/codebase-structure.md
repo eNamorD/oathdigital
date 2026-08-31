@@ -38,6 +38,12 @@ together; group small power handlers by action or timing window. Do not create
 one file per case class, card, or event. Split orchestration, codecs, projection,
 or rendering when distinct responsibilities emerge.
 
+Individual powers declare focused inspectors and callbacks through shared
+handler factories. Do not add per-power `PowerHandler` subclasses. Generic
+factories own routing metadata and mismatch plumbing; action/phase modules own
+procedure lifecycle, while power definitions own only applicability and
+power-specific mechanics.
+
 Production Scala files must remain at or below 800 lines. Around 500 meaningful
 lines is a cohesion review point, not an automatic target. The deterministic
 architecture check enforces the hard limit and dependency boundaries:

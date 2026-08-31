@@ -2,8 +2,8 @@
 
 This is the project-level source of truth for planned work. The Main Thread
 maintains priorities and status. Implementation work runs in separate Codex
-tasks, and an item moves to Done only after its changes and verification have
-been reviewed.
+tasks, and an item moves to Done only after being reviewed. After review, changes
+are cleaned up and committed to Git. 
 
 ## Now
 
@@ -17,6 +17,9 @@ matching ordinary Recover roll and choice.
 League Treaty is the first executable Rest hook: its current site ruler owns
 the optional choice even during another player's Rest, moves bounded favor from
 regional cards to one bank, and then resumes the ordinary Rest procedure.
+Power handlers now use compact immutable function bundles and typed procedure
+adapters. This keeps HRF's concise registration ergonomics without adopting its
+mutable expansion dispatcher or weakening event replay validation.
 
 ## Next
 

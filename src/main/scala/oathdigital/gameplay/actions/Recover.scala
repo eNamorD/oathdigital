@@ -8,7 +8,9 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.powerresolver.PowerHandler
+import oathdigital.gameplay.operations.RecordedPowerOperation
+import oathdigital.gameplay.powerresolver.{PowerHandler, PowerInspector,
+  PowerResolution, PowerWindow}
 
 sealed trait RecoverCommand extends Product with Serializable
 trait RecoverModifierContribution extends Product with Serializable
@@ -24,6 +26,52 @@ trait RecoverPowerHandler extends PowerHandler {
       : Either[OathViolation, RecoverModifierContribution]
   def evolve(catalog: ExecutableCatalog, state: OathState,
       event: RecoverPowerEvent): Either[OathViolation, OathState]
+}
+
+object RecoverPowerHandler {
+  /** Functional adapter for power events composed from typed semantic
+    * operations. Canonical reconstruction protects replay from altered event
+    * payloads before any operation is applied.
+    */
+  def operationBackedSelected[E <: RecoverPowerEvent](powerId: PowerId,
+      windowValue: PowerWindow, inspectPower: PowerInspector,
+      selectEvent: PartialFunction[RecoverPowerEvent, E])(
+      prepareEvent: RecoverPowerPreparation => Either[OathViolation, E],
+      canonicalEvent: (ExecutableCatalog, ReadyGame, E) =>
+        Either[OathViolation, E],
+      eventOperations: E => Vector[RecordedPowerOperation])
+      : RecoverPowerHandler = new RecoverPowerHandler {
+    val window = windowValue
+    val resolution = PowerResolution.PlayerSelected
+    val implemented = true
+
+    def inspect(context: powerresolver.PowerContext)
+        : powerresolver.PowerInspection = inspectPower(context)
+
+    def prepare(input: RecoverPowerPreparation)
+        : Either[OathViolation, RecoverModifierContribution] = for {
+      event <- prepareEvent(input)
+      _ <- Either.cond(event.powerId == powerId, (), InvalidEventOrder(
+        s"prepared Recover power ID does not match ${powerId.value}"))
+    } yield PreparedRecoverModifier(Vector(event))
+
+    def evolve(catalog: ExecutableCatalog, state: OathState,
+        event: RecoverPowerEvent): Either[OathViolation, OathState] = for {
+      selected <- selectEvent.lift(event).toRight(InvalidEventOrder(
+        s"${powerId.value} handler received another Recover power event"))
+      _ <- Either.cond(selected.powerId == powerId, (), InvalidEventOrder(
+        s"Recover power ID does not match ${powerId.value}"))
+      ready <- state match {
+        case Ready(value) => Right(value)
+        case _ => Left(GameNotStarted)
+      }
+      canonical <- canonicalEvent(catalog, ready, selected)
+      _ <- Either.cond(selected == canonical, (), InvalidEventOrder(
+        s"${powerId.value} recorded operation payload does not match"))
+      evolved <- RecordedPowerOperation.evolve(catalog, state,
+        eventOperations(canonical))
+    } yield evolved
+  }
 }
 final case class RecoverPowerPreparation(catalog: ExecutableCatalog,
     ready: ReadyGame, actor: PlayerId, decision: DecisionId,
