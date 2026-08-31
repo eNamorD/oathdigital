@@ -13,7 +13,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.operations.{PayCosts, PlaceRelicAtSite}
+import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -270,8 +270,8 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
       case event: RecoverRolled => Recover.evolve(catalog, state, event)
-      case event: CostsPaid => PayCosts.evolve(state, event)
-      case event: RelicPlacedAtSite => PlaceRelicAtSite.evolve(catalog, state, event)
+      case event: RecoverPowerEvent =>
+        RecoverPowerIntegration.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
       case event: ForgeStarted => Forge.evolve(catalog, state, event)

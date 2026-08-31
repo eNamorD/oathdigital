@@ -245,7 +245,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: RestStarted | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
-      case _: CostsPaid | _: RelicPlacedAtSite | _: RecoverRolled |
+      case _: RecoverPowerEvent | _: RecoverRolled |
           _: RecoverStopped | _: RelicRecovered |
           _: ForgeStarted | _: ForgeCompleted |
           _: BannerChallengeStarted | _: BannerRibbonChoiceMade |

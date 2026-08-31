@@ -7,9 +7,10 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken, CostsPaid, RelicPlacedAtSite, RecoverRolled, RecoverStopped,
+  WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
   RelicRecovered}
-import oathdigital.gameplay.operations.{CostDisposition, ResourceCost, ResourceKind}
+import oathdigital.gameplay.operations.{CostDisposition, Payment, RelicPlacement,
+  ResourceCost, ResourceKind}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
@@ -259,11 +260,14 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("current Recover and operation events round-trip exact typed data") {
     val events = Vector[OathEvent](
-      CostsPaid(PlayerId("red"), RuleSourceRef.SiteCard(SiteId("site"),
-        DenizenId("201")), Vector(ResourceCost(ResourceKind.Secret, 1,
-        CostDisposition.PlaceOnSource))),
-      RelicPlacedAtSite(PlayerId("red"), RelicId("relic"), SiteId("site"),
-        Orientation.FaceDown),
+      CatacombsResolved(PlayerId("red"), DecisionId("recover-1"),
+        PowerId("denizen.catacombs"), RuleSourceRef.SiteCard(SiteId("site"),
+          DenizenId("201")), Payment(PlayerId("red"),
+          RuleSourceRef.SiteCard(SiteId("site"), DenizenId("201")),
+          Vector(ResourceCost(ResourceKind.Secret, 1,
+            CostDisposition.PlaceOnSource))),
+        RelicPlacement(PlayerId("red"), RelicId("relic"), SiteId("site"),
+          Orientation.FaceDown)),
       RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
         Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
       RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
@@ -276,7 +280,7 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.event), events)
     val tampered = ujson.read(encoded).arr
-    tampered(2)("payload")("dice")(0) = "opaque-integer"
+    tampered(1)("payload")("dice")(0) = "opaque-integer"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
     val malformedCost = ujson.read(encoded).arr
     malformedCost(0)("payload")("costs")(0)("amount") = 0
@@ -284,6 +288,12 @@ class GameEventWireSuite extends munit.FunSuite {
     val malformedDisposition = ujson.read(encoded).arr
     malformedDisposition(0)("payload")("costs")(0)("disposition") = "lose"
     assert(GameEventWire.decodeStream(ujson.write(malformedDisposition)).isLeft)
+    Vector("gameplay.costs-paid", "gameplay.relic-placed-at-site").foreach {
+      eventType =>
+        val injected = ujson.read(encoded).arr
+        injected(0)("eventType") = eventType
+        assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft)
+    }
   }
 
   test("v6 Economy events round-trip source cost yield and NF resource mode") {

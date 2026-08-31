@@ -40,6 +40,12 @@ Events record accepted facts needed for deterministic replay:
   exact ordered player decision.
 - Recover and Campaign record prepared physical die faces and resolved costs,
   targets, plans, losses, and outcomes.
+- Catacombs records one procedure-scoped `CatacombsResolved` outcome containing
+  its exact power, source, payment, and relic placement. Replay revalidates the
+  Recover window and all power facts, then leaves a typed prepared-Recover
+  marker until the matching `RecoverRolled` event. Generic payment and relic
+  placement operations are internal composition values, not independently
+  injectable `OathEvent` cases.
 - Forge records the prepared relic transfer and exact assignments.
 - Challenge, banners, minor actions, Negotiation, Visions, and endings record
   their authoritative choices and terminal facts.

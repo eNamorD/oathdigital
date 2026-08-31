@@ -12,7 +12,7 @@ import oathdigital.gameplay.powerresolver.PowerHandler
 
 sealed trait RecoverCommand extends Product with Serializable
 trait RecoverModifierContribution extends Product with Serializable
-final case class PreparedRecoverModifier(events: Vector[OathEvent])
+final case class PreparedRecoverModifier(events: Vector[RecoverPowerEvent])
     extends RecoverModifierContribution
 
 /** Typed execution seam owned by the Recover procedure. Concrete powers may
@@ -22,9 +22,12 @@ final case class PreparedRecoverModifier(events: Vector[OathEvent])
 trait RecoverPowerHandler extends PowerHandler {
   def prepare(input: RecoverPowerPreparation)
       : Either[OathViolation, RecoverModifierContribution]
+  def evolve(catalog: ExecutableCatalog, state: OathState,
+      event: RecoverPowerEvent): Either[OathViolation, OathState]
 }
 final case class RecoverPowerPreparation(catalog: ExecutableCatalog,
-    ready: ReadyGame, actor: PlayerId, source: RuleSourceRef,
+    ready: ReadyGame, actor: PlayerId, decision: DecisionId,
+    source: RuleSourceRef,
     drawnRelic: RelicId)
 object RecoverCommand {
   final case class Start(playerId: PlayerId, decision: DecisionId,
@@ -49,6 +52,9 @@ object Recover {
       val readyResult = state match {
         case Ready(ready) if ready.game.current.pending.isEmpty =>
           OathLifecycle.validateAct(state, player)
+        case Ready(ready) if ready.game.current.pending.exists(
+            _.isInstanceOf[PendingProcedure.RecoverPowerApplied]) =>
+          validatePowerApplied(ready, player, decision)
         case Ready(ready) => validatePending(ready, player, decision, requireSuccess = false)
         case _ => Left(GameNotStarted)
       }
@@ -58,9 +64,16 @@ object Recover {
           siteId <- p.pawnSite.toRight(PawnSiteMissing(player))
           _ <- RecoverRules.validate(catalog, ready, p, siteId)
           pending = ready.game.current.pending.collect { case r: PendingProcedure.Recover => r }
+          prepared = ready.game.current.pending.collect {
+            case r: PendingProcedure.RecoverPowerApplied => r }
           _ <- pending match {
             case Some(r) if r.site != siteId => Left(RecoverOutcomeMismatch("pawn left the Recover site"))
             case Some(r) if r.successful => Left(RecoverOutcomeMismatch("Recover already succeeded"))
+            case _ => Right(())
+          }
+          _ <- prepared match {
+            case Some(value) if value.site != siteId =>
+              Left(RecoverOutcomeMismatch("power prepared another Recover site"))
             case _ => Right(())
           }
           spent = pending.fold(1)(_.supplySpent + 1)
@@ -105,11 +118,44 @@ object Recover {
     }
   }
 
+  private def validatePowerApplied(ready: ReadyGame, player: PlayerId,
+      decision: DecisionId): Either[OathViolation, ReadyGame] = {
+    val current = ready.game.current
+    if (current.turn.activePlayer != player)
+      Left(WrongPlayer(current.turn.activePlayer, player))
+    else if (current.turn.phase != Phase.Act)
+      Left(WrongPhase(Phase.Act, current.turn.phase))
+    else current.pending match {
+      case Some(value: PendingProcedure.RecoverPowerApplied)
+          if value.actor != player => Left(WrongPlayer(value.actor, player))
+      case Some(value: PendingProcedure.RecoverPowerApplied)
+          if value.decision != decision =>
+        Left(RecoverDecisionMismatch(value.decision, decision))
+      case Some(_: PendingProcedure.RecoverPowerApplied) => Right(ready)
+      case Some(other) => Left(PendingProcedureBlocksAction(other.decision))
+      case None => Left(InvalidEventOrder("no Recover power is prepared"))
+    }
+  }
+
+  def markPowerApplied(state: OathState, event: RecoverPowerEvent)
+      : Either[OathViolation, OathState] = state match {
+    case Ready(ready) if ready.game.current.pending.isEmpty =>
+      Right(Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(
+        PendingProcedure.RecoverPowerApplied(event.decision, event.playerId,
+          event.siteId, event.powerId))))))
+    case Ready(ready) => Left(PendingProcedureBlocksAction(
+      ready.game.current.pending.get.decision))
+    case _ => Left(GameNotStarted)
+  }
+
   def evolve(catalog: ExecutableCatalog, state: OathState,
       event: OathEvent): Either[OathViolation, OathState] = event match {
     case e: RecoverRolled =>
       val readyResult = state match {
         case Ready(ready) if ready.game.current.pending.isEmpty => OathLifecycle.validateAct(state, e.playerId)
+        case Ready(ready) if ready.game.current.pending.exists(
+            _.isInstanceOf[PendingProcedure.RecoverPowerApplied]) =>
+          validatePowerApplied(ready, e.playerId, e.decision)
         case Ready(ready) => validatePending(ready, e.playerId, e.decision, false)
         case _ => Left(GameNotStarted)
       }
@@ -175,6 +221,16 @@ object RecoverRules {
     catalog.sites.find(_.id == site).flatMap(_.recoverDifficulty)
 
   def score(faces: Vector[DefenseDieFace]): Int = DefenseDieFace.score(faces)
+
+  def validateAction(catalog: ExecutableCatalog, state: OathState,
+      actor: PlayerId, siteId: SiteId): Either[OathViolation, ReadyGame] = for {
+    ready <- OathLifecycle.validateAct(state, actor)
+    player <- ready.game.current.players.find(_.player == actor)
+      .toRight(WrongPlayer(ready.game.current.turn.activePlayer, actor))
+    _ <- Either.cond(player.pawnSite.contains(siteId), (),
+      RecoverUnavailable("pawn is not at the Recover site"))
+    _ <- validatePotential(catalog, ready, player, siteId)
+  } yield ready
 
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerState,
       siteId: SiteId): Either[OathViolation, Unit] =

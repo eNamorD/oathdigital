@@ -281,6 +281,13 @@ object PendingProcedure {
       successful: Boolean
   ) extends PendingProcedure
 
+  final case class RecoverPowerApplied(
+      decision: DecisionId,
+      actor: PlayerId,
+      site: SiteId,
+      powerId: PowerId
+  ) extends PendingProcedure
+
   final case class Forge(
       decision: DecisionId,
       actor: PlayerId,
@@ -373,4 +380,3 @@ final case class NegotiationTerms(
   require(disclosures.distinct.size == disclosures.size,
     "Negotiation disclosures must be distinct")
 }
-

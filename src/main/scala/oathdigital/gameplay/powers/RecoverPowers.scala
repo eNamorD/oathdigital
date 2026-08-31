@@ -13,6 +13,7 @@ import oathdigital.model._
   */
 object RecoverPowers {
   private val modifier = Some(MajorActionType.Recover)
+  private val catacombsId = PowerId("denizen.catacombs")
 
   object RelicWorship extends ReviewedPower("denizen.relic-worship", modifier,
     Vector(ReviewedHandler.automatic(PowerWindow.RecoverBeforeFirstRoll)))
@@ -37,13 +38,9 @@ object RecoverPowers {
         val reviewed = ReviewedPowerInspector.inspect(context)
         val applicable = reviewed.applicable && (context.source match {
           case source @ RuleSourceRef.SiteCard(siteId, _: DenizenId) =>
-            val player = facts.ready.game.current.players.find(
-              _.player == facts.actor)
             val site = facts.ready.game.current.map.sites.get(siteId)
             val definition = facts.catalog.sites.find(_.id == siteId)
-            player.exists(p =>
-              RecoverRules.validatePotential(facts.catalog, facts.ready, p,
-                siteId).isRight) &&
+            facts.sources.get(source).exists(_.powerIds.contains(catacombsId)) &&
               site.exists(value => definition.exists(d =>
                 value.relics.size < d.relicSlots)) &&
               PayCosts.affordable(facts.ready, facts.actor, source,
@@ -81,11 +78,56 @@ object RecoverPowers {
       _ <- DrawTopRelic.validate(input.ready, input.drawnRelic)
       placed <- PlaceRelicAtSite.plan(input.catalog, input.ready, input.actor,
         input.drawnRelic, siteSource.siteId, Orientation.FaceDown)
-    } yield PreparedRecoverModifier(Vector(paid, placed))
+    } yield PreparedRecoverModifier(Vector(OathEvent.CatacombsResolved(
+      input.actor, input.decision, catacombsId, siteSource, paid, placed)))
+
+    def evolve(catalog: oathdigital.catalog.ExecutableCatalog, state: OathState,
+        event: RecoverPowerEvent): Either[OathViolation, OathState] = event match {
+      case resolved: OathEvent.CatacombsResolved => state match {
+        case OathState.Ready(ready) => for {
+          _ <- Either.cond(resolved.powerId == catacombsId, (),
+            OathViolation.InvalidEventOrder("Catacombs power ID does not match"))
+          _ <- Either.cond(resolved.payment.playerId == resolved.playerId &&
+            resolved.payment.source == resolved.source, (),
+            OathViolation.InvalidEventOrder(
+              "Catacombs payment attribution does not match"))
+          _ <- Either.cond(resolved.placement.playerId == resolved.playerId &&
+            resolved.placement.siteId == resolved.source.siteId &&
+            resolved.placement.orientation == Orientation.FaceDown, (),
+            OathViolation.InvalidEventOrder(
+              "Catacombs relic placement does not match"))
+          _ <- RecoverRules.validateAction(catalog, state, resolved.playerId,
+            resolved.source.siteId)
+          _ <- inspect(PowerContext(window, resolved.source,
+            ReviewedPowerCatalog.facts(catalog, ready,
+              resolved.playerId))) match {
+            case PowerInspection(true, _, _) => Right(())
+            case _ => Left(OathViolation.InvalidEventOrder(
+              "Catacombs is not applicable at Recover before-first-roll"))
+          }
+          expectedPayment <- PayCosts.plan(ready, resolved.playerId,
+            resolved.source, catacombsCost)
+          _ <- Either.cond(resolved.payment == expectedPayment, (),
+            OathViolation.InvalidEventOrder("Catacombs cost does not match"))
+          expectedPlacement <- PlaceRelicAtSite.plan(catalog, ready,
+            resolved.playerId, resolved.placement.relicId,
+            resolved.source.siteId, Orientation.FaceDown)
+          _ <- Either.cond(resolved.placement == expectedPlacement, (),
+            OathViolation.InvalidEventOrder(
+              "Catacombs relic outcome does not match"))
+          paidState <- PayCosts.evolve(state, expectedPayment)
+          placedState <- PlaceRelicAtSite.evolve(catalog, paidState,
+            expectedPlacement)
+        } yield placedState
+        case _ => Left(OathViolation.GameNotStarted)
+      }
+      case _ => Left(OathViolation.InvalidEventOrder(
+        "Catacombs handler received another Recover power event"))
+    }
   }
 
   object Catacombs extends Power {
-    val id = PowerId("denizen.catacombs")
+    val id = catacombsId
     val modifier = Some(MajorActionType.Recover)
     val handlers: Vector[PowerHandler] = Vector(
       new CatacombsInspectorHandler(PowerWindow.RecoverActionEligibility,

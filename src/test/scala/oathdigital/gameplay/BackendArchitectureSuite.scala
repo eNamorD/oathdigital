@@ -208,6 +208,31 @@ class BackendArchitectureSuite extends munit.FunSuite {
     }
   }
 
+  test("generic power operations are not independently replayable events") {
+    val protocol = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala"))
+    val aggregate = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/OathRules.scala"))
+    val codec = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/serialization/ActionEventCodec.scala"))
+    Vector("CostsPaid", "RelicPlacedAtSite").foreach { name =>
+      assert(!protocol.contains(s"case class $name"))
+      assert(!aggregate.contains(s"case event: $name"))
+      assert(!codec.contains(s"case _: $name"))
+    }
+    assert(protocol.contains("case class CatacombsResolved"))
+  }
+
+  test("Catacombs inspection contains only power-specific applicability") {
+    val source = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/powers/RecoverPowers.scala"))
+    val inspector = source.substring(source.indexOf(
+      "private final class CatacombsInspectorHandler"), source.indexOf(
+      "private object CatacombsExecution"))
+    assert(!inspector.contains("RecoverRules.validate"))
+    assert(!source.contains("GameStateUpdates"))
+  }
+
   test("procedure power inventories use named Power objects, not raw ID tables") {
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
     val offenders = Files.walk(root).iterator.asScala.filter(path =>

@@ -294,6 +294,7 @@ private[application] final class PendingProcedureProjector(
           if context.viewer.contains(r.actor) && r.successful => "recover-relic-decision"
       case Some(_: PendingProcedure.Recover) if recover.nonEmpty => "recover-rolling"
       case Some(_: PendingProcedure.Recover) => "recover-waiting"
+      case Some(_: PendingProcedure.RecoverPowerApplied) => "recover-waiting"
       case Some(_: PendingProcedure.Forge) if forge.nonEmpty => "forge-assignment"
       case Some(_: PendingProcedure.Forge) => "forge-waiting"
       case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"

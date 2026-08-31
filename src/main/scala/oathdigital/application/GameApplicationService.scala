@@ -253,10 +253,12 @@ final class GameApplicationService(
                 s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
                 .getOrElse((inner, ordered) match {
                   case (GameCommand.BeginRecover(player), values) =>
-                    RecoverPowerIntegration.prepare(catalog, ready, player, values,
+                    val decision = DecisionId(s"recover-$nextSequence")
+                    RecoverPowerIntegration.prepare(catalog, ready, player,
+                      decision, values,
                       () => relicDrawPort.prepare(ready)).flatMap(modifier =>
                       rules.handle(state, RecoverCommand.Start(player,
-                        DecisionId(s"recover-$nextSequence"),
+                        decision,
                         defenseDicePort.rollTwo(), modifier)))
                   case _ => applyCommand(state, inner, nextSequence)
                 })

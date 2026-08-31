@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathEvent.RelicPlacedAtSite
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
@@ -29,7 +28,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     (ready, changedActor, siteId, denizenId)
   }
 
-  test("PayCosts places typed resources, burns typed resources, and replays") {
+  test("PayCosts places typed resources, burns typed resources, and evolves") {
     val (ready, actor, siteId, denizenId) = operationReady
     val source = RuleSourceRef.SiteCard(siteId, denizenId)
     val costs = Vector(
@@ -63,6 +62,21 @@ class PowerOperationsSuite extends munit.FunSuite {
         ResourceKind.Secret, 1, CostDisposition.Burn))).isLeft)
   }
 
+  test("PayCosts validates source existence without duplicating power access") {
+    val (ready, actor, siteId, denizenId) = operationReady
+    val site = ready.game.current.map.sites(siteId)
+    val facedown = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(siteId, site.copy(denizens =
+          site.denizens.map {
+            case card: DenizenState => card.copy(orientation = Orientation.FaceDown)
+            case other => other
+          }))))))
+    assert(PayCosts.plan(facedown, actor.player,
+      RuleSourceRef.SiteCard(siteId, denizenId), Vector(ResourceCost(
+        ResourceKind.Secret, 1, CostDisposition.Burn))).isRight)
+  }
+
   test("DrawTopRelic and PlaceRelicAtSite preserve top-card and facedown rules") {
     val (ready, actor, siteId, _) = operationReady
     val relic = DrawTopRelic.plan(ready).toOption.get
@@ -78,7 +92,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     assertEquals(after.game.current.map.sites(siteId).relics,
       Vector(RelicState(relic, Orientation.FaceDown, Tokens.empty)))
     assert(PlaceRelicAtSite.evolve(catalog, Ready(after),
-      RelicPlacedAtSite(actor.player, relic, siteId,
+      RelicPlacement(actor.player, relic, siteId,
         Orientation.FaceDown)).isLeft)
   }
 }

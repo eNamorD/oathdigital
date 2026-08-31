@@ -1,14 +1,16 @@
 package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
-import oathdigital.gameplay.actions.{RecoverCommand, RecoverRules}
+import oathdigital.gameplay.actions.{PreparedRecoverModifier, RecoverCommand,
+  RecoverRules}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.{CostDisposition, ResourceCost, ResourceKind}
+import oathdigital.gameplay.operations.{CostDisposition, ResourceCost,
+  ResourceKind}
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 
 class RecoverSuite extends munit.FunSuite {
@@ -144,13 +146,14 @@ class RecoverSuite extends munit.FunSuite {
 
     val decision = DecisionId("recover-catacombs")
     val contribution = RecoverPowerIntegration.prepare(catalog, ready, actor.player,
+      decision,
       Vector(OrderedRuleInvocation(source, "denizen.catacombs")),
       () => Right(relicId)).toOption.get
     val started = rules.handle(Ready(ready), RecoverCommand.Start(actor.player,
       decision, Vector(DefenseDieFace.Blank, DefenseDieFace.OneShield),
       contribution)).toOption.get
-    assertEquals(started.events.take(3).map(_.getClass.getSimpleName),
-      Vector("CostsPaid", "RelicPlacedAtSite", "RecoverRolled"))
+    assertEquals(started.events.take(2).map(_.getClass.getSimpleName),
+      Vector("CatacombsResolved", "RecoverRolled"))
     val Ready(after) = started.state: @unchecked
     assertEquals(after.game.current.commonCards.relicDeck,
       ready.game.current.commonCards.relicDeck.tail)
@@ -164,16 +167,58 @@ class RecoverSuite extends munit.FunSuite {
       Vector(DefenseDieFace.Blank, DefenseDieFace.Blank), None)).isLeft)
   }
 
-  test("Catacombs operation replay rejects wrong top relic source and overpayment") {
+  test("Catacombs replay rejects wrong power source window cost relic and slot atomically") {
     val (ready, actor, siteId, cardId, relicId) = catacombsReady
-    assert(rules.evolve(Ready(ready), RelicPlacedAtSite(actor.player,
-      RelicId("wrong"), siteId, Orientation.FaceDown)).isLeft)
-    assert(rules.evolve(Ready(ready), CostsPaid(actor.player,
-      RuleSourceRef.SiteCard(siteId, DenizenId("wrong")), Vector(ResourceCost(
-        ResourceKind.Secret, 1, CostDisposition.PlaceOnSource)))).isLeft)
-    assert(rules.evolve(Ready(ready), CostsPaid(actor.player,
-      RuleSourceRef.SiteCard(siteId, cardId), Vector(ResourceCost(
-        ResourceKind.Secret, actor.board.faceUpSecrets + 1,
-        CostDisposition.PlaceOnSource)))).isLeft)
+    val decision = DecisionId("recover-catacombs-replay")
+    val source = RuleSourceRef.SiteCard(siteId, cardId)
+    val Some(PreparedRecoverModifier(Vector(valid: CatacombsResolved))) =
+      RecoverPowerIntegration.prepare(catalog, ready, actor.player, decision,
+        Vector(OrderedRuleInvocation(source, "denizen.catacombs")),
+        () => Right(relicId)).toOption.get: @unchecked
+    val original = Ready(ready)
+    def rejects(event: CatacombsResolved, state: OathState = original) = {
+      assert(rules.evolve(state, event).isLeft)
+      assertEquals(original, Ready(ready))
+    }
+    rejects(valid.copy(powerId = PowerId("denizen.relic-worship")))
+    rejects(valid.copy(source = source.copy(id = DenizenId("wrong"))))
+    rejects(valid.copy(payment = valid.payment.copy(costs = Vector(ResourceCost(
+      ResourceKind.Secret, actor.board.faceUpSecrets + 1,
+      CostDisposition.PlaceOnSource)))))
+    rejects(valid.copy(placement = valid.placement.copy(
+      relicId = RelicId("wrong"))))
+    val wake = Ready(ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(turn = ready.game.current.turn.copy(
+        phase = Phase.Wake)))))
+    rejects(valid, wake)
+    val unaffordableActor = actor.copy(board = actor.board.copy(faceUpSecrets = 0))
+    val unaffordable = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(players = ready.game.current.players.map(p =>
+        if (p.player == actor.player) unaffordableActor else p))))
+    rejects(valid, Ready(unaffordable))
+    val site = ready.game.current.map.sites(siteId)
+    val slots = catalog.sites.find(_.id == siteId).get.relicSlots
+    val occupiedReady = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(siteId, site.copy(relics =
+          Vector.tabulate(slots)(index => RelicState(RelicId(s"occupied-$index"),
+            Orientation.FaceDown, Tokens.empty))))))))
+    rejects(valid, Ready(occupiedReady))
+    val applied = rules.evolve(original, valid).toOption.get
+    val Ready(after) = applied: @unchecked
+    assertEquals(after.game.current.players.find(_.player == actor.player).get
+      .board.faceUpSecrets, actor.board.faceUpSecrets - 1)
+    assertEquals(after.game.current.map.sites(siteId).relics.map(_.id),
+      Vector(relicId))
+    assert(after.game.current.pending.exists(
+      _.isInstanceOf[PendingProcedure.RecoverPowerApplied]))
+    val partial = new GameProjector(catalog).project("partial-catacombs",
+      LoadedGame(applied, 1), actor.player)
+    assertEquals(partial.phase, "recover-waiting")
+    assertEquals(partial.legalControls, Vector.empty)
+    assert(rules.evolve(applied, valid).isLeft)
+    assert(rules.evolve(applied, RecoverRolled(actor.player,
+      DecisionId("wrong-decision"), siteId, 1,
+      Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))).isLeft)
   }
 }

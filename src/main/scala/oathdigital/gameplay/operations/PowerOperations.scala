@@ -26,6 +26,10 @@ final case class ResourceCost(resource: ResourceKind, amount: Int,
 }
 final case class CostDescription(resource: String, amount: Int,
     disposition: String)
+final case class Payment(playerId: PlayerId, source: RuleSourceRef,
+    costs: Vector[ResourceCost])
+final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
+    siteId: SiteId, orientation: Orientation)
 
 object PayCosts {
   def describe(costs: Vector[ResourceCost]): Vector[CostDescription] =
@@ -37,29 +41,29 @@ object PayCosts {
     validate(ready, actor, source, costs).isRight
 
   def plan(ready: ReadyGame, actor: PlayerId, source: RuleSourceRef,
-      costs: Vector[ResourceCost]): Either[OathViolation, OathEvent.CostsPaid] =
+      costs: Vector[ResourceCost]): Either[OathViolation, Payment] =
     validate(ready, actor, source, costs).map(_ =>
-      OathEvent.CostsPaid(actor, source, costs))
+      Payment(actor, source, costs))
 
-  def evolve(state: OathState, event: OathEvent.CostsPaid)
+  def evolve(state: OathState, payment: Payment)
       : Either[OathViolation, OathState] = state match {
-    case Ready(ready) => validate(ready, event.playerId, event.source,
-      event.costs).map { _ =>
-      val favor = event.costs.filter(_.resource == ResourceKind.Favor).map(_.amount).sum
-      val secrets = event.costs.filter(_.resource == ResourceKind.Secret).map(_.amount).sum
-      val placedFavor = event.costs.filter(c => c.resource == ResourceKind.Favor &&
+    case Ready(ready) => validate(ready, payment.playerId, payment.source,
+      payment.costs).map { _ =>
+      val favor = payment.costs.filter(_.resource == ResourceKind.Favor).map(_.amount).sum
+      val secrets = payment.costs.filter(_.resource == ResourceKind.Secret).map(_.amount).sum
+      val placedFavor = payment.costs.filter(c => c.resource == ResourceKind.Favor &&
         c.disposition == CostDisposition.PlaceOnSource).map(_.amount).sum
-      val placedSecrets = event.costs.filter(c => c.resource == ResourceKind.Secret &&
+      val placedSecrets = payment.costs.filter(c => c.resource == ResourceKind.Secret &&
         c.disposition == CostDisposition.PlaceOnSource).map(_.amount).sum
       val current = ready.game.current
       Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
         players = current.players.map { player =>
-          val paid = if (player.player != event.playerId) player else player.copy(
+          val paid = if (player.player != payment.playerId) player else player.copy(
             board = player.board.copy(favor = player.board.favor - favor,
               faceUpSecrets = player.board.faceUpSecrets - secrets))
-          updateOwnedSource(paid, event.source, placedFavor, placedSecrets)
+          updateOwnedSource(paid, payment.source, placedFavor, placedSecrets)
         },
-        map = updateSiteSource(current.map, event.source, placedFavor, placedSecrets))))
+        map = updateSiteSource(current.map, payment.source, placedFavor, placedSecrets))))
     }
     case _ => Left(GameNotStarted)
   }
@@ -77,48 +81,41 @@ object PayCosts {
       InsufficientFavor(favor, player.board.favor))
     _ <- Either.cond(player.board.faceUpSecrets >= secrets, (),
       InsufficientSecrets(secrets, player.board.faceUpSecrets))
-    _ <- Either.cond(sourceAccessible(ready, actor, source), (),
-      InvalidEventOrder("cost source is not accessible to the paying player"))
+    _ <- Either.cond(sourceExists(ready, source), (),
+      InvalidEventOrder("cost source does not exist"))
     places = costs.exists(_.disposition == CostDisposition.PlaceOnSource)
-    _ <- Either.cond(!places || tokenBearingAccessible(ready, actor, source), (),
-      InvalidEventOrder("placed cost source is not an accessible token-bearing card"))
+    _ <- Either.cond(!places || tokenBearing(source), (),
+      InvalidEventOrder("placed cost source is not a token-bearing card"))
   } yield ()
 
-  private def tokenBearingAccessible(ready: ReadyGame, actor: PlayerId,
-      source: RuleSourceRef): Boolean = sourceAccessible(ready, actor, source) &&
-    (source match {
+  private def tokenBearing(source: RuleSourceRef): Boolean = source match {
       case _: RuleSourceRef.SiteCard | _: RuleSourceRef.Edifice |
           _: RuleSourceRef.Adviser | _: RuleSourceRef.Relic |
           _: RuleSourceRef.SiteRelic => true
       case _ => false
-    })
+    }
 
-  private def sourceAccessible(ready: ReadyGame, actor: PlayerId,
+  private def sourceExists(ready: ReadyGame,
       source: RuleSourceRef): Boolean = {
     val current = ready.game.current
-    val player = current.players.find(_.player == actor)
     source match {
-      case RuleSourceRef.SiteCard(site, id) => player.flatMap(_.pawnSite).contains(site) &&
-        current.map.sites.get(site).exists(_.denizens.exists {
-          case d: DenizenState => d.id == id && d.orientation == Orientation.FaceUp
-          case _ => false })
-      case RuleSourceRef.Edifice(site, id) => player.flatMap(_.pawnSite).contains(site) &&
-        current.map.sites.get(site).exists(_.denizens.exists {
-          case e: EdificeState => e.id == id && e.side == EdificeSide.Intact
-          case _ => false })
-      case RuleSourceRef.Adviser(owner, id) => owner == actor && player.exists(
-        _.advisers.exists { case d: DenizenState => d.id == id &&
-          d.orientation == Orientation.FaceUp; case _ => false })
-      case RuleSourceRef.Relic(owner, id) => owner == actor && player.exists(
-        _.relics.exists(r => r.id == id && r.orientation == Orientation.FaceUp))
-      case RuleSourceRef.SiteRelic(site, id) => player.flatMap(_.pawnSite).contains(site) &&
-        current.map.sites.get(site).exists(_.relics.exists(r =>
-          r.id == id && r.orientation == Orientation.FaceUp))
-      case RuleSourceRef.Site(site) => player.flatMap(_.pawnSite).contains(site)
-      case RuleSourceRef.Banner(_) | RuleSourceRef.Foundation(_) => true
-      case RuleSourceRef.Legacy(lineage, id) => player.exists(p =>
-        p.lineage == lineage && ready.game.campaign.lineages.get(lineage)
-          .exists(_.legacies.exists(l => l.id == id && l.active)))
+      case RuleSourceRef.SiteCard(site, id) => current.map.sites.get(site)
+        .exists(_.denizens.exists(_.id == id))
+      case RuleSourceRef.Edifice(site, id) => current.map.sites.get(site)
+        .exists(_.denizens.exists(_.id == id))
+      case RuleSourceRef.Adviser(owner, id) => current.players.find(
+        _.player == owner).exists(_.advisers.exists(_.id == id))
+      case RuleSourceRef.Relic(owner, id) => current.players.find(
+        _.player == owner).exists(_.relics.exists(_.id == id))
+      case RuleSourceRef.SiteRelic(site, id) => current.map.sites.get(site)
+        .exists(_.relics.exists(_.id == id))
+      case RuleSourceRef.Site(site) => current.map.sites.contains(site)
+      case RuleSourceRef.Banner(id) => id == "peoples-favor" ||
+        id == "darkest-secret"
+      case RuleSourceRef.Foundation(number) =>
+        ready.game.campaign.foundations.contains(number)
+      case RuleSourceRef.Legacy(lineage, id) => ready.game.campaign.lineages
+        .get(lineage).exists(_.legacies.exists(_.id == id))
       case RuleSourceRef.GameRule(_) => true
     }
   }
@@ -171,22 +168,22 @@ object DrawTopRelic {
 object PlaceRelicAtSite {
   def plan(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       relic: RelicId, site: SiteId, orientation: Orientation)
-      : Either[OathViolation, OathEvent.RelicPlacedAtSite] = for {
+      : Either[OathViolation, RelicPlacement] = for {
     _ <- validate(catalog, ready, relic, site, orientation)
-  } yield OathEvent.RelicPlacedAtSite(actor, relic, site, orientation)
+  } yield RelicPlacement(actor, relic, site, orientation)
 
   def evolve(catalog: ExecutableCatalog, state: OathState,
-      event: OathEvent.RelicPlacedAtSite): Either[OathViolation, OathState] = state match {
-    case Ready(ready) => validate(catalog, ready, event.relicId, event.siteId,
-      event.orientation).map { _ =>
+      placement: RelicPlacement): Either[OathViolation, OathState] = state match {
+    case Ready(ready) => validate(catalog, ready, placement.relicId,
+      placement.siteId, placement.orientation).map { _ =>
       val current = ready.game.current
-      val site = current.map.sites(event.siteId)
+      val site = current.map.sites(placement.siteId)
       Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
         commonCards = current.commonCards.copy(
           relicDeck = current.commonCards.relicDeck.tail),
-        map = current.map.copy(sites = current.map.sites.updated(event.siteId,
-          site.copy(relics = site.relics :+ RelicState(event.relicId,
-            event.orientation, Tokens.empty)))))))
+        map = current.map.copy(sites = current.map.sites.updated(placement.siteId,
+          site.copy(relics = site.relics :+ RelicState(placement.relicId,
+            placement.orientation, Tokens.empty)))))))
     }
     case _ => Left(GameNotStarted)
   }

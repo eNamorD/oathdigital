@@ -12,7 +12,8 @@ resolver and reviewed pre-alpha fallback are complete. Add actual powers increme
 through those typed source, invocation, timing, decision, event, and replay
 boundaries; keep unknown relevant handlers explicit. Catacombs is the first
 complete slice: its selected Recover modifier pays and places a facedown relic,
-then delegates entirely to ordinary Recover rolling and choice.
+records one replay-validated procedure outcome, then delegates entirely to the
+matching ordinary Recover roll and choice.
 
 ## Next
 
