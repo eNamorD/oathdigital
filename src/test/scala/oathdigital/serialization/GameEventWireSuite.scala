@@ -337,6 +337,30 @@ class GameEventWireSuite extends munit.FunSuite {
       GameEventWire.RestStartedType, GameEventWire.RestCompletedType))
   }
 
+  test("League Treaty events round-trip typed sources allocations and ownership") {
+    val actor = PlayerId("red")
+    val owner = PlayerId("blue")
+    val decision = DecisionId("rest-league")
+    val power = PowerId("denizen.league-treaty")
+    val source = SiteDenizenTarget(SiteId("site-a"), DenizenId("237"))
+    val favorSources = Vector[SiteFavorSource](
+      SiteFavorSource.Denizen(SiteId("site-a"), DenizenId("237")),
+      SiteFavorSource.Edifice(SiteId("site-b"), EdificeId("E1")),
+      SiteFavorSource.Relic(SiteId("site-b"), 0))
+    val events = Vector[OathEvent](
+      OathEvent.LeagueTreatyDecisionStarted(actor, decision, power, source,
+        owner, Vector.empty, favorSources, Suit.all),
+      OathEvent.LeagueTreatyResolved(actor, decision, power, source, owner,
+        Vector(FavorAllocation(favorSources.head, 1),
+          FavorAllocation(favorSources.last, 2)), Suit.Hearth),
+      OathEvent.LeagueTreatyDeclined(actor, decision, power, source, owner))
+    events.zipWithIndex.foreach { case (event, index) =>
+      val encoded = GameEventWire.encodeEvent("rest-power", catalogRef,
+        index.toLong, event).toOption.get
+      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    }
+  }
+
   test("v5 Rest numeric facts require exact non-negative Int values") {
     def restValue(): ujson.Obj = GameEventWire.encodeEvent(
       "rest", catalogRef, 0L,

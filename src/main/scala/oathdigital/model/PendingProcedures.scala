@@ -39,6 +39,37 @@ final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
   def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
 }
 
+/** A card at a site that can hold favor during a Rest power decision. */
+sealed trait SiteFavorSource extends Product with Serializable {
+  def siteId: SiteId
+  def stableKey: String
+}
+object SiteFavorSource {
+  final case class Denizen(siteId: SiteId, id: DenizenId)
+      extends SiteFavorSource {
+    def stableKey: String = s"site:${siteId.value}:denizen:${id.value}"
+  }
+  final case class Edifice(siteId: SiteId, id: EdificeId)
+      extends SiteFavorSource {
+    def stableKey: String = s"site:${siteId.value}:edifice:${id.value}"
+  }
+  final case class Relic(siteId: SiteId, slot: Int)
+      extends SiteFavorSource {
+    require(slot >= 0, "site relic slot must be non-negative")
+    def stableKey: String = s"site:${siteId.value}:relic-slot:$slot"
+  }
+}
+
+final case class FavorAllocation(source: SiteFavorSource, amount: Int) {
+  require(amount > 0, "favor allocation must be positive")
+}
+
+/** Stable identity and dynamic owner for one selected Rest hook. */
+final case class RestPowerInvocationRef(
+    powerId: PowerId,
+    source: SiteDenizenTarget,
+    decisionOwner: PlayerId)
+
 sealed trait ForgeResource extends Product with Serializable { def key: String }
 object ForgeResource {
   case object Favor extends ForgeResource { val key = "favor" }
@@ -287,6 +318,30 @@ object PendingProcedure {
       site: SiteId,
       powerId: PowerId
   ) extends PendingProcedure
+
+  final case class RestPowerDecision(
+      decision: DecisionId,
+      restActor: PlayerId,
+      current: RestPowerInvocationRef,
+      remaining: Vector[RestPowerInvocationRef],
+      eligibleSources: Vector[SiteFavorSource],
+      legalBanks: Vector[Suit]
+  ) extends PendingProcedure {
+    require(eligibleSources.nonEmpty &&
+      eligibleSources.map(_.stableKey).distinct.size == eligibleSources.size,
+      "Rest power favor sources must be non-empty and distinct")
+    require(legalBanks.nonEmpty && legalBanks.distinct.size == legalBanks.size,
+      "Rest power favor banks must be non-empty and distinct")
+  }
+
+  /** Internal replay marker between deterministically ordered Rest hooks. */
+  final case class RestPowerContinuation(
+      decision: DecisionId,
+      restActor: PlayerId,
+      remaining: Vector[RestPowerInvocationRef]
+  ) extends PendingProcedure {
+    require(remaining.nonEmpty, "Rest power continuation must have remaining hooks")
+  }
 
   final case class Forge(
       decision: DecisionId,

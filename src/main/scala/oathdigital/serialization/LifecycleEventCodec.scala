@@ -16,6 +16,9 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
       case _: WealthTaken => TakeWealthType
       case _: WakeEnded => WakeEndedType
       case _: RestStarted => RestStartedType
+      case _: LeagueTreatyDecisionStarted => LeagueTreatyDecisionStartedType
+      case _: LeagueTreatyResolved => LeagueTreatyResolvedType
+      case _: LeagueTreatyDeclined => LeagueTreatyDeclinedType
       case _: RestCompleted => RestCompletedType
       case _: IgnoredRulesRecorded => IgnoredRulesRecordedType
   }
@@ -45,6 +48,32 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
       case WakeEnded(playerId) =>
         ujson.Obj("playerId" -> playerId.value)
       case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
+      case value: LeagueTreatyDecisionStarted => ujson.Obj(
+        "restActorPlayerId" -> value.restActor.value,
+        "decisionId" -> value.decision.value,
+        "powerId" -> value.powerId.value,
+        "source" -> encodeTreatySource(value.source),
+        "decisionOwnerPlayerId" -> value.decisionOwner.value,
+        "remaining" -> ujson.Arr.from(value.remaining.map(encodeRestInvocation)),
+        "eligibleSources" -> ujson.Arr.from(
+          value.eligibleSources.map(encodeFavorSource)),
+        "legalBanks" -> stringArray(value.legalBanks.map(_.key)))
+      case value: LeagueTreatyResolved => ujson.Obj(
+        "restActorPlayerId" -> value.restActor.value,
+        "decisionId" -> value.decision.value,
+        "powerId" -> value.powerId.value,
+        "source" -> encodeTreatySource(value.source),
+        "decisionOwnerPlayerId" -> value.decisionOwner.value,
+        "allocations" -> ujson.Arr.from(value.allocations.map(allocation =>
+          ujson.Obj("source" -> encodeFavorSource(allocation.source),
+            "amount" -> allocation.amount))),
+        "destinationBank" -> value.destinationBank.key)
+      case value: LeagueTreatyDeclined => ujson.Obj(
+        "restActorPlayerId" -> value.restActor.value,
+        "decisionId" -> value.decision.value,
+        "powerId" -> value.powerId.value,
+        "source" -> encodeTreatySource(value.source),
+        "decisionOwnerPlayerId" -> value.decisionOwner.value)
       case RestCompleted(playerId, favor, secrets, supply, active, round, limited) =>
         ujson.Obj(
           "playerId" -> playerId.value,
@@ -115,6 +144,39 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           Right(WakeEnded(PlayerId(payload("playerId").str)))
         case RestStartedType =>
           Right(RestStarted(PlayerId(payload("playerId").str)))
+        case LeagueTreatyDecisionStartedType => for {
+          source <- decodeTreatySource(payload("source"), s"$path.source")
+          remaining <- traverse(payload("remaining").arr.toVector)(value =>
+            decodeRestInvocation(value, s"$path.remaining"))
+          eligible <- traverse(payload("eligibleSources").arr.toVector)(value =>
+            decodeFavorSource(value, s"$path.eligibleSources"))
+          banks <- traverse(payload("legalBanks").arr.toVector)(value =>
+            decodeSuit(value.str, s"$path.legalBanks"))
+        } yield LeagueTreatyDecisionStarted(
+          PlayerId(payload("restActorPlayerId").str),
+          DecisionId(payload("decisionId").str), PowerId(payload("powerId").str),
+          source, PlayerId(payload("decisionOwnerPlayerId").str), remaining,
+          eligible, banks)
+        case LeagueTreatyResolvedType => for {
+          source <- decodeTreatySource(payload("source"), s"$path.source")
+          allocations <- traverse(payload("allocations").arr.toVector) { value =>
+            for {
+              source <- decodeFavorSource(value("source"),
+                s"$path.allocations.source")
+              amount <- safeIntField(value.obj, "amount", s"$path.allocations")
+            } yield FavorAllocation(source, amount)
+          }
+          bank <- decodeSuit(payload("destinationBank").str,
+            s"$path.destinationBank")
+        } yield LeagueTreatyResolved(
+          PlayerId(payload("restActorPlayerId").str),
+          DecisionId(payload("decisionId").str), PowerId(payload("powerId").str),
+          source, PlayerId(payload("decisionOwnerPlayerId").str), allocations, bank)
+        case LeagueTreatyDeclinedType => decodeTreatySource(payload("source"),
+          s"$path.source").map(source => LeagueTreatyDeclined(
+          PlayerId(payload("restActorPlayerId").str),
+          DecisionId(payload("decisionId").str), PowerId(payload("powerId").str),
+          source, PlayerId(payload("decisionOwnerPlayerId").str)))
         case RestCompletedType =>
           val favorObject = payload("returnedFavor").obj
           val favor = favorObject.toVector.map { case (key, value) =>
@@ -159,4 +221,43 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
     }
     decoder.lift(eventType)
   }
+
+  private def encodeTreatySource(value: SiteDenizenTarget) = ujson.Obj(
+    "siteId" -> value.siteId.value, "denizenId" -> value.denizenId.value)
+
+  private def decodeTreatySource(value: ujson.Value, path: String) =
+    Right(SiteDenizenTarget(SiteId(value("siteId").str),
+      DenizenId(value("denizenId").str)))
+
+  private def encodeRestInvocation(value: RestPowerInvocationRef) = ujson.Obj(
+    "powerId" -> value.powerId.value,
+    "source" -> encodeTreatySource(value.source),
+    "decisionOwnerPlayerId" -> value.decisionOwner.value)
+
+  private def decodeRestInvocation(value: ujson.Value, path: String) =
+    decodeTreatySource(value("source"), s"$path.source").map(source =>
+      RestPowerInvocationRef(PowerId(value("powerId").str), source,
+        PlayerId(value("decisionOwnerPlayerId").str)))
+
+  private def encodeFavorSource(value: SiteFavorSource): ujson.Value = value match {
+    case SiteFavorSource.Denizen(site, id) => ujson.Obj(
+      "kind" -> "denizen", "siteId" -> site.value, "cardId" -> id.value)
+    case SiteFavorSource.Edifice(site, id) => ujson.Obj(
+      "kind" -> "edifice", "siteId" -> site.value, "cardId" -> id.value)
+    case SiteFavorSource.Relic(site, slot) => ujson.Obj(
+      "kind" -> "relic-slot", "siteId" -> site.value, "slot" -> slot)
+  }
+
+  private def decodeFavorSource(value: ujson.Value, path: String)
+      : Either[WireError, SiteFavorSource] = value("kind").str match {
+    case "denizen" => Right(SiteFavorSource.Denizen(
+      SiteId(value("siteId").str), DenizenId(value("cardId").str)))
+    case "edifice" => Right(SiteFavorSource.Edifice(
+      SiteId(value("siteId").str), EdificeId(value("cardId").str)))
+    case "relic-slot" => safeIntField(value.obj, "slot", path).map(slot =>
+      SiteFavorSource.Relic(SiteId(value("siteId").str), slot))
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown Rest favor source '$other'"))
+  }
+
 }

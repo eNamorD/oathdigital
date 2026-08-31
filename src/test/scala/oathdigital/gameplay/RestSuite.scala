@@ -326,4 +326,123 @@ class RestSuite extends munit.FunSuite {
         Ready(unsupported), 30L), last)
     assert(projection.legalControls.contains("beginRest"))
   }
+
+  test("League Treaty gives its off-turn ruler an atomic optional Rest decision") {
+    val base = act
+    val restActor = base.game.current.turn.activePlayer
+    val owner = base.game.current.players.find(_.player != restActor).get
+    val regionSites = base.game.current.map.cradle
+    val treatySite = regionSites.head
+    val otherSite = regionSites(1)
+    val treaty = DenizenState(DenizenId("237"), Orientation.FaceUp, Tokens(1, 0))
+    val denizen = DenizenState(DenizenId(catalog.denizens.find(
+      _.id.value != "237").get.id.value), Orientation.FaceUp, Tokens(2, 0))
+    val edifice = EdificeState(EdificeId(catalog.edifices.head.id.value),
+      EdificeSide.Ruined, Tokens(3, 0))
+    val relic = RelicState(RelicId(catalog.relics.head.id.value),
+      Orientation.FaceDown, Tokens(4, 0))
+    val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
+      map = base.game.current.map.copy(sites = base.game.current.map.sites
+        .updated(treatySite, base.game.current.map.sites(treatySite).copy(
+          forces = SiteForces.Occupied(ForceKind.Exile(owner.lineage), 1),
+          denizens = Vector(treaty)))
+        .updated(otherSite, base.game.current.map.sites(otherSite).copy(
+          denizens = Vector(denizen, edifice), relics = Vector(relic)))))))
+
+    val started = rules.handle(Ready(prepared), RestCommand.Begin(restActor))
+      .toOption.get
+    val offered = started.events.last
+      .asInstanceOf[OathEvent.LeagueTreatyDecisionStarted]
+    assertEquals(offered.decisionOwner, owner.player)
+    assertEquals(offered.restActor, restActor)
+    assertEquals(offered.eligibleSources, Vector(
+      SiteFavorSource.Denizen(treatySite, treaty.id),
+      SiteFavorSource.Denizen(otherSite, denizen.id),
+      SiteFavorSource.Edifice(otherSite, edifice.id),
+      SiteFavorSource.Relic(otherSite, 0)))
+    assertEquals(started.continue,
+      OathContinue.AwaitingRestPowerDecision(owner.player, offered.decision))
+    val projector = new oathdigital.application.GameProjector(catalog)
+    val loaded = oathdigital.application.LoadedGame(started.state, 12L)
+    val ownerView = projector.project("league", loaded, owner.player)
+    assertEquals(ownerView.phase, "rest-power-decision")
+    assertEquals(ownerView.restPower.map(_.decisionOwnerPlayerId),
+      Some(owner.player.value))
+    assertEquals(ownerView.restPower.toVector.flatMap(_.sources)
+      .map(_.availableFavor), Vector(1, 2, 3, 4))
+    assertEquals(ownerView.restPower.toVector.flatMap(_.sources).lastOption
+      .map(source => source.kind -> source.label),
+      Some("relic-slot" -> "Facedown relic 1"))
+    assert(!ownerView.restPower.toVector.flatMap(_.sources)
+      .exists(_.sourceId == relic.id.value))
+    val actorView = projector.project("league", loaded, restActor)
+    assertEquals(actorView.phase, "rest-power-waiting")
+    assertEquals(actorView.restPower, None)
+    assert(actorView.restPowerWaiting)
+    assert(!actorView.legalControls.contains("finishRest"))
+
+    val allocations = Vector(
+      FavorAllocation(SiteFavorSource.Denizen(otherSite, denizen.id), 1),
+      FavorAllocation(SiteFavorSource.Edifice(otherSite, edifice.id), 2),
+      FavorAllocation(SiteFavorSource.Relic(otherSite, 0), 4))
+    assert(rules.handle(started.state, RestCommand.ResolvePower(restActor,
+      offered.decision, allocations, Suit.Beast)).isLeft)
+    assert(rules.handle(started.state, RestCommand.ResolvePower(owner.player,
+      offered.decision, Vector(FavorAllocation(
+        SiteFavorSource.Denizen(otherSite, denizen.id), 3)), Suit.Beast)).isLeft)
+    val Ready(pendingReady) = started.state: @unchecked
+    val changedRuler = pendingReady.copy(game = pendingReady.game.copy(current =
+      pendingReady.game.current.copy(map = pendingReady.game.current.map.copy(
+        sites = pendingReady.game.current.map.sites.updated(treatySite,
+          pendingReady.game.current.map.sites(treatySite).copy(
+            forces = SiteForces.Occupied(ForceKind.Bandit, 1)))))))
+    assert(rules.handle(Ready(changedRuler), RestCommand.ResolvePower(owner.player,
+      offered.decision, allocations, Suit.Beast)).isLeft)
+    val declined = rules.handle(started.state, RestCommand.DeclinePower(owner.player,
+      offered.decision)).toOption.get
+    assertEquals(declined.continue, OathContinue.AwaitingRestAction(restActor))
+    val Ready(declinedReady) = declined.state: @unchecked
+    assert(declinedReady.game.current.pending.isEmpty)
+    val resolved = rules.handle(started.state, RestCommand.ResolvePower(owner.player,
+      offered.decision, allocations, Suit.Beast)).toOption.get
+    val Ready(after) = resolved.state: @unchecked
+    val site = after.game.current.map.sites(otherSite)
+    assertEquals(site.denizens.collectFirst {
+      case value: DenizenState => value.tokens.favor }, Some(1))
+    assertEquals(site.denizens.collectFirst {
+      case value: EdificeState => value.tokens.favor }, Some(1))
+    assertEquals(site.relics.head.tokens.favor, 0)
+    assertEquals(after.support.favorBanks(Suit.Beast),
+      prepared.support.favorBanks(Suit.Beast) + 7)
+    assertEquals(resolved.continue, OathContinue.AwaitingRestAction(restActor))
+    assertEquals(after.game.current.pending, None)
+    val replayed = (started.events ++ resolved.events).foldLeft[
+      Either[OathViolation, OathState]](Right(Ready(prepared))) {
+      case (state, event) => state.flatMap(rules.evolve(_, event))
+    }
+    assertEquals(replayed, Right(resolved.state))
+    assert(rules.handle(resolved.state, RestCommand.ResolvePower(owner.player,
+      offered.decision, allocations, Suit.Beast)).isLeft)
+  }
+
+  test("League Treaty is omitted without a player ruler or regional favor") {
+    val base = act
+    val actor = base.game.current.turn.activePlayer
+    val siteId = base.game.current.map.cradle.head
+    def begin(forces: SiteForces, favor: Int) = {
+      val treaty = DenizenState(DenizenId("237"), Orientation.FaceUp,
+        Tokens(favor, 0))
+      val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
+        map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
+          siteId, base.game.current.map.sites(siteId).copy(forces = forces,
+            denizens = Vector(treaty)))))))
+      rules.handle(Ready(prepared), RestCommand.Begin(actor)).toOption.get
+    }
+    assert(!begin(SiteForces.Occupied(ForceKind.Bandit, 1), 1).events
+      .exists(_.isInstanceOf[OathEvent.LeagueTreatyDecisionStarted]))
+    val owner = base.game.current.players.head
+    val noFavor = begin(SiteForces.Occupied(ForceKind.Exile(owner.lineage), 1), 0)
+    assert(!noFavor.events.exists(_.isInstanceOf[
+      OathEvent.LeagueTreatyDecisionStarted]))
+  }
 }

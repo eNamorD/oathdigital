@@ -9,11 +9,17 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.powers.RestPowers
 
 sealed trait RestCommand extends Product with Serializable
 object RestCommand {
   final case class Begin(playerId: PlayerId) extends RestCommand
   final case class Finish(playerId: PlayerId) extends RestCommand
+  final case class ResolvePower(playerId: PlayerId, decision: DecisionId,
+      allocations: Vector[FavorAllocation], destinationBank: Suit)
+      extends RestCommand
+  final case class DeclinePower(playerId: PlayerId, decision: DecisionId)
+      extends RestCommand
 }
 
 trait WarExhaustionRandomPort {
@@ -46,7 +52,11 @@ object Rest {
     case RestCommand.Begin(playerId) =>
       validateBegin(catalog, state, playerId).flatMap(_ =>
         transition(catalog, state, Vector(RestStarted(playerId)),
-          AwaitingRestAction(playerId)))
+          AwaitingRestAction(playerId))).flatMap { started =>
+          RestPowers.begin(catalog, started.state, playerId).map { powers =>
+            powers.copy(events = started.events ++ powers.events)
+          }
+        }
     case RestCommand.Finish(playerId) =>
       validateRest(catalog, state, playerId).flatMap { ready =>
         expected(catalog, ready, playerId).flatMap { event =>
@@ -57,6 +67,10 @@ object Rest {
           }
         }
       }
+    case RestCommand.ResolvePower(playerId, decision, allocations, bank) =>
+      RestPowers.resolve(catalog, state, playerId, decision, allocations, bank)
+    case RestCommand.DeclinePower(playerId, decision) =>
+      RestPowers.decline(catalog, state, playerId, decision)
   }
 
   def evolve(catalog: ExecutableCatalog, state: OathState, event: OathEvent)
@@ -76,6 +90,7 @@ object Rest {
               Ready(applyCompletion(ready, recorded)))
         }
       }
+    case power: RestPowerEvent => RestPowers.evolve(catalog, state, power)
     case _ => Left(InvalidEventOrder("Rest received a non-Rest event"))
   }
 

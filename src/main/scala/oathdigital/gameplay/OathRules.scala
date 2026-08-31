@@ -298,6 +298,7 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: CampaignRaidPawnRelocated => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
       case event: RestStarted => Rest.evolve(catalog, state, event)
+      case event: RestPowerEvent => Rest.evolve(catalog, state, event)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
       case event: OathkeeperChanged => StateBasedEvaluation.evolve(catalog, state, event)

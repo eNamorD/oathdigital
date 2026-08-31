@@ -12,6 +12,11 @@ sealed trait RecoverPowerEvent extends OathEvent {
   def source: RuleSourceRef.SiteCard
   final def siteId: SiteId = source.siteId
 }
+sealed trait RestPowerEvent extends OathEvent {
+  def restActor: PlayerId
+  def decision: DecisionId
+  def powerId: PowerId
+}
 object OathEvent {
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
@@ -239,6 +244,32 @@ object OathEvent {
   ) extends OathEvent
   final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
   final case class RestStarted(playerId: PlayerId) extends OathEvent
+  final case class LeagueTreatyDecisionStarted(
+      restActor: PlayerId,
+      decision: DecisionId,
+      powerId: PowerId,
+      source: SiteDenizenTarget,
+      decisionOwner: PlayerId,
+      remaining: Vector[RestPowerInvocationRef],
+      eligibleSources: Vector[SiteFavorSource],
+      legalBanks: Vector[Suit]
+  ) extends RestPowerEvent
+  final case class LeagueTreatyResolved(
+      restActor: PlayerId,
+      decision: DecisionId,
+      powerId: PowerId,
+      source: SiteDenizenTarget,
+      decisionOwner: PlayerId,
+      allocations: Vector[FavorAllocation],
+      destinationBank: Suit
+  ) extends RestPowerEvent
+  final case class LeagueTreatyDeclined(
+      restActor: PlayerId,
+      decision: DecisionId,
+      powerId: PowerId,
+      source: SiteDenizenTarget,
+      decisionOwner: PlayerId
+  ) extends RestPowerEvent
   final case class RestCompleted(
       playerId: PlayerId,
       returnedFavor: Map[Suit, Int],

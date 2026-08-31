@@ -38,6 +38,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val SearchStartedType = "gameplay.search-started"
   val SearchCompletedType = "gameplay.search-completed"
   val RestStartedType = "gameplay.rest-started"
+  val LeagueTreatyDecisionStartedType =
+    "gameplay.league-treaty-decision-started"
+  val LeagueTreatyResolvedType = "gameplay.league-treaty-resolved"
+  val LeagueTreatyDeclinedType = "gameplay.league-treaty-declined"
   val RestCompletedType = "gameplay.rest-completed"
   val RecoverRolledType = "gameplay.recover-rolled"
   val CatacombsResolvedType = "gameplay.catacombs-resolved"

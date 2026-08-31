@@ -243,7 +243,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
       case _: SearchStarted | _: SearchCompleted =>
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
-      case _: RestStarted | _: RestCompleted =>
+      case _: RestStarted | _: RestPowerEvent | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: RecoverPowerEvent | _: RecoverRolled |
           _: RecoverStopped | _: RelicRecovered |

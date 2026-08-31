@@ -15,6 +15,8 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingRestAction(playerId: PlayerId)
       extends OathContinue
+  final case class AwaitingRestPowerDecision(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingRecoverRoll(playerId: PlayerId, decision: DecisionId)
@@ -45,4 +47,3 @@ final case class OathTransition(
     events: Vector[OathEvent],
     continue: OathContinue
 )
-
