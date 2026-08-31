@@ -14,13 +14,11 @@ object ReviewedPowerCatalog {
     PowerId("banner.darkest-secret.festival"),
     PowerId("foundation.altered"))
 
-  val registrations: Vector[RegisteredPower] =
-    ActionPowers.registrations ++ WakePowers.registrations ++
-      SearchPowers.registrations ++ TravelPowers.registrations ++
-      CampaignPowers.registrations ++ MusterPowers.registrations ++
-      TradePowers.registrations ++ ForgePowers.registrations ++
-      RecoverPowers.registrations ++ RestPowers.registrations ++
-      NegotiationPowers.registrations
+  val powers: Vector[Power] =
+    ActionPowers.powers ++ WakePowers.powers ++ SearchPowers.powers ++
+      TravelPowers.powers ++ CampaignPowers.powers ++ MusterPowers.powers ++
+      TradePowers.powers ++ ForgePowers.powers ++ RecoverPowers.powers ++
+      RestPowers.powers ++ NegotiationPowers.powers
 
   def requireAudited(catalog: ExecutableCatalog): Either[OathViolation, Unit] = {
     val actual = CatalogHandlerInventory.fingerprint(catalog)
@@ -32,8 +30,14 @@ object ReviewedPowerCatalog {
     requireAudited(catalog).map { _ =>
       val audited = CatalogHandlerInventory.handlerIds(catalog)
         .map(PowerId).toSet ++ syntheticIds
-      new PowerResolver(PowerRegistry.withAudited(audited,
-        registrations: _*))
+      new PowerResolver(PowerRegistry.withAudited(audited, powers: _*))
+    }
+
+  def registry(catalog: ExecutableCatalog): Either[OathViolation, PowerRegistry] =
+    requireAudited(catalog).map { _ =>
+      val audited = CatalogHandlerInventory.handlerIds(catalog).map(PowerId).toSet ++
+        syntheticIds
+      PowerRegistry.withAudited(audited, powers: _*)
     }
 
   def facts(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId)

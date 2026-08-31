@@ -100,29 +100,6 @@ object PowerResolution {
   case object Automatic extends PowerResolution
 }
 
-final case class PowerDefinition(
-    id: PowerId,
-    modifier: Option[MajorActionType],
-    windows: Vector[PowerWindow],
-    resolution: PowerResolution
-) {
-  /** Vector plus these invariants intentionally avoids adding a collection
-    * dependency solely for NonEmptyVector during this foundation gate.
-    */
-  require(windows.nonEmpty, s"power $id must declare at least one window")
-  require(windows.distinct.size == windows.size,
-    s"power $id must not repeat a window")
-  modifier.foreach { action =>
-    require(windows.forall(PowerDefinition.belongsTo(action, _)),
-      s"power $id modifier ${action.key} contradicts its windows")
-  }
-}
-
-object PowerDefinition {
-  private def belongsTo(action: MajorActionType, window: PowerWindow): Boolean =
-    window.associatedMajorAction.contains(action)
-}
-
 final case class PowerInspection(
     applicable: Boolean,
     eligiblePlayer: Option[PlayerId] = None,
@@ -138,20 +115,30 @@ case object NoFacts extends PowerFacts
 final case class PowerContext(window: PowerWindow, source: RuleSourceRef,
     facts: PowerFacts)
 
-trait PowerInspector {
+trait PowerHandler extends Serializable {
+  def window: PowerWindow
+  def resolution: PowerResolution
   def inspect(context: PowerContext): PowerInspection
+  def implemented: Boolean
 }
 
-/** Marker for procedure-owned executable mechanics. Concrete action modules
-  * define and interpret their own typed handler/effect vocabulary.
-  */
-trait PowerHandler
+trait Power extends Serializable {
+  def id: PowerId
+  def modifier: Option[MajorActionType]
+  def handlers: Vector[PowerHandler]
+}
 
-final case class RegisteredPower(
-    definition: PowerDefinition,
-    inspector: PowerInspector,
-    implementation: Option[PowerHandler]
-)
+object Power {
+  def validate(power: Power): Unit = {
+    require(power.handlers.nonEmpty, s"power ${power.id} must declare a handler")
+    val windows = power.handlers.map(_.window)
+    require(windows.distinct.size == windows.size,
+      s"power ${power.id} must not repeat a window")
+    power.modifier.foreach { action => require(windows.forall(
+      _.associatedMajorAction.contains(action)),
+      s"power ${power.id} modifier ${action.key} contradicts its windows") }
+  }
+}
 
 final case class PowerInvocation(source: RuleSourceRef, powerId: PowerId,
     inspection: PowerInspection)

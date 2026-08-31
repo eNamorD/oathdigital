@@ -3,6 +3,8 @@ package oathdigital.serialization
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
+import oathdigital.gameplay.operations.{CostDisposition, ResourceCost,
+  ResourceKind}
 
 private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._
@@ -15,7 +17,8 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
       case _: SearchStarted => SearchStartedType
       case _: SearchCompleted => SearchCompletedType
       case _: RecoverRolled => RecoverRolledType
-      case _: CatacombsActivated => CatacombsActivatedType
+      case _: CostsPaid => CostsPaidType
+      case _: RelicPlacedAtSite => RelicPlacedAtSiteType
       case _: RecoverStopped => RecoverStoppedType
       case _: RelicRecovered => RelicRecoveredType
       case _: ForgeStarted => ForgeStartedType
@@ -80,10 +83,17 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent,
         "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
-      case CatacombsActivated(player, decision, site, card, relic, spent) =>
-        ujson.Obj("playerId" -> player.value, "decisionId" -> decision.value,
-          "siteId" -> site.value, "catacombsId" -> card.value,
-          "relicId" -> relic.value, "secretSpent" -> spent)
+      case CostsPaid(player, source, costs) => ujson.Obj(
+        "playerId" -> player.value, "source" -> source.stableKey,
+        "costs" -> ujson.Arr.from(costs.map(cost => ujson.Obj(
+          "resource" -> cost.resource.key, "amount" -> cost.amount,
+          "disposition" -> cost.disposition.key))))
+      case RelicPlacedAtSite(player, relic, site, orientation) => ujson.Obj(
+        "playerId" -> player.value, "relicId" -> relic.value,
+        "siteId" -> site.value, "orientation" -> (orientation match {
+          case Orientation.FaceUp => "faceup"
+          case Orientation.FaceDown => "facedown"
+        }))
       case RecoverStopped(player, decision) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value)
       case RelicRecovered(player, decision, site, relic) => ujson.Obj(
@@ -245,12 +255,37 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         } yield RecoverRolled(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
           spent, dice)
-        case CatacombsActivatedType => for {
-          spent <- safeIntField(payload.obj, "secretSpent", path)
-        } yield CatacombsActivated(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
-          DenizenId(payload("catacombsId").str), RelicId(payload("relicId").str),
-          spent)
+        case CostsPaidType => for {
+          source <- RuleSourceRef.parse(payload("source").str).toRight(
+            InvalidValue(s"$path.source", "unknown rule source"))
+          costs <- traverse(payload("costs").arr.toVector) { value => for {
+            resource <- value("resource").str match {
+              case "favor" => Right(ResourceKind.Favor)
+              case "secret" => Right(ResourceKind.Secret)
+              case other => Left(InvalidValue(s"$path.costs.resource",
+                s"unknown resource '$other'"))
+            }
+            disposition <- value("disposition").str match {
+              case "place-on-source" => Right(CostDisposition.PlaceOnSource)
+              case "burn" => Right(CostDisposition.Burn)
+              case other => Left(InvalidValue(s"$path.costs.disposition",
+                s"unknown cost disposition '$other'"))
+            }
+            amount <- safeIntField(value.obj, "amount", s"$path.costs")
+            _ <- Either.cond(amount > 0, (), InvalidValue(
+              s"$path.costs.amount", "must be positive"))
+          } yield ResourceCost(resource, amount, disposition) }
+        } yield CostsPaid(PlayerId(payload("playerId").str), source, costs)
+        case RelicPlacedAtSiteType => for {
+          orientation <- payload("orientation").str match {
+            case "faceup" => Right(Orientation.FaceUp)
+            case "facedown" => Right(Orientation.FaceDown)
+            case other => Left(InvalidValue(s"$path.orientation",
+              s"unknown orientation '$other'"))
+          }
+        } yield RelicPlacedAtSite(PlayerId(payload("playerId").str),
+          RelicId(payload("relicId").str), SiteId(payload("siteId").str),
+          orientation)
         case RecoverStoppedType => Right(RecoverStopped(
           PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str)))
         case RelicRecoveredType => Right(RelicRecovered(

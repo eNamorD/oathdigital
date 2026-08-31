@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers
 
-import oathdigital.gameplay.powerresolver.RegisteredPower
+import oathdigital.gameplay.powerresolver.Power
 
 object SearchPowers {
-  val registrations: Vector[RegisteredPower] = Vector.empty
+  val powers: Vector[Power] = Vector.empty
 }

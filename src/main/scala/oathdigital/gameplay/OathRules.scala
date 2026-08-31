@@ -4,7 +4,8 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
-  RecoverCommand, Search, SearchCommand, Travel, TravelCommand}
+  PreparedRecoverModifier, RecoverCommand, Search, SearchCommand, Travel,
+  TravelCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
@@ -12,7 +13,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.powers.RecoverPowers
+import oathdigital.gameplay.operations.{PayCosts, PlaceRelicAtSite}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -117,12 +118,15 @@ final class OathRules(catalog: ExecutableCatalog,
       case start: RecoverCommand.Start => withFallback(state, start.playerId,
         MajorActionKind.Recover)(start.modifier match {
           case None => Recover.handle(catalog, state, command)
-          case Some(contribution) => RecoverPowers.activate(catalog, state,
-            start.playerId, start.decision, contribution).flatMap { activated =>
-              Recover.handle(catalog, activated.state, RecoverCommand.Roll(
+          case Some(PreparedRecoverModifier(events)) =>
+            GameplayTransition(state, events,
+              OathContinue.ActActionSelection(start.playerId))(evolve).flatMap {
+              prepared => Recover.handle(catalog, prepared.state, RecoverCommand.Roll(
                 start.playerId, start.decision, start.dice)).map(rolled =>
-                rolled.copy(events = activated.events ++ rolled.events))
+                rolled.copy(events = prepared.events ++ rolled.events))
             }
+          case Some(_) => Left(InvalidModifierInvocation(
+            "unknown Recover modifier contribution"))
         })
       case roll: RecoverCommand.Roll => withFallback(state, roll.playerId,
         MajorActionKind.Recover)(Recover.handle(catalog, state, command))
@@ -266,7 +270,8 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
       case event: RecoverRolled => Recover.evolve(catalog, state, event)
-      case event: CatacombsActivated => RecoverPowers.evolve(catalog, state, event)
+      case event: CostsPaid => PayCosts.evolve(state, event)
+      case event: RelicPlacedAtSite => PlaceRelicAtSite.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
       case event: ForgeStarted => Forge.evolve(catalog, state, event)

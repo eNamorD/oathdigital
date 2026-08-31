@@ -3,27 +3,61 @@ package oathdigital.gameplay.powers
 import oathdigital.gameplay.powerresolver._
 
 object ActionPowers {
-  private val whenPlayed = Set(
-    "denizen.dazzle", "denizen.revelation", "denizen.threatening-roar",
-    "denizen.animal-host", "denizen.a-small-favor", "denizen.key-to-the-city",
-    "denizen.charlatan", "denizen.blackmail", "denizen.dissent",
-    "denizen.false-prophet", "denizen.family-heirloom", "denizen.fabled-feast",
-    "denizen.salad-days", "denizen.the-gathering", "denizen.faithful-friend",
-    "denizen.great-herd", "denizen.pilgrimage", "denizen.twin-brother",
-    "denizen.garrison", "denizen.royal-tax", "denizen.bewitch",
-    "denizen.wizard-s-conclave", "denizen.long-lost-heir", "denizen.true-oath",
-    "denizen.autumn-wind", "denizen.shifting-fog", "denizen.royal-ambitions",
-    "denizen.riots", "denizen.bandit-chief", "denizen.reliquary-raid",
-    "denizen.bandit-prince", "denizen.a-round-of-ale", "denizen.favored-son",
-    "denizen.town-meeting", "denizen.ancient-pact", "denizen.search-party",
-    "denizen.call-for-help")
-  private val boundary = Set("banner.peoples-favor.grand-council",
-    "banner.darkest-secret.festival", "foundation.altered")
+  private def played = Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayed))
+  object Dazzle extends ReviewedPower("denizen.dazzle", None, played)
+  object Revelation extends ReviewedPower("denizen.revelation", None, played)
+  object ThreateningRoar extends ReviewedPower("denizen.threatening-roar", None, played)
+  object AnimalHost extends ReviewedPower("denizen.animal-host", None, played)
+  object ASmallFavor extends ReviewedPower("denizen.a-small-favor", None, played)
+  object KeyToTheCity extends ReviewedPower("denizen.key-to-the-city", None, played)
+  object Charlatan extends ReviewedPower("denizen.charlatan", None, played)
+  object Blackmail extends ReviewedPower("denizen.blackmail", None, played)
+  object Dissent extends ReviewedPower("denizen.dissent", None, played)
+  object FalseProphet extends ReviewedPower("denizen.false-prophet", None, played)
+  object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, played)
+  object FabledFeast extends ReviewedPower("denizen.fabled-feast", None, played)
+  object SaladDays extends ReviewedPower("denizen.salad-days", None, played)
+  object TheGathering extends ReviewedPower("denizen.the-gathering", None, played)
+  object FaithfulFriend extends ReviewedPower("denizen.faithful-friend", None, played)
+  object GreatHerd extends ReviewedPower("denizen.great-herd", None, played)
+  object Pilgrimage extends ReviewedPower("denizen.pilgrimage", None, played)
+  object TwinBrother extends ReviewedPower("denizen.twin-brother", None, played)
+  object Garrison extends ReviewedPower("denizen.garrison", None, played)
+  object RoyalTax extends ReviewedPower("denizen.royal-tax", None, played)
+  object Bewitch extends ReviewedPower("denizen.bewitch", None, played)
+  object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, played)
+  object LongLostHeir extends ReviewedPower("denizen.long-lost-heir", None, played)
+  object TrueOath extends ReviewedPower("denizen.true-oath", None, played)
+  object AutumnWind extends ReviewedPower("denizen.autumn-wind", None, played)
+  object ShiftingFog extends ReviewedPower("denizen.shifting-fog", None, played)
+  object RoyalAmbitions extends ReviewedPower("denizen.royal-ambitions", None, played)
+  object Riots extends ReviewedPower("denizen.riots", None, played)
+  object BanditChief extends ReviewedPower("denizen.bandit-chief", None, played)
+  object ReliquaryRaid extends ReviewedPower("denizen.reliquary-raid", None, played)
+  object BanditPrince extends ReviewedPower("denizen.bandit-prince", None, played)
+  object ARoundOfAle extends ReviewedPower("denizen.a-round-of-ale", None, played)
+  object FavoredSon extends ReviewedPower("denizen.favored-son", None, played)
+  object TownMeeting extends ReviewedPower("denizen.town-meeting", None, played)
+  object AncientPact extends ReviewedPower("denizen.ancient-pact", None, played)
+  object SearchParty extends ReviewedPower("denizen.search-party", None, played)
+  object CallForHelp extends ReviewedPower("denizen.call-for-help", None, played)
 
-  val registrations: Vector[RegisteredPower] =
-    whenPlayed.toVector.sorted.map(id => PowerRegistration.automatic(id, None,
-      Vector(PowerWindow.ActionCardPlayed))) ++
-    boundary.toVector.sorted.map(id => PowerRegistration.automatic(id, None,
-      Vector(PowerWindow.ActionAfterMajorAction, PowerWindow.WakeBoundary,
-        PowerWindow.RestStart)))
+  private def boundary = Vector(
+    ReviewedHandler.automatic(PowerWindow.ActionAfterMajorAction),
+    ReviewedHandler.automatic(PowerWindow.WakeBoundary),
+    ReviewedHandler.automatic(PowerWindow.RestStart))
+  object PeoplesFavorGrandCouncil extends ReviewedPower(
+    "banner.peoples-favor.grand-council", None, boundary)
+  object DarkestSecretFestival extends ReviewedPower(
+    "banner.darkest-secret.festival", None, boundary)
+  object AlteredFoundation extends ReviewedPower("foundation.altered", None, boundary)
+
+  val powers: Vector[Power] = Vector(Dazzle, Revelation, ThreateningRoar,
+    AnimalHost, ASmallFavor, KeyToTheCity, Charlatan, Blackmail, Dissent,
+    FalseProphet, FamilyHeirloom, FabledFeast, SaladDays, TheGathering,
+    FaithfulFriend, GreatHerd, Pilgrimage, TwinBrother, Garrison, RoyalTax,
+    Bewitch, WizardsConclave, LongLostHeir, TrueOath, AutumnWind, ShiftingFog,
+    RoyalAmbitions, Riots, BanditChief, ReliquaryRaid, BanditPrince, ARoundOfAle,
+    FavoredSon, TownMeeting, AncientPact, SearchParty, CallForHelp,
+    PeoplesFavorGrandCouncil, DarkestSecretFestival, AlteredFoundation)
 }

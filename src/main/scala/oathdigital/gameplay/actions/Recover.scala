@@ -8,9 +8,24 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.powerresolver.PowerHandler
 
 sealed trait RecoverCommand extends Product with Serializable
 trait RecoverModifierContribution extends Product with Serializable
+final case class PreparedRecoverModifier(events: Vector[OathEvent])
+    extends RecoverModifierContribution
+
+/** Typed execution seam owned by the Recover procedure. Concrete powers may
+  * prepare Recover contributions, but the generic resolver never interprets
+  * their costs or effects.
+  */
+trait RecoverPowerHandler extends PowerHandler {
+  def prepare(input: RecoverPowerPreparation)
+      : Either[OathViolation, RecoverModifierContribution]
+}
+final case class RecoverPowerPreparation(catalog: ExecutableCatalog,
+    ready: ReadyGame, actor: PlayerId, source: RuleSourceRef,
+    drawnRelic: RelicId)
 object RecoverCommand {
   final case class Start(playerId: PlayerId, decision: DecisionId,
       dice: Vector[DefenseDieFace], modifier: Option[RecoverModifierContribution])
@@ -156,25 +171,25 @@ object Recover {
 }
 
 object RecoverRules {
-  private val RelevantHandlerIds = Set(
-    "denizen.relic-worship",
-    "edifice.e13.ruined",
-    "edifice.e17.intact",
-    "edifice.e17.ruined"
-  )
-
-  private[gameplay] def isRelevantHandler(handlerId: String): Boolean =
-    RelevantHandlerIds(handlerId)
-
   def difficulty(catalog: ExecutableCatalog, site: SiteId): Option[Int] =
     catalog.sites.find(_.id == site).flatMap(_.recoverDifficulty)
 
   def score(faces: Vector[DefenseDieFace]): Int = DefenseDieFace.score(faces)
 
   def validate(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerState,
-      siteId: SiteId): Either[OathViolation, Unit] = {
+      siteId: SiteId): Either[OathViolation, Unit] =
+    validatePotential(catalog, ready, player, siteId).flatMap { _ =>
+      val site = ready.game.current.map.sites.get(siteId)
+      Either.cond(site.exists(_.relics.nonEmpty), (),
+        OathViolation.RecoverUnavailable("site has no facedown relic"))
+    }
+
+  /** Base procedure eligibility without requiring a relic already at the site.
+    * Recover powers may satisfy that final condition before the first roll.
+    */
+  def validatePotential(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerState, siteId: SiteId): Either[OathViolation, Unit] = {
     val game = ready.game
-    val site = game.current.map.sites.get(siteId)
     val reason =
       if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Recover is limited to the exile-only first game")
       else if (game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty)) Some("altered Foundations are not supported for Recover")
@@ -182,7 +197,6 @@ object RecoverRules {
     reason.map(OathViolation.UnsupportedRecoverState).toLeft(()).flatMap(_ =>
       PowerRuntime.requireAudited(catalog)).flatMap { _ =>
       if (difficulty(catalog, siteId).isEmpty) Left(OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-      else if (site.forall(_.relics.isEmpty)) Left(OathViolation.RecoverUnavailable("site has no facedown relic"))
       else if (player.board.supply.supply < 1) Left(OathViolation.InsufficientSupply(1, player.board.supply.supply))
       else Right(())
     }

@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
+import oathdigital.gameplay.operations.ResourceCost
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 
 sealed trait OathEvent extends Product with Serializable
@@ -69,10 +70,10 @@ object OathEvent {
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,
       supplySpent: Int, dice: Vector[DefenseDieFace]
   ) extends OathEvent
-  final case class CatacombsActivated(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      catacombsId: DenizenId, relicId: RelicId, secretSpent: Int
-  ) extends OathEvent
+  final case class CostsPaid(playerId: PlayerId, source: RuleSourceRef,
+      costs: Vector[ResourceCost]) extends OathEvent
+  final case class RelicPlacedAtSite(playerId: PlayerId, relicId: RelicId,
+      siteId: SiteId, orientation: Orientation) extends OathEvent
   final case class RecoverStopped(playerId: PlayerId, decision: DecisionId)
       extends OathEvent
   final case class RelicRecovered(

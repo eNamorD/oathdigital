@@ -11,8 +11,8 @@ final case class ReviewedPowerFacts(
     sources: Map[RuleSourceRef, IndexedRuleSource]
 ) extends PowerFacts
 
-private[gameplay] object ReviewedPowerInspector extends PowerInspector {
-  override def inspect(context: PowerContext): PowerInspection =
+private[gameplay] object ReviewedPowerInspector {
+  def inspect(context: PowerContext): PowerInspection =
     context.facts match {
       case facts: ReviewedPowerFacts => PowerInspection(
         applicable = facts.sources.get(context.source).exists(source =>
@@ -48,40 +48,29 @@ private[gameplay] object ReviewedPowerInspector extends PowerInspector {
   }
 }
 
-private[powers] final case class ReviewedWindowInspector(
-    activeWindows: Set[PowerWindow]
-) extends PowerInspector {
-  override def inspect(context: PowerContext): PowerInspection =
-    if (activeWindows(context.window)) ReviewedPowerInspector.inspect(context)
+private[powers] final class ReviewedHandler(
+    val window: PowerWindow,
+    val resolution: PowerResolution,
+    val implemented: Boolean,
+    active: Boolean = true
+) extends PowerHandler {
+  def inspect(context: PowerContext): PowerInspection =
+    if (active) ReviewedPowerInspector.inspect(context)
     else PowerInspection(applicable = false)
 }
 
-private[powers] object ReviewedImplementation extends PowerHandler
+private[powers] abstract class ReviewedPower(
+    idValue: String,
+    val modifier: Option[MajorActionType],
+    val handlers: Vector[PowerHandler]
+) extends Power {
+  final val id: PowerId = PowerId(idValue)
+}
 
-private[powers] object PowerRegistration {
-  def selected(id: String, modifier: MajorActionType, window: PowerWindow,
-      implemented: Boolean = false): RegisteredPower = register(id,
-    Some(modifier), Vector(window), PowerResolution.PlayerSelected, implemented)
-
-  def selected(id: String, modifier: Option[MajorActionType],
-      windows: Vector[PowerWindow], implemented: Boolean): RegisteredPower =
-    register(id, modifier, windows, PowerResolution.PlayerSelected, implemented)
-
-  def automatic(id: String, modifier: Option[MajorActionType],
-      windows: Vector[PowerWindow], implemented: Boolean = false)
-      : RegisteredPower = register(id, modifier, windows,
-        PowerResolution.Automatic, implemented)
-
-  def automaticAt(id: String, modifier: Option[MajorActionType],
-      windows: Vector[PowerWindow], activeWindows: Set[PowerWindow])
-      : RegisteredPower = RegisteredPower(
-    PowerDefinition(PowerId(id), modifier, windows, PowerResolution.Automatic),
-    ReviewedWindowInspector(activeWindows), None)
-
-  private def register(id: String, modifier: Option[MajorActionType],
-      windows: Vector[PowerWindow], resolution: PowerResolution,
-      implemented: Boolean) = RegisteredPower(
-    PowerDefinition(PowerId(id), modifier, windows, resolution),
-    ReviewedPowerInspector,
-    Option.when(implemented)(ReviewedImplementation))
+private[powers] object ReviewedHandler {
+  def automatic(window: PowerWindow, implemented: Boolean = false,
+      active: Boolean = true): PowerHandler = new ReviewedHandler(window,
+    PowerResolution.Automatic, implemented, active)
+  def selected(window: PowerWindow, implemented: Boolean = false): PowerHandler =
+    new ReviewedHandler(window, PowerResolution.PlayerSelected, implemented)
 }

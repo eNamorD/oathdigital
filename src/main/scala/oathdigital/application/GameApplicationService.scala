@@ -8,7 +8,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
   RecoverCommand, SearchCommand, TravelCommand}
-import oathdigital.gameplay.powers.RecoverPowers
+import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -253,7 +253,7 @@ final class GameApplicationService(
                 s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
                 .getOrElse((inner, ordered) match {
                   case (GameCommand.BeginRecover(player), values) =>
-                    RecoverPowers.prepare(catalog, ready, player, values,
+                    RecoverPowerIntegration.prepare(catalog, ready, player, values,
                       () => relicDrawPort.prepare(ready)).flatMap(modifier =>
                       rules.handle(state, RecoverCommand.Start(player,
                         DecisionId(s"recover-$nextSequence"),

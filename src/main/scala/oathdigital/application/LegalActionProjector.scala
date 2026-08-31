@@ -7,7 +7,7 @@ import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
   VisionRules, Visions}
 import oathdigital.gameplay.phases.Rest
-import oathdigital.gameplay.powers.RecoverPowers
+import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -92,7 +92,7 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site => RecoverPowers.validatePotential(
+          Option.when(active.pawnSite.exists(site => RecoverPowerIntegration.validatePotential(
             catalog, context.ready, active, site).isRight))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
