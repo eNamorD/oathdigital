@@ -41,8 +41,11 @@ object RestPowers {
             if facts.sources.get(source).exists(indexed =>
               indexed.powerIds.contains(leagueTreatyId) &&
                 indexed.face == RuleSourceFace.FaceUp) =>
-          val owner = facts.ready.game.current.map.sites.get(siteId).flatMap(site =>
-            SiteRule.ruler(site.forces, facts.ready.game.current.players).toOption)
+          val owner = (for {
+            site <- facts.ready.game.current.map.sites.get(siteId)
+            ruler <- SiteRule.ruler(site.forces,
+              facts.ready.game.current.players).toOption
+          } yield ruler)
             .collect { case SiteRuler.Player(playerId) => playerId }
           PowerInspection(owner.nonEmpty && eligibleSources(facts.ready, siteId).nonEmpty,
             owner, owner)
@@ -105,8 +108,9 @@ object RestPowers {
           case _ => Left(InvalidEventOrder(
             "League Treaty cannot replace this pending procedure"))
         }
-        wanted <- nextEvent(ready, started.restActor, queue).flatMap(
-          _.toRight(InvalidEventOrder("League Treaty is not applicable")))
+        wantedOption <- nextEvent(ready, started.restActor, queue)
+        wanted <- wantedOption.toRight(
+          InvalidEventOrder("League Treaty is not applicable"))
         _ <- Either.cond(wanted == started, (),
           InvalidEventOrder("League Treaty decision snapshot does not match"))
       } yield Ready(ready.copy(game = ready.game.copy(current =
@@ -130,10 +134,12 @@ object RestPowers {
       case _ => Left(GameNotStarted)
     }
     case declined: LeagueTreatyDeclined => state match {
-      case Ready(ready) => matchingPending(ready, declined.restActor,
+      case Ready(ready) => for {
+        pending <- matchingPending(ready, declined.restActor,
         declined.decision, declined.powerId, declined.source,
-        declined.decisionOwner).flatMap(pending =>
-          retainContinuation(clearPending(ready), pending).map(Ready(_)))
+          declined.decisionOwner)
+        continued <- retainContinuation(clearPending(ready), pending)
+      } yield Ready(continued)
       case _ => Left(GameNotStarted)
     }
   }
@@ -164,10 +170,12 @@ object RestPowers {
     val indexed = RuleSourceIndex.enumerate(catalog, ready)
     val facts = RestPowerFacts(catalog, ready, restActor,
       indexed.map(value => value.source -> value).toMap)
-    ReviewedPowerCatalog.resolver(catalog).flatMap(_.resolve(
-      PowerWindow.RestReturnFavor,
-      indexed.map(value => value.source -> value.powerIds), facts)
-      .left.map(error => UnsupportedRestState(error.toString))).map { result =>
+    for {
+      resolver <- ReviewedPowerCatalog.resolver(catalog)
+      result <- resolver.resolve(PowerWindow.RestReturnFavor,
+        indexed.map(value => value.source -> value.powerIds), facts)
+        .left.map(error => UnsupportedRestState(error.toString))
+    } yield {
       result.offered.flatMap { invocation => invocation.source match {
         case RuleSourceRef.SiteCard(siteId, denizenId: DenizenId) =>
           invocation.inspection.decisionPlayer.map(owner => RestPowerInvocationRef(
