@@ -57,8 +57,12 @@ independently compares it with the authoritative source order before accepting:
    SearchResolution(...))`, which adapts to the internal typed Search command
    and verifies
    the exact drawn-card permutation, catalog identity, capacity, restrictions,
-   replacements, and lock rules. It updates cards/favor, clears the pending
-   procedure, and returns to Act action selection.
+   replacements, and lock rules. Search then delegates placement to the shared
+   typed `CardPlay` procedure used by facedown-adviser play. That procedure owns
+   orientation, adviser/site destinations, replacement disposal, suit-bank
+   favor movement, and next-region discard ordering. Search retains its
+   draw/keep/discard decision and continuation, clears the pending procedure,
+   and returns to Act action selection.
 
 Source selection is the commit boundary. Before the begin intent is submitted,
 the UI may abandon its local selection without state change. Once
@@ -69,7 +73,8 @@ player-scoped controls without drawing again.
 
 The current event envelope uses explicit `gameplay.search-started` and
 `gameplay.search-completed` discriminators in the unified setup/gameplay
-stream. Replay validates the source top,
+stream. Completion records exact favor and replacement-discard effects authored
+by the server. Replay recalculates those facts and validates the source top,
 cost, draw stop/order, decision ID, card permutation, and placement invariants;
 randomness never executes during replay.
 
@@ -84,6 +89,12 @@ roles, and no active legacy/relic Search modifier before using the core typed
 procedure directly. A future supported modifier may contribute typed cost,
 block, or `RuleDecisionBoundary` outcomes; it must not silently activate merely
 because a handler string exists.
+
+The Search-derived facedown-adviser action previews and revalidates the same
+precise Search modifier window before exposing owner-scoped faceup adviser/site
+targets. Final placement is revalidated by `CardPlay` against newly loaded
+state. Reviewed reached When Played handlers still produce source-scoped durable
+fallback diagnostics; no component effect language was added.
 
 HRF's useful pattern is its explicit `Ask` continuation and server-recorded
 `Shuffle`/`Random` continuation vocabulary in `vendor/haunt-roll-fail/hrf/base.scala`.

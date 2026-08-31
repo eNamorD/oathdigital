@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathLifecycle, GameStateUpdates}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameFoundationProfile
+import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._
@@ -31,7 +32,8 @@ object MinorActions {
       .toVector.flatMap(_.denizens.map(card => Some(card.id)))
     (Vector(SearchPlacement.Adviser(Orientation.FaceUp, None),
       SearchPlacement.Site(None)) ++ replacements.map(SearchPlacement.Site))
-      .distinct.filter(placement => validateSearchModifiers(catalog, ready, player).isRight &&
+      .distinct.filter(placement => SearchPowers.validateModifierSelection(
+        catalog, ready, player).isRight &&
         CardPlay.resolve(catalog, ready, player, adviser, placement,
           CardPlay.Origin.FacedownAdviser).isRight)
   }
@@ -50,7 +52,7 @@ object MinorActions {
 
       case MinorActionCommand.PlayFacedownAdviser(player, adviser, placement) => for {
         ready <- validateAct(catalog, state, player)
-        _ <- validateSearchModifiers(catalog, ready, player)
+        _ <- SearchPowers.validateModifierSelection(catalog, ready, player)
         result <- CardPlay.resolve(catalog, ready, player, adviser, placement,
           CardPlay.Origin.FacedownAdviser)
       } yield FacedownAdviserPlayed(player, adviser, placement, result.favorGained,
@@ -118,7 +120,7 @@ object MinorActions {
 
     case e: FacedownAdviserPlayed => for {
       ready <- validateAct(catalog, state, e.playerId)
-      _ <- validateSearchModifiers(catalog, ready, e.playerId)
+      _ <- SearchPowers.validateModifierSelection(catalog, ready, e.playerId)
       expected <- CardPlay.resolve(catalog, ready, e.playerId, e.adviserId,
         e.placement, CardPlay.Origin.FacedownAdviser)
       _ <- Either.cond((e.favorGained, e.discardedWorld, e.discardedEdifices) ==
@@ -200,27 +202,6 @@ object MinorActions {
       Either.cond(supported, ready, MinorActionUnavailable(
         "minor actions are limited to fixed unaltered all-Exile first-game rules"))
     }
-
-  private def validateSearchModifiers(catalog: ExecutableCatalog,
-      ready: ReadyGame, player: PlayerId): Either[OathViolation, Unit] = {
-    val current = ready.game.current
-    val actor = current.players.find(_.player == player).get
-    val accessibleSites = current.map.inPlay.filter { siteId =>
-      actor.pawnSite.contains(siteId) || SiteRule.ruledBy(current.map.sites(siteId).forces,
-        current.players, player).getOrElse(false)
-    }.toSet
-    val active = actor.advisers.collect {
-      case d: DenizenState if d.orientation == Orientation.FaceUp => d.id
-    } ++ accessibleSites.toVector.flatMap(siteId => current.map.sites(siteId).denizens.collect {
-      case d: DenizenState if d.orientation == Orientation.FaceUp => d.id
-    })
-    active.iterator.flatMap { id =>
-      catalog.denizens.find(_.id.value == id.value).toVector.flatMap { definition =>
-        MinorActionPowerSupport.validateSearchModifier(catalog, id,
-          definition.handlers).left.toOption
-      }
-    }.toVector.headOption.toLeft(())
-  }
 
   private def updatePlayer(ready: ReadyGame, player: PlayerId)(f: PlayerState => PlayerState) =
     GameStateUpdates.updateCurrent(ready)(current => current.copy(players =

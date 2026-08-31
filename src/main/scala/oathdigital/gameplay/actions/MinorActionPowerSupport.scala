@@ -34,10 +34,6 @@ object MinorActionPowerSupport {
       handlers: Vector[String]): Either[OathViolation, Unit] =
     validateInventory(catalog)
 
-  def validateSearchModifier(catalog: ExecutableCatalog, source: DenizenId,
-      handlers: Vector[String]): Either[OathViolation, Unit] =
-    validateInventory(catalog)
-
   def validateVisionPlay(catalog: ExecutableCatalog,
       source: VisionId): Either[OathViolation, Unit] =
     validateInventory(catalog).flatMap(_ => Left(UnsupportedMinorActionRule(source,

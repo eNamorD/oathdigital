@@ -222,6 +222,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       oathdigital.gameplay.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
       oathdigital.gameplay.MajorActionKind.Travel, Vector(forged)).isLeft)
+    val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
+      .asInstanceOf[WorldCardId]
+    assert(service.handle("game-preview", act.nextSequence,
+      GameCommand.WithModifiers(GameCommand.ResolveFacedownAdviser(actor, adviser,
+        Some(SearchPlacement.Adviser(Orientation.FaceUp, None))),
+        Vector(forged))).isLeft)
     val challenge = service.preview("game-preview", act.nextSequence, actor,
       oathdigital.gameplay.MajorActionKind.Challenge, Vector.empty).toOption.get
     assertEquals(challenge.options, Vector.empty)
@@ -239,6 +245,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(actor)).toOption.get
     val discarded = service.handle("game-minor-replay", act.nextSequence,
       GameCommand.ResolveFacedownAdviser(actor, adviser, None)).toOption.get
+    val beforeRetry = repository.load("game-minor-replay").toOption.flatten.get.records
+    assert(service.handle("game-minor-replay", discarded.nextSequence,
+      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).isLeft)
+    assertEquals(repository.load("game-minor-replay").toOption.flatten.get.records,
+      beforeRetry)
     val reloaded = new GameApplicationService(catalog, repository)
       .load("game-minor-replay").toOption.flatten.get
     assertEquals(reloaded.state, discarded.state)

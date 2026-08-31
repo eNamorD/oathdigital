@@ -188,6 +188,13 @@ class ServerModeUiSuite extends FunSuite {
       MinorAdviser(card, placements), MinorAdviser(other, placements)))), 1)
     assertEquals(many.selected, None)
     assertEquals(many.choose("D2").selected.map(_.card.cardId), Some("D2"))
+    assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
+      context, Some(minor(Vector(MinorAdviser(card, placements),
+        MinorAdviser(other, placements))))).flatMap(_.selected).map(_.card.cardId),
+      Some("D2"))
+    assertEquals(FacedownAdviserDraft.reconcile(Some(many.choose("D2")),
+      context.copy(sequence = 8), Some(minor(Vector(
+        MinorAdviser(card, placements), MinorAdviser(other, placements))))), None)
   }
 
   test("selection copy exposes details and non-color cardinality instructions") {

@@ -149,6 +149,8 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   no universal effect DSL. Catacombs is the first executable example: its
   Recover-owned handler composes typed cost payment, top-relic draw validation,
   and facedown site placement operations before the ordinary Recover roll. The
+  ordinary Search and Search-derived facedown-adviser paths now share one typed
+  authoritative card-play procedure and source-scoped When Played dispatch. The
   legacy central classification switch is removed; stable request and diagnostic
   compatibility labels live in a neutral protocol file.
 

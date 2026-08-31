@@ -67,6 +67,25 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assert(authorized.explicitConfirm)
   }
 
+  test("facedown adviser keeps ordered Search modifiers before owned target draft") {
+    val response = MajorActionPreviewResponse(4, "search", Vector(first),
+      Vector.empty, Vector.empty)
+    val selection = ModifierSelectionState.reconcile(None,
+      context.copy(action = "search"), response.modifiers, "facedown-preview")
+      .toggle(first)
+    val ordering = ModifierWorkflow(None, Some("play-facedown-adviser"),
+      Map("procedure" -> "facedown-adviser"), response, selection,
+      ModifierWorkflowStage.Ordering)
+    assertEquals(ordering.selection.selected, Vector(first))
+    val targets = ordering.showTargets(response)
+    assertEquals(targets.actionKind, Some("play-facedown-adviser"))
+    assertEquals(targets.baseParameters,
+      Map("procedure" -> "facedown-adviser"))
+    assertEquals(targets.backFromTargets.map(_.selection.selected),
+      Some(Vector(first)))
+    assertEquals(targets.cancel, None)
+  }
+
   test("zero modifiers skip ordering and Economy still requires explicit confirmation") {
     val target = BoardTargetCandidate(
       BoardTargetRef.SiteCard("site", "denizen", "d1"), "D1", Vector.empty)
