@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CardPlay,
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
   PreparedRecoverModifier, RecoverCommand, Search, SearchCommand, Travel,
   TravelCommand}
@@ -14,6 +14,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
+import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -93,26 +94,10 @@ final class OathRules(catalog: ExecutableCatalog,
       transition: OathTransition): Either[OathViolation, OathTransition] =
     (command, transition.state) match {
       case (complete: SearchCommand.Complete, Ready(ready)) =>
-        recordCardWhenPlayed(transition, ready, complete.playerId,
+        SearchPowers.recordPlayHooks(catalog, transition, ready, complete.playerId,
           complete.kept, complete.placement, prepend = false)
       case _ => Right(transition)
     }
-
-  private def recordCardWhenPlayed(transition: OathTransition, ready: ReadyGame,
-      player: PlayerId, card: WorldCardId, placement: SearchPlacement,
-      prepend: Boolean): Either[OathViolation, OathTransition] =
-    CardPlay.playedSource(ready, player, card, placement)
-      .fold[Either[OathViolation, OathTransition]](Right(transition)) { source =>
-        PowerRuntime.ignoredAtSource(catalog, ready, player,
-          MajorActionKind.WhenPlayed, source).map { diagnostics =>
-          if (diagnostics.isEmpty) transition else {
-            val event = IgnoredRulesRecorded(player, MajorActionKind.WhenPlayed,
-              diagnostics)
-            transition.copy(events = if (prepend) event +: transition.events
-              else transition.events :+ event)
-          }
-        }
-      }
 
   def handle(state: OathState, command: RecoverCommand)
       : Either[OathViolation, OathTransition] =
@@ -171,7 +156,8 @@ final class OathRules(catalog: ExecutableCatalog,
     MinorActions.handle(catalog, state, command).flatMap { transition =>
       (command, transition.state) match {
         case (play: MinorActionCommand.PlayFacedownAdviser, Ready(ready)) =>
-          recordCardWhenPlayed(transition, ready, play.player, play.adviser,
+          SearchPowers.recordPlayHooks(catalog, transition, ready, play.player,
+            play.adviser,
             play.placement, prepend = true)
         case _ => Right(transition)
       }
