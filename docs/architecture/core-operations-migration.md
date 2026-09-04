@@ -278,8 +278,10 @@ flows, and the phase-9 boundary enforcement of that migration.
   bounded-inventory conservation after every batch in tests.
 
 `OperationExecutor` requires an `OperationPolicy`, checks each semantic root
-before resolving its primitives, and returns privileged `OperationReceipt`
-values. Top-level operations stage in order, while each composite resolves all
+before resolving its primitives, and returns the evolved `ReadyGame` directly
+(the intermediate `OperationReceipt`/`OperationExecution` audit wrappers were
+removed in Phase 1 of the engine redesign). Top-level operations stage in
+order, while each composite resolves all
 outbound pieces from one pre-operation snapshot and commits atomically.
 `OperationTransaction.evolve` then applies an owning module's ordinary state
 function and validates the complete result; it does not introduce an auxiliary
@@ -290,8 +292,8 @@ container routing, stack conventions, resource orientation, derived warband
 banks, pawn and banner custody, and private Peek knowledge. Executor invariants
 compare the complete card identity set, run aggregate validation, enforce
 Vision container orientation, and verify every current force kind against its
-bounded supply. Receipts remain internal and are neither serialized nor
-projected.
+bounded supply. Executor results are internal state and are neither serialized
+nor projected.
 
 No gameplay reducer, event codec, or projection uses the executor in phase 3.
 `OperationPolicy.Permissive` exists for executor tests and already-validated
