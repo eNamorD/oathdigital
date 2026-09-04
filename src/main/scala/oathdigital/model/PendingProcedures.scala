@@ -318,8 +318,7 @@ object PendingProcedure {
       actor: PlayerId,
       source: SearchSource = SearchSource.WorldDeck,
       origin: Region = Region.Cradle,
-      supplySpent: Int = 0,
-      drawn: Vector[WorldCardId] = Vector.empty
+      supplySpent: Int = 0
   ) extends PendingProcedure
 
   final case class Campaign(
@@ -429,8 +428,6 @@ object PendingProcedure {
       actor: PlayerId,
       source: VisionId,
       target: Option[ConspiracyTarget],
-      remainingSecretPlacements: Int,
-      secretSites: Vector[SiteId] = Vector.empty,
       favorReturnOrder: Vector[Suit] = Vector.empty,
       awaitingTarget: Boolean = false
   ) extends PendingProcedure

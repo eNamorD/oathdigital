@@ -165,7 +165,7 @@ final class OathRules(catalog: ExecutableCatalog,
   def handle(state: OathState, command: VisionCommand)
       : Either[OathViolation, OathTransition] =
     Visions.handle(catalog, state, command).flatMap { transition => command match {
-      case _: VisionCommand.ChooseSecretSite | _: VisionCommand.PlayConspiracy
+      case _: VisionCommand.PlayConspiracy
           if (transition.state match {
             case Ready(ready) => ready.game.current.pending.isEmpty
             case _ => false
@@ -276,7 +276,6 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
       case event: VisionRevealed => Visions.evolve(catalog, state, event)
       case event: ConspiracyStarted => Visions.evolve(catalog, state, event)
-      case event: ConspiracySecretSiteChosen => Visions.evolve(catalog, state, event)
       case event: ConspiracyCompleted => Visions.evolve(catalog, state, event)
       case event: NegotiationStarted => Negotiation.evolve(catalog, state, event)
       case event: NegotiationTermsReplaced => Negotiation.evolve(catalog, state, event)

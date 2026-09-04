@@ -38,7 +38,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
       case _: NegotiationCompleted => NegotiationCompletedType
       case _: VisionRevealed => VisionRevealedType
       case _: ConspiracyStarted => ConspiracyStartedType
-      case _: ConspiracySecretSiteChosen => ConspiracySecretSiteChosenType
       case _: ConspiracyCompleted => ConspiracyCompletedType
   }
 
@@ -182,21 +181,15 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "visionId" -> vision.value,
         "replacedVisionId" -> replaced.fold[ujson.Value](ujson.Null)(v => ujson.Str(v.value)),
         "discardRegion" -> destination.key)
-      case ConspiracyStarted(player, decision, source, target, sites, favor) => ujson.Obj(
+      case ConspiracyStarted(player, decision, source, target, favor) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "sourceVisionId" -> source.value,
         "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
-        "automaticSecretSites" -> stringArray(sites.map(_.value)),
         "automaticFavorReturns" -> stringArray(favor.map(_.key)))
-      case ConspiracySecretSiteChosen(player, decision, site, sites) => ujson.Obj(
-        "playerId" -> player.value, "decisionId" -> decision.value,
-        "secretSiteId" -> site.value,
-        "automaticSecretSites" -> stringArray(sites.map(_.value)))
-      case ConspiracyCompleted(player, decision, source, target, sites, favor) => ujson.Obj(
+      case ConspiracyCompleted(player, decision, source, target, favor) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "sourceVisionId" -> source.value,
         "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
-        "secretSites" -> stringArray(sites.map(_.value)),
         "favorReturnOrder" -> stringArray(favor.map(_.key)))
   }
 
@@ -435,12 +428,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
               s"$path.automaticFavorReturns", "unknown suit")))
         } yield ConspiracyStarted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str),
-          VisionId(payload("sourceVisionId").str), target,
-          payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str)), favor)
-        case ConspiracySecretSiteChosenType => Right(ConspiracySecretSiteChosen(
-          PlayerId(payload("playerId").str), DecisionId(payload("decisionId").str),
-          SiteId(payload("secretSiteId").str),
-          payload("automaticSecretSites").arr.toVector.map(v => SiteId(v.str))))
+          VisionId(payload("sourceVisionId").str), target, favor)
         case ConspiracyCompletedType => for {
           target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
           favor <- traverse(payload("favorReturnOrder").arr.toVector)(v =>
@@ -448,8 +436,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
               s"$path.favorReturnOrder", "unknown suit")))
         } yield ConspiracyCompleted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str),
-          VisionId(payload("sourceVisionId").str), target,
-          payload("secretSites").arr.toVector.map(v => SiteId(v.str)), favor)
+          VisionId(payload("sourceVisionId").str), target, favor)
     }
     decoder.lift(eventType)
   }

@@ -341,8 +341,6 @@ final class GameApplicationService(
             }.getOrElse(DecisionId(s"conspiracy-$nextSequence"))
             case _ => DecisionId(s"conspiracy-$nextSequence")
           }, target))
-      case GameCommand.ChooseConspiracySecretSite(playerId, decision, siteId) =>
-        rules.handle(state, VisionCommand.ChooseSecretSite(playerId, decision, siteId))
       case GameCommand.BeginNegotiation(playerId, participants) =>
         rules.handle(state, NegotiationCommand.Begin(playerId,
           DecisionId(s"negotiation-$nextSequence"), participants))

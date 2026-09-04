@@ -26,6 +26,8 @@ class ForgeSuite extends munit.FunSuite {
     val moved = actor.copy(pawnSite = Some(siteId))
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
+      commonCards = base.game.current.commonCards.copy(worldDeck =
+        base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
       players = base.game.current.players.map(p => if (p.player == actor.player) moved else p),
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site)))))
     val targets = ids.map(SiteDenizenTarget(siteId, _))
@@ -119,13 +121,13 @@ class ForgeSuite extends munit.FunSuite {
     assignments.filter(_.resource == ForgeResource.Favor).foreach { assignment =>
       val suit = catalog.denizens.find(_.id.value == assignment.target.denizenId.value)
         .flatMap(d => Suit.all.find(_.key == d.suit.value)).get
-      assertEquals(after.support.favorBanks(suit),
-        ready.support.favorBanks(suit) - assignments.count(a =>
+      assertEquals(after.banks.favor(suit),
+        ready.banks.favor(suit) - assignments.count(a =>
           a.resource == ForgeResource.Favor && catalog.denizens
             .find(_.id.value == a.target.denizenId.value).exists(_.suit.value == suit.key)))
     }
-    val depleted = ready.copy(support = ready.support.copy(favorBanks =
-      ready.support.favorBanks.view.mapValues(_ => 0).toMap))
+    val depleted = ready.copy(banks = ready.banks.copy(favor =
+      ready.banks.favor.view.mapValues(_ => 0).toMap))
     val depletedStart = rules.handle(Ready(depleted),
       ForgeCommand.Begin(actor.player, id)).toOption.get
     assert(rules.handle(depletedStart.state,

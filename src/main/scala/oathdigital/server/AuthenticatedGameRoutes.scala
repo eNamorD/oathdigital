@@ -345,9 +345,9 @@ final class AuthenticatedGameRoutes(
       case _: GameApplicationError.SequenceConflict =>
         (StatusCodes.Conflict, "sequence-conflict",
           "the game changed while the command was handled", false)
-      case _: GameApplicationError.CommandRejected =>
+      case GameApplicationError.CommandRejected(violation) =>
         (StatusCodes.UnprocessableContent, "command-rejected",
-          "the setup rules rejected the command", false)
+          CommandRejectionMessage.text(violation), false)
       case _: GameApplicationError.DuplicateGame =>
         (StatusCodes.Conflict, "duplicate-game",
           "the game event stream already exists", false)

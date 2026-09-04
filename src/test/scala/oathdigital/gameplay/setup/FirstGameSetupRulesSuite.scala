@@ -117,7 +117,7 @@ class FirstGameSetupRulesSuite extends munit.FunSuite {
     )
     assertEquals(DomainValidation.validate(ready.game), Vector.empty)
     assertEquals(
-      ready.support.foundationProfile,
+      ready.setup.foundationProfile,
       FirstGameFoundationProfile.FixedUnaltered
     )
     assertEquals(
@@ -134,7 +134,7 @@ class FirstGameSetupRulesSuite extends munit.FunSuite {
     }
     oathdigital.model.Suit.all.foreach { suit =>
       assertEquals(
-        ready.support.favorBanks(suit),
+        ready.banks.favor(suit),
         3 + selectedEdificeSuits.count(_ == suit.key)
       )
     }
@@ -225,6 +225,46 @@ class FirstGameSetupRulesSuite extends munit.FunSuite {
         ChooseAdviser(PlayerId("p2"), denizens.head)
       ),
       Left(AdviserNotInHand(PlayerId("p2"), denizens.head))
+    )
+  }
+
+  test("setup adviser candidates live in temporary hands until chosen") {
+    val started = rules.handle(NoGame, Begin(plan)).toOption.get
+    val progress = started.state.asInstanceOf[InProgress]
+
+    participants.zipWithIndex.foreach { case (participant, index) =>
+      assertEquals(
+        progress.temporaryHands(participant.playerId),
+        denizens.slice(6 + index * 3, 9 + index * 3)
+      )
+    }
+
+    val player = PlayerId("p2")
+    val placed = rules.handle(
+      started.state,
+      PlacePawn(player, sites.head)
+    ).toOption.get.state.asInstanceOf[InProgress]
+    val adviser = placed.temporaryHands(player).collectFirst {
+      case id: DenizenId => id
+    }.get
+    val chosen = rules.handle(
+      placed,
+      ChooseAdviser(player, adviser)
+    ).toOption.get.state.asInstanceOf[InProgress]
+
+    assertEquals(chosen.temporaryHands.contains(player), true)
+    assertEquals(chosen.temporaryHands(player), Vector.empty)
+    assertEquals(
+      chosen.temporaryHands.keySet,
+      participants.map(_.playerId).toSet
+    )
+    assertEquals(
+      rules.handle(
+        placed.copy(temporaryHands = placed.temporaryHands.updated(
+          player, Vector.empty)),
+        ChooseAdviser(player, adviser)
+      ),
+      Left(AdviserNotInHand(player, adviser))
     )
   }
 

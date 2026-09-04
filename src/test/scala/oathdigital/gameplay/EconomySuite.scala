@@ -36,11 +36,14 @@ class EconomySuite extends munit.FunSuite {
     val siteId = active.pawnSite.get
     val site = initial.game.current.map.sites(siteId).copy(denizens = Vector(
       DenizenState(plainId, Orientation.FaceUp, tokens)))
+    val inserted = advisers.map(_.id).toSet + plainId
     initial.copy(
-      support = initial.support.copy(favorBanks = initial.support.favorBanks.updated(
+      banks = initial.banks.copy(favor = initial.banks.favor.updated(
         Suit.all.find(_.key == plain.suit.value).get, bank)),
       game = initial.game.copy(current = initial.game.current.copy(
         turn = initial.game.current.turn.copy(phase = Phase.Act),
+        commonCards = initial.game.current.commonCards.copy(worldDeck =
+          initial.game.current.commonCards.worldDeck.filterNot(inserted)),
         map = initial.game.current.map.copy(sites =
           initial.game.current.map.sites.updated(siteId, site)),
         players = initial.game.current.players.map(p => if (p.player != activeId) p
@@ -55,10 +58,16 @@ class EconomySuite extends munit.FunSuite {
   private def spring(ready: ReadyGame, side: EdificeSide): ReadyGame = {
     val actor = player(ready)
     val siteId = actor.pawnSite.get
+    val withoutSpring = ready.game.current.map.sites.map {
+      case (id, site) => id -> site.copy(
+        denizens = site.denizens.filterNot(_.id == springId))
+    }
     ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      map = ready.game.current.map.copy(sites = ready.game.current.map.sites.updated(
+      map = ready.game.current.map.copy(sites = withoutSpring.updated(
         siteId, ready.game.current.map.sites(siteId).copy(denizens = Vector(
-          EdificeState(springId, side, Tokens.empty))))))))
+          EdificeState(springId, side, Tokens.empty))))),
+      commonCards = ready.game.current.commonCards.copy(edificeDeck =
+        ready.game.current.commonCards.edificeDeck.filterNot(_ == springId)))))
   }
 
   test("Muster costs one Supply and favor and uses NF adviser yield") {
@@ -84,6 +93,17 @@ class EconomySuite extends munit.FunSuite {
     assertEquals(accepted.events.head.asInstanceOf[Mustered].warbandsGained, 0)
   }
 
+  test("Economy rejects a missing bounded warband supply") {
+    val ready = act()
+    val actor = player(ready)
+    val malformed = ready.copy(banks = ready.banks.copy(warbandSupply =
+      ready.banks.warbandSupply - ForceKind.Exile(actor.lineage)))
+
+    assert(rules.handle(Ready(malformed), EconomyCommand.Muster(
+      actor.player, plainTarget)).left.toOption.get
+      .isInstanceOf[UnsupportedEconomyState])
+  }
+
   test("Trade for favor moves secret and caps yield at the matching bank") {
     val adviser = DenizenState(matchingId, Orientation.FaceUp, Tokens.empty)
     val ready = act(advisers = Vector(adviser), bank = 1)
@@ -94,7 +114,7 @@ class EconomySuite extends munit.FunSuite {
     assertEquals(accepted.events.head.asInstanceOf[Traded].gained, 1)
     assertEquals(player(after).board.faceUpSecrets, 1)
     assertEquals(player(after).board.favor, 5)
-    assertEquals(after.support.favorBanks(
+    assertEquals(after.banks.favor(
       Suit.all.find(_.key == plain.suit.value).get), 0)
   }
 

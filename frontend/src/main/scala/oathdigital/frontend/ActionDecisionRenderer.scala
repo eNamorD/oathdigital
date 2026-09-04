@@ -423,7 +423,7 @@ private[frontend] object ActionDecisionRenderer {
        val favors = scala.collection.mutable.ArrayBuffer.empty[(String, dom.html.Input)]
        val relics = scala.collection.mutable.ArrayBuffer.empty[(String, String, dom.html.Input)]
        val disclosures = scala.collection.mutable.ArrayBuffer.empty[
-         (String, String, CardDetails, dom.html.Input)]
+         (String, NegotiationDisclosureOffer, dom.html.Input)]
        deal.participantPlayerIds.filterNot(_ == currentPlayerId).foreach { recipient =>
          panel.appendChild(text("h3", "", s"Your terms for $recipient"))
          val favor = dom.document.createElement("input").asInstanceOf[dom.html.Input]
@@ -448,16 +448,15 @@ private[frontend] object ActionDecisionRenderer {
            panel.appendChild(check); panel.appendChild(text("span", "", s" ${relic.name} "))
            relics += ((recipient, relic.cardId, check))
          }
-         (deal.editableAdvisers.map("adviser" -> _) ++
-             deal.editableRelics.map("held-relic" -> _) ++
-             deal.editableSiteRelics.map("site-relic" -> _)).foreach { case (kind, card) =>
+         negotiationDisclosureOffers(deal).foreach { offer =>
            val check = dom.document.createElement("input").asInstanceOf[dom.html.Input]
            check.`type` = "checkbox"; check.setAttribute("aria-label",
-             s"Promise $kind disclosure of ${card.name} to $recipient")
+             s"Promise ${offer.kind} disclosure of ${offer.card.name} to $recipient")
            check.checked = negotiationDisclosureChecked(
-             deal, currentPlayerId, recipient, kind, card.cardId)
-           panel.appendChild(check); panel.appendChild(text("span", "", s" Show ${card.name} "))
-           disclosures += ((recipient, kind, card, check))
+             deal, currentPlayerId, recipient, offer.kind, offer.card.cardId)
+           panel.appendChild(check)
+           panel.appendChild(text("span", "", s" Show ${offer.card.name} "))
+           disclosures += ((recipient, offer, check))
          }
        }
        val save = button("Save Deal Changes", "negotiation-save")
@@ -467,11 +466,12 @@ private[frontend] object ActionDecisionRenderer {
          val terms = NegotiationTermsInput(favors.map { case (recipient, input) =>
            NegotiationTransferInput(recipient, input.value.toInt,
              relics.collect { case (`recipient`, relic, check) if check.checked => relic }.toVector)
-         }.toVector, disclosures.collect { case (recipient, kind, card, check)
-             if check.checked => NegotiationDisclosureInput(recipient, kind,
-               Option.when(kind != "site-relic")(currentPlayerId),
-               Option.when(kind == "site-relic")(deal.siteId),
-               Option.when(kind == "adviser")(card.cardKind), card.cardId)
+         }.toVector, disclosures.collect { case (recipient, offer, check)
+             if check.checked => NegotiationDisclosureInput(recipient, offer.kind,
+               Option.when(offer.kind != "site-relic")(currentPlayerId),
+               offer.siteId,
+               Option.when(offer.kind == "adviser")(offer.card.cardKind),
+               offer.card.cardId)
          }.toVector)
          submitCommand(GameCommand.ReplaceNegotiationTerms(deal.decisionId,
            protocolNegotiationTerms(terms)))

@@ -2,7 +2,6 @@ package oathdigital.gameplay.operations
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
 import oathdigital.model._
 
@@ -31,30 +30,6 @@ final case class Payment(playerId: PlayerId, source: RuleSourceRef,
 final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,
     siteId: SiteId, orientation: Orientation)
 
-/** Concrete semantic mutations recorded by operation-backed power events.
-  * Power-specific adapters remain responsible for reconstructing the expected
-  * sequence before these operations are applied.
-  */
-sealed trait RecordedPowerOperation extends Product with Serializable
-object RecordedPowerOperation {
-  final case class Pay(payment: Payment) extends RecordedPowerOperation
-  final case class PlaceRelic(placement: RelicPlacement)
-      extends RecordedPowerOperation
-
-  def evolve(catalog: ExecutableCatalog, state: OathState,
-      operations: Vector[RecordedPowerOperation])
-      : Either[OathViolation, OathState] = for {
-    _ <- Either.cond(operations.nonEmpty, (),
-      InvalidEventOrder("recorded power operation list is empty"))
-    evolved <- operations.foldLeft[Either[OathViolation, OathState]](Right(state)) {
-      case (current, Pay(payment)) =>
-        current.flatMap(PayCosts.evolve(_, payment))
-      case (current, PlaceRelic(placement)) =>
-        current.flatMap(PlaceRelicAtSite.evolve(catalog, _, placement))
-    }
-  } yield evolved
-}
-
 object PayCosts {
   def describe(costs: Vector[ResourceCost]): Vector[CostDescription] =
     costs.map(cost => CostDescription(cost.resource.key, cost.amount,
@@ -68,29 +43,6 @@ object PayCosts {
       costs: Vector[ResourceCost]): Either[OathViolation, Payment] =
     validate(ready, actor, source, costs).map(_ =>
       Payment(actor, source, costs))
-
-  def evolve(state: OathState, payment: Payment)
-      : Either[OathViolation, OathState] = state match {
-    case Ready(ready) => validate(ready, payment.playerId, payment.source,
-      payment.costs).map { _ =>
-      val favor = payment.costs.filter(_.resource == ResourceKind.Favor).map(_.amount).sum
-      val secrets = payment.costs.filter(_.resource == ResourceKind.Secret).map(_.amount).sum
-      val placedFavor = payment.costs.filter(c => c.resource == ResourceKind.Favor &&
-        c.disposition == CostDisposition.PlaceOnSource).map(_.amount).sum
-      val placedSecrets = payment.costs.filter(c => c.resource == ResourceKind.Secret &&
-        c.disposition == CostDisposition.PlaceOnSource).map(_.amount).sum
-      val current = ready.game.current
-      Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-        players = current.players.map { player =>
-          val paid = if (player.player != payment.playerId) player else player.copy(
-            board = player.board.copy(favor = player.board.favor - favor,
-              faceUpSecrets = player.board.faceUpSecrets - secrets))
-          updateOwnedSource(paid, payment.source, placedFavor, placedSecrets)
-        },
-        map = updateSiteSource(current.map, payment.source, placedFavor, placedSecrets))))
-    }
-    case _ => Left(GameNotStarted)
-  }
 
   private def validate(ready: ReadyGame, actor: PlayerId, source: RuleSourceRef,
       costs: Vector[ResourceCost]): Either[OathViolation, Unit] = for {
@@ -144,39 +96,54 @@ object PayCosts {
     }
   }
 
-  private def add(card: SiteDenizenState, favor: Int, secrets: Int) = card match {
-    case d: DenizenState => d.copy(tokens = Tokens(d.tokens.favor + favor,
-      d.tokens.secrets + secrets))
-    case e: EdificeState => e.copy(tokens = Tokens(e.tokens.favor + favor,
-      e.tokens.secrets + secrets))
+}
+
+/** Converts canonical power-event facts into glossary operations. Event-owned
+  * handlers validate affordability, source identity, and placement legality
+  * before calling this adapter.
+  */
+object PowerOperationPlanner {
+  def payment(payment: Payment): Either[OathViolation, Vector[CoreOperation]] =
+    payment.costs.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
+      Right(Vector.empty)) { (result, cost) =>
+      for {
+        operations <- result
+        operation <- cost.disposition match {
+          case CostDisposition.PlaceOnSource =>
+            sourceLocation(payment.source).map(location => Give(
+              piece(cost), payment.playerId,
+              Location.PlayArea(payment.playerId), location))
+          case CostDisposition.Burn => Right(cost.resource match {
+            case ResourceKind.Favor => Burn.favor(cost.amount,
+              PositionedLocation(Location.PlayArea(payment.playerId)))
+            case ResourceKind.Secret => Burn.secrets(cost.amount,
+              PositionedLocation(Location.PlayArea(payment.playerId)))
+          })
+        }
+      } yield operations :+ operation
+    }
+
+  def placement(placement: RelicPlacement): CoreOperation = Play(
+    placement.relicId,
+    PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+    Location.Site(placement.siteId),
+    placement.orientation)
+
+  private def piece(cost: ResourceCost): Piece.Counted = cost.resource match {
+    case ResourceKind.Favor => Piece.Favor(cost.amount)
+    case ResourceKind.Secret => Piece.Secrets(cost.amount)
   }
-  private def addAdviser(card: DenizenState, favor: Int, secrets: Int) =
-    card.copy(tokens = Tokens(card.tokens.favor + favor,
-      card.tokens.secrets + secrets))
-  private def updateSiteSource(map: MapState, source: RuleSourceRef,
-      favor: Int, secrets: Int): MapState = source match {
-    case RuleSourceRef.SiteCard(site, id) => map.copy(sites = map.sites.updated(site,
-      map.sites(site).copy(denizens = map.sites(site).denizens.map(card =>
-        if (card.id == id) add(card, favor, secrets) else card))))
-    case RuleSourceRef.Edifice(site, id) => map.copy(sites = map.sites.updated(site,
-      map.sites(site).copy(denizens = map.sites(site).denizens.map(card =>
-        if (card.id == id) add(card, favor, secrets) else card))))
-    case RuleSourceRef.SiteRelic(site, id) => map.copy(sites = map.sites.updated(site,
-      map.sites(site).copy(relics = map.sites(site).relics.map(relic =>
-        if (relic.id == id) relic.copy(tokens = Tokens(
-          relic.tokens.favor + favor, relic.tokens.secrets + secrets)) else relic))))
-    case _ => map
-  }
-  private def updateOwnedSource(player: PlayerState, source: RuleSourceRef,
-      favor: Int, secrets: Int): PlayerState = source match {
-    case RuleSourceRef.Adviser(owner, id) if owner == player.player => player.copy(
-      advisers = player.advisers.map {
-        case d: DenizenState if d.id == id => addAdviser(d, favor, secrets)
-        case other => other })
-    case RuleSourceRef.Relic(owner, id) if owner == player.player => player.copy(
-      relics = player.relics.map(r => if (r.id == id) r.copy(tokens = Tokens(
-        r.tokens.favor + favor, r.tokens.secrets + secrets)) else r))
-    case _ => player
+
+  private def sourceLocation(
+      source: RuleSourceRef
+  ): Either[OathViolation, Location] = source match {
+    case RuleSourceRef.SiteCard(_, id) => Right(Location.OnCard(id))
+    case RuleSourceRef.Edifice(_, id) => Right(Location.OnCard(id))
+    case RuleSourceRef.Adviser(_, id) => Right(Location.OnCard(id))
+    case RuleSourceRef.Relic(_, id) => Right(Location.OnCard(id))
+    case RuleSourceRef.SiteRelic(_, id) => Right(Location.OnCard(id))
+    case _ => Left(InvalidEventOrder(
+      "placed cost source is not a token-bearing card"))
   }
 }
 
@@ -195,22 +162,6 @@ object PlaceRelicAtSite {
       : Either[OathViolation, RelicPlacement] = for {
     _ <- validate(catalog, ready, relic, site, orientation)
   } yield RelicPlacement(actor, relic, site, orientation)
-
-  def evolve(catalog: ExecutableCatalog, state: OathState,
-      placement: RelicPlacement): Either[OathViolation, OathState] = state match {
-    case Ready(ready) => validate(catalog, ready, placement.relicId,
-      placement.siteId, placement.orientation).map { _ =>
-      val current = ready.game.current
-      val site = current.map.sites(placement.siteId)
-      Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-        commonCards = current.commonCards.copy(
-          relicDeck = current.commonCards.relicDeck.tail),
-        map = current.map.copy(sites = current.map.sites.updated(placement.siteId,
-          site.copy(relics = site.relics :+ RelicState(placement.relicId,
-            placement.orientation, Tokens.empty)))))))
-    }
-    case _ => Left(GameNotStarted)
-  }
 
   private def validate(catalog: ExecutableCatalog, ready: ReadyGame,
       relic: RelicId, siteId: SiteId, orientation: Orientation) = for {

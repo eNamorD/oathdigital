@@ -65,7 +65,7 @@ class ChallengeSuite extends munit.FunSuite {
     assertEquals(pending0.game.current.banners.peoplesFavor.holder, None)
     val challenge = pending0.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
     assertEquals(challenge.remainingRibbonResources, 0)
-    val expectedOrder = BannerRules.raidFavorReturn(base.support.favorBanks, 2)
+    val expectedOrder = BannerRules.raidFavorReturn(base.banks.favor, 2)
     assertEquals(challenge.favorReturned, expectedOrder)
     assertEquals(started.events.collectFirst {
       case e: BannerChallengeStarted => e.automaticFavorReturns
@@ -149,6 +149,45 @@ class ChallengeSuite extends munit.FunSuite {
     val Ready(pending) = started.state: @unchecked
     val procedure = pending.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
     assertEquals(procedure.secretsPlaced.size + procedure.remainingRibbonResources, 1)
+  }
+
+  test("held Darkest Secret completion returns the remainder to the prior holder") {
+    val (bank, actor) = ready(banner = Banner.DarkestSecret, resources = 3)
+    val enemy0 = bank.game.current.players.find(_.player != actor.player).get
+    val enemy = enemy0.copy(pawnSite = actor.pawnSite)
+    val enemyHeld = bank.copy(game = bank.game.copy(current = bank.game.current.copy(
+      players = bank.game.current.players.map(p => if (p.player == enemy.player) enemy else p),
+      banners = bank.game.current.banners.copy(darkestSecret =
+        bank.game.current.banners.darkestSecret.copy(
+          holder = Some(enemy.player), secrets = 3)))))
+    val id = DecisionId("enemy-secret")
+    var transition = rules.handle(Ready(enemyHeld), ChallengeCommand.Begin(
+      actor.player, id, Banner.DarkestSecret)).toOption.get
+    while (transition.state.asInstanceOf[Ready].value.game.current.pending
+        .exists(_.asInstanceOf[PendingProcedure.Challenge].remainingRibbonResources > 0)) {
+      val r = transition.state.asInstanceOf[Ready].value
+      val p = r.game.current.pending.get.asInstanceOf[PendingProcedure.Challenge]
+      val site = BannerRules.leastSites(r.game.current, p.secretsPlaced).head
+      transition = rules.handle(transition.state, ChallengeCommand.ChooseSecretSite(
+        actor.player, id, site)).toOption.get
+    }
+    val placed = transition.state.asInstanceOf[Ready].value.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Challenge].secretsPlaced.size
+    val completed = rules.handle(transition.state, ChallengeCommand.Complete(
+      actor.player, id, 4)).toOption.get
+    val Ready(after) = completed.state: @unchecked
+    // The prior holder regains (prior - placed) faceup secrets.
+    val priorHolder = after.game.current.players.find(_.player == enemy.player).get
+    assertEquals(priorHolder.board.faceUpSecrets, enemy.board.faceUpSecrets + (3 - placed))
+    // Sites gain exactly the placed secrets.
+    assertEquals(after.game.current.map.sites.values.map(_.tokens.secrets).sum -
+      enemyHeld.game.current.map.sites.values.map(_.tokens.secrets).sum, placed)
+    // The banner ends at the challenger's strictly greater replacement.
+    assertEquals(after.game.current.banners.darkestSecret.holder, Some(actor.player))
+    assertEquals(after.game.current.banners.darkestSecret.secrets, 4)
+    // The challenger paid the replacement from faceup secrets.
+    val challenger = after.game.current.players.find(_.player == actor.player).get
+    assertEquals(challenger.board.faceUpSecrets, actor.board.faceUpSecrets - 4)
   }
 
   test("pending Challenge projection and controls are owner-only") {

@@ -25,6 +25,28 @@ import oathdigital.protocol.{MajorActionPreviewRequest, MajorActionPreviewRespon
 import oathdigital.protocol.projection.GameProjection
 import oathdigital.model.PlayerId
 
+private[server] object CommandRejectionMessage {
+  def text(violation: oathdigital.gameplay.OathViolation): String =
+    violation match {
+      case oathdigital.gameplay.OathViolation.NegotiationUnavailable(detail) => detail
+      case oathdigital.gameplay.OathViolation.NegotiationDecisionMismatch(expected, actual) =>
+        s"negotiation decision mismatch: expected $expected, actual $actual"
+      case oathdigital.gameplay.OathViolation.NegotiationOutcomeMismatch(detail) => detail
+      case oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(source, handler) =>
+        s"unsupported negotiation rule $source ($handler)"
+      case oathdigital.gameplay.OathViolation.UnsupportedNegotiationCatalogInventory(_, _) =>
+        "negotiation requires an unaltered supported catalog"
+      case oathdigital.gameplay.OathViolation.InsufficientFavor(required, available) =>
+        s"required favor $required exceeds available $available"
+      case oathdigital.gameplay.OathViolation.InsufficientSupply(required, available) =>
+        s"required Supply $required exceeds available $available"
+      case oathdigital.gameplay.OathViolation.InsufficientSecrets(required, available) =>
+        s"required secrets $required exceed available $available"
+      case oathdigital.gameplay.OathViolation.InvalidModifierInvocation(message) => message
+      case other => other.toString
+    }
+}
+
 final class GameServerGateway(
     service: oathdigital.application.GameApplicationService,
     projector: oathdigital.application.GameProjector,
@@ -302,9 +324,9 @@ final class GameRoutes(
       case _: GameApplicationError.DuplicateGame =>
         (StatusCodes.Conflict, "duplicate-game",
           "the game already exists", false)
-      case _: GameApplicationError.CommandRejected =>
+      case GameApplicationError.CommandRejected(violation) =>
         (StatusCodes.UnprocessableContent, "command-rejected",
-          "the setup rules rejected the command", false)
+          CommandRejectionMessage.text(violation), false)
       case _: GameApplicationError.BootstrapFailure =>
         (StatusCodes.UnprocessableContent, "bootstrap-failed",
           "the development setup configuration is invalid", false)

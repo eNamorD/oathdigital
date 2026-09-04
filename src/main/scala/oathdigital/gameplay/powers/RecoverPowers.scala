@@ -89,9 +89,9 @@ object RecoverPowers {
     RecoverPowerHandler.operationBackedSelected[OathEvent.CatacombsResolved](
       catacombsId, PowerWindow.RecoverBeforeFirstRoll, catacombsInspector, {
         case event: OathEvent.CatacombsResolved => event
-      })(prepareCatacombs, canonicalCatacombs, event => Vector(
-        RecordedPowerOperation.Pay(event.payment),
-        RecordedPowerOperation.PlaceRelic(event.placement)))
+      })(prepareCatacombs, canonicalCatacombs, event =>
+        PowerOperationPlanner.payment(event.payment).map(
+          _ :+ PowerOperationPlanner.placement(event.placement)))
 
   object Catacombs extends Power {
     val id = catacombsId

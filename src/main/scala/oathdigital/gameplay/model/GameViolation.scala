@@ -5,6 +5,8 @@ import oathdigital.gameplay.setup.PlayerColor
 
 sealed trait OathViolation extends Product with Serializable
 object OathViolation {
+  final case class CoreOperationRejected(code: String, detail: String)
+      extends OathViolation
   final case class UnsupportedRuleCatalog(expected: String, actual: String)
       extends OathViolation
   final case class InvalidModifierInvocation(message: String) extends OathViolation

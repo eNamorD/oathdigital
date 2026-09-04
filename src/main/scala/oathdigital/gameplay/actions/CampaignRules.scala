@@ -422,7 +422,7 @@ object CampaignRules {
     val game = ready.game
     val player = game.current.players.find(_.player == playerId).get
     val unsupportedBase =
-      if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered ||
+      if (ready.setup.foundationProfile != FirstGameFoundationProfile.FixedUnaltered ||
           game.campaign.foundations.values.exists(f => f.face != FoundationFace.Normal || f.alterationSources.nonEmpty))
         Some("altered Foundations are not supported for Campaign")
       else if (game.campaign.lineages.values.exists(_.role != Role.Exile)) Some("Campaign is limited to the all-Exile first game")

@@ -16,6 +16,7 @@ object SiteCardArea {
 
 sealed trait PlayerCardArea extends Product with Serializable
 object PlayerCardArea {
+  case object Hand extends PlayerCardArea
   case object Advisers extends PlayerCardArea
   case object Relics extends PlayerCardArea
   case object RevealedVision extends PlayerCardArea
@@ -38,6 +39,7 @@ object CardContainer {
   final case class Lineage(lineage: LineageId, area: LineageCardArea)
       extends CardContainer
   case object Reliquary extends CardContainer
+  case object SetAsideRelics extends CardContainer
   case object Dispossessed extends CardContainer
   final case class SuitedReserve(suit: Suit) extends CardContainer
   final case class AtlasSite(
@@ -137,6 +139,14 @@ object CardIndex {
       )
     }
 
+    game.current.temporaryHands.toVector.sortBy(_._1.value).foreach {
+      case (player, cards) =>
+        addIds(
+          cards,
+          CardContainer.Player(player, PlayerCardArea.Hand)
+        )
+    }
+
     game.current.players.foreach { player =>
       addStates(
         player.advisers,
@@ -188,6 +198,7 @@ object CardIndex {
       }
 
     addIds(game.campaign.reliquary, CardContainer.Reliquary)
+    addIds(game.current.setAsideRelics, CardContainer.SetAsideRelics)
     addIds(game.campaign.dispossessed, CardContainer.Dispossessed)
 
     Suit.all.foreach { suit =>

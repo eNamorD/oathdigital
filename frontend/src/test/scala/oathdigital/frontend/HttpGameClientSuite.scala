@@ -30,13 +30,14 @@ class HttpGameClientSuite extends FunSuite {
   }
 
   test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
-    val actions = """[{"actionKind":"conspiracy-secret-site","decisionId":"conspiracy-12","prompt":"Choose a site","minimum":1,"maximum":1,"autoActivate":true,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":[]}]}]"""
-    val json = projectionJson(sequence = 13, phase = "conspiracy-secret-site",
+    val actions = """[{"actionKind":"play-conspiracy","decisionId":"conspiracy-12","prompt":"Choose an enemy asset for Conspiracy","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"0"},"label":"Blue facedown relic","details":[]}]}]"""
+    val json = projectionJson(sequence = 13, phase = "conspiracy-target",
       ready = true, completed = false, choices = false)
       .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$actions")
     val action = GameJson.decodeProjection(json).toOption.get.boardTargetActions.head
     assertEquals(action.decisionId, Some("conspiracy-12"))
-    assertEquals(action.candidates.map(_.target), Vector(BoardTargetRef.Site("site:b")))
+    assertEquals(action.candidates.map(_.target), Vector(
+      BoardTargetRef.PlayerRelic("blue-exile", "0")))
 
     val reveal = GameJson.encodeCommand(13,
       GameCommand.RevealVision("red-exile", "vision-faith"))
@@ -54,11 +55,6 @@ class HttpGameClientSuite extends FunSuite {
     val noTarget = GameJson.encodeCommand(13,
       GameCommand.PlayConspiracy("red-exile", None))
     assert(noTarget.contains("\"target\":null"))
-    val site = GameJson.encodeCommand(13,
-      GameCommand.ChooseConspiracySecretSite(
-        "red-exile", "conspiracy-12", "site:b"))
-    assert(site.contains("\"decisionId\":\"conspiracy-12\""))
-    assert(site.contains("\"siteId\":\"site:b\""))
   }
 
   test("Negotiation projection decodes redacted ledger and encodes authored terms") {

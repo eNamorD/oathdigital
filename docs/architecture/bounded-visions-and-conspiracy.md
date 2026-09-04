@@ -40,9 +40,10 @@ Commands never contain their identity; the server resolves the slot to the
 durable relic identity. Public and non-owner projections retain the card back.
 Banner transfer applies its printed right ribbon before completion. People's
 Favor returns favor deterministically to the least-stocked banks with leftmost
-ties. Darkest Secret places the required secrets on least-stocked sites and
-uses an actor-owned durable choice only for genuine site ties. Completion then
-runs the ordinary action-boundary Oathkeeper evaluation.
+ties. Darkest Secret burns all secrets on the banner (they return to the
+untracked shared bank) and transfers the empty banner; no site placement or
+return-to-holder occurs on a Conspiracy take. Completion then runs the ordinary
+action-boundary Oathkeeper evaluation.
 
 ## Boundaries and deferrals
 

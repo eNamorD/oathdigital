@@ -18,8 +18,12 @@ class NegotiationSuite extends munit.FunSuite {
     val siteId = base.game.current.map.inPlay.find(id =>
       base.game.current.map.sites(id).relics.nonEmpty).get
     val siteRelic = base.game.current.map.sites(siteId).relics.head.id
-    val relics = base.game.current.map.sites.valuesIterator.flatMap(_.relics).map(_.id)
-      .filterNot(_ == siteRelic).take(3).toVector
+    val relics = base.game.current.map.sites.iterator
+      .filterNot(_._1 == siteId)
+      .flatMap(_._2.relics)
+      .map(_.id)
+      .take(3)
+      .toVector
     val players = base.game.current.players.zipWithIndex.map { case (p, index) =>
       p.copy(pawnSite = Some(siteId), board = p.board.copy(favor = 5),
         relics = Vector(RelicState(relics(index), Orientation.FaceDown,
@@ -31,8 +35,8 @@ class NegotiationSuite extends munit.FunSuite {
         case (id, value) => id -> value.copy(relics = Vector.empty)
       }), turn = base.game.current.turn.copy(activePlayer = players.head.player,
         phase = Phase.Act), pending = None)
-    val ready = base.copy(game = base.game.copy(current = current), support =
-      base.support.copy(relicKnowledge = Map(players.head.player ->
+    val ready = base.copy(game = base.game.copy(current = current), knowledge =
+      base.knowledge.copy(siteRelics = Map(players.head.player ->
         Map(siteId -> Vector(siteRelic)))))
     (ready, players, siteId, relics.head, relics(1))
   }
@@ -93,7 +97,7 @@ class NegotiationSuite extends munit.FunSuite {
   test("disclosure-only deal grants selective durable hidden knowledge") {
     val (base, players, site, _, _) = ready()
     val adviser = players.head.advisers.head.id.asInstanceOf[WorldCardId]
-    val siteRelic = base.support.relicKnowledge(players.head.player)(site).head
+    val siteRelic = base.knowledge.siteRelics(players.head.player)(site).head
     val started = begin(base, Vector(players(1).player, players(2).player))
     val terms = NegotiationTerms(disclosures = Vector(
       NegotiationDisclosure(players(1).player,
@@ -120,9 +124,9 @@ class NegotiationSuite extends munit.FunSuite {
     val done = rules.handle(two.state,
       NegotiationCommand.Accept(players(2).player, DecisionId("deal"))).toOption.get
     val Ready(after) = done.state: @unchecked
-    assert(after.support.adviserKnowledge(players(1).player).contains(adviser))
-    assert(after.support.relicKnowledge(players(1).player)(site).contains(siteRelic))
-    assert(!after.support.adviserKnowledge.getOrElse(players(2).player, Vector.empty)
+    assert(after.knowledge.advisers(players(1).player).contains(adviser))
+    assert(after.knowledge.siteRelics(players(1).player)(site).contains(siteRelic))
+    assert(!after.knowledge.advisers.getOrElse(players(2).player, Vector.empty)
       .contains(adviser))
   }
 
@@ -170,7 +174,7 @@ class NegotiationSuite extends munit.FunSuite {
     val done = rules.handle(one.state,
       NegotiationCommand.Accept(players(1).player, DecisionId("deal"))).toOption.get
     val Ready(after) = done.state: @unchecked
-    assert(after.support.heldRelicKnowledge(players.head.player).contains(otherRelic))
+    assert(after.knowledge.heldRelics(players.head.player).contains(otherRelic))
     assertEquals(after.game.current.players.find(_.player == players.head.player).get
       .board.favor, 3)
   }
@@ -182,8 +186,10 @@ class NegotiationSuite extends munit.FunSuite {
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
         emptySite, base.game.current.map.sites(emptySite).copy(forces = SiteForces.Empty))))))
     val started = begin(boundaryBase, Vector(players(1).player))
-    val declined = rules.handle(started.state,
-      NegotiationCommand.Decline(players(1).player, DecisionId("deal"))).toOption.get
+    val decline = rules.handle(started.state,
+      NegotiationCommand.Decline(players(1).player, DecisionId("deal")))
+    assert(decline.isRight, decline.left.toOption.toString)
+    val declined = decline.toOption.get
     assertEquals(declined.state.asInstanceOf[Ready].value.game.current.pending, None)
     assertEquals(declined.state.asInstanceOf[Ready].value.game.current.players,
       boundaryBase.game.current.players)

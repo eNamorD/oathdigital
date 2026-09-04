@@ -33,7 +33,6 @@ private[protocol] object CommandIntentCodec {
       "placement" -> placement.map(place).getOrElse(ujson.Null))
     case RevealVision(id) => tagged("revealVision", "visionId" -> id)
     case PlayConspiracy(target) => tagged("playConspiracy", "target" -> target.map(conspiracy).getOrElse(ujson.Null))
-    case ChooseConspiracySecretSite(id, site) => tagged("chooseConspiracySecretSite", "decisionId" -> id, "siteId" -> site)
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)

@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.phases.{Wake, WakeCommand}
+import oathdigital.gameplay.phases.{Wake, WakeCommand, WakeOperationPolicy}
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
@@ -10,6 +10,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Location, Piece, Take}
 
 class WakeSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -72,6 +73,21 @@ class WakeSuite extends munit.FunSuite {
     val Ready(after) = accepted.state: @unchecked
     assertEquals(after.game.current.players.find(_.player == active).get
       .board.faceUpSecrets, beforeSecrets + 1)
+  }
+
+  test("Wake operation policy permits only the active player's wealth Take") {
+    val state = ready()
+    val Ready(value) = state: @unchecked
+    val player = activePlayer(state)
+    val site = activeSite(state)
+    val take = Take(Piece.Favor(1), player,
+      Location.Site(site), Location.PlayArea(player))
+    val other = value.game.current.players.find(_.player != player).get.player
+    val wrongActor = take.copy(
+      player = other, to = Location.PlayArea(other))
+
+    assert(WakeOperationPolicy.validate(value, take).isRight)
+    assert(WakeOperationPolicy.validate(value, wrongActor).isLeft)
   }
 
   test("End Wake is independent and enters Act action selection") {

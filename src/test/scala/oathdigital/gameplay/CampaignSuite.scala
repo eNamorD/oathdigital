@@ -12,6 +12,8 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.catalog.CatalogPower
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Location, Move => CoreMove, Piece,
+  PositionedLocation}
 
 class CampaignSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -57,16 +59,44 @@ class CampaignSuite extends munit.FunSuite {
         VisionState(CampaignRules.Conspiracy, Orientation.FaceDown)),
       relics = Vector(RelicState(relic, Orientation.FaceUp, Tokens.empty),
         RelicState(RelicId("raid-facedown-relic"), Orientation.FaceDown, Tokens.empty)))
-    val current = base.game.current.copy(players = base.game.current.players.map {
+    val current = base.game.current.copy(
+      commonCards = base.game.current.commonCards.copy(
+        worldDeck = base.game.current.commonCards.worldDeck.filterNot(
+          _ == CampaignRules.Conspiracy)),
+      players = base.game.current.players.map {
       case p if p.player == attacker.player => attacker
       case p if p.player == defender.player => defender
       case p => p
-    }, banners = base.game.current.banners.copy(
+    }, map = base.game.current.map.copy(
+      sites = base.game.current.map.sites.map { case (id, siteState) =>
+        id -> siteState.copy(
+          relics = siteState.relics.filterNot(_.id == relic))
+      }),
+      banners = base.game.current.banners.copy(
       peoplesFavor = base.game.current.banners.peoplesFavor.copy(
         holder = Some(defender.player), favor = 3),
       darkestSecret = base.game.current.banners.darkestSecret.copy(
         holder = Some(defender.player), secrets = 2)))
     (base.copy(game = base.game.copy(current = current)), attacker, defender, site, relic)
+  }
+
+  /** Replaces a player with a fixture actor whose advisers/relics are drawn
+    * from the catalog, removing those card ids from their source decks so the
+    * fixture stays CardIndex-consistent under operation preflight (cards may
+    * not be duplicated across containers).
+    */
+  private def withPlanActor(ready: ReadyGame, actor: PlayerState): ReadyGame = {
+    val worldIds = actor.advisers.collect {
+      case d: DenizenState => d.id: WorldCardId
+      case v: VisionState => v.id: WorldCardId
+    }.toSet
+    val relicIds = actor.relics.map(_.id).toSet
+    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      commonCards = ready.game.current.commonCards.copy(
+        worldDeck = ready.game.current.commonCards.worldDeck.filterNot(worldIds),
+        relicDeck = ready.game.current.commonCards.relicDeck.filterNot(relicIds)),
+      players = ready.game.current.players.map(p =>
+        if (p.player == actor.player) actor else p))))
   }
 
   test("Raid targets require the co-located pawn and preserve canonical order") {
@@ -146,8 +176,10 @@ class CampaignSuite extends munit.FunSuite {
         2 + catalog.relics.find(_.id.value == relic.value).get.defense + 6)(
         DefenseDieFace.Blank))).toOption.get
     val destination = refillSite
-    val completed = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
-      attacker.player, decision, destination)).toOption.get
+    val completion = rules.handle(won.state, CampaignCommand.RelocateRaidPawn(
+      attacker.player, decision, destination))
+    assert(completion.isRight, completion.left.toOption.toString)
+    val completed = completion.toOption.get
     assertEquals(completed.events.take(2).map(_.getClass.getSimpleName),
       Vector("CampaignRaided", "CampaignRaidPawnRelocated"))
     assert(completed.events.drop(2).exists(_.isInstanceOf[BanditsRefilled]),
@@ -159,6 +191,9 @@ class CampaignSuite extends munit.FunSuite {
     val nextAttacker = after.game.current.players.find(_.player == attacker.player).get
     val nextDefender = after.game.current.players.find(_.player == defender.player).get
     assert(nextAttacker.relics.exists(_.id == relic))
+    // The raider commits 4 warbands, sacrifices 2, and loses none to skulls;
+    // the two sacrificed warbands die while the two survivors stay on board.
+    assertEquals(nextAttacker.board.warbands, 2)
     assertEquals(nextDefender.board.warbands, 3)
     assertEquals(nextDefender.board.favor, 3)
     assertEquals(nextDefender.pawnSite, Some(destination))
@@ -167,7 +202,8 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(after.game.current.commonCards.discard(discardRegion).takeRight(2),
       Vector(DenizenId("raid-facedown-denizen"), VisionId("raid-facedown-vision")))
     assert(!after.game.campaign.dispossessed.contains(CampaignRules.Conspiracy))
-    assertEquals(after.game.campaign.reliquary.last,
+    assertEquals(nextDefender.advisers.exists(_.id == CampaignRules.Conspiracy), false)
+    assertEquals(after.game.current.setAsideRelics.last,
       RelicId("raid-facedown-relic"))
     assertEquals(after.game.current.pending, None)
     val replayed = completed.events.foldLeft[Either[OathViolation, OathState]](
@@ -401,9 +437,7 @@ class CampaignSuite extends munit.FunSuite {
         Orientation.FaceUp, Tokens.empty)),
       relics = Vector(RelicState(RelicId(brass.id.value), Orientation.FaceUp,
         Tokens.empty)))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      players = ready.game.current.players.map(p =>
-        if (p.player == player.player) actor else p))))
+    val state = withPlanActor(ready, actor)
     val skulls = Vector.fill(4)(AttackDieFace.TwoSwordsSkull)
 
     def finish(id: String, plans: Vector[PendingProcedure.CampaignPlanSource]) = {
@@ -457,6 +491,10 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(after.game.current.map.sites(site).forces,
       SiteForces.Occupied(ForceKind.Exile(player.lineage), 1))
     assertEquals(after.game.current.pending, None)
+    // The skull-loss warband dies and the placed warband leaves the board, so
+    // exactly skullLosses(1) + placed(1) = 2 of the committed 3 are gone.
+    assertEquals(after.game.current.players.find(_.player == player.player).get
+      .board.warbands, player.board.warbands - 2)
   }
 
   test("explicit projected maximum preserves the prior all-warband path") {
@@ -468,8 +506,10 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(after.game.current.pending.collect {
       case campaign: PendingProcedure.Campaign => campaign.force
     }, Some(maximum))
+    // The committed force never leaves the play area: it stays on the board
+    // through the battle and leaves only when it dies or is placed.
     assertEquals(after.game.current.players.find(_.player == player.player).get
-      .board.warbands, 0)
+      .board.warbands, maximum)
   }
 
   test("defeat kills half surviving force and replay rejects tampering") {
@@ -505,6 +545,28 @@ class CampaignSuite extends munit.FunSuite {
       })).isLeft)
   }
 
+  test("defeat removes sacrificed warbands from the committed force") {
+    val (ready, player, site) = campaignReady
+    val id = DecisionId("campaign-loss-sacrifice")
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.HollowSword))
+    val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
+      DefenseDieFace.TwoShields)
+    val defeated = rules.handle(started.state, CampaignCommand.Sacrifice(
+      player.player, id, 1, defenseDice)).toOption.get
+    val event = defeated.events.head.asInstanceOf[CampaignSacrificed]
+    // surviving = force(2) - skull(0) - sacrificed(1) = 1; the default policy
+    // kills half (0) and returns 1, so the sacrificed warband is the only death.
+    assertEquals(event.losingForces.collect {
+      case CampaignLosingForceEffect.ReturnToBoard(_, _, _, count) => count
+    }, Vector(1))
+    val Ready(after) = defeated.state: @unchecked
+    assertEquals(after.game.current.pending, None)
+    assertEquals(after.game.current.players.find(_.player == player.player).get
+      .board.warbands, player.board.warbands - 1)
+    assert(rules.evolve(started.state, event.copy(sacrificed = 2)).isLeft)
+  }
+
   test("unimplemented optional facedown adviser does not block Campaign") {
     val (ready, player, site) = campaignReady
     val relevant = catalog.denizens.find(_.rulesText.toLowerCase.contains("campaign")).get
@@ -533,10 +595,9 @@ class CampaignSuite extends munit.FunSuite {
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
     val source = PendingProcedure.CampaignPlanSource.Adviser(player.player,
       DenizenId(outriders.id.value))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      players = ready.game.current.players.map(p => if (p.player != player.player) p else
-        p.copy(advisers = Vector(DenizenState(DenizenId(outriders.id.value),
-          Orientation.FaceDown, Tokens.empty)))))))
+    val state = withPlanActor(ready,
+      player.copy(advisers = Vector(DenizenState(DenizenId(outriders.id.value),
+        Orientation.FaceDown, Tokens.empty))))
     val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
       DecisionId("campaign-outriders"), site, 1)).toOption.get
     val Ready(pendingState) = declared.state: @unchecked
@@ -568,6 +629,40 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(result.skullLosses, 0)
     assertEquals(after.game.current.players.find(_.player == player.player).get
       .advisers.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
+  }
+
+  test("facedown site Outriders reveals in place and records cleanly") {
+    val (ready, player, site) = campaignReady
+    val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
+    val outridersId = DenizenId(outriders.id.value)
+    val source = PendingProcedure.CampaignPlanSource.SiteCard(site, outridersId)
+    // The facedown denizen sits at the campaign origin; remove it from the
+    // world deck so the fixture stays CardIndex-unique under operation
+    // preflight (a card may not be duplicated across containers).
+    val denizen = DenizenState(outridersId, Orientation.FaceDown, Tokens.empty)
+    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      commonCards = ready.game.current.commonCards.copy(
+        worldDeck = ready.game.current.commonCards.worldDeck.filterNot(
+          _ == (outridersId: WorldCardId))),
+      map = ready.game.current.map.copy(sites = ready.game.current.map.sites.updated(
+        site, ready.game.current.map.sites(site).copy(denizens = Vector(denizen)))))))
+    val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
+      DecisionId("campaign-site-outriders"), site, 1)).toOption.get
+    val Ready(pendingState) = declared.state: @unchecked
+    val pending = pendingState.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
+    assertEquals(CampaignRules.legalPlanChoices(catalog, pendingState, pending),
+      Vector(source))
+    val selected = rules.handle(declared.state, CampaignCommand.ChoosePlan(
+      player.player, pending.decision, source)).toOption.get
+    assertEquals(selected.events.head.asInstanceOf[CampaignPlanChosen].revealed, true)
+    val Ready(afterChoose) = selected.state: @unchecked
+    assertEquals(afterChoose.game.current.map.sites(site).denizens.head
+      .asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
+    val finished = rules.handle(selected.state, CampaignCommand.FinishPlans(
+      player.player, pending.decision, Vector(AttackDieFace.TwoSwordsSkull))).toOption.get
+    val Ready(afterFinish) = finished.state: @unchecked
+    assertEquals(afterFinish.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Campaign].skullLosses, 0)
   }
 
   test("Campaign plan choice rejects stale and tampered sources") {
@@ -603,9 +698,7 @@ class CampaignSuite extends munit.FunSuite {
       advisers = Vector(DenizenState(DenizenId(outriders.id.value),
         Orientation.FaceUp, Tokens.empty)),
       relics = Vector(RelicState(brassId, Orientation.FaceUp, Tokens.empty)))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      players = ready.game.current.players.map(p =>
-        if (p.player == player.player) actor else p))))
+    val state = withPlanActor(ready, actor)
     val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
       DecisionId("campaign-brass"), site, 2)).toOption.get
     val Ready(pendingState) = declared.state: @unchecked
@@ -675,9 +768,7 @@ class CampaignSuite extends munit.FunSuite {
     val actor = player.copy(board = player.board.copy(faceUpSecrets = 1),
       advisers = Vector(DenizenState(outridersId, Orientation.FaceDown, Tokens.empty)),
       relics = Vector(RelicState(brassId, Orientation.FaceUp, Tokens.empty)))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      players = ready.game.current.players.map(p =>
-        if (p.player == player.player) actor else p))))
+    val state = withPlanActor(ready, actor)
 
     Vector(Vector(outriders, brass), Vector(brass, outriders)).zipWithIndex.foreach {
       case (order, index) =>
@@ -871,6 +962,23 @@ class CampaignSuite extends munit.FunSuite {
     assert(rules.evolve(won.state, refill.copy(sites = Vector(site -> 99))).isLeft)
   }
 
+  test("state-based operation policy permits only bandit-bank refills") {
+    val (ready, _, site) = campaignReady
+    val empty = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(site,
+          ready.game.current.map.sites(site).copy(forces = SiteForces.Empty))))))
+    val refill = CoreMove(
+      Piece.Warbands(ForceKind.Bandit, 1),
+      PositionedLocation(Location.WarbandBank(ForceKind.Bandit)),
+      PositionedLocation(Location.Site(site)))
+    val wrongKind = refill.copy(piece = Piece.Warbands(
+      ForceKind.Exile(ready.game.current.players.head.lineage), 1))
+
+    assert(StateBasedOperationPolicy.validate(empty, refill).isRight)
+    assert(StateBasedOperationPolicy.validate(empty, wrongKind).isLeft)
+  }
+
   test("multi-site conquest removes every losing force and allocates atomically") {
     val (ready, player, pawn) = campaignReady
     val other = CampaignRules.legalTargets(catalog, ready, player.player)(1)
@@ -980,6 +1088,34 @@ class CampaignSuite extends munit.FunSuite {
       ready.game.current.map.sites(site).forces)
     assert(alternateRules.handle(won.state, CampaignCommand.Place(
       player.player, id, Vector(CampaignForceAllocation(site, 1))))
+      .left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
+  }
+
+  test("Preserve losing force must match the site's recorded occupation") {
+    val (ready, player, site) = campaignReady
+    val id = DecisionId("campaign-preserve-mismatch")
+    val started = startAndChoose(ready, player, site, id, 2,
+      Vector.fill(2)(AttackDieFace.TwoSwordsSkull))
+    val defenseDice = Vector.fill(catalog.sites.find(_.id == site).get.defense)(
+      DefenseDieFace.Blank)
+    val won = rules.handle(started.state, CampaignCommand.Sacrifice(
+      player.player, id, 0, defenseDice)).toOption.get
+    // The resolver claims the target holds one more bandit than it actually
+    // does; `losingSiteEffects` must reject the replay instead of silently
+    // preserving a force count that is not on the site.
+    val wrongCount = new CampaignLosingForceResolver {
+      val id = "campaign.loss.test-preserve-wrong-count"
+      def resolve(state: ReadyGame, campaign: PendingProcedure.Campaign) =
+        Right(campaign.targetSites.map(target => {
+          val SiteForces.Occupied(force, count) =
+            state.game.current.map.sites(target).forces: @unchecked
+          CampaignLosingForceEffect.Preserve(target, force, count + 1)
+        }))
+    }
+    val alternateRules = new OathRules(catalog,
+      CampaignLosingForceRegistry(wrongCount, Vector(wrongCount)))
+    assert(alternateRules.handle(won.state, CampaignCommand.Place(
+      player.player, id, Vector(CampaignForceAllocation(site, 0))))
       .left.toOption.get.isInstanceOf[CampaignOutcomeMismatch])
   }
 

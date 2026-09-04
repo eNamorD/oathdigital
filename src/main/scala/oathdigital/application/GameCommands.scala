@@ -47,8 +47,6 @@ object GameCommand {
       extends GameCommand
   final case class PlayConspiracy(playerId: PlayerId,
       target: Option[ConspiracyTargetRef]) extends GameCommand
-  final case class ChooseConspiracySecretSite(playerId: PlayerId,
-      decision: DecisionId, siteId: SiteId) extends GameCommand
   final case class BeginNegotiation(playerId: PlayerId,
       participants: Vector[PlayerId]) extends GameCommand
   final case class ReplaceNegotiationTerms(playerId: PlayerId,

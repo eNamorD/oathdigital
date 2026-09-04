@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{TravelCommand, TravelRules}
+import oathdigital.gameplay.actions.{TravelCommand, TravelOperationPolicy,
+  TravelRules}
 import oathdigital.gameplay.phases.WakeCommand
 
 import oathdigital.model._
@@ -10,6 +11,8 @@ import oathdigital.gameplay.OathEvent.Traveled
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Location, Move, Piece,
+  PositionedLocation}
 
 class TravelSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -170,6 +173,21 @@ class TravelSuite extends munit.FunSuite {
     assertEquals(rules.handle(repeated.state,
       WakeCommand.TakeWealth(player.player, WakeResource.Favor))
       .left.toOption.get, WrongPhase(Phase.Wake, Phase.Act))
+  }
+
+  test("Travel operation policy permits only the validated pawn move") {
+    val ready = act()
+    val player = active(ready)
+    val source = player.pawnSite.get
+    val destination = ready.game.current.map.inPlay.find(_ != source).get
+    val move = Move(
+      Piece.Pawn(player.player),
+      PositionedLocation(Location.Site(source)),
+      PositionedLocation(Location.Site(destination)))
+    val wrongPiece = move.copy(piece = Piece.Favor(1))
+
+    assert(TravelOperationPolicy.validate(ready, move).isRight)
+    assert(TravelOperationPolicy.validate(ready, wrongPiece).isLeft)
   }
 
   test("Travel validates actor phase pending destination and Supply") {

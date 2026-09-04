@@ -57,6 +57,10 @@ class SearchSuite extends munit.FunSuite {
     assertEquals(active(after).board.supply.supply,
       player.board.supply.supply - 3)
     assertEquals(after.game.current.commonCards.worldDeck, Vector(d2, d3))
+    assertEquals(after.game.current.temporaryHands(player.player),
+      Vector(d1, vision))
+    assertEquals(CardIndex.from(after.game).toOption.get.locationOf(d1),
+      Some(CardLocation(CardContainer.Player(player.player, PlayerCardArea.Hand), 0)))
     assertEquals(after.game.current.tracks.visionsDrawn, 2)
     assert(after.game.current.pending.exists(_.decision == DecisionId("search-1")))
   }
@@ -104,6 +108,8 @@ class SearchSuite extends munit.FunSuite {
     assertEquals(after.game.current.commonCards.discard(destination).takeRight(3),
       discarded :+ drawn.head)
     assertEquals(after.game.current.pending, None)
+    assertEquals(after.game.current.temporaryHands.get(player.player),
+      Some(Vector.empty))
     assertEquals(after.game.current.turn.phase, Phase.Act)
   }
 
@@ -114,8 +120,9 @@ class SearchSuite extends munit.FunSuite {
       _.handlers.contains("denizen.dazzle")).get.id.value)
     val origin = player.pawnSite.flatMap(base.game.current.map.regionOf).get
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+      temporaryHands = Map(player.player -> Vector(powered)),
       pending = Some(PendingProcedure.Search(DecisionId("powered-search"),
-        player.player, SearchSource.WorldDeck, origin, 2, Vector(powered))))))
+        player.player, SearchSource.WorldDeck, origin, 2)))))
     val accepted = rules.handle(Ready(ready), SearchCommand.Complete(player.player,
       DecisionId("powered-search"), powered, Vector.empty,
       SearchPlacement.Adviser(Orientation.FaceUp, None))).toOption.get
@@ -129,6 +136,53 @@ class SearchSuite extends munit.FunSuite {
       case (failure @ Left(_), _) => failure
     }
     assertEquals(replayed, Right(accepted.state))
+  }
+
+  test("replacing a favor-bearing denizen returns its favor to the bank") {
+    val base = act
+    val player = active(base)
+    val siteId = player.pawnSite.get
+    val capacity = catalog.sites.find(_.id == siteId).get.capacity
+    assume(capacity >= 2, "pawn site must hold an edifice and a denizen")
+    def playable(d: oathdigital.catalog.DenizenDefinition): Boolean =
+      d.restrictions != oathdigital.catalog.CardRestrictions.AdviserOnly &&
+        d.restrictions != oathdigital.catalog.CardRestrictions.LockedAdviserOnly
+    val edifice = catalog.edifices.find(e =>
+      catalog.denizens.count(d => d.suit == e.suit && playable(d)) >= 2).get
+    val edificeId = EdificeId(edifice.id.value)
+    val suit = Suit.all.find(_.key == edifice.suit.value).get
+    val suitDenizens = catalog.denizens.filter(d => d.suit == edifice.suit &&
+      playable(d))
+    val target = DenizenId(suitDenizens(0).id.value)
+    val played = DenizenId(suitDenizens(1).id.value)
+    val fillers = catalog.denizens.filter(_.suit != edifice.suit)
+      .map(d => DenizenId(d.id.value)).take(capacity - 2)
+    val inserted = (Vector[CardId](edificeId, target, played) ++ fillers).toSet
+    val site = base.game.current.map.sites(siteId).copy(denizens =
+      Vector(EdificeState(edificeId, EdificeSide.Intact, Tokens.empty)) ++
+        Vector(DenizenState(target, Orientation.FaceUp, Tokens(1, 0))) ++
+        fillers.map(id => DenizenState(id, Orientation.FaceUp, Tokens.empty)))
+    val origin = player.pawnSite.flatMap(base.game.current.map.regionOf).get
+    val favorGained = math.min(1, base.banks.favor.getOrElse(suit, 0))
+    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+      commonCards = base.game.current.commonCards.copy(
+        worldDeck = base.game.current.commonCards.worldDeck.filterNot(inserted),
+        edificeDeck = base.game.current.commonCards.edificeDeck.filterNot(
+          _ == edificeId)),
+      map = base.game.current.map.copy(sites =
+        base.game.current.map.sites.updated(siteId, site)),
+      temporaryHands = Map(player.player -> Vector(played)),
+      pending = Some(PendingProcedure.Search(DecisionId("token-replace"),
+        player.player, SearchSource.WorldDeck, origin, 2)))))
+    val completed = rules.evolve(Ready(ready), SearchCompleted(player.player,
+      DecisionId("token-replace"), played, Vector.empty,
+      SearchPlacement.Site(Some(target)), favorGained,
+      discardedWorld = Vector(target), discardedEdifices = Vector.empty))
+    assert(completed.isRight, completed.left.toOption.toString)
+    val Ready(after) = completed.toOption.get: @unchecked
+    assert(!after.game.current.map.sites(siteId).denizens.exists(_.id == target))
+    assertEquals(after.banks.favor.getOrElse(suit, 0),
+      base.banks.favor.getOrElse(suit, 0) + 1 - favorGained)
   }
 
   test("replay rejects tampered draw cost decision and card permutation") {
@@ -148,6 +202,20 @@ class SearchSuite extends munit.FunSuite {
     assert(rules.handle(started.state, SearchCommand.Complete(player.player,
       DecisionId("good"), drawn.head, Vector.empty, SearchPlacement.Discard))
       .left.toOption.get.isInstanceOf[SearchChoiceMismatch])
+  }
+
+  test("Search rejects rather than overwrites an existing temporary hand") {
+    val base = act
+    val player = active(base)
+    val drawn = SearchRules.draw(base, SearchSource.WorldDeck,
+      player.pawnSite.flatMap(base.game.current.map.regionOf).get).toOption.get
+    val prepared = base.copy(game = base.game.copy(current =
+      base.game.current.copy(temporaryHands = Map(player.player ->
+        Vector(DenizenId("orphan"))))))
+
+    assert(rules.handle(Ready(prepared), SearchCommand.Start(
+      player.player, DecisionId("occupied-hand"), SearchSource.WorldDeck,
+      drawn)).left.toOption.get.isInstanceOf[SearchDrawMismatch])
   }
 
   test("pending projection exposes identities only to the deciding player") {
@@ -181,9 +249,10 @@ class SearchSuite extends munit.FunSuite {
     val adviserOnly = catalog.denizens.find(_.restrictions ==
       oathdigital.catalog.CardRestrictions.AdviserOnly).get
     def pending(id: DenizenId) = base.copy(game = base.game.copy(current =
-      base.game.current.copy(pending = Some(PendingProcedure.Search(
+      base.game.current.copy(temporaryHands = Map(player.player -> Vector(id)),
+        pending = Some(PendingProcedure.Search(
         DecisionId("restriction"), player.player, SearchSource.WorldDeck,
-        origin, 2, Vector(id))))))
+        origin, 2)))))
     val siteId = DenizenId(siteOnly.id.value)
     val adviserId = DenizenId(adviserOnly.id.value)
     assert(rules.evolve(Ready(pending(siteId)), SearchCompleted(player.player,
@@ -206,10 +275,13 @@ class SearchSuite extends munit.FunSuite {
       DenizenState(id, Orientation.FaceDown, Tokens.empty)))
     val origin = player.pawnSite.flatMap(base.game.current.map.regionOf).get
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+      commonCards = base.game.current.commonCards.copy(worldDeck =
+        base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
       players = base.game.current.players.map(p =>
         if (p.player == player.player) fullPlayer else p),
+      temporaryHands = Map(player.player -> ids.slice(3, 5)),
       pending = Some(PendingProcedure.Search(DecisionId("replace"), player.player,
-        SearchSource.WorldDeck, origin, 2, ids.slice(3, 5))))))
+        SearchSource.WorldDeck, origin, 2)))))
     val projection = new oathdigital.application.GameProjector(catalog).project(
       "search-replacement", oathdigital.application.LoadedGame(Ready(ready), 10),
       player.player)

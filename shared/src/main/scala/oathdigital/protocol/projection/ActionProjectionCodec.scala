@@ -182,7 +182,8 @@ private[projection] object ActionProjectionCodec {
     "editableFavor" -> value.editableFavor,
     "editableRelics" -> encoded(value.editableRelics)(encodeCard),
     "editableAdvisers" -> encoded(value.editableAdvisers)(encodeCard),
-    "editableSiteRelics" -> encoded(value.editableSiteRelics)(encodeCard))
+    "editableSiteRelics" -> encoded(value.editableSiteRelics)(row => ujson.Obj(
+      "siteId" -> row.siteId, "card" -> encodeCard(row.card))))
   def decodeNegotiation(raw: ujson.Value, path: String): Result[NegotiationProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("decisionId", "actorPlayerId", "siteId", "participantPlayerIds",
@@ -208,7 +209,12 @@ private[projection] object ActionProjectionCodec {
     favor <- int(value, "editableFavor", path)
     relicRaws <- array(value, "editableRelics", path); relics <- traverse(relicRaws, s"$path.editableRelics")(decodeCard)
     adviserRaws <- array(value, "editableAdvisers", path); advisers <- traverse(adviserRaws, s"$path.editableAdvisers")(decodeCard)
-    siteRelicRaws <- array(value, "editableSiteRelics", path); siteRelics <- traverse(siteRelicRaws, s"$path.editableSiteRelics")(decodeCard)
+    siteRelicRaws <- array(value, "editableSiteRelics", path)
+    siteRelics <- traverse(siteRelicRaws, s"$path.editableSiteRelics") { (raw, child) => for {
+      row <- obj(raw, child); _ <- exact(row, Set("siteId", "card"), child)
+      site <- string(row, "siteId", child); cardRaw <- field(row, "card", child)
+      card <- decodeCard(cardRaw, s"$child.card")
+    } yield NegotiationSiteRelicProjection(site, card) }
   } yield NegotiationProjection(decision, actor, site, participants, accepted, transfers,
     disclosures, favor, relics, advisers, siteRelics)
 }

@@ -40,9 +40,9 @@ private[application] final class LegalActionProjector(
             case oathdigital.gameplay.TradeResource.Secret => "secret"
           }, result.supplySpent, result.gained)) else Vector.empty,
       context.current.pending match {
-        case Some(p: PendingProcedure.Conspiracy) if context.viewer.contains(p.actor) =>
-          Vector(if (p.awaitingTarget) conspiracyTargetAction(context.ready, p)
-            else conspiracySecretSiteAction(context.ready, p))
+        case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
+            context.viewer.contains(p.actor) =>
+          Vector(conspiracyTargetAction(context.ready, p))
         case _ if ordinaryAct => boardTargetActions(context)
         case _ => Vector.empty
       },
@@ -64,9 +64,8 @@ private[application] final class LegalActionProjector(
       case Some(p: PendingProcedure.OathkeeperRecipient)
           if context.viewer.contains(p.actor) => Vector("chooseOathkeeperRecipient")
       case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
-      case Some(p: PendingProcedure.Conspiracy) if context.viewer.contains(p.actor) =>
-        Vector(if (p.awaitingTarget) "playConspiracy"
-          else "chooseConspiracySecretSite")
+      case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
+          context.viewer.contains(p.actor) => Vector("playConspiracy")
       case Some(_: PendingProcedure.Conspiracy) => Vector.empty
       case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
           context.viewer.contains(CampaignRules.planDecisionOwner(c)) =>
@@ -265,15 +264,6 @@ private[application] final class LegalActionProjector(
         explicitConfirm = true)).flatten
   }
 
-  private def conspiracySecretSiteAction(ready: oathdigital.gameplay.ReadyGame,
-      pending: PendingProcedure.Conspiracy) = {
-    val sites = BannerRules.leastSites(ready.game.current, pending.secretSites).map(site =>
-      BoardTargetCandidateProjection(BoardTargetRefProjection.Site(site.value),
-        presentation.siteLabel(site)))
-    BoardTargetActionProjection("conspiracy-secret-site",
-      "Choose a tied least-stocked site for the Darkest Secret", 1, 1,
-      autoActivate = true, sites, decisionId = Some(pending.decision.value))
-  }
   private def conspiracyTargetAction(ready: oathdigital.gameplay.ReadyGame,
       pending: PendingProcedure.Conspiracy) = {
     val targets = conspiracyTargetCandidates(ready, pending.actor)

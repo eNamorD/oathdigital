@@ -44,10 +44,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
     val controls = if (!viewer.contains(active)) Vector.empty
       else if (awaitingAdviser) Vector("chooseAdviser") else Vector("placePawn")
     val privateCards = if (viewer.contains(active)) {
-      val participantIndex = progress.plan.participants.indexWhere(participant =>
-        viewer.contains(participant.playerId))
-      progress.plan.denizenOrder.slice(6 + participantIndex * 3,
-        9 + participantIndex * 3).map(presentation.cardDetails(_,
+      progress.temporaryHands.getOrElse(active, Vector.empty)
+        .map(presentation.cardDetails(_,
           Some(Orientation.FaceUp), hidden = false))
     } else Vector.empty
     val decision = Option.when(privateCards.nonEmpty && awaitingAdviser)(PendingCardDecisionProjection(
@@ -148,10 +146,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
       negotiation = pending.negotiation,
       negotiationWaiting = current.result.isEmpty && pending.negotiationWaiting,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,
-        context.ready.support.favorBanks.getOrElse(suit, 0))),
+        context.ready.banks.favor.getOrElse(suit, 0))),
       tracks = Some(GameTracksProjection(current.tracks.round,
         current.tracks.visionsDrawn, current.tracks.usurperLimited, 4,
-        context.ready.support.firstPlayer.value)),
+        context.ready.setup.firstPlayer.value)),
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(restPower = pending.restPower,
         restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting)

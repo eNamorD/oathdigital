@@ -70,6 +70,36 @@ class CardIndexSuite extends munit.FunSuite {
     )
   }
 
+  test("temporary hands and set-aside relics are indexed as owning zones") {
+    val prepared = game.copy(
+      campaign = game.campaign.copy(reliquary = Vector.empty),
+      current = game.current.copy(
+        commonCards = game.current.commonCards.copy(worldDeck = Vector.empty),
+        temporaryHands = Map(playerId -> Vector(worldDenizen)),
+        setAsideRelics = Vector(reliquaryRelic)
+      )
+    )
+    val index = CardIndex.from(prepared).toOption.get
+
+    assertEquals(index.locationOf(worldDenizen), Some(CardLocation(
+      CardContainer.Player(playerId, PlayerCardArea.Hand), 0)))
+    assertEquals(index.locationOf(reliquaryRelic), Some(CardLocation(
+      CardContainer.SetAsideRelics, 0)))
+  }
+
+  test("temporary hands remain indexed even when their owner is invalid") {
+    val unknown = PlayerId("unknown")
+    val prepared = game.copy(current = game.current.copy(
+      commonCards = game.current.commonCards.copy(worldDeck = Vector.empty),
+      temporaryHands = Map(unknown -> Vector(worldDenizen))))
+
+    val index = CardIndex.from(prepared).toOption.get
+    assertEquals(index.locationOf(worldDenizen), Some(CardLocation(
+      CardContainer.Player(unknown, PlayerCardArea.Hand), 0)))
+    assert(DomainValidation.validate(prepared).contains(
+      DomainProblem.UnknownTemporaryHandOwner(unknown)))
+  }
+
   test("the fixture satisfies structural domain invariants") {
     assertEquals(DomainValidation.validate(game), Vector.empty)
   }

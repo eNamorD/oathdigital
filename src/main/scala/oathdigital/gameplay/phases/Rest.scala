@@ -10,6 +10,9 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.powers.rest.RestPowerIntegration
+import oathdigital.gameplay.operations.{CoreOperation, FlipSecrets, Location,
+  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Piece, PositionedLocation, SecretSide}
 
 sealed trait RestCommand extends Product with Serializable
 object RestCommand {
@@ -36,7 +39,6 @@ object WarExhaustionRandomPort {
 object Rest {
   private val ExpectedHandlerInventory =
     "5fc88b0d9622a3f523722c288ea7a78d0ec09b7ce191bdabc7f471139ec85898"
-  private val ExileWarbands = 14
   private val ExileSupply = SupplyRules(
     SupplyTrack.Maximum,
     Vector(
@@ -87,8 +89,8 @@ object Rest {
           if (wanted != recorded)
             Left(RestOutcomeMismatch(s"expected $wanted but recorded $recorded"))
           else RestCleanupPlan.derive(catalog, ready, recorded.playerId)
-            .left.map(UnsupportedRestState).map(_ =>
-              Ready(applyCompletion(ready, recorded)))
+            .left.map(UnsupportedRestState).flatMap(plan =>
+              applyCompletion(ready, plan, recorded).map(Ready(_)))
         }
       }
     case power: RestPowerEvent =>
@@ -128,8 +130,14 @@ object Rest {
       ready: ReadyGame): Either[OathViolation, Unit] = {
     val game = ready.game
     val actualHandlerInventory = CatalogHandlerInventory.structuralFingerprint(catalog)
+    val missingWarbandSupplies = game.current.players.iterator
+      .map(player => ForceKind.Exile(player.lineage)).toVector.distinct
+      .filterNot(ready.banks.warbandSupply.contains)
     if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedRestState("Rest is limited to the exile-only first game"))
+    else if (missingWarbandSupplies.nonEmpty)
+      Left(UnsupportedRestState(
+        s"no bounded warband supply for ${missingWarbandSupplies.mkString(", ")}"))
     else if (actualHandlerInventory != ExpectedHandlerInventory)
       Left(UnsupportedRoundEndCatalogInventory(ExpectedHandlerInventory,
         actualHandlerInventory))
@@ -151,9 +159,16 @@ object Rest {
       case SiteForces.Occupied(ForceKind.Exile(owner), count)
           if owner == lineage => count
     }.sum
-    val banked = math.max(0, ExileWarbands - player.board.warbands - siteWarbands)
-    val refreshed = ExileSupply.refresh(banked, player.board.supply.supply)
-      .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
+    val kind = ForceKind.Exile(player.lineage)
+    val banked = ready.banks.warbandSupply.get(kind)
+      .toRight(UnsupportedRestState(s"no bounded warband supply for $kind"))
+      .map(supply => math.max(0,
+        supply - player.board.warbands - siteWarbands))
+    val refreshed = banked.flatMap { amount =>
+      ExileSupply.refresh(amount, player.board.supply.supply)
+        .toRight(UnsupportedRestState(
+          s"no Supply band for $amount banked warbands"))
+    }
     for {
       supply <- refreshed
       cleanup <- RestCleanupPlan.derive(catalog, ready, playerId)
@@ -170,55 +185,67 @@ object Rest {
     }
   }
 
-  private def applyCompletion(ready: ReadyGame, event: RestCompleted): ReadyGame = {
-    val current = ready.game.current
-    def clear(card: SiteDenizenState): SiteDenizenState = card match {
-      case value: DenizenState => value.copy(tokens = Tokens.empty)
-      case value: EdificeState => value.copy(tokens = Tokens.empty)
+  /** Applies one validated RestCompleted. Every material resource return is
+    * expressed as counted core operations executed through the transactional
+    * executor; only Supply refresh and procedure state (turn, pending, tracks)
+    * remain direct updates.
+    */
+  private def applyCompletion(ready: ReadyGame,
+      plan: RestCleanupPlan, event: RestCompleted)
+      : Either[OathViolation, ReadyGame] = {
+    val resting = event.playerId
+    val player = ready.game.current.players.find(_.player == resting).get
+    val from = (id: CardId) => PositionedLocation(Location.OnCard(id))
+    // Favor on denizens and edifices returns to the matching printed suit
+    // bank; relic favor stays in place.
+    val favorOps: Vector[CoreOperation] = plan.cards.flatMap { card =>
+      card.suit match {
+        case Some(suit) if card.favor > 0 => Vector(CoreMove(
+          Piece.Favor(card.favor), from(card.id),
+          PositionedLocation(Location.FavorBank(suit))))
+        case _ => Vector.empty
+      }
     }
-    val players = current.players.map { candidate =>
-      val board = if (candidate.player == event.playerId)
-        candidate.board.copy(
-          faceUpSecrets = candidate.board.faceUpSecrets +
-            candidate.board.faceDownSecrets + event.returnedSecrets,
-          faceDownSecrets = 0,
-          supply = SupplyTrack(event.refreshedSupply))
-      else candidate.board
-      candidate.copy(
-        board = board,
-        advisers = candidate.advisers.map {
-          case value: DenizenState =>
-            value.copy(tokens = Tokens.empty)
-          case other => other
-        },
-        relics = candidate.relics.map(relic =>
-          relic.copy(tokens = Tokens(relic.tokens.favor, 0))))
+    // Secrets on denizens, edifices, and relics return to the resting player's
+    // stash. Card secrets are faceup, so they land faceup in the stash.
+    val secretOps: Vector[CoreOperation] = plan.cards.flatMap { card =>
+      if (card.secrets > 0) Vector(CoreMove(
+        Piece.Secrets(card.secrets), from(card.id),
+        PositionedLocation(Location.PlayArea(resting))))
+      else Vector.empty
     }
-    val sites = current.map.sites.map { case (id, site) =>
-      id -> site.copy(
-        denizens = site.denizens.map(clear),
-        relics = site.relics.map(relic =>
-          relic.copy(tokens = Tokens(relic.tokens.favor, 0))))
+    // The resting player's facedown stash flips faceup.
+    val revealOps: Vector[CoreOperation] =
+      if (player.board.faceDownSecrets == 0) Vector.empty
+      else Vector(FlipSecrets(resting, player.board.faceDownSecrets,
+        SecretSide.FaceDown, SecretSide.FaceUp))
+    val operations = favorOps ++ secretOps ++ revealOps
+    val executor = new OperationExecutor(OperationPolicy.exact(
+      operations, "Rest semantic root is not permitted"))
+    def update(state: ReadyGame): Either[OathViolation, ReadyGame] = {
+      val current = state.game.current
+      Right(state.copy(
+        game = state.game.copy(current = current.copy(
+          players = current.players.map { candidate =>
+            if (candidate.player != resting) candidate
+            else candidate.copy(board = candidate.board.copy(
+              supply = SupplyTrack(event.refreshedSupply)))
+          },
+          tracks = current.tracks.copy(usurperLimited = event.usurperLimited),
+          turn = TurnState(event.postRestActivePlayerId,
+            if (turnOrder(ready).last == event.playerId) Phase.RoundEnd
+            else Phase.Wake,
+            Set.empty),
+          pending = None))))
     }
-    val support = ready.support.copy(favorBanks = event.returnedFavor.foldLeft(
-      ready.support.favorBanks) { case (banks, (suit, amount)) =>
-        banks.updated(suit, banks.getOrElse(suit, 0) + amount)
-    })
-    ready.copy(
-      support = support,
-      game = ready.game.copy(current = current.copy(
-        players = players,
-        map = current.map.copy(sites = sites),
-        tracks = current.tracks.copy(usurperLimited = event.usurperLimited),
-        turn = TurnState(event.postRestActivePlayerId,
-          if (turnOrder(ready).last == event.playerId) Phase.RoundEnd else Phase.Wake,
-          Set.empty),
-        pending = None)))
+    if (operations.isEmpty) update(ready)
+    else OperationTransaction.evolve(ready, operations, executor)(update)
+      .map(_.ready)
   }
 
   private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
     val participants = ready.game.current.players.map(_.player)
-    val index = participants.indexOf(ready.support.firstPlayer)
+    val index = participants.indexOf(ready.setup.firstPlayer)
     participants.drop(index) ++ participants.take(index)
   }
 

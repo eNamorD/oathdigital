@@ -170,7 +170,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
 
   test("round four releases limiter and retained Usurper wins next Wake") {
     val base = execute(setup)._1.asInstanceOf[Ready].value
-    val holder = base.support.firstPlayer
+    val holder = base.setup.firstPlayer
     val initial = Ready(prepared(Vector(Some(holder)), Some(holder),
       round = 3, limited = true))
     val order = initial.value.game.current.players.map(_.player)

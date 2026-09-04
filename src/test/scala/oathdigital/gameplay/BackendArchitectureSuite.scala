@@ -384,4 +384,51 @@ class BackendArchitectureSuite extends munit.FunSuite {
       .map(_.toString).sorted
     assertEquals(offenders, Vector.empty)
   }
+
+  test("migrated modules never directly edit owned material state") {
+    // Phase 9 boundary: migrated action/phase/power modules express every
+    // owned-material change (card vectors, site cards/tokens, banner custody
+    // and resources, bank favor, hand keys, empty-key drops) as core
+    // operations. The only sanctioned direct writes are the Conspiracy boxing
+    // removals, which run after the operation batch validates and whose nearest
+    // preceding comment line is the strict `// executor bypass:` sentinel.
+    val migrated = Vector(
+      Paths.get("src/main/scala/oathdigital/gameplay/actions"),
+      Paths.get("src/main/scala/oathdigital/gameplay/phases"),
+      Paths.get("src/main/scala/oathdigital/gameplay/powers"))
+    val files = migrated.flatMap { root =>
+      val stream = Files.walk(root)
+      try stream.iterator.asScala.filter(_.toString.endsWith(".scala")).toVector
+      finally stream.close()
+    } ++
+      Vector(Paths.get("src/main/scala/oathdigital/gameplay/StateBasedEvaluation.scala"))
+    val markers = Vector(
+      "advisers.filterNot(_.id == ",
+      "copy(advisers =",
+      "temporaryHands - ",
+      "temporaryHands.updated(",
+      "temporaryHands.removed(",
+      "filterNot(_._2.isEmpty)",
+      "tokens.copy(favor = ",
+      "tokens.copy(secrets = ",
+      "banks.favor.updated",
+      "denizens = denizens.map",
+      "relics = relics.zipWithIndex.map",
+      "map.copy(sites = ")
+    val sentinel = "// executor bypass:"
+    val offenders = files.flatMap { path =>
+      val lines = Files.readAllLines(path).asScala
+      lines.zipWithIndex.flatMap { case (line, index) =>
+        markers.find(line.contains).flatMap { marker =>
+          val precedingComment = lines.take(index).reverseIterator
+            .find(_.trim.startsWith("//"))
+          val documented = precedingComment.exists(_.trim.startsWith(sentinel))
+          Option.unless(documented)(
+            s"${path.toString}:${index + 1}: direct owned-material write " +
+              s"'$marker' lacks the '$sentinel' comment immediately above it")
+        }
+      }
+    }.sorted
+    assertEquals(offenders, Vector.empty)
+  }
 }

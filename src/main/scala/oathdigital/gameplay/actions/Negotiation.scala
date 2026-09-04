@@ -11,6 +11,9 @@ import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{CoreOperation, Give, Location,
+  OperationExecutor, OperationPolicy, OperationTransaction, Piece,
+  Peek => CorePeek}
 
 sealed trait NegotiationCommand extends Product with Serializable
 object NegotiationCommand {
@@ -124,14 +127,15 @@ object Negotiation {
       _ <- validateAll(ready, current)
       _ <- Either.cond(hasSubstance(current.terms), (),
         NegotiationOutcomeMismatch("recorded completion has an empty deal"))
-    } yield Ready(applyDeal(ready, current))
+      deal <- applyDeal(ready, current)
+    } yield Ready(deal)
 
     case _ => Left(InvalidEventOrder("Negotiation received a non-Negotiation event"))
   }
 
   private def validateBegin(catalog: ExecutableCatalog, state: OathState,
       actor: PlayerId) = OathLifecycle.validateAct(state, actor).flatMap { ready =>
-    val supported = ready.support.foundationProfile ==
+    val supported = ready.setup.foundationProfile ==
       FirstGameFoundationProfile.FixedUnaltered &&
       ready.game.campaign.lineages.values.forall(_.role == Role.Exile) &&
       ready.game.campaign.foundations.values.forall(f =>
@@ -215,7 +219,7 @@ object Negotiation {
       case NegotiationDisclosureRef.HeldRelic(owner, relic) => owner == author &&
         player.relics.exists(r => r.id == relic && r.orientation == Orientation.FaceDown)
       case NegotiationDisclosureRef.SiteRelic(site, relic) =>
-        ready.support.relicKnowledge.getOrElse(author, Map.empty)
+        ready.knowledge.siteRelics.getOrElse(author, Map.empty)
           .getOrElse(site, Vector.empty).contains(relic) &&
           ready.game.current.map.sites.get(site).exists(_.relics.exists(_.id == relic))
     }
@@ -231,52 +235,40 @@ object Negotiation {
       hasSubstance(current.terms) && validateAll(ready, current).isRight
 
   private def applyDeal(ready: ReadyGame,
-      current: PendingProcedure.Negotiation): ReadyGame = {
+      current: PendingProcedure.Negotiation): Either[OathViolation, ReadyGame] = {
     val outgoing = current.terms.toVector.flatMap { case (author, terms) =>
       terms.transfers.map(author -> _)
     }
-    val relicStates = outgoing.flatMap { case (author, transfer) =>
-      val owner = ready.game.current.players.find(_.player == author).get
-      transfer.relics.flatMap(id => owner.relics.find(_.id == id)
-        .map(relic => (author, transfer.recipient, relic)))
+    // Disclosures record knowledge about cards that are still physically at
+    // their disclosed location, so they execute before any transfer relocates
+    // one of those cards.
+    val knowledgeOps = current.terms.valuesIterator.flatMap(_.disclosures)
+      .toVector.map {
+        case NegotiationDisclosure(recipient,
+            NegotiationDisclosureRef.Adviser(owner, card)) =>
+          CorePeek(recipient, card, Location.PlayArea(owner))
+        case NegotiationDisclosure(recipient,
+            NegotiationDisclosureRef.HeldRelic(owner, relic)) =>
+          CorePeek(recipient, relic, Location.PlayArea(owner))
+        case NegotiationDisclosure(recipient,
+            NegotiationDisclosureRef.SiteRelic(site, relic)) =>
+          CorePeek(recipient, relic, Location.Site(site))
+      }
+    val transferOps = outgoing.flatMap { case (author, transfer) =>
+      val favor = Option.when(transfer.favor > 0)(Give(Piece.Favor(
+        transfer.favor), author, Location.PlayArea(author),
+        Location.PlayArea(transfer.recipient)): CoreOperation).toVector
+      val relics = transfer.relics.map(relic => Give(Piece.Card(relic),
+        author, Location.PlayArea(author),
+        Location.PlayArea(transfer.recipient)): CoreOperation)
+      favor ++ relics
     }
-    val players = ready.game.current.players.map { player =>
-      val favorOut = outgoing.collect { case (author, t) if author == player.player => t.favor }.sum
-      val favorIn = outgoing.collect { case (_, t) if t.recipient == player.player => t.favor }.sum
-      val relicOut = relicStates.collect { case (author, _, relic)
-        if author == player.player => relic.id }.toSet
-      val relicIn = relicStates.collect { case (_, recipient, relic)
-        if recipient == player.player => relic }
-      player.copy(board = player.board.copy(favor = player.board.favor - favorOut + favorIn),
-        relics = player.relics.filterNot(r => relicOut(r.id)) ++ relicIn)
-    }
-    val disclosures = current.terms.valuesIterator.flatMap(_.disclosures).toVector
-    val adviserKnowledge = disclosures.foldLeft(ready.support.adviserKnowledge) {
-      case (knowledge, NegotiationDisclosure(recipient,
-          NegotiationDisclosureRef.Adviser(_, card))) =>
-        knowledge.updated(recipient,
-          (knowledge.getOrElse(recipient, Vector.empty) :+ card).distinct)
-      case (knowledge, _) => knowledge
-    }
-    val heldKnowledge = disclosures.foldLeft(ready.support.heldRelicKnowledge) {
-      case (knowledge, NegotiationDisclosure(recipient,
-          NegotiationDisclosureRef.HeldRelic(_, relic))) =>
-        knowledge.updated(recipient,
-          (knowledge.getOrElse(recipient, Vector.empty) :+ relic).distinct)
-      case (knowledge, _) => knowledge
-    }
-    val siteKnowledge = disclosures.foldLeft(ready.support.relicKnowledge) {
-      case (knowledge, NegotiationDisclosure(recipient,
-          NegotiationDisclosureRef.SiteRelic(site, relic))) =>
-        val sites = knowledge.getOrElse(recipient, Map.empty)
-        knowledge.updated(recipient, sites.updated(site,
-          (sites.getOrElse(site, Vector.empty) :+ relic).distinct))
-      case (knowledge, _) => knowledge
-    }
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      players = players, pending = None)), support = ready.support.copy(
-      adviserKnowledge = adviserKnowledge, heldRelicKnowledge = heldKnowledge,
-      relicKnowledge = siteKnowledge))
+    val operations = knowledgeOps ++ transferOps
+    val executor = new OperationExecutor(OperationPolicy.exact(
+      operations, "Negotiation semantic root is not permitted"))
+    OperationTransaction.evolve(ready, operations, executor) { evolved =>
+      Right(GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None)))
+    }.map(_.ready)
   }
 }
 

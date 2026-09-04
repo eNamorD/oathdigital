@@ -37,11 +37,7 @@ object FirstGameFoundationProfile {
 
 final case class FirstGameSupportState(
     foundationProfile: FirstGameFoundationProfile,
-    favorBanks: Map[Suit, Int],
-    firstPlayer: PlayerId,
-    relicKnowledge: Map[PlayerId, Map[SiteId, Vector[RelicId]]] = Map.empty,
-    adviserKnowledge: Map[PlayerId, Vector[WorldCardId]] = Map.empty,
-    heldRelicKnowledge: Map[PlayerId, Vector[RelicId]] = Map.empty
+    firstPlayer: PlayerId
 )
 
 sealed trait FirstGameSetupCommand extends Product with Serializable
@@ -122,7 +118,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
                 Left(InvalidEventOrder("a pawn must be placed first"))
               case Some(expected) if expected != playerId =>
                 Left(WrongPlayer(expected, playerId))
-              case Some(_) if !handFor(progress.plan, playerId)
+              case Some(_) if !temporaryHand(progress, playerId)
                     .contains(adviserId) =>
                 Left(AdviserNotInHand(playerId, adviserId))
               case Some(_) =>
@@ -180,7 +176,12 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
       case FirstGameStarted(plan) =>
         state match {
           case NoGame =>
-            validatePlan(plan).map(_ => InProgress(plan, Vector.empty, Vector.empty))
+            validatePlan(plan).map(_ => InProgress(
+              plan,
+              Vector.empty,
+              Vector.empty,
+              initialTemporaryHands(plan)
+            ))
           case _ => Left(GameAlreadyExists)
         }
       case GamePawnPlaced(playerId, siteId) =>
@@ -209,11 +210,15 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case progress: InProgress =>
             expectedAdviserPlayer(progress) match {
               case Some(expected) if expected == playerId &&
-                    handFor(progress.plan, playerId).contains(adviserId) =>
+                    temporaryHand(progress, playerId).contains(adviserId) =>
                 Right(
                   progress.copy(
                     adviserChoices =
-                      progress.adviserChoices :+ (playerId -> adviserId)
+                      progress.adviserChoices :+ (playerId -> adviserId),
+                    // Every player keeps a temporary-hand key; an empty vector
+                    // means the player's candidates were already resolved.
+                    temporaryHands = progress.temporaryHands.updated(
+                      playerId, Vector.empty)
                   )
                 )
               case Some(expected) if expected != playerId =>
@@ -229,7 +234,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case progress: InProgress
               if progress.placements.size == progress.plan.participants.size &&
                 progress.adviserChoices.size ==
-                  progress.plan.participants.size =>
+                  progress.plan.participants.size &&
+                progress.temporaryHands.valuesIterator.forall(_.isEmpty) =>
             buildReady(progress).map(Ready)
           case _: Ready => Left(GameAlreadyReady)
           case NoGame => Left(GameNotStarted)
@@ -418,12 +424,18 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     plan.participants.drop(start) ++ plan.participants.take(start)
   }
 
-  private def handFor(
-      plan: FirstGameSetupPlan,
+  private def temporaryHand(
+      progress: InProgress,
       playerId: PlayerId
-  ): Vector[DenizenId] = {
-    materializer.handFor(plan, playerId)
-  }
+  ): Vector[WorldCardId] =
+    progress.temporaryHands.getOrElse(playerId, Vector.empty)
+
+  private def initialTemporaryHands(
+      plan: FirstGameSetupPlan
+  ): Map[PlayerId, Vector[WorldCardId]] =
+    plan.participants.map { participant =>
+      participant.playerId -> materializer.handFor(plan, participant.playerId)
+    }.toMap
 
   private def expectedAdviserPlayer(
       progress: InProgress
@@ -475,7 +487,10 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         TurnState(plan.firstPlayer, Phase.Wake, Set.empty),
         material.tracks,
         None,
-        None
+        None,
+        // Every player always holds a temporary-hand key; an empty vector
+        // means no cards await a private choice. Nothing ever removes a key.
+        temporaryHands = plan.participants.map(_.playerId -> Vector.empty).toMap
       )
     )
     val problems = DomainValidation.validate(game)
@@ -487,8 +502,14 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           plan.participants.map(p => p.playerId -> p.color).toMap,
           FirstGameSupportState(
             FirstGameFoundationProfile.FixedUnaltered,
-            material.favorBanks,
             plan.firstPlayer
+          ),
+          MaterialBankState(
+            material.favorBanks,
+            Map[ForceKind, Int](ForceKind.Bandit -> 24) ++
+              plan.participants.map { participant =>
+                ForceKind.Exile(participant.lineageId) -> 14
+              }
           )
         )
       )

@@ -20,7 +20,8 @@ class VisionsSuite extends munit.FunSuite {
       VisionState(card, Orientation.FaceDown)))
     val current = base.game.current.copy(players = base.game.current.players.map(p =>
       if (p.player == active) actor else p), turn = base.game.current.turn.copy(
-      phase = Phase.Act))
+      phase = Phase.Act), commonCards = base.game.current.commonCards.copy(
+      worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == card)))
     val ready = base.copy(game = base.game.copy(current = current))
     (ready, actor, ready.game.current.map.regionOf(actor.pawnSite.get).get)
   }
@@ -29,6 +30,8 @@ class VisionsSuite extends munit.FunSuite {
     val (base0, actor, origin) = actWith(VisionRules.Faith)
     val old = VisionRules.Conquest
     val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+      commonCards = base0.game.current.commonCards.copy(worldDeck =
+        base0.game.current.commonCards.worldDeck.filterNot(_ == old)),
       players = base0.game.current.players.map(p => if (p.player == actor.player)
         p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p))))
     val before = actor.board.supply
@@ -71,6 +74,11 @@ class VisionsSuite extends munit.FunSuite {
     assert(!updatedActor.advisers.exists(_.id == VisionRules.Conspiracy))
     assert(!updatedEnemy.relics.exists(_.id == relic.id))
     assertEquals(after.game.current.pending, None)
+    // A direct (facedown-adviser) play boxes from advisers only; the actor's
+    // temporary hand key is left untouched and empty under the always-key
+    // invariant.
+    assertEquals(after.game.current.temporaryHands.get(actor.player),
+      Some(Vector.empty[WorldCardId]))
   }
 
   test("Conspiracy must choose an asset when eligible and resolves empty when none exist") {
@@ -95,18 +103,68 @@ class VisionsSuite extends munit.FunSuite {
     assert(accepted.events.last.isInstanceOf[ConspiracyCompleted])
   }
 
-  test("stale and tampered Conspiracy choices reject") {
-    val (base, actor, _) = actWith(VisionRules.Conspiracy)
+  test("stale and tampered Conspiracy completions reject") {
+    val (base0, actor, _) = actWith(VisionRules.Conspiracy)
+    val enemy0 = base0.game.current.players.find(_.player != actor.player).get
+    val enemy = enemy0.copy(pawnSite = actor.pawnSite)
+    val banners = base0.game.current.banners.copy(peoplesFavor =
+      base0.game.current.banners.peoplesFavor.copy(
+        holder = Some(enemy.player), favor = 2))
+    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+      players = base0.game.current.players.map(p =>
+        if (p.player == enemy.player) enemy else p),
+      banners = banners)))
+    val target = Some(ConspiracyTarget.Banner(enemy.player, Banner.PeoplesFavor))
     val pending = PendingProcedure.Conspiracy(DecisionId("expected"), actor.player,
-      VisionRules.Conspiracy, Some(ConspiracyTarget.Banner(actor.player,
-        Banner.DarkestSecret)), 1)
+      VisionRules.Conspiracy, target)
     val state = base.copy(game = base.game.copy(current = base.game.current.copy(
       pending = Some(pending))))
-    assert(rules.handle(Ready(state), VisionCommand.ChooseSecretSite(actor.player,
-      DecisionId("stale"), state.game.current.map.inPlay.head)).isLeft)
+    // A completion for a different decision, target, or favor order is stale.
     assert(Visions.evolve(catalog, Ready(state), ConspiracyCompleted(actor.player,
-      pending.decision, pending.source, pending.target, Vector.empty,
+      DecisionId("stale"), pending.source, pending.target,
       Vector.empty)).isLeft)
+    assert(Visions.evolve(catalog, Ready(state), ConspiracyCompleted(actor.player,
+      pending.decision, pending.source, None, Vector.empty)).isLeft)
+    assert(Visions.evolve(catalog, Ready(state), ConspiracyCompleted(actor.player,
+      pending.decision, pending.source, pending.target,
+      Vector(Suit.Order))).isLeft)
+    // A started Conspiracy whose recorded automatic favor return diverges from
+    // the deterministic least-bank return is rejected.
+    val bogus = ConspiracyStarted(actor.player, DecisionId("bogus"),
+      VisionRules.Conspiracy, target, Vector(Suit.Beast))
+    assert(Visions.evolve(catalog, Ready(base), bogus).isLeft)
+  }
+
+  test("Conspiracy taking the Darkest Secret burns every secret and takes the banner") {
+    val (base0, actor, _) = actWith(VisionRules.Conspiracy)
+    val enemy0 = base0.game.current.players.find(_.player != actor.player).get
+    val enemy = enemy0.copy(pawnSite = actor.pawnSite)
+    val banners = base0.game.current.banners.copy(darkestSecret =
+      base0.game.current.banners.darkestSecret.copy(
+        holder = Some(enemy.player), secrets = 3))
+    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+      players = base0.game.current.players.map(p =>
+        if (p.player == enemy.player) enemy else p),
+      banners = banners)))
+    val accepted = rules.handle(Ready(base), VisionCommand.PlayConspiracy(
+      actor.player, DecisionId("conspiracy-ds"),
+      Some(ConspiracyTargetRef.Banner(enemy.player, Banner.DarkestSecret))))
+      .toOption.get
+    assert(accepted.events.exists(_.isInstanceOf[ConspiracyCompleted]))
+    val Ready(after) = accepted.state: @unchecked
+    assertEquals(after.game.current.banners.darkestSecret.secrets, 0)
+    assertEquals(after.game.current.banners.darkestSecret.holder, Some(actor.player))
+    // No secret was placed on any site: the burn returns all three secrets to
+    // the untracked SharedBank sink, leaving site tokens unchanged.
+    def siteSecrets(game: ReadyGame): Int =
+      game.game.current.map.sites.valuesIterator.map { site =>
+        site.tokens.secrets + site.denizens.collect {
+          case d: DenizenState => d.tokens.secrets
+        }.sum
+      }.sum
+    assertEquals(siteSecrets(after), siteSecrets(base))
+    assert(!after.game.current.players.find(_.player == actor.player).get
+      .advisers.exists(_.id == VisionRules.Conspiracy))
   }
 
   test("a Conspiracy kept faceup from Search immediately enters its target procedure") {
@@ -133,6 +191,11 @@ class VisionsSuite extends munit.FunSuite {
       case p: PendingProcedure.Conspiracy => p.awaitingTarget && p.decision == decision
       case _ => false
     })
+    // The Search-kept Conspiracy stays in the actor's temporary hand (always
+    // keyed) until ConspiracyCompleted boxes it, so the pending window still
+    // holds the card in the hand.
+    assertEquals(awaiting.game.current.temporaryHands.get(actor.player),
+      Some(Vector[WorldCardId](VisionRules.Conspiracy)))
     val projector = new oathdigital.application.GameProjector(catalog)
     val loaded = oathdigital.application.LoadedGame(completed.state, 11)
     val owner = projector.project("searched-conspiracy", loaded, actor.player)
@@ -150,6 +213,12 @@ class VisionsSuite extends munit.FunSuite {
     val Ready(after) = resolved.state: @unchecked
     assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor.player))
     assertEquals(after.game.current.pending, None)
+    // ConspiracyCompleted boxed the card: it is gone from the hand (the key
+    // remains, empty under the always-key temporary-hand invariant).
+    assertEquals(after.game.current.temporaryHands.get(actor.player),
+      Some(Vector.empty[WorldCardId]))
+    assert(!after.game.current.players.find(_.player == actor.player).get
+      .advisers.exists(_.id == VisionRules.Conspiracy))
   }
 
   private def withActorAdviser(base: ReadyGame, actor: PlayerState,
@@ -157,8 +226,11 @@ class VisionsSuite extends munit.FunSuite {
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
     val powered = DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
       Tokens.empty)
-    base.copy(game = base.game.copy(current = base.game.current.copy(players =
-      base.game.current.players.map(p => if (p.player == actor.player)
+    base.copy(game = base.game.copy(current = base.game.current.copy(
+      commonCards = base.game.current.commonCards.copy(worldDeck =
+        base.game.current.commonCards.worldDeck.filterNot(
+          _ == DenizenId(definition.id.value))),
+      players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = p.advisers :+ powered) else p))))
   }
 
@@ -235,10 +307,11 @@ class VisionsSuite extends munit.FunSuite {
     val blocked = withActorAdviser(base0, actor, "denizen.vow-of-obedience")
     assert(rules.handle(Ready(blocked), VisionCommand.Reveal(
       actor.player, VisionRules.Sanctuary)).isLeft)
-    val pending = PendingProcedure.Search(DecisionId("vision-audit-search"), actor.player,
-      drawn = Vector(VisionRules.Sanctuary))
+    val pending = PendingProcedure.Search(DecisionId("vision-audit-search"), actor.player)
     val searchState = blocked.copy(game = blocked.game.copy(current =
-      blocked.game.current.copy(pending = Some(pending))))
+      blocked.game.current.copy(
+        temporaryHands = Map(actor.player -> Vector(VisionRules.Sanctuary)),
+        pending = Some(pending))))
     assert(!SearchRules.legalPlacements(catalog, searchState, pending,
       VisionRules.Sanctuary).contains(
         SearchPlacement.Adviser(Orientation.FaceUp, None)))

@@ -76,14 +76,16 @@ private[application] final class PendingProcedureProjector(
   private def pendingCardDecision(context: ScopedProjectionContext) =
     context.current.pending.collect {
       case search: PendingProcedure.Search if context.viewer.contains(search.actor) =>
+        val drawn = context.current.temporaryHands
+          .getOrElse(search.actor, Vector.empty)
         PendingCardDecisionProjection(search.decision.value, "search",
           search.actor.value, "Resolve Search",
           Vector("Move exactly one card to Keep.",
             "Remaining cards are discarded from left to right."),
-          search.drawn.map(presentation.cardDetails(_,
+          drawn.map(presentation.cardDetails(_,
             Some(Orientation.FaceUp), hidden = false)),
           1, 1, orderingRequired = true,
-          search.drawn.map(card => card.value -> groupedResolutions(
+          drawn.map(card => card.value -> groupedResolutions(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
       case recover: PendingProcedure.Recover
           if recover.successful && context.viewer.contains(recover.actor) =>
@@ -272,10 +274,12 @@ private[application] final class PendingProcedureProjector(
           }
         }
         val player = context.current.players.find(_.player == viewing).get
-        val siteRelics = context.ready.support.relicKnowledge
+        val siteRelicOffers = context.ready.knowledge.siteRelics
           .getOrElse(viewing, Map.empty).toVector.flatMap { case (site, known) =>
           context.current.map.sites.get(site).toVector.flatMap(
-            _.relics.filter(relic => known.contains(relic.id)))
+            _.relics.filter(relic => known.contains(relic.id)).map(relic =>
+              NegotiationSiteRelicProjection(site.value, presentation.cardDetails(
+                relic.id, Some(relic.orientation), hidden = false))))
         }
         NegotiationProjection(negotiation.decision.value,
           negotiation.actor.value, negotiation.site.value,
@@ -289,8 +293,7 @@ private[application] final class PendingProcedureProjector(
               presentation.cardDetails(d.id, Some(d.orientation), hidden = false)
             case v: VisionState if v.orientation == Orientation.FaceDown =>
               presentation.cardDetails(v.id, Some(v.orientation), hidden = false)
-          }, siteRelics.map(r => presentation.cardDetails(r.id,
-            Some(r.orientation), hidden = false)))
+          }, siteRelicOffers)
     }
 
   private def groupedResolutions(placements: Vector[SearchPlacement]) = {
@@ -356,8 +359,8 @@ private[application] final class PendingProcedureProjector(
         "oathkeeper-recipient"
       case Some(_: PendingProcedure.OathkeeperRecipient) =>
         "oathkeeper-recipient-waiting"
-      case Some(p: PendingProcedure.Conspiracy) if context.viewer.contains(p.actor) =>
-        "conspiracy-secret-site"
+      case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
+          context.viewer.contains(p.actor) => "conspiracy-target"
       case Some(_: PendingProcedure.Conspiracy) => "conspiracy-waiting"
       case Some(p: PendingProcedure.RestPowerDecision)
           if context.viewer.contains(p.current.decisionOwner) => "rest-power-decision"

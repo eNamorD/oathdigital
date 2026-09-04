@@ -7,6 +7,8 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Location, OperationExecutor,
+  OperationTransaction, Piece, Take => CoreTake}
 
 import GameStateUpdates.updateCurrent
 
@@ -18,6 +20,9 @@ object WakeCommand {
 }
 
 object Wake {
+  private val operationExecutor =
+    new OperationExecutor(WakeOperationPolicy)
+
   def handle(
       state: OathState,
       command: WakeCommand
@@ -27,13 +32,12 @@ object Wake {
         OathLifecycle.validateReady(state, playerId).flatMap { ready =>
           val player = ready.game.current.players.find(_.player == playerId).get
           player.pawnSite.toRight(PawnSiteMissing(playerId)).flatMap { siteId =>
-            TakeWealthRules.validate(ready, player, siteId, resource).flatMap {
-              _ =>
-                transition(
+            TakeWealthRules.validate(ready, player, siteId, resource).flatMap { _ =>
+              transition(
                 state,
                 Vector(WealthTaken(playerId, siteId, resource)),
                 AwaitingWakeAction(playerId)
-                )
+              )
             }
           }
         }
@@ -72,38 +76,28 @@ object Wake {
         Left(InvalidEventOrder("Take Wealth site must be the current pawn site"))
       else {
         val power = Wake.takeWealthPower(event.siteId)
-        ready.game.current.map.sites.get(event.siteId)
-          .toRight(SiteNotInPlay(event.siteId)).flatMap { site =>
-            TakeWealthRules.validate(ready, player, event.siteId, event.resource)
-              .map(_ => Ready(updateCurrent(ready) { current =>
-              val players = current.players.map { existing =>
-                if (existing.player != event.playerId) existing
-                else existing.copy(board = event.resource match {
-                  case WakeResource.Favor =>
-                    existing.board.copy(favor = existing.board.favor + 1)
-                  case WakeResource.Secret =>
-                    existing.board.copy(
-                      faceUpSecrets = existing.board.faceUpSecrets + 1)
-                })
-              }
-              val sites = current.map.sites.updated(
-                event.siteId,
-                site.copy(tokens = event.resource match {
-                  case WakeResource.Favor =>
-                    site.tokens.copy(favor = site.tokens.favor - 1)
-                  case WakeResource.Secret =>
-                    site.tokens.copy(secrets = site.tokens.secrets - 1)
-                })
-              )
-              current.copy(
-                players = players,
-                map = current.map.copy(sites = sites),
-                turn = current.turn.copy(
-                  usedPowers = current.turn.usedPowers + power
-                )
-              )
-            }))
+        for {
+          _ <- TakeWealthRules.validate(
+            ready, player, event.siteId, event.resource)
+          piece = event.resource match {
+            case WakeResource.Favor => Piece.Favor(1)
+            case WakeResource.Secret => Piece.Secrets(1)
           }
+          execution <- OperationTransaction.evolve(
+            ready,
+            Vector(CoreTake(
+              piece,
+              event.playerId,
+              Location.Site(event.siteId),
+              Location.PlayArea(event.playerId)
+            )),
+            operationExecutor
+          ) { moved =>
+            Right(updateCurrent(moved)(current => current.copy(
+              turn = current.turn.copy(
+                usedPowers = current.turn.usedPowers + power))))
+          }
+        } yield Ready(execution.ready)
       }
     }
 

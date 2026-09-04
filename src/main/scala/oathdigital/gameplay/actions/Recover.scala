@@ -8,7 +8,7 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.RecordedPowerOperation
+import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{PowerHandler, PowerInspector,
   PowerResolution, PowerWindow}
 
@@ -39,7 +39,7 @@ object RecoverPowerHandler {
       prepareEvent: RecoverPowerPreparation => Either[OathViolation, E],
       canonicalEvent: (ExecutableCatalog, ReadyGame, E) =>
         Either[OathViolation, E],
-      eventOperations: E => Vector[RecordedPowerOperation])
+      eventOperations: E => Either[OathViolation, Vector[CoreOperation]])
       : RecoverPowerHandler = new RecoverPowerHandler {
     val window = windowValue
     val resolution = PowerResolution.PlayerSelected
@@ -68,9 +68,12 @@ object RecoverPowerHandler {
       canonical <- canonicalEvent(catalog, ready, selected)
       _ <- Either.cond(selected == canonical, (), InvalidEventOrder(
         s"${powerId.value} recorded operation payload does not match"))
-      evolved <- RecordedPowerOperation.evolve(catalog, state,
-        eventOperations(canonical))
-    } yield evolved
+      operations <- eventOperations(canonical)
+      executor = new OperationExecutor(OperationPolicy.exact(
+        operations, s"${powerId.value} semantic root is not permitted"))
+      execution <- OperationTransaction.evolve(
+        ready, operations, executor)(Right(_))
+    } yield Ready(execution.ready)
   }
 }
 final case class RecoverPowerPreparation(catalog: ExecutableCatalog,
@@ -243,14 +246,21 @@ object Recover {
         val r = valid.game.current.pending.get.asInstanceOf[PendingProcedure.Recover]
         val current = valid.game.current
         current.map.sites.get(r.site).toRight(SiteNotInPlay(r.site)).flatMap { site =>
-          site.relics.find(_.id == e.relicId).toRight(RecoverOutcomeMismatch("chosen relic is not at the site")).flatMap { relic =>
+          site.relics.find(_.id == e.relicId).toRight(RecoverOutcomeMismatch("chosen relic is not at the site")).flatMap { _ =>
             if (e.siteId != r.site) Left(RecoverOutcomeMismatch("recorded relic site does not match"))
-            else Right(Ready(GameStateUpdates.updateCurrent(valid)(_.copy(
-              map = current.map.copy(sites = current.map.sites.updated(r.site,
-                site.copy(relics = site.relics.filterNot(_.id == e.relicId)))),
-              players = current.players.map(p => if (p.player != e.playerId) p else
-                p.copy(relics = p.relics :+ relic.copy(orientation = Orientation.FaceDown))),
-              pending = None))))
+            else {
+              val operations = Vector[CoreOperation](Move(
+                Piece.Card(e.relicId),
+                PositionedLocation(Location.Site(r.site)),
+                PositionedLocation(Location.PlayArea(e.playerId)),
+                resultingOrientation = Some(Orientation.FaceDown)))
+              val executor = new OperationExecutor(OperationPolicy.exact(
+                operations, "Recover semantic root is not permitted"))
+              OperationTransaction.evolve(
+                valid, operations, executor)(evolved => Right(
+                  GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None))))
+                .map(execution => Ready(execution.ready))
+            }
           }
         }
       }

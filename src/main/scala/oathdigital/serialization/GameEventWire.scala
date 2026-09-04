@@ -80,7 +80,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val UsurperVictoryType = "gameplay.usurper-victory"
   val VisionRevealedType = "gameplay.vision-revealed"
   val ConspiracyStartedType = "gameplay.conspiracy-started"
-  val ConspiracySecretSiteChosenType = "gameplay.conspiracy-secret-site-chosen"
   val ConspiracyCompletedType = "gameplay.conspiracy-completed"
   val VisionVictoryType = "gameplay.vision-victory"
   val RoundEndedType = "gameplay.round-ended"

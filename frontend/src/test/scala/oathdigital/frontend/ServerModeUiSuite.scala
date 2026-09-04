@@ -31,6 +31,24 @@ class ServerModeUiSuite extends FunSuite {
     assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R1", "blue", "R1"))
     assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R2", "yellow", "R1"))
   }
+  test("Negotiation editor offers disclosures only for inspectable information") {
+    val faceUpRelic = CardDetails("R1", "relic", "Public Relic",
+      orientation = Some("face-up"))
+    val facedownRelic = CardDetails("R2", "relic", "Secret Relic",
+      orientation = Some("face-down"))
+    val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
+    val siteRelic = CardDetails("R3", "relic", "Bone Dice")
+    val deal = NegotiationState("deal", "red", "S1", Vector("red", "blue"),
+      Vector.empty, Vector.empty, Vector.empty, 3,
+      Vector(faceUpRelic, facedownRelic), Vector(adviser),
+      Vector(NegotiationSiteRelicState("site:broken-peaks", siteRelic)))
+    val offers = ServerUiSupport.negotiationDisclosureOffers(deal)
+    assertEquals(offers.map(o => (o.kind, o.card.cardId, o.siteId)),
+      Vector(
+        ("adviser", "D1", None),
+        ("held-relic", "R2", None),
+        ("site-relic", "R3", Some("site:broken-peaks"))))
+  }
 
   test("Forge assignment state enforces cardinality and resets stale context") {
     val context = BoardSelectionContext("game", "red", 9)
@@ -127,14 +145,6 @@ class ServerModeUiSuite extends FunSuite {
     val noTarget = conspiracy.copy(minimum = 0, maximum = 0)
     assertEquals(ServerUiSupport.commandForSelection(noTarget, Vector.empty, "red"),
       Some(GameCommand.PlayConspiracy("red", None)))
-    val secretSite = action("conspiracy-secret-site")
-      .copy(decisionId = Some("conspiracy-12"))
-    assertEquals(ServerUiSupport.commandForSelection(secretSite,
-      Vector(BoardTargetRef.Site("site:b")), "red"),
-      Some(GameCommand.ChooseConspiracySecretSite(
-        "red", "conspiracy-12", "site:b")))
-    assertEquals(ServerUiSupport.commandForSelection(secretSite.copy(decisionId = None),
-      Vector(BoardTargetRef.Site("site:b")), "red"), None)
   }
 
   test("Challenge controls render only owner-authorized site or replacement commands") {

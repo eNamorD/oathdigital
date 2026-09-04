@@ -121,7 +121,9 @@ final case class CurrentGameState(
     turn: TurnState,
     tracks: GameTracks,
     pending: Option[PendingProcedure],
-    result: Option[GameResult]
+    result: Option[GameResult],
+    temporaryHands: Map[PlayerId, Vector[WorldCardId]] = Map.empty,
+    setAsideRelics: Vector[RelicId] = Vector.empty
 )
 
 final case class OathGame(

@@ -3,6 +3,9 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.operations.{Location,
+  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Piece, PositionedLocation}
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
@@ -150,7 +153,7 @@ object Challenge {
   private def initialAutomatic(ready: ReadyGame, banner: Banner,
       holder: Option[PlayerId], resources: Int): (Vector[Suit], Vector[SiteId]) = banner match {
     case Banner.PeoplesFavor =>
-      BannerRules.raidFavorReturn(ready.support.favorBanks, resources) -> Vector.empty
+      BannerRules.raidFavorReturn(ready.banks.favor, resources) -> Vector.empty
     case Banner.DarkestSecret =>
       val count = if (holder.isEmpty) resources else resources / 2
       Vector.empty -> BannerRules.automaticSitePrefix(ready.game.current, Vector.empty, count)
@@ -218,8 +221,7 @@ object Challenge {
 
     case e: BannerChallengeCompleted => state match {
       case Ready(ready) => validatePending(ready, e.playerId, e.decision).flatMap { p =>
-        val current = ready.game.current
-        val actor = current.players.find(_.player == e.playerId).get
+        val actor = ready.game.current.players.find(_.player == e.playerId).get
         val expectedReturn = if (p.banner == Banner.DarkestSecret && p.priorHolder.nonEmpty)
           p.priorResources - p.secretsPlaced.size else 0
         for {
@@ -227,29 +229,9 @@ object Challenge {
             e.priorHolder == p.priorHolder && e.priorResources == p.priorResources &&
             e.placedResources > p.priorResources && e.placedResources <= BannerRules.playerResources(actor, p.banner), (), ChallengeOutcomeMismatch("recorded completion facts are stale or invalid"))
           _ <- Either.cond(e.favorReturnOrder == p.favorReturned && e.secretSiteOrder == p.secretsPlaced && e.secretsReturnedToHolder == expectedReturn, (), ChallengeOutcomeMismatch("recorded ribbon result differs from pending choices"))
-        } yield {
-          val placedBySite = p.secretsPlaced.groupBy(identity).view.mapValues(_.size).toMap
-          val players = current.players.map { x =>
-            val paid = if (x.player == e.playerId) p.banner match {
-              case Banner.PeoplesFavor => x.board.copy(favor = x.board.favor - e.placedResources)
-              case Banner.DarkestSecret => x.board.copy(faceUpSecrets = x.board.faceUpSecrets - e.placedResources)
-            } else x.board
-            val returned = if (p.banner == Banner.DarkestSecret && p.priorHolder.contains(x.player))
-              paid.copy(faceUpSecrets = paid.faceUpSecrets + expectedReturn) else paid
-            x.copy(board = returned)
-          }
-          val sites = placedBySite.foldLeft(current.map.sites) { case (all, (id, n)) =>
-            val site = all(id); all.updated(id, site.copy(tokens = Tokens(site.tokens.favor, site.tokens.secrets + n)))
-          }
-          val banners = p.banner match {
-            case Banner.PeoplesFavor => current.banners.copy(peoplesFavor = current.banners.peoplesFavor.copy(holder = Some(e.playerId), favor = e.placedResources))
-            case Banner.DarkestSecret => current.banners.copy(darkestSecret = current.banners.darkestSecret.copy(holder = Some(e.playerId), secrets = e.placedResources))
-          }
-          val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
-            map = current.map.copy(sites = sites), banners = banners, pending = None))
-          Ready(updated.copy(support = updated.support.copy(favorBanks =
-            BannerRules.addFavor(updated.support.favorBanks, e.favorReturnOrder))))
-        }
+          completed <- applyCompletion(ready, e.playerId, p, e.placedResources,
+            expectedReturn)
+        } yield Ready(completed)
       }
       case _ => Left(GameNotStarted)
     }
@@ -260,18 +242,76 @@ object Challenge {
       _ <- Either.cond(BannerRules.holder(ready.game.current, e.banner).contains(e.playerId), (), ChallengeOutcomeMismatch("recorded banner holder is invalid"))
       p = ready.game.current.players.find(_.player == e.playerId).get
       _ <- Either.cond(e.amount > 0 && e.amount <= BannerRules.playerResources(p, e.banner), (), ChallengeOutcomeMismatch("recorded banner amount is invalid"))
-    } yield Ready(GameStateUpdates.updateCurrent(ready) { c =>
-      val players = c.players.map(x => if (x.player != e.playerId) x else e.banner match {
-        case Banner.PeoplesFavor => x.copy(board = x.board.copy(favor = x.board.favor - e.amount))
-        case Banner.DarkestSecret => x.copy(board = x.board.copy(faceUpSecrets = x.board.faceUpSecrets - e.amount))
-      })
-      val banners = e.banner match {
-        case Banner.PeoplesFavor => c.banners.copy(peoplesFavor = c.banners.peoplesFavor.copy(favor = c.banners.peoplesFavor.favor + e.amount))
-        case Banner.DarkestSecret => c.banners.copy(darkestSecret = c.banners.darkestSecret.copy(secrets = c.banners.darkestSecret.secrets + e.amount))
+      operation = e.banner match {
+        case Banner.PeoplesFavor => CoreMove(
+          Piece.Favor(e.amount),
+          PositionedLocation(Location.PlayArea(e.playerId)),
+          PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)))
+        case Banner.DarkestSecret => CoreMove(
+          Piece.Secrets(e.amount),
+          PositionedLocation(Location.PlayArea(e.playerId)),
+          PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))
       }
-      c.copy(players = players, banners = banners)
-    })
+      executor = new OperationExecutor(OperationPolicy.exact(
+        Vector(operation), "Banner resource placement is not permitted"))
+      evolved <- OperationTransaction.evolve(ready, Vector(operation), executor)(
+        Right(_))
+    } yield Ready(evolved.ready)
     case _ => Left(InvalidEventOrder("Challenge received a non-banner event"))
+  }
+
+  /** Applies the recorded Challenge completion through operations. The old
+    * banner resources leave the banner first (People's Favor favor returns one
+    * unit at a time to the recorded least-favor banks; Darkest Secret secrets
+    * are placed on the recorded least-stocked sites with any remainder
+    * returning to the previous holder), then the challenger pays the strictly
+    * greater replacement amount onto the banner, and banner custody transfers
+    * to the challenger. An unclaimed banner (prior holder `None`) is claimed
+    * from the shared bank.
+    */
+  private def applyCompletion(ready: ReadyGame, player: PlayerId,
+      p: PendingProcedure.Challenge, placedResources: Int,
+      expectedReturn: Int): Either[OathViolation, ReadyGame] = {
+    val drains = p.banner match {
+      case Banner.PeoplesFavor =>
+        p.favorReturned.map(suit => CoreMove(
+          Piece.Favor(1),
+          PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+          PositionedLocation(Location.FavorBank(suit))))
+      case Banner.DarkestSecret =>
+        p.secretsPlaced.groupBy(identity).toVector
+          .sortBy(_._1.value).map { case (site, entries) =>
+            CoreMove(
+              Piece.Secrets(entries.size),
+              PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+              PositionedLocation(Location.Site(site)))
+          } ++ Option.when(expectedReturn > 0)(CoreMove(
+          Piece.Secrets(expectedReturn),
+          PositionedLocation(Location.OnBanner(Banner.DarkestSecret)),
+          PositionedLocation(Location.PlayArea(p.priorHolder.get)))).toVector
+    }
+    val payment = p.banner match {
+      case Banner.PeoplesFavor => CoreMove(
+        Piece.Favor(placedResources),
+        PositionedLocation(Location.PlayArea(player)),
+        PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)))
+      case Banner.DarkestSecret => CoreMove(
+        Piece.Secrets(placedResources),
+        PositionedLocation(Location.PlayArea(player)),
+        PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))
+    }
+    val from = p.priorHolder match {
+      case Some(owner) => PositionedLocation(Location.PlayArea(owner))
+      case None => PositionedLocation(Location.SharedBank)
+    }
+    val custody = CoreMove(Piece.Banner(p.banner), from,
+      PositionedLocation(Location.PlayArea(player)))
+    val operations = drains ++ Vector(payment, custody)
+    val executor = new OperationExecutor(OperationPolicy.exact(
+      operations, "Banner Challenge semantic root is not permitted"))
+    def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
+      Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+    OperationTransaction.evolve(ready, operations, executor)(update).map(_.ready)
   }
 
   private def transition(catalog: ExecutableCatalog, state: OathState,

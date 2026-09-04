@@ -41,7 +41,6 @@ object GameIntentMapper {
       } yield actor.resolveFacedownAdviser(adviser, p)
       case Intent.RevealVision(id) => Right(actor.revealVision(VisionId(id)))
       case Intent.PlayConspiracy(value) => option(value)(conspiracy).map(actor.playConspiracy)
-      case Intent.ChooseConspiracySecretSite(id, site) => Right(actor.chooseConspiracySecretSite(DecisionId(id), SiteId(site)))
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))

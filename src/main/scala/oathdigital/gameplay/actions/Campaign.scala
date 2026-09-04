@@ -2,6 +2,10 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.operations.{Burn, Kill,
+  Location, Move => CoreMove, OperationExecutor, OperationPolicy,
+  OperationTransaction, Piece, PositionedLocation, Reveal,
+  StackPosition, Take}
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
@@ -216,7 +220,7 @@ object Campaign {
       case r if r.orientation == Orientation.FaceDown => r.id
     }
     val returned = if (banners.contains(CampaignBanner.PeoplesFavor))
-      CampaignRules.returnBannerFavor(ready.support.favorBanks,
+      CampaignRules.returnBannerFavor(ready.banks.favor,
         ready.game.current.banners.peoplesFavor.favor)
     else Map.empty[Suit, Int]
     for {
@@ -286,9 +290,13 @@ object Campaign {
         _ <- if (e.supplySpent == SupplyCost) Right(()) else Left(CampaignOutcomeMismatch("recorded Supply cost is invalid"))
       } yield {
         val current = ready.game.current
+        // The committed force stays in the attacker's play area throughout the
+        // battle; it leaves the board only when it dies or is placed during
+        // resolution. `pending.force` tracks how many board warbands are
+        // committed so battle arithmetic and the plan projections stay exact.
         Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
           players = current.players.map(p => if (p.player != e.playerId) p else
-            p.copy(board = p.board.copy(warbands = p.board.warbands - e.force,
+            p.copy(board = p.board.copy(
               supply = SupplyTrack(p.board.supply.supply - SupplyCost)))),
           pending = Some(PendingProcedure.Campaign(e.decision, e.playerId, e.targetSites,
             e.defender,
@@ -305,46 +313,8 @@ object Campaign {
             e.side == expected.side && e.costs == expected.costs &&
             e.effects == expected.effects) Right(())
             else Left(CampaignOutcomeMismatch("recorded attacker plan result is invalid"))
-        } yield {
-          val resolution = PendingProcedure.CampaignPlanResolution(e.source,
-            e.handlerId, e.side, e.costs, e.effects)
-          val favorCost = CampaignPlanEffects.favorCost(e.costs)
-          val secretCost = CampaignPlanEffects.secretCost(e.costs)
-          val revealed = CampaignPlanEffects.revealed(e.effects)
-          val current = ready.game.current
-          Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-            players = current.players.map { p =>
-              if (p.player != e.playerId) p
-              else p.copy(
-                board = p.board.copy(favor = p.board.favor - favorCost,
-                  faceUpSecrets = p.board.faceUpSecrets - secretCost),
-                advisers = p.advisers.map {
-                  case d: DenizenState if e.source ==
-                    PendingProcedure.CampaignPlanSource.Adviser(e.playerId, d.id) =>
-                    d.copy(orientation = if (revealed) Orientation.FaceUp else d.orientation,
-                      tokens = Tokens(d.tokens.favor + favorCost,
-                        d.tokens.secrets + secretCost))
-                  case other => other
-                },
-                relics = p.relics.map {
-                  case r if e.source == PendingProcedure.CampaignPlanSource.Relic(
-                    e.playerId, r.id) => r.copy(tokens = Tokens(
-                      r.tokens.favor + favorCost, r.tokens.secrets + secretCost))
-                  case other => other
-                })
-            },
-            map = current.map.copy(sites = current.map.sites.map {
-              case (siteId, site) => siteId -> site.copy(denizens = site.denizens.map {
-                case d: DenizenState if e.source ==
-                    PendingProcedure.CampaignPlanSource.SiteCard(siteId, d.id) =>
-                  d.copy(orientation = if (revealed) Orientation.FaceUp else d.orientation,
-                    tokens = Tokens(d.tokens.favor + favorCost,
-                      d.tokens.secrets + secretCost))
-                case other => other
-              })
-            }),
-            pending = Some(c.copy(plans = c.plans :+ resolution)))))
-        }
+          completed <- applyPlanChosen(catalog, ready, e, c).map(Ready(_))
+        } yield completed
       }
       case _ => Left(GameNotStarted)
     }
@@ -407,22 +377,9 @@ object Campaign {
             (e.victorious == e.losingForcePolicyId.isEmpty), (),
             CampaignOutcomeMismatch(
               "recorded attacker losing-force resolution is invalid"))
-          resolved <- if (e.victorious) Right(
-            ready.game.current.players -> ready.game.current.map.sites)
-            else applyCommittedLosses(ready.game.current.players,
-              ready.game.current.map.sites, c, remaining - e.sacrificed,
-              e.losingForces)
-        } yield {
-          val current = ready.game.current
-          if (e.victorious) Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-            pending = Some(c.copy(sacrificed = Some(e.sacrificed), defenseDice = e.defenseDice,
-              defense = Some(e.defense), victorious = Some(true))))))
-          else {
-            Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-              players = resolved._1,
-              map = current.map.copy(sites = resolved._2), pending = None)))
-          }
-        }
+          completed <- applySacrifice(ready, e, c, expectedLosses,
+            remaining - e.sacrificed).map(Ready(_))
+        } yield completed
       }
       case _ => Left(GameNotStarted)
     }
@@ -435,8 +392,7 @@ object Campaign {
           site, e.allocations.find(_.site == site).map(_.count).getOrElse(0)))
         losingForceRegistry.byId(e.losingForcePolicyId).toRight(
           CampaignOutcomeMismatch("unknown losing-force policy")).flatMap(
-          _.resolve(ready, c)).flatMap {
-          expectedLosses =>
+          _.resolve(ready, c)).flatMap { expectedLosses =>
         if (e.losingForces != expectedLosses) Left(CampaignOutcomeMismatch(
           "recorded losing-force resolution is invalid"))
         else if (allocationSites.distinct.size != allocationSites.size ||
@@ -448,32 +404,7 @@ object Campaign {
             "placements must include every target in canonical order"))
         else if (e.allocations.map(_.count).sum > surviving)
           Left(CampaignOutcomeMismatch("placed force exceeds survivors"))
-        else applyLosingForces(ready.game.current.map.sites,
-            ready.game.current.players,
-            e.losingForces).flatMap { resolvedSites =>
-          val blockedPlacement = e.allocations.exists(allocation =>
-            allocation.count > 0 && resolvedSites._1(allocation.site).forces !=
-              SiteForces.Empty)
-          if (blockedPlacement) Left(CampaignOutcomeMismatch(
-            "force can be placed only at a cleared Campaign target"))
-          else {
-          val current = ready.game.current
-          val player = current.players.find(_.player == e.playerId).get
-          val placed = e.allocations.map(_.count).sum
-          val sites = e.allocations.foldLeft(resolvedSites._1) {
-            case (updated, CampaignForceAllocation(siteId, count)) =>
-              if (count == 0) updated else updated.updated(siteId,
-                updated(siteId).copy(forces = SiteForces.Occupied(
-                  ForceKind.Exile(player.lineage), count)))
-          }
-          Right(Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
-            players = resolvedSites._2.map(p => if (p.player != e.playerId) p else
-              p.copy(board = p.board.copy(warbands =
-                p.board.warbands + surviving - placed))),
-            map = current.map.copy(sites = sites),
-            pending = None))))
-          }
-        }
+        else applyConquest(ready, e, c, e.losingForces, surviving).map(Ready(_))
         }
       }
       case _ => Left(GameNotStarted)
@@ -485,49 +416,8 @@ object Campaign {
           "Raid resolution recorded for a Conquest")).flatMap { _ =>
           resolveRaidVictory(ready, c, losingForceRegistry).flatMap { expected =>
             Either.cond(e == expected, (), CampaignOutcomeMismatch(
-              "recorded Raid resolution is invalid")).map { _ =>
-              val current = ready.game.current
-              val defenderId = c.defender.asInstanceOf[CampaignDefender.Player].playerId
-              val defender = current.players.find(_.player == defenderId).get
-              val taken = defender.relics.filter(r => e.takenRelics.contains(r.id))
-              val players = current.players.map {
-                case p if p.player == c.actor => p.copy(relics = p.relics ++ taken.map(
-                  _.copy(orientation = Orientation.FaceUp)))
-                case p if p.player == defenderId => p.copy(
-                  board = p.board.copy(favor = p.board.favor - e.favorBurned,
-                    warbands = e.defenderLoss.returned),
-                  advisers = p.advisers.filterNot(a =>
-                    e.discardedAdvisers.contains(a.id) || e.boxedConspiracy.contains(a.id)),
-                  relics = p.relics.filterNot(r => e.takenRelics.contains(r.id) ||
-                    e.discardedRelics.contains(r.id)))
-                case p => p
-              }
-              val banners = current.banners.copy(
-                peoplesFavor = if (e.takenBanners.contains(CampaignBanner.PeoplesFavor))
-                  current.banners.peoplesFavor.copy(holder = Some(c.actor), favor = 0)
-                else current.banners.peoplesFavor,
-                darkestSecret = if (e.takenBanners.contains(CampaignBanner.DarkestSecret))
-                  current.banners.darkestSecret.copy(holder = Some(c.actor), secrets = 0)
-                else current.banners.darkestSecret)
-              val origin = defender.pawnSite.get
-              val relocation = PendingProcedure.CampaignRaidRelocation(c.decision,
-                c.actor, defenderId, origin,
-                CampaignRules.legalRaidRelocationSites(ready, defenderId))
-              val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
-                banners = banners,
-                commonCards = current.commonCards.copy(regionalDiscards =
-                  current.commonCards.regionalDiscards.updated(e.adviserDiscardRegion,
-                    current.commonCards.discard(e.adviserDiscardRegion) ++
-                      e.discardedAdvisers)),
-                pending = Some(relocation)))
-              Ready(updated.copy(
-                game = updated.game.copy(campaign = updated.game.campaign.copy(
-                  reliquary = updated.game.campaign.reliquary ++ e.discardedRelics)),
-                support = updated.support.copy(favorBanks =
-                e.bannerFavorReturned.foldLeft(updated.support.favorBanks) {
-                  case (banks, (suit, amount)) => banks.updated(suit,
-                    banks.getOrElse(suit, 0) + amount)
-                })))
+              "recorded Raid resolution is invalid")).flatMap { _ =>
+              applyRaid(ready, e, c).map(Ready(_))
             }
           }
         }
@@ -542,10 +432,17 @@ object Campaign {
           val owner = ready.game.current.players.find(_.player == e.defender).get
           Either.cond(owner.pawnSite.contains(e.origin) &&
             c.origin == e.origin && c.legalSites.contains(e.destination), (),
-            CampaignOutcomeMismatch("recorded Raid pawn relocation is invalid")).map { _ =>
-            Ready(GameStateUpdates.updateCurrent(ready)(current => current.copy(
-              players = current.players.map(p => if (p.player != e.defender) p else
-                p.copy(pawnSite = Some(e.destination))), pending = None)))
+            CampaignOutcomeMismatch("recorded Raid pawn relocation is invalid")).flatMap { _ =>
+            val operation = CoreMove(
+              Piece.Pawn(e.defender),
+              PositionedLocation(Location.Site(e.origin)),
+              PositionedLocation(Location.Site(e.destination)))
+            val executor = new OperationExecutor(OperationPolicy.exact(
+              Vector(operation), "Raid pawn relocation is not permitted"))
+            OperationTransaction.evolve(ready, Vector(operation), executor)(
+              evolved => Right(GameStateUpdates.updateCurrent(evolved)(current =>
+                current.copy(pending = None))))
+              .map(execution => Ready(execution.ready))
           }
         case _ => Left(CampaignOutcomeMismatch("Raid relocation is not pending"))
       }
@@ -561,105 +458,343 @@ object Campaign {
     GameplayTransition(state, events, continue)(
       evolve(catalog, _, _, losingForceRegistry))
 
-  private def applyLosingForces(initial: Map[SiteId, SiteState],
-      initialPlayers: Vector[PlayerState],
+  private def exileForce(ready: ReadyGame, player: PlayerId): ForceKind =
+    ForceKind.Exile(ready.game.current.players.find(_.player == player).get.lineage)
+
+  private def opponentOf(c: PendingProcedure.Campaign): PlayerId =
+    c.defender.asInstanceOf[CampaignDefender.Player].playerId
+
+  /** CampaignPlanChosen: the payer spends favor/secret. Attacker plan costs are
+    * paid onto the source card; a defender plan cost (latent: no registered
+    * defender plan has a cost) would send favor to the source denizen's suit
+    * bank and flip secrets facedown in the play area. A reveal effect flips the
+    * facedown source adviser faceup (Flip supports PlayArea only).
+    */
+  private def applyPlanChosen(catalog: ExecutableCatalog, ready: ReadyGame,
+      e: CampaignPlanChosen, c: PendingProcedure.Campaign)
+      : Either[OathViolation, ReadyGame] = {
+    val resolution = PendingProcedure.CampaignPlanResolution(e.source,
+      e.handlerId, e.side, e.costs, e.effects)
+    val favorCost = CampaignPlanEffects.favorCost(e.costs)
+    val secretCost = CampaignPlanEffects.secretCost(e.costs)
+    val sourceCard = e.source match {
+      case PendingProcedure.CampaignPlanSource.Adviser(_, id) => Some(id)
+      case PendingProcedure.CampaignPlanSource.Relic(_, id) => Some(id)
+      case PendingProcedure.CampaignPlanSource.SiteCard(_, id) => Some(id)
+      case PendingProcedure.CampaignPlanSource.Title(_) => None
+    }
+    e.side match {
+      case PendingProcedure.CampaignPlanSide.Attacker =>
+        val payments = sourceCard.toVector.flatMap { card =>
+          Option.when(favorCost > 0)(CoreMove(
+            Piece.Favor(favorCost),
+            PositionedLocation(Location.PlayArea(e.playerId)),
+            PositionedLocation(Location.OnCard(card)))).toVector ++
+          Option.when(secretCost > 0)(CoreMove(
+            Piece.Secrets(secretCost),
+            PositionedLocation(Location.PlayArea(e.playerId)),
+            PositionedLocation(Location.OnCard(card)))).toVector
+        }
+        // Reveal flips the facedown source faceup: an adviser moves within its
+        // own PlayArea, a site denizen flips in place at its site.
+        val reveal = e.source match {
+          case PendingProcedure.CampaignPlanSource.Adviser(player, id)
+              if CampaignPlanEffects.revealed(e.effects) =>
+            Vector(CoreMove(
+              Piece.Card(id),
+              PositionedLocation(Location.PlayArea(player)),
+              PositionedLocation(Location.PlayArea(player)),
+              resultingOrientation = Some(Orientation.FaceUp)))
+          case PendingProcedure.CampaignPlanSource.SiteCard(site, id)
+              if CampaignPlanEffects.revealed(e.effects) =>
+            Vector(Reveal(id, Location.Site(site)))
+          case _ => Vector.empty
+        }
+        execute(ready, payments ++ reveal,
+          "Campaign plan choice is not permitted") { state =>
+          Right(GameStateUpdates.updateCurrent(state)(current => current.copy(
+            pending = Some(c.copy(plans = c.plans :+ resolution)))))
+        }
+      case PendingProcedure.CampaignPlanSide.Defender =>
+        // Latent: no registered defender plan carries a cost today. When one
+        // lands, defender favor must go to the source denizen's suit bank and
+        // defender secrets flip facedown in the play area (Q11/Q12).
+        execute(ready, Vector.empty,
+          "Campaign plan choice is not permitted") { state =>
+          Right(GameStateUpdates.updateCurrent(state)(current => current.copy(
+            pending = Some(c.copy(plans = c.plans :+ resolution)))))
+        }
+    }
+  }
+
+  /** Runs the CoreOperations vector as one authoritative transaction. */
+  private def execute(ready: ReadyGame,
+      operations: Vector[oathdigital.gameplay.operations.CoreOperation],
+      detail: String)(
+      update: ReadyGame => Either[OathViolation, ReadyGame])
+      : Either[OathViolation, ReadyGame] = {
+    val executor = new OperationExecutor(OperationPolicy.exact(operations, detail))
+    if (operations.isEmpty) update(ready)
+    else OperationTransaction.evolve(ready, operations, executor)(update).map(_.ready)
+  }
+
+  private def warbandMove(kind: ForceKind, count: Int, from: Location,
+      to: Location): Vector[oathdigital.gameplay.operations.CoreOperation] =
+    Option.when(count > 0)(CoreMove(
+      Piece.Warbands(kind, count),
+      PositionedLocation(from), PositionedLocation(to))).toVector
+
+  private def killAt(kind: ForceKind, count: Int, at: Location) =
+    Option.when(count > 0)(oathdigital.gameplay.operations.Kill(
+      Piece.Warbands(kind, count), PositionedLocation(at))).toVector
+
+  /** CampaignSacrificed: a victory only records the pending procedure. A
+    * defeat kills the warbands lost to skulls and sacrifice plus the committed
+    * warbands the losing-force policy removes, and relocates the committed
+    * survivors it relocates (returned survivors never left the board).
+    */
+  private def applySacrifice(ready: ReadyGame, e: CampaignSacrificed,
+      c: PendingProcedure.Campaign, losses: Vector[CampaignLosingForceEffect],
+      surviving: Int): Either[OathViolation, ReadyGame] = {
+    val current = ready.game.current
+    if (e.victorious) Right(GameStateUpdates.updateCurrent(ready)(_.copy(
+      pending = Some(c.copy(sacrificed = Some(e.sacrificed), defenseDice = e.defenseDice,
+        defense = Some(e.defense), victorious = Some(true))))))
+    else {
+      val actorForce = exileForce(ready, c.actor)
+      val killed = losses.collect {
+        case CampaignLosingForceEffect.KillCommitted(_, _, _, count) => count
+      }.sum
+      val relocated = losses.collect {
+        case CampaignLosingForceEffect.RelocateCommitted(site, _, _, count) =>
+          site -> count
+      }
+      val returned = losses.collect {
+        case CampaignLosingForceEffect.ReturnToBoard(_, _, _, count) => count
+        case CampaignLosingForceEffect.PreserveCommitted(_, _, _, count) => count
+      }.sum
+      for {
+        _ <- Either.cond(surviving >= 0, (), CampaignOutcomeMismatch(
+          "attacker loss cannot dispose of negative survivors"))
+        _ <- Either.cond(killed + relocated.map(_._2).sum + returned == surviving, (),
+          CampaignOutcomeMismatch(
+            "attacker loss does not dispose of every surviving force warband"))
+        deaths = e.skullLosses + e.sacrificed + killed
+        ops = killAt(actorForce, deaths, Location.PlayArea(c.actor)) ++
+          relocated.map { case (site, count) =>
+            warbandMove(actorForce, count, Location.PlayArea(c.actor),
+              Location.Site(site))
+          }.flatten
+        evolved <- execute(ready, ops, "Campaign defeat is not permitted") { state =>
+          Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+        }
+      } yield evolved
+    }
+  }
+
+  /** Pure site-preview of the losing-force effects (validation only). */
+  private def losingSiteEffects(ready: ReadyGame,
       effects: Vector[CampaignLosingForceEffect])
-      : Either[OathViolation, (Map[SiteId, SiteState], Vector[PlayerState])] =
-    effects.foldLeft[Either[OathViolation,
-      (Map[SiteId, SiteState], Vector[PlayerState])]](
-      Right(initial -> initialPlayers)) { (result, effect) => result.flatMap {
-        case (sites, players) =>
-        def source(force: ForceKind, count: Int) = sites.get(effect.site)
-          .toRight(SiteNotInPlay(effect.site)).flatMap { site =>
-            Either.cond(site.forces == SiteForces.Occupied(force, count), site,
-              CampaignOutcomeMismatch(
-                s"losing force at '${effect.site.value}' changed"))
-          }
+      : Either[OathViolation, Map[SiteId, SiteForces]] = {
+    val initial = ready.game.current.map.sites
+    effects.foldLeft[Either[OathViolation, Map[SiteId, SiteForces]]](
+      Right(initial.map { case (site, state) => site -> state.forces })) {
+      case (result, effect) => result.flatMap { sites =>
+        def current(site: SiteId) = sites.get(site).toRight(SiteNotInPlay(site))
         effect match {
           case CampaignLosingForceEffect.Remove(site, force, count) =>
-            source(force, count).map(value => sites.updated(site,
-              value.copy(forces = SiteForces.Empty)) -> players)
-          case CampaignLosingForceEffect.Preserve(_, force, count) =>
-            source(force, count).map(_ => sites -> players)
+            current(site).flatMap(value =>
+              Either.cond(value == SiteForces.Occupied(force, count), (),
+                CampaignOutcomeMismatch(
+                  s"losing force at '${site.value}' changed")))
+              .map(_ => sites.updated(site, SiteForces.Empty))
+          case CampaignLosingForceEffect.Preserve(site, force, count) =>
+            current(site).flatMap(value =>
+              Either.cond(value == SiteForces.Occupied(force, count), (),
+                CampaignOutcomeMismatch(
+                  s"losing force at '${site.value}' changed")))
+              .map(_ => sites)
           case CampaignLosingForceEffect.Relocate(site, destination, force, count) =>
             for {
-              from <- source(force, count)
-              to <- sites.get(destination).toRight(SiteNotInPlay(destination))
-              moved <- to.forces match {
+              from <- current(site)
+              _ <- Either.cond(from == SiteForces.Occupied(force, count), (),
+                CampaignOutcomeMismatch(
+                  s"losing force at '${site.value}' changed"))
+              to <- current(destination)
+              moved <- to match {
                 case SiteForces.Empty => Right(SiteForces.Occupied(force, count))
-                case SiteForces.Occupied(existing, existingCount)
-                    if existing == force =>
-                  Right(SiteForces.Occupied(force, existingCount + count))
+                case SiteForces.Occupied(existing, present) if existing == force =>
+                  Right(SiteForces.Occupied(force, present + count))
                 case _ => Left(CampaignOutcomeMismatch(
                   "relocated losing force cannot join a different force"))
               }
-            } yield sites.updated(site, from.copy(forces = SiteForces.Empty))
-              .updated(destination, to.copy(forces = moved)) -> players
+            } yield sites.updated(site, SiteForces.Empty)
+              .updated(destination, moved)
           case CampaignLosingForceEffect.Replace(site, force, count,
-              replacement, replacementCount) => source(force, count).map { value =>
-            val next = replacement.fold[SiteForces](SiteForces.Empty)(kind =>
-              SiteForces.Occupied(kind, replacementCount))
-            sites.updated(site, value.copy(forces = next)) -> players
-          }
+              replacement, replacementCount) =>
+            current(site).flatMap(value =>
+              Either.cond(value == SiteForces.Occupied(force, count), (),
+                CampaignOutcomeMismatch(
+                  s"losing force at '${site.value}' changed")))
+              .map { _ =>
+                val next = replacement.fold[SiteForces](SiteForces.Empty)(kind =>
+                  SiteForces.Occupied(kind, replacementCount))
+                sites.updated(site, next)
+              }
           case CampaignLosingForceEffect.ReturnToBoard(_, player, force, count) =>
-            players.find(_.player == player).toRight(CampaignOutcomeMismatch(
-              "losing-force return references an unknown player")).flatMap { owner =>
-              Either.cond(force == ForceKind.Exile(owner.lineage), (),
-                CampaignOutcomeMismatch("returned force does not belong to player"))
-              .map(_ => sites -> players.map(p => if (p.player != player) p else
-                p.copy(board = p.board.copy(warbands = p.board.warbands + count))))
-            }
+            ready.game.current.players.find(_.player == player)
+              .toRight(CampaignOutcomeMismatch(
+                "losing-force return references an unknown player"))
+              .flatMap(owner => Either.cond(force == ForceKind.Exile(owner.lineage),
+                sites, CampaignOutcomeMismatch(
+                  "returned force does not belong to player")))
           case _: CampaignLosingForceEffect.KillCommitted |
               _: CampaignLosingForceEffect.RelocateCommitted |
               _: CampaignLosingForceEffect.PreserveCommitted =>
             Left(CampaignOutcomeMismatch(
               "committed-force disposition cannot resolve defender forces"))
-      }}}
-
-  private def applyCommittedLosses(players: Vector[PlayerState],
-      sites: Map[SiteId, SiteState], campaign: PendingProcedure.Campaign,
-      surviving: Int, effects: Vector[CampaignLosingForceEffect])
-      : Either[OathViolation, (Vector[PlayerState], Map[SiteId, SiteState])] = {
-    val owner = players.find(_.player == campaign.actor).get
-    val expectedForce = ForceKind.Exile(owner.lineage)
-    effects.foldLeft[Either[OathViolation,
-      (Int, Int, Map[SiteId, SiteState])]](Right((0, 0, sites))) {
-      case (result, effect) => result.flatMap {
-        case (removed, returned, currentSites) => effect match {
-          case CampaignLosingForceEffect.KillCommitted(_, player, force, count)
-              if player == campaign.actor && force == expectedForce =>
-            Right((removed + count, returned, currentSites))
-          case CampaignLosingForceEffect.ReturnToBoard(_, player, force, count)
-              if player == campaign.actor && force == expectedForce =>
-            Right((removed, returned + count, currentSites))
-          case CampaignLosingForceEffect.PreserveCommitted(_, player, force, count)
-              if player == campaign.actor && force == expectedForce =>
-            Right((removed, returned + count, currentSites))
-          case CampaignLosingForceEffect.RelocateCommitted(site, player, force, count)
-              if player == campaign.actor && force == expectedForce =>
-            currentSites.get(site).toRight(SiteNotInPlay(site)).flatMap {
-              destination => destination.forces match {
-                case SiteForces.Empty => Right((removed + count, returned,
-                  currentSites.updated(site, destination.copy(forces =
-                    SiteForces.Occupied(force, count)))))
-                case SiteForces.Occupied(existing, present) if existing == force =>
-                  Right((removed + count, returned, currentSites.updated(site,
-                    destination.copy(forces = SiteForces.Occupied(force,
-                      present + count)))))
-                case _ => Left(CampaignOutcomeMismatch(
-                  "committed force cannot relocate onto a different force"))
-              }
-            }
-          case _ => Left(CampaignOutcomeMismatch(
-            "attacker loss contains an invalid committed-force disposition"))
         }
       }
-    }.flatMap { case (removed, returned, nextSites) =>
-      Either.cond(removed + returned == surviving,
-        players.map(p => if (p.player != campaign.actor) p else p.copy(
-          board = p.board.copy(warbands = p.board.warbands + returned))) -> nextSites,
+    }
+  }
+
+  /** CampaignConquered: kills the attacker warbands lost to skulls and
+    * sacrifice, clears defender losing forces at target sites, then moves the
+    * allocated survivors onto the cleared sites (unplaced survivors remain).
+    */
+  private def applyConquest(ready: ReadyGame, e: CampaignConquered,
+      c: PendingProcedure.Campaign, losses: Vector[CampaignLosingForceEffect],
+      surviving: Int): Either[OathViolation, ReadyGame] = {
+    val attacker = ready.game.current.players.find(_.player == c.actor).get
+    val actorForce = ForceKind.Exile(attacker.lineage)
+    for {
+      // Validation: allocations may only land on a cleared Campaign target.
+      cleared <- losingSiteEffects(ready, losses)
+      _ <- Either.cond(e.allocations.forall(allocation =>
+        allocation.count == 0 ||
+          cleared(allocation.site) == SiteForces.Empty), (),
         CampaignOutcomeMismatch(
-          "attacker loss does not dispose of every surviving force warband"))
+          "force can be placed only at a cleared Campaign target"))
+      _ <- Either.cond(surviving >= e.allocations.map(_.count).sum, (),
+        CampaignOutcomeMismatch("placed force exceeds survivors"))
+      // Physical: defender losing forces (site warbands and returns to board).
+      forceOps <- losses.foldLeft[
+        Either[OathViolation,
+          Vector[oathdigital.gameplay.operations.CoreOperation]]](Right(Vector.empty)) {
+        case (result, effect) => result.flatMap { ops => effect match {
+          case CampaignLosingForceEffect.Remove(site, force, count) =>
+            Right(ops ++ killAt(force, count, Location.Site(site)))
+          case CampaignLosingForceEffect.Preserve(_, _, _) => Right(ops)
+          case CampaignLosingForceEffect.Relocate(site, destination, force, count) =>
+            Right(ops ++ warbandMove(force, count, Location.Site(site),
+              Location.Site(destination)))
+          case CampaignLosingForceEffect.Replace(site, force, count,
+              replacement, replacementCount) =>
+            Right(ops ++ killAt(force, count, Location.Site(site)) ++
+              replacement.toVector.flatMap(kind => warbandMove(kind,
+                replacementCount, Location.WarbandBank(kind), Location.Site(site))))
+          case CampaignLosingForceEffect.ReturnToBoard(_, player, force, count) =>
+            Right(ops ++ warbandMove(force, count, Location.WarbandBank(force),
+              Location.PlayArea(player)))
+          case _ => Left(CampaignOutcomeMismatch(
+            "committed-force disposition cannot resolve defender forces"))
+        }}
+      }
+      deaths = c.skullLosses + c.sacrificed.get
+      placements = e.allocations.flatMap(allocation => warbandMove(actorForce,
+        allocation.count, Location.PlayArea(c.actor), Location.Site(allocation.site)))
+      evolved <- execute(ready,
+        killAt(actorForce, deaths, Location.PlayArea(c.actor)) ++
+          forceOps ++ placements,
+        "Campaign conquest is not permitted") { state =>
+        Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+      }
+    } yield evolved
+  }
+
+  /** CampaignRaided: kills the attacker warbands lost to skulls and sacrifice
+    * while every committed survivor stays on the board (they never left); the
+    * defender's board force loses its killed half. Targeted faceup relics and
+    * banners transfer to the attacker; People's Favor favor returns to banks;
+    * Darkest Secret secrets are burned; facedown advisers discard to the next
+    * region; Conspiracy leaves the game; facedown relics are set aside.
+    */
+  private def applyRaid(ready: ReadyGame, e: CampaignRaided,
+      c: PendingProcedure.Campaign): Either[OathViolation, ReadyGame] = {
+    val current = ready.game.current
+    val defenderId = opponentOf(c)
+    val defender = current.players.find(_.player == defenderId).get
+    val defenderForce = ForceKind.Exile(defender.lineage)
+    val attackerForce = exileForce(ready, c.actor)
+    val taken = defender.relics.filter(r => e.takenRelics.contains(r.id))
+    val relicTakes = taken.map { relic =>
+      oathdigital.gameplay.operations.Take(Piece.Card(relic.id), c.actor,
+        Location.PlayArea(defenderId), Location.PlayArea(c.actor))
+    }
+    val bannerOps: Vector[oathdigital.gameplay.operations.CoreOperation] =
+      e.takenBanners.flatMap {
+        case CampaignBanner.PeoplesFavor =>
+          val favorReturns = e.bannerFavorReturned.toVector.flatMap {
+            case (suit, amount) => Option.when(amount > 0)(CoreMove(
+              Piece.Favor(amount),
+              PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+              PositionedLocation(Location.FavorBank(suit)))).toVector
+          }
+          favorReturns :+ Take(Piece.Banner(Banner.PeoplesFavor), c.actor,
+            Location.PlayArea(defenderId), Location.PlayArea(c.actor))
+        case CampaignBanner.DarkestSecret =>
+          val burn = Option.when(e.darkestSecretBurned > 0)(
+            oathdigital.gameplay.operations.Burn.secrets(e.darkestSecretBurned,
+              PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))).toVector
+          burn :+ Take(Piece.Banner(Banner.DarkestSecret), c.actor,
+            Location.PlayArea(defenderId), Location.PlayArea(c.actor))
+      }
+    val adviserDiscards = e.discardedAdvisers.map { id =>
+      CoreMove(Piece.Card(id),
+        PositionedLocation(Location.PlayArea(defenderId)),
+        PositionedLocation(Location.RegionalDiscard(e.adviserDiscardRegion),
+          StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown))
+    }
+    val setAside = e.discardedRelics.map { id =>
+      // Facedown relics leave until the Chronicle. SetAsideRelics enforces
+      // empty tokens on entry, so a token-carrying facedown relic rejects the
+      // batch loudly instead of silently carrying tokens away (no current flow
+      // produces one — a raid only sets aside token-less facedown relics).
+      CoreMove(Piece.Card(id),
+        PositionedLocation(Location.PlayArea(defenderId)),
+        PositionedLocation(Location.SetAsideRelics))
+    }
+    val favorBurn = Option.when(e.favorBurned > 0)(
+      oathdigital.gameplay.operations.Burn.favor(e.favorBurned,
+        PositionedLocation(Location.PlayArea(defenderId)))).toVector
+    val defenderKills = killAt(defenderForce, e.defenderLoss.killed,
+      Location.PlayArea(defenderId))
+    val attackerDeaths = killAt(attackerForce,
+      c.skullLosses + c.sacrificed.get, Location.PlayArea(c.actor))
+    val relocation = PendingProcedure.CampaignRaidRelocation(c.decision,
+      c.actor, defenderId, defender.pawnSite.get,
+      CampaignRules.legalRaidRelocationSites(ready, defenderId))
+    val ops: Vector[oathdigital.gameplay.operations.CoreOperation] =
+      (relicTakes: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (bannerOps: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (adviserDiscards: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (setAside: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (favorBurn: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (defenderKills: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
+      (attackerDeaths: Vector[oathdigital.gameplay.operations.CoreOperation])
+    execute(ready, ops, "Campaign raid is not permitted") { state =>
+      Right(GameStateUpdates.updateCurrent(state)(current =>
+        current.copy(pending = Some(relocation))))
+    }.map { state =>
+      // Conspiracy leaves the game only after the batch validates (the
+      // executor conserves card inventory), mirroring the Visions slice.
+      // executor bypass: Conspiracy is removed from the game after the batch.
+      e.boxedConspiracy.fold(state) { conspiracy =>
+        GameStateUpdates.updateCurrent(state)(current =>
+          current.copy(players = current.players.map(p =>
+            if (p.player != defenderId) p else p.copy(advisers =
+              p.advisers.filterNot(_.id == conspiracy)))))
+      }
     }
   }
 }

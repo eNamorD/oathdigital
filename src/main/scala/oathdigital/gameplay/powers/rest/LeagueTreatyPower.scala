@@ -4,6 +4,9 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{CoreOperation, Location,
+  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Piece, PositionedLocation}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -79,8 +82,9 @@ object LeagueTreatyPower extends Power {
           snapshot <- snapshotFor(ready, pending.current)
           _ <- validateAllocations(ready, snapshot, resolved.allocations,
             resolved.destinationBank)
-        } yield Ready(moveFavor(ready, resolved.allocations,
-          resolved.destinationBank))
+          evolved <- applyResolution(ready, resolved.allocations,
+            resolved.destinationBank)
+        } yield Ready(evolved)
         case _ => Left(GameNotStarted)
       }
       case declined: LeagueTreatyDeclined => state match {
@@ -208,29 +212,42 @@ object LeagueTreatyPower extends Power {
     }
   }
 
-  private def moveFavor(ready: ReadyGame, allocations: Vector[FavorAllocation],
-      destination: Suit): ReadyGame = {
-    val bySource = allocations.map(value => value.source -> value.amount).toMap
-    val sites = ready.game.current.map.sites.map { case (siteId, site) =>
-      val denizens = site.denizens.map {
-        case card @ DenizenState(id, _, tokens) => bySource
-          .get(SiteFavorSource.Denizen(siteId, id)).fold(card)(amount =>
-            card.copy(tokens = tokens.copy(favor = tokens.favor - amount)))
-        case card @ EdificeState(id, _, tokens) => bySource
-          .get(SiteFavorSource.Edifice(siteId, id)).fold(card)(amount =>
-            card.copy(tokens = tokens.copy(favor = tokens.favor - amount)))
+  /** Executes one validated League Treaty resolution as a single operation
+    * batch: every recorded allocation moves that card's favor off its token
+    * pool into the chosen suit bank. Clearing the pending decision is the
+    * transaction's direct update; every material change is a counted favor
+    * `Move`, mirroring the Rest cleanup path.
+    */
+  private def applyResolution(ready: ReadyGame,
+      allocations: Vector[FavorAllocation],
+      destination: Suit): Either[OathViolation, ReadyGame] = for {
+    operations <- allocations.foldLeft[
+      Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)) {
+      case (result, allocation) => result.flatMap { operations =>
+        sourceCardId(ready, allocation.source).map { card =>
+          operations :+ CoreMove(
+            Piece.Favor(allocation.amount),
+            PositionedLocation(Location.OnCard(card)),
+            PositionedLocation(Location.FavorBank(destination)))
+        }
       }
-      val relics = site.relics.zipWithIndex.map { case (card, slot) => bySource
-        .get(SiteFavorSource.Relic(siteId, slot)).fold(card)(amount =>
-          card.copy(tokens = card.tokens.copy(favor = card.tokens.favor - amount))) }
-      siteId -> site.copy(denizens = denizens, relics = relics)
     }
-    val moved = allocations.map(_.amount).sum
-    ready.copy(support = ready.support.copy(favorBanks =
-      ready.support.favorBanks.updated(destination,
-        ready.support.favorBanks.getOrElse(destination, 0) + moved)),
-      game = ready.game.copy(current = ready.game.current.copy(
-        map = ready.game.current.map.copy(sites = sites), pending = None)))
+    executor = new OperationExecutor(OperationPolicy.exact(operations,
+      "League Treaty semantic root is not permitted"))
+    execution <- OperationTransaction.evolve(ready, operations, executor) {
+      evolved => Right(clearPending(evolved))
+    }
+  } yield execution.ready
+
+  private def sourceCardId(ready: ReadyGame, source: SiteFavorSource)
+      : Either[OathViolation, CardId] = source match {
+    case SiteFavorSource.Denizen(_, id) => Right(id)
+    case SiteFavorSource.Edifice(_, id) => Right(id)
+    case SiteFavorSource.Relic(siteId, slot) =>
+      ready.game.current.map.sites.get(siteId)
+        .flatMap(_.relics.lift(slot)).map(_.id)
+        .toRight(RestOutcomeMismatch(
+          "League Treaty relic source is unavailable"))
   }
 
   private def clearPending(ready: ReadyGame): ReadyGame = ready.copy(game =

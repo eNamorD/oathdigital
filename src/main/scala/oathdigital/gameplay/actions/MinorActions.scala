@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, GameStateUpdates}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay.powers.SearchPowers
@@ -10,6 +10,9 @@ import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{CoreOperation, Location,
+  OperationExecutor, OperationTransaction, Piece, PositionedLocation,
+  Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
 
 sealed trait MinorActionCommand extends Product with Serializable
 object MinorActionCommand {
@@ -25,6 +28,9 @@ object MinorActionCommand {
 }
 
 object MinorActions {
+  private val operationExecutor =
+    new OperationExecutor(MinorActionOperationPolicy)
+
   def legalAdviserPlacements(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerId, adviser: WorldCardId): Vector[SearchPlacement] = {
     val replacements = ready.game.current.players.find(_.player == player)
@@ -135,10 +141,11 @@ object MinorActions {
       _ <- Either.cond(siteId == e.siteId && site.relics.map(_.id) == e.relics &&
         e.relics.nonEmpty, (), MinorActionOutcomeMismatch(
         "recorded site relic peek does not match the pawn's site"))
-    } yield Ready(ready.copy(support = ready.support.copy(relicKnowledge =
-      ready.support.relicKnowledge.updated(e.playerId,
-        ready.support.relicKnowledge.getOrElse(e.playerId, Map.empty)
-          .updated(e.siteId, e.relics)))))
+      evolved <- evolveOperations(
+        ready,
+        e.relics.map(relic => CorePeek(e.playerId, relic, Location.Site(e.siteId)))
+      )
+    } yield Ready(evolved)
 
     case e: OwnedRelicRevealed => for {
       ready <- validateAct(catalog, state, e.playerId)
@@ -148,10 +155,11 @@ object MinorActions {
         .toRight(MinorActionUnavailable("relic is not held by the actor"))
       _ <- Either.cond(held.orientation == Orientation.FaceDown, (),
         MinorActionOutcomeMismatch("recorded relic was not facedown"))
-    } yield Ready(updatePlayer(ready, e.playerId)(p => p.copy(relics = p.relics.map {
-      case relic if relic.id == e.relicId => relic.copy(orientation = Orientation.FaceUp)
-      case relic => relic
-    })))
+      evolved <- evolveOperations(
+        ready,
+        Vector(CoreReveal(e.relicId, Location.PlayArea(e.playerId)))
+      )
+    } yield Ready(evolved)
 
     case e: WarbandsMoved => for {
       ready <- validateAct(catalog, state, e.playerId)
@@ -178,7 +186,18 @@ object MinorActions {
         _ <- Either.cond(e.amount < occupied.count, (),
           MinorActionOutcomeMismatch("recorded movement removed the last warband"))
       } yield ()
-    } yield Ready(moveWarbands(ready, actor, siteId, occupied, e.toSite, e.amount))
+      board = Location.PlayArea(e.playerId)
+      siteLocation = Location.Site(e.siteId)
+      (from, to) = if (e.toSite) (board, siteLocation) else (siteLocation, board)
+      evolved <- evolveOperations(
+        ready,
+        Vector(CoreMove(
+          Piece.Warbands(ForceKind.Exile(actor.lineage), e.amount),
+          PositionedLocation(from),
+          PositionedLocation(to)
+        ))
+      )
+    } yield Ready(evolved)
 
     case _ => Left(InvalidEventOrder("MinorActions received a non-minor-action event"))
   }
@@ -194,7 +213,7 @@ object MinorActions {
   private def validateAct(catalog: ExecutableCatalog, state: OathState,
       player: PlayerId): Either[OathViolation, ReadyGame] =
     OathLifecycle.validateAct(state, player).flatMap { ready =>
-      val supported = ready.support.foundationProfile ==
+      val supported = ready.setup.foundationProfile ==
         FirstGameFoundationProfile.FixedUnaltered &&
         ready.game.campaign.lineages.values.forall(_.role == Role.Exile) &&
         ready.game.campaign.foundations.values.forall(f =>
@@ -203,20 +222,12 @@ object MinorActions {
         "minor actions are limited to fixed unaltered all-Exile first-game rules"))
     }
 
-  private def updatePlayer(ready: ReadyGame, player: PlayerId)(f: PlayerState => PlayerState) =
-    GameStateUpdates.updateCurrent(ready)(current => current.copy(players =
-      current.players.map(p => if (p.player == player) f(p) else p)))
-
-  private def moveWarbands(ready: ReadyGame, actor: PlayerState, siteId: SiteId,
-      occupied: SiteForces.Occupied, toSite: Boolean, amount: Int) = {
-    val boardDelta = if (toSite) -amount else amount
-    val siteDelta = -boardDelta
-    val withPlayer = updatePlayer(ready, actor.player)(p => p.copy(board =
-      p.board.copy(warbands = p.board.warbands + boardDelta)))
-    GameStateUpdates.updateCurrent(withPlayer)(current => current.copy(map = current.map.copy(
-      sites = current.map.sites.updated(siteId, current.map.sites(siteId).copy(
-        forces = occupied.copy(count = occupied.count + siteDelta))))))
-  }
+  private def evolveOperations(
+      ready: ReadyGame,
+      operations: Vector[CoreOperation]
+  ): Either[OathViolation, ReadyGame] =
+    OperationTransaction.evolve(ready, operations, operationExecutor)(Right(_))
+      .map(_.ready)
 
   private def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces

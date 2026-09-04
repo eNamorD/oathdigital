@@ -13,6 +13,7 @@ Start with [codebase structure](docs/architecture/codebase-structure.md). The
 main durable decisions are:
 
 - [gameplay modules](docs/architecture/gameplay-modules.md)
+- [core operations migration](docs/architecture/core-operations-migration.md)
 - [typed rule resolution](docs/architecture/rule-resolution.md)
 - [authoritative events](docs/architecture/authoritative-events.md)
 - [application/event-store boundary](docs/architecture/event-store-application-service.md)

@@ -8,7 +8,8 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent.{IgnoredRulesRecorded, RestCompleted, RestStarted}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation.{RestOutcomeMismatch,
-  UnsupportedRoundEndCatalogInventory, UnsupportedRuleCatalog}
+  UnsupportedRestState, UnsupportedRoundEndCatalogInventory,
+  UnsupportedRuleCatalog}
 import oathdigital.catalog.CatalogPower
 
 class RestSuite extends munit.FunSuite {
@@ -21,31 +22,82 @@ class RestSuite extends munit.FunSuite {
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }
 
+  /** Picks `count` denizens still sitting in the world deck (never physically
+    * placed) and removes them from that deck, so a prepared state stays
+    * CardIndex-consistent when those cards are placed elsewhere. When
+    * `minSuits` exceeds one, the picks span that many distinct catalog suits
+    * (one from each group first, then any remaining from the leftover pool).
+    */
+  private def takeUnplacedDenizens(base: ReadyGame, count: Int,
+      minSuits: Int = 1): (Vector[DenizenId], ReadyGame) = {
+    val deck = base.game.current.commonCards.worldDeck.collect {
+      case id: DenizenId => id
+    }
+    val groups = deck.groupBy { id => catalog.denizens
+      .find(_.id.value == id.value).map(_.suit.value).getOrElse("") }
+      .toVector.sortBy(_._1).map(_._2)
+    val representatives = groups.take(minSuits).flatMap(_.headOption)
+    val remainder = groups.flatten.filterNot(representatives.toSet)
+    val chosen = (representatives ++ remainder).take(count)
+    val worldDeck = base.game.current.commonCards.worldDeck.filterNot(
+      id => chosen.contains(id))
+    chosen -> base.copy(game = base.game.copy(current =
+      base.game.current.copy(commonCards =
+        base.game.current.commonCards.copy(worldDeck = worldDeck))))
+  }
+
+  /** Picks `count` relics still in the relic deck and removes them from it. */
+  private def takeUnplacedRelics(base: ReadyGame, count: Int)
+      : (Vector[RelicId], ReadyGame) = {
+    val chosen = base.game.current.commonCards.relicDeck.take(count)
+    val relicDeck = base.game.current.commonCards.relicDeck.filterNot(
+      id => chosen.contains(id))
+    chosen -> base.copy(game = base.game.copy(current =
+      base.game.current.copy(commonCards =
+        base.game.current.commonCards.copy(relicDeck = relicDeck))))
+  }
+
+  /** Picks an edifice still in the edifice deck and removes it. */
+  private def takeUnplacedEdifice(base: ReadyGame)
+      : (EdificeId, ReadyGame) = {
+    val chosen = base.game.current.commonCards.edificeDeck.head
+    val edificeDeck = base.game.current.commonCards.edificeDeck.filterNot(
+      _ == chosen)
+    chosen -> base.copy(game = base.game.copy(current =
+      base.game.current.copy(commonCards =
+        base.game.current.commonCards.copy(edificeDeck = edificeDeck))))
+  }
+
   test("Rest returns controlled resources reveals secrets refreshes and wakes next") {
-    val base = act
-    val actor = base.game.current.players.find(
-      _.player == base.game.current.turn.activePlayer).get
+    val base0 = act
+    val actor = base0.game.current.players.find(
+      _.player == base0.game.current.turn.activePlayer).get
     val adviserId = actor.advisers.collectFirst {
       case DenizenState(id, _, _) => id
     }.get
     val siteId = actor.pawnSite.get
-    val siteCardId = catalog.denizens.find(_.id.value != adviserId.value)
-      .map(value => DenizenId(value.id.value)).get
-    val site = base.game.current.map.sites(siteId).copy(
+    // Pick an unplaced denizen for the site and an unplaced relic for the
+    // resting player's holdings, and filter both from their decks so the
+    // prepared state stays CardIndex-consistent.
+    val (siteCards, base) = takeUnplacedDenizens(base0, 1)
+    val (heldRelics, withRelics) = takeUnplacedRelics(base, 1)
+    val siteCardId = siteCards.find(_ != adviserId).get
+    val heldRelic = heldRelics.head
+    val site = withRelics.game.current.map.sites(siteId).copy(
       forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 2),
       denizens = Vector(DenizenState(siteCardId, Orientation.FaceUp, Tokens(2, 1))))
-    val prepared = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
-        map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site)),
-        players = base.game.current.players.map { player =>
+    val prepared = withRelics.copy(game = withRelics.game.copy(current =
+      withRelics.game.current.copy(
+        map = withRelics.game.current.map.copy(sites =
+          withRelics.game.current.map.sites.updated(siteId, site)),
+        players = withRelics.game.current.players.map { player =>
           if (player.player != actor.player) player
           else player.copy(
             board = player.board.copy(faceDownSecrets = 2,
               supply = SupplyTrack(1)),
             advisers = Vector(DenizenState(adviserId, Orientation.FaceUp,
               Tokens(1, 2))),
-            relics = Vector(RelicState(RelicId(catalog.relics.head.id.value),
+            relics = Vector(RelicState(heldRelic,
               Orientation.FaceUp, Tokens(0, 3))))
         })))
 
@@ -67,53 +119,56 @@ class RestSuite extends munit.FunSuite {
     assertEquals(after.game.current.turn.phase, Phase.Wake)
     assertNotEquals(after.game.current.turn.activePlayer, actor.player)
     assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
-    assertEquals(after.support.favorBanks.values.sum,
-      prepared.support.favorBanks.values.sum + 3)
+    assertEquals(after.banks.favor.values.sum,
+      prepared.banks.favor.values.sum + 3)
+  }
+
+  test("Rest rejects a missing bounded warband supply") {
+    val ready = act
+    val actor = ready.game.current.players.find(
+      _.player == ready.game.current.turn.activePlayer).get
+    val malformed = ready.copy(banks = ready.banks.copy(warbandSupply =
+      ready.banks.warbandSupply - ForceKind.Exile(actor.lineage)))
+
+    assert(rules.handle(Ready(malformed), RestCommand.Begin(actor.player))
+      .left.toOption.get.isInstanceOf[UnsupportedRestState])
   }
 
   test("Rest globally cleans every in-play denizen and relic") {
-    val base = act
-    val actor = base.game.current.players.find(
-      _.player == base.game.current.turn.activePlayer).get
+    val base0 = act
+    val actor = base0.game.current.players.find(
+      _.player == base0.game.current.turn.activePlayer).get
     val pawn = actor.pawnSite.get
-    val ruled = base.game.current.map.sites.keys.find(_ != pawn).get
-    val outside = base.game.current.map.sites.keys.find(id => id != pawn && id != ruled).get
-    val adviserDefinition = catalog.denizens.head
-    val pawnDefinition = catalog.denizens.find(_.suit != adviserDefinition.suit).get
-    val ruledDefinition = catalog.denizens.find(d =>
-      d.suit != adviserDefinition.suit && d.suit != pawnDefinition.suit).get
-    val edificeDefinition = catalog.edifices.head
-    val adviser = DenizenState(DenizenId(adviserDefinition.id.value),
-      Orientation.FaceUp, Tokens(1, 1))
-    val pawnCard = DenizenState(DenizenId(pawnDefinition.id.value),
-      Orientation.FaceUp, Tokens(2, 2))
-    val pawnEdifice = EdificeState(EdificeId(edificeDefinition.id.value),
-      EdificeSide.Ruined, Tokens(1, 1))
-    val ruledCard = DenizenState(DenizenId(ruledDefinition.id.value),
-      Orientation.FaceUp, Tokens(3, 3))
-    val outsideCard = DenizenState(DenizenId(catalog.denizens.last.id.value),
-      Orientation.FaceUp, Tokens(4, 4))
-    val relic = RelicState(RelicId(catalog.relics.head.id.value),
-      Orientation.FaceUp, Tokens(7, 2))
-    val otherBefore = base.game.current.players.find(_.player != actor.player).get
-    val otherAdviser = DenizenState(DenizenId(catalog.denizens.drop(4).head.id.value),
-      Orientation.FaceUp, Tokens(5, 5))
-    val otherRelic = RelicState(RelicId(catalog.relics.drop(1).head.id.value),
-      Orientation.FaceUp, Tokens(0, 6))
-    val siteRelic = RelicState(RelicId(catalog.relics.drop(2).head.id.value),
-      Orientation.FaceDown, Tokens(0, 7))
-    val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
-      map = base.game.current.map.copy(sites = base.game.current.map.sites
-        .updated(pawn, base.game.current.map.sites(pawn).copy(
+    val ruled = base0.game.current.map.sites.keys.find(_ != pawn).get
+    val outside = base0.game.current.map.sites.keys.find(id => id != pawn && id != ruled).get
+    val otherBefore = base0.game.current.players.find(_.player != actor.player).get
+    // All injected cards come from the still-in-deck pools (never physically
+    // placed in the base first game) and are removed from those decks, so the
+    // prepared state satisfies the executor's CardIndex uniqueness invariant.
+    val (denizenPool, withDenizens) = takeUnplacedDenizens(base0, 5, minSuits = 3)
+    val (edificePick, withEdifice) = takeUnplacedEdifice(withDenizens)
+    val (relicPool, withRelics) = takeUnplacedRelics(withEdifice, 3)
+    val adviser = DenizenState(denizenPool(0), Orientation.FaceUp, Tokens(1, 1))
+    val pawnCard = DenizenState(denizenPool(1), Orientation.FaceUp, Tokens(2, 2))
+    val pawnEdifice = EdificeState(edificePick, EdificeSide.Ruined, Tokens(1, 1))
+    val ruledCard = DenizenState(denizenPool(2), Orientation.FaceUp, Tokens(3, 3))
+    val outsideCard = DenizenState(denizenPool(3), Orientation.FaceUp, Tokens(4, 4))
+    val relic = RelicState(relicPool(0), Orientation.FaceUp, Tokens(7, 2))
+    val otherAdviser = DenizenState(denizenPool(4), Orientation.FaceUp, Tokens(5, 5))
+    val otherRelic = RelicState(relicPool(1), Orientation.FaceUp, Tokens(0, 6))
+    val siteRelic = RelicState(relicPool(2), Orientation.FaceDown, Tokens(0, 7))
+    val prepared = withRelics.copy(game = withRelics.game.copy(current = withRelics.game.current.copy(
+      map = withRelics.game.current.map.copy(sites = withRelics.game.current.map.sites
+        .updated(pawn, withRelics.game.current.map.sites(pawn).copy(
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
           denizens = Vector(pawnCard, pawnEdifice)))
-        .updated(ruled, base.game.current.map.sites(ruled).copy(
+        .updated(ruled, withRelics.game.current.map.sites(ruled).copy(
           forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1),
           denizens = Vector(ruledCard)))
-        .updated(outside, base.game.current.map.sites(outside).copy(
+        .updated(outside, withRelics.game.current.map.sites(outside).copy(
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
           denizens = Vector(outsideCard), relics = Vector(siteRelic)))),
-      players = base.game.current.players.map { p =>
+      players = withRelics.game.current.players.map { p =>
         if (p.player == actor.player)
           p.copy(board = p.board.copy(faceDownSecrets = 2), advisers = Vector(adviser),
             relics = Vector(relic))
@@ -140,8 +195,8 @@ class RestSuite extends munit.FunSuite {
     assertEquals(after.game.current.map.sites(outside).relics.head.tokens,
       Tokens.empty)
     plan.returnedFavor.foreach { case (suit, amount) =>
-      assertEquals(after.support.favorBanks(suit),
-        prepared.support.favorBanks(suit) + amount)
+      assertEquals(after.banks.favor(suit),
+        prepared.banks.favor(suit) + amount)
     }
     assert(plan.returnedFavor.size >= 2)
     val otherAfter = after.game.current.players.find(_.player == otherBefore.player).get
@@ -155,7 +210,7 @@ class RestSuite extends munit.FunSuite {
   test("replay validates recorded Rest outcome and advances the round") {
     var state: OathState = Ready(act)
     val participants = act.game.current.players.map(_.player)
-    val start = participants.indexOf(act.support.firstPlayer)
+    val start = participants.indexOf(act.setup.firstPlayer)
     val order = participants.drop(start) ++ participants.take(start)
     order.foreach { player =>
       val began = rules.handle(state, RestCommand.Begin(player)).toOption.get
@@ -181,7 +236,7 @@ class RestSuite extends munit.FunSuite {
     }
     val Ready(after) = state: @unchecked
     assertEquals(after.game.current.tracks.round, 2)
-    assertEquals(after.game.current.turn.activePlayer, after.support.firstPlayer)
+    assertEquals(after.game.current.turn.activePlayer, after.setup.firstPlayer)
     assertEquals(after.game.current.turn.phase, Phase.Wake)
   }
 
@@ -296,7 +351,7 @@ class RestSuite extends munit.FunSuite {
   test("last player of round eight finishes the game by War Exhaustion") {
     val base = act
     val participants = base.game.current.players.map(_.player)
-    val start = participants.indexOf(base.support.firstPlayer)
+    val start = participants.indexOf(base.setup.firstPlayer)
     val last = (participants.drop(start) ++ participants.take(start)).last
     val unsupported = base.copy(game = base.game.copy(current =
       base.game.current.copy(
@@ -341,13 +396,28 @@ class RestSuite extends munit.FunSuite {
       EdificeSide.Ruined, Tokens(3, 0))
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceDown, Tokens(4, 0))
-    val prepared = base.copy(game = base.game.copy(current = base.game.current.copy(
-      map = base.game.current.map.copy(sites = base.game.current.map.sites
-        .updated(treatySite, base.game.current.map.sites(treatySite).copy(
-          forces = SiteForces.Occupied(ForceKind.Exile(owner.lineage), 1),
-          denizens = Vector(treaty)))
-        .updated(otherSite, base.game.current.map.sites(otherSite).copy(
-          denizens = Vector(denizen, edifice), relics = Vector(relic)))))))
+    val injected = Set[CardId](treaty.id, denizen.id, edifice.id, relic.id)
+    val decks = base.game.current.commonCards
+    // The injected cards are physically placed at sites, so they must leave
+    // their source decks to stay CardIndex-consistent under operation
+    // preflight (League Treaty resolves through the executor).
+    val withoutDeckCards = base.copy(game = base.game.copy(current =
+      base.game.current.copy(commonCards = decks.copy(
+        worldDeck = decks.worldDeck.filterNot(injected),
+        relicDeck = decks.relicDeck.filterNot(injected),
+        edificeDeck = decks.edificeDeck.filterNot(injected)))))
+    val prepared = withoutDeckCards.copy(game = withoutDeckCards.game.copy(current =
+      withoutDeckCards.game.current.copy(
+        map = withoutDeckCards.game.current.map.copy(sites =
+          withoutDeckCards.game.current.map.sites
+            .updated(treatySite, withoutDeckCards.game.current.map.sites(
+              treatySite).copy(
+                forces = SiteForces.Occupied(ForceKind.Exile(owner.lineage), 1),
+                denizens = Vector(treaty)))
+            .updated(otherSite, withoutDeckCards.game.current.map.sites(
+              otherSite).copy(
+                denizens = Vector(denizen, edifice),
+                relics = Vector(relic)))))))
 
     val started = rules.handle(Ready(prepared), RestCommand.Begin(restActor))
       .toOption.get
@@ -416,8 +486,8 @@ class RestSuite extends munit.FunSuite {
     assertEquals(site.denizens.collectFirst {
       case value: EdificeState => value.tokens.favor }, Some(1))
     assertEquals(site.relics.head.tokens.favor, 0)
-    assertEquals(after.support.favorBanks(Suit.Beast),
-      prepared.support.favorBanks(Suit.Beast) + 7)
+    assertEquals(after.banks.favor(Suit.Beast),
+      prepared.banks.favor(Suit.Beast) + 7)
     assertEquals(resolved.continue, OathContinue.AwaitingRestAction(restActor))
     assertEquals(after.game.current.pending, None)
     val replayed = (started.events ++ resolved.events).foldLeft[

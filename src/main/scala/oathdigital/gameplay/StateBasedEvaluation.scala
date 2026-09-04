@@ -7,6 +7,8 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.operations.{Location, Move => CoreMove,
+  OperationExecutor, OperationTransaction, Piece, PositionedLocation}
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.
@@ -17,6 +19,8 @@ import oathdigital.gameplay.actions.VisionRules
  * guessed here. This is deliberately not a reusable, context-free tie breaker.
  */
 object StateBasedEvaluation {
+  private val operationExecutor =
+    new OperationExecutor(StateBasedOperationPolicy)
   private val visionPriority = Vector(VisionRules.Conquest,
     VisionRules.Rebellion, VisionRules.Sanctuary, VisionRules.Faith)
   def banditRefill(catalog: ExecutableCatalog, state: OathState)
@@ -104,7 +108,7 @@ object StateBasedEvaluation {
       : Either[OathViolation, Vector[OathEvent]] = supported(state).flatMap { ready =>
     val current = ready.game.current
     val order = ready.game.current.players.map(_.player)
-    val firstIndex = order.indexOf(ready.support.firstPlayer)
+    val firstIndex = order.indexOf(ready.setup.firstPlayer)
     val turnOrder = order.drop(firstIndex) ++ order.take(firstIndex)
     if (current.pending.nonEmpty)
       Left(PendingProcedureBlocksAction(current.pending.get.decision))
@@ -140,11 +144,18 @@ object StateBasedEvaluation {
     event match {
       case recorded: BanditsRefilled => banditRefill(catalog, state).flatMap {
         case Some(expected: BanditsRefilled) if expected == recorded =>
-          update(state)(current => current.copy(map = current.map.copy(
-            sites = recorded.sites.foldLeft(current.map.sites) {
-              case (sites, (id, count)) => sites.updated(id,
-                sites(id).copy(forces = SiteForces.Occupied(ForceKind.Bandit, count)))
-            })))
+          supported(state).flatMap { ready =>
+            val operations = recorded.sites.map { case (site, count) =>
+              CoreMove(
+                Piece.Warbands(ForceKind.Bandit, count),
+                PositionedLocation(Location.WarbandBank(ForceKind.Bandit)),
+                PositionedLocation(Location.Site(site))
+              )
+            }
+            OperationTransaction.evolve(
+              ready, operations, operationExecutor)(Right(_))
+              .map(execution => Ready(execution.ready))
+          }
         case expected => Left(InvalidEventOrder(
           s"Bandit refill mismatch: expected $expected, recorded $recorded"))
       }
@@ -207,7 +218,7 @@ object StateBasedEvaluation {
           val round = ready.game.current.tracks.round
           val expected = RoundEnded(round, Option.when(round < 8)(round + 1))
           val players = ready.game.current.players.map(_.player)
-          val firstIndex = players.indexOf(ready.support.firstPlayer)
+          val firstIndex = players.indexOf(ready.setup.firstPlayer)
           val first = (players.drop(firstIndex) ++ players.take(firstIndex)).head
           if (ready.game.current.pending.nonEmpty)
             Left(PendingProcedureBlocksAction(
@@ -259,7 +270,7 @@ object StateBasedEvaluation {
     if (current.tracks.round != 8 || current.result.nonEmpty ||
         current.turn.phase != Phase.WarExhaustion)
       Left(InvalidEventOrder("War Exhaustion is only resolved after round eight"))
-    else endRoundWinner(current, ready.support.firstPlayer)
+    else endRoundWinner(current, ready.setup.firstPlayer)
   }
 
   private def endRoundWinner(current: CurrentGameState, first: PlayerId)

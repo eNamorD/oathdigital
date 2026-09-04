@@ -9,6 +9,8 @@ import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.GameStateUpdates.updateCurrent
+import oathdigital.gameplay.operations._
 
 sealed trait EconomyCommand extends Product with Serializable
 object EconomyCommand {
@@ -28,7 +30,6 @@ final case class TradeResult(target: EconomyTargetRef, source: RuleSourceRef, su
 
 object Economy {
   private val SupplyCost = 1
-  private val ExileWarbands = 14
 
   def handle(catalog: ExecutableCatalog, state: OathState,
       command: EconomyCommand): Either[OathViolation, OathTransition] =
@@ -55,7 +56,7 @@ object Economy {
               gained <- resource match {
                 case TradeResource.Favor =>
                   requireSecrets(player, 1).map(_ => math.min(
-                    1 + matches, ready.support.favorBanks.getOrElse(suit, 0)))
+                    1 + matches, ready.banks.favor.getOrElse(suit, 0)))
                 case TradeResource.Secret =>
                   requireFavor(player, 2).map(_ => matches)
               }
@@ -82,7 +83,9 @@ object Economy {
           else for {
             _ <- requireFavor(player, 1)
             _ <- requireSupply(player)
-          } yield Ready(applyMuster(ready, recorded))
+            evolved <- evolveOperations(ready, recorded.playerId,
+              recorded.supplySpent, musterOperations(recorded, player.lineage))
+          } yield Ready(evolved)
       }
     case recorded: Traded =>
       validate(catalog, state, recorded.playerId, recorded.target).flatMap {
@@ -90,7 +93,7 @@ object Economy {
           val matches = matchingAdvisers(catalog, player, suit)
           val expected = recorded.resource match {
             case TradeResource.Favor => math.min(1 + matches,
-              ready.support.favorBanks.getOrElse(suit, 0))
+              ready.banks.favor.getOrElse(suit, 0))
             case TradeResource.Secret => matches
           }
           if (recorded.siteId != siteId || recorded.target.id != card.id ||
@@ -105,7 +108,9 @@ object Economy {
               case TradeResource.Favor => requireSecrets(player, 1)
               case TradeResource.Secret => requireFavor(player, 2)
             }
-          } yield Ready(applyTrade(ready, recorded))
+            evolved <- evolveOperations(ready, recorded.playerId,
+              recorded.supplySpent, tradeOperations(recorded))
+          } yield Ready(evolved)
       }
     case _ => Left(InvalidEventOrder("Economy received a non-Economy event"))
   }
@@ -128,7 +133,7 @@ object Economy {
           EconomyTargetRef.fromCard(card.id).get, sourceOf(site, card), suit,
           TradeResource.Favor, 1,
           math.min(1 + matchingAdvisers(catalog, player, suit),
-            ready.support.favorBanks.getOrElse(suit, 0)))),
+            ready.banks.favor.getOrElse(suit, 0)))),
         Option.when(player.board.favor >= 2)(TradeResult(
           EconomyTargetRef.fromCard(card.id).get, sourceOf(site, card), suit,
           TradeResource.Secret, 1,
@@ -170,10 +175,14 @@ object Economy {
         game.current.map.sites.get(siteId).map(siteId -> _)) ++ ruled
     }
     if (accessibleSites.isLeft) accessibleSites.map(_ => ())
-    else if (ready.support.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
+    else if (ready.setup.foundationProfile != FirstGameFoundationProfile.FixedUnaltered)
       Left(UnsupportedEconomyState("altered Foundations are not supported"))
     else if (game.campaign.lineages.values.exists(_.role != Role.Exile))
       Left(UnsupportedEconomyState("Economy is limited to the exile-only first game"))
+    else if (!ready.banks.warbandSupply.contains(
+        ForceKind.Exile(player.lineage)))
+      Left(UnsupportedEconomyState(
+        s"no bounded warband supply for lineage ${player.lineage.value}"))
     else PowerRuntime.requireAudited(catalog)
   }
 
@@ -190,11 +199,13 @@ object Economy {
     case _ => false
   }
   private def availableWarbands(ready: ReadyGame, player: PlayerState): Int = {
+    val supply = ready.banks.warbandSupply
+      .getOrElse(ForceKind.Exile(player.lineage), 0)
     val onSites = ready.game.current.map.sites.valuesIterator.map(_.forces).collect {
       case SiteForces.Occupied(ForceKind.Exile(owner), count)
           if owner == player.lineage => count
     }.sum
-    math.max(0, ExileWarbands - player.board.warbands - onSites)
+    math.max(0, supply - player.board.warbands - onSites)
   }
   private def requireSupply(player: PlayerState) = Either.cond(
     player.board.supply.supply >= 1, (), InsufficientSupply(1, player.board.supply.supply))
@@ -204,46 +215,51 @@ object Economy {
     player.board.faceUpSecrets >= amount, (),
     InsufficientSecrets(amount, player.board.faceUpSecrets))
 
-  private def applyMuster(ready: ReadyGame, event: Mustered): ReadyGame =
-    update(ready, event.playerId, event.siteId, event.target.id,
-      card => withTokens(card, Tokens(1, 0)), board => board.copy(
-        favor = board.favor - 1,
-        warbands = board.warbands + event.warbandsGained,
-        supply = SupplyTrack(board.supply.supply - event.supplySpent)))
+  private def musterOperations(
+      event: Mustered,
+      lineage: LineageId
+  ): Vector[CoreOperation] =
+    Vector(Give(Piece.Favor(1), event.playerId,
+      Location.PlayArea(event.playerId), Location.OnCard(event.target.id))) ++
+      Option.when(event.warbandsGained > 0)(Gain.Warbands(
+        event.playerId,
+        ForceKind.Exile(lineage),
+        event.warbandsGained)).toVector
 
-  private def applyTrade(ready: ReadyGame, event: Traded): ReadyGame = {
-    val updated = event.resource match {
-      case TradeResource.Favor => update(ready, event.playerId, event.siteId,
-        event.target.id, card => withTokens(card, Tokens(0, 1)), board => board.copy(
-          favor = board.favor + event.gained,
-          faceUpSecrets = board.faceUpSecrets - 1,
-          supply = SupplyTrack(board.supply.supply - event.supplySpent)))
-      case TradeResource.Secret => update(ready, event.playerId, event.siteId,
-        event.target.id, card => withTokens(card, Tokens(1, 0)), board => board.copy(
-          favor = board.favor - 2,
-          faceUpSecrets = board.faceUpSecrets + event.gained,
-          supply = SupplyTrack(board.supply.supply - event.supplySpent)))
+  private def tradeOperations(event: Traded): Vector[CoreOperation] =
+    event.resource match {
+      case TradeResource.Favor =>
+        Vector(Give(Piece.Secrets(1), event.playerId,
+          Location.PlayArea(event.playerId), Location.OnCard(event.target.id))) ++
+          Option.when(event.gained > 0)(Gain.Favor(
+            event.playerId, event.suit, event.gained)).toVector
+      case TradeResource.Secret =>
+        Vector(
+          Give(Piece.Favor(1), event.playerId,
+            Location.PlayArea(event.playerId), Location.OnCard(event.target.id)),
+          Burn.favor(1, PositionedLocation(
+            Location.PlayArea(event.playerId)))) ++
+          Option.when(event.gained > 0)(Gain.Secrets(
+            event.playerId, event.gained)).toVector
     }
-    if (event.resource == TradeResource.Favor) updated.copy(support =
-      updated.support.copy(favorBanks = updated.support.favorBanks.updated(
-        event.suit, updated.support.favorBanks.getOrElse(event.suit, 0) - event.gained)))
-    else updated
-  }
 
-  private def update(ready: ReadyGame, playerId: PlayerId, siteId: SiteId,
-      cardId: CardId, cardUpdate: SiteDenizenState => SiteDenizenState,
-      boardUpdate: PlayerBoardState => PlayerBoardState): ReadyGame = {
-    val current = ready.game.current
-    ready.copy(game = ready.game.copy(current = current.copy(
-      players = current.players.map(p => if (p.player == playerId)
-        p.copy(board = boardUpdate(p.board)) else p),
-      map = current.map.copy(sites = current.map.sites.updated(siteId,
-        current.map.sites(siteId).copy(denizens = current.map.sites(siteId).denizens
-          .map(card => if (card.id == cardId) cardUpdate(card) else card)))))))
-  }
-  private def withTokens(card: SiteDenizenState, tokens: Tokens) = card match {
-    case d: DenizenState => d.copy(tokens = tokens)
-    case e: EdificeState => e.copy(tokens = tokens)
+  private def evolveOperations(
+      ready: ReadyGame,
+      player: PlayerId,
+      supplySpent: Int,
+      operations: Vector[CoreOperation]
+  ): Either[OathViolation, ReadyGame] = {
+    val executor = new OperationExecutor(OperationPolicy.exact(
+      operations, "Economy semantic root is not permitted"))
+    OperationTransaction.evolve(ready, operations, executor) { evolved =>
+      Right(updateCurrent(evolved) { current =>
+        current.copy(players = current.players.map { existing =>
+          if (existing.player != player) existing
+          else existing.copy(board = existing.board.copy(supply = SupplyTrack(
+            existing.board.supply.supply - supplySpent)))
+        })
+      })
+    }.map(_.ready)
   }
   private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
     card match {

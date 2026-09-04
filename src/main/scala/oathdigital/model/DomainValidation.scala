@@ -33,6 +33,8 @@ object DomainProblem {
   final case class UnknownDarkestSecretHolder(player: PlayerId)
       extends DomainProblem
   final case class UnknownTitleHolder(player: PlayerId) extends DomainProblem
+  final case class UnknownTemporaryHandOwner(player: PlayerId)
+      extends DomainProblem
   final case class MultipleChancellors(lineages: Vector[LineageId])
       extends DomainProblem
   final case class CardProblem(problem: CardIndexProblem) extends DomainProblem
@@ -123,6 +125,8 @@ object DomainValidation {
     }
 
     val playerIds = game.current.players.iterator.map(_.player).toSet
+    (game.current.temporaryHands.keySet -- playerIds).toVector
+      .sortBy(_.value).foreach(player => problems += UnknownTemporaryHandOwner(player))
     if (!playerIds.contains(game.current.turn.activePlayer))
       problems += UnknownActivePlayer(game.current.turn.activePlayer)
 

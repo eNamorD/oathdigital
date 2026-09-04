@@ -7,10 +7,9 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
-
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle}
-import oathdigital.gameplay._
 import GameStateUpdates.updateCurrent
+import oathdigital.gameplay.operations.{Location, Move => CoreMove,
+  OperationExecutor, OperationTransaction, Piece, PositionedLocation}
 
 sealed trait TravelCommand extends Product with Serializable
 object TravelCommand {
@@ -19,6 +18,9 @@ object TravelCommand {
 }
 
 object Travel {
+  private val operationExecutor =
+    new OperationExecutor(TravelOperationPolicy)
+
   def handle(
       catalog: ExecutableCatalog,
       state: OathState,
@@ -60,15 +62,24 @@ object Travel {
             Left(TravelCostMismatch(expected, event.supplySpent))
           else if (player.board.supply.supply < expected)
             Left(InsufficientSupply(expected, player.board.supply.supply))
-          else Right(Ready(updateCurrent(ready) { existing =>
-            existing.copy(players = existing.players.map { candidate =>
-              if (candidate.player != event.playerId) candidate
-              else candidate.copy(
-                pawnSite = Some(event.destinationSiteId),
-                board = candidate.board.copy(supply = SupplyTrack(
-                  candidate.board.supply.supply - expected)))
+          else OperationTransaction.evolve(
+            ready,
+            Vector(CoreMove(
+              Piece.Pawn(event.playerId),
+              PositionedLocation(Location.Site(event.sourceSiteId)),
+              PositionedLocation(Location.Site(event.destinationSiteId))
+            )),
+            operationExecutor
+          ) { moved =>
+            Right(updateCurrent(moved) { existing =>
+              existing.copy(players = existing.players.map { candidate =>
+                if (candidate.player != event.playerId) candidate
+                else candidate.copy(board = candidate.board.copy(
+                  supply = SupplyTrack(
+                    candidate.board.supply.supply - expected)))
+              })
             })
-          }))
+          }.map(execution => Ready(execution.ready))
         }
       }
     }

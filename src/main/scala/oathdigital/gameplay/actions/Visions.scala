@@ -8,14 +8,15 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Burn, Give, Location, Move => CoreMove,
+  OperationExecutor, OperationPolicy, OperationTransaction, Piece,
+  PositionedLocation, StackPosition}
 
 sealed trait VisionCommand extends Product with Serializable
 object VisionCommand {
   final case class Reveal(player: PlayerId, vision: VisionId) extends VisionCommand
   final case class PlayConspiracy(player: PlayerId, decision: DecisionId,
       target: Option[ConspiracyTargetRef]) extends VisionCommand
-  final case class ChooseSecretSite(player: PlayerId, decision: DecisionId,
-      site: SiteId) extends VisionCommand
 }
 
 object VisionRules {
@@ -84,55 +85,21 @@ object Visions {
         ConspiracyUnavailable(if (legal.isEmpty) "no target is legal"
           else "a legal co-located enemy asset must be chosen"))
       resolved = target.flatMap(resolveTarget(ready, _))
-      automatic = resolved.collect {
-        case ConspiracyTarget.Banner(_, Banner.DarkestSecret) =>
-          BannerRules.automaticSitePrefix(ready.game.current, Vector.empty,
-            BannerRules.resources(ready.game.current, Banner.DarkestSecret) / 2)
-      }.getOrElse(Vector.empty)
       favorReturns = resolved.collect {
         case ConspiracyTarget.Banner(_, Banner.PeoplesFavor) =>
-          BannerRules.raidFavorReturn(ready.support.favorBanks,
+          BannerRules.raidFavorReturn(ready.banks.favor,
             BannerRules.resources(ready.game.current, Banner.PeoplesFavor))
       }.getOrElse(Vector.empty)
       started = ConspiracyStarted(player, decision, VisionRules.Conspiracy,
-        resolved, automatic, favorReturns)
+        resolved, favorReturns)
       after <- evolve(catalog, state, started)
       pending = after.asInstanceOf[Ready].value.game.current.pending.get
         .asInstanceOf[PendingProcedure.Conspiracy]
-      result <- if (pending.remainingSecretPlacements == 0) {
-        val completed = ConspiracyCompleted(player, decision,
-          VisionRules.Conspiracy, pending.target, pending.secretSites,
-          pending.favorReturnOrder)
-        evolve(catalog, after, completed).map(s => OathTransition(s,
-          Vector(started, completed), ActActionSelection(player)))
-      } else Right(OathTransition(after, Vector(started),
-        AwaitingConspiracyDecision(player, decision)))
-    } yield result
-
-    case VisionCommand.ChooseSecretSite(player, decision, site) => state match {
-      case Ready(ready) => validatePending(ready, player, decision).flatMap { p =>
-        val legal = BannerRules.leastSites(ready.game.current, p.secretSites)
-        for {
-          _ <- Either.cond(legal.size > 1 && legal.contains(site), (),
-            ConspiracyOutcomeMismatch("site is not a tied least-stocked site"))
-          chosen = p.secretSites :+ site
-          automatic = BannerRules.automaticSitePrefix(ready.game.current, chosen,
-            p.remainingSecretPlacements - 1)
-          choice = ConspiracySecretSiteChosen(player, decision, site, automatic)
-          after <- evolve(catalog, state, choice)
-          next = after.asInstanceOf[Ready].value.game.current.pending.get
-            .asInstanceOf[PendingProcedure.Conspiracy]
-          result <- if (next.remainingSecretPlacements == 0) {
-            val completed = ConspiracyCompleted(player, decision, next.source,
-              next.target, next.secretSites, next.favorReturnOrder)
-            evolve(catalog, after, completed).map(s => OathTransition(s,
-              Vector(choice, completed), ActActionSelection(player)))
-          } else Right(OathTransition(after, Vector(choice),
-            AwaitingConspiracyDecision(player, decision)))
-        } yield result
-      }
-      case _ => Left(GameNotStarted)
-    }
+      completed = ConspiracyCompleted(player, decision,
+        VisionRules.Conspiracy, pending.target, pending.favorReturnOrder)
+      finished <- evolve(catalog, after, completed)
+    } yield OathTransition(finished, Vector(started, completed),
+      ActActionSelection(player))
   }
 
   def legalTargetRefs(ready: ReadyGame,
@@ -171,15 +138,20 @@ object Visions {
       _ <- Either.cond(e.replaced == actor.revealedVision.map(_.id) &&
         e.destination == nextRegion(region), (),
         MinorActionOutcomeMismatch("recorded Vision replacement facts changed"))
-    } yield Ready(GameStateUpdates.updateCurrent(ready) { c =>
-      val players = c.players.map { p => if (p.player != e.playerId) p else
-        p.copy(advisers = p.advisers.filterNot(_.id == e.visionId),
-          revealedVision = Some(VisionState(e.visionId, Orientation.FaceUp))) }
-      val discards = e.replaced.fold(c.commonCards.discard(e.destination))(
-        old => c.commonCards.discard(e.destination) :+ old)
-      c.copy(players = players, commonCards = c.commonCards.copy(
-        regionalDiscards = c.commonCards.regionalDiscards.updated(e.destination, discards)))
-    })
+      from = PositionedLocation(Location.PlayArea(e.playerId))
+      operations = actor.revealedVision.toVector.map { replaced =>
+        CoreMove(
+          Piece.Card(replaced.id), from,
+          PositionedLocation(Location.RegionalDiscard(e.destination),
+            StackPosition.Top))
+      } :+ CoreMove(
+        Piece.Card(e.visionId), from, from,
+        resultingOrientation = Some(Orientation.FaceUp))
+      executor = new OperationExecutor(OperationPolicy.exact(
+        operations, "Vision reveal semantic root is not permitted"))
+      execution <- OperationTransaction.evolve(
+        ready, operations, executor)(Right(_))
+    } yield Ready(execution.ready)
 
     case e: ConspiracyStarted => for {
       ready <- state match {
@@ -203,48 +175,23 @@ object Visions {
       legal = legalTargetRefs(ready, e.playerId).flatMap(resolveTarget(ready, _))
       _ <- Either.cond(if (legal.isEmpty) e.target.isEmpty else e.target.exists(legal.contains), (),
         ConspiracyOutcomeMismatch("recorded target is not legal"))
-      count = e.target.collect {
-        case ConspiracyTarget.Banner(_, Banner.DarkestSecret) =>
-          BannerRules.resources(ready.game.current, Banner.DarkestSecret) / 2
-      }.getOrElse(0)
-      expected = BannerRules.automaticSitePrefix(ready.game.current, Vector.empty, count)
       expectedFavor = e.target.collect {
         case ConspiracyTarget.Banner(_, Banner.PeoplesFavor) =>
-          BannerRules.raidFavorReturn(ready.support.favorBanks,
+          BannerRules.raidFavorReturn(ready.banks.favor,
             BannerRules.resources(ready.game.current, Banner.PeoplesFavor))
       }.getOrElse(Vector.empty)
-      _ <- Either.cond(e.automaticSecretSites == expected, (),
-        ConspiracyOutcomeMismatch("recorded automatic site placements changed"))
       _ <- Either.cond(e.automaticFavorReturns == expectedFavor, (),
         ConspiracyOutcomeMismatch("recorded automatic favor returns changed"))
     } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
       pending = Some(PendingProcedure.Conspiracy(e.decision, e.playerId,
-        e.source, e.target, count - expected.size, expected, expectedFavor)))))
-
-    case e: ConspiracySecretSiteChosen => state match {
-      case Ready(ready) => validatePending(ready, e.playerId, e.decision).flatMap { p =>
-        val legal = BannerRules.leastSites(ready.game.current, p.secretSites)
-        val chosen = p.secretSites :+ e.siteId
-        val expected = BannerRules.automaticSitePrefix(ready.game.current, chosen,
-          p.remainingSecretPlacements - 1)
-        Either.cond(legal.size > 1 && legal.contains(e.siteId) &&
-          expected == e.automaticSecretSites, (),
-          ConspiracyOutcomeMismatch("recorded site choice is invalid")).map { _ =>
-          Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(p.copy(
-            remainingSecretPlacements = p.remainingSecretPlacements - 1 - expected.size,
-            secretSites = chosen ++ expected)))))
-        }
-      }
-      case _ => Left(GameNotStarted)
-    }
+        e.source, e.target, e.automaticFavorReturns)))))
 
     case e: ConspiracyCompleted => state match {
       case Ready(ready) => validatePending(ready, e.playerId, e.decision).flatMap { p =>
-        Either.cond(p.remainingSecretPlacements == 0 && e.source == p.source &&
-          e.target == p.target && e.secretSites == p.secretSites &&
-          e.favorReturnOrder == p.favorReturnOrder, (),
-          ConspiracyOutcomeMismatch("recorded completion is stale or invalid")).map { _ =>
-          Ready(applyCompletion(ready, p))
+        Either.cond(e.source == p.source &&
+          e.target == p.target && e.favorReturnOrder == p.favorReturnOrder, (),
+          ConspiracyOutcomeMismatch("recorded completion is stale or invalid")).flatMap { _ =>
+          applyCompletion(ready, p).map(Ready(_))
         }
       }
       case _ => Left(GameNotStarted)
@@ -254,45 +201,76 @@ object Visions {
   }
 
   private def applyCompletion(ready: ReadyGame,
-      pending: PendingProcedure.Conspiracy): ReadyGame = {
+      pending: PendingProcedure.Conspiracy): Either[OathViolation, ReadyGame] = {
     val current = ready.game.current
-    val sitesAdded = pending.secretSites.groupBy(identity).view.mapValues(_.size).toMap
-    val priorSecretCount = pending.target.collect {
-      case ConspiracyTarget.Banner(_, Banner.DarkestSecret) =>
-        current.banners.darkestSecret.secrets
-    }.getOrElse(0)
-    val players = current.players.map { p =>
-      val withoutSource = if (p.player == pending.actor)
-        p.copy(advisers = p.advisers.filterNot(_.id == pending.source)) else p
-      pending.target match {
-        case Some(ConspiracyTarget.Relic(owner, relic)) if p.player == owner =>
-          withoutSource.copy(relics = withoutSource.relics.filterNot(_.id == relic))
-        case Some(ConspiracyTarget.Relic(owner, relic)) if p.player == pending.actor =>
-          val taken = current.players.find(_.player == owner).get.relics.find(_.id == relic).get
-          withoutSource.copy(relics = withoutSource.relics :+ taken)
-        case Some(ConspiracyTarget.Banner(owner, Banner.DarkestSecret)) if p.player == owner =>
-          withoutSource.copy(board = withoutSource.board.copy(faceUpSecrets =
-            withoutSource.board.faceUpSecrets + priorSecretCount - pending.secretSites.size))
-        case _ => withoutSource
+    // The played Conspiracy was held either as a facedown adviser (direct
+    // play) or in the actor's temporary hand (a Conspiracy kept from a
+    // Search). It is removed from whichever zone holds it below.
+    val sourceHeldInAdvisers = current.players.find(_.player == pending.actor)
+      .exists(_.advisers.exists(_.id == pending.source))
+    val sourceHeldInHand = current.temporaryHands
+      .getOrElse(pending.actor, Vector.empty).contains(pending.source)
+    val taken = pending.target match {
+      case Some(ConspiracyTarget.Relic(owner, relic)) =>
+        Vector(Give(Piece.Card(relic), owner,
+          Location.PlayArea(owner), Location.PlayArea(pending.actor)))
+      case _ => Vector.empty
+    }
+    val bannerOps = pending.target match {
+      case Some(ConspiracyTarget.Banner(owner, Banner.PeoplesFavor)) =>
+        val drains = pending.favorReturnOrder.map(suit => CoreMove(
+          Piece.Favor(1),
+          PositionedLocation(Location.OnBanner(Banner.PeoplesFavor)),
+          PositionedLocation(Location.FavorBank(suit))))
+        drains :+ CoreMove(
+          Piece.Banner(Banner.PeoplesFavor),
+          PositionedLocation(Location.PlayArea(owner)),
+          PositionedLocation(Location.PlayArea(pending.actor)))
+      case Some(ConspiracyTarget.Banner(owner, Banner.DarkestSecret)) =>
+        // A Conspiracy that takes the Darkest Secret burns every secret on the
+        // banner (they return to the untracked SharedBank sink); nothing is
+        // placed on sites and nothing returns to the previous holder. The burn
+        // amount is read from the banner at completion: it is provably the same
+        // as at ConspiracyStarted because the banner is immutable between the
+        // two events (ConspiracyStarted changes nothing and the pending
+        // procedure blocks any other banner mutation).
+        val prior = current.banners.darkestSecret.secrets
+        val burn = Option.when(prior > 0)(Burn.secrets(prior,
+          PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))).toVector
+        burn :+ CoreMove(
+          Piece.Banner(Banner.DarkestSecret),
+          PositionedLocation(Location.PlayArea(owner)),
+          PositionedLocation(Location.PlayArea(pending.actor)))
+      case _ => Vector.empty
+    }
+    val operations = taken ++ bannerOps
+    val executor = new OperationExecutor(OperationPolicy.exact(
+      operations, "Conspiracy semantic root is not permitted"))
+    def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
+      Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+    val evolved = if (operations.isEmpty) update(ready)
+    else OperationTransaction.evolve(ready, operations, executor)(update)
+      .map(_.ready)
+    // The played Conspiracy was held either as a facedown adviser (direct play)
+    // or in the actor's temporary hand (kept from a Search). Removing it here
+    // is a documented executor bypass.
+    // executor bypass: Conspiracy leaves the game only after the batch validates.
+    evolved.map { state =>
+      if (!sourceHeldInAdvisers && !sourceHeldInHand) state
+      else GameStateUpdates.updateCurrent(state) { gameState =>
+        val players = gameState.players.map { player =>
+          if (player.player != pending.actor) player
+          else player.copy(advisers =
+            player.advisers.filterNot(_.id == pending.source))
+        }
+        val hands = if (sourceHeldInHand) gameState.temporaryHands
+          .updated(pending.actor,
+            gameState.temporaryHands.getOrElse(pending.actor, Vector.empty)
+              .filterNot(_ == pending.source))
+        else gameState.temporaryHands
+        gameState.copy(players = players, temporaryHands = hands)
       }
     }
-    val sites = sitesAdded.foldLeft(current.map.sites) { case (all, (id, n)) =>
-      val site = all(id)
-      all.updated(id, site.copy(tokens = site.tokens.copy(secrets = site.tokens.secrets + n)))
-    }
-    val banners = pending.target match {
-      case Some(ConspiracyTarget.Banner(_, Banner.PeoplesFavor)) =>
-        current.banners.copy(peoplesFavor = current.banners.peoplesFavor.copy(
-          holder = Some(pending.actor), favor = 0))
-      case Some(ConspiracyTarget.Banner(_, Banner.DarkestSecret)) =>
-        current.banners.copy(darkestSecret = current.banners.darkestSecret.copy(
-          holder = Some(pending.actor), secrets = 0))
-      case _ => current.banners
-    }
-    val updated = GameStateUpdates.updateCurrent(ready)(_.copy(players = players,
-      map = current.map.copy(sites = sites), banners = banners, pending = None))
-    updated.copy(support = updated.support.copy(favorBanks =
-      BannerRules.addFavor(updated.support.favorBanks, pending.favorReturnOrder)))
   }
 
   private def validatePending(ready: ReadyGame, player: PlayerId,

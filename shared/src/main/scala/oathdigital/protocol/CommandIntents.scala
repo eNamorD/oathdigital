@@ -32,8 +32,6 @@ object GameIntent {
       placement: Option[Placement]) extends GameIntent
   final case class RevealVision(visionId: String) extends GameIntent
   final case class PlayConspiracy(target: Option[ConspiracyTarget]) extends GameIntent
-  final case class ChooseConspiracySecretSite(decisionId: String, siteId: String)
-      extends GameIntent
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent

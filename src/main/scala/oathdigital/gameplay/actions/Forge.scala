@@ -1,13 +1,15 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, OathLifecycle}
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.GameStateUpdates.updateCurrent
+import oathdigital.gameplay.operations._
 
 sealed trait ForgeCommand extends Product with Serializable
 object ForgeCommand {
@@ -83,7 +85,7 @@ object Forge {
         favorNeeded <- favorBySuit
         _ <- favorNeeded.toVector.foldLeft[Either[OathViolation, Unit]](Right(())) {
           case (result, (suit, needed)) => result.flatMap(_ => Either.cond(
-            ready.support.favorBanks.getOrElse(suit, 0) >= needed, (),
+            ready.banks.favor.getOrElse(suit, 0) >= needed, (),
             ForgeUnavailable(s"$suit favor bank lacks $needed favor")))
         }
       } yield f -> favorNeeded
@@ -114,7 +116,7 @@ object Forge {
       _ <- Either.cond(e.targets == facts._1, (), ForgeOutcomeMismatch("recorded targets are not the exact eligible denizens"))
       _ <- Either.cond(e.cost == facts._2, (), ForgeOutcomeMismatch("recorded printed Forge cost is invalid"))
       _ <- Either.cond(e.supplySpent == 1, (), ForgeOutcomeMismatch("Forge must spend exactly 1 Supply"))
-    } yield Ready(GameStateUpdates.updateCurrent(ready) { current =>
+    } yield Ready(updateCurrent(ready) { current =>
       current.copy(players = current.players.map(x => if (x.player != e.playerId) x else
         x.copy(board = x.board.copy(supply = SupplyTrack(x.board.supply.supply - 1)))),
         pending = Some(PendingProcedure.Forge(e.decision, e.playerId, site,
@@ -122,37 +124,19 @@ object Forge {
     })
     case e: ForgeCompleted => state match {
       case Ready(ready) => validateCompletion(catalog, ready, e.playerId,
-          e.decision, e.assignments).flatMap { case (f, favorNeeded) =>
+          e.decision, e.assignments).flatMap { case (f, _) =>
         val current = ready.game.current
         for {
           _ <- Either.cond(e.siteId == f.site, (), ForgeOutcomeMismatch("recorded Forge site changed"))
           _ <- Either.cond(current.commonCards.relicDeck.headOption.contains(e.relicId),
             (), ForgeOutcomeMismatch("recorded relic is not the authoritative deck top"))
-          site <- current.map.sites.get(f.site).toRight(SiteNotInPlay(f.site))
-        } yield {
-          val byId = e.assignments.map(a => a.target.denizenId -> a.resource).toMap
-          val denizens = site.denizens.map {
-            case d: DenizenState if byId.contains(d.id) =>
-              val add = byId(d.id) match {
-                case ForgeResource.Favor => Tokens(1, 0)
-                case ForgeResource.Secret => Tokens(0, 1)
-              }
-              d.copy(tokens = Tokens(d.tokens.favor + add.favor, d.tokens.secrets + add.secrets))
-            case other => other
-          }
-          val updated = GameStateUpdates.updateCurrent(ready)(_.copy(
-            map = current.map.copy(sites = current.map.sites.updated(f.site,
-              site.copy(denizens = denizens))),
-            commonCards = current.commonCards.copy(relicDeck = current.commonCards.relicDeck.tail),
-            players = current.players.map(p => if (p.player != e.playerId) p else
-              p.copy(relics = p.relics :+ RelicState(e.relicId, Orientation.FaceDown, Tokens.empty))),
-            pending = None))
-          Ready(updated.copy(support = updated.support.copy(favorBanks =
-            favorNeeded.foldLeft(updated.support.favorBanks) {
-              case (banks, (suit, amount)) =>
-                banks.updated(suit, banks.getOrElse(suit, 0) - amount)
-            })))
-        }
+          operations <- completionOperations(catalog, e)
+          executor = new OperationExecutor(OperationPolicy.exact(
+            operations, "Forge semantic root is not permitted"))
+          execution <- OperationTransaction.evolve(
+            ready, operations, executor)(evolved =>
+              Right(updateCurrent(evolved)(_.copy(pending = None))))
+        } yield Ready(execution.ready)
       }
       case _ => Left(GameNotStarted)
     }
@@ -162,6 +146,42 @@ object Forge {
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue) =
     GameplayTransition(state, events, continue)(evolve(catalog, _, _))
+
+  private def completionOperations(
+      catalog: ExecutableCatalog,
+      event: ForgeCompleted
+  ): Either[OathViolation, Vector[CoreOperation]] =
+    event.assignments.foldLeft[
+      Either[OathViolation, Vector[CoreOperation]]](Right(Vector.empty)) {
+      case (result, assignment) => for {
+        operations <- result
+        operation <- assignment.resource match {
+          case ForgeResource.Favor => suitOf(catalog,
+            assignment.target.denizenId).toRight(ForgeOutcomeMismatch(
+              s"no catalog suit for ${assignment.target.denizenId.value}"))
+            .map(suit => Move(
+              Piece.Favor(1),
+              PositionedLocation(Location.FavorBank(suit)),
+              PositionedLocation(Location.OnCard(
+                assignment.target.denizenId))))
+          case ForgeResource.Secret => Right(Move(
+            Piece.Secrets(1),
+            PositionedLocation(Location.SharedBank),
+            PositionedLocation(Location.OnCard(
+              assignment.target.denizenId))))
+        }
+      } yield operations :+ operation
+    }.map(_ :+ Play(
+      event.relicId,
+      PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+      Location.PlayArea(event.playerId),
+      Orientation.FaceDown))
+
+  private def suitOf(
+      catalog: ExecutableCatalog,
+      denizen: DenizenId
+  ): Option[Suit] = catalog.denizens.find(_.id.value == denizen.value)
+    .flatMap(definition => Suit.all.find(_.key == definition.suit.value))
 }
 
 object ForgeRules {

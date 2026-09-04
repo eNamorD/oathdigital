@@ -74,7 +74,6 @@ private[protocol] object CommandIntentDecoders {
         case ujson.Null => Right(None); case v => conspiracy(v, s"$path.target").map(Some(_))
       }
     } yield PlayConspiracy(target)
-    case "chooseConspiracySecretSite" => two(value, path, "decisionId", "siteId")(ChooseConspiracySecretSite)
     case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
     case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic)
     case "moveWarbands" => for {

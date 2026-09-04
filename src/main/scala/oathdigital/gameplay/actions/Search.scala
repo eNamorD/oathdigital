@@ -10,6 +10,8 @@ import oathdigital.gameplay.OathViolation._
 
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
+import oathdigital.gameplay.operations.{CardDeck, CoreOperation, Draw,
+  Location, OperationExecutor, OperationPolicy, OperationTransaction}
 
 sealed trait SearchCommand extends Product with Serializable
 object SearchCommand {
@@ -77,6 +79,8 @@ object Search {
       val current = ready.game.current
       val player = current.players.find(_.player == event.playerId).get
       for {
+        _ <- Either.cond(current.temporaryHands.valuesIterator.forall(_.isEmpty),
+          (), SearchDrawMismatch("a temporary card hand already exists"))
         origin <- player.pawnSite.flatMap(current.map.regionOf)
           .toRight(PawnSiteMissing(event.playerId))
         _ <- if (origin == event.origin) Right(()) else
@@ -89,26 +93,42 @@ object Search {
           Left(SearchDrawMismatch("recorded cards do not match source order"))
         _ <- if (player.board.supply.supply >= cost) Right(()) else
           Left(InsufficientSupply(cost, player.board.supply.supply))
-      } yield {
-        val zones = SearchRules.removeDrawn(current.commonCards, event.source, drawn)
-        val visions = if (event.source == SearchSource.WorldDeck &&
-          drawn.exists(_.isInstanceOf[VisionId])) 1 else 0
-        Ready(updateCurrent(ready) { existing =>
-          existing.copy(
-            players = existing.players.map { candidate =>
-              if (candidate.player != event.playerId) candidate else
-                candidate.copy(board = candidate.board.copy(
-                  supply = SupplyTrack(candidate.board.supply.supply - cost)))
-            },
-            commonCards = zones,
-            tracks = existing.tracks.copy(
-              visionsDrawn = existing.tracks.visionsDrawn + visions),
-            pending = Some(PendingProcedure.Search(
-              event.decision, event.playerId, event.source, origin, cost, drawn))
-          )
-        })
-      }
+        operation = drawOperation(event)
+        executor = new OperationExecutor(OperationPolicy.exact(
+          Vector(operation), "Search semantic root is not permitted"))
+        execution <- OperationTransaction.evolve(
+          ready, Vector(operation), executor) { evolved =>
+          val visions = if (event.source == SearchSource.WorldDeck &&
+            event.drawn.exists(_.isInstanceOf[VisionId])) 1 else 0
+          Right(updateCurrent(evolved) { existing =>
+            existing.copy(
+              players = existing.players.map { candidate =>
+                if (candidate.player != event.playerId) candidate else
+                  candidate.copy(board = candidate.board.copy(
+                    supply = SupplyTrack(candidate.board.supply.supply - cost)))
+              },
+              tracks = existing.tracks.copy(
+                visionsDrawn = existing.tracks.visionsDrawn + visions),
+              pending = Some(PendingProcedure.Search(
+                event.decision, event.playerId, event.source, origin, cost))
+            )
+          })
+        }
+      } yield Ready(execution.ready)
     }
+
+  /** Draws the recorded cards top-first from the authoritative source into the
+    * actor's temporary hand. Supply, Visions Drawn, and the pending Search
+    * procedure remain direct updates.
+    */
+  private def drawOperation(event: SearchStarted): CoreOperation = Draw(
+    event.playerId,
+    event.drawn,
+    event.source match {
+      case SearchSource.WorldDeck => Location.Deck(CardDeck.World)
+      case SearchSource.RegionalDiscard(region) => Location.RegionalDiscard(region)
+    },
+    Location.Hand(event.playerId))
 
   private def evolveSearchCompleted(
       catalog: ExecutableCatalog,
@@ -189,17 +209,6 @@ object SearchRules {
         ready.game.current.commonCards.discard(region).reverse.take(3)
     }}
 
-  def removeDrawn(
-      zones: CardZones,
-      source: SearchSource,
-      drawn: Vector[WorldCardId]
-  ): CardZones = source match {
-    case SearchSource.WorldDeck => zones.copy(worldDeck = zones.worldDeck.drop(drawn.size))
-    case SearchSource.RegionalDiscard(region) => zones.copy(
-      regionalDiscards = zones.regionalDiscards.updated(
-        region, zones.discard(region).dropRight(drawn.size)))
-  }
-
   def complete(
       catalog: ExecutableCatalog,
       ready: ReadyGame,
@@ -212,6 +221,10 @@ object SearchRules {
         event.discardedEdifices)
       val expected = (outcome.favorGained, outcome.discardedWorld,
         outcome.discardedEdifices)
+      // Every drawn card has left the hand through the placement operations, so
+      // the actor's temporary-hand key remains with an empty vector; nothing
+      // removes a hand key. A Conspiracy kept from the Search stays in the hand
+      // until ConspiracyCompleted boxes it (Visions.applyCompletion).
       Either.cond(recorded == expected, outcome.ready,
         SearchChoiceMismatch("recorded card-play effects do not match placement"))
     }
@@ -227,7 +240,8 @@ object SearchRules {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ): Either[OathViolation, CardPlay.Outcome] = {
-    val drawn = pending.drawn
+    val drawn = ready.game.current.temporaryHands
+      .getOrElse(pending.actor, Vector.empty)
     val expectedDiscards = drawn.filterNot(_ == kept)
     for {
       _ <- if (drawn.count(_ == kept) == 1) Right(()) else
@@ -261,7 +275,8 @@ object SearchRules {
         (Vector(None) ++ adviserCards.map(Some(_))).map(
           SearchPlacement.Adviser(orientation, _))
       }
-    val discarded = pending.drawn.filterNot(_ == kept)
+    val discarded = ready.game.current.temporaryHands
+      .getOrElse(pending.actor, Vector.empty).filterNot(_ == kept)
     candidates.distinct.filter { placement =>
       prepareComplete(catalog, ready, pending, pending.actor, pending.decision,
         kept, discarded, placement).isRight

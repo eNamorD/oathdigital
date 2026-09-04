@@ -18,7 +18,7 @@ class CommandProtocolSuite extends munit.FunSuite {
     ResolveFacedownAdviser(WorldCard("denizen", "d1"),
       Some(Placement("adviser-face-up", None))),
     RevealVision("v1"), PlayConspiracy(Some(ConspiracyTarget.RelicSlot("p2", 0))),
-    ChooseConspiracySecretSite("c2", "site:b"), PeekSiteRelics,
+    PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
     BeginNegotiation(Vector("p2", "p3")),
     ReplaceNegotiationTerms("n1", NegotiationTerms(

@@ -30,6 +30,8 @@ class RecoverSuite extends munit.FunSuite {
     val moved = active.copy(pawnSite = Some(siteId))
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
+      commonCards = base.game.current.commonCards.copy(
+        relicDeck = base.game.current.commonCards.relicDeck.tail),
       players = base.game.current.players.map(p => if (p.player == active.player) moved else p),
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site)))))
     (ready, moved, siteId, relic)
@@ -46,6 +48,11 @@ class RecoverSuite extends munit.FunSuite {
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p =>
         if (p.player == actor.player) actor else p),
+      commonCards = base.game.current.commonCards.copy(
+        worldDeck = base.game.current.commonCards.worldDeck.filterNot(_ == cardId),
+        regionalDiscards = base.game.current.commonCards.regionalDiscards.map {
+          case (region, cards) => region -> cards.filterNot(_ == cardId)
+        }),
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site)))))
     (ready, actor, siteId, cardId, ready.game.current.commonCards.relicDeck.head)

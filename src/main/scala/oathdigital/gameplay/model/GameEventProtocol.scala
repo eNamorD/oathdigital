@@ -135,16 +135,11 @@ object OathEvent {
       destination: Region) extends OathEvent
   final case class ConspiracyStarted(
       playerId: PlayerId, decision: DecisionId, source: VisionId,
-      target: Option[ConspiracyTarget], automaticSecretSites: Vector[SiteId],
-      automaticFavorReturns: Vector[Suit])
+      target: Option[ConspiracyTarget], automaticFavorReturns: Vector[Suit])
       extends OathEvent
-  final case class ConspiracySecretSiteChosen(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      automaticSecretSites: Vector[SiteId]) extends OathEvent
   final case class ConspiracyCompleted(
       playerId: PlayerId, decision: DecisionId, source: VisionId,
-      target: Option[ConspiracyTarget], secretSites: Vector[SiteId],
-      favorReturnOrder: Vector[Suit])
+      target: Option[ConspiracyTarget], favorReturnOrder: Vector[Suit])
       extends OathEvent
   final case class SiteRelicsPeeked(
       playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])

@@ -372,12 +372,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       val Ready(pendingReady) = accepted.state: @unchecked
       val pending = pendingReady.game.current.pending.get
         .asInstanceOf[PendingProcedure.Search]
-      val kept = pending.drawn.find(card => SearchRules.legalPlacements(
+      val drawn = pendingReady.game.current.temporaryHands(actor)
+      val kept = drawn.find(card => SearchRules.legalPlacements(
         catalog, pendingReady, pending, card).contains(SearchPlacement.Site(None)))
-        .getOrElse(fail(s"no site-playable card in prepared draw ${pending.drawn}"))
+        .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.CompleteSearch(actor, pending.decision, kept,
-          pending.drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get
+          drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get
     }
     searchOne(); searchOne()
     accepted = service.handle(gameId, accepted.nextSequence,
@@ -828,13 +829,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(pendingReady) = reloadedPending.state: @unchecked
     val pending = pendingReady.game.current.pending.get
       .asInstanceOf[PendingProcedure.Search]
+    val drawn = pendingReady.game.current.temporaryHands(active)
     assertEquals(service.handle("game-search", ended.nextSequence,
       GameCommand.BeginSearch(active, SearchSource.WorldDeck)),
       Left(GameApplicationError.StaleClientPosition(
         ended.nextSequence, started.nextSequence)))
     val completed = service.handle("game-search", started.nextSequence,
       GameCommand.CompleteSearch(active, pending.decision,
-        pending.drawn.head, pending.drawn.tail, SearchPlacement.Discard))
+        drawn.head, drawn.tail, SearchPlacement.Discard))
       .toOption.get
     val loaded = new GameApplicationService(catalog, repository)
       .load("game-search").toOption.flatten.get

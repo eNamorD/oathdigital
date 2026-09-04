@@ -161,13 +161,15 @@ final case class NegotiationTransferProjection(authorPlayerId: String,
 final case class NegotiationDisclosureProjection(authorPlayerId: String,
     recipientPlayerId: String, kind: String,
     card: Option[CardDetailsProjection])
+final case class NegotiationSiteRelicProjection(siteId: String,
+    card: CardDetailsProjection)
 final case class NegotiationProjection(decisionId: String, actorPlayerId: String,
     siteId: String, participantPlayerIds: Vector[String],
     acceptedPlayerIds: Vector[String], transfers: Vector[NegotiationTransferProjection],
     disclosures: Vector[NegotiationDisclosureProjection],
     editableFavor: Int, editableRelics: Vector[CardDetailsProjection],
     editableAdvisers: Vector[CardDetailsProjection],
-    editableSiteRelics: Vector[CardDetailsProjection])
+    editableSiteRelics: Vector[NegotiationSiteRelicProjection])
 final case class RestFavorSourceProjection(kind: String, siteId: String,
     sourceId: String, label: String, availableFavor: Int)
 sealed trait RestPowerPayloadProjection extends Product with Serializable

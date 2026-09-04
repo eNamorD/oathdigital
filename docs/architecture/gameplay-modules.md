@@ -34,6 +34,9 @@ oathdigital/gameplay/
     MinorActions.scala
     Negotiation.scala
     Visions.scala
+  operations/
+    CoreOperations.scala
+    PowerOperations.scala
 ```
 
 `OathRules` is the small aggregate router. Common lifecycle checks belong in
@@ -101,7 +104,9 @@ names remain only for the introductory setup scenario and its fixtures.
 
 Events record accepted game facts, not transport requests or view data.
 Commands are transient. See [authoritative events](authoritative-events.md) and
-[codebase structure](codebase-structure.md).
+[codebase structure](codebase-structure.md). The proposed transition from
+module-owned physical state copying to a shared semantic executor is described
+in [core operations migration](core-operations-migration.md).
 
 ## Guardrails
 

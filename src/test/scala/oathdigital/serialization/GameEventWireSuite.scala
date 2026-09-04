@@ -51,11 +51,8 @@ class GameEventWireSuite extends munit.FunSuite {
       OathEvent.VisionRevealed(red, VisionId("vision:vision-of-faith"),
         Some(VisionId("vision:vision-of-conquest")), Region.Provinces),
       OathEvent.ConspiracyStarted(red, decision, conspiracy, Some(target),
-        Vector(SiteId("S1")), Vector(Suit.Order)),
-      OathEvent.ConspiracySecretSiteChosen(red, decision, SiteId("S2"),
-        Vector(SiteId("S3"))),
+        Vector(Suit.Order)),
       OathEvent.ConspiracyCompleted(red, decision, conspiracy, Some(target),
-        Vector(SiteId("S1"), SiteId("S2"), SiteId("S3")),
         Vector(Suit.Order, Suit.Beast)),
       OathEvent.VisionVictory(red, VisionId("vision:vision-of-faith")))
     val encoded = GameEventWire.encodeStream("visions", catalogRef,
@@ -67,7 +64,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     val banner = OathEvent.ConspiracyStarted(red, decision, conspiracy,
       Some(ConspiracyTarget.Banner(PlayerId("blue"), Banner.DarkestSecret)),
-      Vector.empty, Vector.empty)
+      Vector.empty)
     val bannerJson = GameEventWire.encodeEvent("visions", catalogRef, 20, banner)
       .toOption.get
     assertEquals(GameEventWire.decode(bannerJson).toOption.get.event, banner)

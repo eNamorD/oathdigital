@@ -114,7 +114,7 @@ private[application] final class GamePresentationProjector(
       SiteRelicsProjection(state.fold(0)(_.relics.size), for {
         game <- ready.toVector
         player <- viewer.toVector
-        known <- game.support.relicKnowledge.getOrElse(player, Map.empty)
+        known <- game.knowledge.siteRelics.getOrElse(player, Map.empty)
           .getOrElse(siteId, Vector.empty)
         relic <- state.toVector.flatMap(_.relics).filter(_.id == known)
       } yield cardDetails(relic.id, Some(Orientation.FaceDown), hidden = false)),
@@ -167,9 +167,9 @@ private[application] final class GamePresentationProjector(
         .fold(error => throw new IllegalStateException(error), identity)
       val owns = viewer.contains(player.player)
       val knownAdvisers = viewer.toVector.flatMap(id =>
-        ready.support.adviserKnowledge.getOrElse(id, Vector.empty)).toSet
+        ready.knowledge.advisers.getOrElse(id, Vector.empty)).toSet
       val knownRelics = viewer.toVector.flatMap(id =>
-        ready.support.heldRelicKnowledge.getOrElse(id, Vector.empty)).toSet
+        ready.knowledge.heldRelics.getOrElse(id, Vector.empty)).toSet
       PlayerBoardProjection(player.player.value, player.board.warbands,
         player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
         secrets.committed, secrets.totalSecrets,

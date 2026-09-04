@@ -63,6 +63,23 @@ private[frontend] object ServerUiSupport {
       currentRelic: String, selectedRecipient: String, selectedRelic: String): Boolean =
     currentRecipient != selectedRecipient && currentRelic == selectedRelic
 
+  private[frontend] final case class NegotiationDisclosureOffer(
+      kind: String,
+      card: CardDetails,
+      siteId: Option[String])
+
+  /** Disclosure options the engine can accept: only information the author can
+    * currently inspect (facedown advisers/relics, known site relics with the
+    * site that holds them). */
+  private[frontend] def negotiationDisclosureOffers(
+      deal: NegotiationState): Vector[NegotiationDisclosureOffer] =
+    deal.editableAdvisers.map(card =>
+      NegotiationDisclosureOffer("adviser", card, None)) ++
+      deal.editableRelics.filter(_.orientation.contains("face-down"))
+        .map(card => NegotiationDisclosureOffer("held-relic", card, None)) ++
+      deal.editableSiteRelics.map(entry => NegotiationDisclosureOffer(
+        "site-relic", entry.card, Some(entry.siteId)))
+
   private[frontend] def siteDetails(site: GameSite,
       selection: Option[BoardTargetSelectionState] = None,
       chooseTarget: BoardTargetRef => Unit = _ => ()): dom.Element = {
@@ -339,7 +356,6 @@ private[frontend] object ServerUiSupport {
     case "trade-secret" => "Trade for secrets"
     case "reveal-vision" => "Reveal Vision"
     case "play-conspiracy" => "Play Conspiracy"
-    case "conspiracy-secret-site" => "Place Darkest Secret"
     case other => other
   }
 
@@ -497,8 +513,6 @@ private[frontend] object ServerUiSupport {
       case ("play-conspiracy", Vector()) if action.minimum == 0 &&
           action.maximum == 0 =>
         Some(GameCommand.PlayConspiracy(None))
-      case ("conspiracy-secret-site", Vector(BoardTargetRef.Site(site))) =>
-        action.decisionId.map(GameCommand.ChooseConspiracySecretSite(_, site))
       case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
         Some(GameCommand.Muster(oathdigital.protocol.EconomyTarget(kind, id)))
       case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
