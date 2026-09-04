@@ -227,7 +227,6 @@ object MinorActions {
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] =
     OperationTransaction.evolve(ready, operations, operationExecutor)(Right(_))
-      .map(_.ready)
 
   private def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces

@@ -240,7 +240,6 @@ object Rest {
     }
     if (operations.isEmpty) update(ready)
     else OperationTransaction.evolve(ready, operations, executor)(update)
-      .map(_.ready)
   }
 
   private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {

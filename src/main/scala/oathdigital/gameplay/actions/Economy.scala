@@ -259,7 +259,7 @@ object Economy {
             existing.board.supply.supply - supplySpent)))
         })
       })
-    }.map(_.ready)
+    }
   }
   private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
     card match {

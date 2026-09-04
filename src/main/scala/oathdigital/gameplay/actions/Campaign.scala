@@ -535,7 +535,7 @@ object Campaign {
       : Either[OathViolation, ReadyGame] = {
     val executor = new OperationExecutor(OperationPolicy.exact(operations, detail))
     if (operations.isEmpty) update(ready)
-    else OperationTransaction.evolve(ready, operations, executor)(update).map(_.ready)
+    else OperationTransaction.evolve(ready, operations, executor)(update)
   }
 
   private def warbandMove(kind: ForceKind, count: Int, from: Location,

@@ -337,7 +337,7 @@ object CardPlay {
       })
     val evolved = if (operations.isEmpty) update(ready)
     else OperationTransaction.evolve(
-      ready, operations, executor)(update).map(_.ready)
+      ready, operations, executor)(update)
     evolved.map(state => Outcome(
       state,
       plan.favorGained,

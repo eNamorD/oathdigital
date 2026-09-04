@@ -256,7 +256,7 @@ object Challenge {
         Vector(operation), "Banner resource placement is not permitted"))
       evolved <- OperationTransaction.evolve(ready, Vector(operation), executor)(
         Right(_))
-    } yield Ready(evolved.ready)
+    } yield Ready(evolved)
     case _ => Left(InvalidEventOrder("Challenge received a non-banner event"))
   }
 
@@ -311,7 +311,7 @@ object Challenge {
       operations, "Banner Challenge semantic root is not permitted"))
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
       Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
-    OperationTransaction.evolve(ready, operations, executor)(update).map(_.ready)
+    OperationTransaction.evolve(ready, operations, executor)(update)
   }
 
   private def transition(catalog: ExecutableCatalog, state: OathState,

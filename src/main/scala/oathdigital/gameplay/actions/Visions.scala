@@ -250,7 +250,6 @@ object Visions {
       Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
     val evolved = if (operations.isEmpty) update(ready)
     else OperationTransaction.evolve(ready, operations, executor)(update)
-      .map(_.ready)
     // The played Conspiracy was held either as a facedown adviser (direct play)
     // or in the actor's temporary hand (kept from a Search). Removing it here
     // is a documented executor bypass.

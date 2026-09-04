@@ -268,7 +268,7 @@ object Negotiation {
       operations, "Negotiation semantic root is not permitted"))
     OperationTransaction.evolve(ready, operations, executor) { evolved =>
       Right(GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None)))
-    }.map(_.ready)
+    }
   }
 }
 
