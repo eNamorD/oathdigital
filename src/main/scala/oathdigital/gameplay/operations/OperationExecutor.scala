@@ -52,21 +52,11 @@ object OperationPolicy {
   }
 }
 
-final case class OperationReceipt private[gameplay] (
-    operation: CoreOperation,
-    primitives: Vector[PrimitiveOperation]
-)
-
-final case class OperationExecution private[gameplay] (
-    ready: ReadyGame,
-    receipts: Vector[OperationReceipt]
-)
-
 final class OperationExecutor(policy: OperationPolicy) {
   def execute(
       ready: ReadyGame,
       operation: CoreOperation
-  ): Either[OperationError, OperationExecution] =
+  ): Either[OperationError, ReadyGame] =
     for {
       expected <- OperationStateInvariant.cardIds(ready)
       _ <- OperationStateInvariant.validate(ready, expected)
@@ -75,25 +65,16 @@ final class OperationExecutor(policy: OperationPolicy) {
         .describe(OperationStateAdapter.applyOperation(ready, operation))
         .flatMap(identity)
       _ <- OperationStateInvariant.validate(evolved, expected)
-    } yield OperationExecution(
-      evolved,
-      Vector(OperationReceipt(operation, operation.primitives))
-    )
+    } yield evolved
 
   def executeAll(
       ready: ReadyGame,
       operations: Vector[CoreOperation]
-  ): Either[OperationError, OperationExecution] =
+  ): Either[OperationError, ReadyGame] =
     if (operations.isEmpty) Left(OperationError.EmptyOperationBatch)
     else
-      operations.foldLeft[Either[OperationError, OperationExecution]](
-        Right(OperationExecution(ready, Vector.empty))
-      ) { (result, operation) =>
-        result.flatMap { staged =>
-          execute(staged.ready, operation).map { next =>
-            next.copy(receipts = staged.receipts ++ next.receipts)
-          }
-        }
+      operations.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+        (result, operation) => result.flatMap(staged => execute(staged, operation))
       }
 }
 
@@ -104,18 +85,18 @@ object OperationTransaction {
       executor: OperationExecutor
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
-  ): Either[OathViolation, OperationExecution] =
+  ): Either[OathViolation, ReadyGame] =
     for {
       expected <- OperationStateInvariant.cardIds(ready)
         .left.map(_.toViolation)
       executed <- executor.executeAll(ready, operations)
         .left.map(_.toViolation)
-      updated <- OperationError.describe(update(executed.ready))
+      updated <- OperationError.describe(update(executed))
         .left.map(_.toViolation)
         .flatMap(identity)
       _ <- OperationStateInvariant.validate(updated, expected)
         .left.map(_.toViolation)
-    } yield executed.copy(ready = updated)
+    } yield updated
 }
 
 private[operations] object OperationStateInvariant {
