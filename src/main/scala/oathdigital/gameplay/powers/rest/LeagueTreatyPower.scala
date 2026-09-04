@@ -237,7 +237,7 @@ object LeagueTreatyPower extends Power {
     execution <- OperationTransaction.evolve(ready, operations, executor) {
       evolved => Right(clearPending(evolved))
     }
-  } yield execution.ready
+  } yield execution
 
   private def sourceCardId(ready: ReadyGame, source: SiteFavorSource)
       : Either[OathViolation, CardId] = source match {

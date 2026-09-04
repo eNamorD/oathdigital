@@ -442,7 +442,7 @@ object Campaign {
             OperationTransaction.evolve(ready, Vector(operation), executor)(
               evolved => Right(GameStateUpdates.updateCurrent(evolved)(current =>
                 current.copy(pending = None))))
-              .map(execution => Ready(execution.ready))
+              .map(execution => Ready(execution))
           }
         case _ => Left(CampaignOutcomeMismatch("Raid relocation is not pending"))
       }

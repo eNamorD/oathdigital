@@ -79,7 +79,7 @@ object Travel {
                     candidate.board.supply.supply - expected)))
               })
             })
-          }.map(execution => Ready(execution.ready))
+          }.map(execution => Ready(execution))
         }
       }
     }

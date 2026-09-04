@@ -114,7 +114,7 @@ object Search {
             )
           })
         }
-      } yield Ready(execution.ready)
+      } yield Ready(execution)
     }
 
   /** Draws the recorded cards top-first from the authoritative source into the

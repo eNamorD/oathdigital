@@ -151,7 +151,7 @@ object Visions {
         operations, "Vision reveal semantic root is not permitted"))
       execution <- OperationTransaction.evolve(
         ready, operations, executor)(Right(_))
-    } yield Ready(execution.ready)
+    } yield Ready(execution)
 
     case e: ConspiracyStarted => for {
       ready <- state match {

@@ -136,7 +136,7 @@ object Forge {
           execution <- OperationTransaction.evolve(
             ready, operations, executor)(evolved =>
               Right(updateCurrent(evolved)(_.copy(pending = None))))
-        } yield Ready(execution.ready)
+        } yield Ready(execution)
       }
       case _ => Left(GameNotStarted)
     }

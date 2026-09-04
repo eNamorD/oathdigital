@@ -73,7 +73,7 @@ object RecoverPowerHandler {
         operations, s"${powerId.value} semantic root is not permitted"))
       execution <- OperationTransaction.evolve(
         ready, operations, executor)(Right(_))
-    } yield Ready(execution.ready)
+    } yield Ready(execution)
   }
 }
 final case class RecoverPowerPreparation(catalog: ExecutableCatalog,
@@ -259,7 +259,7 @@ object Recover {
               OperationTransaction.evolve(
                 valid, operations, executor)(evolved => Right(
                   GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None))))
-                .map(execution => Ready(execution.ready))
+                .map(execution => Ready(execution))
             }
           }
         }

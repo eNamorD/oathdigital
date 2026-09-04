@@ -154,7 +154,7 @@ object StateBasedEvaluation {
             }
             OperationTransaction.evolve(
               ready, operations, operationExecutor)(Right(_))
-              .map(execution => Ready(execution.ready))
+              .map(execution => Ready(execution))
           }
         case expected => Left(InvalidEventOrder(
           s"Bandit refill mismatch: expected $expected, recorded $recorded"))

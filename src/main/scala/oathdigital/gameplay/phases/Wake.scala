@@ -97,7 +97,7 @@ object Wake {
               turn = current.turn.copy(
                 usedPowers = current.turn.usedPowers + power))))
           }
-        } yield Ready(execution.ready)
+        } yield Ready(execution)
       }
     }
 
