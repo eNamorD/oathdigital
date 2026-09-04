@@ -21,6 +21,16 @@ Power handlers now use compact immutable function bundles and typed procedure
 adapters. This keeps HRF's concise registration ergonomics without adopting its
 mutable expansion dispatcher or weakening event replay validation.
 
+## Engine Redesign (see `docs/superpowers/plans/2026-09-04-engine-redesign.md`)
+
+**Phase 1 — Receipts removal: DONE** on branch `feat/engine-redesign`. Executor
+returns `ReadyGame`; `OperationReceipt`/`OperationExecution` deleted. No
+behavior change; full JVM + Scala.js suites green, 168-event live store replay
+clean, fresh bootstrap + command append verified over HTTP. Commits:
+`4c6d30b` (executor retype), `4689882` (drop `.map(_.ready)`), `db47e21` (drop
+field derefs), `fde3837` (test suites). Next phases get their own plan docs at
+phase start.
+
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
