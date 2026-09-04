@@ -66,7 +66,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     val authoritative = executor.execute(
       ready,
       Flip(heldRelic.id, Location.PlayArea(blueId), Orientation.FaceDown)
-    ).toOption.get.ready
+    ).toOption.get
     val mismatch = OperationShadowEvolution.compare(authoritative, Right(ready))
 
     assert(!mismatch.comparison.matchesAuthoritative)
@@ -91,7 +91,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(ready.game.current.players.head.advisers, Vector(adviser))
   }
 
-  test("ordered batches see staged state and retain root receipts") {
+  test("ordered batches apply staged state in order") {
     val gain = Gain.Favor(playerId, Suit.Order, 2)
     val place = Move(
       Piece.Favor(3),
@@ -99,12 +99,10 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.Site(sites.head))
     )
     val result = executor.executeAll(ready, Vector(gain, place)).toOption.get
-    val actor = result.ready.game.current.players.find(_.player == playerId).get
+    val actor = result.game.current.players.find(_.player == playerId).get
 
     assertEquals(actor.board.favor, 0)
-    assertEquals(result.ready.game.current.map.sites(sites.head).tokens.favor, 3)
-    assertEquals(result.receipts.map(_.operation), Vector(gain, place))
-    assertEquals(result.receipts.head.primitives, gain.primitives)
+    assertEquals(result.game.current.map.sites(sites.head).tokens.favor, 3)
   }
 
   test("later failure returns no partial execution result") {
@@ -127,7 +125,7 @@ class OperationExecutorSuite extends munit.FunSuite {
         worldDeck = Vector(worldDenizen, extraDenizen)))))
     val draw = Draw(playerId, Vector(worldDenizen, extraDenizen),
       Location.Deck(CardDeck.World), Location.Hand(playerId))
-    val result = executor.execute(source, draw).toOption.get.ready
+    val result = executor.execute(source, draw).toOption.get
 
     assertEquals(result.game.current.commonCards.worldDeck, Vector.empty)
     assertEquals(result.game.current.temporaryHands(playerId),
@@ -146,7 +144,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.Hand(playerId)),
       PositionedLocation(Location.RegionalDiscard(Region.Cradle),
         StackPosition.Top))
-    val result = executor.execute(source, discard).toOption.get.ready
+    val result = executor.execute(source, discard).toOption.get
 
     // The hand key survives with an empty vector: empty means "no cards", and
     // nothing removes a temporary-hand key.
@@ -167,7 +165,7 @@ class OperationExecutorSuite extends munit.FunSuite {
         StackPosition.Top)
     )
     val result = executor.executeAll(source,
-      Vector(discard(worldDenizen), discard(extraDenizen))).toOption.get.ready
+      Vector(discard(worldDenizen), discard(extraDenizen))).toOption.get
 
     assertEquals(result.game.current.commonCards.discard(Region.Cradle),
       Vector(worldDenizen, extraDenizen))
@@ -176,7 +174,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       Piece.Card(worldDenizen),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Bottom)
-    )).toOption.get.ready
+    )).toOption.get
     assertEquals(reordered.game.current.commonCards.worldDeck,
       Vector(extraDenizen, worldDenizen))
   }
@@ -187,7 +185,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
       Location.PlayArea(playerId),
       Orientation.FaceDown
-    )).toOption.get.ready
+    )).toOption.get
     val actor = played.game.current.players.find(_.player == playerId).get
 
     assert(actor.advisers.contains(
@@ -223,7 +221,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       secrets = 0,
       actingPlayer = playerId
     )
-    val result = executor.execute(ready, discard).toOption.get.ready
+    val result = executor.execute(ready, discard).toOption.get
 
     assertEquals(result.game.current.commonCards.discard(Region.Provinces),
       Vector(siteDenizen.id))
@@ -244,7 +242,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       secrets = 1,
       actingPlayer = playerId
     )
-    val result = executor.execute(source, discard).toOption.get.ready
+    val result = executor.execute(source, discard).toOption.get
     val actor = result.game.current.players.find(_.player == playerId).get
 
     assertEquals(result.game.current.setAsideRelics, Vector(relic.id))
@@ -260,7 +258,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       BuryableCard.Edifice(storedEdifice.id),
       PositionedLocation(Location.Atlas)
     )
-    val buried = executor.execute(source, bury).toOption.get.ready
+    val buried = executor.execute(source, bury).toOption.get
     assertEquals(buried.game.current.commonCards.edificeDeck,
       Vector(other, storedEdifice.id))
     assert(!buried.game.campaign.atlas.entries.collect {
@@ -292,14 +290,14 @@ class OperationExecutorSuite extends munit.FunSuite {
     val changed = executor.executeAll(source, Vector(
       Burn.favor(1, PositionedLocation(Location.OnCard(atlasDenizen.id))),
       Flip(atlasDenizen.id, Location.Atlas, Orientation.FaceUp)
-    )).toOption.get.ready
+    )).toOption.get
     val stored = changed.game.campaign.atlas.entries.head
       .asInstanceOf[AtlasEntry.StoredSite]
     assertEquals(stored.denizens, Vector(atlasDenizen.copy(
       orientation = Orientation.FaceUp, tokens = Tokens.empty)))
 
     val peeked = executor.execute(source,
-      Peek(playerId, atlasRelic.id, Location.Atlas)).toOption.get.ready
+      Peek(playerId, atlasRelic.id, Location.Atlas)).toOption.get
     assert(peeked.knowledge.siteRelics(playerId)(storedSite)
       .contains(atlasRelic.id))
     assert(!peeked.knowledge.heldRelics.getOrElse(playerId, Vector.empty)
@@ -313,7 +311,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       heldRelic.id,
       PositionedLocation(Location.PlayArea(blueId))
     )
-    val swapped = executor.execute(ready, swap).toOption.get.ready
+    val swapped = executor.execute(ready, swap).toOption.get
     assert(swapped.game.current.map.sites(sites(1)).relics
       .exists(_.id == heldRelic.id))
     assert(swapped.game.current.players.find(_.player == blueId).get.relics
@@ -324,7 +322,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       Piece.Warbands(redForce, 1),
       PositionedLocation(Location.Site(sites.head))
     )
-    val replaced = executor.execute(ready, replace).toOption.get.ready
+    val replaced = executor.execute(ready, replace).toOption.get
     assertEquals(replaced.game.current.map.sites(sites.head).forces,
       SiteForces.Occupied(redForce, 1))
   }
@@ -345,7 +343,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     val faceupOnly = Move(Piece.Secrets(1),
       PositionedLocation(Location.PlayArea(playerId)),
       PositionedLocation(Location.Site(sites.head)))
-    val result = executor.execute(mixed, faceupOnly).toOption.get.ready
+    val result = executor.execute(mixed, faceupOnly).toOption.get
     val actor = result.game.current.players.find(_.player == playerId).get
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets, 0 -> 1)
     assertEquals(result.game.current.map.sites(sites.head).tokens.secrets, 1)
@@ -360,7 +358,7 @@ class OperationExecutorSuite extends munit.FunSuite {
           case value => value
         })))
     val mixed = executor.execute(holder(1, 1), Burn.secrets(1,
-      PositionedLocation(Location.PlayArea(playerId)))).toOption.get.ready
+      PositionedLocation(Location.PlayArea(playerId)))).toOption.get
     val actor = mixed.game.current.players.find(_.player == playerId).get
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets, 0 -> 1)
     // A player with only facedown secrets cannot burn them: the burn fails as
@@ -374,13 +372,13 @@ class OperationExecutorSuite extends munit.FunSuite {
   test("FlipSecrets and Peek update orientation and knowledge only") {
     val flipped = executor.execute(ready, FlipSecrets(
       playerId, 1, SecretSide.FaceUp, SecretSide.FaceDown
-    )).toOption.get.ready
+    )).toOption.get
     val actor = flipped.game.current.players.find(_.player == playerId).get
     assertEquals(actor.board.faceUpSecrets -> actor.board.faceDownSecrets, 0 -> 1)
 
     val peeked = executor.execute(ready, Peek(
       playerId, siteRelic.id, Location.Site(sites(1))
-    )).toOption.get.ready
+    )).toOption.get
     assert(OperationStateAdapter.knows(peeked, playerId, siteRelic.id))
     assertEquals(peeked.game, ready.game)
   }
@@ -392,7 +390,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       Give(Piece.Secrets(1), blueId,
         Location.PlayArea(blueId), Location.PlayArea(playerId))
     )
-    val exchanged = executor.execute(ready, exchange).toOption.get.ready
+    val exchanged = executor.execute(ready, exchange).toOption.get
     assertEquals(exchanged.game.current.players.find(_.player == playerId).get
       .board.faceUpSecrets, 2)
     assertEquals(exchanged.game.current.players.find(_.player == blueId).get
@@ -409,12 +407,12 @@ class OperationExecutorSuite extends munit.FunSuite {
 
     val sacrifice = Sacrifice(playerId, Piece.Warbands(redForce, 1),
       PositionedLocation(Location.PlayArea(playerId)))
-    val sacrificed = executor.execute(ready, sacrifice).toOption.get.ready
+    val sacrificed = executor.execute(ready, sacrifice).toOption.get
     assertEquals(sacrificed.game.current.players.find(_.player == playerId).get
       .board.warbands, 2)
 
     val burned = executor.execute(ready, Burn.favor(1,
-      PositionedLocation(Location.PlayArea(playerId)))).toOption.get.ready
+      PositionedLocation(Location.PlayArea(playerId)))).toOption.get
     assertEquals(burned.game.current.players.find(_.player == playerId).get
       .board.favor, 0)
 
@@ -427,7 +425,7 @@ class OperationExecutorSuite extends munit.FunSuite {
         case value => value
       })))
     val revealed = executor.execute(revealable,
-      Reveal(facedown.id, Location.PlayArea(playerId))).toOption.get.ready
+      Reveal(facedown.id, Location.PlayArea(playerId))).toOption.get
     assert(revealed.game.current.players.find(_.player == playerId).get.advisers
       .collectFirst { case value: DenizenState if value.id == facedown.id => value }
       .exists(_.orientation == Orientation.FaceUp))
@@ -450,7 +448,7 @@ class OperationExecutorSuite extends munit.FunSuite {
         PositionedLocation(Location.PlayArea(playerId)),
         PositionedLocation(Location.Site(sites(2))))
     )
-    val result = executor.executeAll(movable, moves).toOption.get.ready
+    val result = executor.executeAll(movable, moves).toOption.get
 
     assertEquals(result.game.current.players.find(_.player == playerId).get.pawnSite,
       Some(sites(2)))
@@ -467,7 +465,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     val claim = Move(Piece.Banner(Banner.PeoplesFavor),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(Location.PlayArea(blueId)))
-    val result = executor.executeAll(unheld, Vector(claim)).toOption.get.ready
+    val result = executor.executeAll(unheld, Vector(claim)).toOption.get
     assertEquals(result.game.current.banners.peoplesFavor.holder, Some(blueId))
     // Claiming moves custody only; resources already on the unheld banner stay
     // tracked on the banner.

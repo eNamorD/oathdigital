@@ -44,7 +44,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     val executor = new OperationExecutor(OperationPolicy.exact(
       operations, "test payment operation is not permitted"))
     val after = OperationTransaction.evolve(
-      ready, operations, executor)(Right(_)).toOption.get.ready
+      ready, operations, executor)(Right(_)).toOption.get
     val player = after.game.current.players.find(_.player == actor.player).get
     val card = after.game.current.map.sites(siteId).denizens.head
     assertEquals(player.board.favor, 1)
@@ -96,7 +96,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     val executor = new OperationExecutor(OperationPolicy.exact(
       operations, "test placement operation is not permitted"))
     val after = OperationTransaction.evolve(
-      ready, operations, executor)(Right(_)).toOption.get.ready
+      ready, operations, executor)(Right(_)).toOption.get
     assertEquals(after.game.current.commonCards.relicDeck,
       ready.game.current.commonCards.relicDeck.tail)
     assertEquals(after.game.current.map.sites(siteId).relics,
@@ -119,7 +119,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     val executor = new OperationExecutor(OperationPolicy.exact(
       operations, "test power operation is not permitted"))
     val after = OperationTransaction.evolve(
-      ready, operations, executor)(Right(_)).toOption.get.ready
+      ready, operations, executor)(Right(_)).toOption.get
     assertEquals(after.game.current.players.find(_.player == actor.player).get
       .board.faceUpSecrets, actor.board.faceUpSecrets - 1)
     assertEquals(after.game.current.map.sites(siteId).relics.head.id, relic)
