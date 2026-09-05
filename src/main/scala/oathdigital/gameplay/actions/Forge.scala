@@ -131,11 +131,11 @@ object Forge {
           _ <- Either.cond(current.commonCards.relicDeck.headOption.contains(e.relicId),
             (), ForgeOutcomeMismatch("recorded relic is not the authoritative deck top"))
           operations <- completionOperations(catalog, e)
-          executor = new OperationExecutor(OperationPolicy.exact(
-            operations, "Forge semantic root is not permitted"))
-          execution <- OperationTransaction.evolve(
-            ready, operations, executor)(evolved =>
-              Right(updateCurrent(evolved)(_.copy(pending = None))))
+          execution <- OperationPipeline.run(
+            ready, operations, OperationPolicy.exact(
+              operations, "Forge semantic root is not permitted")
+          )(evolved =>
+            Right(updateCurrent(evolved)(_.copy(pending = None))))
         } yield Ready(execution)
       }
       case _ => Left(GameNotStarted)

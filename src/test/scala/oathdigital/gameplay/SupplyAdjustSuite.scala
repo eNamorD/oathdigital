@@ -37,7 +37,7 @@ class SupplyAdjustSuite extends munit.FunSuite {
         Map(redForce -> 14, blueForce -> 14, ForceKind.Bandit -> 24)))
   }
 
-  private val executor = new OperationExecutor(OperationPolicy.Permissive)
+  private val executor = new OperationExecutor()
 
   private def supply(state: ReadyGame, player: PlayerId): Int =
     state.game.current.players.find(_.player == player).get.board.supply.supply

@@ -8,7 +8,7 @@ import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.operations.{Location, Move => CoreMove,
-  OperationExecutor, OperationTransaction, Piece, PositionedLocation}
+  OperationPipeline, OperationPolicy, Piece, PositionedLocation}
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.
@@ -19,8 +19,8 @@ import oathdigital.gameplay.operations.{Location, Move => CoreMove,
  * guessed here. This is deliberately not a reusable, context-free tie breaker.
  */
 object StateBasedEvaluation {
-  private val operationExecutor =
-    new OperationExecutor(StateBasedOperationPolicy)
+  private val operationAllowlist: OperationPolicy =
+    StateBasedOperationPolicy
   private val visionPriority = Vector(VisionRules.Conquest,
     VisionRules.Rebellion, VisionRules.Sanctuary, VisionRules.Faith)
   def banditRefill(catalog: ExecutableCatalog, state: OathState)
@@ -152,8 +152,8 @@ object StateBasedEvaluation {
                 PositionedLocation(Location.Site(site))
               )
             }
-            OperationTransaction.evolve(
-              ready, operations, operationExecutor)(Right(_))
+            OperationPipeline.run(
+              ready, operations, operationAllowlist)(Right(_))
               .map(execution => Ready(execution))
           }
         case expected => Left(InvalidEventOrder(

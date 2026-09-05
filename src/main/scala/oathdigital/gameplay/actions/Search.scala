@@ -12,7 +12,7 @@ import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle
 import GameStateUpdates.updateCurrent
 import oathdigital.gameplay.operations.{AdjustSupply, CardDeck,
   CoreOperation, Draw,
-  Location, OperationExecutor, OperationPolicy, OperationTransaction}
+  Location, OperationPipeline, OperationPolicy}
 
 sealed trait SearchCommand extends Product with Serializable
 object SearchCommand {
@@ -97,10 +97,10 @@ object Search {
         operation = drawOperation(event)
         operations = Vector[CoreOperation](operation,
           AdjustSupply(event.playerId, -cost))
-        executor = new OperationExecutor(OperationPolicy.exact(
-          operations, "Search semantic root is not permitted"))
-        execution <- OperationTransaction.evolve(
-          ready, operations, executor) { evolved =>
+        execution <- OperationPipeline.run(
+          ready, operations, OperationPolicy.exact(
+            operations, "Search semantic root is not permitted")
+        ) { evolved =>
           val visions = if (event.source == SearchSource.WorldDeck &&
             event.drawn.exists(_.isInstanceOf[VisionId])) 1 else 0
           Right(updateCurrent(evolved) { existing =>

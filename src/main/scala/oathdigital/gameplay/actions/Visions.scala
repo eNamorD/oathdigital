@@ -9,7 +9,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{Burn, Give, Location, Move => CoreMove,
-  OperationExecutor, OperationPolicy, OperationTransaction, Piece,
+  OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, StackPosition}
 
 sealed trait VisionCommand extends Product with Serializable
@@ -147,10 +147,10 @@ object Visions {
       } :+ CoreMove(
         Piece.Card(e.visionId), from, from,
         resultingOrientation = Some(Orientation.FaceUp))
-      executor = new OperationExecutor(OperationPolicy.exact(
-        operations, "Vision reveal semantic root is not permitted"))
-      execution <- OperationTransaction.evolve(
-        ready, operations, executor)(Right(_))
+      execution <- OperationPipeline.run(
+        ready, operations, OperationPolicy.exact(
+          operations, "Vision reveal semantic root is not permitted")
+      )(Right(_))
     } yield Ready(execution)
 
     case e: ConspiracyStarted => for {
@@ -244,12 +244,13 @@ object Visions {
       case _ => Vector.empty
     }
     val operations = taken ++ bannerOps
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "Conspiracy semantic root is not permitted"))
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
       Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
     val evolved = if (operations.isEmpty) update(ready)
-    else OperationTransaction.evolve(ready, operations, executor)(update)
+    else OperationPipeline.run(
+      ready, operations, OperationPolicy.exact(
+        operations, "Conspiracy semantic root is not permitted")
+    )(update)
     // The played Conspiracy was held either as a facedown adviser (direct play)
     // or in the actor's temporary hand (kept from a Search). Removing it here
     // is a documented executor bypass.

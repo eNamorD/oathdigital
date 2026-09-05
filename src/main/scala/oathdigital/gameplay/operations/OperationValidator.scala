@@ -8,6 +8,58 @@ import oathdigital.model._
   */
 final case class OperationReason(code: String, detail: String)
 
+/** Extension seam for per-query contextual restrictions beyond the static
+  * allowlist. The registry is empty for this phase; [[OperationValidator]]
+  * holds the vector so later phases can fold it into `validateOne`.
+  */
+trait OperationRestriction {
+  def reason(
+      ready: ReadyGame,
+      operation: CoreOperation
+  ): Option[OperationReason]
+}
+
+/** Aggregated validator owned by [[OperationPipeline]] for one run:
+  * `validateBatch` reports the whole batch against the initial state
+  * (including cross-operation conflicts), and `validateOne` re-checks every
+  * operation against the staged state during the fold. The pipeline's
+  * authoritative rejection uses the staged `validateOne` reasons so that
+  * trajectory-dependent batches stay legal.
+  *
+  * `validateBatch` and `validateOne` return every violation as an
+  * [[OperationReason]] (never first-fail), so callers can inspect all of them.
+  * Pipeline rejection stays first-fail: it takes the head reason.
+  */
+final class OperationValidator(
+    allowlist: OperationPolicy,
+    restrictions: Vector[OperationRestriction]
+) {
+  def validateBatch(
+      ready: ReadyGame,
+      operations: Vector[CoreOperation]
+  ): Vector[OperationReason] =
+    OperationShape.validateBatch(ready, operations) ++
+      allowlistReasons(ready, operations)
+
+  def validateOne(
+      ready: ReadyGame,
+      operation: CoreOperation
+  ): Vector[OperationReason] =
+    OperationShape.validate(ready, operation) ++
+      allowlistReasons(ready, Vector(operation))
+
+  private def allowlistReasons(
+      ready: ReadyGame,
+      operations: Vector[CoreOperation]
+  ): Vector[OperationReason] =
+    operations.flatMap { operation =>
+      allowlist.validate(ready, operation) match {
+        case Left(error) => Vector(OperationReason(error.code, error.detail))
+        case Right(_) => Vector.empty
+      }
+    }
+}
+
 /** Pure shape partition of the checks [[OperationStateMutation]] runs while
   * applying one operation. It owns the *structural* validation of an operation
   * against a ready state — primitive position conventions, card source and

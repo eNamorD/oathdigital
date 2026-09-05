@@ -10,7 +10,7 @@ import oathdigital.gameplay.OathViolation._
 import GameStateUpdates.updateCurrent
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
   Location, Move => CoreMove,
-  OperationExecutor, OperationTransaction, Piece, PositionedLocation}
+  OperationPipeline, OperationPolicy, Piece, PositionedLocation}
 
 sealed trait TravelCommand extends Product with Serializable
 object TravelCommand {
@@ -19,8 +19,8 @@ object TravelCommand {
 }
 
 object Travel {
-  private val operationExecutor =
-    new OperationExecutor(TravelOperationPolicy)
+  private val operationAllowlist: OperationPolicy =
+    TravelOperationPolicy
 
   def handle(
       catalog: ExecutableCatalog,
@@ -63,7 +63,7 @@ object Travel {
             Left(TravelCostMismatch(expected, event.supplySpent))
           else if (player.board.supply.supply < expected)
             Left(InsufficientSupply(expected, player.board.supply.supply))
-          else OperationTransaction.evolve(
+          else OperationPipeline.run(
             ready,
             Vector[CoreOperation](
               CoreMove(
@@ -73,7 +73,7 @@ object Travel {
               ),
               AdjustSupply(event.playerId, -expected)
             ),
-            operationExecutor
+            operationAllowlist
           )(Right(_)).map(execution => Ready(execution))
         }
       }

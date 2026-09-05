@@ -245,11 +245,9 @@ object Economy {
   private def evolveOperations(
       ready: ReadyGame,
       operations: Vector[CoreOperation]
-  ): Either[OathViolation, ReadyGame] = {
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "Economy semantic root is not permitted"))
-    OperationTransaction.evolve(ready, operations, executor)(Right(_))
-  }
+  ): Either[OathViolation, ReadyGame] =
+    OperationPipeline.run(ready, operations, OperationPolicy.exact(
+      operations, "Economy semantic root is not permitted"))(Right(_))
   private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
     card match {
       case value: DenizenState => RuleSourceRef.SiteCard(siteId, value.id)

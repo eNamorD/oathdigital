@@ -3,8 +3,8 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.gameplay.operations.{Burn, Kill,
-  Location, Move => CoreMove, OperationExecutor, OperationPolicy,
-  OperationTransaction, Piece, PositionedLocation, Reveal,
+  Location, Move => CoreMove, OperationPipeline, OperationPolicy,
+  Piece, PositionedLocation, Reveal,
   StackPosition, Take}
 import oathdigital.model._
 import oathdigital.gameplay._
@@ -437,9 +437,9 @@ object Campaign {
               Piece.Pawn(e.defender),
               PositionedLocation(Location.Site(e.origin)),
               PositionedLocation(Location.Site(e.destination)))
-            val executor = new OperationExecutor(OperationPolicy.exact(
-              Vector(operation), "Raid pawn relocation is not permitted"))
-            OperationTransaction.evolve(ready, Vector(operation), executor)(
+            OperationPipeline.run(
+              ready, Vector(operation), OperationPolicy.exact(
+                Vector(operation), "Raid pawn relocation is not permitted"))(
               evolved => Right(GameStateUpdates.updateCurrent(evolved)(current =>
                 current.copy(pending = None))))
               .map(execution => Ready(execution))
@@ -527,15 +527,15 @@ object Campaign {
     }
   }
 
-  /** Runs the CoreOperations vector as one authoritative transaction. */
+  /** Runs the CoreOperations vector as one authoritative pipeline run. */
   private def execute(ready: ReadyGame,
       operations: Vector[oathdigital.gameplay.operations.CoreOperation],
       detail: String)(
       update: ReadyGame => Either[OathViolation, ReadyGame])
       : Either[OathViolation, ReadyGame] = {
-    val executor = new OperationExecutor(OperationPolicy.exact(operations, detail))
     if (operations.isEmpty) update(ready)
-    else OperationTransaction.evolve(ready, operations, executor)(update)
+    else OperationPipeline.run(ready, operations,
+      OperationPolicy.exact(operations, detail))(update)
   }
 
   private def warbandMove(kind: ForceKind, count: Int, from: Location,

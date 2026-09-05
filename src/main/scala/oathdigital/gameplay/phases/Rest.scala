@@ -11,7 +11,7 @@ import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.powers.rest.RestPowerIntegration
 import oathdigital.gameplay.operations.{CoreOperation, FlipSecrets, Location,
-  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Move => CoreMove, OperationPipeline, OperationPolicy,
   Piece, PositionedLocation, SecretSide}
 
 sealed trait RestCommand extends Product with Serializable
@@ -220,8 +220,6 @@ object Rest {
       else Vector(FlipSecrets(resting, player.board.faceDownSecrets,
         SecretSide.FaceDown, SecretSide.FaceUp))
     val operations = favorOps ++ secretOps ++ revealOps
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "Rest semantic root is not permitted"))
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] = {
       val current = state.game.current
       Right(state.copy(
@@ -239,7 +237,8 @@ object Rest {
           pending = None))))
     }
     if (operations.isEmpty) update(ready)
-    else OperationTransaction.evolve(ready, operations, executor)(update)
+    else OperationPipeline.run(ready, operations, OperationPolicy.exact(
+      operations, "Rest semantic root is not permitted"))(update)
   }
 
   private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {

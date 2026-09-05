@@ -12,7 +12,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{CoreOperation, Give, Location,
-  OperationExecutor, OperationPolicy, OperationTransaction, Piece,
+  OperationPipeline, OperationPolicy, Piece,
   Peek => CorePeek}
 
 sealed trait NegotiationCommand extends Product with Serializable
@@ -264,9 +264,8 @@ object Negotiation {
       favor ++ relics
     }
     val operations = knowledgeOps ++ transferOps
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "Negotiation semantic root is not permitted"))
-    OperationTransaction.evolve(ready, operations, executor) { evolved =>
+    OperationPipeline.run(ready, operations, OperationPolicy.exact(
+      operations, "Negotiation semantic root is not permitted")) { evolved =>
       Right(GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None)))
     }
   }

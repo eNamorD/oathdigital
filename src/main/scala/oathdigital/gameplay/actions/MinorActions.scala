@@ -11,7 +11,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{CoreOperation, Location,
-  OperationExecutor, OperationTransaction, Piece, PositionedLocation,
+  OperationPipeline, OperationPolicy, Piece, PositionedLocation,
   Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
 
 sealed trait MinorActionCommand extends Product with Serializable
@@ -28,8 +28,8 @@ object MinorActionCommand {
 }
 
 object MinorActions {
-  private val operationExecutor =
-    new OperationExecutor(MinorActionOperationPolicy)
+  private val operationAllowlist: OperationPolicy =
+    MinorActionOperationPolicy
 
   def legalAdviserPlacements(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerId, adviser: WorldCardId): Vector[SearchPlacement] = {
@@ -226,7 +226,7 @@ object MinorActions {
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] =
-    OperationTransaction.evolve(ready, operations, operationExecutor)(Right(_))
+    OperationPipeline.run(ready, operations, operationAllowlist)(Right(_))
 
   private def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces

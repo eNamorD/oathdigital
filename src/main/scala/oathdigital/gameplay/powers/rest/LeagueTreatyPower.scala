@@ -5,7 +5,7 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{CoreOperation, Location,
-  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Move => CoreMove, OperationPipeline, OperationPolicy,
   Piece, PositionedLocation}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -232,9 +232,9 @@ object LeagueTreatyPower extends Power {
         }
       }
     }
-    executor = new OperationExecutor(OperationPolicy.exact(operations,
-      "League Treaty semantic root is not permitted"))
-    execution <- OperationTransaction.evolve(ready, operations, executor) {
+    execution <- OperationPipeline.run(
+      ready, operations, OperationPolicy.exact(operations,
+        "League Treaty semantic root is not permitted")) {
       evolved => Right(clearPending(evolved))
     }
   } yield execution

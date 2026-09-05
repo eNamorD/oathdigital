@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.gameplay.operations.{Location,
-  Move => CoreMove, OperationExecutor, OperationPolicy, OperationTransaction,
+  Move => CoreMove, OperationPipeline, OperationPolicy,
   Piece, PositionedLocation}
 import oathdigital.model._
 import oathdigital.gameplay._
@@ -252,10 +252,10 @@ object Challenge {
           PositionedLocation(Location.PlayArea(e.playerId)),
           PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))
       }
-      executor = new OperationExecutor(OperationPolicy.exact(
-        Vector(operation), "Banner resource placement is not permitted"))
-      evolved <- OperationTransaction.evolve(ready, Vector(operation), executor)(
-        Right(_))
+      evolved <- OperationPipeline.run(
+        ready, Vector(operation), OperationPolicy.exact(
+          Vector(operation), "Banner resource placement is not permitted")
+      )(Right(_))
     } yield Ready(evolved)
     case _ => Left(InvalidEventOrder("Challenge received a non-banner event"))
   }
@@ -307,11 +307,10 @@ object Challenge {
     val custody = CoreMove(Piece.Banner(p.banner), from,
       PositionedLocation(Location.PlayArea(player)))
     val operations = drains ++ Vector(payment, custody)
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "Banner Challenge semantic root is not permitted"))
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
       Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
-    OperationTransaction.evolve(ready, operations, executor)(update)
+    OperationPipeline.run(ready, operations, OperationPolicy.exact(
+      operations, "Banner Challenge semantic root is not permitted"))(update)
   }
 
   private def transition(catalog: ExecutableCatalog, state: OathState,

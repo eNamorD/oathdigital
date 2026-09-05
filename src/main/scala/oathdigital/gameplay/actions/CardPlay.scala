@@ -6,8 +6,8 @@ import oathdigital.gameplay.GameStateUpdates.updateCurrent
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.operations.{Bury, BuryableCard, CoreOperation,
-  Discard, Gain, Location, Move => CoreMove, OperationExecutor, OperationPolicy,
-  OperationTransaction, Piece, PositionedLocation, StackPosition}
+  Discard, Gain, Location, Move => CoreMove, OperationPipeline, OperationPolicy,
+  Piece, PositionedLocation, StackPosition}
 import oathdigital.model._
 
 /** Authoritative placement procedure shared by Search and facedown-adviser play.
@@ -323,8 +323,6 @@ object CardPlay {
     // later staged operation.
     val operations = edificeOps ++ discardOps ++
       plan.kept.toVector ++ plan.favor
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "CardPlay semantic root is not permitted"))
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
       Right(updateCurrent(state) { existing =>
         existing.copy(pending = plan.startConspiracy match {
@@ -336,8 +334,8 @@ object CardPlay {
         })
       })
     val evolved = if (operations.isEmpty) update(ready)
-    else OperationTransaction.evolve(
-      ready, operations, executor)(update)
+    else OperationPipeline.run(ready, operations, OperationPolicy.exact(
+      operations, "CardPlay semantic root is not permitted"))(update)
     evolved.map(state => Outcome(
       state,
       plan.favorGained,

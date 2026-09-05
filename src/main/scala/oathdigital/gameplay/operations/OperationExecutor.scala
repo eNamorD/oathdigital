@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{OathViolation, ReadyGame}
+import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 trait OperationPolicy {
@@ -52,20 +52,27 @@ object OperationPolicy {
   }
 }
 
-final class OperationExecutor(policy: OperationPolicy) {
+/** Pure mutation engine: applies one operation (or a raw fold of several)
+  * without any policy or state-invariant checks. [[OperationPipeline]] owns
+  * pre-flight validation and the post-state invariant; this class is only the
+  * mutation primitive for it and for raw-mutation-only consumers (shadow
+  * comparisons, tests). The describe guard converts constructor failures
+  * thrown by the mutation into typed [[OperationError]] rejections.
+  *
+  * NOTE: [[OperationStateAdapter.applyOperation]] still runs the
+  * [[OperationShape]] first-violation guard internally, so a raw execute stays
+  * shape-safe; [[OperationPipeline]] additionally pre-flights each operation
+  * explicitly. Removing the internal double-run is deferred until the suite
+  * proves it redundant.
+  */
+final class OperationExecutor {
   def execute(
       ready: ReadyGame,
       operation: CoreOperation
   ): Either[OperationError, ReadyGame] =
-    for {
-      expected <- OperationStateInvariant.cardIds(ready)
-      _ <- OperationStateInvariant.validate(ready, expected)
-      _ <- policy.validate(ready, operation)
-      evolved <- OperationError
-        .describe(OperationStateAdapter.applyOperation(ready, operation))
-        .flatMap(identity)
-      _ <- OperationStateInvariant.validate(evolved, expected)
-    } yield evolved
+    OperationError
+      .describe(OperationStateAdapter.applyOperation(ready, operation))
+      .flatMap(identity)
 
   def executeAll(
       ready: ReadyGame,
@@ -76,27 +83,6 @@ final class OperationExecutor(policy: OperationPolicy) {
       operations.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
         (result, operation) => result.flatMap(staged => execute(staged, operation))
       }
-}
-
-object OperationTransaction {
-  def evolve(
-      ready: ReadyGame,
-      operations: Vector[CoreOperation],
-      executor: OperationExecutor
-  )(
-      update: ReadyGame => Either[OathViolation, ReadyGame]
-  ): Either[OathViolation, ReadyGame] =
-    for {
-      expected <- OperationStateInvariant.cardIds(ready)
-        .left.map(_.toViolation)
-      executed <- executor.executeAll(ready, operations)
-        .left.map(_.toViolation)
-      updated <- OperationError.describe(update(executed))
-        .left.map(_.toViolation)
-        .flatMap(identity)
-      _ <- OperationStateInvariant.validate(updated, expected)
-        .left.map(_.toViolation)
-    } yield updated
 }
 
 private[operations] object OperationStateInvariant {

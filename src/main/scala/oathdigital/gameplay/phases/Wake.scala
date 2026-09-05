@@ -7,8 +7,8 @@ import oathdigital.gameplay.OathContinue._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.{Location, OperationExecutor,
-  OperationTransaction, Piece, Take => CoreTake}
+import oathdigital.gameplay.operations.{Location, OperationPipeline,
+  OperationPolicy, Piece, Take => CoreTake}
 
 import GameStateUpdates.updateCurrent
 
@@ -20,8 +20,8 @@ object WakeCommand {
 }
 
 object Wake {
-  private val operationExecutor =
-    new OperationExecutor(WakeOperationPolicy)
+  private val operationAllowlist: OperationPolicy =
+    WakeOperationPolicy
 
   def handle(
       state: OathState,
@@ -83,7 +83,7 @@ object Wake {
             case WakeResource.Favor => Piece.Favor(1)
             case WakeResource.Secret => Piece.Secrets(1)
           }
-          execution <- OperationTransaction.evolve(
+          execution <- OperationPipeline.run(
             ready,
             Vector(CoreTake(
               piece,
@@ -91,7 +91,7 @@ object Wake {
               Location.Site(event.siteId),
               Location.PlayArea(event.playerId)
             )),
-            operationExecutor
+            operationAllowlist
           ) { moved =>
             Right(updateCurrent(moved)(current => current.copy(
               turn = current.turn.copy(

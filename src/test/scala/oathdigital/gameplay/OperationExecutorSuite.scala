@@ -51,7 +51,7 @@ class OperationExecutorSuite extends munit.FunSuite {
     )
   }
 
-  private val executor = new OperationExecutor(OperationPolicy.Permissive)
+  private val executor = new OperationExecutor()
 
   test("shadow comparison distinguishes parity rejection and mismatch") {
     val matching = OperationShadowEvolution.compare(ready, Right(ready))
@@ -78,15 +78,15 @@ class OperationExecutorSuite extends munit.FunSuite {
 
   test("policy receives the semantic root before primitive execution") {
     var seen = Vector.empty[CoreOperation]
-    val rejecting = new OperationExecutor(new OperationPolicy {
+    val rejecting = new OperationPolicy {
       override def validate(state: ReadyGame, operation: CoreOperation) = {
         seen :+= operation
         Left(OperationError.RestrictedOperation("blocked by test policy"))
       }
-    })
+    }
     val reveal = Reveal(adviser.id, Location.PlayArea(playerId))
 
-    assert(rejecting.execute(ready, reveal).isLeft)
+    assert(OperationPipeline.run(ready, Vector(reveal), rejecting)(Right(_)).isLeft)
     assertEquals(seen, Vector(reveal))
     assertEquals(ready.game.current.players.head.advisers, Vector(adviser))
   }
@@ -481,12 +481,14 @@ class OperationExecutorSuite extends munit.FunSuite {
 
   test("transaction rejects direct-update failure and invariant corruption") {
     val operation = Gain.Favor(playerId, Suit.Order, 1)
-    val failed = OperationTransaction.evolve(ready, Vector(operation), executor)(
+    val failed = OperationPipeline.run(ready, Vector(operation),
+      OperationPolicy.Permissive)(
       _ => Left(OathViolation.InvalidEventOrder("direct update failed")))
     assertEquals(failed,
       Left(OathViolation.InvalidEventOrder("direct update failed")))
 
-    val corrupt = OperationTransaction.evolve(ready, Vector(operation), executor) {
+    val corrupt = OperationPipeline.run(ready, Vector(operation),
+      OperationPolicy.Permissive) {
       evolved => Right(evolved.copy(game = evolved.game.copy(current =
         evolved.game.current.copy(commonCards =
           evolved.game.current.commonCards.copy(worldDeck =
@@ -508,10 +510,9 @@ class OperationExecutorSuite extends munit.FunSuite {
     assertEquals(execution.left.toOption.map(_.code),
       Some("invalid-description"))
 
-    val transaction = OperationTransaction.evolve(
-      ready,
+    val transaction = OperationPipeline.run(ready,
       Vector(Gain.Favor(playerId, Suit.Order, 1)),
-      executor
+      OperationPolicy.Permissive
     ) { evolved =>
       val invalidPlayers = evolved.game.current.players.map {
         case value if value.player == playerId => value.copy(
@@ -531,13 +532,20 @@ class OperationExecutorSuite extends munit.FunSuite {
     val duplicate = ready.copy(game = ready.game.copy(current =
       ready.game.current.copy(commonCards = ready.game.current.commonCards.copy(
         worldDeck = ready.game.current.commonCards.worldDeck :+ adviser.id))))
-    assert(executor.execute(duplicate,
-      Gain.Secrets(playerId, 1)).left.toOption.get
-      .isInstanceOf[OperationError.InvalidCardIndex])
+    val duplicateResult = OperationPipeline.run(duplicate,
+      Vector(Gain.Secrets(playerId, 1)), OperationPolicy.Permissive)(Right(_))
+    assert(duplicateResult.left.toOption.get
+      .isInstanceOf[OathViolation.CoreOperationRejected])
+    assertEquals(duplicateResult.left.toOption.get
+      .asInstanceOf[OathViolation.CoreOperationRejected].code,
+      "invalid-card-index")
 
     val missingSupply = ready.copy(banks = ready.banks.copy(
       warbandSupply = ready.banks.warbandSupply - redForce))
-    assertEquals(executor.execute(missingSupply, Gain.Secrets(playerId, 1)),
-      Left(OperationError.UnknownWarbandSupply(redForce)))
+    val missingResult = OperationPipeline.run(missingSupply,
+      Vector(Gain.Secrets(playerId, 1)), OperationPolicy.Permissive)(Right(_))
+    assertEquals(missingResult.left.toOption.get
+      .asInstanceOf[OathViolation.CoreOperationRejected].code,
+      "unknown-warband-supply")
   }
 }

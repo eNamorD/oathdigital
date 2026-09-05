@@ -35,10 +35,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     val placedAt = Location.OnCard(denizenId)
     val cost = Cost(favor = 2, secretBurnt = 1)
     val payCost = Costs.plan(ready, actor.player, placedAt, cost).toOption.get
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))
-    val after = OperationTransaction.evolve(
-      ready, Vector(payCost), executor)(Right(_)).toOption.get
+    val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
+      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get
     val player = after.game.current.players.find(_.player == actor.player).get
     val card = after.game.current.map.sites(siteId).denizens.head
     assertEquals(player.board.favor, 1)
@@ -86,16 +84,16 @@ class PowerOperationsSuite extends munit.FunSuite {
       siteId, Orientation.FaceDown).toOption.get
     val operation = PowerOperationPlanner.placement(placement)
     val operations = Vector(operation)
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "test placement operation is not permitted"))
-    val after = OperationTransaction.evolve(
-      ready, operations, executor)(Right(_)).toOption.get
+    val allowlist = OperationPolicy.exact(
+      operations, "test placement operation is not permitted")
+    val after = OperationPipeline.run(
+      ready, operations, allowlist)(Right(_)).toOption.get
     assertEquals(after.game.current.commonCards.relicDeck,
       ready.game.current.commonCards.relicDeck.tail)
     assertEquals(after.game.current.map.sites(siteId).relics,
       Vector(RelicState(relic, Orientation.FaceDown, Tokens.empty)))
-    assert(OperationTransaction.evolve(
-      after, operations, executor)(Right(_)).isLeft)
+    assert(OperationPipeline.run(
+      after, operations, allowlist)(Right(_)).isLeft)
   }
 
   test("power operation plans apply in order and fail without a partial result") {
@@ -107,10 +105,10 @@ class PowerOperationsSuite extends munit.FunSuite {
       siteId, Orientation.FaceDown).toOption.get
     val operations = Vector[CoreOperation](payCost) :+
       PowerOperationPlanner.placement(placement)
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      operations, "test power operation is not permitted"))
-    val after = OperationTransaction.evolve(
-      ready, operations, executor)(Right(_)).toOption.get
+    val allowlist = OperationPolicy.exact(
+      operations, "test power operation is not permitted")
+    val after = OperationPipeline.run(
+      ready, operations, allowlist)(Right(_)).toOption.get
     assertEquals(after.game.current.players.find(_.player == actor.player).get
       .board.faceUpSecrets, actor.board.faceUpSecrets - 1)
     assertEquals(after.game.current.map.sites(siteId).relics.head.id, relic)
@@ -120,14 +118,14 @@ class PowerOperationsSuite extends munit.FunSuite {
       PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
       Location.Site(siteId),
       Orientation.FaceDown)
-    val invalidExecutor = new OperationExecutor(OperationPolicy.exact(
-      invalidOperations, "test invalid operation is not permitted"))
-    assert(OperationTransaction.evolve(
-      ready, invalidOperations, invalidExecutor)(Right(_)).isLeft)
+    val invalidAllowlist = OperationPolicy.exact(
+      invalidOperations, "test invalid operation is not permitted")
+    assert(OperationPipeline.run(
+      ready, invalidOperations, invalidAllowlist)(Right(_)).isLeft)
     assertEquals(ready.game.current.players.find(_.player == actor.player).get
       .board.faceUpSecrets, actor.board.faceUpSecrets)
-    assert(OperationTransaction.evolve(ready, Vector.empty,
-      new OperationExecutor(OperationPolicy.Permissive))(Right(_)).isLeft)
+    assert(OperationPipeline.run(ready, Vector.empty,
+      OperationPolicy.Permissive)(Right(_)).isLeft)
   }
 
   test("PayCost executes placed and burnt portions atomically") {
@@ -135,10 +133,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     val placedAt = Location.OnCard(denizenId)
     val cost = Cost(favor = 1, secret = 1, favorBurnt = 1, secretBurnt = 1)
     val payCost = Costs.plan(ready, actor.player, placedAt, cost).toOption.get
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))
-    val after = OperationTransaction.evolve(
-      ready, Vector(payCost), executor)(Right(_)).toOption.get
+    val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
+      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get
     val player = after.game.current.players.find(_.player == actor.player).get
     val card = after.game.current.map.sites(siteId).denizens.head
     assertEquals(player.board.favor, actor.board.favor - 2)
@@ -151,10 +147,8 @@ class PowerOperationsSuite extends munit.FunSuite {
     val payCost = Costs.plan(ready, actor.player, Location.OnCard(
       DenizenId("irrelevant")), Cost.free).toOption.get
     assertEquals(payCost.primitives, Vector.empty)
-    val executor = new OperationExecutor(OperationPolicy.exact(
-      Vector(payCost), "test payment operation is not permitted"))
-    val after = OperationTransaction.evolve(
-      ready, Vector(payCost), executor)(Right(_)).toOption.get
+    val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
+      Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get
     assertEquals(after.game, ready.game)
     assertEquals(after.banks, ready.banks)
   }

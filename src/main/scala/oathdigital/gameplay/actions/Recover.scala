@@ -69,10 +69,10 @@ object RecoverPowerHandler {
       _ <- Either.cond(selected == canonical, (), InvalidEventOrder(
         s"${powerId.value} recorded operation payload does not match"))
       operations <- eventOperations(canonical)
-      executor = new OperationExecutor(OperationPolicy.exact(
-        operations, s"${powerId.value} semantic root is not permitted"))
-      execution <- OperationTransaction.evolve(
-        ready, operations, executor)(Right(_))
+      execution <- OperationPipeline.run(
+        ready, operations, OperationPolicy.exact(
+          operations, s"${powerId.value} semantic root is not permitted")
+      )(Right(_))
     } yield Ready(execution)
   }
 }
@@ -254,11 +254,11 @@ object Recover {
                 PositionedLocation(Location.Site(r.site)),
                 PositionedLocation(Location.PlayArea(e.playerId)),
                 resultingOrientation = Some(Orientation.FaceDown)))
-              val executor = new OperationExecutor(OperationPolicy.exact(
-                operations, "Recover semantic root is not permitted"))
-              OperationTransaction.evolve(
-                valid, operations, executor)(evolved => Right(
-                  GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None))))
+              OperationPipeline.run(
+                valid, operations, OperationPolicy.exact(
+                  operations, "Recover semantic root is not permitted")
+              )(evolved => Right(
+                GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None))))
                 .map(execution => Ready(execution))
             }
           }
