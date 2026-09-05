@@ -12,6 +12,16 @@ private[operations] object OperationStateMutation {
       ready: ReadyGame,
       operation: CoreOperation
   ): Either[OperationError, ReadyGame] = {
+    OperationShape.first(ready, operation) match {
+      case Some(error) => Left(error)
+      case None => mutate(ready, operation)
+    }
+  }
+
+  private def mutate(
+      ready: ReadyGame,
+      operation: CoreOperation
+  ): Either[OperationError, ReadyGame] = {
     val primitives = operation.primitives
     for {
       _ <- validatePrimitivePositions(primitives)
