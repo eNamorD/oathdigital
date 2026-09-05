@@ -22,22 +22,34 @@ typed unsupported violation with handler and source identity.
 
 ## Registries and ordering
 
-`RuleResolution.scala` defines shared activation/query/outcome types and
-deterministic ordering. Small generic modifiers use explicit registries such as
-`RuntimeRuleRegistry`. Action-specific systems may own narrower registries:
+`RuleResolution.scala` defines shared source/activation/query/outcome vocabulary
+and deterministic ordering. Small generic modifiers use explicit registries such
+as `RuntimeRuleRegistry`. Action-specific systems may own narrower registries:
 Campaign plans author side/window-scoped options in
 `gameplay/actions/CampaignPlans.scala`; other bounded actions use exact-ID
 classifications beside their rule modules.
 
 Order is explicit: priority, stable source key, then handler ID unless the
-owning procedure defines a stricter printed order. Coast replacement, Pass
-restriction, and Island/Mountain cost modifiers are the canonical Travel
-example.
+owning procedure defines a stricter printed order.
 
-Typed outcomes may allow or block, alter costs, create a decision boundary, or
-author an owning action's effect. They are not generic scripts. Reserved effect
-forms reject until both a registered handler and a window-specific executor
-exist.
+Terrain travel no longer runs through `RuntimeRuleRegistry` (Phase 4): the
+travel path was cost-only with zero core-operation coupling, so it migrated
+onto power windows. Terrain site powers under
+`gameplay/powers/travel/TravelCostWindow.scala` declare typed cost facts; the
+window fold computes the route (coast route, Island/Mountain destination
+modifiers) from those facts, and a generic `SuppressionRegistry` expresses
+"Coast ignores Island/Mountain/Pass on a coast route". Narrow Pass is a power
+holding a restriction body evaluated by Travel legality against a simulated
+pawn move; `RuntimeRuleRegistry` is now an empty stub retained only for
+Negotiation's explicit blocking boundary, and Wake take-wealth rules live under
+`gameplay/phases/TakeWealthRules.scala`.
+
+Typed outcomes may allow or block, or report an unsupported relevant handler.
+They are not generic scripts; reserved effect forms reject until both a
+registered handler and a window-specific executor exist. The retired
+`ModifyCost`/`RequireDecision`/`PostActionEffect` outcome forms were removed
+with the travel registry path in Phase 4 — cost modification now runs through
+typed power contributions instead of typed-rule outcomes.
 
 ## Commands, projection, and replay
 
@@ -70,13 +82,14 @@ authoritative state. Empty option sets skip the modifier stage; the frontend
 selection model nevertheless preserves click order, keyboard reordering, and
 clears stale drafts when context, candidates, or preview identity changes.
 
-The runtime is connected to Travel, Search, Campaign, Muster, Trade, Forge,
+The runtime is connected to Search, Campaign, Muster, Trade, Forge,
 Recover, and Challenge plus Wake, Rest, card-play, and post-action windows; reviewed
 Negotiation definitions are indexed for its existing explicit blocking boundary.
 It does not
-replace action ownership: Travel still resolves automatic Coast/Island/
-Mountain/Pass topology, Campaign retains its later attacker/defender/bandit
-battle-plan windows, and Economy target choice remains an explicit confirm.
+replace action ownership: Travel cost resolves through the TravelCost window
+fold (typed terrain facts + suppression), Campaign retains its later
+attacker/defender/bandit battle-plan windows, and Economy target choice remains
+an explicit confirm.
 `PowerRuntime` translates precise resolver results into the current command and
 durable-event shapes. The legacy central classification switch has been removed;
 stable request and diagnostic protocol labels live separately in

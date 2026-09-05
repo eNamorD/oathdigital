@@ -22,6 +22,7 @@ oathdigital/gameplay/
     FirstGameSetup.scala
   phases/
     Wake.scala
+    TakeWealthRules.scala
     Rest.scala
   actions/
     Travel.scala
@@ -67,6 +68,9 @@ never reads `rulesText`.
 `RuleResolution` supplies shared source, activation, ordering, query, and
 outcome vocabulary. Specialized registries such as Campaign plans remain in
 their owning module when their windows/effects are action-specific.
+`RuntimeRuleRegistry` is an empty stub kept for Negotiation's blocking
+boundary; the terrain travel path lives on TravelCost window powers under
+`powers/travel/` (see `docs/architecture/rule-resolution.md`).
 
 ## One legality path
 
