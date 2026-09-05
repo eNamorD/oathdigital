@@ -164,7 +164,7 @@ object CardPlay {
     val kept = Some(CoreMove(
       Piece.Card(id), from, PositionedLocation(Location.Site(siteId)),
       resultingOrientation = Some(Orientation.FaceUp)))
-    val gain = math.min(1, ready.banks.favor.getOrElse(suit, 0))
+    val gain = SupplyResource.favor(ready.banks.favor.getOrElse(suit, 0), 1)
     val favor = if (gain == 1)
       Vector(Gain.Favor(player.player, suit, 1)) else Vector.empty
     val site = PositionedLocation(Location.Site(siteId))
