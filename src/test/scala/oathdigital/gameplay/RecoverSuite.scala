@@ -9,8 +9,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.{CostDisposition, ResourceCost,
-  ResourceKind}
+import oathdigital.gameplay.operations.Cost
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 
 class RecoverSuite extends munit.FunSuite {
@@ -189,9 +188,7 @@ class RecoverSuite extends munit.FunSuite {
     }
     rejects(valid.copy(powerId = PowerId("denizen.relic-worship")))
     rejects(valid.copy(source = source.copy(id = DenizenId("wrong"))))
-    rejects(valid.copy(payment = valid.payment.copy(costs = Vector(ResourceCost(
-      ResourceKind.Secret, actor.board.faceUpSecrets + 1,
-      CostDisposition.PlaceOnSource)))))
+    rejects(valid.copy(cost = Cost(secret = actor.board.faceUpSecrets + 1)))
     rejects(valid.copy(placement = valid.placement.copy(
       relicId = RelicId("wrong"))))
     val wake = Ready(ready.copy(game = ready.game.copy(current =

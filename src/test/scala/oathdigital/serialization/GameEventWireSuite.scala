@@ -9,8 +9,7 @@ import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, Wak
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
   RelicRecovered}
-import oathdigital.gameplay.operations.{CostDisposition, Payment, RelicPlacement,
-  ResourceCost, ResourceKind}
+import oathdigital.gameplay.operations.{Cost, RelicPlacement}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
@@ -259,10 +258,7 @@ class GameEventWireSuite extends munit.FunSuite {
     val events = Vector[OathEvent](
       CatacombsResolved(PlayerId("red"), DecisionId("recover-1"),
         PowerId("denizen.catacombs"), RuleSourceRef.SiteCard(SiteId("site"),
-          DenizenId("201")), Payment(PlayerId("red"),
-          RuleSourceRef.SiteCard(SiteId("site"), DenizenId("201")),
-          Vector(ResourceCost(ResourceKind.Secret, 1,
-            CostDisposition.PlaceOnSource))),
+          DenizenId("201")), Cost(secret = 1),
         RelicPlacement(PlayerId("red"), RelicId("relic"), SiteId("site"),
           Orientation.FaceDown)),
       RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
@@ -280,11 +276,11 @@ class GameEventWireSuite extends munit.FunSuite {
     tampered(1)("payload")("dice")(0) = "opaque-integer"
     assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
     val malformedCost = ujson.read(encoded).arr
-    malformedCost(0)("payload")("costs")(0)("amount") = 0
+    malformedCost(0)("payload")("cost")("secret") = -1
     assert(GameEventWire.decodeStream(ujson.write(malformedCost)).isLeft)
-    val malformedDisposition = ujson.read(encoded).arr
-    malformedDisposition(0)("payload")("costs")(0)("disposition") = "lose"
-    assert(GameEventWire.decodeStream(ujson.write(malformedDisposition)).isLeft)
+    val malformedBurn = ujson.read(encoded).arr
+    malformedBurn(0)("payload")("cost")("favorBurnt") = "lose"
+    assert(GameEventWire.decodeStream(ujson.write(malformedBurn)).isLeft)
     Vector("gameplay.costs-paid", "gameplay.relic-placed-at-site").foreach {
       eventType =>
         val injected = ujson.read(encoded).arr

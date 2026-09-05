@@ -3,8 +3,7 @@ package oathdigital.serialization
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.operations.{CostDisposition, Payment,
-  RelicPlacement, ResourceCost, ResourceKind}
+import oathdigital.gameplay.operations.{Cost, RelicPlacement}
 
 private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._
@@ -86,15 +85,12 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "playerId" -> player.value, "decisionId" -> decision.value,
         "siteId" -> site.value, "supplySpent" -> spent,
         "dice" -> ujson.Arr.from(dice.map(face => ujson.Str(encodeDefenseFace(face)))))
-      case CatacombsResolved(player, decision, power, source, payment,
+      case CatacombsResolved(player, decision, power, source, cost,
           placement) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
         "powerId" -> power.value, "source" -> source.stableKey,
-        "paymentPlayerId" -> payment.playerId.value,
-        "paymentSource" -> payment.source.stableKey,
-        "costs" -> ujson.Arr.from(payment.costs.map(cost => ujson.Obj(
-          "resource" -> cost.resource.key, "amount" -> cost.amount,
-          "disposition" -> cost.disposition.key))),
+        "cost" -> ujson.Obj("favor" -> cost.favor, "secret" -> cost.secret,
+          "favorBurnt" -> cost.favorBurnt, "secretBurnt" -> cost.secretBurnt),
         "placementPlayerId" -> placement.playerId.value,
         "relicId" -> placement.relicId.value,
         "siteId" -> placement.siteId.value,
@@ -271,25 +267,17 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
             case _ => Left(InvalidValue(s"$path.source",
               "Catacombs source must be a site card"))
           }
-          paymentSource <- RuleSourceRef.parse(payload("paymentSource").str)
-            .toRight(InvalidValue(s"$path.paymentSource", "unknown rule source"))
-          costs <- traverse(payload("costs").arr.toVector) { value => for {
-            resource <- value("resource").str match {
-              case "favor" => Right(ResourceKind.Favor)
-              case "secret" => Right(ResourceKind.Secret)
-              case other => Left(InvalidValue(s"$path.costs.resource",
-                s"unknown resource '$other'"))
-            }
-            disposition <- value("disposition").str match {
-              case "place-on-source" => Right(CostDisposition.PlaceOnSource)
-              case "burn" => Right(CostDisposition.Burn)
-              case other => Left(InvalidValue(s"$path.costs.disposition",
-                s"unknown cost disposition '$other'"))
-            }
-            amount <- safeIntField(value.obj, "amount", s"$path.costs")
-            _ <- Either.cond(amount > 0, (), InvalidValue(
-              s"$path.costs.amount", "must be positive"))
-          } yield ResourceCost(resource, amount, disposition) }
+          costFavor <- safeIntField(payload("cost").obj, "favor", s"$path.cost")
+          costSecret <- safeIntField(payload("cost").obj, "secret", s"$path.cost")
+          costFavorBurnt <- safeIntField(payload("cost").obj, "favorBurnt",
+            s"$path.cost")
+          costSecretBurnt <- safeIntField(payload("cost").obj, "secretBurnt",
+            s"$path.cost")
+          cost <- Either.cond(
+            costFavor >= 0 && costSecret >= 0 && costFavorBurnt >= 0 &&
+              costSecretBurnt >= 0, Cost(costFavor, costSecret,
+                costFavorBurnt, costSecretBurnt),
+            InvalidValue(s"$path.cost", "cost fields must be non-negative"))
           orientation <- payload("orientation").str match {
             case "faceup" => Right(Orientation.FaceUp)
             case "facedown" => Right(Orientation.FaceDown)
@@ -298,8 +286,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           }
         } yield CatacombsResolved(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), PowerId(payload("powerId").str),
-          siteSource, Payment(PlayerId(payload("paymentPlayerId").str),
-            paymentSource, costs),
+          siteSource, cost,
           RelicPlacement(PlayerId(payload("placementPlayerId").str),
             RelicId(payload("relicId").str), SiteId(payload("siteId").str),
             orientation))

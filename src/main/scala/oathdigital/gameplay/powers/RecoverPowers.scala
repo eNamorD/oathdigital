@@ -24,8 +24,10 @@ object RecoverPowers {
   object E17Ruined extends ReviewedPower("edifice.e17.ruined", modifier,
     Vector(ReviewedHandler.automatic(PowerWindow.RecoverBeforeFirstRoll)))
 
-  private val catacombsCost = Vector(ResourceCost(ResourceKind.Secret, 1,
-    CostDisposition.PlaceOnSource))
+  private val catacombsCost = Cost(secret = 1)
+
+  private def catacombsPlacedAt(source: RuleSourceRef.SiteCard): Location =
+    Location.OnCard(source.id)
 
   private val catacombsInspector = PowerInspector.partial {
     case context @ PowerContext(_, _, facts: ReviewedPowerFacts) =>
@@ -37,8 +39,9 @@ object RecoverPowers {
           facts.sources.get(source).exists(_.powerIds.contains(catacombsId)) &&
             site.exists(value => definition.exists(d =>
               value.relics.size < d.relicSlots)) &&
-            PayCosts.affordable(facts.ready, facts.actor, source,
-              catacombsCost) && DrawTopRelic.plan(facts.ready).isRight
+            Costs.affordable(facts.ready, facts.actor,
+              catacombsPlacedAt(source), catacombsCost) &&
+            DrawTopRelic.plan(facts.ready).isRight
         case _ => false
       })
       reviewed.copy(applicable = applicable)
@@ -58,11 +61,12 @@ object RecoverPowers {
       case _ => Left(OathViolation.InvalidModifierInvocation(
         "Catacombs is not currently applicable"))
     }
-    paid <- PayCosts.plan(input.ready, input.actor, siteSource, catacombsCost)
+    paid <- Costs.plan(input.ready, input.actor,
+      catacombsPlacedAt(siteSource), catacombsCost)
     placed <- PlaceRelicAtSite.plan(input.catalog, input.ready, input.actor,
       input.drawnRelic, siteSource.siteId, Orientation.FaceDown)
   } yield OathEvent.CatacombsResolved(input.actor, input.decision,
-    catacombsId, siteSource, paid, placed)
+    catacombsId, siteSource, paid.cost, placed)
 
   private def canonicalCatacombs(
       catalog: oathdigital.catalog.ExecutableCatalog, ready: ReadyGame,
@@ -77,21 +81,22 @@ object RecoverPowers {
       case _ => Left(OathViolation.InvalidEventOrder(
         "Catacombs is not applicable at Recover before-first-roll"))
     }
-    expectedPayment <- PayCosts.plan(ready, resolved.playerId,
-      resolved.source, catacombsCost)
+    expectedPayment <- Costs.plan(ready, resolved.playerId,
+      catacombsPlacedAt(resolved.source), catacombsCost)
     expectedPlacement <- PlaceRelicAtSite.plan(catalog, ready,
       resolved.playerId, resolved.placement.relicId,
       resolved.source.siteId, Orientation.FaceDown)
-  } yield resolved.copy(payment = expectedPayment,
-    placement = expectedPlacement)
+    _ <- Either.cond(expectedPayment.cost == resolved.cost, (),
+      OathViolation.InvalidEventOrder("recorded Catacombs cost does not match"))
+  } yield resolved.copy(placement = expectedPlacement)
 
   private val catacombsExecution =
     RecoverPowerHandler.operationBackedSelected[OathEvent.CatacombsResolved](
       catacombsId, PowerWindow.RecoverBeforeFirstRoll, catacombsInspector, {
         case event: OathEvent.CatacombsResolved => event
       })(prepareCatacombs, canonicalCatacombs, event =>
-        PowerOperationPlanner.payment(event.payment).map(
-          _ :+ PowerOperationPlanner.placement(event.placement)))
+        Right(Vector(PayCost(event.playerId, catacombsPlacedAt(event.source),
+          event.cost)) :+ PowerOperationPlanner.placement(event.placement)))
 
   object Catacombs extends Power {
     val id = catacombsId
