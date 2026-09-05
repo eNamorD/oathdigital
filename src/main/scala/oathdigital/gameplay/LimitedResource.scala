@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
-/** Plan-time clamps for supply-capped effects. "As much as possible" is
-  * resolved here, before an exact operation is built, so the executor never
-  * needs a best-effort mode (engine redesign decision 3). `clamp` bounds a
+/** Plan-time clamps for supply-capped effects. `clamp` bounds a
   * requested amount of a limited resource (for example favor held in a suit
   * bank) by what is actually available.
   */
