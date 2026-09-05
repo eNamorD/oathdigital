@@ -121,25 +121,32 @@ class TravelSuite extends munit.FunSuite {
   test("Pass permits itself and actor rule but blocks bandits and consent") {
     val blocked = act()
     val player = active(blocked)
-    assert(TravelRules.cost(catalog, blocked, player,
-      player.pawnSite.get, blocked.game.current.map.provinces.head)
-      .left.toOption.get.isInstanceOf[TravelPassBlocked])
+    val destination = blocked.game.current.map.provinces.head
+    assertEquals(TravelRules.cost(catalog, blocked, player,
+      player.pawnSite.get, destination).left.toOption.map(_.toString),
+      None, "cost is pure and never pass-gates")
     assert(TravelRules.cost(catalog, blocked, player,
       player.pawnSite.get, pass).isRight)
+    assertEquals(rules.handle(Ready(blocked), TravelCommand.Travel(
+      player.player, destination)).left.toOption.get,
+      TravelPassBlocked(pass, destination))
 
     val ruled = act(passForces = SiteForces.Occupied(
       ForceKind.Exile(player.lineage), 1))
     val ruledPlayer = active(ruled)
     assert(TravelRules.cost(catalog, ruled, ruledPlayer,
       ruledPlayer.pawnSite.get, ruled.game.current.map.provinces.head).isRight)
+    assert(rules.handle(Ready(ruled), TravelCommand.Travel(
+      ruledPlayer.player, ruled.game.current.map.provinces.head)).isRight)
 
     val other = blocked.game.current.players.find(_.player != player.player).get
     val consent = act(passForces = SiteForces.Occupied(
       ForceKind.Exile(other.lineage), 1))
     val consentPlayer = active(consent)
-    assertEquals(TravelRules.cost(catalog, consent, consentPlayer,
-      consentPlayer.pawnSite.get, consent.game.current.map.provinces.head)
-      .left.toOption.get, TravelConsentUnsupported(pass, other.player))
+    assertEquals(rules.handle(Ready(consent), TravelCommand.Travel(
+      consentPlayer.player, consent.game.current.map.provinces.head))
+      .left.toOption.get, TravelPassBlocked(pass,
+        consent.game.current.map.provinces.head))
   }
 
   test("Travel atomically spends Supply moves pawn and remains in Act") {

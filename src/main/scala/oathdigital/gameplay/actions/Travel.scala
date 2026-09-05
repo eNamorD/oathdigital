@@ -11,6 +11,8 @@ import GameStateUpdates.updateCurrent
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
   Location, Move => CoreMove,
   OperationPipeline, OperationPolicy, Piece, PositionedLocation}
+import oathdigital.gameplay.powers.travel.{TravelCostLegality,
+  TravelCostWindow}
 
 sealed trait TravelCommand extends Product with Serializable
 object TravelCommand {
@@ -31,17 +33,20 @@ object Travel {
       OathLifecycle.validateAct(state, playerId).flatMap { ready =>
         val player = ready.game.current.players.find(_.player == playerId).get
         player.pawnSite.toRight(PawnSiteMissing(playerId)).flatMap { source =>
-          TravelRules.cost(catalog, ready, player, source, destination)
-            .flatMap { cost =>
-              if (player.board.supply.supply < cost)
-                Left(InsufficientSupply(cost, player.board.supply.supply))
-              else transition(
-                catalog,
-                state,
-                Vector(Traveled(playerId, source, destination, cost)),
-                ActActionSelection(playerId)
-              )
-            }
+          for {
+            cost <- TravelRules.cost(catalog, ready, player, source, destination)
+            _ <- TravelLegality.check(catalog, ready, player, source,
+              destination)
+            _ <- if (player.board.supply.supply < cost)
+              Left(InsufficientSupply(cost, player.board.supply.supply))
+            else Right(())
+            transition <- transition(
+              catalog,
+              state,
+              Vector(Traveled(playerId, source, destination, cost)),
+              ActActionSelection(playerId)
+            )
+          } yield transition
         }
       }
   }
@@ -56,14 +61,19 @@ object Travel {
       player.pawnSite.toRight(PawnSiteMissing(event.playerId)).flatMap { source =>
         if (source != event.sourceSiteId)
           Left(TravelSourceMismatch(source, event.sourceSiteId))
-        else TravelRules.cost(
-          catalog, ready, player, source, event.destinationSiteId
-        ).flatMap { expected =>
-          if (expected != event.supplySpent)
+        else for {
+          expected <- TravelRules.cost(
+            catalog, ready, player, source, event.destinationSiteId
+          )
+          _ <- if (expected != event.supplySpent)
             Left(TravelCostMismatch(expected, event.supplySpent))
-          else if (player.board.supply.supply < expected)
+          else Right(())
+          _ <- TravelLegality.check(catalog, ready, player, source,
+            event.destinationSiteId)
+          _ <- if (player.board.supply.supply < expected)
             Left(InsufficientSupply(expected, player.board.supply.supply))
-          else OperationPipeline.run(
+          else Right(())
+          execution <- OperationPipeline.run(
             ready,
             Vector[CoreOperation](
               CoreMove(
@@ -74,8 +84,8 @@ object Travel {
               AdjustSupply(event.playerId, -expected)
             ),
             operationAllowlist
-          )(Right(_)).map(execution => Ready(execution))
-        }
+          )(Right(_))
+        } yield Ready(execution)
       }
     }
 
@@ -103,7 +113,9 @@ object TravelRules {
   ): Vector[(SiteId, Int)] =
     player.pawnSite.toVector.flatMap(source =>
       ready.game.current.map.inPlay.flatMap(destination =>
-        cost(catalog, ready, player, source, destination).toOption
+        TravelLegality.check(catalog, ready, player, source, destination)
+          .flatMap(_ => cost(catalog, ready, player, source, destination))
+          .toOption
           .filter(_ <= player.board.supply.supply)
           .map(destination -> _)))
 
@@ -120,9 +132,9 @@ object TravelRules {
       from <- map.regionOf(source).toRight(SiteNotInPlay(source))
       to <- map.regionOf(destination).toRight(SiteNotInPlay(destination))
       _ <- if (source == destination) Left(SameTravelSite(source)) else Right(())
-      sourceDefinition <- catalog.sites.find(_.id == source)
+      _ <- catalog.sites.find(_.id == source)
         .toRight(SiteNotInPlay(source))
-      destinationDefinition <- catalog.sites.find(_.id == destination)
+      _ <- catalog.sites.find(_.id == destination)
         .toRight(SiteNotInPlay(destination))
       base = (from, to) match {
         case (Region.Cradle, Region.Cradle) => 1
@@ -133,9 +145,8 @@ object TravelRules {
         case (Region.Hinterland, Region.Provinces) => 2
         case (Region.Hinterland, Region.Hinterland) => 3
       }
-      resolved <- resolveTravel(catalog, ready, player, source, destination,
-        from, to, base, sourceDefinition.handlers, destinationDefinition.handlers)
-    } yield resolved
+    } yield TravelCostWindow.fold(
+      catalog, ready, source, destination, base)
   }
 
   def validateSupportedState(
@@ -155,66 +166,19 @@ object TravelRules {
       case None => PowerRuntime.requireAudited(catalog)
     }
   }
+}
 
-  private def resolveTravel(
+/** Travel-bound legality wrapper (Q53): Narrow Pass restrictions run only for
+  * the Travel action, so a Campaign Raid pawn move never triggers them.
+  */
+object TravelLegality {
+  def check(
       catalog: ExecutableCatalog,
       ready: ReadyGame,
       player: PlayerState,
       source: SiteId,
-      destination: SiteId,
-      from: Region,
-      to: Region,
-      baseCost: Int,
-      sourceHandlers: Vector[String],
-      destinationHandlers: Vector[String]
-  ): Either[OathViolation, Int] = {
-    val registry = RuntimeRuleRegistry.default
-    def handlersWithRole(
-        handlers: Vector[String],
-        roles: Set[TravelModifierKind]
-    ): Vector[String] = handlers.filter(id =>
-      registry.lookup(id).flatMap(_.travelModifierKind).exists(roles))
-    def activations(
-        id: SiteId,
-        handlers: Vector[String],
-        roles: Set[TravelModifierKind],
-        priority: Int
-    ) = handlersWithRole(handlers, roles).map(RuleActivation(
-      RuleSourceRef.Site(id), _, priority))
-    val coastRoute = handlersWithRole(sourceHandlers,
-      Set(TravelModifierKind.Coast)).nonEmpty && handlersWithRole(
-      destinationHandlers, Set(TravelModifierKind.Coast,
-        TravelModifierKind.Island)
-    ).nonEmpty
-    val passActivations = if (coastRoute || from == to) Vector.empty else
-      ready.game.current.map.inPlay.flatMap { id =>
-        if (ready.game.current.map.regionOf(id).contains(to) && id != destination)
-          catalog.sites.find(_.id == id).toVector.flatMap(definition =>
-            activations(id, definition.handlers,
-              Set(TravelModifierKind.Pass), 10))
-        else Vector.empty
-      }
-    val active = if (coastRoute)
-      activations(source, sourceHandlers, Set(TravelModifierKind.Coast), 0)
-    else passActivations ++
-      activations(destination, destinationHandlers,
-        Set(TravelModifierKind.Island, TravelModifierKind.Mountain), 20)
-    val context = RuleQueryContext.Travel(
-      ready, player, source, destination, from, to, baseCost)
-    registry.resolve(active, context).foldLeft[
-      Either[OathViolation, Int]](Right(baseCost)) {
-      case (failure @ Left(_), _) => failure
-      case (Right(cost), ResolvedRule(_, RuleOutcome.Allow)) => Right(cost)
-      case (_, ResolvedRule(_, RuleOutcome.Block(value))) => Left(value)
-      case (Right(cost), ResolvedRule(_, RuleOutcome.ModifyCost(value, false))) =>
-        Right(cost + value)
-      case (_, ResolvedRule(_, RuleOutcome.ModifyCost(value, true))) => Right(value)
-      case (_, ResolvedRule(_, RuleOutcome.RequireDecision(decision))) =>
-        Left(UnsupportedTravelState(s"decision ${decision.decision.value} required"))
-      case (Right(cost), ResolvedRule(_, RuleOutcome.PostActionEffect(_))) =>
-        Right(cost)
-      case (_, ResolvedRule(_, RuleOutcome.UnsupportedRelevantRule(handler))) =>
-        Left(UnsupportedTravelState(s"unsupported active handler $handler"))
-    }
-  }
+      destination: SiteId
+  ): Either[OathViolation, Unit] =
+    TravelCostLegality.blocked(catalog, ready, player.player, source,
+      destination).toLeft(())
 }
