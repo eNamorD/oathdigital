@@ -56,6 +56,22 @@ semantics; whole-batch aggregation stays available via `report`). Commits:
 `9fe5bba` (shape extraction), `d9c410c` (pipeline + migration). Plan:
 `docs/superpowers/plans/2026-09-04-engine-redesign-phase-3.md`.
 
+**Phase 4 — Terrain migration: DONE** on `feat/engine-redesign`. Travel cost
+runs on TravelCost window powers under `gameplay/powers/travel/`: terrain site
+powers carry typed cost facts (`TravelCostTerrainPower` sub-trait, no new
+handler method); the powers-owned `TravelCostWindow` fold computes the route
+(coast route replaces to 1, Island/Mountain add at the destination) and consults
+a generic `SuppressionRegistry` for "Coast ignores Island/Mountain/Pass". Narrow
+Pass is a power holding a restriction body; `TravelRules.cost` is pure cost and
+a separate Travel legality evaluates the pass restriction against a simulated
+pawn move, decoding to the single `TravelPassBlocked` violation
+(`TravelConsentUnsupported` deleted). `RuntimeRuleRegistry` travel machinery and
+travel-only typed-rule types deleted; `RuntimeRuleRegistry` is an empty stub for
+Negotiation; `TakeWealthRules` moved to the Wake phase module. Commits:
+`83e5f2c` (contributions + suppression registry), `33fea9b` (terrain powers +
+fold + pass legality), `9a39b71` (delete travel machinery, stub, TakeWealth
+move). Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-4.md`.
+
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
