@@ -61,12 +61,12 @@ object RecoverPowers {
       case _ => Left(OathViolation.InvalidModifierInvocation(
         "Catacombs is not currently applicable"))
     }
-    paid <- Costs.plan(input.ready, input.actor,
+    payCost <- Costs.plan(input.ready, input.actor,
       catacombsPlacedAt(siteSource), catacombsCost)
     placed <- PlaceRelicAtSite.plan(input.catalog, input.ready, input.actor,
       input.drawnRelic, siteSource.siteId, Orientation.FaceDown)
   } yield OathEvent.CatacombsResolved(input.actor, input.decision,
-    catacombsId, siteSource, paid.cost, placed)
+    catacombsId, siteSource, payCost.cost, placed)
 
   private def canonicalCatacombs(
       catalog: oathdigital.catalog.ExecutableCatalog, ready: ReadyGame,
@@ -81,12 +81,12 @@ object RecoverPowers {
       case _ => Left(OathViolation.InvalidEventOrder(
         "Catacombs is not applicable at Recover before-first-roll"))
     }
-    expectedPayment <- Costs.plan(ready, resolved.playerId,
+    expectedCost <- Costs.plan(ready, resolved.playerId,
       catacombsPlacedAt(resolved.source), catacombsCost)
     expectedPlacement <- PlaceRelicAtSite.plan(catalog, ready,
       resolved.playerId, resolved.placement.relicId,
       resolved.source.siteId, Orientation.FaceDown)
-    _ <- Either.cond(expectedPayment.cost == resolved.cost, (),
+    _ <- Either.cond(expectedCost.cost == resolved.cost, (),
       OathViolation.InvalidEventOrder("recorded Catacombs cost does not match"))
   } yield resolved.copy(placement = expectedPlacement)
 

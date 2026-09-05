@@ -116,8 +116,9 @@ object Search {
     }
 
   /** Draws the recorded cards top-first from the authoritative source into the
-    * actor's temporary hand. Supply, Visions Drawn, and the pending Search
-    * procedure remain direct updates.
+    * actor's temporary hand. Supply is spent by an AdjustSupply operation in
+    * the Search batch; Visions Drawn and the pending Search procedure remain
+    * direct updates.
     */
   private def drawOperation(event: SearchStarted): CoreOperation = Draw(
     event.playerId,

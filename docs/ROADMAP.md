@@ -40,7 +40,8 @@ across powers (Catacombs) and Economy Muster/Trade; old `Payment`/`PayCosts`/
 executor-backed ops (Travel/Search/Economy); procedural supply writes stay
 module-authoritative. Commits: `99fedae` (clamp helper), `950a70a`
 (Cost/PayCost), `300e002` (Catacombs), `8bd5391` (AdjustSupply),
-`f8a8bb5` (Economy). Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-2.md`.
+`f8a8bb5` (Economy), `1947860` (docs), `9f10da8` (LimitedResource rename).
+Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-2.md`.
 
 ## Next
 
