@@ -118,6 +118,16 @@ final case class FlipSecrets(player: PlayerId, amount: Int,
   require(from != to, "secret flip must change side")
 }
 
+/** Changes a player's spendable Supply. Negative amounts spend (an
+  * insufficient track is an OperationError.InsufficientSupply), positive
+  * amounts gain up to SupplyTrack.Maximum. Rest's refresh-to-value stays a
+  * non-delta write in the Rest phase.
+  */
+final case class AdjustSupply(player: PlayerId, amount: Int)
+    extends PrimitiveOperation {
+  require(amount != 0, "supply adjustment must be non-zero")
+}
+
 /** Moves favor or secrets to the shared bank. */
 sealed trait Burn extends CoreOperation {
   def resource: Piece.Counted

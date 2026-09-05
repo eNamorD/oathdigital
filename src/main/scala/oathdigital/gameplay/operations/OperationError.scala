@@ -38,6 +38,13 @@ object OperationError {
       s"${locationSummary(location)} contains $available of requested ${pieceSummary(piece)}"
   }
 
+  final case class InsufficientSupply(required: Int, available: Int)
+      extends OperationError {
+    override val code: String = "insufficient-supply"
+    override val detail: String =
+      s"a supply spend of $required exceeds the $available available"
+  }
+
   final case class IncompatibleLocation(piece: Piece, location: Location)
       extends OperationError {
     override val code: String = "incompatible-location"

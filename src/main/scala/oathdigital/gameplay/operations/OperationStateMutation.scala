@@ -505,7 +505,26 @@ private[operations] object OperationStateMutation {
         result.flatMap(flipPlayerSecrets(_, player, amount, from, to))
       case (result, Peek(viewer, id, at)) =>
         result.flatMap(peek(_, viewer, id, at))
+      case (result, AdjustSupply(player, amount)) =>
+        result.flatMap(adjustSupply(_, player, amount))
       case (result, _) => result
+    }
+
+  private def adjustSupply(ready: ReadyGame, player: PlayerId,
+      amount: Int): Either[OperationError, ReadyGame] =
+    playerState(ready, player).flatMap { state =>
+      val current = state.board.supply.supply
+      if (amount < 0) {
+        val required = -amount
+        Either.cond(current >= required, (), InsufficientSupply(
+          required, current)).flatMap { _ =>
+          updatePlayer(ready, player)(value => value.copy(
+            board = value.board.copy(supply = SupplyTrack(current - required))))
+        }
+      } else
+        updatePlayer(ready, player)(value => value.copy(
+          board = value.board.copy(supply = SupplyTrack(math.min(
+            SupplyTrack.Maximum, current + amount)))))
     }
 
   private def flipCard(ready: ReadyGame, id: CardId, at: Location,

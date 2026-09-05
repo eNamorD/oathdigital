@@ -19,6 +19,8 @@ private[gameplay] object TravelOperationPolicy extends OperationPolicy {
           actor.pawnSite.contains(source) && source != destination &&
           ready.game.current.map.inPlay.contains(source) &&
           ready.game.current.map.inPlay.contains(destination))
+      case AdjustSupply(player, amount) if amount < 0 =>
+        ready.game.current.turn.activePlayer == player
       case _ => false
     },
     (),

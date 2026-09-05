@@ -10,7 +10,8 @@ import oathdigital.gameplay.OathViolation._
 
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
-import oathdigital.gameplay.operations.{CardDeck, CoreOperation, Draw,
+import oathdigital.gameplay.operations.{AdjustSupply, CardDeck,
+  CoreOperation, Draw,
   Location, OperationExecutor, OperationPolicy, OperationTransaction}
 
 sealed trait SearchCommand extends Product with Serializable
@@ -94,19 +95,16 @@ object Search {
         _ <- if (player.board.supply.supply >= cost) Right(()) else
           Left(InsufficientSupply(cost, player.board.supply.supply))
         operation = drawOperation(event)
+        operations = Vector[CoreOperation](operation,
+          AdjustSupply(event.playerId, -cost))
         executor = new OperationExecutor(OperationPolicy.exact(
-          Vector(operation), "Search semantic root is not permitted"))
+          operations, "Search semantic root is not permitted"))
         execution <- OperationTransaction.evolve(
-          ready, Vector(operation), executor) { evolved =>
+          ready, operations, executor) { evolved =>
           val visions = if (event.source == SearchSource.WorldDeck &&
             event.drawn.exists(_.isInstanceOf[VisionId])) 1 else 0
           Right(updateCurrent(evolved) { existing =>
             existing.copy(
-              players = existing.players.map { candidate =>
-                if (candidate.player != event.playerId) candidate else
-                  candidate.copy(board = candidate.board.copy(
-                    supply = SupplyTrack(candidate.board.supply.supply - cost)))
-              },
               tracks = existing.tracks.copy(
                 visionsDrawn = existing.tracks.visionsDrawn + visions),
               pending = Some(PendingProcedure.Search(

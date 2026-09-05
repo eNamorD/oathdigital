@@ -8,7 +8,8 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import GameStateUpdates.updateCurrent
-import oathdigital.gameplay.operations.{Location, Move => CoreMove,
+import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
+  Location, Move => CoreMove,
   OperationExecutor, OperationTransaction, Piece, PositionedLocation}
 
 sealed trait TravelCommand extends Product with Serializable
@@ -64,22 +65,16 @@ object Travel {
             Left(InsufficientSupply(expected, player.board.supply.supply))
           else OperationTransaction.evolve(
             ready,
-            Vector(CoreMove(
-              Piece.Pawn(event.playerId),
-              PositionedLocation(Location.Site(event.sourceSiteId)),
-              PositionedLocation(Location.Site(event.destinationSiteId))
-            )),
+            Vector[CoreOperation](
+              CoreMove(
+                Piece.Pawn(event.playerId),
+                PositionedLocation(Location.Site(event.sourceSiteId)),
+                PositionedLocation(Location.Site(event.destinationSiteId))
+              ),
+              AdjustSupply(event.playerId, -expected)
+            ),
             operationExecutor
-          ) { moved =>
-            Right(updateCurrent(moved) { existing =>
-              existing.copy(players = existing.players.map { candidate =>
-                if (candidate.player != event.playerId) candidate
-                else candidate.copy(board = candidate.board.copy(
-                  supply = SupplyTrack(
-                    candidate.board.supply.supply - expected)))
-              })
-            })
-          }.map(execution => Ready(execution))
+          )(Right(_)).map(execution => Ready(execution))
         }
       }
     }
