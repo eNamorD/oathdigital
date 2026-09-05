@@ -295,6 +295,17 @@ Vision container orientation, and verify every current force kind against its
 bounded supply. Executor results are internal state and are neither serialized
 nor projected.
 
+The operation engine is split three ways (Phase 3): `OperationValidator`
+owns every pre-execution check (op shape, per-action `OperationPolicy`
+allowlist, and a restriction registry filled in Phase 5) and reports
+aggregated `OperationReason`s; `OperationExecutor` is raw mutation only —
+it applies a validated batch and holds no policy or invariant; and
+`OperationPipeline` is the sole orchestrator, assembling the validator per
+run from the action's allowlist + per-query restrictions, running the
+staged per-op validation fold, then the module `update` and the
+`OperationStateInvariant` post-checks. `OperationTransaction` no longer
+exists; replay behavior is unchanged.
+
 Supply-capped "as much as possible" effects are resolved at plan time with
 `LimitedResource.clamp` — the executor has no best-effort/requireExact mode.
 Payments are typed with `Cost(favor, secret, favorBurnt, secretBurnt)` and

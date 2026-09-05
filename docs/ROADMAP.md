@@ -43,6 +43,19 @@ module-authoritative. Commits: `99fedae` (clamp helper), `950a70a`
 `f8a8bb5` (Economy), `1947860` (docs), `9f10da8` (LimitedResource rename).
 Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-2.md`.
 
+**Phase 3 — Validator/executor/pipeline split: DONE** on `feat/engine-redesign`.
+`OperationValidator` owns all pre-execution shape checks (per-op staged +
+whole-batch surfaces, aggregated `OperationReason`s); `OperationExecutor` is
+parameterless raw mutation (no policy/invariant); `OperationPipeline` is the
+sole orchestrator — it assembles the validator per run from the action's
+`OperationPolicy` allowlist + per-query restrictions (registry empty until
+Phase 5), folds staged per-op validation + raw execution, then the module
+`update` and `OperationStateInvariant`; `OperationTransaction` deleted.
+Executed behavior byte-identical (staged per-op fold preserves trajectory
+semantics; whole-batch aggregation stays available via `report`). Commits:
+`9fe5bba` (shape extraction), `d9c410c` (pipeline + migration). Plan:
+`docs/superpowers/plans/2026-09-04-engine-redesign-phase-3.md`.
+
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
