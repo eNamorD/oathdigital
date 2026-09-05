@@ -295,6 +295,17 @@ Vision container orientation, and verify every current force kind against its
 bounded supply. Executor results are internal state and are neither serialized
 nor projected.
 
+Supply-capped "as much as possible" effects are resolved at plan time with
+`SupplyResource.favor` — the executor has no best-effort/requireExact mode.
+Payments are typed with `Cost(favor, secret, favorBurnt, secretBurnt)` and
+applied by the single `PayCost(player, placedAt, cost)` root (zero-cost
+`Cost.free` is an inert no-op); `Costs.plan` is the pre-flight
+affordability/placement validator. Supply spending in executor-backed
+operations is an `AdjustSupply(player, amount)` operation enforced exactly
+against the track; procedural phase/module supply writes (Challenge, Forge,
+Recover, Campaign, and Rest's refresh-to-value) remain module-authoritative
+writes outside op batches.
+
 No gameplay reducer, event codec, or projection uses the executor in phase 3.
 `OperationPolicy.Permissive` exists for executor tests and already-validated
 shadow paths; actor-, catalog-, and power-aware restrictions arrive with each

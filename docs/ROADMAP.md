@@ -31,6 +31,17 @@ clean, fresh bootstrap + command append verified over HTTP. Commits:
 field derefs), `fde3837` (test suites). Next phases get their own plan docs at
 phase start.
 
+**Phase 2 — Cost & supply vocabulary: DONE** on `feat/engine-redesign`. No cap
+flags: supply-capped effects clamp at plan time (`SupplyResource.favor`).
+`Cost(favor, secret, favorBurnt, secretBurnt)` + `PayCost(player, placedAt,
+cost)` (zero-cost `Cost.free` allowed) replace the disposition cost machinery
+across powers (Catacombs) and Economy Muster/Trade; old `Payment`/`PayCosts`/
+`ResourceCost` API deleted. `AdjustSupply` op standardizes supply spending in
+executor-backed ops (Travel/Search/Economy); procedural supply writes stay
+module-authoritative. Commits: `99fedae` (clamp helper), `950a70a`
+(Cost/PayCost), `300e002` (Catacombs), `8bd5391` (AdjustSupply),
+`f8a8bb5` (Economy). Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-2.md`.
+
 ## Next
 
 Work toward a playable all-Exile alpha before expanding into the Empire and
