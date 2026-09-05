@@ -83,8 +83,8 @@ object Economy {
           else for {
             _ <- requireFavor(player, 1)
             _ <- requireSupply(player)
-            evolved <- evolveOperations(ready, recorded.playerId,
-              recorded.supplySpent, musterOperations(recorded, player.lineage))
+            evolved <- evolveOperations(ready,
+              musterOperations(recorded, player.lineage))
           } yield Ready(evolved)
       }
     case recorded: Traded =>
@@ -108,8 +108,7 @@ object Economy {
               case TradeResource.Favor => requireSecrets(player, 1)
               case TradeResource.Secret => requireFavor(player, 2)
             }
-            evolved <- evolveOperations(ready, recorded.playerId,
-              recorded.supplySpent, tradeOperations(recorded))
+            evolved <- evolveOperations(ready, tradeOperations(recorded))
           } yield Ready(evolved)
       }
     case _ => Left(InvalidEventOrder("Economy received a non-Economy event"))
@@ -219,47 +218,37 @@ object Economy {
       event: Mustered,
       lineage: LineageId
   ): Vector[CoreOperation] =
-    Vector(Give(Piece.Favor(1), event.playerId,
-      Location.PlayArea(event.playerId), Location.OnCard(event.target.id))) ++
+    Vector(PayCost(event.playerId, Location.OnCard(event.target.id),
+      Cost(favor = 1))) ++
       Option.when(event.warbandsGained > 0)(Gain.Warbands(
         event.playerId,
         ForceKind.Exile(lineage),
-        event.warbandsGained)).toVector
+        event.warbandsGained)).toVector ++
+      Vector(AdjustSupply(event.playerId, -event.supplySpent))
 
   private def tradeOperations(event: Traded): Vector[CoreOperation] =
     event.resource match {
       case TradeResource.Favor =>
-        Vector(Give(Piece.Secrets(1), event.playerId,
-          Location.PlayArea(event.playerId), Location.OnCard(event.target.id))) ++
+        Vector(PayCost(event.playerId, Location.OnCard(event.target.id),
+          Cost(secret = 1))) ++
           Option.when(event.gained > 0)(Gain.Favor(
-            event.playerId, event.suit, event.gained)).toVector
+            event.playerId, event.suit, event.gained)).toVector ++
+          Vector(AdjustSupply(event.playerId, -event.supplySpent))
       case TradeResource.Secret =>
-        Vector(
-          Give(Piece.Favor(1), event.playerId,
-            Location.PlayArea(event.playerId), Location.OnCard(event.target.id)),
-          Burn.favor(1, PositionedLocation(
-            Location.PlayArea(event.playerId)))) ++
+        Vector(PayCost(event.playerId, Location.OnCard(event.target.id),
+          Cost(favor = 1, favorBurnt = 1))) ++
           Option.when(event.gained > 0)(Gain.Secrets(
-            event.playerId, event.gained)).toVector
+            event.playerId, event.gained)).toVector ++
+          Vector(AdjustSupply(event.playerId, -event.supplySpent))
     }
 
   private def evolveOperations(
       ready: ReadyGame,
-      player: PlayerId,
-      supplySpent: Int,
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] = {
     val executor = new OperationExecutor(OperationPolicy.exact(
       operations, "Economy semantic root is not permitted"))
-    OperationTransaction.evolve(ready, operations, executor) { evolved =>
-      Right(updateCurrent(evolved) { current =>
-        current.copy(players = current.players.map { existing =>
-          if (existing.player != player) existing
-          else existing.copy(board = existing.board.copy(supply = SupplyTrack(
-            existing.board.supply.supply - supplySpent)))
-        })
-      })
-    }
+    OperationTransaction.evolve(ready, operations, executor)(Right(_))
   }
   private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
     card match {
