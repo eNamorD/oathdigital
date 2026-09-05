@@ -296,7 +296,7 @@ bounded supply. Executor results are internal state and are neither serialized
 nor projected.
 
 Supply-capped "as much as possible" effects are resolved at plan time with
-`SupplyResource.favor` — the executor has no best-effort/requireExact mode.
+`LimitedResource.clamp` — the executor has no best-effort/requireExact mode.
 Payments are typed with `Cost(favor, secret, favorBurnt, secretBurnt)` and
 applied by the single `PayCost(player, placedAt, cost)` root (zero-cost
 `Cost.free` is an inert no-op); `Costs.plan` is the pre-flight

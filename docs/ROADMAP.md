@@ -32,7 +32,7 @@ field derefs), `fde3837` (test suites). Next phases get their own plan docs at
 phase start.
 
 **Phase 2 — Cost & supply vocabulary: DONE** on `feat/engine-redesign`. No cap
-flags: supply-capped effects clamp at plan time (`SupplyResource.favor`).
+flags: supply-capped effects clamp at plan time (`LimitedResource.clamp`).
 `Cost(favor, secret, favorBurnt, secretBurnt)` + `PayCost(player, placedAt,
 cost)` (zero-cost `Cost.free` allowed) replace the disposition cost machinery
 across powers (Catacombs) and Economy Muster/Trade; old `Payment`/`PayCosts`/
