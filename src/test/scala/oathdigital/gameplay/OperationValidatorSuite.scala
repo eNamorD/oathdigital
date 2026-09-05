@@ -160,4 +160,74 @@ class OperationValidatorSuite extends munit.FunSuite {
     assert(reasons.exists(_.code == "conflicting-deltas"))
     assertEquals(reasons.filter(_.code == "conflicting-deltas").size, 1)
   }
+
+  test("pipeline rejection matches the first shape reason byte-for-byte") {
+    val corpus = Vector[CoreOperation](
+      Gain.Favor(playerId, Suit.Order, 7),          // insufficient-pieces
+      Gain.Favor(playerId, Suit.Order, 1),          // valid
+      AdjustSupply(playerId, -8),                   // insufficient-supply
+      Move(Piece.Pawn(playerId),
+        PositionedLocation(Location.Site(sites(2))),
+        PositionedLocation(Location.Site(sites(3)))) // missing-piece
+    )
+    val raw = new OperationExecutor
+    corpus.foreach { operation =>
+      val reasons = OperationShape.validate(ready, operation)
+      val pipeline = OperationPipeline.run(ready, Vector(operation),
+        OperationPolicy.Permissive)(Right(_))
+      (reasons.headOption, pipeline) match {
+        case (None, Right(after)) =>
+          assertEquals(after.game, raw.execute(ready, operation).toOption.get.game)
+        case (Some(reason), Left(violation)) =>
+          val code = violation match {
+            case oathdigital.gameplay.OathViolation
+                .CoreOperationRejected(code, _) => code
+            case other => fail(s"unexpected violation $other")
+          }
+          assertEquals(code, reason.code)
+        case (Some(reason), Right(_)) =>
+          fail(s"expected rejection for ${reason.code}")
+        case (None, Left(violation)) =>
+          fail(s"unexpected rejection $violation")
+      }
+    }
+  }
+
+  test("allowlist precedes shape so a both-fail operation reports restricted") {
+    val operation = Gain.Favor(playerId, Suit.Order, 7) // shape-insufficient
+    val validator = new OperationValidator(
+      OperationPolicy.exact(Vector.empty, "test batch not permitted"),
+      Vector.empty)
+    val reasons = validator.validateOne(ready, operation)
+    assertEquals(reasons.head.code, "restricted-operation")
+
+    val pipeline = OperationPipeline.run(ready, Vector(operation),
+      OperationPolicy.exact(Vector.empty, "test batch not permitted"))(Right(_))
+    val code = pipeline.left.toOption.get match {
+      case oathdigital.gameplay.OathViolation.CoreOperationRejected(code, _) =>
+        code
+      case other => fail(s"unexpected violation $other")
+    }
+    assertEquals(code, "restricted-operation")
+  }
+
+  test("restriction registry is held but inert this phase") {
+    val blocking = new OperationRestriction {
+      override def reason(ready: ReadyGame, operation: CoreOperation) =
+        Some(OperationReason("power-blocked", "Phase 5 predicate"))
+    }
+    val validator = new OperationValidator(
+      OperationPolicy.Permissive, Vector(blocking))
+    val operation = Gain.Favor(playerId, Suit.Order, 1)
+    // Shape and allowlist pass; the registered restriction is not yet folded
+    // into validateOne (registry becomes live in Phase 5).
+    assertEquals(validator.validateOne(ready, operation), Vector.empty)
+  }
+
+  test("report aggregates whole-batch reasons with allowlist precedence") {
+    val operation = Gain.Favor(playerId, Suit.Order, 7)
+    val reported = OperationPipeline.report(ready, Vector(operation),
+      OperationPolicy.Permissive)
+    assertEquals(reported.head.code, "insufficient-pieces")
+  }
 }

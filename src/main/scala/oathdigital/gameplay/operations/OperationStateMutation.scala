@@ -8,100 +8,22 @@ private[operations] object OperationStateMutation {
   import OperationError._
   import OperationStateAdapter._
 
+  /** Applies a validated operation's primitives. Shape/allowlist checks are
+    * owned by OperationShape/OperationValidator and run by OperationPipeline
+    * before this object is reached; the remaining Either guards below are
+    * mutation-time defenses that only fire if validation drifted.
+    */
   private[operations] def applyOperation(
       ready: ReadyGame,
       operation: CoreOperation
-  ): Either[OperationError, ReadyGame] = {
-    OperationShape.first(ready, operation) match {
-      case Some(error) => Left(error)
-      case None => mutate(ready, operation)
-    }
-  }
-
-  private def mutate(
-      ready: ReadyGame,
-      operation: CoreOperation
-  ): Either[OperationError, ReadyGame] = {
-    val primitives = operation.primitives
-    for {
-      _ <- validatePrimitivePositions(primitives)
-      _ <- validateCardSources(ready, primitives)
-      resources <- applyCountedMoves(ready, primitives)
-      pieces <- applyPawnAndBannerMoves(resources, primitives)
-      cards <- OperationCardMutation.applyCardMoves(pieces, primitives)
-      finished <- applyNonMovePrimitives(cards, primitives)
-    } yield finished
-  }
-
-  private def validatePrimitivePositions(
-      primitives: Vector[PrimitiveOperation]
-  ): Either[OperationError, Unit] =
-    primitives.foldLeft[Either[OperationError, Unit]](Right(())) {
-      case (result, move: Move) =>
-        result.flatMap(_ => validatePositions(move.from, move.to))
-      case (result, bury: Bury) =>
-        result.flatMap(_ => validatePositions(bury.from, bury.to))
-      case (result, _) => result
-    }
-
-  private def validatePositions(
-      from: PositionedLocation,
-      to: PositionedLocation
-  ): Either[OperationError, Unit] = for {
-    _ <- validateSourcePosition(from)
-    _ <- validateDestinationPosition(to)
-  } yield ()
-
-  private def validateSourcePosition(
-      positioned: PositionedLocation
-  ): Either[OperationError, Unit] =
-    if (isStack(positioned.location)) Right(())
-    else Either.cond(
-      positioned.position == StackPosition.Unspecified,
-      (),
-      InvalidStackPosition(
-        positioned.location,
-        "non-stack source cannot specify top or bottom"
-      )
-    )
-
-  private def validateDestinationPosition(
-      positioned: PositionedLocation
-  ): Either[OperationError, Unit] =
-    if (isStack(positioned.location))
-      Either.cond(
-        positioned.position != StackPosition.Unspecified,
-        (),
-        InvalidStackPosition(
-          positioned.location,
-          "stack destination must specify top or bottom"
-        )
-      )
-    else
-      Either.cond(
-        positioned.position == StackPosition.Unspecified,
-        (),
-        InvalidStackPosition(
-          positioned.location,
-          "non-stack destination cannot specify top or bottom"
-        )
-      )
-
-  private def isStack(location: Location): Boolean = location match {
-    case _: Location.Deck | _: Location.RegionalDiscard => true
-    case _ => false
-  }
+  ): Either[OperationError, ReadyGame] =
+    mutate(ready, operation)
 
   private[operations] final case class CardTransfer(
       piece: Piece.Card,
       from: PositionedLocation,
       to: PositionedLocation,
       resultingOrientation: Option[Orientation]
-  )
-
-  private final case class ResolvedCardTransfer(
-      transfer: CardTransfer,
-      located: LocatedCard
   )
 
   private[operations] def cardTransfers(
@@ -117,137 +39,27 @@ private[operations] object OperationStateMutation {
     )
   }
 
-  private def validateCardSources(
+  private[operations] def sequence[A](
+      values: Vector[Either[OperationError, A]]
+  ): Either[OperationError, Vector[A]] =
+    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)) {
+      case (result, value) => for {
+        accumulated <- result
+        next <- value
+      } yield accumulated :+ next
+    }
+
+  private def mutate(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
-  ): Either[OperationError, Unit] = {
-    val transfers = cardTransfers(primitives)
-    val duplicate = transfers.map(_.piece.id)
-      .groupBy(identity).collectFirst { case (id, occurrences)
-          if occurrences.size > 1 => id }
+      operation: CoreOperation
+  ): Either[OperationError, ReadyGame] = {
+    val primitives = operation.primitives
     for {
-      _ <- duplicate.toLeft(()).left.map(_ =>
-        ConflictingDeltas("one operation moves the same card more than once"))
-      resolved <- sequence(transfers.map { transfer =>
-        card(ready, transfer.piece.id, transfer.from.location)
-          .map(ResolvedCardTransfer(transfer, _))
-      })
-      _ <- validateCardSourceOrder(ready, resolved)
-      _ <- sequence(resolved.map(value =>
-        validateCardDestination(value.located, value.transfer))).map(_ => ())
-    } yield ()
-  }
-
-  private def validateCardSourceOrder(
-      ready: ReadyGame,
-      transfers: Vector[ResolvedCardTransfer]
-  ): Either[OperationError, Unit] = {
-    val grouped = transfers.groupBy(_.located.location.container)
-    grouped.toVector.foldLeft[Either[OperationError, Unit]](Right(())) {
-      case (result, (container, values)) => result.flatMap { _ =>
-        stackCards(ready, container) match {
-          case None => Right(())
-          case Some(initial) =>
-            values.foldLeft[Either[OperationError, Vector[CardId]]](
-              Right(initial)
-            ) { (current, value) =>
-              current.flatMap { cards =>
-                val id = value.located.id
-                val valid = value.transfer.from.position match {
-                  case StackPosition.Unspecified => cards.contains(id)
-                  case StackPosition.Top => cards.headOption.contains(id)
-                  case StackPosition.Bottom => cards.lastOption.contains(id)
-                }
-                Either.cond(
-                  valid,
-                  cards.filterNot(_ == id),
-                  InvalidStackPosition(
-                    value.transfer.from.location,
-                    "card does not match requested stack position"
-                  )
-                )
-              }
-            }.map(_ => ())
-        }
-      }
-    }
-  }
-
-  private def stackCards(
-      ready: ReadyGame,
-      container: CardContainer
-  ): Option[Vector[CardId]] = container match {
-    case CardContainer.Deck(DeckKind.World) =>
-      Some(ready.game.current.commonCards.worldDeck)
-    case CardContainer.Deck(DeckKind.Relic) =>
-      Some(ready.game.current.commonCards.relicDeck)
-    case CardContainer.Deck(DeckKind.Edifice) =>
-      Some(ready.game.current.commonCards.edificeDeck)
-    case CardContainer.Deck(DeckKind.Legacy) =>
-      Some(ready.game.current.commonCards.legacyDeck)
-    case CardContainer.RegionalDiscard(region) =>
-      Some(ready.game.current.commonCards.discard(region).reverse)
-    case _ => None
-  }
-
-  private def validateCardDestination(
-      located: LocatedCard,
-      transfer: CardTransfer
-  ): Either[OperationError, Unit] = {
-    val id = located.id
-    val destination = transfer.to.location
-    destination match {
-      case Location.Deck(deck) => Either.cond(
-        cardDeck(id).contains(deck), (),
-        InvalidDestination(transfer.piece, destination))
-      case _: Location.RegionalDiscard => Either.cond(
-        id.isInstanceOf[WorldCardId], (),
-        InvalidDestination(transfer.piece, destination))
-      case _: Location.Hand => Either.cond(
-        id.isInstanceOf[WorldCardId], (),
-        InvalidDestination(transfer.piece, destination))
-      case Location.Reliquary | Location.SetAsideRelics => Either.cond(
-        id.isInstanceOf[RelicId], (),
-        InvalidDestination(transfer.piece, destination))
-      case Location.Dispossessed => Either.cond(
-        id.isInstanceOf[WorldCardId], (),
-        InvalidDestination(transfer.piece, destination))
-      case _: Location.Site => id match {
-        case _: DenizenId | _: EdificeId | _: RelicId =>
-          validateStatefulMaterialization(located, transfer)
-        case _ => Left(InvalidDestination(transfer.piece, destination))
-      }
-      case _: Location.PlayArea => id match {
-        case _: DenizenId | _: VisionId | _: RelicId =>
-          validateStatefulMaterialization(located, transfer)
-        case _ => Left(InvalidDestination(transfer.piece, destination))
-      }
-      case Location.Atlas => Left(AmbiguousLocation(
-        Location.Atlas,
-        "Atlas destination requires a stored-site identity"
-      ))
-      case _ => Left(InvalidDestination(transfer.piece, destination))
-    }
-  }
-
-  private def validateStatefulMaterialization(
-      located: LocatedCard,
-      transfer: CardTransfer
-  ): Either[OperationError, Unit] = located.id match {
-    case id: EdificeId if transfer.resultingOrientation.nonEmpty =>
-      Left(UnsupportedOrientation(id, transfer.to.location))
-    case id: EdificeId if located.state.isEmpty =>
-      Left(UnsupportedOrientation(id, transfer.to.location))
-    case id if located.state.isEmpty && transfer.resultingOrientation.isEmpty =>
-      Left(MissingOrientation(id, transfer.to.location))
-    case _ => Right(())
-  }
-
-  private def cardDeck(id: CardId): Option[CardDeck] = id match {
-    case _: DenizenId | _: VisionId => Some(CardDeck.World)
-    case _: RelicId => Some(CardDeck.Relic)
-    case _: EdificeId => Some(CardDeck.Edifice)
-    case _: LegacyId => Some(CardDeck.Legacy)
+      resources <- applyCountedMoves(ready, primitives)
+      pieces <- applyPawnAndBannerMoves(resources, primitives)
+      cards <- OperationCardMutation.applyCardMoves(pieces, primitives)
+      finished <- applyNonMovePrimitives(cards, primitives)
+    } yield finished
   }
 
   private def applyCountedMoves(
@@ -264,9 +76,7 @@ private[operations] object OperationStateMutation {
       case move @ Move(_: Piece.Warbands, _, _, _) => move
     }
     for {
-      _ <- validateFavorSources(ready, favorMoves)
       plannedSecrets <- OperationSecretPlanner.plan(ready, secretMoves)
-      _ <- validateWarbandSources(ready, warbandMoves)
       withoutFavor <- favorMoves.foldLeft[Either[OperationError, ReadyGame]](
         Right(ready)) { (result, move) =>
         val piece = move.piece.asInstanceOf[Piece.Favor]
@@ -303,35 +113,6 @@ private[operations] object OperationStateMutation {
       }
     } yield withWarbands
   }
-
-  private def validateFavorSources(
-      ready: ReadyGame,
-      moves: Vector[Move]
-  ): Either[OperationError, Unit] =
-    moves.groupBy(_.from.location).toVector.foldLeft[
-      Either[OperationError, Unit]](Right(())) {
-      case (result, (location, values)) => result.flatMap { _ =>
-        val amount = values.map(_.piece.asInstanceOf[Piece.Favor].amount).sum
-        quantity(ready, Piece.Favor(amount), location).flatMap(
-          requireFinite(Piece.Favor(amount), location, _, amount))
-      }
-    }
-
-  private def validateWarbandSources(
-      ready: ReadyGame,
-      moves: Vector[Move]
-  ): Either[OperationError, Unit] =
-    moves.groupBy(move =>
-      move.piece.asInstanceOf[Piece.Warbands].kind -> move.from.location)
-      .toVector.foldLeft[Either[OperationError, Unit]](Right(())) {
-        case (result, ((kind, location), values)) => result.flatMap { _ =>
-          val amount = values.map(
-            _.piece.asInstanceOf[Piece.Warbands].amount).sum
-          val piece = Piece.Warbands(kind, amount)
-          quantity(ready, piece, location).flatMap(
-            requireFinite(piece, location, _, amount))
-        }
-      }
 
   private def adjustFavor(
       ready: ReadyGame,
@@ -738,14 +519,4 @@ private[operations] object OperationStateMutation {
     case _: CardContainer.AtlasSite => Location.Atlas
     case _ => Location.Atlas
   }
-
-  private[operations] def sequence[A](
-      values: Vector[Either[OperationError, A]]
-  ): Either[OperationError, Vector[A]] =
-    values.foldLeft[Either[OperationError, Vector[A]]](Right(Vector.empty)) {
-      case (result, value) => for {
-        accumulated <- result
-        next <- value
-      } yield accumulated :+ next
-    }
 }

@@ -22,6 +22,10 @@ object OperationPolicy {
     ): Either[OperationError, Unit] = Right(())
   }
 
+  /** Composes several policies first-fail. Reserved for the Phase 5
+    * restriction composition (allowlist + per-query restriction predicates);
+    * the pipeline today folds allowlist reasons through [[OperationValidator]].
+    */
   def all(policies: Vector[OperationPolicy]): OperationPolicy =
     new OperationPolicy {
       override def validate(
@@ -35,7 +39,7 @@ object OperationPolicy {
     }
 
   /** Restricts execution to semantic roots reconstructed from one validated
-    * authoritative event. Structural checks still belong to the executor.
+    * authoritative event. Structural checks belong to [[OperationShape]].
     */
   def exact(
       expected: Vector[CoreOperation],
@@ -53,17 +57,13 @@ object OperationPolicy {
 }
 
 /** Pure mutation engine: applies one operation (or a raw fold of several)
-  * without any policy or state-invariant checks. [[OperationPipeline]] owns
-  * pre-flight validation and the post-state invariant; this class is only the
-  * mutation primitive for it and for raw-mutation-only consumers (shadow
-  * comparisons, tests). The describe guard converts constructor failures
-  * thrown by the mutation into typed [[OperationError]] rejections.
-  *
-  * NOTE: [[OperationStateAdapter.applyOperation]] still runs the
-  * [[OperationShape]] first-violation guard internally, so a raw execute stays
-  * shape-safe; [[OperationPipeline]] additionally pre-flights each operation
-  * explicitly. Removing the internal double-run is deferred until the suite
-  * proves it redundant.
+  * without any policy or shape/state-invariant checks. [[OperationPipeline]]
+  * owns pre-flight validation ([[OperationShape]]/[[OperationValidator]]) and
+  * the post-state invariant; this class is only the mutation primitive for it
+  * and for raw-mutation-only consumers (shadow comparisons, tests). The
+  * describe guard converts constructor failures thrown by the mutation into
+  * typed [[OperationError]] rejections; the mutation's own Either guards are
+  * mutation-time defenses that fire only if validation drifted.
   */
 final class OperationExecutor {
   def execute(

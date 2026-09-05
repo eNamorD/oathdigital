@@ -8,12 +8,6 @@ import oathdigital.gameplay.{OathViolation, ReadyGame}
   * through staged validation and the raw [[OperationExecutor]], applies the
   * owning procedure's direct `update`, and runs the post-state invariant.
   *
-  * Ordering mirrors the retired transaction seam: empty batch guard,
-  * card-ids snapshot, staged per-operation validation (trajectory) plus raw
-  * execution, describe-guarded direct update, final state invariant. Every
-  * rejection is an [[OathViolation.CoreOperationRejected]] carrying the
-  * reason's verbatim code and detail.
-  *
   * Whole-batch rejection must stay staged: an operation later in a batch can
   * be satisfiable only after earlier operations ran (for example a Campaign
   * losing-force `ReturnToBoard` that moves warbands out of a bank which
@@ -52,6 +46,9 @@ object OperationPipeline {
         }
         updated <- OperationError.describe(update(staged))
           .left.map(_.toViolation).flatMap(identity)
+        // Decision 5: the invariant runs once after the module update, not
+        // between operations — intermediate states within a legal batch are
+        // not invariant-checked (matching the retired post-`update` check).
         _ <- OperationStateInvariant.validate(updated, expected)
           .left.map(_.toViolation)
       } yield updated

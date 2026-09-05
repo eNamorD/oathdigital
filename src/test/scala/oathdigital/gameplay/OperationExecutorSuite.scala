@@ -51,7 +51,18 @@ class OperationExecutorSuite extends munit.FunSuite {
     )
   }
 
-  private val executor = new OperationExecutor()
+  private val executor = new OperationExecutor
+
+  /** Rejection code for a single operation through the authoritative pipeline
+    * with a permissive allowlist (shape checks only).
+    */
+  private def rejectionCode(state: ReadyGame, operation: CoreOperation): String =
+    OperationPipeline.run(state, Vector(operation), OperationPolicy.Permissive)(
+      Right(_)).left.toOption.get match {
+      case oathdigital.gameplay.OathViolation.CoreOperationRejected(code, _) =>
+        code
+      case other => fail(s"expected a CoreOperationRejected, got $other")
+    }
 
   test("shadow comparison distinguishes parity rejection and mismatch") {
     val matching = OperationShadowEvolution.compare(ready, Right(ready))
@@ -270,8 +281,7 @@ class OperationExecutorSuite extends munit.FunSuite {
       PositionedLocation(Location.Site(sites.head)),
       PositionedLocation(Location.Atlas)
     )
-    assert(executor.execute(ready, ambiguous).left.toOption.get
-      .isInstanceOf[OperationError.AmbiguousLocation])
+    assertEquals(rejectionCode(ready, ambiguous), "ambiguous-location")
   }
 
   test("Atlas cards support state mutation and site-scoped knowledge") {
@@ -402,8 +412,8 @@ class OperationExecutorSuite extends munit.FunSuite {
       Give(Piece.Favor(3), blueId,
         Location.PlayArea(blueId), Location.PlayArea(playerId))
     )
-    assert(executor.execute(ready, incomingCannotFundOutgoing).left.toOption.get
-      .isInstanceOf[OperationError.InsufficientPieces])
+    assertEquals(rejectionCode(ready, incomingCannotFundOutgoing),
+      "insufficient-pieces")
 
     val sacrifice = Sacrifice(playerId, Piece.Warbands(redForce, 1),
       PositionedLocation(Location.PlayArea(playerId)))

@@ -38,15 +38,19 @@ final class OperationValidator(
       ready: ReadyGame,
       operations: Vector[CoreOperation]
   ): Vector[OperationReason] =
-    OperationShape.validateBatch(ready, operations) ++
-      allowlistReasons(ready, operations)
+    allowlistReasons(ready, operations) ++
+      OperationShape.validateBatch(ready, operations)
 
+  /** Allowlist reasons first: the retired executor ran the per-action policy
+    * before any shape/mutation check, so a both-fail operation rejects with
+    * `RestrictedOperation` — mirrored here for byte-identical precedence.
+    */
   def validateOne(
       ready: ReadyGame,
       operation: CoreOperation
   ): Vector[OperationReason] =
-    OperationShape.validate(ready, operation) ++
-      allowlistReasons(ready, Vector(operation))
+    allowlistReasons(ready, Vector(operation)) ++
+      OperationShape.validate(ready, operation)
 
   private def allowlistReasons(
       ready: ReadyGame,
