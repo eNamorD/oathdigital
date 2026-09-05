@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
 
 /** Stable identity for a runtime rule source. PowerUseRef remains the narrower,
   * wire-compatible identity for use-limited powers.
@@ -109,16 +107,6 @@ object RuleQueryContext {
       window: CampaignTimingWindow
   ) extends RuleQueryContext
 
-  final case class Travel(
-      ready: ReadyGame,
-      player: PlayerState,
-      source: SiteId,
-      destination: SiteId,
-      from: Region,
-      to: Region,
-      baseCost: Int
-  ) extends RuleQueryContext
-
   final case class TakeWealth(
       ready: ReadyGame,
       player: PlayerState,
@@ -126,8 +114,6 @@ object RuleQueryContext {
       resource: WakeResource
   ) extends RuleQueryContext
 
-  final case class Economy(ready: ReadyGame, player: PlayerState)
-      extends RuleQueryContext
   final case class Negotiation(ready: ReadyGame, participant: PlayerState,
       site: SiteId, participants: Vector[PlayerId]) extends RuleQueryContext
 }
@@ -168,23 +154,9 @@ sealed trait RuleOutcome extends Product with Serializable
 object RuleOutcome {
   case object Allow extends RuleOutcome
   final case class Block(violation: OathViolation) extends RuleOutcome
-  final case class ModifyCost(value: Int, replace: Boolean = false)
-      extends RuleOutcome
-  final case class RequireDecision(decision: RuleDecisionBoundary)
-      extends RuleOutcome
-  final case class PostActionEffect(id: String) extends RuleOutcome
   final case class UnsupportedRelevantRule(handlerId: String)
       extends RuleOutcome
 }
-
-/** Minimal seam for a later command-owned PendingProcedure; this slice does not
-  * create a decision or implement Search.
-  */
-final case class RuleDecisionBoundary(
-    decision: DecisionId,
-    actor: PlayerId,
-    source: RuleSourceRef
-)
 
 final case class ResolvedRule(
     activation: RuleActivation,
@@ -192,19 +164,10 @@ final case class ResolvedRule(
 )
 
 trait TypedRuleHandler {
-  def travelModifierKind: Option[TravelModifierKind] = None
   def resolve(
       activation: RuleActivation,
       context: RuleQueryContext
   ): RuleOutcome
-}
-
-sealed trait TravelModifierKind extends Product with Serializable
-object TravelModifierKind {
-  case object Coast extends TravelModifierKind
-  case object Island extends TravelModifierKind
-  case object Mountain extends TravelModifierKind
-  case object Pass extends TravelModifierKind
 }
 
 /** Explicit registry for handlers activated by a caller. Activations resolve by
@@ -239,106 +202,12 @@ object RuleRegistry {
   }
 }
 
+/** Travel-only stub retained for Negotiation's explicit blocking boundary:
+  * its relevant-handler activations are never registered, so resolving them
+  * against this empty registry yields `UnsupportedRelevantRule` exactly as the
+  * retired travel handler set did. The travel terrain path itself now runs
+  * through TravelCost window powers (see powers/travel/TravelCostWindow.scala).
+  */
 object RuntimeRuleRegistry {
-  import RuleOutcome._
-
-  private val coast = new TypedRuleHandler {
-    override val travelModifierKind = Some(TravelModifierKind.Coast)
-    def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
-      context match {
-        case _: RuleQueryContext.Travel => ModifyCost(1, replace = true)
-        case _ => Allow
-      }
-  }
-  private val island = new TypedRuleHandler {
-    override val travelModifierKind = Some(TravelModifierKind.Island)
-    def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
-      context match {
-        case _: RuleQueryContext.Travel => ModifyCost(2)
-        case _ => Allow
-      }
-  }
-  private val mountain = new TypedRuleHandler {
-    override val travelModifierKind = Some(TravelModifierKind.Mountain)
-    def resolve(a: RuleActivation, context: RuleQueryContext): RuleOutcome =
-      context match {
-        case _: RuleQueryContext.Travel => ModifyCost(1)
-        case _ => Allow
-      }
-  }
-  private val pass = new TypedRuleHandler {
-    override val travelModifierKind = Some(TravelModifierKind.Pass)
-    def resolve(activation: RuleActivation, context: RuleQueryContext): RuleOutcome =
-      (activation.source, context) match {
-        case (RuleSourceRef.Site(pass), travel: RuleQueryContext.Travel)
-            if pass == travel.destination || travel.from == travel.to => Allow
-        case (RuleSourceRef.Site(pass), travel: RuleQueryContext.Travel) =>
-          SiteRule.ruler(travel.ready.game.current.map.sites(pass).forces,
-            travel.ready.game.current.players) match {
-            case Right(SiteRuler.Player(player))
-                if player == travel.player.player => Allow
-            case Right(SiteRuler.Player(player)) =>
-              Block(TravelConsentUnsupported(pass, player))
-            case Right(_) => Block(TravelPassBlocked(pass, travel.destination))
-            case Left(error) => Block(UnsupportedTravelState(
-              s"invalid site ruler mapping: $error"))
-          }
-        case _ => Allow
-      }
-  }
-
-  // Catalog handler IDs are durable identifiers. Listing them here is
-  // intentional: catalog presence alone never activates arbitrary behavior.
-  val default: RuleRegistry = RuleRegistry(
-    "site.broken-peaks.mountain" -> mountain,
-    "site.desolate-shore.coast" -> coast,
-    "site.fair-isle.coast" -> coast,
-    "site.fair-isle.island" -> island,
-    "site.green-shore.coast" -> coast,
-    "site.headwaters.mountain" -> mountain,
-    "site.hidden-place.mountain" -> mountain,
-    "site.mines.mountain" -> mountain,
-    "site.narrow-pass.pass" -> pass,
-    "site.rocky-coast.coast" -> coast,
-    "site.sunken-isles.coast" -> coast,
-    "site.sunken-isles.island" -> island,
-    "site.tidal-marshes.coast" -> coast
-  )
-}
-
-object TakeWealthRules {
-  def validate(
-      ready: ReadyGame,
-      player: PlayerState,
-      siteId: SiteId,
-      resource: WakeResource
-  ): Either[OathViolation, Unit] = {
-    val context = RuleQueryContext.TakeWealth(ready, player, siteId, resource)
-    val power = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Site(siteId),
-      PowerId("site.take-wealth"))
-    val enemies = ready.game.current.players.collect {
-      case other if other.player != player.player &&
-          other.pawnSite.contains(siteId) => other.player
-    }
-    ready.game.current.map.sites.get(siteId).toRight(SiteNotInPlay(siteId))
-      .flatMap { site =>
-        val outcomes: Vector[RuleOutcome] = Vector(
-          if (ready.game.current.turn.usedPowers.contains(power))
-            RuleOutcome.Block(PowerAlreadyUsed(power)) else RuleOutcome.Allow,
-          if (enemies.nonEmpty)
-            RuleOutcome.Block(EnemyPawnBlocksTakeWealth(siteId, enemies))
-          else RuleOutcome.Allow,
-          if (available(site.tokens, context.resource)) RuleOutcome.Allow
-          else RuleOutcome.Block(ResourceUnavailable(siteId, resource))
-        )
-        outcomes.collectFirst { case RuleOutcome.Block(value) => value }
-          .toLeft(())
-      }
-  }
-
-  private def available(tokens: Tokens, resource: WakeResource): Boolean =
-    resource match {
-      case WakeResource.Favor => tokens.favor > 0
-      case WakeResource.Secret => tokens.secrets > 0
-    }
+  val default: RuleRegistry = RuleRegistry()
 }

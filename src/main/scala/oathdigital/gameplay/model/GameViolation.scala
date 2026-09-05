@@ -38,8 +38,6 @@ object OathViolation {
       extends OathViolation
   final case class TravelPassBlocked(passSiteId: SiteId, destination: SiteId)
       extends OathViolation
-  final case class TravelConsentUnsupported(passSiteId: SiteId, ruler: PlayerId)
-      extends OathViolation
   final case class InsufficientSupply(required: Int, available: Int)
       extends OathViolation
   final case class TravelSourceMismatch(expected: SiteId, actual: SiteId)

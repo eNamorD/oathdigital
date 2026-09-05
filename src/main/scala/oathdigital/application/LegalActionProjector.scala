@@ -1,8 +1,9 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{TakeWealthRules, WakeResource}
+import oathdigital.gameplay.{WakeResource}
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.phases.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
   VisionRules, Visions}

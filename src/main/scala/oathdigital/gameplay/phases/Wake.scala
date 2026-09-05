@@ -1,6 +1,6 @@
 package oathdigital.gameplay.phases
 
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle, TakeWealthRules}
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
