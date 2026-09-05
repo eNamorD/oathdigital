@@ -301,6 +301,43 @@ final case class Give(piece: Piece, giver: PlayerId,
   override val primitives: Vector[PrimitiveOperation] = Vector(move)
 }
 
+/** A typed payment: `favor`/`secret` are placed at a destination card,
+  * `favorBurnt`/`secretBurnt` leave play to the shared bank. All fields are
+  * non-negative; an all-zero cost is legal and represents a free payment.
+  */
+final case class Cost(favor: Int = 0, secret: Int = 0, favorBurnt: Int = 0,
+    secretBurnt: Int = 0) {
+  require(favor >= 0 && secret >= 0 && favorBurnt >= 0 && secretBurnt >= 0,
+    "costs must be non-negative")
+}
+
+object Cost {
+  val free: Cost = Cost(0, 0, 0, 0)
+}
+
+/** Pays a typed cost. The placed portions (`favor`/`secret`) move from the
+  * player's play area to `placedAt`; the burnt portions leave play to the
+  * shared bank. An all-zero cost is an inert no-op.
+  */
+final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost)
+    extends CoreOperation {
+  override val primitives: Vector[PrimitiveOperation] =
+    favorMove(cost.favor, placedAt) ++
+      secretMove(cost.secret, placedAt) ++
+      favorMove(cost.favorBurnt, Location.SharedBank) ++
+      secretMove(cost.secretBurnt, Location.SharedBank)
+
+  private def favorMove(amount: Int, to: Location): Vector[PrimitiveOperation] =
+    if (amount == 0) Vector.empty
+    else Vector(Move(Piece.Favor(amount),
+      PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
+
+  private def secretMove(amount: Int, to: Location): Vector[PrimitiveOperation] =
+    if (amount == 0) Vector.empty
+    else Vector(Move(Piece.Secrets(amount),
+      PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
+}
+
 /** Returns warbands to their matching bank. Imperial warbands use the
   * Chancellor's bank; bandits use the shared bandit bank.
   */
