@@ -97,7 +97,7 @@ object OperationShape {
   ): Vector[OperationReason] = {
     val perOperation = operations.flatMap(violations(ready, _))
     val movedById = operations.map(operation =>
-      operation.primitives.iterator.collect {
+      Operation.flatten(operation).iterator.collect {
         case Move(piece: Piece.Card, _, _, _) => piece.id
         case bury: Bury => bury.card.id
       }.toSet)
@@ -122,25 +122,25 @@ object OperationShape {
       ready: ReadyGame,
       operation: CoreOperation
   ): Vector[OperationError] = {
-    val primitives = operation.primitives
-    val favorMoves = primitives.collect {
+    val leaves = Operation.flatten(operation)
+    val favorMoves = leaves.collect {
       case move @ Move(_: Piece.Favor, _, _, _) => move
     }
-    val secretMoves = primitives.collect {
+    val secretMoves = leaves.collect {
       case move @ Move(_: Piece.Secrets, _, _, _) => move
     }
-    val warbandMoves = primitives.collect {
+    val warbandMoves = leaves.collect {
       case move @ Move(_: Piece.Warbands, _, _, _) => move
     }
     val (secretReasons, plannedSecrets) = planSecrets(ready, secretMoves)
 
     val accumulated = Vector.newBuilder[OperationError]
-    accumulated ++= positionViolations(primitives)
-    accumulated ++= cardViolations(ready, primitives)
+    accumulated ++= positionViolations(leaves)
+    accumulated ++= cardViolations(ready, leaves)
     accumulated ++= countedSourceViolations(
       ready, favorMoves, warbandMoves, secretReasons)
-    accumulated ++= pawnAndBannerViolations(ready, primitives)
-    accumulated ++= nonMoveViolations(ready, primitives, plannedSecrets)
+    accumulated ++= pawnAndBannerViolations(ready, leaves)
+    accumulated ++= nonMoveViolations(ready, leaves, plannedSecrets)
     accumulated.result()
   }
 
@@ -149,8 +149,8 @@ object OperationShape {
   // ------------------------------------------------------------------
 
   private def positionViolations(
-      primitives: Vector[PrimitiveOperation]
-  ): Vector[OperationError] = primitives.iterator.flatMap {
+      leaves: Vector[Operation]
+  ): Vector[OperationError] = leaves.iterator.flatMap {
     case move: Move => positionViolations(move.from, move.to)
     case bury: Bury => positionViolations(bury.from, bury.to)
     case _ => Vector.empty
@@ -210,8 +210,8 @@ object OperationShape {
   )
 
   private def transfers(
-      primitives: Vector[PrimitiveOperation]
-  ): Vector[Transfer] = primitives.collect {
+      leaves: Vector[Operation]
+  ): Vector[Transfer] = leaves.collect {
     case Move(piece: Piece.Card, from, to, orientation) =>
       Transfer(piece, from, to, orientation)
     case bury: Bury => Transfer(
@@ -224,9 +224,9 @@ object OperationShape {
 
   private def cardViolations(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Vector[OperationError] = {
-    val all = transfers(primitives)
+    val all = transfers(leaves)
     val duplicate: Vector[OperationError] =
       if (all.map(_.piece.id).groupBy(identity).exists {
         case (_, occurrences) => occurrences.size > 1
@@ -434,7 +434,7 @@ object OperationShape {
 
   private def pawnAndBannerViolations(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Vector[OperationError] = {
     val pawnSites = ready.game.current.players.iterator.map { player =>
       player.player -> player.pawnSite
@@ -443,7 +443,7 @@ object OperationShape {
       Banner.PeoplesFavor -> bannerHolder(ready, Banner.PeoplesFavor),
       Banner.DarkestSecret -> bannerHolder(ready, Banner.DarkestSecret)
     )
-    val (reasons, _) = primitives.foldLeft[(Vector[OperationError],
+    val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
       MovedPieces)]((Vector.empty, MovedPieces(pawnSites, bannerHolders))) {
       case ((result, state), Move(Piece.Pawn(player), from, to, _)) =>
         val (violations, updated) =
@@ -577,12 +577,12 @@ object OperationShape {
 
   private def nonMoveViolations(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation],
+      leaves: Vector[Operation],
       plannedSecrets: Option[Vector[(Move,
         OperationSecretPlanner.SecretSplit)]]
   ): Vector[OperationError] = {
     val initial = RunningBoards.initial(ready, plannedSecrets)
-    val (reasons, _) = primitives.foldLeft[(Vector[OperationError],
+    val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
       RunningBoards)]((Vector.empty, initial)) {
       case ((result, state), Flip(id, at, _)) =>
         (result ++ flipViolation(ready, id, at), state)

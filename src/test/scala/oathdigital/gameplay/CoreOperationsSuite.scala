@@ -18,7 +18,7 @@ class CoreOperationsSuite extends munit.FunSuite {
 
     val swap = Swap(first, firstLocation, second, secondLocation)
 
-    assertEquals(swap.primitives, Vector(
+    assertEquals(Operation.flatten(swap), Vector(
       Move(Piece.Card(first), firstLocation, secondLocation),
       Move(Piece.Card(second), secondLocation, firstLocation)))
     assert(swap.simultaneous)
@@ -40,7 +40,7 @@ class CoreOperationsSuite extends munit.FunSuite {
         StackPosition.Bottom),
       PositionedLocation(Location.Deck(CardDeck.Edifice),
         StackPosition.Bottom)))
-    assertEquals(buries.flatMap(_.primitives), buries)
+    assertEquals(buries.flatMap(Operation.flatten), buries)
   }
 
   test("Discard routes cards and their resources by glossary rules") {
@@ -49,7 +49,7 @@ class CoreOperationsSuite extends munit.FunSuite {
       to = Region.Provinces,
       suit = Suit.Order, favor = 2, secrets = 1, actingPlayer = red)
 
-    assertEquals(discard.primitives, Vector(
+    assertEquals(Operation.flatten(discard), Vector(
       Move(Piece.Card(card), PositionedLocation(site),
         PositionedLocation(Location.RegionalDiscard(Region.Provinces),
           StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)),
@@ -64,12 +64,13 @@ class CoreOperationsSuite extends munit.FunSuite {
 
   test("Gain, burn, kill, sacrifice, and replace use the correct banks") {
     val exile = ForceKind.Exile(LineageId("red-lineage"))
-    val gained = Gain.Secrets(red, 2).primitives.head
+    val gained = Operation.flatten(Gain.Secrets(red, 2)).head
     assertEquals(gained, Move(Piece.Secrets(2),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(redArea)))
 
-    val burned = Burn.favor(1, PositionedLocation(redArea)).primitives.head
+    val burned = Operation.flatten(Burn.favor(1,
+      PositionedLocation(redArea))).head
     assertEquals(burned, Move(Piece.Favor(1),
       PositionedLocation(redArea),
       PositionedLocation(Location.SharedBank)))
@@ -77,11 +78,11 @@ class CoreOperationsSuite extends munit.FunSuite {
     val warbands = Piece.Warbands(exile, 2)
     val kill = Kill(warbands, PositionedLocation(site))
     val sacrifice = Sacrifice(red, warbands, PositionedLocation(site))
-    assertEquals(sacrifice.primitives, kill.primitives)
+    assertEquals(Operation.flatten(sacrifice), Operation.flatten(kill))
 
     val imperial = Piece.Warbands(ForceKind.Imperial, 2)
     val replace = Replace(warbands, imperial, PositionedLocation(site))
-    assertEquals(replace.primitives, Vector(
+    assertEquals(Operation.flatten(replace), Vector(
       Move(warbands, PositionedLocation(site),
         PositionedLocation(Location.WarbandBank(exile))),
       Move(imperial,
@@ -98,7 +99,8 @@ class CoreOperationsSuite extends munit.FunSuite {
 
     val exchange = Exchange(give, receive)
 
-    assertEquals(exchange.primitives, give.primitives ++ receive.primitives)
+    assertEquals(Operation.flatten(exchange),
+      Operation.flatten(give) ++ Operation.flatten(receive))
     assertEquals(Give(favor, red, redArea, Location.SharedBank).to,
       Location.SharedBank)
     intercept[IllegalArgumentException](Exchange(give,
@@ -135,7 +137,7 @@ class CoreOperationsSuite extends munit.FunSuite {
 
     assertEquals(draw.takes, cards.map(card => Take(Piece.Card(card),
       red, source, destination, StackPosition.Top)))
-    assertEquals(draw.primitives, draw.takes.flatMap(_.primitives))
+    assertEquals(Operation.flatten(draw), draw.takes.flatMap(Operation.flatten))
   }
 
   test("every glossary composite retains its semantic root and primitive order") {
@@ -168,13 +170,15 @@ class CoreOperationsSuite extends munit.FunSuite {
     )
 
     operations.foreach { operation =>
-      assert(operation.primitives.nonEmpty, operation.toString)
-      assert(operation.primitives.forall(_.primitives.size == 1), operation.toString)
+      val leaves = Operation.flatten(operation)
+      assert(leaves.nonEmpty, operation.toString)
+      assert(leaves.forall(leaf => Operation.flatten(leaf).size == 1),
+        operation.toString)
     }
     assertEquals(operations.filter(_.simultaneous).map(_.getClass.getSimpleName),
       Vector("Replace", "Swap"))
     assertEquals(operations.collectFirst {
-      case value: Discard.RuinedEdifice => value.primitives
+      case value: Discard.RuinedEdifice => Operation.flatten(value)
     }.get, Vector(
       Move(Piece.Card(EdificeId("edifice:root")), from,
         PositionedLocation(Location.Deck(CardDeck.Edifice), StackPosition.Bottom)),

@@ -20,9 +20,9 @@ private[operations] object OperationCardMutation {
 
   private[operations] def applyCardMoves(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] = {
-    val transfers = cardTransfers(primitives)
+    val transfers = cardTransfers(leaves)
     if (transfers.isEmpty) Right(ready)
     else for {
       index <- CardIndex.from(ready.game).left.map(InvalidCardIndex)

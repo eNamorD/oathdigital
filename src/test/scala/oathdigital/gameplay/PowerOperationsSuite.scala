@@ -59,7 +59,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     val (ready, actor, siteId, denizenId) = operationReady
     val free = Costs.plan(ready, actor.player, Location.OnCard(
       DenizenId("missing")), Cost.free).toOption.get
-    assertEquals(free.primitives, Vector.empty)
+    assertEquals(Operation.flatten(free), Vector.empty)
 
     val site = ready.game.current.map.sites(siteId)
     val facedown = ready.copy(game = ready.game.copy(current =
@@ -146,7 +146,7 @@ class PowerOperationsSuite extends munit.FunSuite {
     val (ready, actor, _, _) = operationReady
     val payCost = Costs.plan(ready, actor.player, Location.OnCard(
       DenizenId("irrelevant")), Cost.free).toOption.get
-    assertEquals(payCost.primitives, Vector.empty)
+    assertEquals(Operation.flatten(payCost), Vector.empty)
     val after = OperationPipeline.run(ready, Vector(payCost), OperationPolicy.exact(
       Vector(payCost), "test payment operation is not permitted"))(Right(_)).toOption.get
     assertEquals(after.game, ready.game)

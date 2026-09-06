@@ -6,14 +6,20 @@ import oathdigital.model._
   *
   * These values describe semantic game instructions. They do not
   * validate restrictions, choices, and consent.
+  *
+  * Re-rooted under [[Operation]]: composites expose their constituent
+  * operations through `children` (the vectors they previously exposed as
+  * `primitives`, now widened to `Vector[Operation]`); read the leaves with
+  * [[Operation.flatten]]. `PrimitiveOperation` stays a subtype so the
+  * existing operation-batch vocabulary (`Vector[CoreOperation]`, policies,
+  * executor) keeps accepting both leaves and composites.
   */
-sealed trait CoreOperation extends Product with Serializable {
-  def primitives: Vector[PrimitiveOperation]
+sealed trait CoreOperation extends Operation {
   def simultaneous: Boolean = false
 }
 
 sealed trait PrimitiveOperation extends CoreOperation {
-  final override def primitives: Vector[PrimitiveOperation] = Vector(this)
+  final override val children: Vector[Operation] = Vector(this)
 }
 
 sealed trait Piece extends Product with Serializable
@@ -135,7 +141,7 @@ sealed trait Burn extends CoreOperation {
 
   final lazy val move: Move = Move(resource, from,
     PositionedLocation(Location.SharedBank))
-  final override lazy val primitives: Vector[PrimitiveOperation] = Vector(move)
+  final override lazy val children: Vector[Operation] = Vector(move)
 }
 object Burn {
   def favor(amount: Int, from: PositionedLocation): Burn =
@@ -184,7 +190,7 @@ object Discard {
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
-    override val primitives: Vector[PrimitiveOperation] =
+    override val children: Vector[Operation] =
       discardWorld(card, from, to) ++
         returnedResources(card, suit, favor, secrets, actingPlayer)
   }
@@ -192,7 +198,7 @@ object Discard {
   /** Visions carry no resources but otherwise use world-card discard rules. */
   final case class Vision(card: VisionId, from: PositionedLocation,
       to: Region) extends Discard {
-    override val primitives: Vector[PrimitiveOperation] =
+    override val children: Vector[Operation] =
       discardWorld(card, from, to)
   }
 
@@ -203,7 +209,7 @@ object Discard {
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
-    override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+    override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
       PositionedLocation(Location.Deck(CardDeck.Edifice),
         StackPosition.Bottom))) ++
@@ -215,27 +221,27 @@ object Discard {
       actingPlayer: PlayerId) extends Discard {
     require(secrets >= 0, "discarded secrets must be non-negative")
 
-    override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+    override val children: Vector[Operation] = Vector(Move(
       Piece.Card(card), from,
       PositionedLocation(Location.SetAsideRelics))) ++
       returnedSecrets(card, secrets, actingPlayer)
   }
 
   private def discardWorld(card: WorldCardId, from: PositionedLocation,
-      destination: Region): Vector[PrimitiveOperation] = Vector(Move(
+      destination: Region): Vector[Operation] = Vector(Move(
     Piece.Card(card), from,
     PositionedLocation(Location.RegionalDiscard(destination),
       StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)))
 
   private def returnedResources(card: CardId, suit: Suit, favor: Int,
-      secrets: Int, actingPlayer: PlayerId): Vector[PrimitiveOperation] =
+      secrets: Int, actingPlayer: PlayerId): Vector[Operation] =
     positiveMove(favor)(Piece.Favor.apply,
       PositionedLocation(Location.OnCard(card)),
       PositionedLocation(Location.FavorBank(suit))) ++
     returnedSecrets(card, secrets, actingPlayer)
 
   private def returnedSecrets(card: CardId, amount: Int,
-      actingPlayer: PlayerId): Vector[PrimitiveOperation] =
+      actingPlayer: PlayerId): Vector[Operation] =
     if (amount == 0) Vector.empty
     else Vector(
       Move(Piece.Secrets(amount), PositionedLocation(Location.OnCard(card)),
@@ -245,7 +251,7 @@ object Discard {
 
   private def positiveMove(amount: Int)(piece: Int => Piece,
       from: PositionedLocation,
-      to: PositionedLocation): Vector[PrimitiveOperation] =
+      to: PositionedLocation): Vector[Operation] =
     if (amount == 0) Vector.empty
     else Vector(Move(piece(amount), from, to))
 }
@@ -260,8 +266,8 @@ final case class Draw(player: PlayerId, cards: Vector[CardId],
 
   val takes: Vector[Take] = cards.map(card => Take(Piece.Card(card),
     player, source, destination, sourcePosition = StackPosition.Top))
-  override val primitives: Vector[PrimitiveOperation] =
-    takes.flatMap(_.primitives)
+  override val children: Vector[Operation] =
+    takes.flatMap(_.children)
 }
 
 /** Gives pieces in both directions. */
@@ -269,22 +275,22 @@ final case class Exchange(give: Give, receive: Give) extends CoreOperation {
   require(give.giver != receive.giver,
     "exchange requires two different giving players")
 
-  override val primitives: Vector[PrimitiveOperation] =
-    give.primitives ++ receive.primitives
+  override val children: Vector[Operation] =
+    give.children ++ receive.children
 }
 
 sealed trait Gain extends CoreOperation
 object Gain {
   final case class Favor(player: PlayerId, suit: Suit, amount: Int)
       extends Gain {
-    override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+    override val children: Vector[Operation] = Vector(Move(
       Piece.Favor(amount),
       PositionedLocation(Location.FavorBank(suit)),
       PositionedLocation(Location.PlayArea(player))))
   }
 
   final case class Secrets(player: PlayerId, amount: Int) extends Gain {
-    override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+    override val children: Vector[Operation] = Vector(Move(
       Piece.Secrets(amount),
       PositionedLocation(Location.SharedBank),
       PositionedLocation(Location.PlayArea(player))))
@@ -292,7 +298,7 @@ object Gain {
 
   final case class Warbands(player: PlayerId, kind: ForceKind, amount: Int)
       extends Gain {
-    override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+    override val children: Vector[Operation] = Vector(Move(
       Piece.Warbands(kind, amount),
       PositionedLocation(Location.WarbandBank(kind)),
       PositionedLocation(Location.PlayArea(player))))
@@ -308,7 +314,7 @@ final case class Give(piece: Piece, giver: PlayerId,
   require(Location.ownedBy(from, giver),
     "give source must belong to the giving player")
   val move: Move = Move(piece, PositionedLocation(from), PositionedLocation(to))
-  override val primitives: Vector[PrimitiveOperation] = Vector(move)
+  override val children: Vector[Operation] = Vector(move)
 }
 
 /** A typed payment: `favor`/`secret` are placed at a destination card,
@@ -331,18 +337,18 @@ object Cost {
   */
 final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost)
     extends CoreOperation {
-  override val primitives: Vector[PrimitiveOperation] =
+  override val children: Vector[Operation] =
     favorMove(cost.favor, placedAt) ++
       secretMove(cost.secret, placedAt) ++
       favorMove(cost.favorBurnt, Location.SharedBank) ++
       secretMove(cost.secretBurnt, Location.SharedBank)
 
-  private def favorMove(amount: Int, to: Location): Vector[PrimitiveOperation] =
+  private def favorMove(amount: Int, to: Location): Vector[Operation] =
     if (amount == 0) Vector.empty
     else Vector(Move(Piece.Favor(amount),
       PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
 
-  private def secretMove(amount: Int, to: Location): Vector[PrimitiveOperation] =
+  private def secretMove(amount: Int, to: Location): Vector[Operation] =
     if (amount == 0) Vector.empty
     else Vector(Move(Piece.Secrets(amount),
       PositionedLocation(Location.PlayArea(player)), PositionedLocation(to)))
@@ -353,7 +359,7 @@ final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost)
   */
 final case class Kill(warbands: Piece.Warbands,
     from: PositionedLocation) extends CoreOperation {
-  override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+  override val children: Vector[Operation] = Vector(Move(
     warbands, from,
     PositionedLocation(Location.WarbandBank(warbands.kind))))
 }
@@ -369,7 +375,7 @@ final case class Play(card: CardId, from: PositionedLocation,
     case _ => false
   }, "play destination must be a site or a play area")
 
-  override val primitives: Vector[PrimitiveOperation] = Vector(Move(
+  override val children: Vector[Operation] = Vector(Move(
     Piece.Card(card), from, PositionedLocation(destination),
     resultingOrientation = Some(orientation)))
 }
@@ -383,7 +389,7 @@ final case class Replace(removed: Piece.Warbands,
   require(removed.kind != replacements.kind,
     "replacement warbands must have a new color")
 
-  override val primitives: Vector[PrimitiveOperation] = Vector(
+  override val children: Vector[Operation] = Vector(
     Move(removed, at,
       PositionedLocation(Location.WarbandBank(removed.kind))),
     Move(replacements,
@@ -394,7 +400,7 @@ final case class Replace(removed: Piece.Warbands,
 /** Flips a card faceup without triggering When Played powers. */
 final case class Reveal(card: CardId, at: Location)
     extends CoreOperation {
-  override val primitives: Vector[PrimitiveOperation] =
+  override val children: Vector[Operation] =
     Vector(Flip(card, at, Orientation.FaceUp))
 }
 
@@ -403,7 +409,7 @@ final case class Sacrifice(player: PlayerId,
     warbands: Piece.Warbands, from: PositionedLocation)
     extends CoreOperation {
   private val kill = Kill(warbands, from)
-  override val primitives: Vector[PrimitiveOperation] = kill.primitives
+  override val children: Vector[Operation] = kill.children
 }
 
 /** Swaps two cards by moving each one to the other's location. */
@@ -418,7 +424,7 @@ final case class Swap(firstCard: CardId, firstLocation: PositionedLocation,
     Move(Piece.Card(firstCard), firstLocation, secondLocation)
   val second: Move =
     Move(Piece.Card(secondCard), secondLocation, firstLocation)
-  override val primitives: Vector[PrimitiveOperation] = Vector(first, second)
+  override val children: Vector[Operation] = Vector(first, second)
   override val simultaneous: Boolean = true
 }
 
@@ -431,5 +437,5 @@ final case class Take(piece: Piece, player: PlayerId,
     "take destination must belong to the taking player")
   val move: Move = Move(piece, PositionedLocation(from, sourcePosition),
     PositionedLocation(to))
-  override val primitives: Vector[PrimitiveOperation] = Vector(move)
+  override val children: Vector[Operation] = Vector(move)
 }

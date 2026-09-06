@@ -8,7 +8,7 @@ private[operations] object OperationStateMutation {
   import OperationError._
   import OperationStateAdapter._
 
-  /** Applies a validated operation's primitives. Shape/allowlist checks are
+  /** Applies a validated operation's leaves. Shape/allowlist checks are
     * owned by OperationShape/OperationValidator and run by OperationPipeline
     * before this object is reached; the remaining Either guards below are
     * mutation-time defenses that only fire if validation drifted.
@@ -27,8 +27,8 @@ private[operations] object OperationStateMutation {
   )
 
   private[operations] def cardTransfers(
-      primitives: Vector[PrimitiveOperation]
-  ): Vector[CardTransfer] = primitives.collect {
+      leaves: Vector[Operation]
+  ): Vector[CardTransfer] = leaves.collect {
     case Move(piece: Piece.Card, from, to, orientation) =>
       CardTransfer(piece, from, to, orientation)
     case bury: Bury => CardTransfer(
@@ -53,26 +53,26 @@ private[operations] object OperationStateMutation {
       ready: ReadyGame,
       operation: CoreOperation
   ): Either[OperationError, ReadyGame] = {
-    val primitives = operation.primitives
+    val leaves = Operation.flatten(operation)
     for {
-      resources <- applyCountedMoves(ready, primitives)
-      pieces <- applyPawnAndBannerMoves(resources, primitives)
-      cards <- OperationCardMutation.applyCardMoves(pieces, primitives)
-      finished <- applyNonMovePrimitives(cards, primitives)
+      resources <- applyCountedMoves(ready, leaves)
+      pieces <- applyPawnAndBannerMoves(resources, leaves)
+      cards <- OperationCardMutation.applyCardMoves(pieces, leaves)
+      finished <- applyNonMoveLeaves(cards, leaves)
     } yield finished
   }
 
   private def applyCountedMoves(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] = {
-    val favorMoves = primitives.collect {
+    val favorMoves = leaves.collect {
       case move @ Move(_: Piece.Favor, _, _, _) => move
     }
-    val secretMoves = primitives.collect {
+    val secretMoves = leaves.collect {
       case move @ Move(_: Piece.Secrets, _, _, _) => move
     }
-    val warbandMoves = primitives.collect {
+    val warbandMoves = leaves.collect {
       case move @ Move(_: Piece.Warbands, _, _, _) => move
     }
     for {
@@ -231,9 +231,9 @@ private[operations] object OperationStateMutation {
 
   private def applyPawnAndBannerMoves(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
-    primitives.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
       case (result, Move(Piece.Pawn(player), from, to, _)) =>
         result.flatMap(movePawn(_, player, from.location, to.location))
       case (result, Move(Piece.Banner(banner), from, to, _)) =>
@@ -285,11 +285,11 @@ private[operations] object OperationStateMutation {
     ready.copy(game = ready.game.copy(current = current.copy(banners = banners)))
   }
 
-  private def applyNonMovePrimitives(
+  private def applyNonMoveLeaves(
       ready: ReadyGame,
-      primitives: Vector[PrimitiveOperation]
+      leaves: Vector[Operation]
   ): Either[OperationError, ReadyGame] =
-    primitives.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
+    leaves.foldLeft[Either[OperationError, ReadyGame]](Right(ready)) {
       case (result, Flip(id, at, orientation)) =>
         result.flatMap(flipCard(_, id, at, orientation))
       case (result, FlipSecrets(player, amount, from, to)) =>
