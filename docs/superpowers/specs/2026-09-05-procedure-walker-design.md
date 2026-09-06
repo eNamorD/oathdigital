@@ -130,8 +130,13 @@ Leaves (PrimitiveOperation):
 
 Composites (CoreOperation): existing concept bundles plus sequence/branch
 helpers (`Sequence`, `Branch`) and action roots (`Travel`, `Muster`,
-`Campaign`, ...). `CoreOperation.primitives` is removed; `children` is the one
-accessor. The executor flattens `children` depth-first and applies leaves.
+`Campaign`, ...). A `Repeat(guard, body)` composite re-executes `body` until
+`guard(state, pending)` is false (Recover's roll-until-success/stop loop;
+Search draw loops). `CoreOperation.primitives` is removed; `children` is the
+one accessor. The executor flattens `children` depth-first and applies leaves;
+the walker unrolls `Repeat` iterations with each iteration's events recorded
+separately (replay = recorded ops, so a loop whose guard changes over time
+replays from ops, never by re-guarding).
 
 ### State
 
