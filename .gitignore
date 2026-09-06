@@ -12,3 +12,5 @@ var/
 .DS_Store
 .tooling
 reference/
+
+.worktrees/
