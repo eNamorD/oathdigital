@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
+import oathdigital.gameplay.walker.{DecisionPayload, OwnerQuery, WalkerCtx}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -37,16 +38,13 @@ class WalkerStateSuite extends munit.FunSuite {
     assert(baseReady.game.current.walkerPending.isEmpty)
     assert(baseReady.game.current.rollPools.isEmpty)
 
-    // The PendingTree's context snapshots the pre-park ReadyGame (the state it
-    // was derived from), so the tree is constructible before the state that
-    // stores it.
+    // Pending is a pointer only (spec S1): at/answered/actor. The action tree
+    // is derived per command and the walker ctx rebuilt from state, so nothing
+    // gameplay-typed is stored here.
     val tree = PendingTree(
       at = Vector("recover.roll"),
       answered = Vector("recover.choice"),
-      actor = actor,
-      action = Repeat((_: ReadyGame, _: PendingTree) => false,
-        AdjustSupply(actor, -1)),
-      ctx = WalkerCtx(baseReady, Map("iteration" -> 1)))
+      actor = actor)
 
     val ready = baseReady.copy(game = baseReady.game.copy(current =
       baseReady.game.current.copy(
@@ -54,10 +52,13 @@ class WalkerStateSuite extends munit.FunSuite {
         rollPools = Map(PoolKey("recover") -> DicePoolState(2)))))
 
     assertEquals(ready.game.current.walkerPending, Some(tree))
+    assertEquals(ready.game.current.walkerPending.get.at,
+      Vector("recover.roll"))
+    assertEquals(ready.game.current.walkerPending.get.answered,
+      Vector("recover.choice"))
+    assertEquals(ready.game.current.walkerPending.get.actor, actor)
     assertEquals(ready.game.current.rollPools(PoolKey("recover")),
       DicePoolState(2))
-    assertEquals(ready.game.current.walkerPending.get.actor, actor)
-    assertEquals(ready.game.current.walkerPending.get.ctx.ready, baseReady)
   }
 
   test("a Decide leaf flattens to itself") {

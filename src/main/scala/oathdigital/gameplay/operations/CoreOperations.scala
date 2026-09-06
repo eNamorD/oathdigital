@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{DiceSpec, ReadyGame}
+import oathdigital.gameplay.walker.{DecisionPayload, OwnerQuery}
 import oathdigital.model._
 
 /** Core operations occurring in a game of Oath.

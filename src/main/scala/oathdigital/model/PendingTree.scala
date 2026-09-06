@@ -1,66 +1,31 @@
 package oathdigital.model
 
-import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.operations.Operation
-
-/** Open decision payload carried by a walker `Decide` leaf (spec decision D2).
-  *
-  * Deliberately NOT sealed: per D2 a power or action declares its own payload
-  * case (plus validation/preview) wherever it lives, and the engine stays
-  * generic over payloads. A sealed-in-file trait would force every future
-  * payload into this file.
-  */
-trait DecisionPayload extends Product with Serializable
-
-/** Resolves which player owns a pending walker decision at walk/resume time.
-  *
-  * Open for the same reason as [[DecisionPayload]]: concrete owners (acting
-  * player, a banner holder, ...) are declared by the action trees that need
-  * them.
-  */
-trait OwnerQuery {
-  def owner(ctx: WalkerCtx): Option[PlayerId]
-}
-
-/** Minimal walker context: the ready game a pending tree was derived from,
-  * plus node-local scratch state the walker carries across a park/resume.
-  *
-  * `ready` is a snapshot taken *before* the parking state was written, so a
-  * PendingTree stored in that state's CurrentGameState never (transitively)
-  * contains itself: resume reads the live state from `CurrentGameState` and
-  * uses this snapshot for derivation-time context.
-  */
-final case class WalkerCtx(
-    ready: ReadyGame,
-    scratch: Map[String, Any] = Map.empty
-)
-
 /** Parked walker position recorded in game state while an action awaits a
-  * decision or roll.
+  * decision or roll (spec decision S1).
   *
-  * @param at stable node-id chain naming the parked node inside `action`.
+  * Pending stores ONLY a pointer into the action: the stable node-id chain
+  * `at`, the decisions already `answered`, and the `actor`. The action tree
+  * itself is derived per command and never stored in state, and the walker
+  * context is rebuilt from state at each command — so this type stays a pure
+  * model value with no dependency on the gameplay operation ADT (see the
+  * `inner production packages do not import outer adapters` guard in
+  * `BackendArchitectureSuite`).
+  *
+  * @param at stable node-id chain naming the node the walker resumes at.
   * @param answered decisions already recorded during this action.
   * @param actor the player whose action this is.
-  * @param action the derived (transformed) action tree containing the parked
-  *   node (spec: pending stores the derived tree).
-  * @param ctx walker context snapshot (see [[WalkerCtx]]).
   */
 final case class PendingTree(
     at: Vector[String],
     answered: Vector[String],
-    actor: PlayerId,
-    action: Operation,
-    ctx: WalkerCtx
+    actor: PlayerId
 )
 
 /** Stable name of a dice pool (e.g. "recover", "campaign.attack").
   *
-  * Declared here, not beside the dice-pool leaves in
-  * `gameplay/operations/CoreOperations.scala`, so the model aggregate
-  * (`CurrentGameState.rollPools`) stays free of gameplay imports: this file is
-  * the single model file sanctioned to reference the gameplay operation ADT
-  * (see the `inner production packages do not import outer adapters` ruling in
-  * `BackendArchitectureSuite`). The leaves that reference it import it from
-  * `oathdigital.model` like every other model value.
+  * A pure model value: `CurrentGameState.rollPools` lives in model and must
+  * not import gameplay, so the pool keys are declared here. The dice-pool
+  * leaves in `gameplay/operations/CoreOperations.scala` reference them through
+  * the normal model import.
   */
 final case class PoolKey(value: String)
