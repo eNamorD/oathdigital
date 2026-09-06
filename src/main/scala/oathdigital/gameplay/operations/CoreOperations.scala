@@ -493,3 +493,18 @@ final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
     body: Operation) extends CoreOperation {
   override val children: Vector[Operation] = Vector(body)
 }
+
+/** Runs `children` in order. The walker's sequence composite; `Repeat` and
+  * `Sequence` are the only composites the walker consumes this slice (Branch
+  * joins in the Campaign slice).
+  */
+final case class Sequence(override val children: Vector[Operation])
+    extends CoreOperation
+
+object Sequence {
+  /** Vararg builder so action trees read `Sequence(a, b)` (the Task 3
+    * brief's test syntax) instead of wrapping a vector by hand.
+    */
+  def apply(first: Operation, rest: Operation*): Sequence =
+    new Sequence(first +: rest.toVector)
+}

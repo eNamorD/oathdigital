@@ -5,6 +5,18 @@ import oathdigital.gameplay.operations.{Cost, RelicPlacement}
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 
 sealed trait OathEvent extends Product with Serializable
+
+/** Walker (procedure-walker) event family root (Task 3).
+  *
+  * Open, not `sealed`: the concrete per-node cases live in
+  * `gameplay/walker/WalkerEvents.scala` and later tasks extend per-node
+  * payloads from other files, which a sealed root (same-file subclasses only)
+  * would forbid — mirroring the `Operation` root decision in Task 1. The one
+  * shared shape every walker event carries is the acting player.
+  */
+trait WalkerEvent extends OathEvent {
+  def actor: PlayerId
+}
 sealed trait RecoverPowerEvent extends OathEvent {
   def playerId: PlayerId
   def decision: DecisionId
