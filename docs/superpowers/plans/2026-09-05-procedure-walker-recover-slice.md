@@ -268,6 +268,12 @@ Because this slice must validate the walker against real UI interaction only if 
 - [ ] **Step 4: Grep proof legacy actions untouched**: other actions' suites all pass; no `PrimitiveOperation`-reader regressions (compile).
 - [ ] **Step 5: Update docs**: mark Recover migration status in spec or a slice addendum; commit `docs: record Recover walker slice`.
 
+## Execution status (2026-09-06 checkpoint)
+
+Tasks 1-5 complete and reviewed clean on branch `feat/procedure-walker` (worktree `.worktrees/feat-procedure-walker`, HEAD `f9bb1d3`). Commits: T1 `20da7ed`, T2 `9ec8263`+`e9e33c4`, T3 `de52be5`, T4 `4a4e0b8`, T5 `6b06537`+`f9bb1d3`; plan amendments `3f8ae05`, `864f1ba`. Root suite green 495 at HEAD.
+
+Task 6 (next) additionally implements P1 (user-approved 2026-09-06): parks append a durable `WalkerParked(at, answered, ...)` state-fact event; replay applies it to restore PendingTree; `RollOutcome`/answered reconstructed from `RollPayload`/`ChoicePayload` + `ModifyDicePool` ops; walker never re-run at replay. Full carry-in contracts live in the SDD ledger `.superpowers/sdd/2026-09-05-procedure-walker-recover-slice/progress.md` (checkpoint section).
+
 ## Out of scope (later slices/plans)
 
 - Power contributions (Transform/Restriction/ignore), power-authored payloads, power windows on nodes, power collector in walker.

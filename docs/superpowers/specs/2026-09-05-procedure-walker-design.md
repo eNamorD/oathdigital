@@ -213,6 +213,12 @@ Dragonskin Drum"). Each node event also records its final op batch (and faces /
 choices). Replay = fold events, apply recorded ops. No powers, no transforms,
 no validator at replay.
 
+Parked positions and pool state are durable facts, not walker outputs (P1,
+2026-09-06): each `Decide`/`Roll` park appends a state-fact event
+(`WalkerParked(at, answered, ...)`); replay applies it to restore `PendingTree`.
+`RollOutcome`/answered are reconstructed from `RollPayload`/`ChoicePayload`
+events and `ModifyDicePool` ops. The walker is never re-run at replay.
+
 ### Windows / catalog
 
 `PowerWindow` stays typed. Catalog handler IDs remain the audited power
