@@ -128,7 +128,8 @@ final case class CurrentGameState(
     // alongside for actions still on the legacy evolve path this slice (dual
     // pending); walker actions read/write only `walkerPending`.
     walkerPending: Option[PendingTree] = None,
-    rollPools: Map[PoolKey, DicePoolState] = Map.empty
+    rollPools: Map[PoolKey, DicePoolState] = Map.empty,
+    rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty
 )
 
 final case class OathGame(

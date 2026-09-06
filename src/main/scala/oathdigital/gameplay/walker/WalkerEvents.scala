@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.PlayerId
+import oathdigital.model.{DieFace, PlayerId, PoolKey}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -19,6 +19,15 @@ object WalkerStepPayload {
     */
   final case class DeltaRecorded(label: String) extends WalkerStepPayload
 }
+
+/** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
+  * resumed through `ProcedureWalker.roll` (Task 4). The step's `ops` stay
+  * empty: the outcome is a state write (a `RollOutcome` into
+  * `CurrentGameState.rollOutcomes`), not an operation batch, so replay must
+  * re-derive the outcome from this payload rather than applying ops.
+  */
+final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
+    extends WalkerStepPayload
 
 /** Container event: recorded once per delta leaf the walker executes.
   *

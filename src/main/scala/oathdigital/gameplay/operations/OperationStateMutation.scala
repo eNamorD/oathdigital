@@ -298,6 +298,8 @@ private[operations] object OperationStateMutation {
         result.flatMap(peek(_, viewer, id, at))
       case (result, AdjustSupply(player, amount)) =>
         result.flatMap(adjustSupply(_, player, amount))
+      case (result, ModifyDicePool(pool, delta)) =>
+        result.flatMap(adjustDicePool(_, pool, delta))
       case (result, _) => result
     }
 
@@ -317,6 +319,22 @@ private[operations] object OperationStateMutation {
           board = value.board.copy(supply = SupplyTrack(math.min(
             SupplyTrack.Maximum, current + amount)))))
     }
+
+  /** Adds `delta` dice to a named pool's count in `rollPools` state. The
+    * count must not go below zero; this slice's trees only raise it (the
+    * defensive guard below is a mutation-time floor — shape-level dice-pool
+    * validation belongs to a later task that defines underflow semantics).
+    */
+  private def adjustDicePool(ready: ReadyGame, pool: PoolKey,
+      delta: Int): Either[OperationError, ReadyGame] = {
+    val pools = ready.game.current.rollPools
+    val current = pools.get(pool).fold(0)(_.count)
+    val next = current + delta
+    require(next >= 0,
+      s"dice pool '${pool.value}' count must not go below zero")
+    Right(updateCurrent(ready)(state => state.copy(
+      rollPools = pools.updated(pool, DicePoolState(next)))))
+  }
 
   private def flipCard(ready: ReadyGame, id: CardId, at: Location,
       orientation: Orientation): Either[OperationError, ReadyGame] = for {

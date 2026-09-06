@@ -1,6 +1,6 @@
 package oathdigital.model
 
-sealed trait AttackDieFace extends Product with Serializable
+sealed trait AttackDieFace extends DieFace with Product with Serializable
 object AttackDieFace {
   case object HollowSword extends AttackDieFace
   case object OneSword extends AttackDieFace
@@ -14,7 +14,7 @@ object AttackDieFace {
     faces.count(_ == TwoSwordsSkull)
 }
 
-sealed trait DefenseDieFace extends Product with Serializable
+sealed trait DefenseDieFace extends DieFace with Product with Serializable
 object DefenseDieFace {
   case object Blank extends DefenseDieFace
   case object OneShield extends DefenseDieFace

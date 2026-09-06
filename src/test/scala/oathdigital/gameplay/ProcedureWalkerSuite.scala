@@ -4,7 +4,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
 import oathdigital.gameplay.walker.{DecisionPayload, OwnerQuery, ProcedureWalker,
-  WalkerCtx, WalkerOutcome, WalkerStepRecorded}
+  RollPayload, WalkerCtx, WalkerOutcome, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -235,5 +235,142 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assert(finalState.game.current.walkerPending.isEmpty)
     assertEquals(finalState.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
+  }
+
+  // -------------------------------------------------------------------------
+  // Task 4: Roll node flow — faces ride the roll() command, count from state.
+  // -------------------------------------------------------------------------
+
+  private val recoverPool: PoolKey = PoolKey("recover")
+  private val defenseRoll: Roll = Roll(recoverPool, DiceSpec(DiceKind.Defense))
+
+  /** Advances `tree` to its Roll park, then folds the auto-deltas recorded
+    * before the park into a fresh state (mirroring the app layer), so the
+    * pool count set by a preceding ModifyDicePool is visible to roll().
+    */
+  private def parkAtRoll(tree: Operation): (PendingTree, ReadyGame) =
+    ProcedureWalker.advance(ready, tree, None) match {
+      case Right(WalkerOutcome.Parked(pending, events)) =>
+        (pending, applyEvents(ready, events))
+      case other => fail(s"expected a park at the Roll, got $other")
+    }
+
+  private def expectRollViolation(
+      state: ReadyGame,
+      tree: Operation,
+      pending: PendingTree,
+      faces: Vector[DieFace],
+      detailContains: String
+  ): Unit =
+    ProcedureWalker.roll(state, tree, pending, faces) match {
+      case Left(violation: OathViolation.InvalidEventOrder) =>
+        assert(violation.detail.contains(detailContains),
+          s"violation detail '${violation.detail}' should contain " +
+            s"'$detailContains'")
+      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
+    }
+
+  test("a Roll park reports the pool and required count after auto pool deltas") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
+
+    val (pending, parkedState) = parkAtRoll(tree)
+    assertEquals(pending.at, Vector("1"))
+    assertEquals(pending.answered, Vector.empty[String])
+    assertEquals(parkedState.game.current.rollPools,
+      Map(recoverPool -> DicePoolState(2)))
+    assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending),
+      Some((recoverPool, 2)))
+  }
+
+  test("roll() writes the RollOutcome and records one RollPayload event, then finishes") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
+    val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
+      DefenseDieFace.Doubler)
+    val (pending, parkedState) = parkAtRoll(tree)
+
+    ProcedureWalker.roll(parkedState, tree, pending, faces) match {
+      case Right(WalkerOutcome.Finished(finalState, events)) =>
+        val expectedScore = DefenseDieFace.score(faces.collect {
+          case face: DefenseDieFace => face
+        })
+        assertEquals(finalState.game.current.rollOutcomes(recoverPool),
+          RollOutcome(recoverPool, 2, faces, skulls = 0, score = expectedScore))
+        assertEquals(events.size, 1)
+        val step = events.head match {
+          case recorded: WalkerStepRecorded => recorded
+          case other => fail(s"expected a WalkerStepRecorded, got $other")
+        }
+        assertEquals(step.payload, RollPayload(recoverPool, faces))
+        assertEquals(step.ops, Vector.empty[CoreOperation])
+        assert(finalState.game.current.walkerPending.isEmpty)
+        assertEquals(finalState.game.current.rollPools,
+          Map.empty[PoolKey, DicePoolState])
+      case other => fail(s"expected the roll to finish the tree, got $other")
+    }
+  }
+
+  test("roll() rejects a face count that differs from the pool count") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
+    val (pending, parkedState) = parkAtRoll(tree)
+
+    expectRollViolation(parkedState, tree, pending,
+      Vector.fill(3)(DefenseDieFace.Blank),
+      s"rolled 3 dice for pool $recoverPool but pool count is 2")
+  }
+
+  test("roll() rejects a non-DefenseDieFace mixed into a defense roll") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
+    val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
+      AttackDieFace.HollowSword)
+    val (pending, parkedState) = parkAtRoll(tree)
+
+    expectRollViolation(parkedState, tree, pending, faces, "non-defense")
+  }
+
+  test("roll() rejects an Attack-kind roll in this defense-only slice") {
+    val attackRoll = Roll(recoverPool, DiceSpec(DiceKind.Attack))
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 1), attackRoll)
+    val (pending, parkedState) = parkAtRoll(tree)
+
+    expectRollViolation(parkedState, tree, pending,
+      Vector[DieFace](AttackDieFace.HollowSword),
+      "attack dice not supported in this slice")
+  }
+
+  test("roll() continues auto-walking deltas after the Roll and records both events") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll,
+      adjust)
+    val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,
+      DefenseDieFace.OneShield)
+    val (pending, parkedState) = parkAtRoll(tree)
+
+    ProcedureWalker.roll(parkedState, tree, pending, faces) match {
+      case Right(WalkerOutcome.Finished(finalState, events)) =>
+        assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
+        assertEquals(events.size, 2)
+        assertEquals(events.head.asInstanceOf[WalkerStepRecorded].payload,
+          RollPayload(recoverPool, faces))
+        val delta = events(1).asInstanceOf[WalkerStepRecorded]
+        assertEquals(delta.ops, Vector[CoreOperation](adjust))
+        assertEquals(delta.nodeId, "2")
+        assertEquals(finalState.game.current.rollOutcomes(recoverPool).score,
+          DefenseDieFace.score(Vector(DefenseDieFace.OneShield,
+            DefenseDieFace.OneShield)))
+      case other => fail(s"expected the roll to finish the tree, got $other")
+    }
+  }
+
+  test("roll() on a Decide park is rejected, not silently re-parked") {
+    val tree: Operation = Sequence(decide, adjust)
+    val (pending, _) = parkAtRoll(tree)
+    assertEquals(pending.at, Vector("0"))
+
+    ProcedureWalker.roll(ready, tree, pending, Vector.empty[DieFace]) match {
+      case Left(violation: OathViolation.InvalidEventOrder) =>
+        assert(violation.detail.contains("expected a Roll"),
+          s"violation detail '${violation.detail}' should mention the Roll " +
+            "expectation")
+      case other => fail(s"expected a Left on a non-Roll park, got $other")
+    }
   }
 }
