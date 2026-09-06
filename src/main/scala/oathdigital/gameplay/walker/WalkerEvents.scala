@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{DieFace, PlayerId, PoolKey}
+import oathdigital.model.{DecisionPayload, DieFace, PlayerId, PoolKey}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -14,11 +14,19 @@ trait WalkerStepPayload extends Product with Serializable
 
 object WalkerStepPayload {
   /** Placeholder carried by every executed delta leaf this slice. `label` is
-    * the executed leaf's `productPrefix` (e.g. `"Move"`, `"AdjustSupply"`).
-    * Payloads specialize per node in later tasks.
+    * the executed leaf's `productPrefix` (e.g. `"Move"`, `"AdjustSupply"`,
+    * `"BuildOps"`). Payloads specialize per node in later tasks.
     */
   final case class DeltaRecorded(label: String) extends WalkerStepPayload
 }
+
+/** Records a resolved parked decision (Task 5 ruling 5.3). The step's `ops`
+  * stay empty: appending the answer to `pending.answered` is a state write
+  * (the walker rebuilds `answered` from these events at replay), not an
+  * operation batch.
+  */
+final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
+    extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
   * resumed through `ProcedureWalker.roll` (Task 4). The step's `ops` stay

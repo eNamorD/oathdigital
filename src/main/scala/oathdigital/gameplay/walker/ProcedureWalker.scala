@@ -1,12 +1,13 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{DiceKind, OathEvent, OathViolation, ReadyGame}
-import oathdigital.gameplay.operations.{CoreOperation, Decide, Operation,
-  OperationPipeline, OperationPolicy, PrimitiveOperation, Repeat, Roll}
-import oathdigital.model.{DefenseDieFace, DieFace, PendingTree, PlayerId,
-  PoolKey, RollOutcome}
+import oathdigital.gameplay.operations.{Branch, BuildOps, CoreOperation,
+  Decide, Operation, OperationPipeline, OperationPolicy, PrimitiveOperation,
+  Repeat, Roll}
+import oathdigital.model.{Answered, DefenseDieFace, DieFace, PendingTree,
+  PlayerId, PoolKey, RollOutcome}
 
-/** Outcome of one walker `advance`/`roll` command.
+/** Outcome of one walker `advance`/`roll`/`resolve` command.
   *
   * A walk either runs until it must stop for a human/app decision
   * ([[Parked]]) or consumes the whole action tree ([[Finished]]).
@@ -33,7 +34,7 @@ object WalkerOutcome {
       extends WalkerOutcome
 }
 
-/** Auto-walk engine over an [[Operation]] action tree (Tasks 3-4).
+/** Auto-walk engine over an [[Operation]] action tree (Tasks 3-5).
   *
   * Contract (plan-owner rulings + brief):
   *  - `advance(state, action, pending)` walks `action` from `pending.at`
@@ -42,18 +43,35 @@ object WalkerOutcome {
   *  - `Decide` nodes park; `Roll` nodes park in `advance` (their faces ride
   *    a later command) and are resumed by
   *    `roll(state, action, pending, faces)`: faces are validated against the
-  *    parked node's pool count, a `RollOutcome` is written into state, one
-  *    [[WalkerStepRecorded]] with a [[RollPayload]] is appended, and the walk
-  *    continues from the node after the Roll exactly like `advance`.
+  *    parked node's pool count, a `RollOutcome` is merged into
+  *    `CurrentGameState.rollOutcomes` for the pool, one [[WalkerStepRecorded]]
+  *    with a [[RollPayload]] is appended, and the walk continues from the
+  *    node after the Roll exactly like `advance`.
+  *  - A parked `Decide` is answered through
+  *    `resolve(state, action, pending, answer)`: the parked node's owner and
+  *    optional semantic `validate` (Decide.validate) are checked, the answer
+  *    is appended to `pending.answered`, ONE [[WalkerStepRecorded]] carrying a
+  *    [[ChoicePayload]] (`ops` empty) is recorded, and the walk continues.
   *  - Every other leaf validates + executes via `OperationPipeline`
   *    (`OperationPolicy.Permissive`) and records one [[WalkerStepRecorded]]
-  *    per executed leaf.
+  *    per executed leaf. [[BuildOps]] leaves are executed at walk time:
+  *    `build(state, pending)` yields the delta batch to run and record (an
+  *    empty batch runs nothing and records nothing).
+  *  - [[Branch]] composites are resolved at walk time by evaluating
+  *    `select(state, pending)` and walking the selected operations as the
+  *    branch's children (statically the branch has none).
   *  - `Repeat(guard, body)` runs whole body passes while `guard(state,
   *    pending)` holds; a pass that parks is resumed at the same body point on
   *    the next command and the guard is re-checked only at pass boundaries,
   *    so deltas that already ran (their events are in the journal) are never
   *    re-executed or re-recorded.
   *  - Tree exhausted -> [[WalkerOutcome.Finished]].
+  *
+  * Roll outcomes: one entry per pool holds the ACCUMULATED outcome of every
+  * roll of that pool this action (faces/skulls/score merge across passes), so
+  * a `Repeat` body that rolls the same pool again can score the action
+  * cumulatively (Task 5 ruling D). Replay re-derives the same accumulation by
+  * merging each recorded `RollPayload` in journal order.
   *
   * Navigation state: `PendingTree.at` is the root-relative child-index path
   * of the parked leaf (`Vector("0","0","1")` = child 0, its child 0, that
@@ -68,7 +86,7 @@ object ProcedureWalker {
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree]): Either[OathViolation, WalkerOutcome] = {
     val actor = pending.fold(state.game.current.turn.activePlayer)(_.actor)
-    val answered = pending.fold(Vector.empty[String])(_.answered)
+    val answered = pending.fold(Vector.empty[Answered])(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
     // running walk must not carry it inside CurrentGameState (dual-pending
@@ -83,13 +101,13 @@ object ProcedureWalker {
     * The resumed node is the leaf addressed by `pending.at` and MUST be a
     * `Roll` (any other park rejects with `OathViolation.InvalidEventOrder`).
     * Semantics: validate `faces.size` against the pool count read from
-    * `state.rollPools` for the node's `pool`; on success write the derived
-    * `RollOutcome` into `state.rollOutcomes`, append ONE
-    * [[WalkerStepRecorded]] carrying [[RollPayload]] (`ops` empty — the
-    * outcome is a state write, not a delta batch), then continue auto-walking
-    * the tree from the node after the Roll exactly like `advance`: further
-    * deltas execute until the next Decide/Roll park (`Parked`) or the tree
-    * ends (`Finished`).
+    * `state.rollPools` for the node's `pool`; on success merge the derived
+    * `RollOutcome` into `state.rollOutcomes` (accumulating across repeated
+    * rolls of the same pool), append ONE [[WalkerStepRecorded]] carrying
+    * [[RollPayload]] (`ops` empty — the outcome is a state write, not a delta
+    * batch), then continue auto-walking the tree from the node after the Roll
+    * exactly like `advance`: further deltas execute until the next
+    * Decide/Roll park (`Parked`) or the tree ends (`Finished`).
     *
     * Only `DiceKind.Defense` rolls are legal this slice: an `Attack` die, a
     * face count differing from the pool count, or a non-`DefenseDieFace` in
@@ -100,6 +118,28 @@ object ProcedureWalker {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered),
       Vector.empty, Some(pending.at), RollResume(faces)).map(toOutcome)
+  }
+
+  /** Resolves the `Decide` park recorded by `advance`/`roll` (Task 5 ruling
+    * 5.3).
+    *
+    * The resumed node is the leaf addressed by `pending.at` and MUST be a
+    * `Decide` whose `decisionId` equals `answer.decisionId` (a Roll park, a
+    * mismatched decision id, or any other position rejects with an
+    * `OathViolation`). Semantics: check the node's `owner` resolves to the
+    * acting player, run the node's optional `validate(state, pending,
+    * payload)` against `answer.payload` when present, append ONE
+    * [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
+    * answer is a state write into `pending.answered`, not a delta batch), add
+    * `answer` to `answered`, then continue auto-walking from the node after
+    * the Decide exactly like `advance` (so `resolve` may park again at the
+    * next Roll/Decide or finish the tree).
+    */
+  def resolve(state: ReadyGame, action: Operation, pending: PendingTree,
+      answer: Answered): Either[OathViolation, WalkerOutcome] = {
+    val base = strip(state)
+    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered),
+      Vector.empty, Some(pending.at), AnswerResume(answer)).map(toOutcome)
   }
 
   /** When `pending` parks on a `Roll` node of `action`, reports the node's
@@ -129,7 +169,7 @@ object ProcedureWalker {
       state: ReadyGame,
       events: Vector[OathEvent],
       actor: PlayerId,
-      answered: Vector[String]
+      answered: Vector[Answered]
   )
 
   private sealed trait Step extends Product with Serializable
@@ -140,13 +180,16 @@ object ProcedureWalker {
       extends Step
 
   /** How a resumed command treats the leaf parked at `pending.at`: a plain
-    * `advance` re-parks an unanswered Decide/Roll; a `roll` consumes the
-    * parked Roll (validating faces, writing the outcome, recording the
-    * event) and walks on from the following node.
+    * `advance` re-parks an unanswered Decide/Roll (or passes a Decide the
+    * caller already recorded in `answered`); a `roll` consumes the parked
+    * Roll (validating faces, merging the outcome, recording the event); a
+    * `resolve` consumes the parked Decide (validating the answer, recording
+    * the ChoicePayload event) — both then walk on from the following node.
     */
   private sealed trait Resume extends Product with Serializable
   private case object PlainResume extends Resume
   private final case class RollResume(faces: Vector[DieFace]) extends Resume
+  private final case class AnswerResume(answer: Answered) extends Resume
 
   private def toOutcome(step: Step): WalkerOutcome = step match {
     case Done(ctx) =>
@@ -183,10 +226,25 @@ object ProcedureWalker {
       resume: Resume): Either[OathViolation, Step] =
     node match {
       case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume)
+      case branch: Branch => walkBranch(branch, ctx, path, cursor, resume)
       case leaf: PrimitiveOperation => walkLeaf(leaf, ctx, path, cursor, resume)
       case composite => walkChildren(composite.children, ctx, path, cursor,
         resume)
     }
+
+  /** A `Branch` has no static children: its `select` chooses the children to
+    * walk at walk time, and a resume cursor addresses the selected vector the
+    * same way it would address static children (the branch's position is
+    * `path`; the parked child index heads the remaining cursor segments).
+    */
+  private def walkBranch(branch: Branch, ctx: WalkCtx, path: Vector[String],
+      cursor: Option[Vector[String]],
+      resume: Resume): Either[OathViolation, Step] = {
+    val branchTree = PendingTree(at = path, answered = ctx.answered,
+      actor = ctx.actor)
+    val selected = branch.select(ctx.state, branchTree)
+    walkChildren(selected, ctx, path, cursor, resume)
+  }
 
   /** Runs whole passes of `repeat.body` while its guard holds, plus, on a
     * resume, the remainder of the already-started pass first.
@@ -246,9 +304,24 @@ object ProcedureWalker {
                 contractViolation(s"resume position ${path.mkString(".")} " +
                   s"is not a Decide/Roll park (leaf ${leafLabel(other)})")
             }
+          case AnswerResume(answer) =>
+            leaf match {
+              case decide: Decide if decide.decisionId == answer.decisionId =>
+                answerDecide(decide, ctx, path, answer).map(Done(_))
+              case decide: Decide => Left(OathViolation.InvalidEventOrder(
+                s"resolve() answer ${answer.decisionId} does not match the " +
+                  s"parked Decide ${decide.decisionId} at " +
+                  path.mkString(".")))
+              case roll: Roll => Left(OathViolation.InvalidEventOrder(
+                s"resolve() resumed at a Roll park; expected a Decide"))
+              case other =>
+                contractViolation(s"resume position ${path.mkString(".")} " +
+                  s"is not a Decide/Roll park (leaf ${leafLabel(other)})")
+            }
           case PlainResume =>
             leaf match {
-              case decide: Decide if ctx.answered.contains(decide.decisionId) =>
+              case decide: Decide
+                  if ctx.answered.exists(_.decisionId == decide.decisionId) =>
                 // Already parked on and answered: skip past it.
                 Right(Done(ctx))
               case _: Decide | _: Roll =>
@@ -263,6 +336,7 @@ object ProcedureWalker {
       case None =>
         leaf match {
           case _: Decide | _: Roll => Right(Park(path, ctx))
+          case build: BuildOps => runBuildOps(build, ctx, path).map(Done(_))
           case delta => record(delta, ctx, path).map(Done(_))
         }
     }
@@ -319,11 +393,73 @@ object ProcedureWalker {
           ops = Vector(delta)))
     }
 
+  /** Executes a [[BuildOps]] leaf: `build(state, pending)` returns the delta
+    * batch to run through the pipeline, recorded as the node's step ops. An
+    * empty batch runs nothing and records nothing (the node produced no
+    * state change).
+    */
+  private def runBuildOps(build: BuildOps, ctx: WalkCtx,
+      path: Vector[String]): Either[OathViolation, WalkCtx] = {
+    val tree = PendingTree(at = path, answered = ctx.answered,
+      actor = ctx.actor)
+    build.build(ctx.state, tree).flatMap { ops =>
+      if (ops.isEmpty) Right(ctx)
+      else
+        OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive)(
+          Right(_)).map { updated =>
+          val nodeId =
+            if (path.isEmpty) leafLabel(build) else path.mkString(".")
+          ctx.copy(
+            state = updated,
+            events = ctx.events :+ WalkerStepRecorded(
+              actor = ctx.actor,
+              nodeId = nodeId,
+              payload = WalkerStepPayload.DeltaRecorded(leafLabel(build)),
+              ops = ops))
+        }
+    }
+  }
+
+  /** Validates a resolved answer against the parked Decide and records its
+    * step: the owner must resolve to the acting player, and the node's
+    * optional `validate` must accept the payload; on success `answer` is
+    * appended to `answered` and ONE [[WalkerStepRecorded]] carrying a
+    * [[ChoicePayload]] (ops empty — the answer is a state write into
+    * `pending.answered`) is appended.
+    */
+  private def answerDecide(decide: Decide, ctx: WalkCtx,
+      path: Vector[String], answer: Answered): Either[OathViolation, WalkCtx] = {
+    val parkTree = PendingTree(at = path, answered = ctx.answered,
+      actor = ctx.actor)
+    for {
+      _ <- decide.owner.owner(WalkerCtx(ctx.state)) match {
+        case None => Left(OathViolation.InvalidEventOrder(
+          s"decision ${decide.decisionId} at ${path.mkString(".")} has no " +
+            "resolving owner"))
+        case Some(owner) => Either.cond(owner == ctx.actor, (),
+          OathViolation.WrongPlayer(owner, ctx.actor))
+      }
+      _ <- decide.validate.fold[Either[OathViolation, Unit]](
+        Right(()))(_(ctx.state, parkTree, answer.payload))
+    } yield {
+      val nodeId =
+        if (path.isEmpty) leafLabel(decide) else path.mkString(".")
+      ctx.copy(
+        answered = ctx.answered :+ answer,
+        events = ctx.events :+ WalkerStepRecorded(
+          actor = ctx.actor,
+          nodeId = nodeId,
+          payload = ChoicePayload(answer.decisionId, answer.payload),
+          ops = Vector.empty))
+    }
+  }
+
   /** Records one roll step: validates the resumed Roll's die kind (defense
     * only this slice), the face count vs the pool count, and that every face
-    * is a [[DefenseDieFace]]; writes the derived [[RollOutcome]] into
-    * `ctx.state` and appends the [[WalkerStepRecorded]] carrying a
-    * [[RollPayload]] (with no ops — the outcome is a state write).
+    * is a [[DefenseDieFace]]; merges the derived [[RollOutcome]] into
+    * `ctx.state` (accumulating across rolls of the same pool) and appends the
+    * [[WalkerStepRecorded]] carrying a [[RollPayload]] (with no ops — the
+    * outcome is a state write).
     */
   private def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
       faces: Vector[DieFace]): Either[OathViolation, WalkCtx] = {
@@ -356,14 +492,29 @@ object ProcedureWalker {
     }
   }
 
-  private def writeRollOutcome(ready: ReadyGame, outcome: RollOutcome): ReadyGame =
+  /** Merges `outcome` into the pool's accumulated roll entry: repeated rolls
+    * of one pool (e.g. a Recover `Repeat` re-rolling "recover") accumulate
+    * faces/skulls/score so the walker can score the action cumulatively.
+    */
+  private def writeRollOutcome(ready: ReadyGame, outcome: RollOutcome): ReadyGame = {
+    val accumulated = ready.game.current.rollOutcomes.get(outcome.pool)
+      .fold(outcome) { previous =>
+        RollOutcome(outcome.pool,
+          count = previous.count + outcome.count,
+          faces = previous.faces ++ outcome.faces,
+          skulls = previous.skulls + outcome.skulls,
+          score = previous.score + outcome.score)
+      }
     ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       rollOutcomes = ready.game.current.rollOutcomes
-        .updated(outcome.pool, outcome))))
+        .updated(outcome.pool, accumulated))))
+  }
 
   /** Resolves the node addressed by a `PendingTree.at` child-index path, or
     * `None` when a segment is non-numeric or out of range (a fabricated or
-    * stale position).
+    * stale position). Static navigation only: a path inside a [[Branch]]'s
+    * dynamically-selected children cannot be resolved statically (branches
+    * have no static children) and returns `None`.
     */
   private def leafAt(node: Operation, path: Vector[String]): Option[Operation] =
     path.headOption match {

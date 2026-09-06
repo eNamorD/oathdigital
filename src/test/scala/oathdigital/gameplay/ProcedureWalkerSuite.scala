@@ -3,8 +3,8 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
-import oathdigital.gameplay.walker.{DecisionPayload, OwnerQuery, ProcedureWalker,
-  RollPayload, WalkerCtx, WalkerOutcome, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{OwnerQuery, ProcedureWalker, RollPayload,
+  WalkerCtx, WalkerOutcome, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -101,17 +101,19 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val parked = ProcedureWalker.advance(ready, tree, None) match {
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, Vector("0"))
-        assertEquals(pending.answered, Vector.empty[String])
+        assertEquals(pending.answered, Vector.empty[Answered])
         assertEquals(pending.actor, actor)
         assertEquals(events, Vector.empty[OathEvent])
         pending
       case other => fail(s"expected a park at the Decide, got $other")
     }
 
-    // The caller answers the parked decision (appending to `answered`) and
-    // stores the pending tree in state for the resumed command.
+    // The caller answers the parked decision (appending an Answered entry to
+    // `answered`) and stores the pending tree in state for the resumed
+    // command.
     val answeredTree = parked.copy(
-      answered = parked.answered :+ decide.decisionId)
+      answered = parked.answered :+ Answered(decide.decisionId,
+        ProcedureWalkerSuite.TestDecisionPayload("continue")))
     val storedState = ready.copy(game = ready.game.copy(current =
       ready.game.current.copy(walkerPending = Some(answeredTree))))
 
@@ -145,7 +147,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case other => fail(s"expected a park after the auto-delta, got $other")
     }
     assertEquals(parked.at, Vector("1"))
-    assertEquals(parked.answered, Vector.empty[String])
+    assertEquals(parked.answered, Vector.empty[Answered])
     assertEquals(parkEvents.size, 1)
     assertEquals(parkEvents.head.asInstanceOf[WalkerStepRecorded].ops,
       Vector[CoreOperation](adjust))
@@ -153,7 +155,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // The caller folds the Parked events to obtain the state at the park.
     val parkedState = applyEvents(ready, parkEvents)
     val answeredTree = parked.copy(
-      answered = parked.answered :+ decide.decisionId)
+      answered = parked.answered :+ Answered(decide.decisionId,
+        ProcedureWalkerSuite.TestDecisionPayload("continue")))
     ProcedureWalker.advance(parkedState, tree, Some(answeredTree)) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events, Vector.empty[OathEvent])
@@ -210,7 +213,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     }
 
     val answeredTree = parked.copy(
-      answered = parked.answered :+ decide.decisionId)
+      answered = parked.answered :+ Answered(decide.decisionId,
+        ProcedureWalkerSuite.TestDecisionPayload("continue")))
     ProcedureWalker.advance(ready, tree, Some(answeredTree)) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
@@ -275,7 +279,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     val (pending, parkedState) = parkAtRoll(tree)
     assertEquals(pending.at, Vector("1"))
-    assertEquals(pending.answered, Vector.empty[String])
+    assertEquals(pending.answered, Vector.empty[Answered])
     assertEquals(parkedState.game.current.rollPools,
       Map(recoverPool -> DicePoolState(2)))
     assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending),

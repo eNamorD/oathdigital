@@ -1,7 +1,7 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{DiceSpec, ReadyGame}
-import oathdigital.gameplay.walker.{DecisionPayload, OwnerQuery}
+import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
+import oathdigital.gameplay.walker.OwnerQuery
 import oathdigital.model._
 
 /** Core operations occurring in a game of Oath.
@@ -479,11 +479,31 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
 final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
 
 /** Parks a walker until the owning player resolves the open decision.
-  * `payload` is an open, power-extensible description of the choice (D2);
-  * `owner` resolves who decides at walk/resume time.
+  * `payload` is an open, power-extensible description of the choice (D2 —
+  * the concrete answer rides the resolve command as an [[Answered]]);
+  * `owner` resolves who decides at walk/resume time; `validate` (when
+  * present) is a semantic legality check the walker runs against the resolved
+  * answer before recording it (Task 5 ruling 5.3).
   */
 final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
-    decisionId: String) extends PrimitiveOperation
+    decisionId: String,
+    validate: Option[(ReadyGame, PendingTree, DecisionPayload) =>
+      Either[OathViolation, Unit]] = None) extends PrimitiveOperation
+
+/** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
+  * `build(state, pending)` when it reaches the node and executes whatever
+  * `CoreOperation`s come back, recording them in the node's
+  * `WalkerStepRecorded.ops` (Task 5 ruling 5.4).
+  *
+  * The closure lives in the action tree, which is derived per command and
+  * never persisted, so it may close over anything reachable at build time
+  * (e.g. a chosen relic id from an earlier answered decision). A `build` that
+  * returns `Vector.empty` runs nothing and records no step (nothing ran).
+  * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
+  */
+final case class BuildOps(build: (ReadyGame, PendingTree) =>
+    Either[OathViolation, Vector[CoreOperation]])
+    extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command
   * time (the walker's job); `Operation.flatten` always descends into `body`,
@@ -494,9 +514,24 @@ final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
   override val children: Vector[Operation] = Vector(body)
 }
 
-/** Runs `children` in order. The walker's sequence composite; `Repeat` and
-  * `Sequence` are the only composites the walker consumes this slice (Branch
-  * joins in the Campaign slice).
+/** A composite whose children are chosen AT WALK TIME: the walker evaluates
+  * `select(state, pending)` when it reaches the node and walks the returned
+  * operations in order (Task 5 ruling 5.5 — the Recover tree uses it to walk
+  * the success-only relic decision or stop silently).
+  *
+  * `children` is statically empty because the selection is dynamic, so
+  * `Operation.flatten(Branch(...))` is empty and a Branch must never sit on
+  * an action root that other code flattens — the walker resolves it and
+  * replay applies recorded ops, never re-selecting. Selected children are
+  * addressed by child index inside the branch, exactly like static children.
+  */
+final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
+    extends CoreOperation {
+  override val children: Vector[Operation] = Vector.empty
+}
+
+/** Runs `children` in order. The walker's sequence composite; `Repeat`,
+  * `Sequence`, and `Branch` are the composites the walker consumes this slice.
   */
 final case class Sequence(override val children: Vector[Operation])
     extends CoreOperation

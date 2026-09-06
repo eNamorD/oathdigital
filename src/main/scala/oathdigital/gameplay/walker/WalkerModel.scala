@@ -7,18 +7,15 @@ import oathdigital.model.PlayerId
 // S1). Kept OUT of `oathdigital.model`: model stores only the pending pointer
 // (PendingTree) and must not import gameplay, while these types are consumed
 // by the Task 2 Decide leaf, the Task 3 walker, and Task 5 action payloads.
-
-/** Open decision payload carried by a walker `Decide` leaf (spec decision D2).
-  *
-  * Deliberately NOT sealed: per D2 a power or action declares its own payload
-  * case (plus validation/preview) wherever it lives, and the engine stays
-  * generic over payloads.
-  */
-trait DecisionPayload extends Product with Serializable
+//
+// `DecisionPayload` used to live here (Task 2); Task 5 ruling 5.1 moved it to
+// `oathdigital.model` because answered decisions are persisted on
+// `CurrentGameState.walkerPending` between commands and must stay model-safe
+// (see `model/DecisionPayload.scala`).
 
 /** Resolves which player owns a pending walker decision at walk/resume time.
   *
-  * Open for the same reason as [[DecisionPayload]]: concrete owners (acting
+  * Open for the same reason as `DecisionPayload`: concrete owners (acting
   * player, a banner holder, ...) are declared by the action trees that need
   * them.
   */
