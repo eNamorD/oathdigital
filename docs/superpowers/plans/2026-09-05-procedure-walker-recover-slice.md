@@ -19,6 +19,8 @@
 - No new serialization format for legacy events. Walker events get a new `OathEvent` family + codec case.
 - `usedPowers` tracking stays state (spec decision 11 of the old program, restated in the spec).
 - Commit per task with the exact message shown. Work on branch `feat/procedure-walker`.
+- Per-task gate: root suite `./sbtw "test"` green. Frontend gate (`frontend/test`, `frontend/fastLinkJS`) runs at the Task 8 checkpoint only — the Scala.js frontend source set excludes `gameplay/operations`, so per-task frontend runs add cost without signal.
+- All new leaf/composite `Operation` cases (walker leaves in Task 2, `Repeat`) are declared inside `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala`: `CoreOperation`/`PrimitiveOperation` are sealed and Scala 2.13 requires sealed subclasses in the same source file. (Task 1 review finding.)
 
 ---
 
@@ -106,7 +108,7 @@ git commit -m "refactor(operations): unify Operation ADT with children accessor"
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/GameState.scala` (`CurrentGameState`, add pool state)
 - Create: `src/main/scala/oathdigital/model/PendingTree.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala` or new `walker/WalkerOperations.scala` for the new leaves
+- Modify: `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala` — new leaf cases go HERE (sealed `PrimitiveOperation` cannot be extended from another file on Scala 2.13; plan constraint). Do NOT create a separate walker operations file.
 
 **Interfaces:**
 - Consumes: Task 1 `Operation`; existing `OathState`/`ReadyGame`; `PlayerId`, `SiteId`, `PowerId`, `PowerWindow`.
