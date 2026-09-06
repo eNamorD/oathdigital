@@ -182,6 +182,12 @@ Because `PendingTree` is stored in `CurrentGameState`, keep `PendingProcedure` a
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala`
+- Create: `src/main/scala/oathdigital/model/DecisionPayload.scala` (move open trait from walker/WalkerModel.scala)
+- Modify: `src/main/scala/oathdigital/model/PendingTree.scala` (answered: Vector[Answered])
+- Modify: `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala` (resolve; BuildOps/Branch execution)
+- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala` (ChoicePayload)
+- Modify: `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala` (BuildOps leaf, Branch composite; Decide.validate)
+- Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerModel.scala` (DecisionPayload removed)
 - Test: `RecoverProcedureSuite`
 
 **Interfaces:**
