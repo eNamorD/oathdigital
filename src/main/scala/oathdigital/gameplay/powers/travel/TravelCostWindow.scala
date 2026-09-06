@@ -11,25 +11,42 @@ import oathdigital.gameplay.powers.{NarrowPassPower, ReviewedPowerCatalog,
 import oathdigital.model.{PlayerId, PowerId, Region, SiteId}
 
 /** Terrain role of a site power. The fold matches these kinds (never catalog
-  * handler strings) to decide route topology; the numeric effect travels in the
-  * power's [[CostContribution]].
+  * handler strings) to decide route topology. Each kind owns its single
+  * canonical [[CostContribution]] (Coast replaces with 1, Island adds 2,
+  * Mountain adds 1, Pass contributes nothing) — the kind↔contribution mapping
+  * lives here once instead of being re-declared on every site power, so a
+  * mis-authored site power cannot silently alter a cost.
   */
-sealed trait TravelTerrainKind extends Product with Serializable
+sealed trait TravelTerrainKind extends Product with Serializable {
+  def contribution: Option[CostContribution]
+}
 object TravelTerrainKind {
-  case object Coast extends TravelTerrainKind
-  case object Island extends TravelTerrainKind
-  case object Mountain extends TravelTerrainKind
-  case object Pass extends TravelTerrainKind
+  case object Coast extends TravelTerrainKind {
+    override val contribution: Option[CostContribution] =
+      Some(Replace(PowerWindow.TravelCost, 1))
+  }
+  case object Island extends TravelTerrainKind {
+    override val contribution: Option[CostContribution] =
+      Some(Add(PowerWindow.TravelCost, 2))
+  }
+  case object Mountain extends TravelTerrainKind {
+    override val contribution: Option[CostContribution] =
+      Some(Add(PowerWindow.TravelCost, 1))
+  }
+  case object Pass extends TravelTerrainKind {
+    override val contribution: Option[CostContribution] = None
+  }
 }
 
 /** Sub-trait implemented only by TravelCost-window site powers (Q61-A).
-  * Powers declare a typed kind + typed cost fact; the generic window fold reads
-  * them by pattern-matching this trait.
+  * Powers declare their typed kind; the typed cost fact follows from the kind's
+  * canonical contribution, and the generic window fold reads it by
+  * pattern-matching this trait.
   */
 trait TravelCostTerrainPower {
   def powerId: PowerId
   def terrain: TravelTerrainKind
-  def contribution: Option[CostContribution]
+  def contribution: Option[CostContribution] = terrain.contribution
 }
 
 /** Route facts the TravelCost fold computes and hands to suppression
@@ -58,15 +75,20 @@ final case class TravelCostWindowContext(
   * path:
   *
   *   - Coast route (source coastal AND destination coastal-or-island): a
-  *     source-side Coast replaces the cost with its amount (1);
-  *     Island/Mountain/Pass contributions are ignored via the suppression
-  *     registry (their survivors are removed).
+  *     source-side Coast replaces the cost with its amount (1); the
+  *     destination's Island/Mountain adds are structurally excluded by this
+  *     branch. Coast powers additionally register their suppression rule in
+  *     [[SuppressionRegistry]]; with one terrain power per site the branch
+  *     already implements the ignore, so the registry query is a registered
+  *     seam for future multi-power windows rather than the deciding mechanism
+  *     today (it is exercised by wiring tests).
   *   - Ordinary route: destination Island (+2) and Mountain (+1) contributions
   *     add onto the base; a destination Coast contributes nothing (its Replace
   *     is meaningful only as the source-side trigger of a coast route).
   *
   * No catalog-ID switch: registered powers are matched by their typed
-  * [[TravelCostTerrainPower]] sub-trait.
+  * [[TravelCostTerrainPower]] sub-trait, whose contribution is the kind's
+  * canonical fact.
   */
 object TravelCostWindow {
   def fold(

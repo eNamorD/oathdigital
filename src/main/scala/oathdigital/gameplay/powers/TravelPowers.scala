@@ -4,20 +4,20 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.operations.{Move, OperationReason,
   OperationRestriction, Piece}
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powerresolver.CostContribution.{Add, Replace}
 import oathdigital.gameplay.powerresolver.SuppressionRegistry
 import oathdigital.gameplay.powers.travel._
 import oathdigital.model.{PlayerId, PowerId, SiteId, SiteRule, SiteRuler}
 import SiteRuler._
 
-/** TravelCost-window site terrain powers. Each declares a typed terrain kind
-  * and a typed cost fact; the powers-owned [[TravelCostWindow]] fold reads them
-  * (sub-trait accessor pattern — no new PowerHandler method). Coast powers
-  * register their generic suppression rule: on a coast route (source coastal
-  * and destination coastal-or-island) the source coast ignores
-  * Island/Mountain/Pass. Narrow Pass carries no cost but exposes a restriction
-  * factory evaluated by Travel legality (module-bound action, Q53); the
-  * restriction body lives on the power (Q28-A).
+/** TravelCost-window site terrain powers. Each power declares its typed terrain
+  * kind; the typed cost fact follows from the kind's canonical contribution
+  * (single source of truth in [[TravelTerrainKind]]) — a site power cannot
+  * mis-state its effect. Coast powers additionally register their generic
+  * suppression rule: on a coast route (source coastal and destination
+  * coastal-or-island) the source coast ignores Island/Mountain/Pass. Narrow
+  * Pass carries no cost but exposes a restriction factory evaluated by Travel
+  * legality (module-bound action, Q53); the restriction body lives on the power
+  * (Q28-A).
   */
 object TravelPowers {
   private val modifier = Some(MajorActionType.Travel)
@@ -26,45 +26,36 @@ object TravelPowers {
 
   private final case class TerrainPower(
       idValue: String,
-      override val terrain: TravelTerrainKind,
-      override val contribution: Option[CostContribution]
+      override val terrain: TravelTerrainKind
   ) extends ReviewedPower(idValue, modifier, topology)
       with TravelCostTerrainPower {
     override val powerId: PowerId = id
   }
 
-  private val coast = TravelTerrainKind.Coast
-
   val BrokenPeaksMountain: TravelCostTerrainPower with Power = TerrainPower(
-    "site.broken-peaks.mountain", TravelTerrainKind.Mountain,
-    Some(Add(PowerWindow.TravelCost, 1)))
+    "site.broken-peaks.mountain", TravelTerrainKind.Mountain)
   val DesolateShoreCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.desolate-shore.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.desolate-shore.coast", TravelTerrainKind.Coast)
   val FairIsleCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.fair-isle.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.fair-isle.coast", TravelTerrainKind.Coast)
   val FairIsleIsland: TravelCostTerrainPower with Power = TerrainPower(
-    "site.fair-isle.island", TravelTerrainKind.Island,
-    Some(Add(PowerWindow.TravelCost, 2)))
+    "site.fair-isle.island", TravelTerrainKind.Island)
   val GreenShoreCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.green-shore.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.green-shore.coast", TravelTerrainKind.Coast)
   val HeadwatersMountain: TravelCostTerrainPower with Power = TerrainPower(
-    "site.headwaters.mountain", TravelTerrainKind.Mountain,
-    Some(Add(PowerWindow.TravelCost, 1)))
+    "site.headwaters.mountain", TravelTerrainKind.Mountain)
   val HiddenPlaceMountain: TravelCostTerrainPower with Power = TerrainPower(
-    "site.hidden-place.mountain", TravelTerrainKind.Mountain,
-    Some(Add(PowerWindow.TravelCost, 1)))
+    "site.hidden-place.mountain", TravelTerrainKind.Mountain)
   val MinesMountain: TravelCostTerrainPower with Power = TerrainPower(
-    "site.mines.mountain", TravelTerrainKind.Mountain,
-    Some(Add(PowerWindow.TravelCost, 1)))
+    "site.mines.mountain", TravelTerrainKind.Mountain)
   val RockyCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.rocky-coast.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.rocky-coast.coast", TravelTerrainKind.Coast)
   val SunkenIslesCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.sunken-isles.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.sunken-isles.coast", TravelTerrainKind.Coast)
   val SunkenIslesIsland: TravelCostTerrainPower with Power = TerrainPower(
-    "site.sunken-isles.island", TravelTerrainKind.Island,
-    Some(Add(PowerWindow.TravelCost, 2)))
+    "site.sunken-isles.island", TravelTerrainKind.Island)
   val TidalMarshesCoast: TravelCostTerrainPower with Power = TerrainPower(
-    "site.tidal-marshes.coast", coast, Some(Replace(PowerWindow.TravelCost, 1)))
+    "site.tidal-marshes.coast", TravelTerrainKind.Coast)
 
   private val terrainPowers: Vector[TravelCostTerrainPower with Power] =
     Vector(BrokenPeaksMountain, DesolateShoreCoast, FairIsleCoast,
@@ -76,17 +67,17 @@ object TravelPowers {
 
   /** Generic coast-route suppression: while the source coast applies, every
     * other TravelCost terrain contribution (Island/Mountain/Pass) is ignored.
-    * Registered once per coast id so the fold's active-set query fires on any
-    * coastal source.
+    * Registered once per coast id so any coastal source fires the rule.
     */
   private val ignoredTerrain: Vector[PowerId] = terrainPowers.collect {
-    case power if power.terrain != coast => power.powerId
+    case power if power.terrain != TravelTerrainKind.Coast => power.powerId
   }
   terrainPowers.collect {
-    case power if power.terrain == coast =>
-      SuppressionRegistry.register(PowerWindow.TravelCost, power.powerId,
+    case power if power.terrain == TravelTerrainKind.Coast =>
+      val dominant = power.powerId
+      SuppressionRegistry.register(PowerWindow.TravelCost, dominant,
         ignoredTerrain)(context => context match {
-          case route: TravelCostWindowContext => route.coastRouteOn(power.powerId)
+          case route: TravelCostWindowContext => route.coastRouteOn(dominant)
           case _ => false
         })
   }

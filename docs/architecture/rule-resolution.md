@@ -35,14 +35,18 @@ owning procedure defines a stricter printed order.
 Terrain travel no longer runs through `RuntimeRuleRegistry` (Phase 4): the
 travel path was cost-only with zero core-operation coupling, so it migrated
 onto power windows. Terrain site powers under
-`gameplay/powers/travel/TravelCostWindow.scala` declare typed cost facts; the
-window fold computes the route (coast route, Island/Mountain destination
-modifiers) from those facts, and a generic `SuppressionRegistry` expresses
-"Coast ignores Island/Mountain/Pass on a coast route". Narrow Pass is a power
-holding a restriction body evaluated by Travel legality against a simulated
-pawn move; `RuntimeRuleRegistry` is now an empty stub retained only for
-Negotiation's explicit blocking boundary, and Wake take-wealth rules live under
-`gameplay/phases/TakeWealthRules.scala`.
+`gameplay/powers/travel/TravelCostWindow.scala` declare their typed terrain
+kind, and each kind owns its single canonical cost fact (Coast replaces with 1,
+Island adds 2, Mountain adds 1). The window fold computes the route (coast
+route, Island/Mountain destination modifiers) from those facts. A generic
+`SuppressionRegistry` is the registered ignore surface for future multi-power
+windows: coast powers register "on a coast route I ignore Island/Mountain/Pass",
+wiring tests exercise it with real ids, and today's one-terrain-power-per-site
+fold already implements the ignore in its coast-route branch. Narrow Pass is a
+power holding a restriction body evaluated by Travel legality against a
+simulated pawn move; `RuntimeRuleRegistry` is now an empty stub retained only
+for Negotiation's explicit blocking boundary, and Wake take-wealth rules live
+under `gameplay/phases/TakeWealthRules.scala`.
 
 Typed outcomes may allow or block, or report an unsupported relevant handler.
 They are not generic scripts; reserved effect forms reject until both a

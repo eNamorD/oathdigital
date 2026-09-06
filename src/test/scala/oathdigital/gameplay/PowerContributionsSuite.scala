@@ -50,14 +50,30 @@ class PowerContributionsSuite extends munit.FunSuite {
       Vector(dominant, island), context), none)
   }
 
-  test("duplicate registration for the same window and dominant is rejected") {
+  test("duplicate registration for the same window and dominant with a different suppressed set is rejected") {
     val window = PowerWindow.TravelCost
     val dominant = PowerId("site.dup.coast")
     SuppressionRegistry.register(
       window, dominant, Vector(PowerId("site.other.island")))(_ => true)
     intercept[IllegalArgumentException] {
       SuppressionRegistry.register(
-        window, dominant, Vector(PowerId("site.other.island")))(_ => false)
+        window, dominant, Vector(PowerId("site.other.mountain")))(_ => false)
     }
+  }
+
+  test("identical re-registration is idempotent and keeps the first predicate") {
+    val window = PowerWindow.TravelCost
+    val dominant = PowerId("site.idem.coast")
+    val island = PowerId("site.idem.island")
+    SuppressionRegistry.register(
+      window, dominant, Vector(island))(context => false)
+    // Same suppressed set: no throw; the first predicate (veto) is retained.
+    SuppressionRegistry.register(
+      window, dominant, Vector(island))(_ => true)
+    val context = new WindowContext {
+      override val activePowers: Vector[PowerId] = Vector(dominant, island)
+    }
+    assertEquals(SuppressionRegistry.suppressed(window,
+      Vector(dominant, island), context), none)
   }
 }

@@ -40,20 +40,28 @@ object SuppressionRegistry {
       when: WindowContext => Boolean
   )
 
-  private val entries =
-    scala.collection.mutable.Map.empty[(PowerWindow, PowerId), Suppression]
+  @volatile private var entries: Map[(PowerWindow, PowerId), Suppression] =
+    Map.empty
 
-  /** Registers one suppression rule; a second registration for the same
-    * (window, dominant) pair is a programming error.
+  /** Registers one suppression rule. Registration is idempotent for the same
+    * (window, dominant, suppressed) triple; registering the same dominant with
+    * a different suppressed set is a programming error. The immutable map is
+    * rebuilt on write so concurrent folds only ever read a consistent snapshot.
     */
   def register(
       window: PowerWindow,
       dominant: PowerId,
       suppressed: Vector[PowerId]
-  )(when: WindowContext => Boolean): Unit = {
+  )(when: WindowContext => Boolean): Unit = synchronized {
     val key = (window, dominant)
-    require(!entries.contains(key), s"suppression for $key already registered")
-    entries.update(key, Suppression(window, dominant, suppressed, when))
+    entries.get(key) match {
+      case Some(existing) if existing.suppressed == suppressed => ()
+      case Some(_) => throw new IllegalArgumentException(
+        s"suppression for $key already registered with different contents")
+      case None =>
+        entries = entries.updated(key,
+          Suppression(window, dominant, suppressed, when))
+    }
   }
 
   /** The active ids dropped because an applicable dominant suppresses them.
