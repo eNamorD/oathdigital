@@ -1,3 +1,10 @@
+> **PARTIALLY SUPERSEDED — replay/command/action-model parts change under the
+> procedure-walker redesign** (`docs/superpowers/specs/2026-09-05-procedure-walker-design.md`):
+> replay applies recorded ops only (no evolve re-derive); the command surface
+> collapses to Start/Resolve/RollSubmitted; `PendingProcedure` becomes a
+> `PendingTree` pointer; dice pools/roll outcomes become state; `usedPowers`
+> tracking stays. Storage/journal/domain-foundation content here remains valid.
+
 # Authoritative domain events
 
 Status: accepted, reviewed August 2026.

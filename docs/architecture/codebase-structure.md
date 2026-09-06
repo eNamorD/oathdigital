@@ -1,3 +1,8 @@
+> **PARTIALLY SUPERSEDED — module layout will change under the procedure-walker
+> redesign** (`docs/superpowers/specs/2026-09-05-procedure-walker-design.md`): per-action
+> procedures and power seams collapse into Operation trees + a walker. Ownership
+> and dependency-direction principles remain valid.
+
 # Codebase structure
 
 Oath Digital is a modular monolith. Packages are ownership boundaries inside

@@ -21,7 +21,17 @@ Power handlers now use compact immutable function bundles and typed procedure
 adapters. This keeps HRF's concise registration ergonomics without adopting its
 mutable expansion dispatcher or weakening event replay validation.
 
-## Engine Redesign (see `docs/superpowers/plans/2026-09-04-engine-redesign.md`)
+## Engine Redesign — SUPERSEDED BY DESIGN
+
+> **Direction changed 2026-09-05.** The phased engine redesign (phases 1-4
+> below, executed and recorded) is superseded by the procedure-walker design:
+> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`. Actions become
+> Operation trees, one walker executes them, powers are contributors
+> (Transform/Restriction), replay applies recorded ops. Phases 1-4 entries are
+> historical records of completed work. Plan new engine work from the spec, not
+> this section.
+
+## Engine Redesign (history; see `docs/superpowers/plans/2026-09-04-engine-redesign.md`)
 
 **Phase 1 — Receipts removal: DONE** on branch `feat/engine-redesign`. Executor
 returns `ReadyGame`; `OperationReceipt`/`OperationExecution` deleted. No

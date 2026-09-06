@@ -1,3 +1,8 @@
+> **Note (2026-09-05): implementation form superseded.** Rules content here stays
+> authoritative; the code it describes (bespoke action procedures, power seams,
+> typed-fact vocabularies) is being replaced by the procedure-walker design:
+> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`.
+
 # Bounded Forge action
 
 The implemented Forge slice follows Combined Rulebook p. 25 and New

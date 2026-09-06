@@ -1,3 +1,8 @@
+> **Note (2026-09-05): implementation form superseded.** Rules content here stays
+> authoritative; the code it describes (bespoke action procedures, power seams,
+> typed-fact vocabularies) is being replaced by the procedure-walker design:
+> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`.
+
 # All-Exile Negotiation
 
 The Phase 1 Negotiation slice implements the Combined Rulebook page 27 and New Foundations page 15 procedure for fixed, unaltered, all-Exile first games. It is a persistent 0-Supply minor action started by the active player with one or more co-located players.

@@ -1,3 +1,8 @@
+> **Note (2026-09-05): implementation form superseded.** Rules content here stays
+> authoritative; the code it describes (bespoke action procedures, power seams,
+> typed-fact vocabularies) is being replaced by the procedure-walker design:
+> `docs/superpowers/specs/2026-09-05-procedure-walker-design.md`.
+
 # Core minor actions boundary
 
 This slice implements the unmodified first-game procedures from Combined Rulebook p. 27 in `gameplay/actions/MinorActions.scala`. They are Act-phase minor actions and cost 0 Supply by default. Every submitted choice resolves atomically and passes through the normal action-boundary evaluation pipeline.
