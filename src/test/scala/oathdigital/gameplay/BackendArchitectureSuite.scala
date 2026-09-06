@@ -358,16 +358,31 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("inner production packages do not import outer adapters") {
+    // Walker-slice bridge (slice plan task 2, adjudicated ruling): the model
+    // aggregate stores the walker's pending tree
+    // (CurrentGameState.walkerPending), and model/PendingTree.scala carries the
+    // gameplay-side types that tree embeds (Operation ADT in `action`,
+    // ReadyGame snapshot in `ctx`) plus the PoolKey that `rollPools` keys on.
+    // That ONE model file may import oathdigital.gameplay; every other model
+    // file keeps the full ban below, the bridge file keeps the outer-adapter
+    // ban, and gameplay keeps its own bans.
+    val modelGameplayBridge =
+      "src/main/scala/oathdigital/model/PendingTree.scala"
     val constraints = Vector(
       Paths.get("src/main/scala/oathdigital/model") -> Vector(
-        "application", "gameplay", "persistence", "serialization", "server"),
+        "gameplay", "application", "persistence", "serialization", "server"),
       Paths.get("src/main/scala/oathdigital/gameplay") -> Vector(
         "application", "persistence", "presentation", "protocol",
         "serialization", "server"))
     val offenders = constraints.flatMap { case (root, packages) =>
       val forbidden = packages.map(name => s"import oathdigital.$name")
       Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala"))
-        .filter(path => forbidden.exists(Files.readString(path).contains))
+        .filter { path =>
+          val source = Files.readString(path)
+          forbidden.exists(name => source.contains(name) &&
+            !(name == "import oathdigital.gameplay" &&
+              path.toString == modelGameplayBridge))
+        }
         .map(_.toString)
     }.sorted
     assertEquals(offenders, Vector.empty)

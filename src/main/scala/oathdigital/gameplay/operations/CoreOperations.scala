@@ -1,5 +1,6 @@
 package oathdigital.gameplay.operations
 
+import oathdigital.gameplay.{DiceSpec, ReadyGame}
 import oathdigital.model._
 
 /** Core operations occurring in a game of Oath.
@@ -438,4 +439,56 @@ final case class Take(piece: Piece, player: PlayerId,
   val move: Move = Move(piece, PositionedLocation(from, sourcePosition),
     PositionedLocation(to))
   override val children: Vector[Operation] = Vector(move)
+}
+
+// ---------------------------------------------------------------------------
+// Walker leaves and composites (procedure-walker slice, Task 2).
+//
+// These cases MUST live in this file: CoreOperation/PrimitiveOperation are
+// sealed and Scala 2.13 requires sealed subclasses in the same source file
+// (Task 1 review ruling / plan amendment). They extend PrimitiveOperation, so
+// `children = Vector(this)` — each is a leaf.
+//
+// Dice pools: pool counts live in state (CurrentGameState.rollPools:
+// Map[PoolKey, DicePoolState]); these leaves mutate/consume them. A `Roll`
+// only records that a roll must happen — the application layer pre-rolls the
+// faces at the command boundary (the engine never rolls). Powers/windows are
+// not wired in this slice, so leaves keep the default `window = None`; Roll
+// and Decide are the future window-hook candidates and may override `window`
+// once power windows land.
+// ---------------------------------------------------------------------------
+
+/** Adds `delta` dice to a named pool's count in state. */
+final case class ModifyDicePool(pool: PoolKey, delta: Int)
+    extends PrimitiveOperation
+
+/** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
+  * state, faces ride the next command.
+  */
+final case class Roll(pool: PoolKey, dice: DiceSpec)
+    extends PrimitiveOperation
+
+/** Edits a recorded roll outcome for `pool` (power-authored skulls/score
+  * changes). Left `None` fields unchanged.
+  */
+final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
+    score: Option[Int]) extends PrimitiveOperation
+
+/** Removes `pool` from the rollPools state map. */
+final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
+
+/** Parks a walker until the owning player resolves the open decision.
+  * `payload` is an open, power-extensible description of the choice (D2);
+  * `owner` resolves who decides at walk/resume time.
+  */
+final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
+    decisionId: String) extends PrimitiveOperation
+
+/** Re-executes `body` until `guard` is false. The guard runs only at command
+  * time (the walker's job); `Operation.flatten` always descends into `body`,
+  * and replay applies recorded ops, never re-guarding.
+  */
+final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
+    body: Operation) extends CoreOperation {
+  override val children: Vector[Operation] = Vector(body)
 }

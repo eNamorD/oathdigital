@@ -123,7 +123,12 @@ final case class CurrentGameState(
     pending: Option[PendingProcedure],
     result: Option[GameResult],
     temporaryHands: Map[PlayerId, Vector[WorldCardId]] = Map.empty,
-    setAsideRelics: Vector[RelicId] = Vector.empty
+    setAsideRelics: Vector[RelicId] = Vector.empty,
+    // Walker (procedure-walker) pending state. Legacy `pending` stays
+    // alongside for actions still on the legacy evolve path this slice (dual
+    // pending); walker actions read/write only `walkerPending`.
+    walkerPending: Option[PendingTree] = None,
+    rollPools: Map[PoolKey, DicePoolState] = Map.empty
 )
 
 final case class OathGame(
