@@ -347,4 +347,23 @@ class RecoverProcedureSuite extends munit.FunSuite {
       case other => fail(s"expected a wrong-relic rejection, got $other")
     }
   }
+
+  test("build rejects a site with no facedown relic instead of building a " +
+      "tree that deadlocks after success") {
+    val (ready, actor, siteId, _, _) = recoverable
+    val reliclessSite =
+      ready.game.current.map.sites(siteId).copy(relics = Vector.empty)
+    val relicless = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(siteId, reliclessSite)))))
+
+    RecoverProcedure.build(catalog, relicless, actor.player) match {
+      case Left(violation: OathViolation.RecoverUnavailable) =>
+        assert(violation.detail.contains("no facedown relic"),
+          s"violation detail '${violation.detail}' should mention the " +
+            "missing facedown relic")
+      case other =>
+        fail(s"expected a relic-less Recover start rejection, got $other")
+    }
+  }
 }

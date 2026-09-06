@@ -46,9 +46,14 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   * `build` needs the [[ExecutableCatalog]] to read the site difficulty, so its
   * signature is `build(catalog, state, action)` rather than the brief's
   * `build(ctx)` (documented deviation, pre-approved by the task ruling). Start
-  * eligibility reuses the legacy `RecoverRules.validateAction`, which rejects
-  * (among others) an actor with no supply, a pawn not at the site, and a site
-  * with no facedown relic.
+  * eligibility mirrors the legacy start gate: `RecoverRules.validateAction`
+  * (Act context, pawn at the site, difficulty present, supply >= 1, exile-only
+  * unaltered foundations) PLUS a facedown-relic-at-the-site check — the same
+  * relic-presence condition legacy `RecoverRules.validate` enforces on every
+  * roll. The latter is what makes a started Recover always have a legal relic
+  * answer once it succeeds: without it a successful roll on a relic-less site
+  * would park at `"recover.relic"` with no legal resolution and no exit (a
+  * deadlock legacy fails cleanly at start).
   */
 object RecoverProcedure {
   val recoverPool: PoolKey = PoolKey("recover")
@@ -63,9 +68,25 @@ object RecoverProcedure {
       .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
     _ <- RecoverRules.validateAction(catalog, OathState.Ready(state), actor,
       siteId)
+    _ <- gateFacedownRelic(state, siteId)
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
+
+  /** Build rejects a site with no facedown relic: the walker's only legal
+    * answer at the success-only `"recover.relic"` decision is a facedown site
+    * relic, so starting without one would leave the resolved action with no
+    * legal choice (legacy `RecoverRules.validate` fails the same start the
+    * same way).
+    */
+  private def gateFacedownRelic(state: ReadyGame,
+      siteId: SiteId): Either[OathViolation, Unit] =
+    state.game.current.map.sites.get(siteId) match {
+      case Some(site) if site.relics.exists(
+          _.orientation == Orientation.FaceDown) => Right(())
+      case _ => Left(OathViolation.RecoverUnavailable(
+        "site has no facedown relic"))
+    }
 
   /** The tree closes only over command-stable data (actor, site, difficulty,
     * and the site's current facedown relic as a payload marker — the actual
