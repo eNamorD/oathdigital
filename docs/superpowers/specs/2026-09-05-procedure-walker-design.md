@@ -252,6 +252,69 @@ this design and will be replanned.
   BackendArchitecture-style test per power family).
 - Human-readable log lines rendered from event payloads.
 
+## Slice status: Recover on the walker (Task 8 checkpoint, 2026-09-07)
+
+The vertical slice from the migration plan's step 1 is complete and verified.
+Status, for whoever picks up the next slice:
+
+**On the walker:** Recover only. `RecoverProcedure.build`/`rebuild`
+(`src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala`)
+declares the tree; `ProcedureWalker`
+(`src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`) walks it.
+The app-level command surface is `GameCommand.StartWalker` /
+`GameCommand.RollWalker` / `GameCommand.ResolveWalker`, routed through
+`OathRules.startWalker`/`rollWalkerPrepared`/`resolveWalker`
+(`src/main/scala/oathdigital/gameplay/OathRules.scala`). A pending walker
+action blocks legacy actions and non-walker commands (`OathLifecycle`,
+`GameApplicationService`) — a parked walker action is a half-executed major
+action; letting a legacy command run around it would produce a state the
+recorded-ops replay could not reproduce.
+
+**Still legacy:** every other action (Search, Economy, Campaign, Forge,
+Challenge, Negotiation, Rest, Wake, CardPlay, Visions, Raid) runs unchanged on
+`PendingProcedure`/evolve. The legacy Recover UI/projection
+(`PendingProcedureProjector`, `ActionDecisionRenderer`) still exists and is
+untouched; the walker Recover path is exercised at the service level only
+(`WalkerDecisionProjector` projects the parked decision server-side, but no
+client issues `StartWalker` this slice — ruling recorded in Task 7 of the SDD
+ledger). Both Recover entry points coexist; a player's Recover this slice
+still runs on the legacy path via the UI.
+
+**Not wired this slice (deferred to a later slice, per the migration plan):**
+power contributions (Transform/Restriction/ignore), power-authored payloads,
+power windows on walker nodes, and the power collector in the walker.
+`usedPowers` and the power catalog are untouched by walker code.
+
+**What the next slice inherits:**
+- The `Operation` ADT (`CoreOperations.scala`), `ProcedureWalker`,
+  `WalkerEvent`/`WalkerStepRecorded`/`WalkerParked`/`WalkerCompleted`, and the
+  walker command surface are action-agnostic and ready for a second action.
+- `OathRules.buildWalker` currently hardcodes the `ActionRef.Recover` case; a
+  second action needs a branch there (and in `RecoverProcedure`'s sibling
+  object) before it can walk.
+- Known posture difference (accepted, not a defect): `applyRecorded` validates
+  node-id format and pending-pointer equality but never derives a tree from
+  the recorded events, so a walker delta event has a weaker replay-tamper
+  posture than a legacy event (which rejects a tampered payload against
+  re-derived rules). This is by design — J1 forbids replay from re-running the
+  walker — and is covered by the dev/test-only drift check below, not by a
+  runtime guard.
+- Minor deferred items (structure, coverage, one memoization opportunity) are
+  listed in the SDD ledger
+  (`.superpowers/sdd/2026-09-05-procedure-walker-recover-slice/progress.md`)
+  and are non-blocking.
+
+**Drift check:** `WalkerReplayDriftSuite`
+(`src/test/scala/oathdigital/gameplay/WalkerReplayDriftSuite.scala`, dev/test
+only, never reachable from production replay) asserts, for the slice's
+Recover corpus (single-roll success, multi-roll success via Continue, and
+Stop), that operations recorded in the journal equal the operations the
+walker derives when a fresh tree is rebuilt and re-walked over state
+reconstructed purely by replaying those same recorded events through
+`ProcedureWalker.applyRecorded` — the identical function
+`OathRules.evolve` dispatches to in production. It is the "recorded ops ==
+recomputed tree ops" check this spec's Verification section calls for.
+
 ## Out of scope / deferred
 
 - Active-player ordering of simultaneous same-window effects (rulebook clause
