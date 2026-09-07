@@ -7,6 +7,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionPayload.{RecoverChoice,
   RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.gameplay.OathState.Ready
@@ -176,14 +177,16 @@ class RecoverProcedureSuite extends munit.FunSuite {
       Vector[CoreOperation](ModifyDicePool(pool, 2)))
     assert(steps(1).payload.isInstanceOf[RollPayload])
     assertEquals(steps(1).ops, Vector.empty[CoreOperation])
-    assertEquals(steps(2).payload, WalkerStepPayload.DeltaRecorded("BuildOps"))
+    assertEquals(steps(2).payload, WalkerStepPayload.DeltaRecorded(
+      SupplySpent(actor.player, 1)))
     assertEquals(steps(2).ops,
       Vector[CoreOperation](AdjustSupply(actor.player, -1)))
     assertEquals(steps(3).payload,
       ChoicePayload(RecoverProcedure.relicDecisionId,
         RecoverRelicPayload(relic.id)))
     assertEquals(steps(3).ops, Vector.empty[CoreOperation])
-    assertEquals(steps(4).payload, WalkerStepPayload.DeltaRecorded("BuildOps"))
+    assertEquals(steps(4).payload, WalkerStepPayload.DeltaRecorded(
+      RelicAcquired(actor.player, relic.id, siteId)))
     assertEquals(steps(4).ops, Vector[CoreOperation](Move(
       Piece.Card(relic.id),
       PositionedLocation(Location.Site(siteId)),

@@ -2,11 +2,14 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
   ReadyGame, WalkerEvent}
-import oathdigital.gameplay.operations.{Branch, BuildOps, CoreOperation,
-  Decide, Operation, OperationExecutor, OperationPipeline, OperationPolicy,
-  PrimitiveOperation, Repeat, Roll}
+import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
+  CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
+  OperationExecutor, OperationPipeline, OperationPolicy, Piece,
+  PositionedLocation, PrimitiveOperation, Repeat, Roll}
 import oathdigital.model.{Answered, DefenseDieFace, DieFace,
-  PendingTree, PlayerId, PoolKey, RollOutcome}
+  PendingTree, PlayerId, PoolKey, RelicId, RollOutcome}
+import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
+  OperationApplied, RelicAcquired, SupplySpent}
 
 /** Outcome of one walker `advance`/`roll`/`resolve` command.
   *
@@ -338,10 +341,10 @@ object ProcedureWalker {
       ctx.state.game.current.copy(walkerPending = None,
         rollPools = Map.empty, walkerAction = None)))
 
-  private def contractViolation(message: String): Nothing =
-    throw new IllegalArgumentException(s"walker contract violation: $message")
+  private def contractViolation(message: String): Left[OathViolation, Nothing] =
+    Left(OathViolation.InvalidEventOrder(s"walker contract violation: $message"))
 
-  /** Case-class short name used for the placeholder payload label. */
+  /** Case-class short name used by the generic semantic fallback. */
   private def leafLabel(node: Operation): String = node match {
     case product: Product => product.productPrefix
     case other => other.getClass.getSimpleName
@@ -405,14 +408,16 @@ object ProcedureWalker {
       case None =>
         passes(ctx)
       case Some(remaining) =>
-        require(remaining.headOption.contains("0"),
-          "resume path into a Repeat must address its body (child 0)")
-        // The current pass already started (its guard was true at pass time);
-        // finish its remainder, then keep looping whole passes.
-        walk(repeat.body, ctx, bodyPath, Some(remaining.tail), resume).flatMap {
-          case park: Park => Right(park)
-          case Done(next) => passes(next)
-        }
+        if (!remaining.headOption.contains("0"))
+          contractViolation(
+            "resume path into a Repeat must address its body (child 0)")
+        else
+          // The current pass already started (its guard was true at pass time);
+          // finish its remainder, then keep looping whole passes.
+          walk(repeat.body, ctx, bodyPath, Some(remaining.tail), resume).flatMap {
+            case park: Park => Right(park)
+            case Done(next) => passes(next)
+          }
     }
   }
 
@@ -421,9 +426,10 @@ object ProcedureWalker {
       resume: Resume): Either[OathViolation, Step] =
     cursor match {
       case Some(remaining) =>
-        require(remaining.isEmpty,
-          s"resume path $remaining overruns leaf ${leafLabel(leaf)}")
-        resume match {
+        if (remaining.nonEmpty)
+          contractViolation(
+            s"resume path $remaining overruns leaf ${leafLabel(leaf)}")
+        else resume match {
           case RollResume(faces) =>
             leaf match {
               case roll: Roll => recordRoll(roll, ctx, path, faces).map(Done(_))
@@ -479,18 +485,21 @@ object ProcedureWalker {
     cursor match {
       case None => continue(children, 0, ctx, path, None, resume)
       case Some(remaining) =>
-        require(remaining.nonEmpty,
-          "resume path ends at a composite node; only Decide/Roll parks resume")
-        val segment = remaining.head
-        require(segment.nonEmpty && segment.forall(_.isDigit),
-          s"invalid resume path segment '$segment'")
-        val index = segment.toInt
-        require(index >= 0 && index < children.size,
-          s"resume path segment '$segment' out of range for a node with " +
-            s"${children.size} children")
-        // Children before `index` already ran in an earlier command; start at
-        // `index` with the cursor consumed past this level.
-        continue(children, index, ctx, path, Some(remaining.tail), resume)
+        remaining.headOption match {
+          case None => contractViolation(
+            "resume path ends at a composite node; only Decide/Roll parks resume")
+          case Some(segment) => segment.toIntOption match {
+            case None => contractViolation(s"invalid resume path segment '$segment'")
+            case Some(index) if index < 0 || index >= children.size =>
+              contractViolation(
+                s"resume path segment '$segment' out of range for a node with " +
+                  s"${children.size} children")
+            case Some(index) =>
+              // Children before `index` already ran in an earlier command;
+              // start at `index` with the cursor consumed past this level.
+              continue(children, index, ctx, path, Some(remaining.tail), resume)
+          }
+        }
     }
 
   private def continue(children: Vector[Operation], index: Int, ctx: WalkCtx,
@@ -517,7 +526,8 @@ object ProcedureWalker {
         events = ctx.events :+ WalkerStepRecorded(
           actor = ctx.actor,
           nodeId = nodeId,
-          payload = WalkerStepPayload.DeltaRecorded(leafLabel(delta)),
+          payload = WalkerStepPayload.DeltaRecorded(
+            deltaMeaning(Vector(delta), leafLabel(delta))),
           ops = Vector(delta)))
     }
 
@@ -542,10 +552,24 @@ object ProcedureWalker {
             events = ctx.events :+ WalkerStepRecorded(
               actor = ctx.actor,
               nodeId = nodeId,
-              payload = WalkerStepPayload.DeltaRecorded(leafLabel(build)),
+              payload = WalkerStepPayload.DeltaRecorded(
+                deltaMeaning(ops, leafLabel(build))),
               ops = ops))
         }
     }
+  }
+
+  private def deltaMeaning(ops: Vector[CoreOperation],
+      fallback: String): DeltaMeaning = ops match {
+    case Vector(ModifyDicePool(pool, delta)) =>
+      DicePoolModified(pool, delta)
+    case Vector(AdjustSupply(player, amount)) if amount < 0 =>
+      SupplySpent(player, -amount)
+    case Vector(Move(Piece.Card(relic: RelicId),
+        PositionedLocation(Location.Site(site), _),
+        PositionedLocation(Location.PlayArea(player), _), _)) =>
+      RelicAcquired(player, relic, site)
+    case _ => OperationApplied(fallback)
   }
 
   /** Validates a resolved answer against the parked Decide and records its
@@ -647,12 +671,11 @@ object ProcedureWalker {
   private def leafAt(node: Operation, path: Vector[String]): Option[Operation] =
     path.headOption match {
       case None => Some(node)
-      case Some(segment) if segment.nonEmpty && segment.forall(_.isDigit) =>
+      case Some(segment) => segment.toIntOption.flatMap { index =>
         val children = node.children
-        val index = segment.toInt
         if (index >= 0 && index < children.size)
           leafAt(children(index), path.tail)
         else None
-      case _ => None
+      }
     }
 }

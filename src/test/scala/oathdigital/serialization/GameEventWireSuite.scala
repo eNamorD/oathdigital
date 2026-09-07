@@ -9,7 +9,10 @@ import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, Wak
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
   RelicRecovered}
-import oathdigital.gameplay.operations.{Cost, RelicPlacement}
+import oathdigital.gameplay.operations.{AdjustSupply, Cost, Location,
+  ModifyDicePool, Move, Piece, PositionedLocation, RelicPlacement}
+import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
+  WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
@@ -287,6 +290,36 @@ class GameEventWireSuite extends munit.FunSuite {
         injected(0)("eventType") = eventType
         assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft)
     }
+  }
+
+  test("walker delta events round-trip independent semantic facts") {
+    val player = PlayerId("red")
+    val pool = PoolKey("recover")
+    val relic = RelicId("R1")
+    val site = SiteId("site")
+    val move = Move(Piece.Card(relic),
+      PositionedLocation(Location.Site(site)),
+      PositionedLocation(Location.PlayArea(player)),
+      resultingOrientation = Some(Orientation.FaceDown))
+    val events = Vector[OathEvent](
+      WalkerStepRecorded(player, "0", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.DicePoolModified(pool, 2)),
+        Vector(ModifyDicePool(pool, 2))),
+      WalkerStepRecorded(player, "1.0.1", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.SupplySpent(player, 1)),
+        Vector(AdjustSupply(player, -1))),
+      WalkerStepRecorded(player, "2.1", WalkerStepPayload.DeltaRecorded(
+        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move)))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("step")("meaning")("kind").str).toVector,
+      Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
   }
 
   test("v6 Economy events round-trip source cost yield and NF resource mode") {

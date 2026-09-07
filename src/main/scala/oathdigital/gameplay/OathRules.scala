@@ -162,12 +162,22 @@ final class OathRules(catalog: ExecutableCatalog,
   /** Applies pre-rolled faces to the current Roll park. */
   def rollWalker(state: OathState, pool: PoolKey,
       faces: Vector[DieFace]): Either[OathViolation, OathTransition] =
+    rollWalkerPrepared(state, pool)(_ => Right(faces))
+
+  /** Validates and derives the action tree once, then asks the application for
+    * exactly the parked pool's authoritative number of faces.
+    */
+  def rollWalkerPrepared(state: OathState, pool: PoolKey)(
+      prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
+      : Either[OathViolation, OathTransition] =
     resumeWalker(state) { case (ready, action, tree, pending) =>
       for {
-        parked <- ProcedureWalker.parkedRoll(ready, tree, pending).toRight(
-          InvalidEventOrder("current walker position is not a Roll park"))
+        parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending)
+          .toRight(InvalidEventOrder(
+            "current walker position is not a Roll park")))
         _ <- Either.cond(parked._1 == pool, (), InvalidEventOrder(
           s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
+        faces <- prepareFaces(parked._2)
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces))
         transition <- walkerTransition(state, ready, action, tree, outcome)
       } yield transition
@@ -175,7 +185,14 @@ final class OathRules(catalog: ExecutableCatalog,
 
   private def resumeWalker(state: OathState)(run: (ReadyGame, ActionRef,
       Operation, PendingTree) => Either[OathViolation, OathTransition])
-      : Either[OathViolation, OathTransition] = state match {
+      : Either[OathViolation, OathTransition] =
+    walkerResumeContext(state).flatMap { case (ready, action, tree, pending) =>
+      run(ready, action, tree, pending)
+    }
+
+  private def walkerResumeContext(state: OathState)
+      : Either[OathViolation, (ReadyGame, ActionRef, Operation, PendingTree)] =
+    state match {
     case Ready(ready) => for {
       action <- ready.game.current.walkerAction.toRight(
         InvalidEventOrder("no walker action is pending"))
@@ -188,8 +205,7 @@ final class OathRules(catalog: ExecutableCatalog,
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
       tree <- buildWalker(action, ready, pending.actor, starting = false)
-      transition <- run(ready, action, tree, pending)
-    } yield transition
+    } yield (ready, action, tree, pending)
     case _ => Left(GameNotStarted)
   }
 
@@ -201,8 +217,8 @@ final class OathRules(catalog: ExecutableCatalog,
         else RecoverProcedure.rebuild(catalog, ready, actor)
     }
 
-  private def walkerCall(result: => Either[OathViolation, WalkerOutcome])
-      : Either[OathViolation, WalkerOutcome] =
+  private def walkerCall[A](result: => Either[OathViolation, A])
+      : Either[OathViolation, A] =
     try result
     catch {
       case error: IllegalArgumentException => Left(InvalidEventOrder(

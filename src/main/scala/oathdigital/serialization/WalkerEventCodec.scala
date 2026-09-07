@@ -6,7 +6,9 @@ import oathdigital.gameplay.OathEvent
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, Location,
   ModifyDicePool, Move, Piece, PositionedLocation, StackPosition}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
-  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+  DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
+  OperationApplied, RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionPayload.{RecoverChoice,
   RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.model._
@@ -65,8 +67,8 @@ private[serialization] trait WalkerEventCodec {
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match {
-      case WalkerStepPayload.DeltaRecorded(label) =>
-        ujson.Obj("kind" -> "delta", "label" -> label)
+      case WalkerStepPayload.DeltaRecorded(meaning) =>
+        ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
       case ChoicePayload(decisionId, answer) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
         "payload" -> encodeDecisionPayload(answer))
@@ -84,7 +86,8 @@ private[serialization] trait WalkerEventCodec {
   private def decodeStepPayload(value: ujson.Value,
       path: String): Either[WireError, WalkerStepPayload] =
     value("kind").str match {
-      case "delta" => Right(WalkerStepPayload.DeltaRecorded(value("label").str))
+      case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
+        .map(WalkerStepPayload.DeltaRecorded)
       case "choice" => decodeDecisionPayload(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
@@ -93,6 +96,41 @@ private[serialization] trait WalkerEventCodec {
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
     }
+
+  private def encodeDeltaMeaning(meaning: DeltaMeaning): ujson.Value =
+    meaning match {
+      case DicePoolModified(pool, delta) => ujson.Obj(
+        "kind" -> "dice-pool-modified", "pool" -> pool.value,
+        "delta" -> delta)
+      case SupplySpent(player, amount) => ujson.Obj(
+        "kind" -> "supply-spent", "playerId" -> player.value,
+        "amount" -> amount)
+      case RelicAcquired(player, relic, site) => ujson.Obj(
+        "kind" -> "relic-acquired", "playerId" -> player.value,
+        "relicId" -> relic.value, "siteId" -> site.value)
+      case OperationApplied(label) => ujson.Obj(
+        "kind" -> "operation-applied", "label" -> label)
+    }
+
+  private def decodeDeltaMeaning(value: ujson.Value,
+      path: String): Either[WireError, DeltaMeaning] = value("kind").str match {
+    case "dice-pool-modified" =>
+      decodeSignedInt(value("delta"), s"$path.delta").map(delta =>
+        DicePoolModified(PoolKey(value("pool").str), delta))
+    case "supply-spent" =>
+      decodeSignedInt(value("amount"), s"$path.amount").flatMap { amount =>
+        if (amount > 0) Right(SupplySpent(
+          PlayerId(value("playerId").str), amount))
+        else Left(InvalidValue(s"$path.amount", "must be positive"))
+      }
+    case "relic-acquired" => Right(RelicAcquired(
+      PlayerId(value("playerId").str), RelicId(value("relicId").str),
+      SiteId(value("siteId").str)))
+    case "operation-applied" =>
+      Right(OperationApplied(value("label").str))
+    case other => Left(InvalidValue(s"$path.kind",
+      s"unknown walker delta meaning '$other'"))
+  }
 
   private def encodeDecisionPayload(payload: DecisionPayload): ujson.Value =
     payload match {

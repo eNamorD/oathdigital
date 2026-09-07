@@ -297,6 +297,20 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       Some((recoverPool, 2)))
   }
 
+  test("malformed and overflowing Roll paths return typed failures") {
+    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
+    val (_, parkedState) = parkAtRoll(tree)
+    val paths = Vector(Vector("not-a-node"), Vector("999999999999999999999"))
+
+    paths.foreach { path =>
+      val pending = PendingTree(path, Vector.empty, actor)
+      assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending), None)
+      assert(ProcedureWalker.roll(parkedState, tree, pending,
+        Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)).left.toOption
+        .exists(_.isInstanceOf[OathViolation.InvalidEventOrder]))
+    }
+  }
+
   test("roll() writes the RollOutcome and records one RollPayload event, then finishes") {
     val tree: Operation = Sequence(ModifyDicePool(recoverPool, 2), defenseRoll)
     val faces: Vector[DieFace] = Vector(DefenseDieFace.OneShield,

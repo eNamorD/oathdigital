@@ -221,6 +221,15 @@ class TravelSuite extends munit.FunSuite {
     assert(rules.handle(Ready(pending), TravelCommand.Travel(
       player.player, destination)).left.toOption.get
       .isInstanceOf[PendingProcedureBlocksAction])
+
+    val walkerPending = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(
+        walkerPending = Some(PendingTree(Vector("1"), Vector.empty,
+          player.player)),
+        walkerAction = Some(ActionRef.Recover))))
+    assert(rules.handle(Ready(walkerPending), TravelCommand.Travel(
+      player.player, destination)).left.toOption.get
+      .isInstanceOf[InvalidEventOrder])
   }
 
   test("replay rejects tampered source and cost") {

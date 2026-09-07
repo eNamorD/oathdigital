@@ -238,6 +238,20 @@ final class GameApplicationService(
       command: GameCommand,
       nextSequence: Long
   ): Either[OathViolation, OathTransition] =
+    state match {
+      case OathState.Ready(ready)
+          if ready.game.current.walkerPending.nonEmpty &&
+            !isWalkerResume(command) =>
+        Left(OathViolation.InvalidEventOrder(
+          "a walker action is pending; only walker resume commands are legal"))
+      case _ => applyUnblockedCommand(state, command, nextSequence)
+    }
+
+  private def applyUnblockedCommand(
+      state: OathState,
+      command: GameCommand,
+      nextSequence: Long
+  ): Either[OathViolation, OathTransition] =
     command match {
       case GameCommand.WithModifiers(inner, ordered) => state match {
         case OathState.Ready(ready) => majorAction(inner).toRight(
@@ -273,8 +287,12 @@ final class GameApplicationService(
       case GameCommand.ResolveWalker(treeDecision) =>
         rules.resolveWalker(state, Answered(treeDecision.decisionId,
           treeDecision.payload))
-      case GameCommand.RollWalker(pool, faces) =>
-        rules.rollWalker(state, pool, faces)
+      case GameCommand.RollWalker(pool) =>
+        rules.rollWalkerPrepared(state, pool) { count =>
+          Either.cond(count == 2, defenseDicePort.rollTwo(),
+            OathViolation.InvalidEventOrder(
+              s"Recover walker expected 2 defense dice but pool count is $count"))
+        }
       case GameCommand.PlacePawn(playerId, siteId) =>
         setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
       case GameCommand.ChooseAdviser(playerId, adviserId) =>
@@ -429,6 +447,11 @@ final class GameApplicationService(
       case GameCommand.DeclineRestPower(playerId, decision) =>
         rules.handle(state, RestCommand.DeclinePower(playerId, decision))
     }
+
+  private def isWalkerResume(command: GameCommand): Boolean = command match {
+    case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
+    case _ => false
+  }
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
     command match {
