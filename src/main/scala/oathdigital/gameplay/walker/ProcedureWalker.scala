@@ -73,10 +73,12 @@ object WalkerOutcome {
   *  - Tree exhausted -> [[WalkerOutcome.Finished]].
   *
   * Roll outcomes: one entry per pool holds the ACCUMULATED outcome of every
-  * roll of that pool this action (faces/skulls/score merge across passes), so
-  * a `Repeat` body that rolls the same pool again can score the action
-  * cumulatively (Task 5 ruling D). Replay re-derives the same accumulation by
-  * merging each recorded `RollPayload` in journal order.
+  * roll of that pool this action. Faces/count/skulls accumulate across passes;
+  * defense score is re-derived from all accumulated faces so a later Doubler
+  * also multiplies shields from earlier rolls. A `Repeat` body that rolls the
+  * same pool again can therefore score the action cumulatively (Task 5 ruling
+  * D). Replay re-derives the same accumulation by merging each recorded
+  * `RollPayload` in journal order.
   *
   * Navigation state: `PendingTree.at` is the root-relative child-index path
   * of the parked leaf (`Vector("0","0","1")` = child 0, its child 0, that
@@ -659,16 +661,21 @@ object ProcedureWalker {
 
   /** Merges `outcome` into the pool's accumulated roll entry: repeated rolls
     * of one pool (e.g. a Recover `Repeat` re-rolling "recover") accumulate
-    * faces/skulls/score so the walker can score the action cumulatively.
+    * faces/count/skulls and re-score all defense faces together. Re-scoring is
+    * required because each Doubler multiplies shields from every accumulated
+    * roll, not only the roll containing that Doubler.
     */
   private def writeRollOutcome(ready: ReadyGame, outcome: RollOutcome): ReadyGame = {
     val accumulated = ready.game.current.rollOutcomes.get(outcome.pool)
       .fold(outcome) { previous =>
+        val faces = previous.faces ++ outcome.faces
         RollOutcome(outcome.pool,
           count = previous.count + outcome.count,
-          faces = previous.faces ++ outcome.faces,
+          faces = faces,
           skulls = previous.skulls + outcome.skulls,
-          score = previous.score + outcome.score)
+          score = DefenseDieFace.score(faces.collect {
+            case face: DefenseDieFace => face
+          }))
       }
     ready.copy(game = ready.game.copy(current = ready.game.current.copy(
       rollOutcomes = ready.game.current.rollOutcomes

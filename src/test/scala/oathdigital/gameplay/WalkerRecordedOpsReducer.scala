@@ -41,11 +41,15 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
             }))
           val accumulated =
             current.game.current.rollOutcomes.get(pool).fold(outcome) {
-              previous => RollOutcome(pool,
-                previous.count + outcome.count,
-                previous.faces ++ outcome.faces,
-                previous.skulls + outcome.skulls,
-                previous.score + outcome.score)
+              previous =>
+                val accumulatedFaces = previous.faces ++ outcome.faces
+                RollOutcome(pool,
+                  previous.count + outcome.count,
+                  accumulatedFaces,
+                  previous.skulls + outcome.skulls,
+                  DefenseDieFace.score(accumulatedFaces.collect {
+                    case face: DefenseDieFace => face
+                  }))
             }
           current.copy(game = current.game.copy(current =
             current.game.current.copy(rollOutcomes =

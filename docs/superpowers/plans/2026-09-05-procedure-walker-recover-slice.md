@@ -209,9 +209,10 @@ Recover =
 ```
 
 Loop semantics reproduced from the legacy `Recover.handle`/`Recover.evolve` flow:
-cumulative `RecoverRules.score` over all recorded rolls must reach
-`RecoverRules.difficulty`; each roll costs 1 supply (recorded in the event's
-ops via `AdjustSupply`); a failed roll parks the `continueOrStop` decision;
+`RecoverRules.score` over the combined faces from all recorded rolls must reach
+`RecoverRules.difficulty` (so a later Doubler multiplies earlier shields); each
+roll costs 1 supply (recorded in the event's ops via `AdjustSupply`); a failed
+roll parks the `continueOrStop` decision;
 `stop` ends the loop without success; `takeRelic` (success only) moves the
 chosen facedown site relic to the actor's play area. Legacy `Recover.handle`
 and `Recover.evolve` stay in place; the walker path runs in parallel for this

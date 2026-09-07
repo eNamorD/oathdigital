@@ -33,9 +33,10 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   * Semantics (ruling 5.5 + legacy parity):
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
   *    `ModifyDicePool`) and costs 1 supply, debited by the body `BuildOps`.
-  *  - Success = cumulative `DefenseDieFace.score` over every roll of the
-  *    "recover" pool (the walker accumulates roll outcomes per pool) reaching
-  *    `RecoverRules.difficulty(catalog, site)`; site = the actor's pawn site.
+  *  - Success = `DefenseDieFace.score` over the combined faces from every roll
+  *    of the "recover" pool (the walker accumulates roll outcomes per pool)
+  *    reaching `RecoverRules.difficulty(catalog, site)`; site = the actor's
+  *    pawn site. Thus a Doubler on a later roll multiplies earlier shields.
   *  - A FAILED roll parks the continue/stop choice: Continue rolls again
   *    (validated: not-yet-successful and supply remains to pay for the next
   *    roll), Stop abandons with no relic (validated: not-yet-successful).

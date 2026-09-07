@@ -6,7 +6,7 @@ import oathdigital.protocol.projection.{BoardTargetRefProjection,
 import java.nio.file.Files
 
 import oathdigital.model._
-import oathdigital.gameplay.actions.{CampaignRules, SearchRules}
+import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, ModifyDicePool,
   Move, Piece, PositionedLocation, Location}
@@ -61,6 +61,16 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       extends DefenseDicePort {
     var calls = 0
     def rollTwo() = {
+      calls += 1
+      faces
+    }
+  }
+
+  private final class ScriptedRecoverDice(
+      rolls: Vector[Vector[DefenseDieFace]]) extends DefenseDicePort {
+    var calls = 0
+    def rollTwo() = {
+      val faces = rolls(calls)
       calls += 1
       faces
     }
@@ -242,6 +252,121 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         assert(rejected.left.toOption.exists(
           _.isInstanceOf[oathdigital.gameplay.OathViolation.InvalidEventOrder]))
     }
+  }
+
+  test("walker Recover matches legacy and reload when a later Doubler " +
+      "multiplies shields from an earlier roll") {
+    val saltFlats = SiteId("site:salt-flats")
+    assertEquals(RecoverRules.difficulty(catalog, saltFlats), Some(2))
+    val orderedSites = saltFlats +:
+      plan.orderedSites.filterNot(_ == saltFlats).take(7)
+    val recoverPlan = plan.copy(
+      orderedSites = orderedSites,
+      homelandEdifices = plan.homelandEdifices.filter(entry =>
+        orderedSites.contains(entry._1)))
+    val actor = recoverPlan.firstPlayer
+    val rolls = Vector[Vector[DefenseDieFace]](
+      Vector(DefenseDieFace.OneShield, DefenseDieFace.Blank),
+      Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank))
+
+    val walkerRepository = new InMemoryEventStreamRepository
+    val walkerDice = new ScriptedRecoverDice(rolls)
+    val walkerService = new GameApplicationService(catalog, walkerRepository,
+      defenseDicePort = walkerDice)
+    val walkerSetup = execute(walkerService, "walker-cross-roll-doubler",
+      recoverPlan.orderedSites, recoverPlan)
+    val walkerAct = walkerService.handle("walker-cross-roll-doubler",
+      walkerSetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
+    val walkerStarted = walkerService.handle("walker-cross-roll-doubler",
+      walkerAct.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+      .toOption.get
+    val walkerFirst = walkerService.handle("walker-cross-roll-doubler",
+      walkerStarted.nextSequence,
+      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+    val Ready(walkerAfterFirst) = walkerFirst.state: @unchecked
+    assertEquals(walkerAfterFirst.game.current.rollOutcomes(
+      RecoverProcedure.recoverPool).score, 1)
+    assertEquals(walkerFirst.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.choiceDecisionId)))
+    val walkerFirstReloaded = new GameApplicationService(catalog,
+      walkerRepository).load("walker-cross-roll-doubler").toOption.flatten.get
+    assertEquals(walkerFirstReloaded.state, walkerFirst.state)
+    val Ready(walkerAfterFirstReload) = walkerFirstReloaded.state: @unchecked
+    assertEquals(walkerAfterFirstReload.game.current.rollOutcomes(
+      RecoverProcedure.recoverPool).score, 1)
+
+    val walkerContinued = walkerService.handle("walker-cross-roll-doubler",
+      walkerFirstReloaded.nextSequence,
+      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.choiceDecisionId,
+        RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+    val walkerSecond = walkerService.handle("walker-cross-roll-doubler",
+      walkerContinued.nextSequence,
+      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+    val Ready(walkerAfterSecond) = walkerSecond.state: @unchecked
+    assertEquals(walkerAfterSecond.game.current.rollOutcomes(
+      RecoverProcedure.recoverPool).score, 2)
+    assertEquals(walkerSecond.continue, OathContinue.AwaitingRecoverRelic(actor,
+      DecisionId(RecoverProcedure.relicDecisionId)))
+    val walkerSecondReloaded = new GameApplicationService(catalog,
+      walkerRepository).load("walker-cross-roll-doubler").toOption.flatten.get
+    assertEquals(walkerSecondReloaded.state, walkerSecond.state)
+    val Ready(walkerAfterSecondReload) = walkerSecondReloaded.state: @unchecked
+    assertEquals(walkerAfterSecondReload.game.current.rollOutcomes(
+      RecoverProcedure.recoverPool).score, 2)
+
+    val legacyRepository = new InMemoryEventStreamRepository
+    val legacyDice = new ScriptedRecoverDice(rolls)
+    val legacyService = new GameApplicationService(catalog, legacyRepository,
+      defenseDicePort = legacyDice)
+    val legacySetup = execute(legacyService, "legacy-cross-roll-doubler",
+      recoverPlan.orderedSites, recoverPlan)
+    val legacyAct = legacyService.handle("legacy-cross-roll-doubler",
+      legacySetup.nextSequence, GameCommand.EndWake(actor)).toOption.get
+    val legacyFirst = legacyService.handle("legacy-cross-roll-doubler",
+      legacyAct.nextSequence, GameCommand.BeginRecover(actor)).toOption.get
+    val Ready(legacyAfterFirst) = legacyFirst.state: @unchecked
+    val legacyFirstPending = legacyAfterFirst.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Recover]
+    assertEquals(RecoverRules.score(legacyFirstPending.rolls.flatten), 1)
+    assertEquals(legacyFirstPending.successful, false)
+    assertEquals(legacyFirst.continue, OathContinue.AwaitingRecoverRoll(actor,
+      legacyFirstPending.decision))
+    val legacyFirstReloaded = new GameApplicationService(catalog,
+      legacyRepository).load("legacy-cross-roll-doubler").toOption.flatten.get
+    assertEquals(legacyFirstReloaded.state, legacyFirst.state)
+
+    val legacySecond = legacyService.handle("legacy-cross-roll-doubler",
+      legacyFirstReloaded.nextSequence,
+      GameCommand.AddRecoverDice(actor, legacyFirstPending.decision))
+      .toOption.get
+    val Ready(legacyAfterSecond) = legacySecond.state: @unchecked
+    val legacySecondPending = legacyAfterSecond.game.current.pending.get
+      .asInstanceOf[PendingProcedure.Recover]
+    assertEquals(RecoverRules.score(legacySecondPending.rolls.flatten), 2)
+    assertEquals(legacySecondPending.successful, true)
+    assertEquals(legacySecond.continue, OathContinue.AwaitingRecoverRelic(actor,
+      legacySecondPending.decision))
+    val legacySecondReloaded = new GameApplicationService(catalog,
+      legacyRepository).load("legacy-cross-roll-doubler").toOption.flatten.get
+    assertEquals(legacySecondReloaded.state, legacySecond.state)
+
+    val walkerRelic = walkerAfterSecond.game.current.map.sites(saltFlats)
+      .relics.head.id
+    val legacyRelic = legacyAfterSecond.game.current.map.sites(saltFlats)
+      .relics.head.id
+    assertEquals(walkerRelic, legacyRelic)
+    val walkerFinished = walkerService.handle("walker-cross-roll-doubler",
+      walkerSecondReloaded.nextSequence,
+      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
+        RecoverRelicPayload(walkerRelic)))).toOption.get
+    val legacyFinished = legacyService.handle("legacy-cross-roll-doubler",
+      legacySecondReloaded.nextSequence,
+      GameCommand.ResolveCardDecision(actor, legacySecondPending.decision,
+        CardDecisionResolution.TakeFacedownRelic(legacyRelic))).toOption.get
+    assertEquals(walkerFinished.state, legacyFinished.state)
+    assertEquals(walkerDice.calls, 2)
+    assertEquals(legacyDice.calls, 2)
   }
 
   test("RollWalker with a pool key that does not match the parked pool " +
