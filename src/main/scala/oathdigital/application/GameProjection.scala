@@ -117,8 +117,10 @@ final class GameProjector(catalog: ExecutableCatalog) {
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
-        current.turn.phase == Phase.Act && current.pending.isEmpty,
-      actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act)
+        current.turn.phase == Phase.Act && current.pending.isEmpty &&
+        current.walkerPending.isEmpty,
+      actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act &&
+        current.walkerPending.isEmpty)
         Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",
           "Recover", "Challenge", "Minor Actions") else Vector.empty,
       legalTravelDestinations = legal.travel,

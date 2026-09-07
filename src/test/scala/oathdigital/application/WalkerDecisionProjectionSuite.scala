@@ -99,9 +99,13 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val ownerProjection = projector.project("walker-projection-roll", loaded, actor)
     assertEquals(ownerProjection.phase, "recover-walker-roll")
     assertEquals(ownerProjection.legalControls, Vector("rollWalker"))
+    assert(!ownerProjection.actionSelectionOpen)
+    assertEquals(ownerProjection.actionFamilies, Vector.empty)
     val otherProjection = projector.project("walker-projection-roll", loaded, other)
     assertEquals(otherProjection.phase, "recover-walker-waiting")
     assertEquals(otherProjection.legalControls, Vector.empty)
+    assert(!otherProjection.actionSelectionOpen)
+    assertEquals(otherProjection.actionFamilies, Vector.empty)
   }
 
   test("a failed roll parks the continue/stop Decide with its own decision " +
@@ -113,15 +117,21 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
 
     val Ready(ready) = rolled.state: @unchecked
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
     assertEquals(walkerDecisions.project(owner), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide")))
 
+    val viewer = ScopedProjectionContext(ready, Some(other))
+    assertEquals(walkerDecisions.project(viewer), None)
+
     val pendingProjector = new PendingProcedureProjector(catalog, presentation,
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
+    assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
     val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
     assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
+    assertEquals(legal.project(viewer).controls, Vector.empty)
   }
 
   test("a successful roll parks the relic Decide without leaking the " +
@@ -133,15 +143,21 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       started.nextSequence,
       GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
     val Ready(ready) = rolled.state: @unchecked
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
 
     assertEquals(walkerDecisions.project(owner), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide")))
 
+    val viewer = ScopedProjectionContext(ready, Some(other))
+    assertEquals(walkerDecisions.project(viewer), None)
+
     val pendingProjector = new PendingProcedureProjector(catalog, presentation,
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
+    assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
     val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
     assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
+    assertEquals(legal.project(viewer).controls, Vector.empty)
   }
 }
