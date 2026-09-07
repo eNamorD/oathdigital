@@ -31,13 +31,14 @@ object ServerRoutes {
       runtime: ServerRuntime,
       blockingExecutionContext: ExecutionContext,
       authenticated: Option[AuthenticatedRouteMountConfiguration],
+      readiness: ServerReadiness,
       nowMillis: () => Long = () => System.currentTimeMillis()
   ): Route = {
     val development = DevelopmentRoutes.route(
       runtime.firstGame,
       blockingExecutionContext
     )
-    authenticated.fold(development) { configuration =>
+    val application = authenticated.fold(development) { configuration =>
       val authenticator = new SessionCookieAuthenticator(
         runtime.identities,
         configuration.sessionCookieName,
@@ -52,5 +53,6 @@ object ServerRoutes {
         blockingExecutionContext
       ).route
     }
+    HealthRoutes.route(readiness) ~ application
   }
 }

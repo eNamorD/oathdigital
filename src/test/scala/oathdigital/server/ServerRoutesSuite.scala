@@ -33,8 +33,13 @@ class ServerRoutesSuite extends munit.FunSuite {
     val client = HttpClient.newHttpClient()
 
     try {
-      val absent = bind(ServerRoutes.route(runtime, blocking, None))
+      val readiness = ServerReadiness.starting("test-version")
+      val absent = bind(ServerRoutes.route(runtime, blocking, None, readiness))
       try {
+        assertEquals(get(client, absent, "/health/live").statusCode(), 200)
+        assertEquals(get(client, absent, "/health").statusCode(), 503)
+        readiness.markReady()
+        assertEquals(get(client, absent, "/health/ready").statusCode(), 200)
         assertEquals(get(client, absent, "/health").statusCode(), 200)
         assertEquals(get(client, absent,
           "/api/authenticated/first-games/game").statusCode(), 404)
@@ -43,7 +48,12 @@ class ServerRoutesSuite extends munit.FunSuite {
       val configuration = AuthenticatedRouteMountConfiguration(
         "oath_session", "http://127.0.0.1")
       val mounted = bind(ServerRoutes.route(
-        runtime, blocking, Some(configuration), () => 0L))
+        runtime,
+        blocking,
+        Some(configuration),
+        ServerReadiness.starting("test-version"),
+        () => 0L
+      ))
       try assertEquals(get(client, mounted,
         "/api/authenticated/first-games/game").statusCode(), 401)
       finally Await.result(mounted.terminate(5.seconds), 10.seconds)

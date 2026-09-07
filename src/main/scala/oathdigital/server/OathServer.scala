@@ -26,6 +26,17 @@ object OathServer {
     val blockingExecutionContext = system.dispatchers.lookup(
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )
+    val readiness = ServerReadiness.starting(config.version)
+    system.log.info(
+      "Oath Digital server starting: version={}, mode={}, host={}, port={}, publicBaseUrlPresent={}, databasePath={}, catalogPath={}",
+      config.version,
+      config.mode,
+      config.host,
+      Int.box(config.port),
+      Boolean.box(config.publicBaseUrl.nonEmpty),
+      config.databasePath.toAbsolutePath.normalize.toString,
+      config.catalogPath.toAbsolutePath.normalize.toString
+    )
 
     ServerRuntime.open(config.databasePath, config.catalogPath) match {
       case Left(error) =>
@@ -34,6 +45,14 @@ object OathServer {
         Await.result(system.whenTerminated, 10.seconds)
         throw new IllegalStateException(error)
       case Right(runtime) =>
+        CoordinatedShutdown(system).addTask(
+          CoordinatedShutdown.PhaseBeforeServiceUnbind,
+          "mark-server-stopping"
+        ) { () =>
+          readiness.markStopping()
+          Future.successful(Done)
+        }
+
         CoordinatedShutdown(system).addTask(
           CoordinatedShutdown.PhaseBeforeActorSystemTerminate,
           "close-event-journal"
@@ -47,7 +66,8 @@ object OathServer {
         val route = ServerRoutes.route(
           runtime,
           blockingExecutionContext,
-          config.authenticatedRouteMount
+          config.authenticatedRouteMount,
+          readiness
         )
 
         val binding =
@@ -58,11 +78,13 @@ object OathServer {
             )
           catch {
             case NonFatal(error) =>
+              readiness.markStopping()
               runtime.close()
               system.terminate()
               Await.result(system.whenTerminated, 30.seconds)
               throw error
           }
+        readiness.markReady()
         system.log.info(
           "Oath Digital server listening at http://{}:{}/",
           config.host,

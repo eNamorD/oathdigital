@@ -17,15 +17,10 @@ object DevelopmentRoutes {
       blockingExecutionContext: ExecutionContext,
       serveFrontend: Boolean = true
   ): Route = {
-    val api =
-      path("health") {
-        get {
-          complete("ok")
-        }
-      } ~ new GameRoutes(
-        firstGame,
-        blockingExecutionContext
-      ).route
+    val api = new GameRoutes(
+      firstGame,
+      blockingExecutionContext
+    ).route
 
     if (!serveFrontend) api
     else

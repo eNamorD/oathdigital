@@ -60,7 +60,7 @@ class GameRoutesSuite extends munit.FunSuite {
         Some("no-store, no-cache, must-revalidate, max-age=0"))
 
       val health = get(client, s"$base/health")
-      assertEquals(health.statusCode(), 200)
+      assertEquals(health.statusCode(), 404)
       assertEquals(cacheControl(health), None)
       val malformed = post(
         client,
