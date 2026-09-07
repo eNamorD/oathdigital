@@ -155,6 +155,43 @@ class ServerConfigSuite extends munit.FunSuite {
     }
   }
 
+  test("authenticated public origin enforces the CSRF origin policy") {
+    Vector(
+      "https://play.example.com",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080"
+    ).foreach { origin =>
+      val config = parse(Array(
+        "--session-cookie-name", "oath_session",
+        "--authenticated-public-origin", origin
+      ))
+      assertEquals(
+        config.authenticatedRouteMount.map(_.publicOrigin),
+        Some(origin)
+      )
+    }
+
+    Vector(
+      "ftp://localhost",
+      "https:///missing-host",
+      "http://play.example.com",
+      "https://play.example.com/path",
+      "https://play.example.com?query=yes",
+      "https://play.example.com#fragment"
+    ).foreach { origin =>
+      val errors = ServerConfig.parse(
+        Array(
+          "--session-cookie-name", "oath_session",
+          "--authenticated-public-origin", origin
+        ),
+        Map.empty,
+        version
+      ).left.toOption.get
+      assertEquals(errors.size, 1)
+      assert(errors.head.startsWith("--authenticated-public-origin:"))
+    }
+  }
+
   test("unknown options and missing values return usage for every error") {
     val errors = ServerConfig.parse(
       Array("--mystery", "value", "--port", "--mode"),

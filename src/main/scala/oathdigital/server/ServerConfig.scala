@@ -232,6 +232,17 @@ object ServerConfig {
           else "--authenticated-public-origin"
         option -> s"$option: $message"
       }
+      .flatMap {
+        case Some(configuration) =>
+          SameOriginCsrfProtection
+            .validateOrigin(configuration.publicOrigin)
+            .left.map(message =>
+              "--authenticated-public-origin" ->
+                s"--authenticated-public-origin: $message"
+            )
+            .map(_ => Some(configuration))
+        case None => Right(None)
+      }
 
   private def parsePublicBaseUrl(value: String): Either[String, URI] = {
     val parsed = Try(new URI(value.trim)).toOption

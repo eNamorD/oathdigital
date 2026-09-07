@@ -117,6 +117,33 @@ class SessionSecuritySuite extends munit.FunSuite {
     }
   }
 
+  test("CSRF public origins allow HTTPS and explicit loopback HTTP only") {
+    Vector(
+      "https://oath.example",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080"
+    ).foreach { origin =>
+      assertEquals(
+        SameOriginCsrfProtection.validateOrigin(origin),
+        Right(origin)
+      )
+    }
+
+    Vector(
+      "ftp://localhost",
+      "https:///missing-host",
+      "http://oath.example",
+      "https://oath.example/path",
+      "https://oath.example?query=yes",
+      "https://oath.example#fragment"
+    ).foreach { origin =>
+      assert(
+        SameOriginCsrfProtection.validateOrigin(origin).isLeft,
+        origin
+      )
+    }
+  }
+
   private def session(
       rawToken: String,
       user: UserId,

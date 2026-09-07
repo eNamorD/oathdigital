@@ -77,13 +77,33 @@ final class SessionCookieAuthenticator(
   }(blockingExecutionContext)
 }
 
+object SameOriginCsrfProtection {
+  val InvalidOriginMessage: String =
+    "public origin must be HTTPS or an explicit loopback HTTP origin"
+
+  def validateOrigin(value: String): Either[String, String] =
+    Either.cond(validOrigin(value), value, InvalidOriginMessage)
+
+  private def validOrigin(value: String): Boolean = Try(new URI(value))
+    .toOption.exists { uri =>
+      val scheme = Option(uri.getScheme).map(_.toLowerCase)
+      val host = Option(uri.getHost).map(_.toLowerCase)
+      val secure = scheme.contains("https") && host.exists(_.nonEmpty)
+      val loopback = scheme.contains("http") && host.exists(
+        Set("localhost", "127.0.0.1", "::1").contains)
+      (secure || loopback) && uri.getRawUserInfo == null &&
+        uri.getRawQuery == null && uri.getRawFragment == null &&
+        Option(uri.getRawPath).forall(_.isEmpty)
+    }
+}
+
 final class SameOriginCsrfProtection(
     expectedOrigin: String,
     headerName: String = "X-CSRF-Token"
 ) {
   require(
-    validOrigin(expectedOrigin),
-    "public origin must be HTTPS or an explicit loopback HTTP origin"
+    SameOriginCsrfProtection.validateOrigin(expectedOrigin).isRight,
+    SameOriginCsrfProtection.InvalidOriginMessage
   )
 
   def validate(
@@ -100,16 +120,4 @@ final class SameOriginCsrfProtection(
         session.csrfTokenDigest.bytes
       )
   }
-
-  private def validOrigin(value: String): Boolean = Try(new URI(value))
-    .toOption.exists { uri =>
-      val scheme = Option(uri.getScheme).map(_.toLowerCase)
-      val host = Option(uri.getHost).map(_.toLowerCase)
-      val secure = scheme.contains("https") && host.exists(_.nonEmpty)
-      val loopback = scheme.contains("http") && host.exists(
-        Set("localhost", "127.0.0.1", "::1").contains)
-      (secure || loopback) && uri.getRawUserInfo == null &&
-        uri.getRawQuery == null && uri.getRawFragment == null &&
-        Option(uri.getRawPath).forall(_.isEmpty)
-    }
 }
