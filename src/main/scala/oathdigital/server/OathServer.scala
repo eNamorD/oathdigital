@@ -20,11 +20,6 @@ object OathServer {
         errors => throw new IllegalArgumentException(errors.mkString("; ")),
         identity
       )
-    val authenticatedMount = AuthenticatedRouteMountConfiguration.fromOptions(
-      sys.props.get("oathdigital.sessionCookieName"),
-      sys.props.get("oathdigital.publicOrigin")
-    ).fold(message => throw new IllegalArgumentException(message), identity)
-
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
     implicit val executionContext = system.executionContext
@@ -52,7 +47,7 @@ object OathServer {
         val route = ServerRoutes.route(
           runtime,
           blockingExecutionContext,
-          authenticatedMount
+          None
         )
 
         val binding =

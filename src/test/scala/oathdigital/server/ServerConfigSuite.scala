@@ -106,10 +106,27 @@ class ServerConfigSuite extends munit.FunSuite {
     ).left.toOption.get
 
     assertEquals(errors.size, 3)
-    assert(errors(0).startsWith("unknown option --mystery"))
-    assert(errors(1).startsWith("missing value for --port"))
-    assert(errors(2).startsWith("missing value for --mode"))
+    assert(errors(0).startsWith("missing value for --port"))
+    assert(errors(1).startsWith("missing value for --mode"))
+    assert(errors(2).startsWith("unknown option --mystery"))
     errors.foreach(error => assert(error.contains(ServerConfig.usage)))
+  }
+
+  test("syntax and validation errors share canonical option order") {
+    val errors = ServerConfig.parse(
+      Array(
+        "--mode",
+        "--host", "bad host",
+        "--port", "0"
+      ),
+      Map.empty,
+      version
+    ).left.toOption.get
+
+    assertEquals(errors.size, 3)
+    assert(errors(0).startsWith("--host:"))
+    assert(errors(1).startsWith("--port:"))
+    assert(errors(2).startsWith("missing value for --mode"))
   }
 
   test("invalid values return all errors in stable option order") {

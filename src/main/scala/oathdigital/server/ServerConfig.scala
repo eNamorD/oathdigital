@@ -31,7 +31,7 @@ object ServerConfig {
     "docs/catalog/new-foundations-component-catalog.json"
   private val DefaultMode = "development"
 
-  private val SupportedOptions = Set(
+  private val SupportedOptionOrder = Vector(
     "--host",
     "--port",
     "--public-base-url",
@@ -39,6 +39,8 @@ object ServerConfig {
     "--catalog-path",
     "--mode"
   )
+  private val SupportedOptions = SupportedOptionOrder.toSet
+  private val OptionOrder = SupportedOptionOrder.zipWithIndex.toMap
 
   val usage: String =
     "Usage: oathdigital [--host HOST] [--port PORT] " +
@@ -87,20 +89,25 @@ object ServerConfig {
     ))
 
     val validationErrors = Vector(
-      host.left.toOption,
-      port.left.toOption,
-      publicBaseUrl.left.toOption,
-      databasePath.left.toOption,
-      catalogPath.left.toOption,
-      mode.left.toOption
-    ).flatten
+      "--host" -> host.left.toOption,
+      "--port" -> port.left.toOption,
+      "--public-base-url" -> publicBaseUrl.left.toOption,
+      "--database-path" -> databasePath.left.toOption,
+      "--catalog-path" -> catalogPath.left.toOption,
+      "--mode" -> mode.left.toOption
+    ).collect { case (option, Some(error)) => option -> error }
 
     val trustBoundaryErrors = (host, publicBaseUrl, mode) match {
       case (Right(validHost), Right(baseUrl), Right(validMode)) =>
         validateTrustBoundary(validHost, baseUrl, validMode).toVector
       case _ => Vector.empty
     }
-    val errors = argumentErrors ++ validationErrors ++ trustBoundaryErrors
+    val errors = (argumentErrors ++ validationErrors ++ trustBoundaryErrors)
+      .zipWithIndex
+      .sortBy { case ((option, _), sequence) =>
+        OptionOrder.getOrElse(option, SupportedOptionOrder.size) -> sequence
+      }
+      .map(_._1._2)
 
     if (errors.nonEmpty) Left(errors)
     else
@@ -118,8 +125,8 @@ object ServerConfig {
   private def parseArguments(
       remaining: Vector[String],
       values: Map[String, String] = Map.empty,
-      errors: Vector[String] = Vector.empty
-  ): (Map[String, String], Vector[String]) =
+      errors: Vector[(String, String)] = Vector.empty
+  ): (Map[String, String], Vector[(String, String)]) =
     if (remaining.isEmpty) (values, errors)
     else {
       val argument = remaining.head
@@ -135,19 +142,19 @@ object ServerConfig {
         parseArguments(
           remaining.tail,
           values,
-          errors :+ s"missing value for $argument. $usage"
+          errors :+ argument -> s"missing value for $argument. $usage"
         )
       else if (argument.startsWith("--"))
         parseArguments(
           remaining.drop(if (hasValue) 2 else 1),
           values,
-          errors :+ s"unknown option $argument. $usage"
+          errors :+ argument -> s"unknown option $argument. $usage"
         )
       else
         parseArguments(
           remaining.tail,
           values,
-          errors :+ s"unknown argument $argument. $usage"
+          errors :+ argument -> s"unknown argument $argument. $usage"
         )
     }
 
@@ -233,13 +240,13 @@ object ServerConfig {
       host: String,
       publicBaseUrl: Option[URI],
       mode: ServerMode
-  ): Option[String] = mode match {
+  ): Option[(String, String)] = mode match {
     case ServerMode.Development =>
       DevelopmentTrustBoundary.validateLoopbackHost(host).left.toOption
-        .map(message => s"--host: $message")
+        .map(message => "--host" -> s"--host: $message")
     case ServerMode.TrustedAlpha
         if !isLoopback(host) && publicBaseUrl.isEmpty =>
-      Some(
+      Some("--public-base-url" ->
         "--public-base-url: required for non-loopback trusted-alpha binding"
       )
     case ServerMode.TrustedAlpha => None
