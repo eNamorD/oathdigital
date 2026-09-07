@@ -1,7 +1,5 @@
 package oathdigital.server
 
-import java.nio.file.Paths
-
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.util.control.NonFatal
@@ -14,20 +12,14 @@ import akka.http.scaladsl.Http
 
 object OathServer {
   def main(arguments: Array[String]): Unit = {
-    val databasePath =
-      Paths.get(arguments.headOption.getOrElse("var/oathdigital"))
-    val catalogPath = Paths.get(
-      arguments.drop(1).headOption.getOrElse(
-        "docs/catalog/new-foundations-component-catalog.json"
+    val version = Option(getClass.getPackage.getImplementationVersion)
+      .getOrElse("development")
+    val config = ServerConfig
+      .parse(arguments, sys.env, version)
+      .fold(
+        errors => throw new IllegalArgumentException(errors.mkString("; ")),
+        identity
       )
-    )
-    val configuredHost =
-      sys.props.getOrElse("oathdigital.host", "127.0.0.1")
-    val host = DevelopmentTrustBoundary
-      .validateLoopbackHost(configuredHost)
-      .fold(message => throw new IllegalArgumentException(message), identity)
-    val port =
-      sys.props.get("oathdigital.port").fold(8080)(_.toInt)
     val authenticatedMount = AuthenticatedRouteMountConfiguration.fromOptions(
       sys.props.get("oathdigital.sessionCookieName"),
       sys.props.get("oathdigital.publicOrigin")
@@ -40,7 +32,7 @@ object OathServer {
       DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher")
     )
 
-    ServerRuntime.open(databasePath, catalogPath) match {
+    ServerRuntime.open(config.databasePath, config.catalogPath) match {
       case Left(error) =>
         system.log.error("Server startup failed: {}", error)
         system.terminate()
@@ -66,7 +58,7 @@ object OathServer {
         val binding =
           try
             Await.result(
-              Http().newServerAt(host, port).bind(route),
+              Http().newServerAt(config.host, config.port).bind(route),
               30.seconds
             )
           catch {
@@ -78,8 +70,8 @@ object OathServer {
           }
         system.log.info(
           "Oath Digital server listening at http://{}:{}/",
-          host,
-          Int.box(port)
+          config.host,
+          Int.box(config.port)
         )
 
         CoordinatedShutdown(system).addTask(
