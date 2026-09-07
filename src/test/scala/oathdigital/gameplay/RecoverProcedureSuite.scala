@@ -19,7 +19,8 @@ import oathdigital.model._
   * wrong-relic rejection — with recorded ops per node and the relic moving
   * facedown into the actor's play area.
   */
-class RecoverProcedureSuite extends munit.FunSuite {
+class RecoverProcedureSuite extends munit.FunSuite
+    with WalkerRecordedOpsReducer {
   private val setup = new FirstGameSetupRules(catalog)
 
   private def supplyOf(state: ReadyGame, player: PlayerId): Int =
@@ -69,42 +70,13 @@ class RecoverProcedureSuite extends munit.FunSuite {
     * mirroring journal replay: RollPayload events re-derive and merge the
     * pool's accumulated roll outcome (state write, no ops), ChoicePayload
     * events change no state here (answered rides the pending tree the caller
-    * already holds), and every other step re-applies its recorded ops.
+    * already holds), and every other step re-applies its recorded ops. The
+    * shared reducer lives in `WalkerRecordedOpsReducer`, which
+    * `WalkerReplayDriftSuite`'s "live" state track also folds through.
     */
   private def applyRecorded(state: ReadyGame,
       events: Vector[OathEvent]): ReadyGame =
-    events.foldLeft(state) { (current, event) =>
-      val step = event match {
-        case recorded: WalkerStepRecorded => recorded
-        case other => fail(s"expected a WalkerStepRecorded, got $other")
-      }
-      step.payload match {
-        case RollPayload(pool, faces) =>
-          val outcome = RollOutcome(pool, faces.size, faces, skulls = 0,
-            score = DefenseDieFace.score(faces.collect {
-              case face: DefenseDieFace => face
-            }))
-          val accumulated =
-            current.game.current.rollOutcomes.get(pool).fold(outcome) {
-              previous => RollOutcome(pool,
-                previous.count + outcome.count,
-                previous.faces ++ outcome.faces,
-                previous.skulls + outcome.skulls,
-                previous.score + outcome.score)
-            }
-          current.copy(game = current.game.copy(current =
-            current.game.current.copy(rollOutcomes =
-              current.game.current.rollOutcomes.updated(pool, accumulated))))
-        case _ if step.ops.isEmpty => current
-        case _ =>
-          OperationPipeline.run(current, step.ops,
-            OperationPolicy.Permissive)(Right(_)) match {
-            case Right(updated) => updated
-            case Left(violation) =>
-              fail(s"replay of recorded ops failed: $violation")
-          }
-      }
-    }
+    foldRecordedOps(state, events, "replay of recorded ops failed")
 
   private val lowRoll: Vector[DieFace] =
     Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)

@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
-import oathdigital.gameplay.walker.{ProcedureWalker, RollPayload,
+import oathdigital.gameplay.walker.{ProcedureWalker,
   WalkerCompleted, WalkerOutcome, WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
@@ -61,6 +61,16 @@ import oathdigital.model._
   * only production code it reuses is `ProcedureWalker.applyRecorded` itself
   * (already the sole replay mechanism) — it never wires a second, walker-
   * rerunning replay path into the application.
+  *
+  * Corpus: the three scripted walks below cover every scenario shape
+  * `RecoverProcedureSuite` covers EXCEPT its two rejection-only scenarios
+  * (insufficient supply on Continue, and resolving the relic decision with a
+  * relic that isn't facedown at the site). Both of those end in
+  * `Left(violation)` with no `WalkerOutcome` and no journal at all, so
+  * there is nothing to fold into a "live" track or replay through
+  * `applyRecorded` — a drift comparison needs two independently
+  * reconstructed op sequences to diff, and a rejected command produces
+  * neither.
   */
 /** One command in a scripted Recover walk (top-level so pattern matches on it
   * carry no per-instance outer reference).
@@ -70,7 +80,8 @@ private case object StartWalk extends Resume
 private final case class RollResume(faces: Vector[DieFace]) extends Resume
 private final case class AnswerResume(answer: Answered) extends Resume
 
-class WalkerReplayDriftSuite extends munit.FunSuite {
+class WalkerReplayDriftSuite extends munit.FunSuite
+    with WalkerRecordedOpsReducer {
   private val setup = new FirstGameSetupRules(catalog)
 
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
@@ -125,42 +136,20 @@ class WalkerReplayDriftSuite extends munit.FunSuite {
     events.collect { case s: WalkerStepRecorded => s.ops }.flatten
   }
 
-  /** Folds one command's recorded steps into the "live" state track using a
-    * minimal ad hoc reducer local to this test (ops through the pipeline,
-    * roll outcomes merged the same way `ProcedureWalker` merges them) —
-    * deliberately NOT the production replay function, so the live and replay
-    * tracks are reconstructed by two genuinely different mechanisms.
+  /** Folds one command's recorded steps into the "live" state track via the
+    * shared `WalkerRecordedOpsReducer` (also used by `RecoverProcedureSuite`
+    * to fold a live walk's own steps forward). This is scaffolding, not a
+    * second replay mechanism: the drift assertion's independence comes from
+    * comparing this track against `replayCommand` below, which reconstructs
+    * state purely through the production `ProcedureWalker.applyRecorded`
+    * dispatch. Sharing the reducer only removes a duplicate reimplementation
+    * of "fold recorded ops back into ReadyGame state" between two suites
+    * that both needed it for unrelated reasons — it does not make the two
+    * tracks the same mechanism.
     */
   private def foldLive(state: ReadyGame,
       events: Vector[OathEvent]): ReadyGame =
-    events.foldLeft(state) { (current, event) =>
-      val step = event.asInstanceOf[WalkerStepRecorded]
-      step.payload match {
-        case RollPayload(pool, faces) =>
-          val outcome = RollOutcome(pool, faces.size, faces, skulls = 0,
-            score = DefenseDieFace.score(faces.collect {
-              case face: DefenseDieFace => face
-            }))
-          val accumulated = current.game.current.rollOutcomes.get(pool)
-            .fold(outcome) { previous =>
-              RollOutcome(pool, previous.count + outcome.count,
-                previous.faces ++ outcome.faces,
-                previous.skulls + outcome.skulls,
-                previous.score + outcome.score)
-            }
-          current.copy(game = current.game.copy(current =
-            current.game.current.copy(rollOutcomes =
-              current.game.current.rollOutcomes.updated(pool, accumulated))))
-        case _ if step.ops.isEmpty => current
-        case _ =>
-          OperationPipeline.run(current, step.ops,
-            OperationPolicy.Permissive)(Right(_)) match {
-            case Right(updated) => updated
-            case Left(violation) =>
-              fail(s"live-track replay of recorded ops failed: $violation")
-          }
-      }
-    }
+    foldRecordedOps(state, events, "live-track replay of recorded ops failed")
 
   /** Reconstructs the "replay" state track purely through the production
     * replay function: the command's `WalkerStepRecorded` steps, followed by
