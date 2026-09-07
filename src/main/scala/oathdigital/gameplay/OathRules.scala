@@ -159,11 +159,6 @@ final class OathRules(catalog: ExecutableCatalog,
         .flatMap(walkerTransition(state, ready, action, tree, _))
     }
 
-  /** Applies pre-rolled faces to the current Roll park. */
-  def rollWalker(state: OathState, pool: PoolKey,
-      faces: Vector[DieFace]): Either[OathViolation, OathTransition] =
-    rollWalkerPrepared(state, pool)(_ => Right(faces))
-
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
     */
@@ -231,22 +226,71 @@ final class OathRules(catalog: ExecutableCatalog,
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(pending.actor, action, pending.at,
         pending.answered)
-      val continue = ProcedureWalker.parkedRoll(ready, tree, pending) match {
-        case Some(_) => OathContinue.AwaitingRecoverRoll(pending.actor,
-          DecisionId("walker.recover.roll"))
-        case None if pending.at == Vector("2", "0") =>
-          OathContinue.AwaitingRecoverRelic(pending.actor,
-            DecisionId(RecoverProcedure.relicDecisionId))
-        case None => OathContinue.AwaitingRecoverRoll(pending.actor,
-          DecisionId(RecoverProcedure.choiceDecisionId))
-      }
-      GameplayTransition(state, steps :+ fact, continue)(evolve)
+      // The park's continuation prompt can depend on a Branch selecting its
+      // children by *live* state (Recover's success-only relic decision
+      // checks the just-written roll outcome), so `continue` must be derived
+      // from the state after `steps` land, not from `ready` (this command's
+      // pre-walk snapshot) — a stale-state Branch.select would silently
+      // resolve to the wrong node or none at all.
+      for {
+        afterSteps <- foldEvents(state, steps)
+        liveReady <- afterSteps match {
+          case Ready(live) => Right(live)
+          case _ => Left(InvalidEventOrder(
+            "walker park did not resolve to a Ready state"))
+        }
+        continue <- parkedContinue(liveReady, tree, pending)
+        finalState <- evolve(afterSteps, fact)
+      } yield OathTransition(finalState, steps :+ fact, continue)
 
     case WalkerOutcome.Finished(treeless, steps) =>
       val actor = treeless.game.current.turn.activePlayer
       GameplayTransition(state, steps :+ WalkerCompleted(actor, action),
         OathContinue.ActActionSelection(actor))(evolve).flatMap(completeAction)
   }
+
+  /** Folds `evolve` over `events` in order, threading state — the same
+    * left-fold [[GameplayTransition]] performs internally, exposed here so
+    * `walkerTransition` can inspect the intermediate state reached after the
+    * step events but before the terminal park/completion fact is applied.
+    */
+  private def foldEvents(state: OathState, events: Vector[OathEvent])
+      : Either[OathViolation, OathState] =
+    events.foldLeft[Either[OathViolation, OathState]](Right(state)) {
+      case (Right(current), event) => evolve(current, event)
+      case (failure @ Left(_), _) => failure
+    }
+
+  /** Maps a parked walker position to its client-facing continuation prompt
+    * by dispatching on the parked node's stable identity — a Roll's pool via
+    * [[ProcedureWalker.parkedRoll]], or a Decide's `decisionId` via
+    * [[ProcedureWalker.parkedDecide]] — rather than on the park's structural
+    * child-index path. Dispatching on path made the mapping fragile: inserting
+    * or reordering a node in the action's tree would silently change which
+    * path a given decision parks at, and the client would be handed the wrong
+    * prompt (and decision id) with no error.
+    */
+  private def parkedContinue(ready: ReadyGame, tree: Operation,
+      pending: PendingTree): Either[OathViolation, OathContinue] =
+    ProcedureWalker.parkedRoll(ready, tree, pending) match {
+      case Some(_) => Right(OathContinue.AwaitingRecoverRoll(pending.actor,
+        DecisionId(RecoverProcedure.rollDecisionId)))
+      case None => ProcedureWalker.parkedDecide(ready, tree, pending) match {
+        case Some(decide)
+            if decide.decisionId == RecoverProcedure.relicDecisionId =>
+          Right(OathContinue.AwaitingRecoverRelic(pending.actor,
+            DecisionId(RecoverProcedure.relicDecisionId)))
+        case Some(decide)
+            if decide.decisionId == RecoverProcedure.choiceDecisionId =>
+          Right(OathContinue.AwaitingRecoverRoll(pending.actor,
+            DecisionId(RecoverProcedure.choiceDecisionId)))
+        case Some(decide) => Left(InvalidEventOrder(
+          "no client continuation is registered for walker decision " +
+            decide.decisionId))
+        case None => Left(InvalidEventOrder(
+          "parked walker position is neither a Roll nor a Decide"))
+      }
+    }
 
   def handle(state: OathState, command: ForgeCommand)
       : Either[OathViolation, OathTransition] =

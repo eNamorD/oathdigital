@@ -110,15 +110,38 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   def encode(
       envelope: GameEventEnvelope
   ): Either[WireError, ujson.Value] =
-    validateEnvelope(envelope).map { _ =>
-      ujson.Obj(
-        "formatVersion" -> envelope.formatVersion,
-        "gameId" -> envelope.gameId,
-        "sequence" -> ujson.Num(envelope.sequence.toDouble),
-        "catalog" -> encodeCatalog(envelope.catalog),
-        "eventType" -> envelope.eventType,
-        "payload" -> encodePayload(envelope.event)
-      )
+    validateEnvelope(envelope).flatMap { _ =>
+      encodePayloadSafe(envelope.event).map { payload =>
+        ujson.Obj(
+          "formatVersion" -> envelope.formatVersion,
+          "gameId" -> envelope.gameId,
+          "sequence" -> ujson.Num(envelope.sequence.toDouble),
+          "catalog" -> encodeCatalog(envelope.catalog),
+          "eventType" -> envelope.eventType,
+          "payload" -> payload
+        )
+      }
+    }
+
+  /** Encoders in this vocabulary are total for every event this build knows
+    * how to construct, but `WalkerStepPayload`/`DeltaMeaning`/`CoreOperation`
+    * are open (or bounded to a slice's current variants), so an unencodable
+    * value reaching this append path must surface as a typed [[WireError]]
+    * rather than escape as a raw exception (matches the decode side's
+    * `NonFatal` boundary in `decodePayload`).
+    */
+  private def encodePayloadSafe(
+      event: OathEvent
+  ): Either[WireError, ujson.Value] =
+    try Right(encodePayload(event))
+    catch {
+      case NonFatal(error) =>
+        Left(
+          InvalidValue(
+            "$.payload",
+            Option(error.getMessage).getOrElse("invalid payload")
+          )
+        )
     }
 
   def encodeStream(

@@ -322,6 +322,21 @@ class GameEventWireSuite extends munit.FunSuite {
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
   }
 
+  test("an unencodable walker step payload returns a typed WireError, " +
+      "not a thrown exception") {
+    // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
+    // later action's payload can't be exhaustively matched at compile time.
+    // A shape this codec doesn't know must fail the append path as a
+    // WireError, exactly like an unrecognized value on the decode side.
+    case object UnknownStepPayload extends WalkerStepPayload
+    val event = WalkerStepRecorded(PlayerId("red"), "0", UnknownStepPayload,
+      Vector.empty)
+    GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
+      case Left(_) => ()
+      case Right(value) => fail(s"expected a WireError, got $value")
+    }
+  }
+
   test("v6 Economy events round-trip source cost yield and NF resource mode") {
     val denizen = DenizenId(catalog.denizens.head.id.value)
     val edifice = EdificeId(catalog.edifices.head.id.value)

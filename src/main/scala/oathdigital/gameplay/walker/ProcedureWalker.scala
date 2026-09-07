@@ -283,8 +283,21 @@ object ProcedureWalker {
     */
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree): Option[(PoolKey, Int)] =
-    leafAt(action, pending.at).collect {
+    leafAt(state, action, pending).collect {
       case Roll(pool, _) => (pool, poolCount(state, pool))
+    }
+
+  /** When `pending` parks on a `Decide` node of `action`, reports the node
+    * itself so the caller can dispatch on its stable `decisionId` (e.g. to
+    * pick the right `OathContinue` prompt) rather than on the park's
+    * structural path, which shifts if the tree is edited. Symmetric to
+    * [[parkedRoll]]. `None` when the park is a Roll or the position does not
+    * resolve to a Decide.
+    */
+  def parkedDecide(state: ReadyGame, action: Operation,
+      pending: PendingTree): Option[Decide] =
+    leafAt(state, action, pending).collect {
+      case decide: Decide => decide
     }
 
   private def poolCount(state: ReadyGame, pool: PoolKey): Int =
@@ -662,19 +675,34 @@ object ProcedureWalker {
         .updated(outcome.pool, accumulated))))
   }
 
-  /** Resolves the node addressed by a `PendingTree.at` child-index path, or
-    * `None` when a segment is non-numeric or out of range (a fabricated or
-    * stale position). Static navigation only: a path inside a [[Branch]]'s
-    * dynamically-selected children cannot be resolved statically (branches
-    * have no static children) and returns `None`.
+  /** Resolves the node addressed by `pending.at` (a child-index path rooted
+    * at `action`), or `None` when a segment is non-numeric or out of range (a
+    * fabricated or stale position). A [[Branch]] encountered along the path
+    * is resolved the same way a live walk would reach it: `select(state, ...)`
+    * is evaluated (with `at` set to the path consumed so far, matching
+    * `walkBranch`'s `branchTree`) to get its current children before
+    * indexing into the next path segment, so a park inside a Branch's
+    * dynamically-selected children (e.g. Recover's success-only relic
+    * decision) resolves to the real node instead of `None`.
     */
-  private def leafAt(node: Operation, path: Vector[String]): Option[Operation] =
-    path.headOption match {
+  private def leafAt(state: ReadyGame, action: Operation,
+      pending: PendingTree): Option[Operation] =
+    resolveAt(state, pending, action, pending.at, Vector.empty)
+
+  private def resolveAt(state: ReadyGame, pending: PendingTree,
+      node: Operation, remaining: Vector[String],
+      consumed: Vector[String]): Option[Operation] =
+    remaining.headOption match {
       case None => Some(node)
       case Some(segment) => segment.toIntOption.flatMap { index =>
-        val children = node.children
+        val children = node match {
+          case branch: Branch =>
+            branch.select(state, pending.copy(at = consumed))
+          case other => other.children
+        }
         if (index >= 0 && index < children.size)
-          leafAt(children(index), path.tail)
+          resolveAt(state, pending, children(index), remaining.tail,
+            consumed :+ segment)
         else None
       }
     }

@@ -29,8 +29,8 @@ import oathdigital.gameplay.OathViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.{MajorActionKind, OathRules, OrderedRuleInvocation,
-  RuleSourceRef}
+import oathdigital.gameplay.{MajorActionKind, OathContinue, OathRules,
+  OrderedRuleInvocation, RuleSourceRef}
 
 class GameApplicationServiceSuite extends munit.FunSuite {
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
@@ -92,6 +92,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(started.events.last.isInstanceOf[WalkerParked])
     assertEquals(atRoll.game.current.walkerAction, Some(ActionRef.Recover))
     assert(atRoll.game.current.walkerPending.nonEmpty)
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
       GameCommand.Travel(actor, recoverPlan.orderedSites(1))) match {
@@ -111,6 +113,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(walkerDice.calls, 1)
     val Ready(atRelic) = rolled.state: @unchecked
     assert(rolled.events.last.isInstanceOf[WalkerParked])
+    assertEquals(rolled.continue, OathContinue.AwaitingRecoverRelic(actor,
+      DecisionId(RecoverProcedure.relicDecisionId)))
     val relic = atRelic.game.current.map.sites(recoverSite).relics.head.id
 
     val finished = walkerService.handle("walker-recover", rolled.nextSequence,
@@ -118,6 +122,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
           RecoverRelicPayload(relic)))).toOption.get
     val Ready(afterWalker) = finished.state: @unchecked
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
     assert(afterWalker.game.current.walkerPending.isEmpty)
     assert(afterWalker.game.current.walkerAction.isEmpty)
     assertEquals(afterWalker.game.current.rollPools,
@@ -186,11 +191,21 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(actor)).toOption.get
     val started = service.handle("walker-continue", act.nextSequence,
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
     val failed = service.handle("walker-continue", started.nextSequence,
       GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+    // A failed roll parks the Continue/Stop Decide, not the Roll itself: same
+    // AwaitingRecoverRoll continuation shape as the Roll park above, but a
+    // different decision id — proving the mapping dispatches on the parked
+    // node's identity rather than reusing whatever it last saw at this path.
+    assertEquals(failed.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.choiceDecisionId)))
     val continued = service.handle("walker-continue", failed.nextSequence,
       GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.choiceDecisionId,
         RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+    assertEquals(continued.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
@@ -205,6 +220,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val failedAgain = service.handle("walker-continue", continued.nextSequence,
       GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
     assertEquals(dice.calls, 2)
+    assertEquals(failedAgain.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.choiceDecisionId)))
     val Ready(afterSecondRoll) = failedAgain.state: @unchecked
     val accumulated = afterSecondRoll.game.current.rollOutcomes(
       RecoverProcedure.recoverPool)
@@ -219,12 +236,48 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         val malformed = ready.copy(game = ready.game.copy(current =
           ready.game.current.copy(walkerPending = ready.game.current.walkerPending
             .map(_.copy(at = path)))))
-        val rejected = rules.rollWalker(Ready(malformed),
-          RecoverProcedure.recoverPool,
-          Vector(DefenseDieFace.Blank, DefenseDieFace.Blank))
+        val rejected = rules.rollWalkerPrepared(Ready(malformed),
+          RecoverProcedure.recoverPool)(_ => Right(
+            Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
         assert(rejected.left.toOption.exists(
           _.isInstanceOf[oathdigital.gameplay.OathViolation.InvalidEventOrder]))
     }
+  }
+
+  test("RollWalker with a pool key that does not match the parked pool " +
+      "never calls defenseDicePort") {
+    // rollWalkerPrepared validates the parked pool against the command's
+    // pool key BEFORE invoking prepareFaces (OathRules.scala): this is the
+    // entire mechanism the authoritative-dice property relies on to keep a
+    // caller from steering which dice get rolled. Pin the ordering directly
+    // by proving the port is untouched on a mismatch, not just that the
+    // command is rejected.
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.nonEmpty && site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val recoverPlan = plan.copy(orderedSites = recoverSite +:
+      plan.orderedSites.filterNot(_ == recoverSite))
+    val repository = new InMemoryEventStreamRepository
+    val dice = new CountingRecoverDice
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = dice)
+    val actor = recoverPlan.firstPlayer
+    val setup = execute(service, "walker-pool-mismatch",
+      recoverPlan.orderedSites, recoverPlan)
+    val act = service.handle("walker-pool-mismatch", setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle("walker-pool-mismatch", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+      .toOption.get
+
+    val rejected = service.handle("walker-pool-mismatch", started.nextSequence,
+      GameCommand.RollWalker(PoolKey("not-the-parked-pool")))
+    assert(rejected match {
+      case Left(GameApplicationError.CommandRejected(
+          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => true
+      case _ => false
+    }, s"expected InvalidEventOrder, got $rejected")
+    assertEquals(dice.calls, 0)
   }
 
   private def prepareCatacombs(service: GameApplicationService, gameId: String,
