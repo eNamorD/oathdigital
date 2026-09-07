@@ -8,7 +8,8 @@ import oathdigital.protocol.projection._
 
 private[application] final class PendingProcedureProjector(
     catalog: ExecutableCatalog,
-    presentation: GamePresentationProjector
+    presentation: GamePresentationProjector,
+    walkerDecisions: WalkerDecisionProjector
 ) {
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
@@ -19,9 +20,10 @@ private[application] final class PendingProcedureProjector(
     val relocation = campaignRaidRelocation(context)
     val recipient = oathkeeperRecipient(context)
     val restPower = restPowerProjection(context)
+    val walkerDecision = walkerDecisions.project(context)
     PendingProjection(
       phase(context, cardDecision, recover, forge, challenge, campaign,
-        relocation, recipient),
+        relocation, recipient, walkerDecision),
       cardDecision, recover, forge, campaign, relocation, recipient, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
@@ -32,7 +34,7 @@ private[application] final class PendingProcedureProjector(
         case p: PendingProcedure.RestPowerDecision =>
           !context.viewer.contains(p.current.decisionOwner)
         case _ => false
-      })
+      }, walkerDecision)
   }
 
   private def restPowerProjection(context: ScopedProjectionContext) =
@@ -331,8 +333,20 @@ private[application] final class PendingProcedureProjector(
       forge: Option[ForgeProjection], challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
-      recipient: Option[OathkeeperRecipientProjection]): String =
+      recipient: Option[OathkeeperRecipientProjection],
+      walkerDecision: Option[WalkerDecisionProjection]): String =
     if (context.current.result.nonEmpty) "game-over"
+    else if (context.current.walkerPending.nonEmpty)
+      // The walker path never populates legacy `pending` (verified above:
+      // `context.current.pending` is always `None` here in this slice), so
+      // this is checked ahead of the legacy match rather than folded into
+      // its trailing `None` arm — keeping the two pending mechanisms
+      // visibly separate instead of interleaving one case among many.
+      walkerDecision match {
+        case Some(w) if w.kind == "roll" => "recover-walker-roll"
+        case Some(_) => "recover-walker-decision"
+        case None => "recover-walker-waiting"
+      }
     else context.current.pending match {
       case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"
       case Some(_: PendingProcedure.Search) => "search-waiting"

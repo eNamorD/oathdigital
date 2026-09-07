@@ -14,14 +14,16 @@ import oathdigital.protocol.projection._
 
 private[application] final class LegalActionProjector(
     catalog: ExecutableCatalog,
-    presentation: GamePresentationProjector
+    presentation: GamePresentationProjector,
+    walkerDecisions: WalkerDecisionProjector
 ) {
   def project(context: ScopedProjectionContext): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
-      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty)(
-      minorActionsProjection(context))
+      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
+      context.current.walkerPending.isEmpty)(minorActionsProjection(context))
     val ordinaryAct = context.viewerIsActive &&
-      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty
+      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
+      context.current.walkerPending.isEmpty
     LegalProjection(
       controls(context, minor),
       if (ordinaryAct) TravelRules.legalDestinations(catalog, context.ready,
@@ -55,6 +57,7 @@ private[application] final class LegalActionProjector(
     val current = context.current
     val active = context.active
     if (current.result.nonEmpty) Vector.empty
+    else if (current.walkerPending.nonEmpty) walkerControls(context)
     else current.pending match {
       case Some(n: PendingProcedure.Negotiation)
           if context.viewer.exists(n.participants.contains) =>
@@ -132,6 +135,18 @@ private[application] final class LegalActionProjector(
       }
     }
   }
+
+  /** While a generic-walker action is parked, no other Act control is legal
+    * (`GameApplicationService`/`OathLifecycle` reject every legacy command
+    * for exactly this reason — see Task 6 command-exclusivity ruling); the
+    * only legal controls are answering the parked position itself, visible
+    * only to its actor.
+    */
+  private def walkerControls(context: ScopedProjectionContext): Vector[String] =
+    walkerDecisions.project(context).toVector.map {
+      case WalkerDecisionProjection(_, _, "roll", _, _) => "rollWalker"
+      case _ => "resolveWalkerDecision"
+    }
 
   private def legalSearch(context: ScopedProjectionContext) =
     context.active.pawnSite.flatMap(context.current.map.regionOf).toVector.flatMap {

@@ -10,8 +10,11 @@ import oathdigital.protocol.projection._
 /** Assembles a player-scoped projection from authoritative state. */
 final class GameProjector(catalog: ExecutableCatalog) {
   private val presentation = new GamePresentationProjector(catalog)
-  private val legalActions = new LegalActionProjector(catalog, presentation)
-  private val pendingProcedures = new PendingProcedureProjector(catalog, presentation)
+  private val walkerDecisions = new WalkerDecisionProjector(catalog)
+  private val legalActions = new LegalActionProjector(catalog, presentation,
+    walkerDecisions)
+  private val pendingProcedures = new PendingProcedureProjector(catalog,
+    presentation, walkerDecisions)
   private val setupMaterializer = new FirstGameSetupMaterializer(catalog)
 
   def project(gameId: String, loaded: LoadedGame,
