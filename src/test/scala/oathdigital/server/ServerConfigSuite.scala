@@ -18,6 +18,7 @@ class ServerConfigSuite extends munit.FunSuite {
       .get("docs/catalog/new-foundations-component-catalog.json")
       .toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.Development)
+    assertEquals(config.authenticatedRouteMount, None)
     assertEquals(config.version, version)
   }
 
@@ -30,7 +31,9 @@ class ServerConfigSuite extends munit.FunSuite {
         "OATH_PUBLIC_BASE_URL" -> "http://192.168.1.20:8081",
         "OATH_DATABASE_PATH" -> "var/test-db/../alpha-db",
         "OATH_CATALOG_PATH" -> "docs/catalog/../catalog.json",
-        "OATH_MODE" -> "trusted-alpha"
+        "OATH_MODE" -> "trusted-alpha",
+        "OATH_SESSION_COOKIE_NAME" -> "oath_session",
+        "OATH_AUTHENTICATED_PUBLIC_ORIGIN" -> "https://play.example.com"
       )
     )
 
@@ -43,6 +46,13 @@ class ServerConfigSuite extends munit.FunSuite {
     assertEquals(config.catalogPath,
       Paths.get("docs/catalog.json").toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.TrustedAlpha)
+    assertEquals(
+      config.authenticatedRouteMount,
+      Some(AuthenticatedRouteMountConfiguration(
+        "oath_session",
+        "https://play.example.com"
+      ))
+    )
   }
 
   test("CLI values take precedence over environment values") {
@@ -73,6 +83,8 @@ class ServerConfigSuite extends munit.FunSuite {
         "--host", "localhost",
         "--port", "9090",
         "--public-base-url", "http://localhost:9090",
+        "--session-cookie-name", "cli_session",
+        "--authenticated-public-origin", "http://localhost:9090",
         "--database-path", "var/cli-db",
         "--catalog-path", "docs/cli-catalog.json",
         "--mode", "development"
@@ -81,6 +93,8 @@ class ServerConfigSuite extends munit.FunSuite {
         "OATH_HOST" -> "0.0.0.0",
         "OATH_PORT" -> "8081",
         "OATH_PUBLIC_BASE_URL" -> "http://192.168.1.20:8081",
+        "OATH_SESSION_COOKIE_NAME" -> "env_session",
+        "OATH_AUTHENTICATED_PUBLIC_ORIGIN" -> "https://env.example.com",
         "OATH_DATABASE_PATH" -> "var/env-db",
         "OATH_CATALOG_PATH" -> "docs/env-catalog.json",
         "OATH_MODE" -> "trusted-alpha"
@@ -96,6 +110,49 @@ class ServerConfigSuite extends munit.FunSuite {
     assertEquals(config.catalogPath,
       Paths.get("docs/cli-catalog.json").toAbsolutePath.normalize)
     assertEquals(config.mode, ServerMode.Development)
+    assertEquals(
+      config.authenticatedRouteMount,
+      Some(AuthenticatedRouteMountConfiguration(
+        "cli_session",
+        "http://localhost:9090"
+      ))
+    )
+  }
+
+  test("authenticated route configuration requires cookie and origin together") {
+    val partialConfigurations = Vector(
+      Array("--session-cookie-name", "oath_session"),
+      Array("--authenticated-public-origin", "http://localhost:8080")
+    )
+    partialConfigurations.foreach { arguments =>
+      val errors = ServerConfig.parse(
+        arguments,
+        Map.empty,
+        version
+      ).left.toOption.get
+      assertEquals(errors.size, 1)
+      assert(errors.head.contains(
+        "authenticated routes require both session cookie name and public origin"
+      ))
+    }
+
+    val partialEnvironments = Vector(
+      Map("OATH_SESSION_COOKIE_NAME" -> "oath_session"),
+      Map(
+        "OATH_AUTHENTICATED_PUBLIC_ORIGIN" -> "http://localhost:8080"
+      )
+    )
+    partialEnvironments.foreach { environment =>
+      val errors = ServerConfig.parse(
+        Array.empty,
+        environment,
+        version
+      ).left.toOption.get
+      assertEquals(errors.size, 1)
+      assert(errors.head.contains(
+        "authenticated routes require both session cookie name and public origin"
+      ))
+    }
   }
 
   test("unknown options and missing values return usage for every error") {
