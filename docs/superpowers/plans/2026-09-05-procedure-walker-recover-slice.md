@@ -270,9 +270,14 @@ Because this slice must validate the walker against real UI interaction only if 
 
 ## Execution status (2026-09-06 checkpoint)
 
-Tasks 1-5 complete and reviewed clean on branch `feat/procedure-walker` (worktree `.worktrees/feat-procedure-walker`, HEAD `f9bb1d3`). Commits: T1 `20da7ed`, T2 `9ec8263`+`e9e33c4`, T3 `de52be5`, T4 `4a4e0b8`, T5 `6b06537`+`f9bb1d3`; plan amendments `3f8ae05`, `864f1ba`. Root suite green 495 at HEAD.
+Tasks 1-6 complete and reviewed clean on branch `feat/procedure-walker` (worktree `.worktrees/feat-procedure-walker`, HEAD `5b4b975`). Commits: T1 `20da7ed`, T2 `9ec8263`+`e9e33c4`, T3 `de52be5`, T4 `4a4e0b8`, T5 `6b06537`+`f9bb1d3`, T6 `f2701cc`+`1935aa0`+`5b4b975`; plan amendments `3f8ae05`, `864f1ba`; spec amendment `b6984e5`. Root suite green 502 at HEAD.
 
-Task 6 (next) additionally implements P1 (user-approved 2026-09-06): parks append a durable `WalkerParked(at, answered, ...)` state-fact event; replay applies it to restore PendingTree; `RollOutcome`/answered reconstructed from `RollPayload`/`ChoicePayload` + `ModifyDicePool` ops; walker never re-run at replay. Full carry-in contracts live in the SDD ledger `.superpowers/sdd/2026-09-05-procedure-walker-recover-slice/progress.md` (checkpoint section).
+Task 6 implemented P1 (user-approved 2026-09-06): parks append a durable `WalkerParked(at, answered, ...)` state-fact event; replay applies it to restore PendingTree; `RollOutcome`/answered reconstructed from `RollPayload`/`ChoicePayload` + `ModifyDicePool` ops; walker never re-run at replay. It took two fix rounds. Two rulings amend this plan's text:
+
+- **`GameCommand.RollWalker` carries no faces** (Task 6's interface list and the Global Constraint "dice faces ride commands" both say otherwise). Faces are generated application-side by `defenseDicePort` inside a `prepareFaces` callback that `OathRules.rollWalkerPrepared` invokes only after the parked pool is validated — a client must not choose its own Recover roll, and the engine still owns no randomness. Task 7's transport sends `pool` only.
+- **A pending walker action blocks legacy actions and non-walker commands** (`OathLifecycle`, `GameApplicationService`). Not in the Task 6 text; a parked walker action is a half-executed major action, and letting a legacy action run around it produces a state recorded-ops replay cannot reproduce.
+
+Remaining: T7 (projection/frontend), T8 (verification), final whole-branch review. Deferred minors and full carry-in contracts live in the SDD ledger `.superpowers/sdd/2026-09-05-procedure-walker-recover-slice/progress.md`; point the final review at its deferred-minor lines.
 
 ## Out of scope (later slices/plans)
 
