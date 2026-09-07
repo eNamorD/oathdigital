@@ -129,7 +129,10 @@ final case class CurrentGameState(
     // pending); walker actions read/write only `walkerPending`.
     walkerPending: Option[PendingTree] = None,
     rollPools: Map[PoolKey, DicePoolState] = Map.empty,
-    rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty
+    rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty,
+    // Stored beside, not inside, pointer-only PendingTree. Rebuilds the
+    // command-local operation tree after reload.
+    walkerAction: Option[ActionRef] = None
 )
 
 final case class OathGame(

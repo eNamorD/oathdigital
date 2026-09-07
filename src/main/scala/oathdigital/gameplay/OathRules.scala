@@ -15,6 +15,10 @@ import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay.powers.SearchPowers
+import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.operations.Operation
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+  WalkerOutcome, WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -125,6 +129,108 @@ final class OathRules(catalog: ExecutableCatalog,
         case _ => Right(transition)
       }
     }
+
+  /** Starts one action on the generic procedure walker. Recover is the only
+    * registered action in this vertical slice.
+    */
+  def startWalker(state: OathState, action: ActionRef,
+      actor: PlayerId): Either[OathViolation, OathTransition] =
+    state match {
+      case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
+          ready.game.current.walkerAction.nonEmpty =>
+        Left(InvalidEventOrder("a walker action is already pending"))
+      case Ready(ready) => withFallback(state, actor, MajorActionKind.Recover) {
+        for {
+          tree <- buildWalker(action, ready, actor, starting = true)
+          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None))
+          transition <- walkerTransition(state, ready, action, tree, outcome)
+        } yield transition
+      }
+      case _ => Left(GameNotStarted)
+    }
+
+  /** Resolves the current parked Decide. Action identity is reconstructed
+    * from the durable walkerAction fact, never supplied by the client.
+    */
+  def resolveWalker(state: OathState,
+      answer: Answered): Either[OathViolation, OathTransition] =
+    resumeWalker(state) { case (ready, action, tree, pending) =>
+      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer))
+        .flatMap(walkerTransition(state, ready, action, tree, _))
+    }
+
+  /** Applies pre-rolled faces to the current Roll park. */
+  def rollWalker(state: OathState, pool: PoolKey,
+      faces: Vector[DieFace]): Either[OathViolation, OathTransition] =
+    resumeWalker(state) { case (ready, action, tree, pending) =>
+      for {
+        parked <- ProcedureWalker.parkedRoll(ready, tree, pending).toRight(
+          InvalidEventOrder("current walker position is not a Roll park"))
+        _ <- Either.cond(parked._1 == pool, (), InvalidEventOrder(
+          s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
+        outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces))
+        transition <- walkerTransition(state, ready, action, tree, outcome)
+      } yield transition
+    }
+
+  private def resumeWalker(state: OathState)(run: (ReadyGame, ActionRef,
+      Operation, PendingTree) => Either[OathViolation, OathTransition])
+      : Either[OathViolation, OathTransition] = state match {
+    case Ready(ready) => for {
+      action <- ready.game.current.walkerAction.toRight(
+        InvalidEventOrder("no walker action is pending"))
+      pending <- ready.game.current.walkerPending.toRight(
+        InvalidEventOrder("no walker position is pending"))
+      _ <- Either.cond(pending.actor == ready.game.current.turn.activePlayer, (),
+        WrongPlayer(ready.game.current.turn.activePlayer, pending.actor))
+      _ <- Either.cond(ready.game.current.turn.phase == Phase.Act, (),
+        WrongPhase(Phase.Act, ready.game.current.turn.phase))
+      _ <- Either.cond(ready.game.current.pending.isEmpty, (),
+        InvalidEventOrder("legacy pending procedure blocks walker resume"))
+      tree <- buildWalker(action, ready, pending.actor, starting = false)
+      transition <- run(ready, action, tree, pending)
+    } yield transition
+    case _ => Left(GameNotStarted)
+  }
+
+  private def buildWalker(action: ActionRef, ready: ReadyGame,
+      actor: PlayerId, starting: Boolean): Either[OathViolation, Operation] =
+    action match {
+      case ActionRef.Recover =>
+        if (starting) RecoverProcedure.build(catalog, ready, actor)
+        else RecoverProcedure.rebuild(catalog, ready, actor)
+    }
+
+  private def walkerCall(result: => Either[OathViolation, WalkerOutcome])
+      : Either[OathViolation, WalkerOutcome] =
+    try result
+    catch {
+      case error: IllegalArgumentException => Left(InvalidEventOrder(
+        Option(error.getMessage).getOrElse("invalid walker resume position")))
+    }
+
+  private def walkerTransition(state: OathState, ready: ReadyGame,
+      action: ActionRef, tree: Operation, outcome: WalkerOutcome)
+      : Either[OathViolation, OathTransition] = outcome match {
+    case WalkerOutcome.Parked(pending, steps) =>
+      val fact = WalkerParked(pending.actor, action, pending.at,
+        pending.answered)
+      val continue = ProcedureWalker.parkedRoll(ready, tree, pending) match {
+        case Some(_) => OathContinue.AwaitingRecoverRoll(pending.actor,
+          DecisionId("walker.recover.roll"))
+        case None if pending.at == Vector("2", "0") =>
+          OathContinue.AwaitingRecoverRelic(pending.actor,
+            DecisionId(RecoverProcedure.relicDecisionId))
+        case None => OathContinue.AwaitingRecoverRoll(pending.actor,
+          DecisionId(RecoverProcedure.choiceDecisionId))
+      }
+      GameplayTransition(state, steps :+ fact, continue)(evolve)
+
+    case WalkerOutcome.Finished(treeless, steps) =>
+      val actor = treeless.game.current.turn.activePlayer
+      GameplayTransition(state, steps :+ WalkerCompleted(actor, action),
+        OathContinue.ActActionSelection(actor))(evolve).flatMap(completeAction)
+  }
 
   def handle(state: OathState, command: ForgeCommand)
       : Either[OathViolation, OathTransition] =
@@ -263,6 +369,9 @@ final class OathRules(catalog: ExecutableCatalog,
         RecoverPowerIntegration.evolve(catalog, state, event)
       case event: RecoverStopped => Recover.evolve(catalog, state, event)
       case event: RelicRecovered => Recover.evolve(catalog, state, event)
+      case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
+      case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
+      case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
       case event: ForgeStarted => Forge.evolve(catalog, state, event)
       case event: ForgeCompleted => Forge.evolve(catalog, state, event)
       case event: BannerChallengeStarted => Challenge.evolve(catalog, state, event)

@@ -9,6 +9,12 @@ object GameCommand {
   final case class WithModifiers(command: GameCommand,
       ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
+  final case class StartWalker(action: ActionRef, start: StartPayload)
+      extends GameCommand
+  final case class ResolveWalker(treeDecision: TreeDecision)
+      extends GameCommand
+  final case class RollWalker(pool: PoolKey, faces: Vector[DieFace])
+      extends GameCommand
   final case class PlacePawn(playerId: PlayerId, siteId: SiteId)
       extends GameCommand
   /** Internal setup adapter retained for rules tests; transports use ResolveCardDecision. */
@@ -101,6 +107,14 @@ object GameCommand {
   final case class DeclineRestPower(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
 }
+
+/** Generic action-start data. Action-specific starts may widen this family
+  * when another walker action needs more than its actor.
+  */
+final case class StartPayload(actor: PlayerId)
+
+/** One answer to the currently parked generic walker decision. */
+final case class TreeDecision(decisionId: String, payload: DecisionPayload)
 
 sealed trait CardDecisionResolution extends Product with Serializable
 object CardDecisionResolution {

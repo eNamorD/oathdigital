@@ -322,6 +322,8 @@ class RecoverProcedureSuite extends munit.FunSuite {
     val broke = withSupply(ready, actor.player, 0)
     assert(RecoverProcedure.build(catalog, broke, actor.player)
       .left.toOption.get.isInstanceOf[OathViolation.InsufficientSupply])
+    assert(RecoverProcedure.rebuild(catalog, broke, actor.player).isRight,
+      "resume derivation must preserve the legal Stop exit at zero supply")
   }
 
   test("resolving the relic decision with a relic not facedown at the site is " +

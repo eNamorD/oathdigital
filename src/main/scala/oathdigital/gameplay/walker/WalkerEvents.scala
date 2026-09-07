@@ -2,7 +2,8 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{DecisionPayload, DieFace, PlayerId, PoolKey}
+import oathdigital.model.{ActionRef, Answered, DecisionPayload, DieFace,
+  PlayerId, PoolKey}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -37,7 +38,8 @@ final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
 final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
     extends WalkerStepPayload
 
-/** Container event: recorded once per delta leaf the walker executes.
+/** Container event: recorded once per delta, resolved choice, or submitted
+  * roll the walker executes.
   *
   * `ops` holds the applied leaves (`PrimitiveOperation`s, which are
   * `CoreOperation`s), so replay applies exactly the deltas that produced this
@@ -51,3 +53,20 @@ final case class WalkerStepRecorded(
     payload: WalkerStepPayload,
     ops: Vector[CoreOperation]
 ) extends WalkerEvent
+
+/** Durable state fact written whenever walking stops at a Decide or Roll.
+  * `action` is stored beside pointer-only PendingTree on replay so generic
+  * resume commands can rebuild the correct tree after reload.
+  */
+final case class WalkerParked(
+    actor: PlayerId,
+    action: ActionRef,
+    at: Vector[String],
+    answered: Vector[Answered]
+) extends WalkerEvent
+
+/** Durable action-boundary fact. Replay clears every walker-owned scratch
+  * field without deriving or running the operation tree.
+  */
+final case class WalkerCompleted(actor: PlayerId, action: ActionRef)
+    extends WalkerEvent

@@ -268,6 +268,13 @@ final class GameApplicationService(
       }
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
+      case GameCommand.StartWalker(action, start) =>
+        rules.startWalker(state, action, start.actor)
+      case GameCommand.ResolveWalker(treeDecision) =>
+        rules.resolveWalker(state, Answered(treeDecision.decisionId,
+          treeDecision.payload))
+      case GameCommand.RollWalker(pool, faces) =>
+        rules.rollWalker(state, pool, faces)
       case GameCommand.PlacePawn(playerId, siteId) =>
         setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
       case GameCommand.ChooseAdviser(playerId, adviserId) =>

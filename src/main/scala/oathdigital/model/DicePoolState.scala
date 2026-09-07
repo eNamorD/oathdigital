@@ -13,8 +13,9 @@ package oathdigital.model
   */
 final case class DicePoolState(count: Int)
 
-/** Recorded result of one rolled pool: the faces that rode the roll command
-  * plus the derived `skulls`/`score` (this slice only writes defense rolls,
+/** Accumulated result for one named pool during an action: every roll appends
+  * its faces/count and adds its derived `skulls`/`score` (this slice only
+  * writes defense rolls,
   * so `skulls` is 0; powers may edit the outcome later via
   * `ModifyRollOutcome`). Lives in state next to the pool counts so later
   * resolution consumes it without re-rolling (engine never calls random

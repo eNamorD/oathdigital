@@ -3,8 +3,8 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
-import oathdigital.gameplay.walker.{OwnerQuery, ProcedureWalker, RollPayload,
-  WalkerCtx, WalkerOutcome, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, OwnerQuery, ProcedureWalker,
+  RollPayload, WalkerCtx, WalkerOutcome, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -108,19 +108,12 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case other => fail(s"expected a park at the Decide, got $other")
     }
 
-    // The caller answers the parked decision (appending an Answered entry to
-    // `answered`) and stores the pending tree in state for the resumed
-    // command.
-    val answeredTree = parked.copy(
-      answered = parked.answered :+ Answered(decide.decisionId,
-        ProcedureWalkerSuite.TestDecisionPayload("continue")))
-    val storedState = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(walkerPending = Some(answeredTree))))
-
-    ProcedureWalker.advance(storedState, tree, Some(answeredTree)) match {
+    val answer = Answered(decide.decisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    ProcedureWalker.resolve(ready, tree, parked, answer) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
-        assertEquals(events.size, 1)
-        assertEquals(events.head.asInstanceOf[WalkerStepRecorded].ops,
+        assertEquals(events.size, 2)
+        assertEquals(events.last.asInstanceOf[WalkerStepRecorded].ops,
           Vector[CoreOperation](adjust))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
         assert(finalState.game.current.walkerPending.isEmpty)
@@ -154,12 +147,13 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     // The caller folds the Parked events to obtain the state at the park.
     val parkedState = applyEvents(ready, parkEvents)
-    val answeredTree = parked.copy(
-      answered = parked.answered :+ Answered(decide.decisionId,
-        ProcedureWalkerSuite.TestDecisionPayload("continue")))
-    ProcedureWalker.advance(parkedState, tree, Some(answeredTree)) match {
+    val answer = Answered(decide.decisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    ProcedureWalker.resolve(parkedState, tree, parked, answer) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
-        assertEquals(events, Vector.empty[OathEvent])
+        assertEquals(events.size, 1)
+        assert(events.head.asInstanceOf[WalkerStepRecorded]
+          .payload.isInstanceOf[ChoicePayload])
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the answered resume to finish, got $other")
     }
@@ -212,16 +206,33 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case other => fail(s"expected a park inside the Repeat body, got $other")
     }
 
-    val answeredTree = parked.copy(
-      answered = parked.answered :+ Answered(decide.decisionId,
-        ProcedureWalkerSuite.TestDecisionPayload("continue")))
-    ProcedureWalker.advance(ready, tree, Some(answeredTree)) match {
+    val answer = Answered(decide.decisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    ProcedureWalker.resolve(ready, tree, parked, answer) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
-        assertEquals(events.size, 1)
-        assertEquals(events.head.asInstanceOf[WalkerStepRecorded].ops,
+        assertEquals(events.size, 2)
+        assertEquals(events.last.asInstanceOf[WalkerStepRecorded].ops,
           Vector[CoreOperation](adjust))
         assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
       case other => fail(s"expected the resumed repeat to finish, got $other")
+    }
+  }
+
+  test("plain advance re-parks a repeated Decide even when an older pass " +
+      "answered the same decision ID") {
+    val olderAnswer = Answered(decide.decisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    val pending = PendingTree(Vector("0", "0", "0"), Vector(olderAnswer), actor)
+    val tree: Operation = Sequence(Repeat(
+      (_: ReadyGame, _: PendingTree) => true,
+      Sequence(decide, adjust)))
+
+    ProcedureWalker.advance(ready, tree, Some(pending)) match {
+      case Right(WalkerOutcome.Parked(reparked, events)) =>
+        assertEquals(reparked.at, pending.at)
+        assertEquals(reparked.answered, Vector(olderAnswer))
+        assertEquals(events, Vector.empty[OathEvent])
+      case other => fail(s"expected a re-park at the repeated Decide, got $other")
     }
   }
 

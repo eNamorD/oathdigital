@@ -1,11 +1,12 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.{DiceKind, OathEvent, OathViolation, ReadyGame}
+import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
+  ReadyGame, WalkerEvent}
 import oathdigital.gameplay.operations.{Branch, BuildOps, CoreOperation,
-  Decide, Operation, OperationPipeline, OperationPolicy, PrimitiveOperation,
-  Repeat, Roll}
-import oathdigital.model.{Answered, DefenseDieFace, DieFace, PendingTree,
-  PlayerId, PoolKey, RollOutcome}
+  Decide, Operation, OperationExecutor, OperationPipeline, OperationPolicy,
+  PrimitiveOperation, Repeat, Roll}
+import oathdigital.model.{Answered, DefenseDieFace, DieFace,
+  PendingTree, PlayerId, PoolKey, RollOutcome}
 
 /** Outcome of one walker `advance`/`roll`/`resolve` command.
   *
@@ -17,9 +18,9 @@ object WalkerOutcome {
   /** The walk parked at a `Decide` (a `Roll` park is *resumed* this slice
     * through [[ProcedureWalker.roll]], never through a further `advance`).
     * `tree` is the exact position to resume from on the next command;
-    * `events` holds any auto-deltas already executed before the park in this
-    * command (the caller folds them into state — see the suite's
-    * `applyEvents`). No events are recorded for the parked node itself.
+    * `events` holds any steps executed before the park in this command. The
+    * application appends a [[WalkerParked]] fact after these events so replay
+    * can restore the pointer without running the walker.
     */
   final case class Parked(tree: PendingTree, events: Vector[OathEvent])
       extends WalkerOutcome
@@ -28,7 +29,8 @@ object WalkerOutcome {
     * carries a pending tree and its dice pools are cleared (brief behavior
     * 6); `events` holds every delta executed by this command. Roll outcomes
     * written during the walk are retained on the finished state for the next
-    * resolution step to consume.
+    * resolution step to consume; the application-level [[WalkerCompleted]]
+    * fact clears them at the completed action boundary.
     */
   final case class Finished(treeless: ReadyGame, events: Vector[OathEvent])
       extends WalkerOutcome
@@ -82,6 +84,134 @@ object WalkerOutcome {
   * belong to.
   */
 object ProcedureWalker {
+
+  /** Replays one durable walker fact. This path applies recorded operations
+    * and payload state writes only; it never derives or walks an action tree.
+    */
+  def applyRecorded(state: OathState,
+      event: WalkerEvent): Either[OathViolation, OathState] = state match {
+    case OathState.Ready(ready) => applyRecordedReady(ready, event)
+      .map(OathState.Ready)
+    case _ => Left(OathViolation.GameNotStarted)
+  }
+
+  private def applyRecordedReady(ready: ReadyGame,
+      event: WalkerEvent): Either[OathViolation, ReadyGame] = {
+    def invalid(detail: String) = Left(OathViolation.InvalidEventOrder(detail))
+    def validateActor(actor: PlayerId): Either[OathViolation, Unit] =
+      Either.cond(actor == ready.game.current.turn.activePlayer, (),
+        OathViolation.WrongPlayer(ready.game.current.turn.activePlayer, actor))
+    def validateStep(step: WalkerStepRecorded)
+        : Either[OathViolation, Unit] = for {
+      _ <- validateActor(step.actor)
+      _ <- Either.cond(validNodeId(step.nodeId), (),
+        OathViolation.InvalidEventOrder(
+          s"invalid walker node id '${step.nodeId}'"))
+    } yield ()
+    def validateParkedStep(step: WalkerStepRecorded)
+        : Either[OathViolation, PendingTree] = for {
+      _ <- validateStep(step)
+      pending <- ready.game.current.walkerPending.toRight(
+        OathViolation.InvalidEventOrder(
+          "walker step requires a durable pending position"))
+      _ <- Either.cond(pending.actor == step.actor, (),
+        OathViolation.WrongPlayer(pending.actor, step.actor))
+      _ <- Either.cond(pending.at.mkString(".") == step.nodeId, (),
+        OathViolation.InvalidEventOrder(
+          s"walker step ${step.nodeId} does not match pending position " +
+            pending.at.mkString(".")))
+    } yield pending
+
+    event match {
+      case step @ WalkerStepRecorded(_, _, RollPayload(pool, faces), ops) =>
+        for {
+          _ <- validateParkedStep(step)
+          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
+            "recorded RollPayload must not contain operations"))
+          count <- ready.game.current.rollPools.get(pool).map(_.count).toRight(
+            OathViolation.InvalidEventOrder(
+              s"recorded roll references missing pool ${pool.value}"))
+          _ <- Either.cond(faces.size == count, (),
+            OathViolation.InvalidEventOrder(
+              s"recorded roll has ${faces.size} faces but pool count is $count"))
+          _ <- Either.cond(faces.forall(_.isInstanceOf[DefenseDieFace]), (),
+            OathViolation.InvalidEventOrder(
+              "recorded Recover roll contains a non-defense face"))
+        } yield writeRollOutcome(ready, RollOutcome(pool, count, faces,
+          skulls = 0, score = DefenseDieFace.score(faces.collect {
+            case face: DefenseDieFace => face
+          })))
+
+      case step @ WalkerStepRecorded(_, _,
+          ChoicePayload(decisionId, payload), ops) =>
+        for {
+          pending <- validateParkedStep(step)
+          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
+            "recorded ChoicePayload must not contain operations"))
+          answered = pending.copy(answered = pending.answered :+
+            Answered(decisionId, payload))
+        } yield ready.copy(game = ready.game.copy(current =
+          ready.game.current.copy(walkerPending = Some(answered))))
+
+      case step @ WalkerStepRecorded(_, _,
+          _: WalkerStepPayload.DeltaRecorded, ops) =>
+        for {
+          _ <- validateStep(step)
+          _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(
+            "recorded delta step must contain operations"))
+          updated <- new OperationExecutor().executeAll(ready, ops)
+            .left.map(_.toViolation)
+        } yield updated
+
+      case WalkerParked(actor, action, at, answered) => for {
+        _ <- validateActor(actor)
+        _ <- Either.cond(at.nonEmpty && at.forall(segment =>
+          segment.nonEmpty && segment.forall(_.isDigit)), (),
+          OathViolation.InvalidEventOrder("invalid durable walker park path"))
+        _ <- ready.game.current.walkerAction match {
+          case Some(existing) => Either.cond(existing == action, (),
+            OathViolation.InvalidEventOrder(
+              s"walker action ${action.key} does not match ${existing.key}"))
+          case None => Right(())
+        }
+        _ <- ready.game.current.walkerPending match {
+          case Some(existing) => Either.cond(existing.answered == answered, (),
+            OathViolation.InvalidEventOrder(
+              "durable walker park answers do not match recorded choices"))
+          case None => Either.cond(answered.isEmpty, (),
+            OathViolation.InvalidEventOrder(
+              "initial durable walker park has unexpected answers"))
+        }
+      } yield ready.copy(game = ready.game.copy(current =
+        ready.game.current.copy(
+          walkerPending = Some(PendingTree(at, answered, actor)),
+          walkerAction = Some(action))))
+
+      case WalkerCompleted(actor, action) => for {
+        _ <- validateActor(actor)
+        _ <- ready.game.current.walkerAction match {
+          case Some(existing) => Either.cond(existing == action, (),
+            OathViolation.InvalidEventOrder(
+              s"walker completion ${action.key} does not match ${existing.key}"))
+          case None => invalid("walker completion has no active walker action")
+        }
+      } yield ready.copy(game = ready.game.copy(current =
+        ready.game.current.copy(
+          walkerPending = None,
+          walkerAction = None,
+          rollPools = Map.empty,
+          rollOutcomes = Map.empty)))
+
+      case step: WalkerStepRecorded =>
+        invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
+      case other =>
+        invalid(s"unsupported walker event ${other.productPrefix}")
+    }
+  }
+
+  private def validNodeId(nodeId: String): Boolean =
+    nodeId.nonEmpty && nodeId.split('.').forall(segment =>
+      segment.nonEmpty && segment.forall(_.isDigit))
 
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree]): Either[OathViolation, WalkerOutcome] = {
@@ -201,12 +331,12 @@ object ProcedureWalker {
 
   private def strip(state: ReadyGame): ReadyGame =
     state.copy(game = state.game.copy(current =
-      state.game.current.copy(walkerPending = None)))
+      state.game.current.copy(walkerPending = None, walkerAction = None)))
 
   private def finish(ctx: WalkCtx): ReadyGame =
     ctx.state.copy(game = ctx.state.game.copy(current =
       ctx.state.game.current.copy(walkerPending = None,
-        rollPools = Map.empty)))
+        rollPools = Map.empty, walkerAction = None)))
 
   private def contractViolation(message: String): Nothing =
     throw new IllegalArgumentException(s"walker contract violation: $message")
@@ -320,13 +450,11 @@ object ProcedureWalker {
             }
           case PlainResume =>
             leaf match {
-              case decide: Decide
-                  if ctx.answered.exists(_.decisionId == decide.decisionId) =>
-                // Already parked on and answered: skip past it.
-                Right(Done(ctx))
               case _: Decide | _: Roll =>
-                // Unanswered (or a Roll a plain advance never resumes past):
-                // park; Roll parks resume through `roll`.
+                // A plain advance never consumes a park. In particular, a
+                // repeated Decide can reuse its stable decision ID across
+                // passes, so older answers must not make a fresh pass skip it.
+                // Decide and Roll parks resume only through `resolve`/`roll`.
                 Right(Park(path, ctx))
               case _ =>
                 contractViolation(s"resume position ${path.mkString(".")} " +

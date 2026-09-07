@@ -19,7 +19,8 @@ final case class GameEventEnvelope(
  * Explicit current game-event vocabulary, including first-game setup.
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
-    with ActionEventCodec with CampaignEventCodec with EndingEventCodec {
+    with ActionEventCodec with CampaignEventCodec with EndingEventCodec
+    with WalkerEventCodec {
   import WireError._
 
   /** The pre-release stream has one current format and no compatibility reader. */
@@ -84,6 +85,9 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val VisionVictoryType = "gameplay.vision-victory"
   val RoundEndedType = "gameplay.round-ended"
   val WarExhaustionResolvedType = "gameplay.war-exhaustion-resolved"
+  val WalkerStepRecordedType = "walker.step-recorded"
+  val WalkerParkedType = "walker.parked"
+  val WalkerCompletedType = "walker.completed"
 
   /** Encodes one event at its absolute position in the game stream. */
   def encodeEvent(
@@ -279,10 +283,10 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
 
   private val discriminatorDispatch = lifecycleDiscriminator
     .orElse(actionDiscriminator).orElse(campaignDiscriminator)
-    .orElse(endingDiscriminator)
+    .orElse(endingDiscriminator).orElse(walkerDiscriminator)
 
   private val encoderDispatch = lifecycleEncoder.orElse(actionEncoder)
-    .orElse(campaignEncoder).orElse(endingEncoder)
+    .orElse(campaignEncoder).orElse(endingEncoder).orElse(walkerEncoder)
 
   private def discriminator(event: OathEvent): String =
     discriminatorDispatch(event)
@@ -301,6 +305,7 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
         .orElse(actionDecode(eventType, payload, path, envelopeCatalog))
         .orElse(campaignDecode(eventType, payload, path, envelopeCatalog))
         .orElse(endingDecode(eventType, payload, path, envelopeCatalog))
+        .orElse(walkerDecode(eventType, payload, path, envelopeCatalog))
         .getOrElse(Left(UnknownEventType(s"$path.eventType", eventType)))
     } catch {
       case NonFatal(error) => Left(InvalidValue(path,

@@ -73,6 +73,18 @@ object RecoverProcedure {
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
 
+  /** Rebuilds the same command-local tree for an already-started Recover.
+    * Start-only gates (notably supply >= 1) do not re-run: a player who spent
+    * their last supply on a failed roll must still be able to resolve Stop.
+    */
+  def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
+      actor: PlayerId): Either[OathViolation, Operation] = for {
+    siteId <- state.game.current.players.find(_.player == actor)
+      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+    difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
+      OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
+  } yield tree(state, actor, siteId, difficulty)
+
   /** Build rejects a site with no facedown relic: the walker's only legal
     * answer at the success-only `"recover.relic"` decision is a facedown site
     * relic, so starting without one would leave the resolved action with no
