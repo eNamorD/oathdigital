@@ -9,6 +9,24 @@ lazy val root = (project in file("."))
       .dependsOn(frontend / Compile / fastLinkJS).evaluated,
     Compile / runMain := (Compile / runMain)
       .dependsOn(frontend / Compile / fastLinkJS).evaluated,
+    Compile / resourceGenerators += Def.task {
+      val report = (frontend / Compile / fullLinkJS).value
+      val linkerOutput = (frontend / Compile / fullLinkJS /
+        scalaJSLinkerOutputDirectory).value
+      val output = (Compile / resourceManaged).value /
+        "oathdigital" / "frontend"
+      val linked = linkerOutput /
+        report.data.publicModules.find(_.moduleID == "main").get.jsFileName
+      val files = Seq(
+        linked -> (output / "main.js"),
+        baseDirectory.value / "frontend" / "styles.css" ->
+          (output / "styles.css"),
+        baseDirectory.value / "frontend" / "production-index.html" ->
+          (output / "index.html")
+      )
+      IO.copy(files)
+      files.map(_._2)
+    }.taskValue,
     Compile / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "main" / "scala",
     Test / unmanagedSourceDirectories += baseDirectory.value / "shared" / "src" / "test" / "scala",
     libraryDependencies ++= Seq(

@@ -66,7 +66,7 @@ object OathServer {
         val route = ServerRoutes.route(
           runtime,
           blockingExecutionContext,
-          config.authenticatedRouteMount,
+          config,
           readiness
         )
 

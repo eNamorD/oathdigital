@@ -30,28 +30,32 @@ object ServerRoutes {
   def route(
       runtime: ServerRuntime,
       blockingExecutionContext: ExecutionContext,
-      authenticated: Option[AuthenticatedRouteMountConfiguration],
+      config: ServerConfig,
       readiness: ServerReadiness,
       nowMillis: () => Long = () => System.currentTimeMillis()
   ): Route = {
-    val development = DevelopmentRoutes.route(
-      runtime.firstGame,
-      blockingExecutionContext
-    )
-    val application = authenticated.fold(development) { configuration =>
-      val authenticator = new SessionCookieAuthenticator(
-        runtime.identities,
-        configuration.sessionCookieName,
-        nowMillis,
-        blockingExecutionContext
-      )
-      val csrf = new SameOriginCsrfProtection(configuration.publicOrigin)
-      development ~ new AuthenticatedGameRoutes(
-        authenticator,
-        csrf,
-        runtime.authenticatedGame,
-        blockingExecutionContext
-      ).route
+    val application = config.mode match {
+      case ServerMode.Development =>
+        val development = DevelopmentRoutes.route(
+          runtime.firstGame,
+          blockingExecutionContext
+        )
+        config.authenticatedRouteMount.fold(development) { configuration =>
+          val authenticator = new SessionCookieAuthenticator(
+            runtime.identities,
+            configuration.sessionCookieName,
+            nowMillis,
+            blockingExecutionContext
+          )
+          val csrf = new SameOriginCsrfProtection(configuration.publicOrigin)
+          development ~ new AuthenticatedGameRoutes(
+            authenticator,
+            csrf,
+            runtime.authenticatedGame,
+            blockingExecutionContext
+          ).route
+        }
+      case ServerMode.TrustedAlpha => ProductionFrontendRoutes.route
     }
     HealthRoutes.route(readiness) ~ application
   }

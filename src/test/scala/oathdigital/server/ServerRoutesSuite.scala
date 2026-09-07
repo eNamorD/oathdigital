@@ -34,7 +34,12 @@ class ServerRoutesSuite extends munit.FunSuite {
 
     try {
       val readiness = ServerReadiness.starting("test-version")
-      val absent = bind(ServerRoutes.route(runtime, blocking, None, readiness))
+      val absent = bind(ServerRoutes.route(
+        runtime,
+        blocking,
+        config(ServerMode.Development),
+        readiness
+      ))
       try {
         assertEquals(get(client, absent, "/health/live").statusCode(), 200)
         assertEquals(get(client, absent, "/health").statusCode(), 503)
@@ -43,6 +48,8 @@ class ServerRoutesSuite extends munit.FunSuite {
         assertEquals(get(client, absent, "/health").statusCode(), 200)
         assertEquals(get(client, absent,
           "/api/authenticated/first-games/game").statusCode(), 404)
+        assertEquals(get(client, absent,
+          "/api/dev/first-games/test-game/events?limit=101").statusCode(), 400)
       } finally Await.result(absent.terminate(5.seconds), 10.seconds)
 
       val configuration = AuthenticatedRouteMountConfiguration(
@@ -50,7 +57,10 @@ class ServerRoutesSuite extends munit.FunSuite {
       val mounted = bind(ServerRoutes.route(
         runtime,
         blocking,
-        Some(configuration),
+        config(
+          ServerMode.Development,
+          authenticatedRouteMount = Some(configuration)
+        ),
         ServerReadiness.starting("test-version"),
         () => 0L
       ))
@@ -63,6 +73,58 @@ class ServerRoutesSuite extends munit.FunSuite {
       Await.result(system.whenTerminated, 10.seconds)
     }
   }
+
+  test("trusted-alpha serves production frontend without development routes") {
+    implicit val system: ActorSystem[Nothing] =
+      ActorSystem[Nothing](Behaviors.empty, "trusted-alpha-routes-test")
+    val blocking = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+    val runtime = ServerRuntime.open(
+      Files.createTempDirectory("trusted-alpha-routes-").resolve("database"),
+      Paths.get("docs/catalog/new-foundations-component-catalog.json")
+    ).toOption.get
+    val client = HttpClient.newHttpClient()
+    val binding = bind(ServerRoutes.route(
+      runtime,
+      blocking,
+      config(
+        ServerMode.TrustedAlpha,
+        authenticatedRouteMount = Some(AuthenticatedRouteMountConfiguration(
+          "oath_session",
+          "http://127.0.0.1"
+        ))
+      ),
+      ServerReadiness.starting("test-version")
+    ))
+
+    try {
+      assertEquals(get(client, binding, "/").statusCode(), 200)
+      assertEquals(get(client, binding,
+        "/api/dev/first-games/test-game?playerId=p1").statusCode(), 404)
+      assertEquals(get(client, binding,
+        "/api/authenticated/first-games/test-game").statusCode(), 404)
+    } finally {
+      Await.result(binding.terminate(5.seconds), 10.seconds)
+      runtime.close()
+      system.terminate()
+      Await.result(system.whenTerminated, 10.seconds)
+    }
+  }
+
+  private def config(
+      mode: ServerMode,
+      authenticatedRouteMount: Option[AuthenticatedRouteMountConfiguration] = None
+  ): ServerConfig = ServerConfig(
+    host = "127.0.0.1",
+    port = 8080,
+    publicBaseUrl = None,
+    databasePath = Paths.get("var/test-server-routes"),
+    catalogPath = Paths.get(
+      "docs/catalog/new-foundations-component-catalog.json"),
+    mode = mode,
+    authenticatedRouteMount = authenticatedRouteMount,
+    version = "test-version"
+  )
 
   private def bind(route: akka.http.scaladsl.server.Route)(implicit
       system: ActorSystem[Nothing]
