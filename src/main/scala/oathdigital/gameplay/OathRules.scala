@@ -19,8 +19,9 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   ContributionCollector, PowerCtx, PowerResolution, PowerWindow}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
-  WalkerOutcome, WalkerParked, WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
+  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -709,17 +710,17 @@ object OathRules {
   type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
     Boolean, Boolean) => Either[OathViolation, Operation]
 
-  /** Production tree source: every registered action declares its own tree.
-    * Recover is the only action on the walker in this vertical slice.
+  /** Production tree source: every registered action declares its own tree
+    * via [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) --
+    * this is no longer an exhaustive match on [[ActionRef]], so an
+    * unregistered action rejects with a typed `Left` instead of a
+    * `MatchError`.
     */
   val declaredWalkerTree: WalkerTreeSource =
     (catalog, action, ready, actor, starting, eligibilityRelaxed) =>
-      action match {
-        case ActionRef.Recover =>
-          if (starting) RecoverProcedure.build(catalog, ready, actor,
-            eligibilityRelaxed)
-          else RecoverProcedure.rebuild(catalog, ready, actor)
-      }
+      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
+        eligibilityRelaxed)
+      else WalkerActionRegistry.rebuild(action, catalog, ready, actor)
 }
 
 private[gameplay] object GameStateUpdates {

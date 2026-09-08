@@ -342,10 +342,20 @@ private[application] final class PendingProcedureProjector(
       // this is checked ahead of the legacy match rather than folded into
       // its trailing `None` arm — keeping the two pending mechanisms
       // visibly separate instead of interleaving one case among many.
-      walkerDecision match {
-        case Some(w) if w.kind == "roll" => "recover-walker-roll"
-        case Some(_) => "recover-walker-decision"
-        case None => "recover-walker-waiting"
+      //
+      // The label is keyed off the parked action's own wire key (Task 8)
+      // instead of a hardcoded "recover-*" literal, so a second action
+      // parked on the walker reports its own phase rather than borrowing
+      // Recover's. `walkerAction` is always populated alongside
+      // `walkerPending` (both are written by `WalkerParked` and cleared
+      // together by `WalkerCompleted`), so the `None` arm below is
+      // unreachable in practice; it exists only so this stays total.
+      context.current.walkerAction.fold("walker-waiting") { action =>
+        walkerDecision match {
+          case Some(w) if w.kind == "roll" => s"${action.key}-walker-roll"
+          case Some(_) => s"${action.key}-walker-decision"
+          case None => s"${action.key}-walker-waiting"
+        }
       }
     else context.current.pending match {
       case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"

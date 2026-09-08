@@ -5,16 +5,18 @@ import oathdigital.gameplay.ReadyGame
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
+  WalkerPowers}
 import oathdigital.model.{ActionRef, Orientation, PendingTree, PlayerId}
 import oathdigital.protocol.projection.{CardDetailsProjection, WalkerDecisionProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerAction`, Task 6) into the small owner-private
-  * [[WalkerDecisionProjection]]. Recover is the only action registered on
-  * the walker in this slice, so the tree rebuild below is Recover-specific
-  * by design — mirroring `OathRules.buildWalker`'s own exhaustive dispatch
-  * on [[ActionRef]], not a structural coincidence.
+  * [[WalkerDecisionProjection]]. The tree rebuild below dispatches through
+  * [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) -- the same
+  * keyed lookup `OathRules.buildWalker` resumes through -- rather than
+  * matching on [[ActionRef]] itself, so this projector needs no edit when a
+  * second action registers.
   *
   * Reuses [[ProcedureWalker.parkedRoll]]/[[ProcedureWalker.parkedDecide]] —
   * the same reorder-safe, decisionId-keyed introspection `OathRules`
@@ -53,9 +55,7 @@ private[application] final class WalkerDecisionProjector(
     } yield projection
 
   private def rebuild(ready: ReadyGame, action: ActionRef, actor: PlayerId) =
-    action match {
-      case ActionRef.Recover => RecoverProcedure.rebuild(catalog, ready, actor)
-    }
+    WalkerActionRegistry.rebuild(action, catalog, ready, actor)
 
   private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
       pending: PendingTree, powers: WalkerPowers)
