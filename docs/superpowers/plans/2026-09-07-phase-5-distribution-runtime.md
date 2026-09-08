@@ -14,6 +14,10 @@
 
 - Universal ZIP/TGZ supports macOS, Linux, and Windows launchers and requires installed Java 21; it must not require sbt or Node.
 - OCI targets `linux/amd64` and `linux/arm64`, includes Java 21, and runs as a non-root user.
+  Partially deferred: this plan delivers a single-architecture OCI definition on a
+  multi-architecture-capable base image; multi-architecture build and publication for
+  `linux/amd64` and `linux/arm64` is delivered by the `phase-5-release-operations`
+  follow-up plan, so this constraint is not fully satisfied on this branch.
 - Both artifacts contain the same optimized frontend, server classpath, catalog, launchers, version metadata, configuration reference, and lifecycle behavior.
 - `ServerConfig` is the only runtime configuration parser; precedence is command-line options, environment variables, then defaults.
 - Packaged launchers select `trusted-alpha`; existing development behavior stays explicit and loopback-only.

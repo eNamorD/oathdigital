@@ -2,8 +2,8 @@
 
 These tests exercise copied Universal package contents and a locally built OCI
 image. They verify readiness, the packaged index and JavaScript asset,
-persistent database startup, and bounded shutdown without using source-tree
-frontend files. Run them before publishing alpha artifacts.
+database persistence across a restart, and bounded shutdown without using
+source-tree frontend files. Run them before publishing alpha artifacts.
 
 ## Prerequisites
 
@@ -33,10 +33,15 @@ scripts/smoke-packaged-distribution.sh target/universal/stage 18080
 The script copies only the staged package contents into a directory created by
 `mktemp -d`, launches that copy in `trusted-alpha` mode, and stores its HSQLDB
 files beside the copy. After HTTP checks, it sends `TERM`, allows at most 15
-seconds for shutdown, accepts the JVM's normal `0` or `143` termination
-status, verifies database files and an explicit database-close log entry, and
-removes only its exact temporary directory. HTTP requests use bounded connect
-and total timeouts; readiness requests share the 30-second readiness budget.
+seconds for shutdown, accepts the JVM's normal `0` or `143` termination status,
+and verifies database files and an explicit database-close log entry. It then
+launches a second process against the same `OATH_DATABASE_PATH`, waits for
+readiness again, repeats the HTTP checks, and shuts down again, so persistence
+is proved by reopening the database rather than by file existence alone. Each
+run writes its own log, so one run's close evidence cannot satisfy another
+run's assertion. The script removes only its exact temporary directory. HTTP
+requests use bounded connect and total timeouts; readiness requests share a
+30-second readiness budget per run.
 
 The packaged launcher does not require sbt or Node after staging. `JAVA_HOME`
 may be set explicitly when Java is not discoverable through `PATH`.
@@ -62,7 +67,12 @@ and asset, and restarts the same container with the same volume. It rechecks
 readiness, stops the container with a 15-second timeout, and removes only those
 two named resources through its cleanup trap. It accepts the JVM's normal `0`
 or `143` termination status only when the container logs explicit database-close
-evidence. HTTP requests use bounded connect and total timeouts.
+evidence within a `docker logs --since` window opened immediately before the
+final stop, so the restart's own shutdown cannot satisfy the assertion. Only
+the port and public base URL are overridden on `docker create`; the bind host
+and database path come from the image's own defaults, so the gate exercises
+what `docker run` does out of the box. HTTP requests use bounded connect and
+total timeouts.
 
 ## Build all Universal alpha archives
 

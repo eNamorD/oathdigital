@@ -17,8 +17,8 @@ Node. The OCI image bundles a Java 21 runtime and runs as the non-root
 | `--host HOST` | `OATH_HOST` | `127.0.0.1` |
 | `--port PORT` | `OATH_PORT` | `8080` |
 | `--public-base-url URL` | `OATH_PUBLIC_BASE_URL` | unset |
-| `--session-cookie-name NAME` | `OATH_SESSION_COOKIE_NAME` | unset; must be supplied with authenticated public origin |
-| `--authenticated-public-origin ORIGIN` | `OATH_AUTHENTICATED_PUBLIC_ORIGIN` | unset; must be supplied with session cookie name |
+| `--session-cookie-name NAME` | `OATH_SESSION_COOKIE_NAME` | unset; development mode only; must be supplied with authenticated public origin |
+| `--authenticated-public-origin ORIGIN` | `OATH_AUTHENTICATED_PUBLIC_ORIGIN` | unset; development mode only; must be supplied with session cookie name |
 | `--database-path PATH` | `OATH_DATABASE_PATH` | `var/oathdigital` |
 | `--catalog-path PATH` | `OATH_CATALOG_PATH` | `docs/catalog/new-foundations-component-catalog.json`; packaged launcher uses bundled `share/oathdigital/new-foundations-component-catalog.json` |
 | `--mode development\|trusted-alpha` | `OATH_MODE` | `development`; packaged launcher uses `trusted-alpha` |
@@ -49,18 +49,22 @@ same environment variables and run `bin\oathdigital.bat`.
 
 ## OCI image
 
-After `./sbtw Docker/publishLocal`, publish the service on all host interfaces
-for trusted LAN access:
+The image sets `OATH_HOST=0.0.0.0` and
+`OATH_DATABASE_PATH=/var/lib/oathdigital/database` itself and declares
+`/var/lib/oathdigital` as a volume, so only the browser-visible origin has to
+be supplied. After `./sbtw Docker/publishLocal`, publish the service on all
+host interfaces for trusted LAN access:
 
 ```sh
 docker run --rm --name oathdigital \
   --publish 8080:8080 \
-  --env OATH_HOST=0.0.0.0 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
-  --env OATH_DATABASE_PATH=/var/lib/oathdigital/database \
   --volume oathdigital-data:/var/lib/oathdigital \
   oathdigital:0.1.0-SNAPSHOT
 ```
+
+Name a volume as shown to keep the database across container replacements; the
+declared volume otherwise becomes an anonymous one.
 
 For host-local access only, replace `--publish 8080:8080` with
 `--publish 127.0.0.1:8080:8080` and use a loopback public base URL such as
@@ -71,6 +75,12 @@ path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
 them. Command-line options placed after the image name override environment
 values.
 
+This branch's OCI definition is single-architecture: `Docker/publishLocal`
+produces an image for the build host's own architecture only. Multi-architecture
+build and publication for `linux/amd64` and `linux/arm64` is delivered by the
+`phase-5-release-operations` follow-up plan.
+
 Internet exposure requires HTTPS at a trusted reverse proxy. Detailed TLS,
-multi-machine, backup/restore, and release acceptance belongs to Phase 5 plan
-3 and is not established by this packaging contract.
+multi-machine, backup/restore, and release acceptance belongs to the
+`phase-5-release-operations` follow-up plan and is not established by this
+packaging contract.

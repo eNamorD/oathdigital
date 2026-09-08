@@ -134,9 +134,12 @@ leaked. Keep the raw loopback development event log separate.
    ZIP/TGZ archives, an OCI build definition, the optimized frontend, typed
    runtime configuration, health/startup diagnostics, and bounded graceful
    shutdown. A clean-output Universal package smoke test covers readiness,
-   frontend assets, persistence, database close, and shutdown without sbt or
-   Node. The OCI process smoke remains an environment-dependent release gate;
-   it was not run on the verification host because Docker was unavailable. See
+   frontend assets, database close, and shutdown without sbt or Node, then
+   reopens the same database directory in a second process so persistence is
+   proved by a successful restart rather than by file existence. The OCI
+   process smoke remains an environment-dependent release gate; it was not run
+   on the verification host because Docker was unavailable. Multi-architecture
+   OCI publication is deferred to item 5. See
    the [implementation plan](superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
    and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
 2. [ ] Replace development identity assumptions with a minimal safe alpha
