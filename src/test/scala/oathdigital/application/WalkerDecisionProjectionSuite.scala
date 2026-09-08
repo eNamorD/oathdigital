@@ -1,9 +1,13 @@
 package oathdigital.application
 
 import oathdigital.model._
+import oathdigital.gameplay.{CatacombsContributionSuite, OathRules}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.WalkerPowers
 
 /** Task 7 (Recover slice, controller ruling (b)): the walker path never
   * populates the legacy `PendingProcedure.Recover` projections, so a parked
@@ -18,6 +22,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 class WalkerDecisionProjectionSuite extends munit.FunSuite {
   private def presentation = new GamePresentationProjector(catalog)
   private def walkerDecisions = new WalkerDecisionProjector(catalog)
+  private def setupRules = new FirstGameSetupRules(catalog)
 
   private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
       extends DefenseDicePort {
@@ -159,5 +164,42 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
     assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
     assertEquals(legal.project(viewer).controls, Vector.empty)
+  }
+
+  // ---------------------------------------------------------------------
+  // Task 5 binding carry-in: the projector must fold a shared window with
+  // the SAME powers the walker command that parked here used, or it
+  // misreports the park the moment a power inserts operations at that
+  // window (Catacombs, at `RecoverActionEligibility`, is the first one).
+  // ---------------------------------------------------------------------
+
+  test("the projector reports the roll the walker actually parked at with " +
+      "Catacombs in effect, and would misreport it if it folded without " +
+      "the power") {
+    val fixture = CatacombsContributionSuite.reliclessSite(setupRules)
+    val rules = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    val started = rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
+        fixture.actor, Vector(CatacombsContributionSuite.catacombsId)) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the Catacombs start to run, got $other")
+    }
+    val Ready(ready) = started.state: @unchecked
+    val context = ScopedProjectionContext(ready, Some(fixture.actor))
+
+    // Wired with the same catalog the walker used: the fold matches, and the
+    // projector reports the very roll the walker parked at (shifted one
+    // index deeper than the bare tree by Catacombs' inserted node).
+    val wired = new WalkerDecisionProjector(catalog,
+      WalkerPowerCatalog.default(catalog))
+    assertEquals(wired.project(context), Some(WalkerDecisionProjection(
+      ActionRef.Recover.key, RecoverProcedure.rollDecisionId, "roll",
+      pool = Some(RecoverProcedure.recoverPool.value), count = Some(2))))
+
+    // The pre-Task-5 hardcoded `WalkerPowers.empty` folds the bare tree --
+    // one node short of what the walker actually folded -- and can no
+    // longer resolve the recorded park path at all.
+    val unwired = new WalkerDecisionProjector(catalog, WalkerPowers.empty)
+    assertEquals(unwired.project(context), None)
   }
 }

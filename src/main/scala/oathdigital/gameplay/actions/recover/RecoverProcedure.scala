@@ -85,13 +85,20 @@ object RecoverProcedure {
 
   private val supplyCost: Int = 1
 
+  /** `relaxEligibility` skips the facedown-relic gate below: set by
+    * `OathRules.startWalker` (ruling B) when some applicable power's
+    * contribution at `RecoverActionEligibility` promises to supply the
+    * missing relic itself (ruling C) -- a plain data flag, so this module
+    * never imports a power type to make the call.
+    */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] = for {
+      actor: PlayerId, relaxEligibility: Boolean = false)
+      : Either[OathViolation, Operation] = for {
     siteId <- state.game.current.players.find(_.player == actor)
       .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
     _ <- RecoverRules.validateAction(catalog, OathState.Ready(state), actor,
       siteId)
-    _ <- gateFacedownRelic(state, siteId)
+    _ <- if (relaxEligibility) Right(()) else gateFacedownRelic(state, siteId)
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
@@ -133,9 +140,15 @@ object RecoverProcedure {
     // Payload markers: a Decide's `payload` only type-tags the choice; the
     // concrete answer rides `resolve`. The relic marker carries one known
     // facedown site relic id (Replay-safe: the marker never leaves the tree).
+    // A site with no facedown relic yet (Task 5: a power like Catacombs may
+    // still supply one before the first roll opens) has no real id to name
+    // here -- "none" is an inert placeholder a real relic id can never equal
+    // (catalog relic ids are printed component codes, e.g. "R01"), and the
+    // marker is recomputed fresh on every `rebuild`, so once a relic lands
+    // at the site a resumed command's tree carries its real id instead.
     val markerRelic: RelicId =
       state.game.current.map.sites.get(siteId).flatMap(_.relics.headOption)
-        .fold(RelicId(""))(_.id)
+        .fold(RelicId("none"))(_.id)
 
     def supplyOf(ready: ReadyGame): Int =
       ready.game.current.players.find(_.player == actor)

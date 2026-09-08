@@ -208,6 +208,34 @@ class BackendArchitectureSuite extends munit.FunSuite {
     }
   }
 
+  test("a walker power is one small file the engine never learns the name of") {
+    // The spec's power-authoring bar (Task 5): a power on the walker seam is
+    // ONE object under `gameplay/powers/`, and the engine it hooks into
+    // (`gameplay/walker`, `gameplay/operations`) stays entirely ignorant of
+    // it. This asserts the bar for the first ported power; it replaces
+    // nothing -- the legacy Catacombs guard on `Recover.scala` above stays
+    // until the legacy path is deleted.
+    val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
+      "powers/recover/CatacombsContribution.scala")
+    assert(Files.exists(contribution), s"$contribution must exist")
+    val lines = Files.readAllLines(contribution).size
+    assert(lines <= 50,
+      s"$contribution is $lines lines; the power-authoring bar is 50")
+
+    val engineRoots = Vector(
+      Paths.get("src/main/scala/oathdigital/gameplay/walker"),
+      Paths.get("src/main/scala/oathdigital/gameplay/operations"))
+    val offenders = engineRoots.flatMap { root =>
+      val stream = Files.walk(root)
+      try stream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala") &&
+          Files.readString(path).toLowerCase.contains("catacombs"))
+        .map(_.toString).toVector
+      finally stream.close()
+    }.sorted
+    assertEquals(offenders, Vector.empty)
+  }
+
   test("generic power operations are not independently replayable events") {
     val protocol = Files.readString(Paths.get(
       "src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala"))

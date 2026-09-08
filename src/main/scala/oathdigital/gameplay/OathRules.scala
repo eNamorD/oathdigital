@@ -17,8 +17,8 @@ import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
-  PowerResolution, PowerWindow}
+import oathdigital.gameplay.powerresolver.{ContributingPower,
+  ContributionCollector, PowerCtx, PowerResolution, PowerWindow}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay._
@@ -166,8 +166,9 @@ final class OathRules(catalog: ExecutableCatalog,
       case Ready(ready) => withFallback(state, actor, MajorActionKind.Recover) {
         for {
           _ <- validateModifiers(ready, actor, modifiers)
-          tree <- buildWalker(action, ready, actor, starting = true)
           powers = walkerPowers(ready, actor, modifiers)
+          tree <- buildWalker(action, ready, actor, starting = true,
+            eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
           _ <- checkRestrictions(tree, powers, ready, actor)
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
             powers))
@@ -194,9 +195,7 @@ final class OathRules(catalog: ExecutableCatalog,
     */
   def walkerPowers(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): WalkerPowers =
-    WalkerPowers(walkerPowerCatalog.powers.filter(power =>
-      power.resolution == PowerResolution.Automatic ||
-        modifiers.contains(power.id)))
+    WalkerPowers.selected(walkerPowerCatalog, modifiers)
 
   /** Rejects an unknown or inapplicable `modifiers` id with
     * `InvalidEventOrder` before any node walks and before any event is
@@ -235,6 +234,23 @@ final class OathRules(catalog: ExecutableCatalog,
       ready: ReadyGame, actor: PlayerId): Either[OathViolation, Unit] =
     ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
       .headOption.toLeft(())
+
+  /** Ruling C: the base start gate (a facedown relic already at the site)
+    * relaxes when some applicable power contributes at
+    * `RecoverActionEligibility` -- a `Restriction` returning `None` cannot
+    * carry an "eligible" signal (that is also what every irrelevant power
+    * means), so the relaxation is "the gather produced a non-empty order".
+    * Gathered directly against the window, with no tree needed yet -- this
+    * runs BEFORE `buildWalker` so its answer can steer the build (ruling B:
+    * the relaxed check lives here, not inside `RecoverProcedure.build`).
+    */
+  private def eligibilityGathered(ready: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean = {
+    val window = PowerWindow.RecoverActionEligibility
+    ContributionCollector.gather(window, powers.powers,
+      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+      .order.nonEmpty
+  }
 
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.
@@ -308,8 +324,9 @@ final class OathRules(catalog: ExecutableCatalog,
   }
 
   private def buildWalker(action: ActionRef, ready: ReadyGame,
-      actor: PlayerId, starting: Boolean): Either[OathViolation, Operation] =
-    walkerTree(catalog, action, ready, actor, starting)
+      actor: PlayerId, starting: Boolean, eligibilityRelaxed: Boolean = false)
+      : Either[OathViolation, Operation] =
+    walkerTree(catalog, action, ready, actor, starting, eligibilityRelaxed)
 
   private def walkerCall[A](result: => Either[OathViolation, A])
       : Either[OathViolation, A] =
@@ -678,20 +695,24 @@ final class OathRules(catalog: ExecutableCatalog,
 object OathRules {
   /** How a walker command derives the action tree it walks. `starting`
     * distinguishes a fresh `startWalker` (the action's full start gates) from
-    * a resume (rebuild only).
+    * a resume (rebuild only). `eligibilityRelaxed` (Task 5, ruling B) carries
+    * `startWalker`'s relaxed-eligibility decision through to a `starting`
+    * build; a resume ignores it (its rebuild never re-runs the start gates).
     */
   type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
-    Boolean) => Either[OathViolation, Operation]
+    Boolean, Boolean) => Either[OathViolation, Operation]
 
   /** Production tree source: every registered action declares its own tree.
     * Recover is the only action on the walker in this vertical slice.
     */
   val declaredWalkerTree: WalkerTreeSource =
-    (catalog, action, ready, actor, starting) => action match {
-      case ActionRef.Recover =>
-        if (starting) RecoverProcedure.build(catalog, ready, actor)
-        else RecoverProcedure.rebuild(catalog, ready, actor)
-    }
+    (catalog, action, ready, actor, starting, eligibilityRelaxed) =>
+      action match {
+        case ActionRef.Recover =>
+          if (starting) RecoverProcedure.build(catalog, ready, actor,
+            eligibilityRelaxed)
+          else RecoverProcedure.rebuild(catalog, ready, actor)
+      }
 }
 
 private[gameplay] object GameStateUpdates {

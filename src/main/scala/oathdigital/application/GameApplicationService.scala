@@ -9,6 +9,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
   RecoverCommand, SearchCommand, TravelCommand}
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -83,7 +84,8 @@ final class GameApplicationService(
 
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog,
-    warExhaustionRandomPort = warExhaustionRandomPort)
+    warExhaustionRandomPort = warExhaustionRandomPort,
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */

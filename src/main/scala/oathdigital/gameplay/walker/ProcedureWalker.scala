@@ -6,7 +6,8 @@ import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
   OperationExecutor, OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
-import oathdigital.gameplay.powerresolver.{ContributingPower, PowerWindow}
+import oathdigital.gameplay.powerresolver.{ContributingPower, PowerResolution,
+  PowerWindow}
 import oathdigital.model.{Answered, DefenseDieFace, DieFace,
   PendingTree, PlayerId, PoolKey, PowerId, RelicId, RollOutcome}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -48,6 +49,17 @@ object WalkerOutcome {
 final case class WalkerPowers(powers: Vector[ContributingPower])
 object WalkerPowers {
   val empty: WalkerPowers = WalkerPowers(Vector.empty)
+
+  /** Powers offered to one command out of a full catalog: an `Automatic`
+    * power fires unconditionally; a `PlayerSelected` power fires only when
+    * its id appears in `modifiers`. Shared by `OathRules.walkerPowers`
+    * (command time) and `WalkerDecisionProjector` (park-time projection) so
+    * both always fold a shared window identically (Task 5 projector seam).
+    */
+  def selected(catalog: WalkerPowers, modifiers: Vector[PowerId]): WalkerPowers =
+    WalkerPowers(catalog.powers.filter(power =>
+      power.resolution == PowerResolution.Automatic ||
+        modifiers.contains(power.id)))
 }
 
 /** Auto-walk engine over an [[Operation]] action tree (Tasks 3-5).
