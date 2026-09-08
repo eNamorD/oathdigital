@@ -42,6 +42,7 @@ class CommandProtocolSuite extends munit.FunSuite {
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
     ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("continue")),
+    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")),
     ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1"))
   )
 

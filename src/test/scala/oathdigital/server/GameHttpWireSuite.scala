@@ -94,6 +94,17 @@ class GameHttpWireSuite extends munit.FunSuite {
     assert(failure.message.contains("unknown action"))
   }
 
+  test("a malformed walker modifier id is rejected with a typed failure, " +
+      "not an exception") {
+    val result = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.StartWalker("recover", Vector("Recover")))
+    val failure = result match {
+      case Left(f) => f
+      case Right(command) => fail(s"expected a typed rejection, got $command")
+    }
+    assertEquals(failure.path, "$.intent.modifiers[0]")
+  }
+
   test("an unknown Recover choice value is rejected without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.choice",

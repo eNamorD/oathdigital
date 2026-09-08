@@ -61,8 +61,10 @@ object GameIntentMapper {
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
-      case Intent.StartWalker(value, modifiers) => actionRef(value).map(ref =>
-        GameCommand.StartWalker(ref, StartPayload(actorId, modifiers.map(PowerId(_)))))
+      case Intent.StartWalker(value, modifiers) => for {
+        ref <- actionRef(value)
+        ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
+      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
       case Intent.RollWalker(pool) => Right(GameCommand.RollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
         GameCommand.ResolveWalker(TreeDecision(id, p)))
@@ -176,6 +178,9 @@ object GameIntentMapper {
   private def actionRef(value: String): Result[ActionRef] =
     ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
       s"unknown action '$value'"))
+  private def powerId(value: String, index: Int): Result[PowerId] =
+    PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+      s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
   private def decisionPayload(value: DecisionPayloadWire): Result[DecisionPayload] = value match {
     case DecisionPayloadWire.RecoverChoiceWire(choice) => choice match {
       case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
