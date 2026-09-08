@@ -37,7 +37,12 @@ class CommandProtocolSuite extends munit.FunSuite {
     ChooseOathkeeperRecipient("o1", "p2"),
     ResolveCardDecision("d1", DecisionResolution.Search(
       WorldCard("vision", "v1"), Vector(WorldCard("denizen", "d2")),
-      Placement("adviser-face-down", Some(CardRef("denizen", "d3")))))
+      Placement("adviser-face-down", Some(CardRef("denizen", "d3"))))),
+    StartWalker("recover", Vector.empty),
+    StartWalker("recover", Vector("denizen.catacombs")),
+    RollWalker("recover.pool"),
+    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("continue")),
+    ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1"))
   )
 
   test("every actorless command intent round trips through the shared codec") {
@@ -89,6 +94,22 @@ class CommandProtocolSuite extends munit.FunSuite {
       modifiers.head))
     assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(duplicate))
       .left.toOption.get.path, "$.orderedModifiers")
+  }
+
+  test("an unknown decision-payload kind decodes to a typed error, not an exception") {
+    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
+      """"decisionId":"recover.choice","payload":{"kind":"recover-teleport"}}}"""
+    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.kind")
+    assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
+    assert(failure.message.contains("unknown decision payload"))
+  }
+
+  test("an unknown walker intent type is rejected without throwing") {
+    val json = """{"expectedNextSequence":0,"intent":{"type":"teleportWalker"}}"""
+    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    assertEquals(failure.path, "$.intent.type")
+    assert(failure.message.contains("unknown intent type"))
   }
 
   test("major-action preview protocol is actorless and round trips a response") {

@@ -129,6 +129,18 @@ private[protocol] object CommandIntentDecoders {
       id <- string(value, "decisionId", path)
       resolution <- field(value, "resolution", path).flatMap(CommandNestedCodecs.decodeDecision(_, s"$path.resolution"))
     } yield ResolveCardDecision(id, resolution)
+    case "startWalker" => for {
+      _ <- exact(value, Set("type", "action", "modifiers"), path)
+      action <- string(value, "action", path)
+      modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
+    } yield StartWalker(action, modifiers)
+    case "rollWalker" => one(value, path, "pool")(RollWalker)
+    case "resolveWalker" => for {
+      _ <- exact(value, Set("type", "decisionId", "payload"), path)
+      id <- string(value, "decisionId", path)
+      payload <- field(value, "payload", path).flatMap(
+        CommandNestedCodecs.decodeDecisionPayloadWire(_, s"$path.payload"))
+    } yield ResolveWalker(id, payload)
     case other => Left(InvalidValue(s"$path.type", s"unknown intent type '$other'"))
   }
 

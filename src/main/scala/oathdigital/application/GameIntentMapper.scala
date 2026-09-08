@@ -3,6 +3,8 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
   WakeResource}
 import oathdigital.model._
+import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
+  RecoverRelicPayload}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -59,6 +61,11 @@ object GameIntentMapper {
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
+      case Intent.StartWalker(value, modifiers) => actionRef(value).map(ref =>
+        GameCommand.StartWalker(ref, StartPayload(actorId, modifiers.map(PowerId(_)))))
+      case Intent.RollWalker(pool) => Right(GameCommand.RollWalker(PoolKey(pool)))
+      case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
+        GameCommand.ResolveWalker(TreeDecision(id, p)))
     }
   }
 
@@ -165,6 +172,18 @@ object GameIntentMapper {
     case NegotiationInformation.Adviser(owner, c) => world(c, "$.intent.terms.disclosures.information.card").map(v => oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.Adviser(PlayerId(owner), v)))
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
+  }
+  private def actionRef(value: String): Result[ActionRef] =
+    ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
+      s"unknown action '$value'"))
+  private def decisionPayload(value: DecisionPayloadWire): Result[DecisionPayload] = value match {
+    case DecisionPayloadWire.RecoverChoiceWire(choice) => choice match {
+      case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
+      case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
+      case v => invalid("$.intent.payload.choice", v, "Recover choice")
+    }
+    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
+      Right(RecoverRelicPayload(RelicId(relicId)))
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

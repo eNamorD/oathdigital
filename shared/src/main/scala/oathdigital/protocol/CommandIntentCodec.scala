@@ -51,6 +51,11 @@ private[protocol] object CommandIntentCodec {
     case RelocateCampaignRaidPawn(id, site) => tagged("relocateCampaignRaidPawn", "decisionId" -> id, "destinationSiteId" -> site)
     case ChooseOathkeeperRecipient(id, recipient) => tagged("chooseOathkeeperRecipient", "decisionId" -> id, "recipientPlayerId" -> recipient)
     case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
+    case StartWalker(action, modifiers) => tagged("startWalker", "action" -> action,
+      "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))))
+    case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
+    case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
+      "payload" -> CommandNestedCodecs.encodeDecisionPayloadWire(payload))
   }
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =
