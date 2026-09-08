@@ -142,6 +142,8 @@ leaked. Keep the raw loopback development event log separate.
    OCI publication is deferred to item 5. See
    the [implementation plan](superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
    and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
+   Deferred review findings and the outstanding container release gate are
+   recorded in [Phase 5 follow-ups](operations/phase-5-follow-ups.md).
 2. [ ] Replace development identity assumptions with a minimal safe alpha
    access flow for hosts and invited seats; do not expose the loopback
    development shim on a network.

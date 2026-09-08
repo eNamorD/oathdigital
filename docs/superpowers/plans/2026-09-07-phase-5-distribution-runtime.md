@@ -275,7 +275,8 @@ assertEquals(get(route, "/assets/main.js").statusCode(), 200)
 assertEquals(get(route, "/missing.js").statusCode(), 404)
 ```
 
-Assert index responses use `no-cache`; fingerprint-ready asset responses use `public, max-age=31536000, immutable`. Add `ServerRoutesSuite` cases proving trusted-alpha mode returns 404 for `/api/dev/...`, while development mode retains current routes.
+Assert index responses use `no-cache`; fingerprint-ready asset responses use `public, max-age=31536000, immutable`.
+(Superseded during final review: no fingerprinting was delivered and this step pins the literal filenames `main.js` and `styles.css`, so an `immutable` year-long header would strand clients on a stale bundle across an upgrade. The shipped header is `public, max-age=0, must-revalidate`; see `docs/operations/phase-5-follow-ups.md`.) Add `ServerRoutesSuite` cases proving trusted-alpha mode returns 404 for `/api/dev/...`, while development mode retains current routes.
 
 - [ ] **Step 2: Run production-route tests and verify failure**
 
