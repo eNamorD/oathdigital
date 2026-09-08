@@ -199,3 +199,16 @@ lazy val frontend = (project in file("frontend"))
       "-Xlint"
     )
   )
+
+addCommandAlias(
+  "smokeUniversal",
+  ";Universal/stage;verifyPackageMappings"
+)
+addCommandAlias(
+  "smokeContainer",
+  ";Docker/publishLocal;verifyPackageMappings"
+)
+addCommandAlias(
+  "buildAlphaArtifacts",
+  ";test;frontend/test;Universal/packageBin;Universal/packageZipTarball"
+)
