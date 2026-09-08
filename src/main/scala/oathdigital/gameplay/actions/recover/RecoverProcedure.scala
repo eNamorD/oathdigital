@@ -85,6 +85,30 @@ object RecoverProcedure {
 
   private val supplyCost: Int = 1
 
+  /** The actor's current pawn site -- the single definition `build`,
+    * `rebuild`, and [[actorFacedownRelics]] all read, so nothing in this
+    * module (or a caller outside it) can derive "the Recover site" a
+    * different way and silently disagree with the others.
+    */
+  def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
+    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+
+  /** The facedown relics at the actor's current site -- exactly the set
+    * `validateRelic` (below) accepts an answer against, read live off
+    * `state.game.current.map.sites` rather than off the tree's closed-over
+    * `siteId` or its inert placeholder marker (see `tree`'s doc comment).
+    * The application-layer projector calls this SAME method to build the
+    * candidate list a client is offered, so the projected candidates and
+    * the set the resolver accepts cannot drift apart: there is exactly one
+    * definition of "the actor's recoverable relics", not two expressions
+    * that merely happen to agree today.
+    */
+  def actorFacedownRelics(state: ReadyGame, actor: PlayerId)
+      : Vector[RelicState] =
+    actorSite(state, actor).flatMap(state.game.current.map.sites.get).fold(
+      Vector.empty[RelicState])(_.relics.filter(
+      _.orientation == Orientation.FaceDown))
+
   /** `relaxEligibility` skips the facedown-relic gate below: set by
     * `OathRules.startWalker` (ruling B) when some applicable power's
     * contribution at `RecoverActionEligibility` promises to supply the
@@ -94,8 +118,8 @@ object RecoverProcedure {
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId, relaxEligibility: Boolean = false)
       : Either[OathViolation, Operation] = for {
-    siteId <- state.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     _ <- RecoverRules.validateAction(catalog, OathState.Ready(state), actor,
       siteId)
     _ <- if (relaxEligibility) Right(()) else gateFacedownRelic(state, siteId)
@@ -109,8 +133,8 @@ object RecoverProcedure {
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for {
-    siteId <- state.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
@@ -182,14 +206,20 @@ object RecoverProcedure {
           s"$choiceDecisionId received an unexpected payload: $other"))
       }
 
+    // Reads `actorFacedownRelics(ready, actor)` -- the actor's LIVE pawn
+    // site, re-derived from `ready` on every call -- rather than this
+    // closure's own `siteId` (frozen at tree-build/rebuild time). This is
+    // the same method the projector calls to build the candidate list a
+    // client is offered (Task 7a finding I1): one shared definition of
+    // "the actor's recoverable relics" instead of two independently
+    // written expressions that could silently diverge if a future power
+    // let Recover target a site other than the actor's pawn site.
     def validateRelic(ready: ReadyGame, pending: PendingTree,
         payload: DecisionPayload): Either[OathViolation, Unit] =
       payload match {
         case RecoverRelicPayload(relicId) =>
-          val siteRelics = ready.game.current.map.sites.get(siteId)
-            .fold(Vector.empty[RelicState])(_.relics)
-          if (siteRelics.exists(relic => relic.id == relicId &&
-              relic.orientation == Orientation.FaceDown)) Right(())
+          if (actorFacedownRelics(ready, actor).exists(_.id == relicId))
+            Right(())
           else Left(OathViolation.RecoverOutcomeMismatch(
             "chosen relic is not a facedown relic at the site"))
         case other => Left(OathViolation.InvalidEventOrder(

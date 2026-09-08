@@ -8,7 +8,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.protocol.projection.WalkerDecisionProjection
+import oathdigital.protocol.projection.{GameProjectionCodec, WalkerDecisionProjection}
 
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
@@ -21,8 +21,12 @@ import oathdigital.protocol.projection.WalkerDecisionProjection
   * actor may take at the `"recover.relic"` park. Every test below still
   * asserts the owner-private application-layer projection directly, and
   * the roll/relic tests additionally assert the real wire-facing
-  * [[GameProjector]] output, so a codec regression on the new field would
-  * fail here.
+  * [[GameProjector]] output AND round-trip it through
+  * `GameProjectionCodec.encode`/`decode` -- the roll test covers the
+  * codec's handling of a populated `pool`/`count` (`Option[String]`/
+  * `Option[Int]`), the relic test covers `relicCandidates` (where `pool`/
+  * `count` are both `None`) -- so a codec regression on any field of the
+  * new `walkerDecision` projection would fail here.
   */
 class WalkerDecisionProjectionSuite extends munit.FunSuite {
   private def presentation = new GamePresentationProjector(catalog)
@@ -34,10 +38,11 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     def rollTwo() = faces
   }
 
-  private def recoverSiteWithDifficulty(maxDifficulty: Int) =
+  private def recoverSiteWithDifficulty(maxDifficulty: Int,
+      minRelicSlots: Int) =
     catalog.sites.find(site =>
       site.recoverDifficulty.exists(d => d > 0 && d <= maxDifficulty) &&
-        site.relicSlots > 0 &&
+        site.relicSlots >= minRelicSlots &&
         !site.handlers.exists(_.contains(".homeland-"))).get.id
 
   private def execute(
@@ -61,8 +66,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
   }
 
   private def startedAtRoll(gameId: String, dice: DefenseDicePort,
-      maxDifficulty: Int = 8) = {
-    val recoverSite = recoverSiteWithDifficulty(maxDifficulty)
+      maxDifficulty: Int = 8, minRelicSlots: Int = 1) = {
+    val recoverSite = recoverSiteWithDifficulty(maxDifficulty, minRelicSlots)
     val recoverPlan = plan.copy(orderedSites = recoverSite +:
       plan.orderedSites.filterNot(_ == recoverSite))
     val actor = recoverPlan.firstPlayer
@@ -120,6 +125,15 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assert(!otherProjection.actionSelectionOpen)
     assertEquals(otherProjection.actionFamilies, Vector.empty)
     assertEquals(otherProjection.walkerDecision, None)
+
+    // Codec round-trip for the roll park specifically: `pool`/`count` are
+    // populated `Option[String]`/`Option[Int]` here (unlike the relic
+    // park's round-trip test, where both are `None`), so this is the only
+    // coverage of the codec actually encoding/decoding non-empty values for
+    // those two fields.
+    val roundTripped = GameProjectionCodec.decode(
+      GameProjectionCodec.encode(ownerProjection)).toOption.get
+    assertEquals(roundTripped.walkerDecision, ownerProjection.walkerDecision)
   }
 
   test("a failed roll parks the continue/stop Decide with its own decision " +
@@ -164,7 +178,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       "placeholder relic marker") {
     val (service, actor, started) = startedAtRoll("walker-projection-relic",
       new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
-        DefenseDieFace.Doubler)), maxDifficulty = 4)
+        DefenseDieFace.Doubler)), maxDifficulty = 4, minRelicSlots = 2)
     val rolled = service.handle("walker-projection-relic",
       started.nextSequence,
       GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
@@ -175,8 +189,20 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val siteId = ready.game.current.players.find(_.player == actor).get.pawnSite.get
     val facedownRelics = ready.game.current.map.sites(siteId).relics
       .filter(_.orientation == Orientation.FaceDown)
-    assert(facedownRelics.nonEmpty,
-      "fixture must have a facedown relic at the Recover site to exercise this park")
+    // Pinned to >= 2, not merely nonEmpty: the tree's placeholder marker
+    // relic (`RecoverProcedure.tree`'s `markerRelic`, `_.relics.headOption`)
+    // is always ONE specific relic at this site. With only one candidate in
+    // play, a regression that echoed that marker instead of reading live
+    // site state would produce a byte-identical single-element result and
+    // pass here undetected. `startedAtRoll(..., minRelicSlots = 2)` above
+    // deliberately selects a site with a second relic slot so the expected
+    // set below has two distinguishable elements -- echoing the marker
+    // would then yield a one-element vector and fail the equality check.
+    assert(facedownRelics.size >= 2,
+      "fixture must place at least two facedown relics at the Recover " +
+        "site so a projector that echoed the tree's single placeholder " +
+        s"marker relic instead of the full candidate set would be caught " +
+        s"(got ${facedownRelics.size}: ${facedownRelics.map(_.id.value)})")
     val expectedCandidates = facedownRelics.map(r =>
       presentation.cardDetails(r.id, Some(Orientation.FaceDown), hidden = false))
 
@@ -211,7 +237,6 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(ownerWire.walkerDecision, ownerDecision)
     val otherWire = projector.project("walker-projection-relic", loaded, other)
     assertEquals(otherWire.walkerDecision, None)
-    import oathdigital.protocol.projection.GameProjectionCodec
     val roundTripped = GameProjectionCodec.decode(
       GameProjectionCodec.encode(ownerWire)).toOption.get
     assertEquals(roundTripped.walkerDecision, ownerDecision)

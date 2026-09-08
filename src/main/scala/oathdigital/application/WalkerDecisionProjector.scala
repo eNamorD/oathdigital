@@ -74,24 +74,17 @@ private[application] final class WalkerDecisionProjector(
     }
 
   /** The relic Decide's only legal answer is a facedown relic currently at
-    * the actor's site -- exactly what `RecoverProcedure`'s `validateRelic`
-    * reads live off `ready.game.current.map.sites(siteId).relics` at
-    * resolve time, not the tree's closed-over placeholder marker (see that
-    * file's `tree` doc comment). Deriving the candidate set the same way,
-    * from the same live state, is what keeps this list from ever diverging
-    * from what `ProcedureWalker.resolve` would actually accept: neither
-    * side hardcodes the site or freezes it at tree-build time, and a
-    * Recover in progress cannot change the actor's pawn site (Task 6
-    * command-exclusivity blocks every other Act command while a walker
-    * decision is parked), so "the actor's current site" here is exactly
-    * the site the tree closed over.
+    * the actor's site. Rather than re-deriving "the actor's site" and
+    * filtering it independently here, this calls
+    * [[RecoverProcedure.actorFacedownRelics]] -- the exact method
+    * `validateRelic` also calls at resolve time -- so the projected
+    * candidate set and the set the resolver accepts are the SAME live
+    * expression, not two expressions that happen to agree only because
+    * nothing (yet) can move the actor's pawn while a decision is parked.
     */
   private def relicCandidates(ready: ReadyGame, actor: PlayerId)
       : Vector[CardDetailsProjection] =
-    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
-      .flatMap(ready.game.current.map.sites.get).fold(
-        Vector.empty[CardDetailsProjection])(_.relics.filter(
-        _.orientation == Orientation.FaceDown).map(relic =>
-        presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
-          hidden = false)))
+    RecoverProcedure.actorFacedownRelics(ready, actor).map(relic =>
+      presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
+        hidden = false))
 }
