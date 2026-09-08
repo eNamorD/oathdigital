@@ -198,29 +198,42 @@ final class OathRules(catalog: ExecutableCatalog,
       modifiers: Vector[PowerId]): WalkerPowers =
     WalkerPowers.selected(walkerPowerCatalog, modifiers)
 
+  /** The exact `ContributingPower`s a player may choose as a `modifiers` id
+    * for `actor` right now: `PlayerSelected` powers in `walkerPowerCatalog`
+    * that are `applicable` at `RecoverModifierSelection` -- the window a
+    * player-selected power is offered at (not a tree node; see
+    * `RecoverProcedure`'s doc). `validateModifiers` (below) rejects any id
+    * outside this set on `startWalker`; the pre-start preview
+    * (`GameApplicationService.preview`, Task 9a) offers exactly this set so
+    * the two can never drift apart -- one predicate, not a copy on each
+    * side.
+    */
+  def offerableWalkerPowers(ready: ReadyGame, actor: PlayerId)
+      : Vector[ContributingPower] =
+    walkerPowerCatalog.powers.filter(power =>
+      power.resolution == PowerResolution.PlayerSelected &&
+      power.applicable(PowerCtx(ready, actor, power.source,
+        PowerWindow.RecoverModifierSelection, Vector.empty)))
+
   /** Rejects an unknown or inapplicable `modifiers` id with
     * `InvalidEventOrder` before any node walks and before any event is
     * appended (Task 4). A valid id names a `PlayerSelected` power in
     * `walkerPowerCatalog` that is `applicable` at `RecoverModifierSelection`
-    * -- the window a player-selected power is offered at (not a tree node;
-    * see `RecoverProcedure`'s doc). An empty `modifiers` validates
-    * trivially, matching every Recover before this task.
+    * -- exactly `offerableWalkerPowers`' set, queried above rather than
+    * recomputed here. An empty `modifiers` validates trivially, matching
+    * every Recover before this task.
     */
   private def validateModifiers(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): Either[OathViolation, Unit] = {
-    val selectable: Map[PowerId, ContributingPower] = walkerPowerCatalog.powers
-      .filter(_.resolution == PowerResolution.PlayerSelected)
-      .map(power => power.id -> power).toMap
+    val offered: Set[PowerId] = offerableWalkerPowers(ready, actor).map(_.id).toSet
+    val selectable: Set[PowerId] = walkerPowerCatalog.powers
+      .filter(_.resolution == PowerResolution.PlayerSelected).map(_.id).toSet
     modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
-      case (Right(_), id) => selectable.get(id) match {
-        case Some(power) if power.applicable(PowerCtx(ready, actor,
-            power.source, PowerWindow.RecoverModifierSelection,
-            Vector.empty)) => Right(())
-        case Some(_) => Left(InvalidEventOrder(
-          s"power ${id.value} is not applicable to this Recover"))
-        case None => Left(InvalidEventOrder(
-          s"unknown or non-selectable power id ${id.value}"))
-      }
+      case (Right(_), id) if offered(id) => Right(())
+      case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
+        s"power ${id.value} is not applicable to this Recover"))
+      case (Right(_), id) => Left(InvalidEventOrder(
+        s"unknown or non-selectable power id ${id.value}"))
       case (left, _) => left
     }
   }

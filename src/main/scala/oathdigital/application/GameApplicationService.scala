@@ -10,6 +10,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   RecoverCommand, SearchCommand, TravelCommand}
 import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -117,18 +118,49 @@ final class GameApplicationService(
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
-      case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) => for {
-        options <- PowerRuntime.options(catalog, ready, actor, action)
-          .left.map(CommandRejected)
-        _ <- Either.cond(selected.distinct.size == selected.size &&
-          selected.forall(options.contains), (), CommandRejected(
-          OathViolation.InvalidModifierInvocation(
-            "preview contains a duplicate or unavailable modifier")))
-        ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
-          .left.map(CommandRejected)
-      } yield MajorActionPreviewAccepted(loaded, options, ignored)
+      case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
+        walkerAction(action) match {
+          case Some(_) =>
+            val options = rules.offerableWalkerPowers(ready, actor).map(power =>
+              OrderedRuleInvocation(power.source, power.id.value))
+            acceptPreview(loaded, options, selected, Vector.empty)
+          case None => for {
+            options <- PowerRuntime.options(catalog, ready, actor, action)
+              .left.map(CommandRejected)
+            ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
+              .left.map(CommandRejected)
+            accepted <- acceptPreview(loaded, options, selected, ignored)
+          } yield accepted
+        }
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
     }
+
+  /** `action` runs on the generic walker (Task 9a) exactly when its wire key
+    * names a registered [[oathdigital.model.ActionRef]] --
+    * `WalkerActionRegistry` stays the single place that knows which actions
+    * are walker-driven, so this needs no per-action `MajorActionKind` match
+    * of its own. `MajorActionKind` and `ActionRef` share their key strings by
+    * convention (see `GameIntentMapper.actionRef`, which bridges the same
+    * way from the wire intent), so a legacy-only kind like `Travel` simply
+    * has no matching `ActionRef` and falls through to the `None` branch.
+    */
+  private def walkerAction(action: MajorActionKind): Option[ActionRef] =
+    ActionRef.fromKey(action.key).filter(WalkerActionRegistry.isRegistered)
+
+  /** Shared acceptance gate for both preview branches: `selected` must be
+    * duplicate-free and a subset of `options`, whichever machinery produced
+    * `options`.
+    */
+  private def acceptPreview(loaded: LoadedGame,
+      options: Vector[OrderedRuleInvocation],
+      selected: Vector[OrderedRuleInvocation],
+      ignored: Vector[IgnoredRuleDiagnostic])
+      : Either[GameApplicationError, MajorActionPreviewAccepted] =
+    Either.cond(selected.distinct.size == selected.size &&
+      selected.forall(options.contains),
+      MajorActionPreviewAccepted(loaded, options, ignored),
+      CommandRejected(OathViolation.InvalidModifierInvocation(
+        "preview contains a duplicate or unavailable modifier")))
 
   def handle(
       gameId: String,

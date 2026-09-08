@@ -92,4 +92,13 @@ object WalkerActionRegistry {
       registrations: Map[ActionRef, Entry]): Either[OathViolation, Entry] =
     registrations.get(action).toRight(OathViolation.InvalidEventOrder(
       s"no walker action registered for ${action.key}"))
+
+  /** Whether `action` runs on the generic walker at all (Task 9a). The
+    * pre-start modifier preview asks this to decide whether to offer
+    * `ContributingPower`s from the walker catalog or fall back to the legacy
+    * `PowerRuntime` machinery -- this registry stays the single place that
+    * knows which actions are walker-driven, so that decision needs no
+    * second `ActionRef` match at the preview call site.
+    */
+  def isRegistered(action: ActionRef): Boolean = entries.contains(action)
 }

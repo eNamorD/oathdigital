@@ -12,6 +12,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, ModifyDiceP
   Move, Piece, PositionedLocation, Location}
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -494,9 +495,19 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val (prepared, actor, invocation) = prepareCatacombs(service, gameId,
       catacombsPlan)
     val before = repository.load(gameId).toOption.flatten.get.records
+    // Recover now runs on the walker (Task 9a), so the preview offers the
+    // *walker* Catacombs contribution -- source `RuleSourceRef.GameRule`,
+    // not the legacy `SiteCard` source `invocation` carries below. Only the
+    // `handlerId` ("denizen.catacombs") is shared between the two: the
+    // walker contribution and the legacy handler happen to answer to the
+    // same power id, but they are two different mechanisms, exercised by
+    // two different commands (`StartWalker` vs the legacy `BeginRecover` +
+    // `WithModifiers` this test otherwise drives).
+    val walkerInvocation = OrderedRuleInvocation(
+      RuleSourceRef.GameRule("denizen.catacombs"), "denizen.catacombs")
     val preview = service.preview(gameId, prepared.nextSequence, actor,
       MajorActionKind.Recover, Vector.empty).toOption.get
-    assertEquals(preview.options, Vector(invocation))
+    assertEquals(preview.options, Vector(walkerInvocation))
     assert(service.preview(gameId, prepared.nextSequence - 1, actor,
       MajorActionKind.Recover, Vector.empty).isLeft)
     assert(service.handle(gameId, prepared.nextSequence - 1,
@@ -532,6 +543,45 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(dice.calls, 2)
     assertEquals(relicPrepares, 1)
   }
+
+  test("preview offers the walker Catacombs contribution, and " +
+      "OathRules.startWalker accepts exactly the offered id (Task 9a)") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = new CountingRecoverDice)
+    val gameId = "catacombs-walker-preview"
+    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val preview = service.preview(gameId, prepared.nextSequence, actor,
+      MajorActionKind.Recover, Vector.empty).toOption.get
+    val offeredIds = preview.options.map(v => PowerId(v.handlerId))
+    assertEquals(offeredIds, Vector(PowerId("denizen.catacombs")))
+
+    // The property that matters: the id the preview just offered is exactly
+    // the id `OathRules.startWalker` will accept -- not merely "some id
+    // that happens to work". A defect here (offered-but-rejected, or
+    // accepted-but-never-offered) is precisely what Task 9a exists to
+    // prevent. Exercised directly against `OathRules` (the layer that owns
+    // `validateModifiers`, the accepting predicate) rather than through
+    // `service.handle`, because persisting the resulting events hits an
+    // unrelated, pre-existing gap: `WalkerEventCodec` cannot yet encode a
+    // recorded op whose location is `Location.Deck` (Catacombs' relic
+    // move), so `StartWalker` succeeds at the rules layer but the service
+    // call fails trying to append the event. Flagged separately -- out of
+    // this task's scope, which is the preview, not the walker event codec.
+    val rules = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    val started = rules.startWalker(prepared.state, ActionRef.Recover, actor,
+      offeredIds)
+    assert(started.isRight,
+      s"expected StartWalker to accept the previewed id, got $started")
+
+    // A legacy action's preview is untouched: still resolved through
+    // `PowerRuntime`, not the walker catalog.
+    val travelPreview = service.preview(gameId, prepared.nextSequence, actor,
+      MajorActionKind.Travel, Vector.empty)
+    assert(travelPreview.isRight)
+  }
+
   test("all-Exile powered game persists and replays through round-eight victory") {
     val repository = new InMemoryEventStreamRepository
     val whenPlayedPower = DenizenId(catalog.denizens.find(
