@@ -79,14 +79,14 @@ fi
 docker volume create "$volume_name" >/dev/null
 volume_created=1
 
+# Only the overrides the loopback publish genuinely requires are passed here.
+# OATH_HOST and OATH_DATABASE_PATH deliberately come from the image's own
+# defaults, so this gate exercises what `docker run` does out of the box.
 docker create \
   --name "$container_name" \
   --publish "127.0.0.1:$port:8080" \
-  --env OATH_MODE=trusted-alpha \
-  --env OATH_HOST=0.0.0.0 \
   --env OATH_PORT=8080 \
   --env OATH_PUBLIC_BASE_URL="http://127.0.0.1:$port" \
-  --env OATH_DATABASE_PATH=/var/lib/oathdigital/database \
   --volume "$volume_name:/var/lib/oathdigital" \
   "$image" >/dev/null
 container_created=1
@@ -147,6 +147,11 @@ check_frontend
 docker restart "$container_name" >/dev/null
 wait_for_readiness
 check_frontend
+
+# `docker logs` concatenates every run of the container, so an unwindowed grep
+# would be satisfied by the shutdown the restart above already performed. Bound
+# the search to the final stop instead.
+stop_started=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 docker stop --time 15 "$container_name" >/dev/null
 
 container_exit=$(docker inspect --format '{{.State.ExitCode}}' "$container_name")
@@ -154,9 +159,9 @@ case "$container_exit" in
   0|143) ;;
   *) fail "container exited with unexpected status $container_exit after stop" ;;
 esac
-docker logs "$container_name" 2>&1 | \
+docker logs --since "$stop_started" "$container_name" 2>&1 | \
   grep -F 'Oath Digital database closed' >/dev/null ||
-  fail "container did not log database close evidence"
+  fail "container did not log database close evidence for the final stop"
 
 smoke_succeeded=1
 echo "packaged container smoke passed: readiness, index, asset, restart, shutdown"
