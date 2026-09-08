@@ -283,7 +283,7 @@ final class GameApplicationService(
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.StartWalker(action, start) =>
-        rules.startWalker(state, action, start.actor)
+        rules.startWalker(state, action, start.actor, start.modifiers)
       case GameCommand.ResolveWalker(treeDecision) =>
         rules.resolveWalker(state, Answered(treeDecision.decisionId,
           treeDecision.payload))

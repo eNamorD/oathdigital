@@ -113,8 +113,15 @@ object GameCommand {
 
 /** Generic action-start data. Action-specific starts may widen this family
   * when another walker action needs more than its actor.
+  *
+  * `modifiers` (Task 4) is the ordered list of player-selected power ids the
+  * client chose before starting the action -- e.g. answering Recover's
+  * `RecoverModifierSelection` window. An empty vector means "no modifiers",
+  * which is every walker Recover today; `OathRules.startWalker` validates
+  * every id against the audited catalog before walking.
   */
-final case class StartPayload(actor: PlayerId)
+final case class StartPayload(actor: PlayerId,
+    modifiers: Vector[PowerId] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */
 final case class TreeDecision(decisionId: String, payload: DecisionPayload)

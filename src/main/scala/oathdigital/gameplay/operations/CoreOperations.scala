@@ -460,8 +460,12 @@ final case class Take(piece: Piece, player: PlayerId,
 // once power windows land.
 // ---------------------------------------------------------------------------
 
-/** Adds `delta` dice to a named pool's count in state. */
-final case class ModifyDicePool(pool: PoolKey, delta: Int)
+/** Adds `delta` dice to a named pool's count in state. `window` makes the
+  * node hookable exactly like `Decide` (Task 4: Recover's head `ModifyDicePool`
+  * carries `RecoverBeforeFirstRoll`).
+  */
+final case class ModifyDicePool(pool: PoolKey, delta: Int,
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
@@ -509,7 +513,8 @@ final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
   * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
   */
 final case class BuildOps(build: (ReadyGame, PendingTree) =>
-    Either[OathViolation, Vector[CoreOperation]])
+    Either[OathViolation, Vector[CoreOperation]],
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command
@@ -540,8 +545,8 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
 /** Runs `children` in order. The walker's sequence composite; `Repeat`,
   * `Sequence`, and `Branch` are the composites the walker consumes this slice.
   */
-final case class Sequence(override val children: Vector[Operation])
-    extends CoreOperation
+final case class Sequence(override val children: Vector[Operation],
+    override val window: Option[PowerWindow] = None) extends CoreOperation
 
 object Sequence {
   /** Vararg builder so action trees read `Sequence(a, b)` (the Task 3

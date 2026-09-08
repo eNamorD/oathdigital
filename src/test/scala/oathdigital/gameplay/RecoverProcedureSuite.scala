@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
@@ -111,8 +112,12 @@ class RecoverProcedureSuite extends munit.FunSuite
       ProcedureWalker.advance(ready, tree, None, noPowers),
       Vector("1", "0", "0"))
     assertEquals(rollPark.answered, Vector.empty[Answered])
+    // The head ModifyDicePool carries `RecoverBeforeFirstRoll` (Task 4): a
+    // windowed leaf's folded vector is walked as its own children (ruling G),
+    // so an unchanged fold still records the leaf one level deeper than an
+    // unwindowed leaf would sit -- "0.0", not "0".
     assertEquals(setupEvents.map(_.asInstanceOf[WalkerStepRecorded].nodeId),
-      Vector("0"))
+      Vector("0.0"))
     val stateAtRoll = applyRecorded(ready, setupEvents)
 
     // 2. A two-shield roll reaches any difficulty <= 4: park at the
@@ -149,14 +154,19 @@ class RecoverProcedureSuite extends munit.FunSuite
       DefenseDieFace.score(Vector(DefenseDieFace.TwoShields,
         DefenseDieFace.TwoShields)))
 
-    // Recorded step shape across the whole walk, in order:
+    // Recorded step shape across the whole walk, in order. The two windowed
+    // leaves (the head ModifyDicePool at RecoverBeforeFirstRoll, the relic
+    // BuildOps at RecoverAfterRelic) each record one level deeper than their
+    // unwindowed siblings ("0.0" and "2.1.0", not "0"/"2.1") for the same
+    // reason as the park assertion above; nothing else in the tree shifts.
     val steps = (setupEvents ++ rollEvents ++ resolveSteps)
       .map(_.asInstanceOf[WalkerStepRecorded])
     assertEquals(steps.size, 5)
     assertEquals(steps.map(_.nodeId),
-      Vector("0", "1.0.0", "1.0.1", "2.0", "2.1"))
+      Vector("0.0", "1.0.0", "1.0.1", "2.0", "2.1.0"))
     assertEquals(steps(0).ops,
-      Vector[CoreOperation](ModifyDicePool(pool, 2)))
+      Vector[CoreOperation](ModifyDicePool(pool, 2,
+        window = Some(PowerWindow.RecoverBeforeFirstRoll))))
     assert(steps(1).payload.isInstanceOf[RollPayload])
     assertEquals(steps(1).ops, Vector.empty[CoreOperation])
     assertEquals(steps(2).payload, WalkerStepPayload.DeltaRecorded(
@@ -359,5 +369,59 @@ class RecoverProcedureSuite extends munit.FunSuite
       case other =>
         fail(s"expected a relic-less Recover start rejection, got $other")
     }
+  }
+
+  /** Every node reachable from `node`, including `node` itself: a `Branch`
+    * is resolved by evaluating `select(state, ...)` against `state` (the
+    * same way a live walk and the restriction traversal resolve it -- ruling
+    * H) rather than reading its statically-empty `children`, so a node
+    * gated behind a Branch's selection is only found under the `state` that
+    * makes the branch select it.
+    */
+  private def allNodes(node: Operation, state: ReadyGame,
+      actor: PlayerId): Vector[Operation] = {
+    val nested = node match {
+      case _: PrimitiveOperation => Vector.empty
+      case branch: Branch =>
+        branch.select(state, PendingTree(Vector.empty, Vector.empty, actor))
+          .flatMap(allNodes(_, state, actor))
+      case _ => node.children.flatMap(allNodes(_, state, actor))
+    }
+    node +: nested
+  }
+
+  test("the tree windows exactly its root, its pool-opening node, and its " +
+      "relic-moving node; every other node carries none") {
+    val (ready, actor, _, _, difficulty) = recoverable
+    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
+    val pool = RecoverProcedure.recoverPool
+
+    // `ready` (fresh, no rolls yet) reaches the choice Branch's Decide but
+    // not the success-only relic Branch's contents; a state whose pool
+    // already scored at/above the site's difficulty reaches the relic
+    // Branch's Decide and the relic-moving BuildOps instead. Together the two
+    // traversals cover every node the declared tree can ever produce.
+    val succeededState = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(rollOutcomes = Map(pool -> RollOutcome(pool, 2,
+        Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields), 0,
+        difficulty)))))
+
+    val observed = allNodes(tree, ready, actor.player) ++
+      allNodes(tree, succeededState, actor.player)
+    val windowed = observed.filter(_.window.isDefined).distinct
+
+    assertEquals(windowed.map(_.window).toSet, Set[Option[PowerWindow]](
+      Some(PowerWindow.RecoverActionEligibility),
+      Some(PowerWindow.RecoverBeforeFirstRoll),
+      Some(PowerWindow.RecoverAfterRelic)))
+    assertEquals(windowed.size, 3,
+      s"expected exactly 3 windowed nodes, found ${windowed.size}: $windowed")
+    assert(windowed.contains(tree),
+      "the tree root must carry RecoverActionEligibility")
+    assert(windowed.exists(_.isInstanceOf[ModifyDicePool]),
+      "the head ModifyDicePool must carry RecoverBeforeFirstRoll")
+    assert(windowed.count(_.isInstanceOf[BuildOps]) == 1,
+      "exactly the relic-moving BuildOps must carry RecoverAfterRelic -- " +
+        "the supply-pay BuildOps in the roll body stays unwindowed")
   }
 }

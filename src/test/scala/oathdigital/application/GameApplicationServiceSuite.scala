@@ -12,6 +12,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, ModifyDiceP
   Move, Piece, PositionedLocation, Location}
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
@@ -169,7 +170,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recordedOps = (started.events ++ rolled.events ++ finished.events)
       .collect { case step: WalkerStepRecorded => step.ops }.flatten
     assertEquals(recordedOps, Vector[CoreOperation](
-      ModifyDicePool(RecoverProcedure.recoverPool, 2),
+      ModifyDicePool(RecoverProcedure.recoverPool, 2,
+        window = Some(PowerWindow.RecoverBeforeFirstRoll)),
       AdjustSupply(actor, -1),
       Move(Piece.Card(relic),
         PositionedLocation(Location.Site(recoverSite)),
@@ -181,6 +183,50 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       DicePoolModified(RecoverProcedure.recoverPool, 2),
       SupplySpent(actor, 1),
       RelicAcquired(actor, relic, recoverSite)))
+  }
+
+  test("StartWalker rejects an unknown power id in modifiers, appending no " +
+      "events, while empty modifiers still starts Recover exactly as today") {
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.exists(difficulty => difficulty > 0 &&
+        difficulty <= 4) && site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val recoverPlan = plan.copy(orderedSites = recoverSite +:
+      plan.orderedSites.filterNot(_ == recoverSite))
+    val actor = recoverPlan.firstPlayer
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
+        DefenseDieFace.Doubler)))
+    val setup = execute(service, "walker-unknown-modifier",
+      recoverPlan.orderedSites, recoverPlan)
+    val act = service.handle("walker-unknown-modifier", setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+
+    // No `ContributingPower` is registered yet (Task 5 ports the first one),
+    // so any non-empty `modifiers` names an id the catalog cannot recognize:
+    // rejected before the walk ever starts, with nothing appended.
+    service.handle("walker-unknown-modifier", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
+        Vector(PowerId("power.does-not-exist"))))) match {
+      case Left(GameApplicationError.CommandRejected(
+          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => ()
+      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
+    }
+    assertEquals(service.load("walker-unknown-modifier").toOption.flatten.get
+      .nextSequence, act.nextSequence,
+      "the rejected StartWalker must append no events")
+
+    // The exact same command with an empty `modifiers` (every walker Recover
+    // before this task) starts and parks exactly as the suite's other walker
+    // tests already pin.
+    val started = service.handle("walker-unknown-modifier", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)))
+      .toOption.get
+    assert(started.events.nonEmpty)
+    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
   }
 
   test("walker Continue answer and repeated Roll park survive reload") {

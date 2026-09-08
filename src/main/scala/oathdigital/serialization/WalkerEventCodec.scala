@@ -168,7 +168,7 @@ private[serialization] trait WalkerEventCodec {
       case AdjustSupply(player, amount) => ujson.Obj(
         "kind" -> "adjust-supply", "playerId" -> player.value,
         "amount" -> amount)
-      case ModifyDicePool(pool, delta) => ujson.Obj(
+      case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
         "delta" -> delta)
       case Move(piece, from, to, orientation) => ujson.Obj(

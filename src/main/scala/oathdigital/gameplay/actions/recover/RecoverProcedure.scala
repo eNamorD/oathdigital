@@ -6,6 +6,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathState, OathViolation,
   ReadyGame}
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model.DecisionPayload.{RecoverChoice,
   RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
@@ -17,8 +18,8 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   * the generic walker:
   *
   * {{{
-  * Sequence(
-  *   ModifyDicePool("recover", +2),
+  * Sequence(                                // window = RecoverActionEligibility
+  *   ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
   *   Repeat(guard = not succeeded && lastChoice != Stop,
   *     Sequence(
   *       Roll("recover", Defense),          // parks; faces ride `roll()`
@@ -26,9 +27,22 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   *       Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *     )),
   *   Branch(if success ->
-  *     Vector(Decide("recover.relic"), BuildOps(move chosen relic facedown)),
+  *     Vector(Decide("recover.relic"),
+  *       BuildOps(move chosen relic facedown)), // window = RecoverAfterRelic
   *     else Vector.empty))                  // stopped: ends with no relic
   * }}}
+  *
+  * Task 4 windows (reusing `PowerModel.scala`'s existing vocabulary, no power
+  * ported yet -- `OathRules.walkerPowers` legitimately offers none until
+  * Task 5): the whole tree's root carries `RecoverActionEligibility`
+  * (eligibility-shaped restrictions/relaxations gather here); the head
+  * `ModifyDicePool` -- the first node the walker ever executes -- carries
+  * `RecoverBeforeFirstRoll`; the `BuildOps` that moves the chosen relic
+  * carries `RecoverAfterRelic`. `RecoverModifierSelection` is not a tree node:
+  * it is the window a player-selected power is offered at, answered by
+  * `StartWalker`'s `modifiers` rather than by anything in this tree (see
+  * `OathRules.startWalker`/`walkerPowers`). No other node in this tree
+  * carries a window.
   *
   * Semantics (ruling 5.5 + legacy parity):
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
@@ -191,7 +205,7 @@ object RecoverProcedure {
             resultingOrientation = Some(Orientation.FaceDown))))
         case _ => Left(OathViolation.InvalidEventOrder(
           "no recovered relic answer is recorded"))
-      })
+      }, window = Some(PowerWindow.RecoverAfterRelic))
 
     // Loop body: a roll parks (faces ride roll()), the roll's 1-supply
     // payment runs, then — only while the roll did NOT reach the difficulty —
@@ -214,9 +228,11 @@ object RecoverProcedure {
       else Vector.empty)
 
     Sequence(
-      ModifyDicePool(recoverPool, +2),
+      ModifyDicePool(recoverPool, +2,
+        window = Some(PowerWindow.RecoverBeforeFirstRoll)),
       Repeat(repeatGuard, body),
-      afterLoop)
+      afterLoop
+    ).copy(window = Some(PowerWindow.RecoverActionEligibility))
   }
 
   /** Recover decisions are resolved by the active player (Recover is an Act

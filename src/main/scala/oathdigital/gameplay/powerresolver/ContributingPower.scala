@@ -46,6 +46,14 @@ final case class Restriction(
 
 /** One object per power (spec decision 8). No engine code lives in a power --
   * only the windows it hooks and the contributions it offers there.
+  *
+  * `resolution` (Task 4) reuses the `PowerResolution` vocabulary the legacy
+  * `PowerHandler` already carries: `Automatic` powers are offered to every
+  * walker command regardless of what the player chose; `PlayerSelected`
+  * powers are offered only when their `id` appears in the command's
+  * `modifiers` (see `OathRules.walkerPowers`). Defaults to `Automatic` so a
+  * power that never expects to be player-chosen (the common case for a
+  * "must"/"cannot" rule) declares nothing extra.
   */
 trait ContributingPower {
   def id: PowerId
@@ -54,6 +62,7 @@ trait ContributingPower {
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
   def shouldIgnore(other: PowerId): Boolean = false
+  def resolution: PowerResolution = PowerResolution.Automatic
 }
 
 object ContributingPower {

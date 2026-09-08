@@ -62,7 +62,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   }
 
   private def rules(actor: PlayerId, powers: WalkerPowers): OathRules =
-    new OathRules(catalog, walkerPowers = powers,
+    new OathRules(catalog, walkerPowerCatalog = powers,
       walkerTree = (_, _, _, _, _) => Right(hookedTree(actor)))
 
   private def forbidding: WalkerPowers = WalkerPowers(Vector(

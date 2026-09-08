@@ -654,7 +654,7 @@ object ProcedureWalker {
 
   private def deltaMeaning(ops: Vector[CoreOperation],
       fallback: String): DeltaMeaning = ops match {
-    case Vector(ModifyDicePool(pool, delta)) =>
+    case Vector(ModifyDicePool(pool, delta, _)) =>
       DicePoolModified(pool, delta)
     case Vector(AdjustSupply(player, amount)) if amount < 0 =>
       SupplySpent(player, -amount)
