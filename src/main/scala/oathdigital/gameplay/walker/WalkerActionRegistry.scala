@@ -40,9 +40,10 @@ object WalkerActionRegistry {
 
   /** `private[walker]`, not `private`: [[WalkerActionRegistrySuite]] asserts
     * this map's keys cover `ActionRef.all` (catching a registered action
-    * missing its entry) and drives `lookup` directly with a map that omits
-    * a real, registered-in-production action -- `ActionRef` is sealed with
-    * exactly one inhabitant today, so there is no other way to exercise the
+    * missing its entry) and its type is referenced when the suite calls
+    * `build`/`rebuild` with a `registrations` map that omits a real,
+    * registered-in-production action -- `ActionRef` is sealed with exactly
+    * one inhabitant today, so there is no other way to exercise the
     * "absent from the registrations" branch without a genuinely
     * unregistered `ActionRef`, which cannot be constructed outside
     * `ActionRef.scala`.
@@ -57,21 +58,37 @@ object WalkerActionRegistry {
   /** Builds `action`'s tree for a fresh start: the action's full start
     * gates run, relaxed only as far as `eligibilityRelaxed` (computed by
     * the caller) allows.
+    *
+    * `eligibilityRelaxed` carries no default: the sole production caller
+    * (`OathRules.declaredWalkerTree`) already passes it explicitly, and a
+    * default here would let a future action wiring forget the flag and
+    * silently get `false` instead of a compile error.
+    *
+    * `registrations` defaults to the production `entries` map, so every
+    * production call site is unaffected; [[WalkerActionRegistrySuite]]
+    * overrides it with a map that omits an action to drive this exact
+    * entry point down the missing-registration branch, rather than testing
+    * `lookup` as an extracted stand-in.
     */
   def build(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, eligibilityRelaxed: Boolean = false)
+      actor: PlayerId, eligibilityRelaxed: Boolean,
+      registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(action, entries).flatMap(
+    lookup(action, registrations).flatMap(
       _.build(catalog, state, actor, eligibilityRelaxed))
 
   /** Rebuilds `action`'s tree to resume an already-started walker position.
     * Start-only gates do not re-run.
+    *
+    * `registrations` defaults to the production `entries` map -- see
+    * `build`'s doc for why.
     */
   def rebuild(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] =
-    lookup(action, entries).flatMap(_.rebuild(catalog, state, actor))
+      actor: PlayerId, registrations: Map[ActionRef, Entry] = entries)
+      : Either[OathViolation, Operation] =
+    lookup(action, registrations).flatMap(_.rebuild(catalog, state, actor))
 
-  private[walker] def lookup(action: ActionRef,
+  private def lookup(action: ActionRef,
       registrations: Map[ActionRef, Entry]): Either[OathViolation, Entry] =
     registrations.get(action).toRight(OathViolation.InvalidEventOrder(
       s"no walker action registered for ${action.key}"))

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.OathViolation
-import oathdigital.model.ActionRef
+import oathdigital.gameplay.{OathViolation, ReadyGame}
+import oathdigital.model.{ActionRef, PlayerId}
 
 /** Task 8: `WalkerActionRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -11,18 +11,41 @@ import oathdigital.model.ActionRef
   *
   * `ActionRef` is sealed with exactly one inhabitant today (`Recover`), so
   * there is no way to construct a genuinely unregistered `ActionRef` from
-  * outside `ActionRef.scala` to drive `build`/`rebuild` themselves down the
-  * missing-entry branch. This suite instead exercises `lookup` --
-  * `private[walker]`, the exact function `build`/`rebuild` call against the
-  * production `entries` map -- with a registrations map that omits a real,
-  * registered-in-production action. That is precisely the branch a second,
-  * unregistered action would hit, without fabricating a fake `ActionRef`.
+  * outside `ActionRef.scala`. Instead, `build`/`rebuild` accept
+  * `registrations` as a parameter defaulting to the production `entries`
+  * map (Task 8 fix round 1) -- every production call site is unaffected,
+  * but this suite overrides it with a map that omits a real,
+  * registered-in-production action to drive THESE public entry points
+  * themselves down the missing-registration branch, rather than testing
+  * the previously-extracted `lookup` helper as a stand-in for them. A
+  * `match` reintroduced inside `build`/`rebuild` that bypassed
+  * `registrations`/`lookup` entirely would compile but fail these tests.
+  *
+  * `catalog`/`state` below are never dereferenced: `registrations = Map.
+  * empty` makes the internal `lookup` fail before `Entry.build`/`rebuild`
+  * is ever invoked, so `null` is safe here and keeps this suite free of
+  * full-game fixtures that this failure path has no use for.
   */
 class WalkerActionRegistrySuite extends munit.FunSuite {
 
-  test("an action absent from the registrations map is rejected with a " +
+  private val unregistered = Map.empty[ActionRef, WalkerActionRegistry.Entry]
+  private val actor = PlayerId("p1")
+  private val state: ReadyGame = null
+
+  test("build rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
-    val result = WalkerActionRegistry.lookup(ActionRef.Recover, Map.empty)
+    val result = WalkerActionRegistry.build(ActionRef.Recover, catalog = null,
+      state = state, actor = actor, eligibilityRelaxed = false,
+      registrations = unregistered)
+    assertEquals(result, Left(OathViolation.InvalidEventOrder(
+      "no walker action registered for recover")))
+  }
+
+  test("rebuild rejects an action absent from the registrations map with a " +
+      "typed Left, not a MatchError") {
+    val result = WalkerActionRegistry.rebuild(ActionRef.Recover,
+      catalog = null, state = state, actor = actor,
+      registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))
   }
