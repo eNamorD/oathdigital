@@ -1,3 +1,5 @@
+import com.typesafe.sbt.packager.docker.ExecCmd
+
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "dev.oathdigital"
 ThisBuild / version := "0.1.0-SNAPSHOT"
@@ -80,6 +82,22 @@ lazy val root = (project in file("."))
     Docker / daemonUserUid := Some("10001"),
     Docker / dockerBaseImage := "eclipse-temurin:21-jre",
     dockerBaseImage := (Docker / dockerBaseImage).value,
+    Docker / dockerCommands := {
+      val commands = (Docker / dockerCommands).value
+      val finalUserIndex = commands.lastIndexWhere(
+        _.makeContent.trim == "USER 10001:0"
+      )
+      if (finalUserIndex < 0)
+        sys.error("Docker commands are missing final USER 10001:0")
+      commands.patch(
+        finalUserIndex,
+        Seq(
+          ExecCmd("RUN", "mkdir", "-p", "/var/lib/oathdigital"),
+          ExecCmd("RUN", "chown", "10001:0", "/var/lib/oathdigital")
+        ),
+        0
+      )
+    },
     verifyPackageMappings := {
       val packageMappings = (Universal / mappings).value
       val destinations = packageMappings.map(_._2)
@@ -107,7 +125,26 @@ lazy val root = (project in file("."))
             Some("missing dependency jars under lib/")
           else None
         ).flatten
-      val failures = missingFiles.map(path => s"missing $path") ++ missingJars
+      val dockerCommandLines = (Docker / dockerCommands).value
+        .map(_.makeContent.trim)
+      val createDataDirectory =
+        """RUN ["mkdir", "-p", "/var/lib/oathdigital"]"""
+      val ownDataDirectory =
+        """RUN ["chown", "10001:0", "/var/lib/oathdigital"]"""
+      val finalUser = "USER 10001:0"
+      val createIndex = dockerCommandLines.indexOf(createDataDirectory)
+      val ownIndex = dockerCommandLines.indexOf(ownDataDirectory)
+      val finalUserIndex = dockerCommandLines.lastIndexOf(finalUser)
+      val dockerFailures =
+        if (createIndex >= 0 && ownIndex > createIndex &&
+            finalUserIndex > ownIndex)
+          Seq.empty
+        else Seq(
+          "Docker image must create and own /var/lib/oathdigital " +
+            "before switching to USER 10001:0"
+        )
+      val failures = missingFiles.map(path => s"missing $path") ++
+        missingJars ++ dockerFailures
       if (failures.nonEmpty)
         sys.error("Invalid package mappings: " + failures.mkString(", "))
     },

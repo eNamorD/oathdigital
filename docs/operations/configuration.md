@@ -49,17 +49,22 @@ same environment variables and run `bin\oathdigital.bat`.
 
 ## OCI image
 
-After `./sbtw Docker/publishLocal`, run the local version tag:
+After `./sbtw Docker/publishLocal`, publish the service on all host interfaces
+for trusted LAN access:
 
 ```sh
 docker run --rm --name oathdigital \
-  --publish 127.0.0.1:8080:8080 \
+  --publish 8080:8080 \
   --env OATH_HOST=0.0.0.0 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
   --env OATH_DATABASE_PATH=/var/lib/oathdigital/database \
   --volume oathdigital-data:/var/lib/oathdigital \
   oathdigital:0.1.0-SNAPSHOT
 ```
+
+For host-local access only, replace `--publish 8080:8080` with
+`--publish 127.0.0.1:8080:8080` and use a loopback public base URL such as
+`http://127.0.0.1:8080`.
 
 The container launcher supplies `trusted-alpha` mode and the bundled catalog
 path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
