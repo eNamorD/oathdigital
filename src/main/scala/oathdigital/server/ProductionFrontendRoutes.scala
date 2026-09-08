@@ -6,9 +6,13 @@ import akka.http.scaladsl.server.Route
 
 object ProductionFrontendRoutes {
   private val IndexCacheControl = RawHeader("Cache-Control", "no-cache")
+  // Assets are served at fixed, unfingerprinted paths, so a long-lived
+  // `immutable` policy would strand upgraded clients on a previous bundle.
+  // Revalidate every request and let `getFromResource`'s ETag/Last-Modified
+  // keep the response cheap until fingerprinted names land.
   private val AssetCacheControl = RawHeader(
     "Cache-Control",
-    "public, max-age=31536000, immutable"
+    "public, max-age=0, must-revalidate"
   )
 
   val route: Route =

@@ -26,9 +26,18 @@ class ProductionFrontendRoutesSuite extends munit.FunSuite {
 
       val javascript = get(client, binding, "/assets/main.js")
       assertEquals(javascript.statusCode(), 200)
+      assert(javascript.body().nonEmpty)
       assertEquals(
         cacheControl(javascript),
-        Some("public, max-age=31536000, immutable")
+        Some("public, max-age=0, must-revalidate")
+      )
+
+      val stylesheet = get(client, binding, "/assets/styles.css")
+      assertEquals(stylesheet.statusCode(), 200)
+      assert(stylesheet.body().nonEmpty)
+      assertEquals(
+        cacheControl(stylesheet),
+        Some("public, max-age=0, must-revalidate")
       )
 
       assertEquals(get(client, binding, "/missing.js").statusCode(), 404)
