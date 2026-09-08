@@ -9,8 +9,9 @@ import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, Wak
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
   WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
   RelicRecovered}
-import oathdigital.gameplay.operations.{AdjustSupply, Cost, Location,
-  ModifyDicePool, Move, Piece, PositionedLocation, RelicPlacement}
+import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, Cost, Location,
+  ModifyDicePool, Move, PayCost, Piece, PositionedLocation, RelicPlacement,
+  StackPosition}
 import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
@@ -321,6 +322,110 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step")("meaning")("kind").str).toVector,
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
+  }
+
+  test("Catacombs' recorded batch round-trips: a relic move off the top of " +
+      "the relic deck and a cost placed on a card") {
+    // The exact op vector `CatacombsContribution` builds. Encoding it used to
+    // throw on `Location.Deck` and again on `PayCost`, which the append path
+    // turned into a codec failure -- so `StartWalker` + Catacombs, the only
+    // end-to-end route to this power once the legacy object goes, could never
+    // be persisted.
+    val player = PlayerId("red")
+    val relic = RelicId("R1")
+    val site = SiteId("site")
+    val denizen = DenizenId("catacombs")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
+        "catacombs.place")),
+      Vector(
+        Move(Piece.Card(relic),
+          PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+          PositionedLocation(Location.Site(site)),
+          resultingOrientation = Some(Orientation.FaceDown)),
+        PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
+      Vector(PowerId("denizen.catacombs")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    val ops = ujson.read(encoded).arr.head("payload")("ops").arr
+    assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
+    assertEquals(ops(0)("from")("location")("deck").str, "relic")
+    assertEquals(ops(0)("from")("position").str, "top")
+    assertEquals(ops(1)("placedAt")("card")("id").str, "catacombs")
+    assertEquals(ops(1)("cost")("secret").num, 1d)
+  }
+
+  test("every Location variant round-trips through the walker codec") {
+    // `encodeLocation` is total over the sealed hierarchy, so this list is
+    // the whole of it. Keeping the list exhaustive is what makes the
+    // compiler's totality check meaningful on the decode side too: a new
+    // variant fails to compile in the encoder and fails this test in the
+    // decoder.
+    val player = PlayerId("red")
+    val locations = Vector[Location](
+      Location.Hand(player),
+      // Not `player`'s own play area: `PayCost`'s children move the favor out
+      // of the payer's play area, and a move to the same location is illegal.
+      Location.PlayArea(PlayerId("blue")),
+      Location.Site(SiteId("site")),
+      Location.OnCard(DenizenId("catacombs")),
+      Location.OnBanner(Banner.DarkestSecret),
+      Location.FavorBank(Suit.Arcane),
+      Location.WarbandBank(ForceKind.Exile(LineageId("lineage"))),
+      Location.WarbandBank(ForceKind.Imperial),
+      Location.Deck(CardDeck.World),
+      Location.Deck(CardDeck.Relic),
+      Location.Deck(CardDeck.Edifice),
+      Location.Deck(CardDeck.Legacy),
+      Location.RegionalDiscard(Region.Cradle),
+      Location.SharedBank,
+      Location.SetAsideRelics,
+      Location.Reliquary,
+      Location.Atlas,
+      Location.Dispossessed)
+    // `PayCost` carries a bare `Location`, so it exercises each variant
+    // without the stack-position wrapper or `Move`'s from/to constraints.
+    val events = locations.map(location => WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, location, Cost(favor = 1))),
+      Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
+      locations.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("an unknown walker location kind, deck or negative cost decodes to a " +
+      "typed WireError") {
+    val player = PlayerId("red")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1))),
+      Vector.empty)
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assert(GameEventWire.decodeStream(encoded).isRight)
+
+    Vector[ujson.Value => Unit](
+      _("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
+      _("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
+      _("payload")("ops")(0)("cost")("secret") = -1,
+      _("payload")("ops")(0)("kind") = "not-an-operation"
+    ).foreach { corrupt =>
+      val injected = ujson.read(encoded).arr
+      corrupt(injected(0))
+      assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft,
+        s"expected a typed WireError for ${ujson.write(injected)}")
+    }
   }
 
   test("a WalkerStepRecorded carrying two contribution ids round-trips") {

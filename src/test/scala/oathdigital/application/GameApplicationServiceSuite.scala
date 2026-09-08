@@ -8,8 +8,9 @@ import java.nio.file.Files
 import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, ModifyDicePool,
-  Move, Piece, PositionedLocation, Location}
+import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, CoreOperation,
+  Cost, Location, ModifyDicePool, Move, PayCost, Piece, PositionedLocation,
+  StackPosition}
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
   WalkerStepRecorded}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -542,6 +543,78 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(after.game.current.pending.exists(_.isInstanceOf[PendingProcedure.Recover]))
     assertEquals(dice.calls, 2)
     assertEquals(relicPrepares, 1)
+  }
+
+  test("StartWalker drives Catacombs through the full persisted path: its " +
+      "recorded ops encode, append and replay (Task 9b prerequisite)") {
+    // The only end-to-end way to use Catacombs once Task 9b deletes the
+    // legacy object. `service.handle` is the whole path -- rules, event
+    // encoding, append, replay -- so it is the layer that pins the gap the
+    // rules-only assertion above cannot see: Catacombs records a `Move` out
+    // of `Location.Deck(CardDeck.Relic)` and a `PayCost` at
+    // `Location.OnCard`, none of which the walker codec used to encode.
+    val repository = new InMemoryEventStreamRepository
+    val dice = new CountingRecoverDice
+    val service = new GameApplicationService(catalog, repository,
+      defenseDicePort = dice)
+    val gameId = "catacombs-walker-persisted"
+    val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
+    val Ready(before) = prepared.state: @unchecked
+    val beforePlayer = before.game.current.players.find(_.player == actor).get
+    val siteId = beforePlayer.pawnSite.get
+    val topRelic = before.game.current.commonCards.relicDeck.head
+
+    val started = service.handle(gameId, prepared.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
+        Vector(PowerId("denizen.catacombs"))))) match {
+      case Right(accepted) => accepted
+      case Left(error) =>
+        fail(s"StartWalker with Catacombs must persist, got $error")
+    }
+
+    // Catacombs' own batch, verbatim, survived encoding: the relic move off
+    // the top of the relic deck and the 1-secret payment onto the card.
+    assertEquals(started.events.collect {
+      case step: WalkerStepRecorded => step
+    }.flatMap(_.ops).take(2), Vector[CoreOperation](
+      Move(Piece.Card(topRelic),
+        PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+        PositionedLocation(Location.Site(siteId)),
+        resultingOrientation = Some(Orientation.FaceDown)),
+      PayCost(actor, Location.OnCard(catacombsId), Cost(secret = 1))))
+    assert(started.events.collect { case step: WalkerStepRecorded =>
+      step.contributions }.contains(Vector(PowerId("denizen.catacombs"))),
+      "the recorded step must name the contribution that produced it")
+
+    val Ready(after) = started.state: @unchecked
+    val afterPlayer = after.game.current.players.find(_.player == actor).get
+    assertEquals(after.game.current.commonCards.relicDeck,
+      before.game.current.commonCards.relicDeck.tail)
+    assertEquals(after.game.current.map.sites(siteId).relics.map(relic =>
+      relic.id -> relic.orientation), Vector(topRelic -> Orientation.FaceDown))
+    assertEquals(afterPlayer.board.faceUpSecrets,
+      beforePlayer.board.faceUpSecrets - 1)
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
+
+    // Replay from the journal alone reproduces the same state: the ops did
+    // not merely encode, they decode back to the operations that built it.
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(reloaded.state, started.state)
+    assertEquals(reloaded.nextSequence, started.nextSequence)
+
+    // And the walk still finishes on the reloaded stream.
+    val rolled = service.handle(gameId, reloaded.nextSequence,
+      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+    val Ready(atRelic) = rolled.state: @unchecked
+    val recovered = atRelic.game.current.map.sites(siteId).relics.head.id
+    val finished = service.handle(gameId, rolled.nextSequence,
+      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
+        RecoverRelicPayload(recovered)))).toOption.get
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assertEquals(new GameApplicationService(catalog, repository).load(gameId)
+      .toOption.flatten.get.state, finished.state)
   }
 
   test("preview offers the walker Catacombs contribution, and " +

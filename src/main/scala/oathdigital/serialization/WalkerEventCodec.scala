@@ -3,8 +3,9 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 
 import oathdigital.gameplay.OathEvent
-import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, Location,
-  ModifyDicePool, Move, Piece, PositionedLocation, StackPosition}
+import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, CoreOperation,
+  Cost, Location, ModifyDicePool, Move, PayCost, Piece, PositionedLocation,
+  StackPosition}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -14,7 +15,9 @@ import oathdigital.model.DecisionPayload.{RecoverChoice,
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts. Operation encoding is
-  * intentionally bounded to Recover's recorded leaf set in this slice.
+  * intentionally bounded to Recover's recorded leaf set in this slice;
+  * [[encodeLocation]] is the exception and is total over `Location`, because
+  * a bounded location set is what silently broke `StartWalker` + Catacombs.
   */
 private[serialization] trait WalkerEventCodec {
     this: GameEventJsonSupport =>
@@ -179,6 +182,10 @@ private[serialization] trait WalkerEventCodec {
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(encodeOrientation(value))))
+      case PayCost(player, placedAt, cost) => ujson.Obj(
+        "kind" -> "pay-cost", "playerId" -> player.value,
+        "placedAt" -> encodeLocation(placedAt),
+        "cost" -> encodeCost(cost))
       case other => throw new IllegalArgumentException(
         s"unsupported recorded walker operation $other")
     }
@@ -201,6 +208,10 @@ private[serialization] trait WalkerEventCodec {
             s"$path.resultingOrientation").map(Some(_))
         }
       } yield Move(piece, from, to, orientation)
+      case "pay-cost" => for {
+        placedAt <- decodeLocation(value("placedAt"), s"$path.placedAt")
+        cost <- decodeCost(value("cost"), s"$path.cost")
+      } yield PayCost(PlayerId(value("playerId").str), placedAt, cost)
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown recorded walker operation '$other'"))
     }
@@ -239,13 +250,38 @@ private[serialization] trait WalkerEventCodec {
     }
   } yield PositionedLocation(location, position)
 
+  /** Total over `Location`, unlike the other encoders here, which stay bounded
+    * to the leaf shapes this slice records. A location is a closed sealed
+    * hierarchy whose every case is cheap to name, and the bounded form was a
+    * production defect rather than a safety margin: Catacombs' relic move out
+    * of `Location.Deck` reached this method only through `StartWalker`, the
+    * one path no test drove, and turned into an append-time codec failure.
+    * Being total makes a new `Location` a compile error here instead.
+    */
   private def encodeLocation(value: Location): ujson.Value = value match {
     case Location.Site(site) => ujson.Obj("kind" -> "site",
       "siteId" -> site.value)
     case Location.PlayArea(player) => ujson.Obj("kind" -> "play-area",
       "playerId" -> player.value)
-    case other => throw new IllegalArgumentException(
-      s"unsupported recorded walker location $other")
+    case Location.Hand(player) => ujson.Obj("kind" -> "hand",
+      "playerId" -> player.value)
+    case Location.OnCard(card) => ujson.Obj("kind" -> "on-card",
+      "card" -> encodeCardRef(card))
+    case Location.OnBanner(banner) => ujson.Obj("kind" -> "on-banner",
+      "banner" -> banner.key)
+    case Location.FavorBank(suit) => ujson.Obj("kind" -> "favor-bank",
+      "suit" -> suit.key)
+    case Location.WarbandBank(force) => ujson.Obj("kind" -> "warband-bank",
+      "force" -> encodeForceKind(force))
+    case Location.Deck(deck) => ujson.Obj("kind" -> "deck",
+      "deck" -> encodeCardDeck(deck))
+    case Location.RegionalDiscard(region) => ujson.Obj(
+      "kind" -> "regional-discard", "region" -> region.key)
+    case Location.SharedBank => ujson.Obj("kind" -> "shared-bank")
+    case Location.SetAsideRelics => ujson.Obj("kind" -> "set-aside-relics")
+    case Location.Reliquary => ujson.Obj("kind" -> "reliquary")
+    case Location.Atlas => ujson.Obj("kind" -> "atlas")
+    case Location.Dispossessed => ujson.Obj("kind" -> "dispossessed")
   }
 
   private def decodeLocation(value: ujson.Value,
@@ -253,9 +289,59 @@ private[serialization] trait WalkerEventCodec {
     case "site" => Right(Location.Site(SiteId(value("siteId").str)))
     case "play-area" =>
       Right(Location.PlayArea(PlayerId(value("playerId").str)))
+    case "hand" => Right(Location.Hand(PlayerId(value("playerId").str)))
+    case "on-card" => decodeCardRef(value("card"), s"$path.card")
+      .map(Location.OnCard)
+    case "on-banner" => Banner.fromKey(value("banner").str)
+      .toRight(InvalidValue(s"$path.banner",
+        s"unknown banner '${value("banner").str}'")).map(Location.OnBanner)
+    case "favor-bank" => decodeSuit(value("suit").str, s"$path.suit")
+      .map(Location.FavorBank)
+    case "warband-bank" => decodeForceKind(value("force"), s"$path.force")
+      .map(Location.WarbandBank)
+    case "deck" => decodeCardDeck(value("deck").str, s"$path.deck")
+      .map(Location.Deck)
+    case "regional-discard" =>
+      decodeRegion(value("region").str, s"$path.region")
+        .map(Location.RegionalDiscard)
+    case "shared-bank" => Right(Location.SharedBank)
+    case "set-aside-relics" => Right(Location.SetAsideRelics)
+    case "reliquary" => Right(Location.Reliquary)
+    case "atlas" => Right(Location.Atlas)
+    case "dispossessed" => Right(Location.Dispossessed)
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown recorded walker location '$other'"))
   }
+
+  private def encodeCardDeck(value: CardDeck): String = value match {
+    case CardDeck.World => "world"
+    case CardDeck.Relic => "relic"
+    case CardDeck.Edifice => "edifice"
+    case CardDeck.Legacy => "legacy"
+  }
+
+  private def decodeCardDeck(value: String,
+      path: String): Either[WireError, CardDeck] = value match {
+    case "world" => Right(CardDeck.World)
+    case "relic" => Right(CardDeck.Relic)
+    case "edifice" => Right(CardDeck.Edifice)
+    case "legacy" => Right(CardDeck.Legacy)
+    case other => Left(InvalidValue(path, s"unknown card deck '$other'"))
+  }
+
+  private def encodeCost(cost: Cost): ujson.Value = ujson.Obj(
+    "favor" -> cost.favor, "secret" -> cost.secret,
+    "favorBurnt" -> cost.favorBurnt, "secretBurnt" -> cost.secretBurnt)
+
+  /** `safeIntField` already rejects a negative, so `Cost`'s own non-negative
+    * `require` can never be reached from decoded JSON. */
+  private def decodeCost(value: ujson.Value,
+      path: String): Either[WireError, Cost] = for {
+    favor <- safeIntField(value.obj, "favor", path)
+    secret <- safeIntField(value.obj, "secret", path)
+    favorBurnt <- safeIntField(value.obj, "favorBurnt", path)
+    secretBurnt <- safeIntField(value.obj, "secretBurnt", path)
+  } yield Cost(favor, secret, favorBurnt, secretBurnt)
 
   private def encodeOrientation(value: Orientation): String = value match {
     case Orientation.FaceUp => "face-up"
