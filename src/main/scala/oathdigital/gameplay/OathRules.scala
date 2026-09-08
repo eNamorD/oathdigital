@@ -235,21 +235,28 @@ final class OathRules(catalog: ExecutableCatalog,
     ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
       .headOption.toLeft(())
 
-  /** Ruling C: the base start gate (a facedown relic already at the site)
-    * relaxes when some applicable power contributes at
-    * `RecoverActionEligibility` -- a `Restriction` returning `None` cannot
-    * carry an "eligible" signal (that is also what every irrelevant power
-    * means), so the relaxation is "the gather produced a non-empty order".
-    * Gathered directly against the window, with no tree needed yet -- this
-    * runs BEFORE `buildWalker` so its answer can steer the build (ruling B:
-    * the relaxed check lives here, not inside `RecoverProcedure.build`).
+  /** Ruling C (narrowed by fix-round ruling L): the base start gate (a
+    * facedown relic already at the site) relaxes only when some applicable
+    * power declares a `Transform` at `RecoverActionEligibility`. A
+    * `Restriction` at this window never grants eligibility -- it can only
+    * reject the action for an unrelated reason, and its mere presence must
+    * not be read as "eligible" (that reading previously let a power that
+    * *forbids* Recover also *enable* it). Gathered directly against the
+    * window, with no tree needed yet -- this runs BEFORE `buildWalker` so
+    * its answer can steer the build (ruling B: the relaxed check lives
+    * here, not inside `RecoverProcedure.build`).
+    *
+    * NOTE: this checks the *presence* of a Transform, not its *effect*. A
+    * future power whose Transform at this window does not actually supply a
+    * relic would still relax the gate. Known limitation, worth revisiting
+    * once a second power hooks this window.
     */
   private def eligibilityGathered(ready: ReadyGame, actor: PlayerId,
       powers: WalkerPowers): Boolean = {
     val window = PowerWindow.RecoverActionEligibility
     ContributionCollector.gather(window, powers.powers,
       power => PowerCtx(ready, actor, power.source, window, Vector.empty))
-      .order.nonEmpty
+      .transforms.nonEmpty
   }
 
   /** Resolves the current parked Decide. Action identity is reconstructed
