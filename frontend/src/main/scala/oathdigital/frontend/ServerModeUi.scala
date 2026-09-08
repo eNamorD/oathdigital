@@ -332,7 +332,9 @@ object ServerModeUi {
         case Right(response) => workflow.command match {
           case Some(command) =>
             modifierWorkflow = None
-            submitTransport(command, workflow.selection.invocations)
+            val (submitted, modifiers) = ModifierWorkflow.submission(command,
+              workflow.selection.invocations)
+            submitTransport(submitted, modifiers)
           case None => activatePreviewTargets(workflow, response)
         }
         case Left(error) =>

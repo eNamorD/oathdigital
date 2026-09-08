@@ -41,12 +41,17 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val commands = Vector[GameIntent](
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
       GameIntent.BeginForge,
-      GameIntent.BeginRecover,
+      GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
       Vector("search", "forge", "recover", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
+    // A walker action other than Recover must not be swept into the same
+    // modifier-offering path -- only "recover" is registered on the walker
+    // in this slice.
+    assertEquals(ModifierWorkflow.action(GameIntent.StartWalker("teleport", Vector.empty)),
+      None)
   }
 
   test("modifier confirmation exposes preview-authorized targets without submitting") {
@@ -126,17 +131,19 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "other", 4), None)
   }
 
-  test("empty-site Recover uses the generic ordered Catacombs modifier flow") {
+  test("Recover uses the generic ordered modifier flow but submits as a " +
+      "walker command carrying Catacombs in its own modifiers field") {
     val catacombs = PreviewModifier("site-card:site:a:denizen:201",
       "denizen.catacombs", "Catacombs")
     val response = MajorActionPreviewResponse(4, "recover", Vector(catacombs),
       Vector.empty, Vector.empty)
-    assertEquals(ModifierWorkflow.action(GameIntent.BeginRecover),
+    val startRecover = GameIntent.StartWalker("recover", Vector.empty)
+    assertEquals(ModifierWorkflow.action(startRecover),
       Some("recover" -> Map.empty[String, String]))
     val selection = ModifierSelectionState.reconcile(None,
       context.copy(action = "recover"), response.modifiers, "catacombs-preview")
       .toggle(catacombs)
-    val workflow = ModifierWorkflow(Some(GameIntent.BeginRecover), Some("recover"),
+    val workflow = ModifierWorkflow(Some(startRecover), Some("recover"),
       Map.empty, response, selection, ModifierWorkflowStage.Ordering)
     assert(workflow.ordering)
     val targets = workflow.showTargets(response)
@@ -144,10 +151,28 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(ModifierWorkflow.reconcile(Some(targets), "g", "p", 5), None)
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       catacombs.handlerId)
+    assertEquals(selection.invocations, Vector(invocation))
+    // The Catacombs id lands inside StartWalker's own `modifiers`, not in a
+    // WithModifiers wrapper -- GameApplicationService.majorAction does not
+    // recognize StartWalker, so the legacy wrapper would reject it outright.
+    val (submitted, outerModifiers) = ModifierWorkflow.submission(startRecover,
+      selection.invocations)
+    assertEquals(submitted, GameIntent.StartWalker("recover", Vector("denizen.catacombs")))
+    assertEquals(outerModifiers, Vector.empty[ModifierInvocation])
     val encoded = ActorlessCommandCodec.encode(ActorlessCommandRequest(4,
-      GameIntent.BeginRecover, Vector(invocation)))
+      submitted, outerModifiers))
     val decoded = ActorlessCommandCodec.decode(encoded).toOption.get
-    assertEquals(decoded.intent, GameIntent.BeginRecover)
-    assertEquals(decoded.orderedModifiers, Vector(invocation))
+    assertEquals(decoded.intent, submitted)
+    assertEquals(decoded.orderedModifiers, Vector.empty[ModifierInvocation])
+  }
+
+  test("submission leaves non-walker commands on the legacy ordered-modifiers " +
+      "channel untouched") {
+    val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
+      "denizen.some-power")
+    val (submitted, outerModifiers) = ModifierWorkflow.submission(
+      GameIntent.BeginForge, Vector(invocation))
+    assertEquals(submitted, GameIntent.BeginForge)
+    assertEquals(outerModifiers, Vector(invocation))
   }
 }

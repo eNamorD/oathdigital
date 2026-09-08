@@ -141,4 +141,6 @@ package object frontend {
   val OathkeeperStatus = protocol.projection.OathkeeperProjection
   type OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
   val OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
+  type WalkerDecisionState = protocol.projection.WalkerDecisionProjection
+  val WalkerDecisionState = protocol.projection.WalkerDecisionProjection
 }

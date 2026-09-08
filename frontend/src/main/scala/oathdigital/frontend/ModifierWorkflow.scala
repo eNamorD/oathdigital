@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse}
+import oathdigital.protocol.{GameIntent, MajorActionPreviewResponse, ModifierInvocation}
 
 private[frontend] sealed trait ModifierWorkflowStage
 private[frontend] object ModifierWorkflowStage {
@@ -49,10 +49,30 @@ private[frontend] object ModifierWorkflow {
     case GameIntent.BeginSearch(source) => Some("search" ->
       (Map("source" -> source.source) ++ source.region.map("region" -> _)))
     case GameIntent.BeginForge => Some("forge" -> Map.empty)
-    case GameIntent.BeginRecover => Some("recover" -> Map.empty)
+    case GameIntent.StartWalker("recover", _) => Some("recover" -> Map.empty)
     case GameIntent.ResolveFacedownAdviser(_, _) =>
       Some("search" -> Map("procedure" -> "facedown-adviser"))
     case _ => None
+  }
+
+  /** The command actually transmitted once modifier ordering is confirmed.
+    * `StartWalker`'s own `modifiers` field is the walker command surface's
+    * carrier for player-selected power ids (Task 6/7b) -- distinct from the
+    * legacy `orderedModifiers`/`WithModifiers` wrapping every other major
+    * action still uses. `GameApplicationService.majorAction` does not
+    * recognize `StartWalker`, so wrapping it in `WithModifiers` would reject
+    * with "ordered modifiers are only valid on a major-action start" the
+    * moment a modifier (e.g. Catacombs) is actually selected. Folding the
+    * SAME ordered `invocations` (by `handlerId`, the stable power id string
+    * both the legacy and walker power catalogs share) into the intent
+    * itself, and sending no outer modifiers, keeps this command through the
+    * path the engine actually accepts.
+    */
+  def submission(command: GameIntent, invocations: Vector[ModifierInvocation])
+      : (GameIntent, Vector[ModifierInvocation]) = command match {
+    case GameIntent.StartWalker(action, _) =>
+      GameIntent.StartWalker(action, invocations.map(_.handlerId)) -> Vector.empty
+    case other => other -> invocations
   }
 
   def targetAction(actionKind: String, response: MajorActionPreviewResponse,

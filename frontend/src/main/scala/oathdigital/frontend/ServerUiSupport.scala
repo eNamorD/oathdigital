@@ -560,6 +560,51 @@ private[frontend] object ServerUiSupport {
       amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
         decision.decisionId, amount))
 
+  /** Which control the panel should render for a parked walker decision.
+    * `WalkerDecisionState.kind` alone cannot tell the two "decide" parks
+    * apart (both `"recover.choice"` and `"recover.relic"` share it) -- only
+    * `decisionId` does, so that comparison lives here rather than being
+    * re-derived at each call site. The two decision id literals mirror
+    * `RecoverProcedure.choiceDecisionId`/`.relicDecisionId`
+    * (`src/main/scala/oathdigital/gameplay/actions/recover/
+    * RecoverProcedure.scala`) as plain strings: that object lives in the
+    * JVM-only application sources the frontend cannot depend on, and a
+    * `decisionId` already rides the wire as an uninterpreted string on
+    * every walker/decision command (see
+    * `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`).
+    */
+  private[frontend] val recoverChoiceDecisionId = "recover.choice"
+  private[frontend] val recoverRelicDecisionId = "recover.relic"
+
+  private[frontend] sealed trait RecoverWalkerStep
+  private[frontend] object RecoverWalkerStep {
+    final case class Roll(pool: String) extends RecoverWalkerStep
+    case object Choice extends RecoverWalkerStep
+    final case class Relic(candidates: Vector[CardDetails]) extends RecoverWalkerStep
+  }
+
+  private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
+      : Option[RecoverWalkerStep] =
+    if (decision.action != "recover") None
+    else decision.kind match {
+      case "roll" => decision.pool.map(RecoverWalkerStep.Roll)
+      case "decide" if decision.decisionId == recoverChoiceDecisionId =>
+        Some(RecoverWalkerStep.Choice)
+      case "decide" if decision.decisionId == recoverRelicDecisionId =>
+        Some(RecoverWalkerStep.Relic(decision.relicCandidates))
+      case _ => None
+    }
+
+  private[frontend] def resolveRecoverChoiceCommand(decision: WalkerDecisionState,
+      choice: String): GameCommand.ResolveWalker =
+    GameCommand.ResolveWalker(decision.decisionId,
+      DecisionPayloadWire.RecoverChoiceWire(choice))
+
+  private[frontend] def resolveRecoverRelicCommand(decision: WalkerDecisionState,
+      relicId: String): GameCommand.ResolveWalker =
+    GameCommand.ResolveWalker(decision.decisionId,
+      DecisionPayloadWire.RecoverRelicWire(relicId))
+
   private[frontend] def takeWealthActions(
       value: GameProjection,
       playerId: String

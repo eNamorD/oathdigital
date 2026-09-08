@@ -60,6 +60,11 @@ private[frontend] object GameCommand {
   def AddRecoverDice(actor: String, id: String) = Intent.AddRecoverDice(id)
   def StopRecover(actor: String, id: String) = Intent.StopRecover(id)
   def ResolveCardDecision(actor: String, id: String, value: DecisionResolution.Value) = Intent.ResolveCardDecision(id, value.intent)
+  def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
+    Intent.StartWalker(action, modifiers)
+  def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
+  def ResolveWalker(actor: String, id: String, payload: DecisionPayloadWire) =
+    Intent.ResolveWalker(id, payload)
 }
 
 private[frontend] object ConspiracyTarget {
