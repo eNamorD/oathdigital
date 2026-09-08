@@ -256,7 +256,11 @@ private[serialization] trait WalkerEventCodec {
     * production defect rather than a safety margin: Catacombs' relic move out
     * of `Location.Deck` reached this method only through `StartWalker`, the
     * one path no test drove, and turned into an append-time codec failure.
-    * Being total makes a new `Location` a compile error here instead.
+    * Being total means a new `Location` case only warns here ("match may
+    * not be exhaustive"), since this project builds without
+    * `-Xfatal-warnings`; what actually catches a missed case is the
+    * enumeration test "every Location variant round-trips through the
+    * walker codec" in `GameEventWireSuite`.
     */
   private def encodeLocation(value: Location): ujson.Value = value match {
     case Location.Site(site) => ujson.Obj("kind" -> "site",
