@@ -144,7 +144,7 @@ private[application] final class LegalActionProjector(
     */
   private def walkerControls(context: ScopedProjectionContext): Vector[String] =
     walkerDecisions.project(context).toVector.map {
-      case WalkerDecisionProjection(_, _, "roll", _, _) => "rollWalker"
+      case WalkerDecisionProjection(_, _, "roll", _, _, _) => "rollWalker"
       case _ => "resolveWalkerDecision"
     }
 

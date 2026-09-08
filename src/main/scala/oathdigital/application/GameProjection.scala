@@ -10,7 +10,7 @@ import oathdigital.protocol.projection._
 /** Assembles a player-scoped projection from authoritative state. */
 final class GameProjector(catalog: ExecutableCatalog) {
   private val presentation = new GamePresentationProjector(catalog)
-  private val walkerDecisions = new WalkerDecisionProjector(catalog)
+  private val walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
   private val legalActions = new LegalActionProjector(catalog, presentation,
     walkerDecisions)
   private val pendingProcedures = new PendingProcedureProjector(catalog,
@@ -157,7 +157,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
         context.ready.setup.firstPlayer.value)),
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(restPower = pending.restPower,
-        restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting)
+        restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting,
+        walkerDecision = pending.walkerDecision)
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

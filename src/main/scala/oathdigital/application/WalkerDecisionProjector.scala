@@ -6,7 +6,8 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
-import oathdigital.model.{ActionRef, PendingTree, PlayerId}
+import oathdigital.model.{ActionRef, Orientation, PendingTree, PlayerId}
+import oathdigital.protocol.projection.{CardDetailsProjection, WalkerDecisionProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerAction`, Task 6) into the small owner-private
@@ -33,10 +34,11 @@ import oathdigital.model.{ActionRef, PendingTree, PlayerId}
   * parked node.
   */
 private[application] final class WalkerDecisionProjector(
-    catalog: ExecutableCatalog, walkerPowerCatalog: WalkerPowers) {
+    catalog: ExecutableCatalog, presentation: GamePresentationProjector,
+    walkerPowerCatalog: WalkerPowers) {
 
-  def this(catalog: ExecutableCatalog) =
-    this(catalog, WalkerPowerCatalog.default(catalog))
+  def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
+    this(catalog, presentation, WalkerPowerCatalog.default(catalog))
 
   def project(context: ScopedProjectionContext)
       : Option[WalkerDecisionProjection] =
@@ -63,8 +65,33 @@ private[application] final class WalkerDecisionProjector(
         RecoverProcedure.rollDecisionId, "roll", pool = Some(pool.value),
         count = Some(count)))
       case None => ProcedureWalker.parkedDecide(ready, tree, pending,
-          powers).map(
-        decide => WalkerDecisionProjection(action.key, decide.decisionId,
-          "decide"))
+          powers).map { decide =>
+        val candidates = if (decide.decisionId == RecoverProcedure.relicDecisionId)
+          relicCandidates(ready, pending.actor) else Vector.empty
+        WalkerDecisionProjection(action.key, decide.decisionId, "decide",
+          relicCandidates = candidates)
+      }
     }
+
+  /** The relic Decide's only legal answer is a facedown relic currently at
+    * the actor's site -- exactly what `RecoverProcedure`'s `validateRelic`
+    * reads live off `ready.game.current.map.sites(siteId).relics` at
+    * resolve time, not the tree's closed-over placeholder marker (see that
+    * file's `tree` doc comment). Deriving the candidate set the same way,
+    * from the same live state, is what keeps this list from ever diverging
+    * from what `ProcedureWalker.resolve` would actually accept: neither
+    * side hardcodes the site or freezes it at tree-build time, and a
+    * Recover in progress cannot change the actor's pawn site (Task 6
+    * command-exclusivity blocks every other Act command while a walker
+    * decision is parked), so "the actor's current site" here is exactly
+    * the site the tree closed over.
+    */
+  private def relicCandidates(ready: ReadyGame, actor: PlayerId)
+      : Vector[CardDetailsProjection] =
+    ready.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+      .flatMap(ready.game.current.map.sites.get).fold(
+        Vector.empty[CardDetailsProjection])(_.relics.filter(
+        _.orientation == Orientation.FaceDown).map(relic =>
+        presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
+          hidden = false)))
 }

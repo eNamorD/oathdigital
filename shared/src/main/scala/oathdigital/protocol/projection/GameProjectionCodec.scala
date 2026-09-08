@@ -18,7 +18,8 @@ object GameProjectionCodec {
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
-    "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting")
+    "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting",
+    "walkerDecision")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -105,7 +106,8 @@ object GameProjectionCodec {
     "relicDeckCount" -> value.relicDeckCount,
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
     "restPower" -> option(value.restPower)(encodeRestPower),
-    "restPowerWaiting" -> value.restPowerWaiting)
+    "restPowerWaiting" -> value.restPowerWaiting,
+    "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -170,11 +172,13 @@ object GameProjectionCodec {
     preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
     restPower <- optionalAbsent(value, "restPower", path)(decodeRestPower)
     restWaiting <- boolOr(value, "restPowerWaiting", path, false)
+    walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, recover, forge, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
-    negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting)
+    negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
+    walkerDecision)
 
   private def encodeRestPower(value: RestPowerProjection): ujson.Value = {
     value.payload match {

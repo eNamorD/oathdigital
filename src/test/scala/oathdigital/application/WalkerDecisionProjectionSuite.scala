@@ -8,20 +8,25 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.protocol.projection.WalkerDecisionProjection
 
-/** Task 7 (Recover slice, controller ruling (b)): the walker path never
-  * populates the legacy `PendingProcedure.Recover` projections, so a parked
-  * walker decision needs its own server-side projection surface. Pinned
-  * here at the application-projector level (no frontend wiring in this
-  * slice): [[WalkerDecisionProjector]] plus the `phase`/`legalControls`
-  * effects on [[PendingProcedureProjector]]/[[LegalActionProjector]], all of
-  * which flow through the real [[GameProjector]] wire-level `phase` and
-  * `legalControls` string fields for free (both are plain strings, so no
-  * codec change is needed to observe them end to end).
+/** Task 7 (Recover slice, controller ruling (b)) established the
+  * application-projector surface: [[WalkerDecisionProjector]] plus the
+  * `phase`/`legalControls` effects on
+  * [[PendingProcedureProjector]]/[[LegalActionProjector]]. Task 7a promotes
+  * [[WalkerDecisionProjection]] itself onto the wire -- it is now the same
+  * type `GameProjection.walkerDecision` carries (`shared/.../
+  * ActionProjectionDtos.scala`) -- and adds `relicCandidates`, the missing
+  * piece: the walker path had no way to tell a client which relics the
+  * actor may take at the `"recover.relic"` park. Every test below still
+  * asserts the owner-private application-layer projection directly, and
+  * the roll/relic tests additionally assert the real wire-facing
+  * [[GameProjector]] output, so a codec regression on the new field would
+  * fail here.
   */
 class WalkerDecisionProjectionSuite extends munit.FunSuite {
   private def presentation = new GamePresentationProjector(catalog)
-  private def walkerDecisions = new WalkerDecisionProjector(catalog)
+  private def walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
   private def setupRules = new FirstGameSetupRules(catalog)
 
   private final class FixedRecoverDice(faces: Vector[DefenseDieFace])
@@ -106,11 +111,15 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(ownerProjection.legalControls, Vector("rollWalker"))
     assert(!ownerProjection.actionSelectionOpen)
     assertEquals(ownerProjection.actionFamilies, Vector.empty)
+    assertEquals(ownerProjection.walkerDecision, Some(WalkerDecisionProjection(
+      ActionRef.Recover.key, RecoverProcedure.rollDecisionId, "roll",
+      pool = Some(RecoverProcedure.recoverPool.value), count = Some(2))))
     val otherProjection = projector.project("walker-projection-roll", loaded, other)
     assertEquals(otherProjection.phase, "recover-walker-waiting")
     assertEquals(otherProjection.legalControls, Vector.empty)
     assert(!otherProjection.actionSelectionOpen)
     assertEquals(otherProjection.actionFamilies, Vector.empty)
+    assertEquals(otherProjection.walkerDecision, None)
   }
 
   test("a failed roll parks the continue/stop Decide with its own decision " +
@@ -137,10 +146,22 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
     assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
     assertEquals(legal.project(viewer).controls, Vector.empty)
+
+    // End to end: the wire projection carries the choice decisionId (not
+    // the roll's, and not the relic's -- all three are distinguishable by
+    // `decisionId` alone), with no relic candidates riding a non-relic park.
+    val loaded = service.load("walker-projection-choice").toOption.flatten.get
+    val projector = new GameProjector(catalog)
+    val ownerWire = projector.project("walker-projection-choice", loaded, actor)
+    assertEquals(ownerWire.walkerDecision, Some(WalkerDecisionProjection(
+      ActionRef.Recover.key, RecoverProcedure.choiceDecisionId, "decide")))
+    assertEquals(projector.project("walker-projection-choice", loaded, other)
+      .walkerDecision, None)
   }
 
-  test("a successful roll parks the relic Decide without leaking the " +
-      "tree's placeholder relic marker") {
+  test("a successful roll parks the relic Decide, lists the site's " +
+      "facedown relics for the actor only, and never leaks the tree's " +
+      "placeholder relic marker") {
     val (service, actor, started) = startedAtRoll("walker-projection-relic",
       new FixedRecoverDice(Vector(DefenseDieFace.TwoShields,
         DefenseDieFace.Doubler)), maxDifficulty = 4)
@@ -151,8 +172,24 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
 
-    assertEquals(walkerDecisions.project(owner), Some(WalkerDecisionProjection(
-      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide")))
+    val siteId = ready.game.current.players.find(_.player == actor).get.pawnSite.get
+    val facedownRelics = ready.game.current.map.sites(siteId).relics
+      .filter(_.orientation == Orientation.FaceDown)
+    assert(facedownRelics.nonEmpty,
+      "fixture must have a facedown relic at the Recover site to exercise this park")
+    val expectedCandidates = facedownRelics.map(r =>
+      presentation.cardDetails(r.id, Some(Orientation.FaceDown), hidden = false))
+
+    val ownerDecision = walkerDecisions.project(owner)
+    assertEquals(ownerDecision, Some(WalkerDecisionProjection(
+      ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide",
+      relicCandidates = expectedCandidates)))
+    // The marker relic the tree's `Decide.payload` closes over is never the
+    // thing surfaced: assert on the actual site relics, not a hardcoded
+    // single id, so this would fail if the projector ever fell back to
+    // echoing the payload instead of re-reading live site state.
+    assert(ownerDecision.exists(_.relicCandidates.map(_.cardId).toSet ==
+      facedownRelics.map(_.id.value).toSet))
 
     val viewer = ScopedProjectionContext(ready, Some(other))
     assertEquals(walkerDecisions.project(viewer), None)
@@ -164,6 +201,30 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val legal = new LegalActionProjector(catalog, presentation, walkerDecisions)
     assertEquals(legal.project(owner).controls, Vector("resolveWalkerDecision"))
     assertEquals(legal.project(viewer).controls, Vector.empty)
+
+    // End to end through the real wire-facing projector and its codec: the
+    // actor sees the candidates, every other viewer sees no walkerDecision
+    // at all (not a redacted copy with an empty list).
+    val loaded = service.load("walker-projection-relic").toOption.flatten.get
+    val projector = new GameProjector(catalog)
+    val ownerWire = projector.project("walker-projection-relic", loaded, actor)
+    assertEquals(ownerWire.walkerDecision, ownerDecision)
+    val otherWire = projector.project("walker-projection-relic", loaded, other)
+    assertEquals(otherWire.walkerDecision, None)
+    import oathdigital.protocol.projection.GameProjectionCodec
+    val roundTripped = GameProjectionCodec.decode(
+      GameProjectionCodec.encode(ownerWire)).toOption.get
+    assertEquals(roundTripped.walkerDecision, ownerDecision)
+
+    // Every candidate the projection offers is one the engine actually
+    // accepts at resolve time -- guards against the candidate set silently
+    // diverging from `RecoverProcedure`'s own `validateRelic`.
+    val chosen = RelicId(expectedCandidates.head.cardId)
+    val resolved = service.handle("walker-projection-relic", rolled.nextSequence,
+      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
+        DecisionPayload.RecoverRelicPayload(chosen))))
+    assert(resolved.isRight, s"expected a projected candidate relic to be " +
+      s"accepted by the engine, got $resolved")
   }
 
   // ---------------------------------------------------------------------
@@ -190,7 +251,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     // Wired with the same catalog the walker used: the fold matches, and the
     // projector reports the very roll the walker parked at (shifted one
     // index deeper than the bare tree by Catacombs' inserted node).
-    val wired = new WalkerDecisionProjector(catalog,
+    val wired = new WalkerDecisionProjector(catalog, presentation,
       WalkerPowerCatalog.default(catalog))
     assertEquals(wired.project(context), Some(WalkerDecisionProjection(
       ActionRef.Recover.key, RecoverProcedure.rollDecisionId, "roll",
@@ -199,7 +260,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     // The pre-Task-5 hardcoded `WalkerPowers.empty` folds the bare tree --
     // one node short of what the walker actually folded -- and can no
     // longer resolve the recorded park path at all.
-    val unwired = new WalkerDecisionProjector(catalog, WalkerPowers.empty)
+    val unwired = new WalkerDecisionProjector(catalog, presentation, WalkerPowers.empty)
     assertEquals(unwired.project(context), None)
   }
 }

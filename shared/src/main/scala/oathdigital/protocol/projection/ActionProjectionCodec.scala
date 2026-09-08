@@ -167,6 +167,21 @@ private[projection] object ActionProjectionCodec {
     toBoard <- int(value, "maxSiteToBoard", path)
   } yield MinorActionsProjection(advisers, peek, relics, site, toSite, toBoard)
 
+  def encodeWalkerDecision(value: WalkerDecisionProjection): ujson.Value = ujson.Obj(
+    "action" -> value.action, "decisionId" -> value.decisionId, "kind" -> value.kind,
+    "pool" -> stringOption(value.pool), "count" -> intOption(value.count),
+    "relicCandidates" -> encoded(value.relicCandidates)(encodeCard))
+  def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("action", "decisionId", "kind", "pool", "count",
+      "relicCandidates"), path)
+    action <- string(value, "action", path); decision <- string(value, "decisionId", path)
+    kind <- string(value, "kind", path); pool <- optionalString(value, "pool", path)
+    count <- optionalInt(value, "count", path)
+    relicRaws <- array(value, "relicCandidates", path)
+    relics <- traverse(relicRaws, s"$path.relicCandidates")(decodeCard)
+  } yield WalkerDecisionProjection(action, decision, kind, pool, count, relics)
+
   def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
     "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,
     "siteId" -> value.siteId,
