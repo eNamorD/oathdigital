@@ -63,7 +63,7 @@ Build the frontend and run the loopback server:
 
 ```sh
 ./sbtw frontend/fastLinkJS
-./sbtw 'runMain oathdigital.server.OathServer var/oathdigital docs/catalog/new-foundations-component-catalog.json'
+./sbtw 'runMain oathdigital.server.OathServer --database-path var/oathdigital --catalog-path docs/catalog/new-foundations-component-catalog.json'
 ```
 
 Open `http://127.0.0.1:8080/?mode=server`. Check
@@ -71,3 +71,19 @@ Open `http://127.0.0.1:8080/?mode=server`. Check
 `var/oathdigital*` to preserve local games. The development transport includes
 player-view controls and a privileged raw event log; it is loopback-only and is
 not an authentication boundary.
+
+## Packaged server
+
+Build versioned Universal ZIP and TGZ distributions with:
+
+```sh
+./sbtw Universal/packageBin Universal/packageZipTarball
+```
+
+Archives are written under `target/universal/`, require Java 21, and need
+neither sbt nor Node at runtime. Build the local non-root Java 21 OCI image
+with `./sbtw Docker/publishLocal`. Packaged launchers default to
+`trusted-alpha` mode and their bundled catalog while preserving command-line,
+environment, then default precedence. See
+[runtime configuration](docs/operations/configuration.md) for every option and
+archive/container examples.
