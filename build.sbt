@@ -1,5 +1,3 @@
-import com.typesafe.sbt.packager.docker.ExecCmd
-
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "dev.oathdigital"
 ThisBuild / version := "0.1.0-SNAPSHOT"
@@ -82,22 +80,13 @@ lazy val root = (project in file("."))
     Docker / daemonUserUid := Some("10001"),
     Docker / dockerBaseImage := "eclipse-temurin:21-jre",
     dockerBaseImage := (Docker / dockerBaseImage).value,
-    Docker / dockerCommands := {
-      val commands = (Docker / dockerCommands).value
-      val finalUserIndex = commands.lastIndexWhere(
-        _.makeContent.trim == "USER 10001:0"
-      )
-      if (finalUserIndex < 0)
-        sys.error("Docker commands are missing final USER 10001:0")
-      commands.patch(
-        finalUserIndex,
-        Seq(
-          ExecCmd("RUN", "mkdir", "-p", "/var/lib/oathdigital"),
-          ExecCmd("RUN", "chown", "10001:0", "/var/lib/oathdigital")
-        ),
-        0
-      )
-    },
+    Docker / dockerEnvVars := Map(
+      "OATH_HOST" -> "0.0.0.0",
+      "OATH_DATABASE_PATH" -> "/var/lib/oathdigital/database"
+    ),
+    dockerEnvVars := (Docker / dockerEnvVars).value,
+    Docker / dockerExposedVolumes := Seq("/var/lib/oathdigital"),
+    dockerExposedVolumes := (Docker / dockerExposedVolumes).value,
     verifyPackageMappings := {
       val packageMappings = (Universal / mappings).value
       val destinations = packageMappings.map(_._2)
@@ -127,22 +116,54 @@ lazy val root = (project in file("."))
         ).flatten
       val dockerCommandLines = (Docker / dockerCommands).value
         .map(_.makeContent.trim)
+      val dataDirectory = "/var/lib/oathdigital"
       val createDataDirectory =
         """RUN ["mkdir", "-p", "/var/lib/oathdigital"]"""
       val ownDataDirectory =
-        """RUN ["chown", "10001:0", "/var/lib/oathdigital"]"""
+        """RUN ["chown", "-R", "oathdigital:root", "/var/lib/oathdigital"]"""
+      val declareDataVolume = """VOLUME ["/var/lib/oathdigital"]"""
       val finalUser = "USER 10001:0"
       val createIndex = dockerCommandLines.indexOf(createDataDirectory)
       val ownIndex = dockerCommandLines.indexOf(ownDataDirectory)
+      val volumeIndex = dockerCommandLines.indexOf(declareDataVolume)
       val finalUserIndex = dockerCommandLines.lastIndexOf(finalUser)
-      val dockerFailures =
+      val orderingFailures =
         if (createIndex >= 0 && ownIndex > createIndex &&
-            finalUserIndex > ownIndex)
+            volumeIndex > ownIndex && finalUserIndex > volumeIndex)
           Seq.empty
         else Seq(
-          "Docker image must create and own /var/lib/oathdigital " +
-            "before switching to USER 10001:0"
+          "Docker image must create, own, and declare a volume for " +
+            "/var/lib/oathdigital before switching to USER 10001:0"
         )
+      // The prepared data directory is useless unless the image also points
+      // the server at it, so pin both halves: the configured database path
+      // must live under the directory the image creates, and the generated
+      // Dockerfile must actually carry that ENV declaration.
+      val configuredDatabasePath = (Docker / dockerEnvVars).value
+        .getOrElse("OATH_DATABASE_PATH", "")
+      val environmentLines = dockerCommandLines
+        .filter(_.startsWith("ENV"))
+        .map(_.replace("\"", ""))
+      val databasePathFailures =
+        if (!configuredDatabasePath.startsWith(dataDirectory + "/"))
+          Seq(
+            s"Docker OATH_DATABASE_PATH '$configuredDatabasePath' must live " +
+              s"under the prepared data directory $dataDirectory"
+          )
+        else if (!environmentLines.exists(
+              _.contains(s"OATH_DATABASE_PATH=$configuredDatabasePath")
+            ))
+          Seq(
+            "Docker image must declare ENV " +
+              s"OATH_DATABASE_PATH=$configuredDatabasePath"
+          )
+        else Seq.empty
+      val hostFailures =
+        if (environmentLines.exists(_.contains("OATH_HOST=0.0.0.0")))
+          Seq.empty
+        else Seq("Docker image must declare ENV OATH_HOST=0.0.0.0")
+      val dockerFailures =
+        orderingFailures ++ databasePathFailures ++ hostFailures
       val failures = missingFiles.map(path => s"missing $path") ++
         missingJars ++ dockerFailures
       if (failures.nonEmpty)
