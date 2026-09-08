@@ -33,8 +33,10 @@ scripts/smoke-packaged-distribution.sh target/universal/stage 18080
 The script copies only the staged package contents into a directory created by
 `mktemp -d`, launches that copy in `trusted-alpha` mode, and stores its HSQLDB
 files beside the copy. After HTTP checks, it sends `TERM`, allows at most 15
-seconds for shutdown, verifies the process termination status and database
-files, and removes only its exact temporary directory.
+seconds for shutdown, accepts the JVM's normal `0` or `143` termination
+status, verifies database files and an explicit database-close log entry, and
+removes only its exact temporary directory. HTTP requests use bounded connect
+and total timeouts; readiness requests share the 30-second readiness budget.
 
 The packaged launcher does not require sbt or Node after staging. `JAVA_HOME`
 may be set explicitly when Java is not discoverable through `PATH`.
@@ -58,7 +60,9 @@ named container and one uniquely named volume, publishes only
 `127.0.0.1:18081:8080`, waits up to 30 seconds for readiness, checks the index
 and asset, and restarts the same container with the same volume. It rechecks
 readiness, stops the container with a 15-second timeout, and removes only those
-two named resources through its cleanup trap.
+two named resources through its cleanup trap. It accepts the JVM's normal `0`
+or `143` termination status only when the container logs explicit database-close
+evidence. HTTP requests use bounded connect and total timeouts.
 
 ## Build all Universal alpha archives
 

@@ -8,6 +8,8 @@ temporary_directory=
 child_pid=
 log_file=
 smoke_succeeded=0
+curl_connect_timeout=2
+curl_request_timeout=10
 
 if [ -z "$stage_directory" ] || [ ! -d "$stage_directory" ]; then
   echo "packaged stage directory not found: $stage_directory" >&2
@@ -91,23 +93,43 @@ env \
 child_pid=$!
 
 readiness_deadline=$(($(date +%s) + 30))
-while ! curl --fail --silent --show-error \
-    "$base_url/health/ready" >/dev/null 2>&1; do
+while :; do
+  readiness_remaining=$(($readiness_deadline - $(date +%s)))
+  if [ "$readiness_remaining" -le 0 ]; then
+    fail "readiness timed out after 30 seconds"
+  fi
+  readiness_connect_timeout=$curl_connect_timeout
+  if [ "$readiness_remaining" -lt "$readiness_connect_timeout" ]; then
+    readiness_connect_timeout=$readiness_remaining
+  fi
+  if curl --fail --silent --show-error \
+      --connect-timeout "$readiness_connect_timeout" \
+      --max-time "$readiness_remaining" \
+      "$base_url/health/ready" >/dev/null 2>&1; then
+    break
+  fi
   if ! child_is_running; then
     fail "server exited before readiness"
   fi
   if [ "$(date +%s)" -ge "$readiness_deadline" ]; then
     fail "readiness timed out after 30 seconds"
   fi
-  sleep 1
+  if [ "$readiness_remaining" -gt 1 ]; then
+    sleep 1
+  fi
 done
 
-curl --fail --silent --show-error "$base_url/" >"$index_file" ||
+curl --fail --silent --show-error \
+  --connect-timeout "$curl_connect_timeout" \
+  --max-time "$curl_request_timeout" \
+  "$base_url/" >"$index_file" ||
   fail "index request failed"
 grep -F '/assets/main.js' "$index_file" >/dev/null ||
   fail "index does not reference /assets/main.js"
 
 asset_status=$(curl --fail --silent --show-error --output /dev/null \
+  --connect-timeout "$curl_connect_timeout" \
+  --max-time "$curl_request_timeout" \
   --write-out '%{http_code}' "$base_url/assets/main.js") ||
   fail "asset request failed"
 [ "$asset_status" = 200 ] ||
@@ -137,6 +159,8 @@ esac
   fail "HSQLDB properties file was not created"
 [ -f "$database_path.script" ] ||
   fail "HSQLDB script file was not created"
+grep -F 'Oath Digital database closed' "$log_file" >/dev/null ||
+  fail "server did not log database close evidence"
 
 smoke_succeeded=1
 echo "packaged distribution smoke passed: readiness, index, asset, persistence, shutdown"

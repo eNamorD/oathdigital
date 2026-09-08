@@ -9,6 +9,8 @@ volume_name=
 container_created=0
 volume_created=0
 smoke_succeeded=0
+curl_connect_timeout=2
+curl_request_timeout=10
 
 if [ -z "$image" ]; then
   echo "packaged container image is required" >&2
@@ -94,8 +96,21 @@ base_url=http://127.0.0.1:$port
 
 wait_for_readiness() {
   readiness_deadline=$(($(date +%s) + 30))
-  while ! curl --fail --silent --show-error \
-      "$base_url/health/ready" >/dev/null 2>&1; do
+  while :; do
+    readiness_remaining=$(($readiness_deadline - $(date +%s)))
+    if [ "$readiness_remaining" -le 0 ]; then
+      fail "readiness timed out after 30 seconds"
+    fi
+    readiness_connect_timeout=$curl_connect_timeout
+    if [ "$readiness_remaining" -lt "$readiness_connect_timeout" ]; then
+      readiness_connect_timeout=$readiness_remaining
+    fi
+    if curl --fail --silent --show-error \
+        --connect-timeout "$readiness_connect_timeout" \
+        --max-time "$readiness_remaining" \
+        "$base_url/health/ready" >/dev/null 2>&1; then
+      break
+    fi
     container_running=$(docker inspect --format '{{.State.Running}}' \
       "$container_name" 2>/dev/null || true)
     [ "$container_running" = true ] ||
@@ -103,17 +118,24 @@ wait_for_readiness() {
     if [ "$(date +%s)" -ge "$readiness_deadline" ]; then
       fail "readiness timed out after 30 seconds"
     fi
-    sleep 1
+    if [ "$readiness_remaining" -gt 1 ]; then
+      sleep 1
+    fi
   done
 }
 
 check_frontend() {
-  index_body=$(curl --fail --silent --show-error "$base_url/") ||
+  index_body=$(curl --fail --silent --show-error \
+    --connect-timeout "$curl_connect_timeout" \
+    --max-time "$curl_request_timeout" \
+    "$base_url/") ||
     fail "index request failed"
   printf '%s' "$index_body" | grep -F '/assets/main.js' >/dev/null ||
     fail "index does not reference /assets/main.js"
 
   asset_status=$(curl --fail --silent --show-error --output /dev/null \
+    --connect-timeout "$curl_connect_timeout" \
+    --max-time "$curl_request_timeout" \
     --write-out '%{http_code}' "$base_url/assets/main.js") ||
     fail "asset request failed"
   [ "$asset_status" = 200 ] ||
@@ -132,6 +154,9 @@ case "$container_exit" in
   0|143) ;;
   *) fail "container exited with unexpected status $container_exit after stop" ;;
 esac
+docker logs "$container_name" 2>&1 | \
+  grep -F 'Oath Digital database closed' >/dev/null ||
+  fail "container did not log database close evidence"
 
 smoke_succeeded=1
 echo "packaged container smoke passed: readiness, index, asset, restart, shutdown"

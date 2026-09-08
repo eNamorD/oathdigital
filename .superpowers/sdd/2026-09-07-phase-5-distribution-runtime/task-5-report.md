@@ -89,3 +89,42 @@ asset, HSQLDB persistence, and shutdown behavior from copied staged contents.
 - Host lacks Java 21. Universal smoke used the repository's provisioned Java
   17 runtime only to verify the staged process path. Run the documented smoke
   command with an installed Java 21 runtime before release acceptance.
+
+## Round 1 review fixes
+
+Review found that HTTP requests had no hard transport deadlines and that a
+normal JVM `143` termination status did not prove database shutdown completed.
+The following changes address both findings:
+
+- Every readiness, index, and asset `curl` call now supplies
+  `--connect-timeout 2` and `--max-time`. Ordinary index and asset requests
+  have a 10-second total bound. Readiness requests use the remaining time from
+  the 30-second readiness budget for their total bound, so one hanging request
+  cannot extend that budget.
+- `OathServer` logs `Oath Digital database closed` only after `runtime.close()`
+  returns during coordinated shutdown.
+- Both smoke scripts retain the accepted normal JVM shutdown statuses (`0` and
+  `143`) but now assert that the database-close log marker exists after their
+  bounded shutdown. The Universal script also retains HSQLDB file assertions;
+  the container script retains same-volume restart checks.
+- Operations documentation now describes HTTP timeout bounds, accepted JVM
+  signal status, and required database-close evidence.
+
+### Round 1 RED and GREEN evidence
+
+Before the fix, static checks confirmed both required mechanisms were absent:
+
+```text
+RED: HTTP timeout flags absent
+RED: database close evidence absent
+```
+
+After the fix:
+
+| Command | Result |
+| --- | --- |
+| `sh -n scripts/smoke-packaged-distribution.sh && sh -n scripts/smoke-packaged-container.sh` | Passed. |
+| Static `rg` checks for every `--connect-timeout`, `--max-time`, close-evidence assertion, and `Oath Digital database closed` runtime marker | Passed. |
+| `./sbtw verifyPackageMappings Universal/stage Universal/packageBin Universal/packageZipTarball Docker/stage` | Passed. Docker staging emitted expected no-Docker warning. Existing unrelated Scaladoc warnings remained. |
+| `JAVA_HOME="$PWD/.tooling/jdk-17.0.19+10/Contents/Home" scripts/smoke-packaged-distribution.sh target/universal/stage 18080` | Passed; this includes the new captured-log close-evidence assertion. |
+| `git diff --check` | Passed. |

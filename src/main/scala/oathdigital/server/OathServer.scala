@@ -59,6 +59,7 @@ object OathServer {
         ) { () =>
           Future {
             runtime.close()
+            system.log.info("Oath Digital database closed")
             Done
           }(blockingExecutionContext)
         }
