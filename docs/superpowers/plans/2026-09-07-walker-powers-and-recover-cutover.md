@@ -262,7 +262,27 @@ This is the debt the Recover slice's own status note flags as blocking reuse; it
 
 ---
 
-### Task 9: Delete the legacy Recover path
+### Task 9a: Offer walker contributions in the modifier preview
+
+**Split out of Task 9 after the controller traced the preview path.** Before a player starts Recover, the client asks the server which modifiers are available (`GameApplicationService.preview`), and that resolves options through `PowerRuntime.options(catalog, ready, actor, action)` — the **legacy** `Power`/`PowerHandler` machinery. Catacombs is offerable today only because its legacy object still exists. Task 9b deletes that object, so unless the preview learns to offer `ContributingPower`s first, deleting the legacy path makes the ported Catacombs unreachable: Recover would still start, but never with its power.
+
+Note the coupling in `MajorActionPreviewCodec.encodeRequest` is separate and cosmetic — it names `GameIntent.BeginRecover` only to borrow `ActorlessCommandCodec`'s envelope encoder for `orderedModifiers`; the real action rides a `String` field. That line needs a different vehicle once the intent is deleted, but it carries no Recover semantics.
+
+**Files:**
+- Modify: `src/main/scala/oathdigital/application/GameApplicationService.scala` (`preview`)
+- Modify: whatever resolves preview options for a walker action
+- Test: the preview coverage in `GameApplicationServiceSuite`, plus a walker-specific case
+
+**Interfaces:**
+- Produces: for an action on the walker, the preview offers the applicable `ContributingPower`s whose `resolution` is player-selected, in the same `PreviewModifier` shape the client already renders — so `ModifierWorkflow` needs no change.
+- The ids the preview offers must be exactly the ids `OathRules.validateModifiers` will accept on the subsequent `StartWalker`; a modifier that previews but is then rejected is a defect.
+- Legacy actions keep resolving through `PowerRuntime` unchanged.
+
+- [ ] **Step 1: failing test**: previewing Recover for an actor on a Catacombs site offers the Catacombs contribution, and starting with the offered id succeeds; previewing a legacy action is unchanged.
+- [ ] **Step 2-4: TDD implement; gate** root suite plus the frontend gate.
+- [ ] **Step 5: commit** `feat(powers): offer walker contributions in the modifier preview`.
+
+### Task 9b: Delete the legacy Recover path
 
 **Files:**
 - Delete: `src/main/scala/oathdigital/gameplay/actions/Recover.scala`, `src/main/scala/oathdigital/gameplay/powers/recover/RecoverPowerIntegration.scala`, `src/test/scala/oathdigital/gameplay/RecoverSuite.scala`
