@@ -527,7 +527,7 @@ git commit -m "test(packaging): smoke-test alpha artifacts"
 - Consumes: all prior tasks.
 - Produces: reviewed Phase 5 distribution/runtime foundation and explicit next-plan boundary.
 
-- [ ] **Step 1: Run full automated verification**
+- [x] **Step 1: Run full automated verification**
 
 ```sh
 ./sbtw test
@@ -541,19 +541,19 @@ git diff --check
 
 Expected: 0 failures. Record exact test counts and any pre-existing warnings in this plan's execution notes.
 
-- [ ] **Step 2: Repeat packaged smoke gates from clean outputs**
+- [x] **Step 2: Repeat packaged smoke gates from clean outputs**
 
 Delete only generated `target/universal` and Docker smoke resources through their build/script cleanup mechanisms, rebuild, then run Task 5 smoke commands. Never use broad recursive deletion against repository or home paths.
 
-- [ ] **Step 3: Update roadmap narrowly**
+- [x] **Step 3: Update roadmap narrowly**
 
 Under project Phase 5, record distribution/runtime foundation as complete only if Universal and available OCI smoke tests pass. Leave trusted seat access, multi-machine acceptance, backup/restore, and release publication unchecked. Link this plan and design spec.
 
-- [ ] **Step 4: Mark plan execution evidence**
+- [x] **Step 4: Mark plan execution evidence**
 
 Append an `## Execution evidence` section containing commit IDs, test counts, artifact names, smoke commands, host architecture, and any unrun environment-dependent gate. Do not claim OCI multi-architecture completion from a single-architecture local build.
 
-- [ ] **Step 5: Commit verification record**
+- [x] **Step 5: Commit verification record**
 
 ```sh
 git add docs/ROADMAP.md docs/superpowers/plans/2026-09-07-phase-5-distribution-runtime.md
@@ -568,3 +568,88 @@ After this plan passes review, write and execute these separate plans against th
 2. `phase-5-release-operations`: backup/restore and upgrade policy, GitHub prerelease automation, multi-architecture OCI publication, LAN multi-browser acceptance, reverse-proxy/TLS exercise, host/player quick-start.
 
 Each plan must merge/rebase the latest Phase 3 work before integration and rerun the complete verification gate. Neither may modify gameplay procedures, power handlers, walker logic, or Phase 4 action history.
+
+## Execution evidence
+
+Task 6 was verified on 2026-09-07 in the linked worktree
+`phase-5-alpha-readiness`, on branch `feat/phase-5-alpha-readiness`.
+
+### Commit record
+
+- `2b8df4b` — distribution foundation implementation plan.
+- `808fd4b` — alpha-readiness design.
+- `c8a4312`, `08855f2`, `d0ec623`, and `48d8239` — typed runtime
+  configuration and startup validation.
+- `7c7a09d` — liveness, readiness, and server lifecycle.
+- `48f8239` — packaged optimized frontend.
+- `f6cc8e6` and `b3c984e` — Universal and OCI packaging.
+- `78965b2` and `5aaea50` — packaged smoke tests and bounded shutdown proof.
+
+### Automated verification
+
+- `./sbtw test`: 530 tests passed, 0 failed, 0 errors.
+- `PATH=/Applications/ChatGPT.app/Contents/Resources/cua_node/bin:/usr/bin:/bin:/usr/sbin:/sbin ./sbtw frontend/test frontend/fullLinkJS`:
+  114 tests passed, 0 failed, 0 errors; full frontend linking completed.
+- `frontend/fullOptJS`: optimized frontend linking completed successfully, as
+  required by this plan.
+- `python3 scripts/check-architecture.py`: passed.
+- `python3 scripts/check-markdown-links.py`: passed for 39 Markdown files.
+- `python3 scripts/validate-component-catalog.py`: passed for 255 denizens, 48
+  relics, 30 edifices, 36 legacies, and 24 sites.
+- `python3 reference/catalog-ingestion/build_runtime_catalog.py`: rebuilt the
+  same 255 denizens, 48 relics, 30 edifices, 36 legacies, and 24 sites without
+  a source diff.
+- `git diff --check`: passed.
+
+The JVM test run retained existing SLF4J initialization-replay warnings and
+HikariCP notices that HSQLDB does not support connection network-timeout
+accessors. Neither warning produced a test failure. The task brief referred to
+`scripts/check-doc-links.py` and
+`reference/catalog/new-foundations/snapshot.py --check`; those paths do not
+exist on this branch. The canonical plan commands above are the current
+repository equivalents and passed.
+
+### Packaged artifact verification
+
+The previous `target/universal` output was removed by its exact resolved path.
+No Docker smoke container or volume existed to clean. This rebuild passed:
+
+```sh
+./sbtw verifyPackageMappings Universal/stage Universal/packageBin \
+  Universal/packageZipTarball Docker/stage
+```
+
+It produced:
+
+- `target/universal/oathdigital-0.1.0-SNAPSHOT.zip` — 36,474,567 bytes,
+  SHA-256 `8110ad6e9b30636ce9f2030ccb26f85c1253570a83dcf2e98741a28826848fba`.
+- `target/universal/oathdigital-0.1.0-SNAPSHOT.tgz` — 36,481,015 bytes,
+  SHA-256 `fd7745c0e110b6c713f72345bef68655bbc0c2db5fc50f42c84ce735adfdaee6`.
+
+The Universal process gate ran from copied staged contents with Temurin
+21.0.12.1+1:
+
+```sh
+scripts/smoke-packaged-distribution.sh target/universal/stage 18080
+```
+
+Readiness, index, optimized asset, HSQLDB persistence files, a bounded 15-second
+TERM shutdown, accepted exit status, and the database-close log marker all
+passed. Exit status 143 is accepted only when the bounded stop and database
+close checks also pass.
+
+Host: macOS 26.6.2 (Darwin 25.6.0), Apple Silicon `arm64`. `Docker/stage`
+passed, including non-root-user and package-mapping validation. Docker CLI and
+daemon were unavailable, so `Docker/publishLocal` and
+`scripts/smoke-packaged-container.sh oathdigital:0.1.0-SNAPSHOT 18081` were not
+run. Therefore this verification does not claim a runnable local OCI image,
+container restart persistence, or multi-architecture OCI publication.
+
+### Follow-up boundary
+
+Trusted host/invited-seat access, LAN multi-browser acceptance, backup/restore
+and upgrade policy, GitHub prerelease automation, multi-architecture OCI
+publication, reverse-proxy/TLS exercise, and host/player quick-start remain
+unchecked. They belong only to the two follow-up plans named above. Neither
+follow-up may change gameplay procedures, power handlers, walker logic, or
+Phase 4 action history.

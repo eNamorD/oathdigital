@@ -130,22 +130,28 @@ leaked. Keep the raw loopback development event log separate.
 
 ### Phase 5 - All-Exile alpha readiness
 
-1. Produce a versioned server distribution with the optimized frontend bundled,
-   a documented launcher, and no local sbt/Node requirement.
-2. Support configurable bind address, port, public base URL, persistent database
-   path, and clean database initialization/migration.
-3. Replace development identity assumptions with a minimal safe alpha access
-   flow for hosts and invited seats; do not expose the loopback development shim
-   on a network.
-4. Verify two or more browsers on separate machines can create/join, reconnect,
-   reload persisted games, and complete representative multi-player turns over
-   a LAN. Document firewall and reverse-proxy/TLS requirements for Internet
-   hosting.
-5. Add health/startup diagnostics, actionable logs, graceful shutdown, backup
-   and restore guidance, browser-support expectations, and a clear alpha data
-   reset/upgrade policy.
-6. Publish a short host/player quick-start and run a packaged-build smoke test
-   from a clean environment before each alpha build.
+1. [x] Complete the distribution and runtime foundation: versioned Universal
+   ZIP/TGZ archives, an OCI build definition, the optimized frontend, typed
+   runtime configuration, health/startup diagnostics, and bounded graceful
+   shutdown. A clean-output Universal package smoke test covers readiness,
+   frontend assets, persistence, database close, and shutdown without sbt or
+   Node. The OCI process smoke remains an environment-dependent release gate;
+   it was not run on the verification host because Docker was unavailable. See
+   the [implementation plan](superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
+   and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
+2. [ ] Replace development identity assumptions with a minimal safe alpha
+   access flow for hosts and invited seats; do not expose the loopback
+   development shim on a network.
+3. [ ] Verify two or more browsers on separate machines can create/join,
+   reconnect, reload persisted games, and complete representative multi-player
+   turns over a LAN.
+4. [ ] Add backup and restore guidance plus a clear alpha data reset and upgrade
+   policy.
+5. [ ] Complete release operations: publish multi-architecture Linux OCI images
+   for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
+   browser support and firewall/reverse-proxy/TLS requirements, and publish a
+   short host/player quick-start. Rerun the complete verification and packaged
+   smoke gates before each alpha build.
 
 ### Phase 6 - Empire and campaign continuity
 
