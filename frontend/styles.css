@@ -308,3 +308,100 @@ h2 { margin-top: 0; font-size: 1rem; color: #d2a85e; }
 .peeked-relic-reveal:active { opacity: 1; }
 .peeked-relic:hover .peeked-relic-back,
 .peeked-relic:focus-within .peeked-relic-back { opacity: 0; }
+
+/* Arcs-inspired persistent table. Existing content styles stay in styles.css. */
+html, body { width: 100%; height: 100%; overflow: hidden; overscroll-behavior: none; }
+#app { width: 100%; height: 100vh; height: 100dvh; max-width: none; margin: 0; padding: 0; }
+.game-table { width: 100%; height: 100%; display: grid; gap: 4px; padding: 4px;
+  background: #0f0e0c; grid-template-columns: minmax(0, 2.4fr) minmax(300px, 1fr);
+  grid-template-rows: minmax(140px, 23%) minmax(88px, 16%) minmax(0, 1fr);
+  grid-template-areas: "players players" "world log" "world actions"; }
+.game-pane { min-width: 0; min-height: 0; display: flex; flex-direction: column;
+  background: #211f1b; border: 1px solid #40382b; overflow: hidden; }
+.pane-players { grid-area: players; }.pane-world { grid-area: world; }
+.pane-actions { grid-area: actions; }.pane-log { grid-area: log; }
+.pane-header { display: flex; align-items: center; justify-content: space-between;
+  flex: 0 0 auto; gap: 8px; min-height: 39px; padding: 4px 10px;
+  border-bottom: 1px solid #443c30; background: #26231d; }
+.pane-heading { margin: 0; color: #d5bd8f; font-size: .8rem; font-weight: 750;
+  letter-spacing: .06em; text-transform: uppercase; }
+.pane-content { flex: 1 1 auto; min-width: 0; min-height: 0; padding: 12px;
+  overflow: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  scrollbar-color: #8c7959 #211f1b; }
+.game-table .panel { border: 0; border-radius: 0; background: transparent;
+  margin: 0; padding: 0; }
+.game-table .world > h2, .game-table .wake-actions > h2 { display: none; }
+.game-table .status { margin: 0 0 12px; padding: 10px; font-size: .9rem; }
+.game-table .status.error { border-color: #e27f79; }
+.game-table .player-boards { display: flex; align-items: flex-start; gap: 6px;
+  min-height: 100%; }
+.pane-players > .pane-content { padding: 6px; }
+.game-table .player-board { flex: 1 0 225px; min-width: 225px; margin: 0;
+  padding: 10px 12px; border: 0; border-right: 1px solid #4a4032;
+  border-radius: 0; font-size: .82rem; }
+.game-table .player-board-active { outline: 1px dashed #c8b48b; outline-offset: -2px;
+  background: #29251d; }
+.player-board h3 { font-size: 1rem; margin: 0 0 4px; }
+.player-board p { margin: 5px 0; }
+.player-role { color: #c0b398; text-transform: capitalize; }
+.player-location { color: #c0b398; }
+.player-board .board-cards { margin: 6px 0; align-items: center; }
+.game-table button, .development-panel button { cursor: pointer; }
+.map-controls { display: flex; align-items: center; gap: 5px; }
+.map-control, .dev-toggle, .dev-close { color: #e8d9bb; background: #302a20;
+  border: 1px solid #7c694b; border-radius: 4px; padding: 4px 9px;
+  min-width: 32px; min-height: 30px; font-size: .78rem; }
+.zoom-label { font-size: .72rem; color: #c0b398; min-width: 35px; text-align: center; }
+.pane-world > .pane-content { padding: 0; background: #191c17; position: relative;
+  touch-action: pan-x pan-y; }
+.map-surface { position: relative; overflow: hidden; }
+.map-content { position: absolute; width: 1500px; padding: 20px; transform-origin: top left; }
+.map-content .regions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.map-content .sites { grid-template-columns: 1fr; }
+.map-content .region { background: #272b21; padding: 12px; }
+.map-content .region:nth-child(2) { background: #2c2822; }
+.map-content .region:nth-child(3) { background: #222b28; }
+.map-content .region-label { color: #dac99f; font-family: Georgia, serif; font-size: 1.15rem; }
+.map-dragging, .map-dragging * { cursor: grabbing !important; user-select: none !important; }
+.pane-actions .pane-content { font-size: .9rem; }
+.pane-actions button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.pane-actions .decision-zones { grid-template-columns: 1fr; gap: 10px; }
+.pane-actions .decision-zone { min-height: 100px; }
+.pane-actions input, .pane-actions select { max-width: 100%; }
+.pane-actions .decision-final-row { flex-wrap: wrap; }
+.log-placeholder { color: #a99c85; font-size: .82rem; line-height: 1.5; margin: 0; }
+.pane-log .pane-content { background: repeating-linear-gradient(135deg,
+  #211f1b, #211f1b 12px, #24211c 12px, #24211c 24px); }
+.development-panel { position: fixed; z-index: 50; right: 12px; top: 48px;
+  width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 64px);
+  display: flex; flex-direction: column; background: #211d25;
+  border: 1px solid #927da4; box-shadow: 0 12px 45px #000b; }
+.development-panel[hidden] { display: none; }
+.development-panel .debug-toolbar { margin: 0 0 12px; display: flex; flex-wrap: wrap;
+  justify-content: flex-start; gap: 8px; }
+.development-panel .debug-toolbar input { min-width: 0; width: 100%; }
+.development-panel .raw-event-log { padding: 12px; }
+.development-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.development-panel .events { max-height: none; }
+.pane-content:focus-visible, .pane-heading:focus-visible,
+.game-table button:focus-visible, .development-panel button:focus-visible,
+.game-table [tabindex]:focus-visible { outline: 2px solid #fff0c9; outline-offset: -3px; }
+/* Popovers stay inside scrolling content and participate in its overflow area. */
+.game-table .card-popover { position: static; min-width: 0; max-width: 280px;
+  white-space: normal; text-align: left; }
+@media (max-aspect-ratio: 4/3), (max-width: 1050px) {
+  .game-table { grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+    grid-template-rows: minmax(130px, 23%) minmax(0, 1fr) minmax(80px, 14%);
+    grid-template-areas: "players players" "world actions" "world log"; }
+}
+@media (max-aspect-ratio: 4/5), (max-width: 620px) {
+  .game-table { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+    grid-template-rows: minmax(95px, 22%) minmax(120px, 43%) minmax(0, 1fr);
+    grid-template-areas: "players players" "world world" "actions log"; }
+  .pane-header { padding: 4px 7px; gap: 4px; }
+  .pane-heading { font-size: .72rem; letter-spacing: .025em; }
+  .pane-content { padding: 8px; }
+}
+@media (max-height: 500px) and (min-aspect-ratio: 4/5) {
+  .game-table { grid-template-rows: minmax(76px, 24%) minmax(0, 1fr) minmax(65px, 20%); }
+}

@@ -2,7 +2,7 @@
 
 Date: 2026-09-08
 
-Status: Layout A and interaction/reuse approach approved in conversation; consolidated specification awaiting final review.
+Status: Approved in conversation and implemented on `feat/arcs-panel-ui`. See the implementation plan and verification record for delivery evidence.
 
 ## Objective
 

@@ -34,43 +34,68 @@ object ServerModeUi {
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
+    val shell = new GameTableShell(mount)
 
     def render(): Unit = {
-      while (mount.lastChild != null) mount.removeChild(mount.lastChild)
-      mount.appendChild(text("div", "eyebrow",
-        "Server mode · JVM-authoritative persisted stream"))
-      mount.appendChild(text("h1", "", "Oath Digital game"))
+      val actionContent = element("div", "action-content")
       coordinator.connectionState match {
         case ServerConnectionState.Disconnected(_) =>
-          mount.appendChild(text(
+          actionContent.appendChild(text(
             "div",
             "status error disconnected",
             "Disconnected. Reconnect to fetch the authoritative current " +
               "state before issuing another command."
           ))
+          val retry = button("Reconnect", "reconnectSession")
+          retry.onclick = _ => reconnect()
+          actionContent.appendChild(retry)
         case ServerConnectionState.Connecting if projection.nonEmpty =>
-          mount.appendChild(text(
+          actionContent.appendChild(text(
             "div",
             "status",
             "Reconnecting to server…"
           ))
         case _ => ()
       }
-      failure.foreach(error =>
-        mount.appendChild(text("div", "status error", error.message)))
-      projection match {
+      failure.foreach { error =>
+        val notice = text("div", "status error", error.message)
+        notice.setAttribute("role", "alert")
+        actionContent.appendChild(notice)
+      }
+      val (players, world, decision) = projection match {
         case None if failure.isEmpty =>
-          mount.appendChild(text("div", "status", "Loading server projection…"))
-        case None => ()
+          actionContent.appendChild(text("div", "status", "Loading game…"))
+          (text("p", "empty-state", "Loading players…"),
+            text("p", "empty-state", "Loading world…"), "loading")
+        case None =>
+          (text("p", "empty-state", "Players unavailable."),
+            text("p", "empty-state", "World unavailable."), "unavailable")
         case Some(value) =>
           val presentation = viewerPresentation(value, selectedPlayer)
-          mount.appendChild(ActionDecisionRenderer.actionsPanel(value, presentation, ui))
-          mount.appendChild(WorldBoardRenderer.players(value, ui))
-          mount.appendChild(WorldBoardRenderer.world(value, presentation, ui))
-          mount.appendChild(WorldBoardRenderer.playerBoards(value, ui))
+          actionContent.appendChild(ActionDecisionRenderer.actionsPanel(value, presentation, ui))
+          val prompt = Option(actionContent.querySelector(
+            "#card-decision-title,.selection-instruction,.modifier-confirm,.resolution-choice"))
+            .map(_.textContent).getOrElse("")
+          val pendingIds = Vector(value.recover.map(_.decisionId),
+            value.forge.map(_.decisionId), value.campaign.map(_.decisionId),
+            value.campaignRaidRelocation.map(_.decisionId),
+            value.oathkeeperRecipient.map(_.decisionId), value.challenge.map(_.decisionId),
+            value.negotiation.map(_.decisionId), value.restPower.map(_.decisionId)).flatten
+          val decisionKey = Vector(selectedPlayer, value.phase,
+            value.activeParticipantId.getOrElse(""),
+            value.pendingCardDecision.map(_.decisionId).getOrElse(""),
+            pendingIds.mkString(","), boardFormationState.isDefined.toString,
+            campaignPlacementState.isDefined.toString,
+            boardSelectionState.flatMap(_.activeActionKind).getOrElse(""),
+            modifierWorkflow.map(_.stage.toString).getOrElse(""), prompt).mkString("|")
+          (WorldBoardRenderer.players(value, ui),
+            WorldBoardRenderer.world(value, presentation, ui), decisionKey)
       }
-      mount.appendChild(DevelopmentRenderer.controls(ui))
-      if (projection.nonEmpty) mount.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      val development = element("div", "development-content")
+      development.appendChild(DevelopmentRenderer.controls(ui))
+      if (projection.nonEmpty) development.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      val attention = s"$decision|${coordinator.connectionState}|${failure.map(_.message)}"
+      shell.update(gameId, attention, players, world, actionContent, development)
     }
 
     def store(

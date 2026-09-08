@@ -5,35 +5,26 @@ import ServerUiSupport._
 
 private[frontend] object WorldBoardRenderer {
  def players(value: GameProjection, ui: ServerUiView): dom.Element = {
-   val panel = element("section", "panel")
-   panel.appendChild(text("h2", "", "Exile players"))
-   val list = element("ul", "participants")
-   value.players.foreach { player =>
-     val item = dom.document.createElement("li")
-     val reference = targetable(playerReference(value, player.playerId),
-       BoardTargetRef.Player(player.playerId), ui)
-     item.appendChild(reference)
-     item.appendChild(dom.document.createTextNode(s" · role: ${player.role}"))
-     value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
-       item.appendChild(dom.document.createTextNode(
-         s" · pawn at ${siteLabel(value, pawn.siteId)}"
-       )))
-     list.appendChild(item)
-   }
-   panel.appendChild(list)
-   panel
+   playerBoards(value, ui)
  }
 
  def playerBoards(value: GameProjection, ui: ServerUiView): dom.Element = {
    val panel = element("section", "panel player-boards")
-   panel.appendChild(text("h2", "", "Player boards"))
-   if (value.playerBoards.isEmpty)
-     panel.appendChild(text("p", "empty-state", "Player boards are not available yet."))
-   value.playerBoards.foreach { board =>
+   value.players.foreach { player =>
      val section = element("section", "player-board")
+     section.setAttribute("data-player-id", player.playerId)
+     if (value.activeParticipantId.contains(player.playerId)) {
+       section.classList.add("player-board-active")
+       section.setAttribute("aria-label", s"${player.displayName}, active player")
+     }
      val heading = element("h3", "")
-     heading.appendChild(playerReference(value, board.playerId))
+     heading.appendChild(targetable(playerReference(value, player.playerId),
+       BoardTargetRef.Player(player.playerId), ui))
      section.appendChild(heading)
+     section.appendChild(text("p", "player-role", player.role))
+     value.pawnLocations.find(_.playerId == player.playerId).foreach(pawn =>
+       section.appendChild(text("p", "player-location", siteLabel(value, pawn.siteId))))
+     value.playerBoards.find(_.playerId == player.playerId).foreach { board =>
      val resources = text("p", "resources",
        s"Warbands ${board.warbands} · Favor ${board.favor} · Secrets " +
          s"${board.faceUpSecrets}/${board.totalSecrets} · Supply ${board.supply}")
@@ -68,6 +59,7 @@ private[frontend] object WorldBoardRenderer {
        section.appendChild(text("strong", "", "Revealed Vision"))
        section.appendChild(cardDetailsPopover(card))
      })
+     }
      panel.appendChild(section)
    }
    panel
