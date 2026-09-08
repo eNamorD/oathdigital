@@ -576,9 +576,9 @@ Task 6 was verified on 2026-09-07 in the linked worktree
 
 ### Commit record
 
-- `2b8df4b` — distribution foundation implementation plan.
+- `2b8df24` — distribution foundation implementation plan.
 - `808fd4b` — alpha-readiness design.
-- `c8a4312`, `08855f2`, `d0ec623`, and `48d8239` — typed runtime
+- `c8aa312`, `08855f2`, `d0ec623`, and `48d2b7f` — typed runtime
   configuration and startup validation.
 - `7c7a09d` — liveness, readiness, and server lifecycle.
 - `48f8239` — packaged optimized frontend.
@@ -588,10 +588,8 @@ Task 6 was verified on 2026-09-07 in the linked worktree
 ### Automated verification
 
 - `./sbtw test`: 530 tests passed, 0 failed, 0 errors.
-- `PATH=/Applications/ChatGPT.app/Contents/Resources/cua_node/bin:/usr/bin:/bin:/usr/sbin:/sbin ./sbtw frontend/test frontend/fullLinkJS`:
-  114 tests passed, 0 failed, 0 errors; full frontend linking completed.
-- `frontend/fullOptJS`: optimized frontend linking completed successfully, as
-  required by this plan.
+- `PATH=/Applications/ChatGPT.app/Contents/Resources/cua_node/bin:/usr/bin:/bin:/usr/sbin:/sbin ./sbtw frontend/test frontend/fullOptJS`:
+  114 tests passed, 0 failed, 0 errors; optimized frontend linking completed.
 - `python3 scripts/check-architecture.py`: passed.
 - `python3 scripts/check-markdown-links.py`: passed for 39 Markdown files.
 - `python3 scripts/validate-component-catalog.py`: passed for 255 denizens, 48
@@ -603,11 +601,7 @@ Task 6 was verified on 2026-09-07 in the linked worktree
 
 The JVM test run retained existing SLF4J initialization-replay warnings and
 HikariCP notices that HSQLDB does not support connection network-timeout
-accessors. Neither warning produced a test failure. The task brief referred to
-`scripts/check-doc-links.py` and
-`reference/catalog/new-foundations/snapshot.py --check`; those paths do not
-exist on this branch. The canonical plan commands above are the current
-repository equivalents and passed.
+accessors. Neither warning produced a test failure.
 
 ### Packaged artifact verification
 
