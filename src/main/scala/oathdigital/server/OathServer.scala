@@ -14,12 +14,12 @@ object OathServer {
   def main(arguments: Array[String]): Unit = {
     val version = Option(getClass.getPackage.getImplementationVersion)
       .getOrElse("development")
-    val config = ServerConfig
-      .parse(arguments, sys.env, version)
-      .fold(
-        errors => throw new IllegalArgumentException(errors.mkString("; ")),
-        identity
-      )
+    val config = ServerConfig.parse(arguments, sys.env, version) match {
+      case Left(errors) =>
+        errors.foreach(error => System.err.println(s"oathdigital: $error"))
+        sys.exit(2)
+      case Right(parsed) => parsed
+    }
     implicit val system: ActorSystem[Nothing] =
       ActorSystem[Nothing](Behaviors.empty, "oathdigital-server")
     implicit val executionContext = system.executionContext
@@ -37,6 +37,13 @@ object OathServer {
       config.databasePath.toAbsolutePath.normalize.toString,
       config.catalogPath.toAbsolutePath.normalize.toString
     )
+    if (config.mode == ServerMode.TrustedAlpha &&
+        config.authenticatedRouteMount.isDefined)
+      system.log.warn(
+        "Authenticated route options are ignored in trusted-alpha mode; " +
+          "session cookie name and authenticated public origin apply to " +
+          "development mode only"
+      )
 
     ServerRuntime.open(config.databasePath, config.catalogPath) match {
       case Left(error) =>
