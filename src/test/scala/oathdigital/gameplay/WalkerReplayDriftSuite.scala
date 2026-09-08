@@ -6,7 +6,8 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
-  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerStepRecorded}
+  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
   RecoverRelicPayload}
@@ -84,6 +85,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     with WalkerRecordedOpsReducer {
   private val setup = new FirstGameSetupRules(catalog)
 
+  /** The power source BOTH tracks walk with. It is a named value rather than
+    * a default on the walker's entry points precisely so this suite cannot
+    * drift into checking an unpowered walk while production walks with
+    * powers: when a power registers on this slice (Task 5), it is added here
+    * and both the live track and the re-derivation see it.
+    */
+  private val walkerPowers: WalkerPowers = WalkerPowers.empty
+
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
     val Ready(base) = execute(setup)._1: @unchecked
     val active = base.game.current.players.find(
@@ -115,14 +124,15 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
   private def runResume(resume: Resume, state: ReadyGame, tree: Operation,
-      pending: Option[PendingTree]): WalkerOutcome = {
+      pending: Option[PendingTree], powers: WalkerPowers): WalkerOutcome = {
     val result = resume match {
-      case StartWalk => ProcedureWalker.advance(state, tree, None)
+      case StartWalk => ProcedureWalker.advance(state, tree, None, powers)
       case RollResume(faces) => ProcedureWalker.roll(state, tree,
-        pending.getOrElse(fail("roll() resume requires a pending park")), faces)
+        pending.getOrElse(fail("roll() resume requires a pending park")), faces,
+        powers)
       case AnswerResume(answer) => ProcedureWalker.resolve(state, tree,
         pending.getOrElse(fail("resolve() resume requires a pending park")),
-        answer)
+        answer, powers)
     }
     result.fold(violation => fail(s"walker step $resume failed: $violation"),
       identity)
@@ -188,7 +198,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * for the caller's own state assertions.
     */
   private def assertNoDrift(ready: ReadyGame, actor: PlayerId,
-      script: Vector[Resume]): WalkerOutcome = {
+      script: Vector[Resume], powers: WalkerPowers): WalkerOutcome = {
     def go(remaining: Vector[Resume], liveState: ReadyGame,
         livePending: Option[PendingTree], replayState: OathState,
         starting: Boolean): WalkerOutcome = {
@@ -198,7 +208,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         if (starting) RecoverProcedure.build(catalog, liveState, actor)
           .toOption.get
         else RecoverProcedure.rebuild(catalog, liveState, actor).toOption.get
-      val liveOutcome = runResume(resume, liveState, liveTree, livePending)
+      val liveOutcome = runResume(resume, liveState, liveTree, livePending,
+        powers)
 
       val Ready(replayReady) = replayState: @unchecked
       val replayTree =
@@ -207,7 +218,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
         else RecoverProcedure.rebuild(catalog, replayReady, actor).toOption.get
       val replayPending = replayReady.game.current.walkerPending
       val replayOutcome = runResume(resume, replayReady, replayTree,
-        replayPending)
+        replayPending, powers)
 
       assertEquals(opsOf(replayOutcome), opsOf(liveOutcome),
         "walker-derived ops (fresh tree over replay-reconstructed state) " +
@@ -232,7 +243,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))))
+          RecoverRelicPayload(relic.id)))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
@@ -253,7 +264,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
             RecoverChoice.Continue))),
         RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))))
+          RecoverRelicPayload(relic.id)))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -268,7 +279,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
           RecoverChoicePayload(
-            RecoverChoice.Stop)))))
+            RecoverChoice.Stop)))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)

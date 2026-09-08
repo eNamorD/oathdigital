@@ -26,6 +26,12 @@ sealed trait Contribution extends Product with Serializable
 
 /** Rewrites the hooked node's children. Covers must-effects (insert ops),
   * cost changes (modify the pay ops), and reordering (roll order).
+  *
+  * `fn` MUST be a pure function of the state it is handed: the walker derives
+  * the tree and re-folds every window on every command (S1), so a fold that
+  * differed between two commands would make a recorded park position address
+  * a different node on resume. This is the same invariant `Branch.select`
+  * already carries.
   */
 final case class Transform(
     fn: (PowerCtx, Vector[Operation]) => Vector[Operation]

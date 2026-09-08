@@ -6,7 +6,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
   OperationExecutor, OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
-import oathdigital.gameplay.powerresolver.ContributingPower
+import oathdigital.gameplay.powerresolver.{ContributingPower, PowerWindow}
 import oathdigital.model.{Answered, DefenseDieFace, DieFace,
   PendingTree, PlayerId, PoolKey, PowerId, RelicId, RollOutcome}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -233,7 +233,7 @@ object ProcedureWalker {
       segment.nonEmpty && segment.forall(_.isDigit))
 
   def advance(state: ReadyGame, action: Operation,
-      pending: Option[PendingTree], powers: WalkerPowers = WalkerPowers.empty)
+      pending: Option[PendingTree], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val actor = pending.fold(state.game.current.turn.activePlayer)(_.actor)
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
@@ -243,7 +243,7 @@ object ProcedureWalker {
     // guard), so clear the stored field before executing deltas.
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, actor, answered, powers),
-      Vector.empty, cursor, PlainResume).map(toOutcome)
+      Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
   }
 
   /** Resumes the `Roll` park recorded by `advance` (Task 4 roll contract).
@@ -264,11 +264,11 @@ object ProcedureWalker {
     * `faces` each reject with `OathViolation.InvalidEventOrder`.
     */
   def roll(state: ReadyGame, action: Operation, pending: PendingTree,
-      faces: Vector[DieFace], powers: WalkerPowers = WalkerPowers.empty)
+      faces: Vector[DieFace], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
-      powers), Vector.empty, Some(pending.at), RollResume(faces))
+      powers), Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
   }
 
@@ -288,12 +288,12 @@ object ProcedureWalker {
     * next Roll/Decide or finish the tree).
     */
   def resolve(state: ReadyGame, action: Operation, pending: PendingTree,
-      answer: Answered, powers: WalkerPowers = WalkerPowers.empty)
+      answer: Answered, powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
-      powers), Vector.empty, Some(pending.at), AnswerResume(answer))
-      .map(toOutcome)
+      powers), Vector.empty, Some(pending.at), AnswerResume(answer),
+      WalkerHooks.none).map(toOutcome)
   }
 
   /** Collects every restriction violation from every windowed node in `tree`
@@ -397,102 +397,123 @@ object ProcedureWalker {
 
   /** Walks `node` from `path` (its root-relative child-index address), either
     * from scratch (`cursor = None`) or resuming at `cursor` (the remaining
-    * child-index segments from this node down to the parked leaf).
+    * child-index segments from this node down to the parked leaf). `hooks`
+    * carries the enclosing windows' attribution and re-entry guard.
     */
   private def walk(node: Operation, ctx: WalkCtx, path: Vector[String],
-      cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] =
+      cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] =
     node match {
-      case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume)
-      case branch: Branch => walkBranch(branch, ctx, path, cursor, resume)
-      case leaf: PrimitiveOperation => walkLeaf(leaf, ctx, path, cursor, resume)
-      case composite => walkComposite(composite, ctx, path, cursor, resume)
+      case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume, hooks)
+      case branch: Branch => walkBranch(branch, ctx, path, cursor, resume, hooks)
+      case leaf: PrimitiveOperation =>
+        walkLeaf(leaf, ctx, path, cursor, resume, hooks)
+      case composite =>
+        walkComposite(composite, ctx, path, cursor, resume, hooks)
     }
 
-  /** A composite whose `window` is `Some(w)` (Task 3 wiring rule 1): gather at
-    * `w` and fold the node's OWN children vector (never mutated -- the fold
-    * is local to this walk) through the resulting transforms. Unchanged
-    * (`folded == composite.children`, e.g. no window or nothing applicable)
-    * walks exactly like pre-Task-3: each child its own step. A rewrite that
-    * flattens to plain, non-parking ops batches as ONE step (spec decision 5:
-    * one hookable node, one event, its final batch); one that still needs to
-    * park (a Decide/Roll survives the fold) falls back to per-child walking.
+  /** Gathers at `window` (a no-op when `None`) and folds `children` through
+    * the gathered transforms, then walks the folded vector child by child --
+    * exactly what an unwindowed composite does with its declared children
+    * (fix-round ruling E). The declared node is never mutated: the fold is
+    * local to this walk. A composite emits no event of its own; its gather
+    * order rides down to the leaves it shaped (ruling F).
     */
+  private def walkFolded(window: Option[PowerWindow],
+      children: Vector[Operation], ctx: WalkCtx, path: Vector[String],
+      cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] = {
+    val (folded, order) = WalkerPowerGather.applyWindow(window, ctx.state,
+      ctx.actor, ctx.powers, path, children)
+    walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
+  }
+
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] = {
-    val (folded, contributions) = WalkerPowerGather.applyWindow(
-      composite.window, ctx.state, ctx.actor, ctx.powers, path,
-      composite.children)
-    if (folded == composite.children)
-      walkChildren(composite.children, ctx, path, cursor, resume)
-    else WalkerPowerGather.resolvePlainBatch(folded) match {
-      case Some(ops) if cursor.isEmpty =>
-        recordBatch(ops, contributions, ctx, path, leafLabel(composite))
-          .map(Done(_))
-      case _ => walkChildren(folded, ctx, path, cursor, resume)
-    }
-  }
+      resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
+    walkFolded(composite.window, composite.children, ctx, path, cursor,
+      resume, hooks)
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
     * same way it would address static children (the branch's position is
-    * `path`; the parked child index heads the remaining cursor segments).
+    * `path`; the parked child index heads the remaining cursor segments). A
+    * window on the Branch folds that SELECTED vector -- the branch's children
+    * are what it selects.
     */
   private def walkBranch(branch: Branch, ctx: WalkCtx, path: Vector[String],
-      cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] = {
+      cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] = {
     val branchTree = PendingTree(at = path, answered = ctx.answered,
       actor = ctx.actor)
-    val selected = branch.select(ctx.state, branchTree)
-    walkChildren(selected, ctx, path, cursor, resume)
+    walkFolded(branch.window, branch.select(ctx.state, branchTree), ctx, path,
+      cursor, resume, hooks)
   }
 
   /** Runs whole passes of `repeat.body` while its guard holds, plus, on a
-    * resume, the remainder of the already-started pass first.
+    * resume, the remainder of the already-started pass first. A Repeat
+    * exposes its body as its single child, so a pass walks the (folded)
+    * children vector from this node's path and the body keeps child index 0.
     */
   private def walkRepeat(repeat: Repeat, ctx: WalkCtx, path: Vector[String],
-      cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] = {
-    // A Repeat exposes its body as its single child, so body passes live at
-    // child index 0 of this node's path.
-    val bodyPath = path :+ "0"
+      cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] = {
 
-    /** One guard check then a full body pass; repeats while the guard holds.
-      * The guard is pure and re-evaluated against the state reached by the
-      * previous pass, so it never needs an explicit iteration counter.
+    /** One whole body pass, then back to the guard. `at` is non-empty only
+      * for the pass a resume re-enters part-way through.
+      */
+    def pass(current: WalkCtx,
+        at: Option[Vector[String]]): Either[OathViolation, Step] =
+      walkFolded(repeat.window, repeat.children, current, path, at, resume,
+        hooks).flatMap {
+          case park: Park => Right(park)
+          case Done(next) => passes(next)
+        }
+
+    /** The guard is pure and re-evaluated against the state the previous pass
+      * reached, so it never needs an iteration counter; the window fold is
+      * re-applied per pass for the same reason.
       */
     def passes(current: WalkCtx): Either[OathViolation, Step] = {
       val guardTree = PendingTree(at = path, answered = current.answered,
         actor = current.actor)
       if (!repeat.guard(current.state, guardTree)) Right(Done(current))
-      else
-        walk(repeat.body, current, bodyPath, None, resume).flatMap {
-          case park: Park => Right(park)
-          case Done(next) => passes(next)
-        }
+      else pass(current, None)
     }
 
-    cursor match {
-      case None =>
-        passes(ctx)
-      case Some(remaining) =>
-        if (!remaining.headOption.contains("0"))
-          contractViolation(
-            "resume path into a Repeat must address its body (child 0)")
-        else
-          // The current pass already started (its guard was true at pass time);
-          // finish its remainder, then keep looping whole passes.
-          walk(repeat.body, ctx, bodyPath, Some(remaining.tail), resume).flatMap {
-            case park: Park => Right(park)
-            case Done(next) => passes(next)
-          }
-    }
+    // A resume re-enters the pass that already started (its guard was true at
+    // pass time): finish its remainder, then keep looping whole passes.
+    if (cursor.isEmpty) passes(ctx) else pass(ctx, cursor)
   }
 
+  /** A leaf whose `window` is `Some(w)` folds `Vector(leaf)` through the
+    * gathered transforms and walks the result as its children -- the same
+    * path a composite's folded vector takes (fix-round ruling G) -- so a
+    * transform may legally insert or yield a `Decide`/`Roll`/`BuildOps` and
+    * the walk parks on it like any other. The shape does not depend on
+    * whether a power fired: a windowed leaf always runs one level down (the
+    * unchanged fold is `Vector(leaf)`, walked at child index 0), and `w` is
+    * marked gathered so the leaf handed back by its own transform is
+    * dispatched instead of re-gathered. Resuming re-applies the same fold,
+    * which is why a `Transform` must be a pure function of state.
+    */
   private def walkLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
+      path: Vector[String], cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] = leaf.window match {
+    case Some(w) if !hooks.gathered.contains(w) =>
+      walkFolded(Some(w), Vector(leaf), ctx, path, cursor, resume,
+        hooks.copy(gathered = hooks.gathered + w))
+    case _ => runLeaf(leaf, ctx, path, cursor, resume, hooks.inherited)
+  }
+
+  /** Executes or parks one leaf at its own position, recording
+    * `contributions` (every enclosing window's gather order, this leaf's own
+    * included) on whatever event it emits.
+    */
+  private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] =
+      resume: Resume,
+      contributions: Vector[PowerId]): Either[OathViolation, Step] =
     cursor match {
       case Some(remaining) =>
         if (remaining.nonEmpty)
@@ -501,9 +522,8 @@ object ProcedureWalker {
         else resume match {
           case RollResume(faces) =>
             leaf match {
-              case roll: Roll => recordRoll(roll, ctx, path, faces,
-                WalkerPowerGather.gatherOrderAt(leaf.window, ctx.state,
-                  ctx.actor, ctx.powers, path)).map(Done(_))
+              case roll: Roll =>
+                recordRoll(roll, ctx, path, faces, contributions).map(Done(_))
               case _: Decide => Left(OathViolation.InvalidEventOrder(
                 s"roll() resumed at a ${leafLabel(leaf)} park; " +
                   "expected a Roll"))
@@ -514,9 +534,8 @@ object ProcedureWalker {
           case AnswerResume(answer) =>
             leaf match {
               case decide: Decide if decide.decisionId == answer.decisionId =>
-                answerDecide(decide, ctx, path, answer,
-                  WalkerPowerGather.gatherOrderAt(leaf.window, ctx.state,
-                    ctx.actor, ctx.powers, path)).map(Done(_))
+                answerDecide(decide, ctx, path, answer, contributions)
+                  .map(Done(_))
               case decide: Decide => Left(OathViolation.InvalidEventOrder(
                 s"resolve() answer ${answer.decisionId} does not match the " +
                   s"parked Decide ${decide.decisionId} at " +
@@ -541,25 +560,11 @@ object ProcedureWalker {
             }
         }
       case None =>
-        // Task 3 wiring rule 2: gather at `leaf.window` (no-op when `None`)
-        // and fold `Vector(leaf)`; unchanged falls through to the pre-Task-3
-        // dispatch below with `contributions` at `Vector.empty`.
-        val (folded, contributions) = WalkerPowerGather.applyWindow(
-          leaf.window, ctx.state, ctx.actor, ctx.powers, path, Vector(leaf))
-        if (folded == Vector(leaf))
-          leaf match {
-            case _: Decide | _: Roll => Right(Park(path, ctx))
-            case build: BuildOps =>
-              runBuildOps(build, ctx, path, contributions).map(Done(_))
-            case delta => record(delta, ctx, path, contributions).map(Done(_))
-          }
-        else WalkerPowerGather.resolvePlainBatch(folded) match {
-          case Some(ops) =>
-            recordBatch(ops, contributions, ctx, path, leafLabel(leaf))
-              .map(Done(_))
-          case None => contractViolation(
-            s"power transform at ${path.mkString(".")} produced a Decide/" +
-              "Roll/BuildOps this leaf cannot batch-execute")
+        leaf match {
+          case _: Decide | _: Roll => Right(Park(path, ctx))
+          case build: BuildOps =>
+            runBuildOps(build, ctx, path, contributions).map(Done(_))
+          case delta => record(delta, ctx, path, contributions).map(Done(_))
         }
     }
 
@@ -568,10 +573,10 @@ object ProcedureWalker {
     * node's children).
     */
   private def walkChildren(children: Vector[Operation], ctx: WalkCtx,
-      path: Vector[String], cursor: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] =
+      path: Vector[String], cursor: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] =
     cursor match {
-      case None => continue(children, 0, ctx, path, None, resume)
+      case None => continue(children, 0, ctx, path, None, resume, hooks)
       case Some(remaining) =>
         remaining.headOption match {
           case None => contractViolation(
@@ -585,21 +590,22 @@ object ProcedureWalker {
             case Some(index) =>
               // Children before `index` already ran in an earlier command;
               // start at `index` with the cursor consumed past this level.
-              continue(children, index, ctx, path, Some(remaining.tail), resume)
+              continue(children, index, ctx, path, Some(remaining.tail), resume,
+                hooks)
           }
         }
     }
 
   private def continue(children: Vector[Operation], index: Int, ctx: WalkCtx,
-      path: Vector[String], cursorAt: Option[Vector[String]],
-      resume: Resume): Either[OathViolation, Step] =
+      path: Vector[String], cursorAt: Option[Vector[String]], resume: Resume,
+      hooks: WalkerHooks): Either[OathViolation, Step] =
     if (index >= children.size) Right(Done(ctx))
     else
-      walk(children(index), ctx, path :+ index.toString, cursorAt, resume)
-        .flatMap {
+      walk(children(index), ctx, path :+ index.toString, cursorAt, resume,
+        hooks).flatMap {
           case park: Park => Right(park)
           case Done(next) => continue(children, index + 1, next, path, None,
-            resume)
+            resume, hooks)
         }
 
   /** Executes one delta leaf through the pipeline and records its step. */
@@ -624,13 +630,11 @@ object ProcedureWalker {
 
   /** Executes `ops` through the pipeline as one atomic batch and records ONE
     * [[WalkerStepRecorded]] carrying the whole batch and `contributions` --
-    * the shared mechanic behind a plain delta leaf, a [[BuildOps]] leaf, and
-    * a windowed node whose gathered transforms rewrote its content into
-    * several operations that must land as a single audited step (spec
-    * decision 5: one hookable node, one event, its final operation batch).
-    * `ops` must already be non-empty; callers short-circuit an empty batch
-    * themselves (an empty [[BuildOps]] batch records nothing; a windowed
-    * fold reaching here always has at least the node's own content).
+    * the shared mechanic behind a plain delta leaf and a [[BuildOps]] leaf,
+    * the two leaf kinds that run rather than park (spec decision 5: one
+    * hookable node, one event, its final operation batch). `ops` must already
+    * be non-empty; callers short-circuit an empty batch themselves (an empty
+    * [[BuildOps]] batch records nothing).
     */
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],

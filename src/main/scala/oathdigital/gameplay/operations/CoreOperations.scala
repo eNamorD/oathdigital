@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.OwnerQuery
 import oathdigital.model._
 
@@ -483,12 +484,18 @@ final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
   * the concrete answer rides the resolve command as an [[Answered]]);
   * `owner` resolves who decides at walk/resume time; `validate` (when
   * present) is a semantic legality check the walker runs against the resolved
-  * answer before recording it (Task 5 ruling 5.3).
+  * answer before recording it (Task 5 ruling 5.3). `window` makes the
+  * decision hookable: the walker folds the gathered transforms over
+  * `Vector(this)` before walking it, so a power may insert operations around
+  * the decision or replace it (decision 7 — the first leaf to take up this
+  * file's own "Roll and Decide are the future window-hook candidates" note).
   */
 final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
     decisionId: String,
     validate: Option[(ReadyGame, PendingTree, DecisionPayload) =>
-      Either[OathViolation, Unit]] = None) extends PrimitiveOperation
+      Either[OathViolation, Unit]] = None,
+    override val window: Option[PowerWindow] = None)
+    extends PrimitiveOperation
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever

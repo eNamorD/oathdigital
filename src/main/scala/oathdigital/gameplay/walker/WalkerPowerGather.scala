@@ -1,11 +1,10 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.gameplay.operations.{BuildOps, CoreOperation, Decide,
-  Operation, PrimitiveOperation, Roll}
+import oathdigital.gameplay.operations.{Branch, Operation, PrimitiveOperation}
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   ContributionCollector, PowerCtx, PowerWindow}
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{PendingTree, PlayerId, PowerId}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -45,43 +44,6 @@ private[walker] object WalkerPowerGather {
         (folded, gathered.order)
     }
 
-  /** Contribution order only, for a windowed leaf whose type-specific
-    * handling (Roll/Decide resume) never accepts an inserted/removed
-    * operation -- see `ProcedureWalker.walkLeaf`'s `Some(remaining)` branch.
-    */
-  def gatherOrderAt(window: Option[PowerWindow], state: ReadyGame,
-      actor: PlayerId, powers: WalkerPowers, path: Vector[String])
-      : Vector[PowerId] = window match {
-    case None => Vector.empty
-    case Some(w) =>
-      ContributionCollector.gather(w, powers.powers, power =>
-        PowerCtx(state, actor, power.source, w, path)).order
-  }
-
-  /** `true` for an operation the walker can batch-execute directly (a plain
-    * delta): `Decide`/`Roll` need to park, and `BuildOps` needs its closure
-    * resolved against live state, neither of which fits "run through the
-    * executor and record one step" -- a node whose transform produced one of
-    * these instead falls back to normal per-child walking.
-    */
-  private def isPlainDelta(op: CoreOperation): Boolean = op match {
-    case _: Decide | _: Roll | _: BuildOps => false
-    case _ => true
-  }
-
-  /** Flattens `ops` to leaves and reports them as an executable batch only
-    * when every leaf is a plain delta (`isPlainDelta`); `None` otherwise, so
-    * the caller can fall back to walking the vector structurally instead
-    * (needed for a Decide/Roll a transform inserted or left in place).
-    */
-  def resolvePlainBatch(ops: Vector[Operation]): Option[Vector[CoreOperation]] = {
-    val flattened = ops.flatMap(Operation.flatten)
-    val plain = flattened.collect {
-      case op: CoreOperation if isPlainDelta(op) => op
-    }
-    Option.when(plain.size == flattened.size)(plain)
-  }
-
   /** Collects every restriction violation from every windowed node in
     * `tree`, run against the tree root (spec decision 9's `Restriction`
     * kind), as `OathRules` requires the whole command to check before any
@@ -89,11 +51,14 @@ private[walker] object WalkerPowerGather {
     * command entry, before the walk -- not per-node during the walk as
     * decision 10's general protocol describes, a deliberate simplification
     * since resolving every `Branch`'s dynamic children up front would
-    * require walking before restrictions are known to pass). The traversal
-    * is static (`Operation.children`), so a `Branch`'s dynamically-selected
-    * children (empty statically) are not visited -- a future task may need
-    * to widen this once a power restricts something reachable only through a
-    * Branch.
+    * require walking before restrictions are known to pass). A `Branch` is
+    * resolved the way the walk resolves it -- `select` against the current
+    * state (fix-round ruling H) -- so restrictions declared inside a
+    * branch's selected children are collected; `Branch.children` is
+    * statically empty and reading it would silently skip them. `select` is
+    * already required to be a pure function of state, and the traversal has
+    * no answered decisions to offer it, so it passes an empty `PendingTree`
+    * at the branch's own path.
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
       state: ReadyGame, actor: PlayerId): Vector[OathViolation] = {
@@ -105,13 +70,17 @@ private[walker] object WalkerPowerGather {
     def windowsIn(node: Operation, path: Vector[String])
         : Vector[(PowerWindow, Vector[String])] = {
       val own = node.window.map(w => Vector(w -> path)).getOrElse(Vector.empty)
+      def descend(children: Vector[Operation]) =
+        children.zipWithIndex.flatMap { case (child, index) =>
+          windowsIn(child, path :+ index.toString) }
       val nested = node match {
         // A PrimitiveOperation's `children` is `Vector(this)` (leaf
         // self-reference, see `Operation.scala`); descending into it would
         // recurse forever, so leaves never contribute nested windows.
         case _: PrimitiveOperation => Vector.empty
-        case _ => node.children.zipWithIndex.flatMap { case (child, index) =>
-          windowsIn(child, path :+ index.toString) }
+        case branch: Branch => descend(branch.select(state,
+          PendingTree(at = path, answered = Vector.empty, actor = actor)))
+        case _ => descend(node.children)
       }
       own ++ nested
     }
@@ -123,4 +92,30 @@ private[walker] object WalkerPowerGather {
       }
     }
   }
+}
+
+/** Power attribution and re-entry guard threaded DOWN one walk branch (unlike
+  * the walker's `WalkCtx`, which threads FORWARD across siblings).
+  *
+  *  - `inherited` is the contribution order gathered by every enclosing
+  *    windowed node, outermost first, de-duplicated with first occurrence
+  *    winning. A leaf records exactly this on its event: a windowed composite
+  *    emits no event of its own, so its transform reaches the journal only
+  *    through the leaves it shaped (fix-round ruling F).
+  *  - `gathered` holds the windows already folded on this branch. A leaf's
+  *    fold is applied to `Vector(leaf)`, so the ordinary "insert an op"
+  *    transform hands the leaf back inside its own folded vector; without this
+  *    guard, walking that vector would gather the same window forever. A
+  *    composite's fold cannot reproduce the composite (a transform only ever
+  *    sees the children), so composites add nothing here.
+  */
+private[walker] final case class WalkerHooks(inherited: Vector[PowerId],
+    gathered: Set[PowerWindow]) {
+  def withOrder(order: Vector[PowerId]): WalkerHooks =
+    if (order.isEmpty) this
+    else copy(inherited = (inherited ++ order).distinct)
+}
+
+private[walker] object WalkerHooks {
+  val none: WalkerHooks = WalkerHooks(Vector.empty, Set.empty)
 }

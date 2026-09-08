@@ -24,12 +24,22 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 
-/** Deterministic aggregate boundary for setup and gameplay routing. */
+/** Deterministic aggregate boundary for setup and gameplay routing.
+  *
+  * `walkerPowers` is the power source every walker command sees: restrictions
+  * are gathered from it at command entry and its transforms fold the tree
+  * during the walk. It is a constructor parameter (empty in production until
+  * a power registers here) so a suite can drive a real command with a real
+  * power. `walkerTree` is the same seam for the action tree a walker command
+  * walks; production derives it from the action's own module.
+  */
 final class OathRules(catalog: ExecutableCatalog,
     campaignLosingForceRegistry: CampaignLosingForceRegistry =
       CampaignLosingForceRegistry.default,
     warExhaustionRandomPort: WarExhaustionRandomPort =
-      WarExhaustionRandomPort.random)
+      WarExhaustionRandomPort.random,
+    walkerPowers: WalkerPowers = WalkerPowers.empty,
+    walkerTree: OathRules.WalkerTreeSource = OathRules.declaredWalkerTree)
     extends EventEvolution[OathState, OathEvent, OathViolation] {
   private val setup = new FirstGameSetupRules(catalog)
 
@@ -151,13 +161,6 @@ final class OathRules(catalog: ExecutableCatalog,
       case _ => Left(GameNotStarted)
     }
 
-  /** No power is wired onto this vertical slice yet -- Recover's tree carries
-    * no `window` until Task 4 -- so this is the only power source `OathRules`
-    * has to supply. Once real powers register here, `restrictionViolations`
-    * and every walker call below see them without any other change.
-    */
-  private val walkerPowers: WalkerPowers = WalkerPowers.empty
-
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via
     * [[ProcedureWalker.restrictionViolations]]. The first violation (if any)
@@ -228,11 +231,7 @@ final class OathRules(catalog: ExecutableCatalog,
 
   private def buildWalker(action: ActionRef, ready: ReadyGame,
       actor: PlayerId, starting: Boolean): Either[OathViolation, Operation] =
-    action match {
-      case ActionRef.Recover =>
-        if (starting) RecoverProcedure.build(catalog, ready, actor)
-        else RecoverProcedure.rebuild(catalog, ready, actor)
-    }
+    walkerTree(catalog, action, ready, actor, starting)
 
   private def walkerCall[A](result: => Either[OathViolation, A])
       : Either[OathViolation, A] =
@@ -592,6 +591,25 @@ final class OathRules(catalog: ExecutableCatalog,
             case _ => transition.continue
           })
       }
+    }
+}
+
+object OathRules {
+  /** How a walker command derives the action tree it walks. `starting`
+    * distinguishes a fresh `startWalker` (the action's full start gates) from
+    * a resume (rebuild only).
+    */
+  type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
+    Boolean) => Either[OathViolation, Operation]
+
+  /** Production tree source: every registered action declares its own tree.
+    * Recover is the only action on the walker in this vertical slice.
+    */
+  val declaredWalkerTree: WalkerTreeSource =
+    (catalog, action, ready, actor, starting) => action match {
+      case ActionRef.Recover =>
+        if (starting) RecoverProcedure.build(catalog, ready, actor)
+        else RecoverProcedure.rebuild(catalog, ready, actor)
     }
 }
 
