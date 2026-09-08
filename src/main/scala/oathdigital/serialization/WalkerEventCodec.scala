@@ -28,11 +28,13 @@ private[serialization] trait WalkerEventCodec {
   }
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] = {
-    case WalkerStepRecorded(actor, nodeId, payload, ops) => ujson.Obj(
-      "actorPlayerId" -> actor.value,
-      "nodeId" -> nodeId,
-      "step" -> encodeStepPayload(payload),
-      "ops" -> ujson.Arr.from(ops.map(encodeOperation)))
+    case WalkerStepRecorded(actor, nodeId, payload, ops, contributions) =>
+      ujson.Obj(
+        "actorPlayerId" -> actor.value,
+        "nodeId" -> nodeId,
+        "step" -> encodeStepPayload(payload),
+        "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
+        "contributions" -> stringArray(contributions.map(_.value)))
     case WalkerParked(actor, action, at, answered) => ujson.Obj(
       "actorPlayerId" -> actor.value,
       "action" -> action.key,
@@ -284,8 +286,10 @@ private[serialization] trait WalkerEventCodec {
     ops <- traverse(value("ops").arr.zipWithIndex.toVector) {
       case (operation, index) => decodeOperation(operation, s"$path.ops[$index]")
     }
+    contributions = value("contributions").arr.toVector.map(id =>
+      PowerId(id.str))
   } yield WalkerStepRecorded(PlayerId(value("actorPlayerId").str),
-    value("nodeId").str, step, ops)
+    value("nodeId").str, step, ops, contributions)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker step"))) }
 

@@ -304,12 +304,13 @@ class GameEventWireSuite extends munit.FunSuite {
     val events = Vector[OathEvent](
       WalkerStepRecorded(player, "0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.DicePoolModified(pool, 2)),
-        Vector(ModifyDicePool(pool, 2))),
+        Vector(ModifyDicePool(pool, 2)), Vector.empty),
       WalkerStepRecorded(player, "1.0.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.SupplySpent(player, 1)),
-        Vector(AdjustSupply(player, -1))),
+        Vector(AdjustSupply(player, -1)), Vector.empty),
       WalkerStepRecorded(player, "2.1", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move)))
+        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
+        Vector.empty))
 
     val encoded = GameEventWire.encodeStream("walker", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
@@ -322,6 +323,22 @@ class GameEventWireSuite extends munit.FunSuite {
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
   }
 
+  test("a WalkerStepRecorded carrying two contribution ids round-trips") {
+    val player = PlayerId("red")
+    val pool = PoolKey("recover")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.DicePoolModified(pool, 2)),
+      Vector(ModifyDicePool(pool, 2)),
+      Vector(PowerId("power.one"), PowerId("power.two")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
+      .map(_.str).toVector, Vector("power.one", "power.two"))
+  }
+
   test("an unencodable walker step payload returns a typed WireError, " +
       "not a thrown exception") {
     // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
@@ -330,7 +347,7 @@ class GameEventWireSuite extends munit.FunSuite {
     // WireError, exactly like an unrecognized value on the decode side.
     case object UnknownStepPayload extends WalkerStepPayload
     val event = WalkerStepRecorded(PlayerId("red"), "0", UnknownStepPayload,
-      Vector.empty)
+      Vector.empty, Vector.empty)
     GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
       case Left(_) => ()
       case Right(value) => fail(s"expected a WireError, got $value")

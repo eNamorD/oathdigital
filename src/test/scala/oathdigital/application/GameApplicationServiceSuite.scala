@@ -176,7 +176,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown))))
     assertEquals((started.events ++ rolled.events ++ finished.events).collect {
-      case WalkerStepRecorded(_, _, DeltaRecorded(semantic), _) => semantic
+      case WalkerStepRecorded(_, _, DeltaRecorded(semantic), _, _) => semantic
     }, Vector(
       DicePoolModified(RecoverProcedure.recoverPool, 2),
       SupplySpent(actor, 1),

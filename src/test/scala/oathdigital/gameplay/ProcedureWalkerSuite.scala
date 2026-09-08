@@ -1,10 +1,12 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
+import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
+  PowerCtx, PowerWindow, Restriction, Transform}
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
 import oathdigital.gameplay.walker.{ChoicePayload, OwnerQuery, ProcedureWalker,
-  RollPayload, WalkerCtx, WalkerOutcome, WalkerStepRecorded}
+  RollPayload, WalkerCtx, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -13,6 +15,41 @@ object ProcedureWalkerSuite {
   final case class TestDecisionPayload(decision: String) extends DecisionPayload
   final case class TestOwner(actor: PlayerId) extends OwnerQuery {
     def owner(ctx: WalkerCtx): Option[PlayerId] = Some(actor)
+  }
+
+  /** Test-only composite that hooks a `PowerWindow` on an arbitrary children
+    * vector. `Operation` is deliberately unsealed (unlike `CoreOperation`/
+    * `PrimitiveOperation`, which Scala 2.13 pins to `CoreOperations.scala`)
+    * precisely so a windowed node can be authored outside that file -- Task 4
+    * wires real windows onto Recover's own tree; this suite proves the
+    * walker's generic wiring with a tree it builds itself.
+    */
+  final case class WindowedNode(hook: PowerWindow,
+      override val children: Vector[Operation]) extends Operation {
+    override def window: Option[PowerWindow] = Some(hook)
+  }
+
+  /** A minimal `ContributingPower` contributing exactly one `Transform` at
+    * one window -- enough to prove the walker's gather/fold wiring without
+    * pulling in the real power catalog.
+    */
+  final case class TestTransformPower(id: PowerId, hook: PowerWindow,
+      fn: (PowerCtx, Vector[Operation]) => Vector[Operation])
+      extends ContributingPower {
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(hook -> Vector(Transform(fn)))
+  }
+
+  /** A minimal `ContributingPower` contributing exactly one `Restriction` at
+    * one window.
+    */
+  final case class TestRestrictionPower(id: PowerId, hook: PowerWindow,
+      fn: (PowerCtx, Operation) => Option[OathViolation])
+      extends ContributingPower {
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(hook -> Vector(Restriction(fn)))
   }
 }
 
@@ -401,5 +438,100 @@ class ProcedureWalkerSuite extends munit.FunSuite {
             "expectation")
       case other => fail(s"expected a Left on a non-Roll park, got $other")
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // Task 3: power contributions -- gather/fold at a windowed node, restriction
+  // rejection at command entry, and the replay-never-consults-contributions
+  // guarantee. Recover's own tree carries no window yet (Task 4), so these
+  // trees are built ad hoc with `ProcedureWalkerSuite.WindowedNode`.
+  // -------------------------------------------------------------------------
+
+  private val testWindow: PowerWindow = PowerWindow.RecoverModifierSelection
+
+  test("a windowed node's Transform-inserted op is recorded in one step, " +
+      "with the power id in contributions") {
+    val powerId = PowerId("test.prepend-move")
+    val power = ProcedureWalkerSuite.TestTransformPower(powerId, testWindow,
+      (_, ops) => move +: ops)
+    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val tree: Operation = Sequence(windowed)
+
+    ProcedureWalker.advance(ready, tree, None, WalkerPowers(Vector(power))) match {
+      case Right(WalkerOutcome.Finished(finalState, events)) =>
+        assertEquals(events.size, 1)
+        val step = events.head.asInstanceOf[WalkerStepRecorded]
+        assertEquals(step.ops, Vector[CoreOperation](move, adjust))
+        assertEquals(step.contributions, Vector(powerId))
+        assertEquals(step.nodeId, "0")
+        assertEquals(pawnSiteOf(finalState), Some(sites(2)))
+        assertEquals(supplyOf(finalState), SupplyTrack.Maximum - 1)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
+  test("a node with no window records contributions as Vector.empty") {
+    val tree: Operation = Sequence(adjust)
+
+    ProcedureWalker.advance(ready, tree, None) match {
+      case Right(WalkerOutcome.Finished(_, events)) =>
+        assertEquals(events.size, 1)
+        assertEquals(events.head.asInstanceOf[WalkerStepRecorded].contributions,
+          Vector.empty[PowerId])
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
+  test("a Restriction violation rejects the command with no events appended") {
+    val violation: OathViolation = OathViolation.InvalidEventOrder(
+      "test restriction forbids this action")
+    val power = ProcedureWalkerSuite.TestRestrictionPower(
+      PowerId("test.forbid"), testWindow, (_, _) => Some(violation))
+    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val tree: Operation = Sequence(windowed)
+    val powers = WalkerPowers(Vector(power))
+
+    val violations = ProcedureWalker.restrictionViolations(tree, powers,
+      ready, actor)
+    assertEquals(violations, Vector(violation))
+
+    // Mirrors OathRules' command-entry check (Task 3 wiring rule): the first
+    // violation rejects the command outright, before any node runs -- no
+    // events, no walk.
+    val command: Either[OathViolation, WalkerOutcome] =
+      violations.headOption.toLeft(()).flatMap(_ =>
+        ProcedureWalker.advance(ready, tree, None, powers))
+    assertEquals(command, Left(violation))
+  }
+
+  test("replay of contributions-carrying events reaches the same state as " +
+      "the live walk when no powers are present at replay") {
+    val powerId = PowerId("test.prepend-move")
+    val power = ProcedureWalkerSuite.TestTransformPower(powerId, testWindow,
+      (_, ops) => move +: ops)
+    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(adjust))
+    val tree: Operation = Sequence(windowed)
+
+    val (finalState, events) = ProcedureWalker.advance(ready, tree, None,
+        WalkerPowers(Vector(power))) match {
+      case Right(WalkerOutcome.Finished(state, recorded)) => (state, recorded)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+    val step = events.head.asInstanceOf[WalkerStepRecorded]
+    assertEquals(step.contributions, Vector(powerId))
+
+    // `applyRecorded` (replay) takes no `WalkerPowers` at all -- it applies
+    // `ops` only and never re-gathers or re-transforms (spec decision 5).
+    // Folding the SAME events through it, starting fresh from `ready`, must
+    // reach the SAME state even though no power is available to replay:
+    // `contributions` is an audit fact, not a replay input.
+    val replayed = events.foldLeft[Either[OathViolation, OathState]](
+        Right(OathState.Ready(ready))) {
+      case (Right(state), event: WalkerEvent) =>
+        ProcedureWalker.applyRecorded(state, event)
+      case (Right(_), other) => fail(s"expected a WalkerEvent, got $other")
+      case (left, _) => left
+    }
+    assertEquals(replayed, Right(OathState.Ready(finalState)))
   }
 }

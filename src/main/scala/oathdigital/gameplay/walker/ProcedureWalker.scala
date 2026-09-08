@@ -6,8 +6,9 @@ import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
   OperationExecutor, OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
+import oathdigital.gameplay.powerresolver.ContributingPower
 import oathdigital.model.{Answered, DefenseDieFace, DieFace,
-  PendingTree, PlayerId, PoolKey, RelicId, RollOutcome}
+  PendingTree, PlayerId, PoolKey, PowerId, RelicId, RollOutcome}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -37,6 +38,16 @@ object WalkerOutcome {
     */
   final case class Finished(treeless: ReadyGame, events: Vector[OathEvent])
       extends WalkerOutcome
+}
+
+/** The powers available to one `advance`/`roll`/`resolve` command (Task 3).
+  * `OathRules` supplies it at command entry; `applyRecorded` (replay) never
+  * takes one -- replay applies recorded ops only (spec decision 5) and must
+  * never re-gather or re-transform.
+  */
+final case class WalkerPowers(powers: Vector[ContributingPower])
+object WalkerPowers {
+  val empty: WalkerPowers = WalkerPowers(Vector.empty)
 }
 
 /** Auto-walk engine over an [[Operation]] action tree (Tasks 3-5).
@@ -128,7 +139,10 @@ object ProcedureWalker {
     } yield pending
 
     event match {
-      case step @ WalkerStepRecorded(_, _, RollPayload(pool, faces), ops) =>
+      // `contributions` is deliberately unmatched (`_`) below: replay applies
+      // `ops` only and must never consult which powers produced them (spec
+      // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
+      case step @ WalkerStepRecorded(_, _, RollPayload(pool, faces), ops, _) =>
         for {
           _ <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
@@ -148,7 +162,7 @@ object ProcedureWalker {
           })))
 
       case step @ WalkerStepRecorded(_, _,
-          ChoicePayload(decisionId, payload), ops) =>
+          ChoicePayload(decisionId, payload), ops, _) =>
         for {
           pending <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
@@ -159,7 +173,7 @@ object ProcedureWalker {
           ready.game.current.copy(walkerPending = Some(answered))))
 
       case step @ WalkerStepRecorded(_, _,
-          _: WalkerStepPayload.DeltaRecorded, ops) =>
+          _: WalkerStepPayload.DeltaRecorded, ops, _) =>
         for {
           _ <- validateStep(step)
           _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(
@@ -219,7 +233,8 @@ object ProcedureWalker {
       segment.nonEmpty && segment.forall(_.isDigit))
 
   def advance(state: ReadyGame, action: Operation,
-      pending: Option[PendingTree]): Either[OathViolation, WalkerOutcome] = {
+      pending: Option[PendingTree], powers: WalkerPowers = WalkerPowers.empty)
+      : Either[OathViolation, WalkerOutcome] = {
     val actor = pending.fold(state.game.current.turn.activePlayer)(_.actor)
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
@@ -227,8 +242,8 @@ object ProcedureWalker {
     // running walk must not carry it inside CurrentGameState (dual-pending
     // guard), so clear the stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, actor, answered), Vector.empty,
-      cursor, PlainResume).map(toOutcome)
+    walk(action, WalkCtx(base, Vector.empty, actor, answered, powers),
+      Vector.empty, cursor, PlainResume).map(toOutcome)
   }
 
   /** Resumes the `Roll` park recorded by `advance` (Task 4 roll contract).
@@ -249,10 +264,12 @@ object ProcedureWalker {
     * `faces` each reject with `OathViolation.InvalidEventOrder`.
     */
   def roll(state: ReadyGame, action: Operation, pending: PendingTree,
-      faces: Vector[DieFace]): Either[OathViolation, WalkerOutcome] = {
+      faces: Vector[DieFace], powers: WalkerPowers = WalkerPowers.empty)
+      : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered),
-      Vector.empty, Some(pending.at), RollResume(faces)).map(toOutcome)
+    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
+      powers), Vector.empty, Some(pending.at), RollResume(faces))
+      .map(toOutcome)
   }
 
   /** Resolves the `Decide` park recorded by `advance`/`roll` (Task 5 ruling
@@ -271,11 +288,23 @@ object ProcedureWalker {
     * next Roll/Decide or finish the tree).
     */
   def resolve(state: ReadyGame, action: Operation, pending: PendingTree,
-      answer: Answered): Either[OathViolation, WalkerOutcome] = {
+      answer: Answered, powers: WalkerPowers = WalkerPowers.empty)
+      : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered),
-      Vector.empty, Some(pending.at), AnswerResume(answer)).map(toOutcome)
+    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
+      powers), Vector.empty, Some(pending.at), AnswerResume(answer))
+      .map(toOutcome)
   }
+
+  /** Collects every restriction violation from every windowed node in `tree`
+    * (spec decision 9's `Restriction` kind), run against the tree root --
+    * `OathRules` calls this once per command, before the walk (Task 3
+    * wiring rule). See [[WalkerPowerGather.restrictionViolations]] for the
+    * traversal (split out to keep this file under the project's line bound).
+    */
+  def restrictionViolations(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, actor: PlayerId): Vector[OathViolation] =
+    WalkerPowerGather.restrictionViolations(tree, powers, state, actor)
 
   /** When `pending` parks on a `Roll` node of `action`, reports the node's
     * `pool` and the face count that node requires (read from
@@ -317,7 +346,8 @@ object ProcedureWalker {
       state: ReadyGame,
       events: Vector[OathEvent],
       actor: PlayerId,
-      answered: Vector[Answered]
+      answered: Vector[Answered],
+      powers: WalkerPowers
   )
 
   private sealed trait Step extends Product with Serializable
@@ -376,9 +406,33 @@ object ProcedureWalker {
       case repeat: Repeat => walkRepeat(repeat, ctx, path, cursor, resume)
       case branch: Branch => walkBranch(branch, ctx, path, cursor, resume)
       case leaf: PrimitiveOperation => walkLeaf(leaf, ctx, path, cursor, resume)
-      case composite => walkChildren(composite.children, ctx, path, cursor,
-        resume)
+      case composite => walkComposite(composite, ctx, path, cursor, resume)
     }
+
+  /** A composite whose `window` is `Some(w)` (Task 3 wiring rule 1): gather at
+    * `w` and fold the node's OWN children vector (never mutated -- the fold
+    * is local to this walk) through the resulting transforms. Unchanged
+    * (`folded == composite.children`, e.g. no window or nothing applicable)
+    * walks exactly like pre-Task-3: each child its own step. A rewrite that
+    * flattens to plain, non-parking ops batches as ONE step (spec decision 5:
+    * one hookable node, one event, its final batch); one that still needs to
+    * park (a Decide/Roll survives the fold) falls back to per-child walking.
+    */
+  private def walkComposite(composite: Operation, ctx: WalkCtx,
+      path: Vector[String], cursor: Option[Vector[String]],
+      resume: Resume): Either[OathViolation, Step] = {
+    val (folded, contributions) = WalkerPowerGather.applyWindow(
+      composite.window, ctx.state, ctx.actor, ctx.powers, path,
+      composite.children)
+    if (folded == composite.children)
+      walkChildren(composite.children, ctx, path, cursor, resume)
+    else WalkerPowerGather.resolvePlainBatch(folded) match {
+      case Some(ops) if cursor.isEmpty =>
+        recordBatch(ops, contributions, ctx, path, leafLabel(composite))
+          .map(Done(_))
+      case _ => walkChildren(folded, ctx, path, cursor, resume)
+    }
+  }
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
@@ -447,7 +501,9 @@ object ProcedureWalker {
         else resume match {
           case RollResume(faces) =>
             leaf match {
-              case roll: Roll => recordRoll(roll, ctx, path, faces).map(Done(_))
+              case roll: Roll => recordRoll(roll, ctx, path, faces,
+                WalkerPowerGather.gatherOrderAt(leaf.window, ctx.state,
+                  ctx.actor, ctx.powers, path)).map(Done(_))
               case _: Decide => Left(OathViolation.InvalidEventOrder(
                 s"roll() resumed at a ${leafLabel(leaf)} park; " +
                   "expected a Roll"))
@@ -458,7 +514,9 @@ object ProcedureWalker {
           case AnswerResume(answer) =>
             leaf match {
               case decide: Decide if decide.decisionId == answer.decisionId =>
-                answerDecide(decide, ctx, path, answer).map(Done(_))
+                answerDecide(decide, ctx, path, answer,
+                  WalkerPowerGather.gatherOrderAt(leaf.window, ctx.state,
+                    ctx.actor, ctx.powers, path)).map(Done(_))
               case decide: Decide => Left(OathViolation.InvalidEventOrder(
                 s"resolve() answer ${answer.decisionId} does not match the " +
                   s"parked Decide ${decide.decisionId} at " +
@@ -483,10 +541,25 @@ object ProcedureWalker {
             }
         }
       case None =>
-        leaf match {
-          case _: Decide | _: Roll => Right(Park(path, ctx))
-          case build: BuildOps => runBuildOps(build, ctx, path).map(Done(_))
-          case delta => record(delta, ctx, path).map(Done(_))
+        // Task 3 wiring rule 2: gather at `leaf.window` (no-op when `None`)
+        // and fold `Vector(leaf)`; unchanged falls through to the pre-Task-3
+        // dispatch below with `contributions` at `Vector.empty`.
+        val (folded, contributions) = WalkerPowerGather.applyWindow(
+          leaf.window, ctx.state, ctx.actor, ctx.powers, path, Vector(leaf))
+        if (folded == Vector(leaf))
+          leaf match {
+            case _: Decide | _: Roll => Right(Park(path, ctx))
+            case build: BuildOps =>
+              runBuildOps(build, ctx, path, contributions).map(Done(_))
+            case delta => record(delta, ctx, path, contributions).map(Done(_))
+          }
+        else WalkerPowerGather.resolvePlainBatch(folded) match {
+          case Some(ops) =>
+            recordBatch(ops, contributions, ctx, path, leafLabel(leaf))
+              .map(Done(_))
+          case None => contractViolation(
+            s"power transform at ${path.mkString(".")} produced a Decide/" +
+              "Roll/BuildOps this leaf cannot batch-execute")
         }
     }
 
@@ -530,49 +603,50 @@ object ProcedureWalker {
         }
 
   /** Executes one delta leaf through the pipeline and records its step. */
-  private def record(delta: CoreOperation, ctx: WalkCtx,
-      path: Vector[String]): Either[OathViolation, WalkCtx] =
-    OperationPipeline.run(ctx.state, Vector(delta),
-      OperationPolicy.Permissive)(Right(_)).map { updated =>
-      val nodeId =
-        if (path.isEmpty) leafLabel(delta) else path.mkString(".")
-      ctx.copy(
-        state = updated,
-        events = ctx.events :+ WalkerStepRecorded(
-          actor = ctx.actor,
-          nodeId = nodeId,
-          payload = WalkerStepPayload.DeltaRecorded(
-            deltaMeaning(Vector(delta), leafLabel(delta))),
-          ops = Vector(delta)))
-    }
+  private def record(delta: CoreOperation, ctx: WalkCtx, path: Vector[String],
+      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
+    recordBatch(Vector(delta), contributions, ctx, path, leafLabel(delta))
 
   /** Executes a [[BuildOps]] leaf: `build(state, pending)` returns the delta
     * batch to run through the pipeline, recorded as the node's step ops. An
     * empty batch runs nothing and records nothing (the node produced no
     * state change).
     */
-  private def runBuildOps(build: BuildOps, ctx: WalkCtx,
-      path: Vector[String]): Either[OathViolation, WalkCtx] = {
+  private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
+      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     val tree = PendingTree(at = path, answered = ctx.answered,
       actor = ctx.actor)
     build.build(ctx.state, tree).flatMap { ops =>
       if (ops.isEmpty) Right(ctx)
-      else
-        OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive)(
-          Right(_)).map { updated =>
-          val nodeId =
-            if (path.isEmpty) leafLabel(build) else path.mkString(".")
-          ctx.copy(
-            state = updated,
-            events = ctx.events :+ WalkerStepRecorded(
-              actor = ctx.actor,
-              nodeId = nodeId,
-              payload = WalkerStepPayload.DeltaRecorded(
-                deltaMeaning(ops, leafLabel(build))),
-              ops = ops))
-        }
+      else recordBatch(ops, contributions, ctx, path, leafLabel(build))
     }
   }
+
+  /** Executes `ops` through the pipeline as one atomic batch and records ONE
+    * [[WalkerStepRecorded]] carrying the whole batch and `contributions` --
+    * the shared mechanic behind a plain delta leaf, a [[BuildOps]] leaf, and
+    * a windowed node whose gathered transforms rewrote its content into
+    * several operations that must land as a single audited step (spec
+    * decision 5: one hookable node, one event, its final operation batch).
+    * `ops` must already be non-empty; callers short-circuit an empty batch
+    * themselves (an empty [[BuildOps]] batch records nothing; a windowed
+    * fold reaching here always has at least the node's own content).
+    */
+  private def recordBatch(ops: Vector[CoreOperation],
+      contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
+      label: String): Either[OathViolation, WalkCtx] =
+    OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive)(
+      Right(_)).map { updated =>
+      val nodeId = if (path.isEmpty) label else path.mkString(".")
+      ctx.copy(
+        state = updated,
+        events = ctx.events :+ WalkerStepRecorded(
+          actor = ctx.actor,
+          nodeId = nodeId,
+          payload = WalkerStepPayload.DeltaRecorded(deltaMeaning(ops, label)),
+          ops = ops,
+          contributions = contributions))
+    }
 
   private def deltaMeaning(ops: Vector[CoreOperation],
       fallback: String): DeltaMeaning = ops match {
@@ -595,7 +669,8 @@ object ProcedureWalker {
     * `pending.answered`) is appended.
     */
   private def answerDecide(decide: Decide, ctx: WalkCtx,
-      path: Vector[String], answer: Answered): Either[OathViolation, WalkCtx] = {
+      path: Vector[String], answer: Answered,
+      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     val parkTree = PendingTree(at = path, answered = ctx.answered,
       actor = ctx.actor)
     for {
@@ -617,7 +692,8 @@ object ProcedureWalker {
           actor = ctx.actor,
           nodeId = nodeId,
           payload = ChoicePayload(answer.decisionId, answer.payload),
-          ops = Vector.empty))
+          ops = Vector.empty,
+          contributions = contributions))
     }
   }
 
@@ -629,7 +705,8 @@ object ProcedureWalker {
     * outcome is a state write).
     */
   private def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
-      faces: Vector[DieFace]): Either[OathViolation, WalkCtx] = {
+      faces: Vector[DieFace], contributions: Vector[PowerId])
+      : Either[OathViolation, WalkCtx] = {
     val pool = roll.pool
     for {
       _ <- roll.dice.die match {
@@ -655,7 +732,7 @@ object ProcedureWalker {
           skulls = 0, score)),
         events = ctx.events :+ WalkerStepRecorded(actor = ctx.actor,
           nodeId = nodeId, payload = RollPayload(pool, faces),
-          ops = Vector.empty))
+          ops = Vector.empty, contributions = contributions))
     }
   }
 

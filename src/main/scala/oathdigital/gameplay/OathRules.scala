@@ -18,7 +18,7 @@ import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
-  WalkerOutcome, WalkerParked, WalkerStepRecorded}
+  WalkerOutcome, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -142,12 +142,32 @@ final class OathRules(catalog: ExecutableCatalog,
       case Ready(ready) => withFallback(state, actor, MajorActionKind.Recover) {
         for {
           tree <- buildWalker(action, ready, actor, starting = true)
-          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None))
+          _ <- checkRestrictions(tree, ready, actor)
+          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
+            walkerPowers))
           transition <- walkerTransition(state, ready, action, tree, outcome)
         } yield transition
       }
       case _ => Left(GameNotStarted)
     }
+
+  /** No power is wired onto this vertical slice yet -- Recover's tree carries
+    * no `window` until Task 4 -- so this is the only power source `OathRules`
+    * has to supply. Once real powers register here, `restrictionViolations`
+    * and every walker call below see them without any other change.
+    */
+  private val walkerPowers: WalkerPowers = WalkerPowers.empty
+
+  /** Task 3 wiring rule: restrictions run once per command, at command entry,
+    * before the walk -- collected across the whole derived `tree` via
+    * [[ProcedureWalker.restrictionViolations]]. The first violation (if any)
+    * rejects the command with no events appended, exactly like any other
+    * `withFallback`/`for`-comprehension short-circuit here.
+    */
+  private def checkRestrictions(tree: Operation, ready: ReadyGame,
+      actor: PlayerId): Either[OathViolation, Unit] =
+    ProcedureWalker.restrictionViolations(tree, walkerPowers, ready, actor)
+      .headOption.toLeft(())
 
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.
@@ -155,8 +175,8 @@ final class OathRules(catalog: ExecutableCatalog,
   def resolveWalker(state: OathState,
       answer: Answered): Either[OathViolation, OathTransition] =
     resumeWalker(state) { case (ready, action, tree, pending) =>
-      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer))
-        .flatMap(walkerTransition(state, ready, action, tree, _))
+      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
+        walkerPowers)).flatMap(walkerTransition(state, ready, action, tree, _))
     }
 
   /** Validates and derives the action tree once, then asks the application for
@@ -173,7 +193,8 @@ final class OathRules(catalog: ExecutableCatalog,
         _ <- Either.cond(parked._1 == pool, (), InvalidEventOrder(
           s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
         faces <- prepareFaces(parked._2)
-        outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces))
+        outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
+          walkerPowers))
         transition <- walkerTransition(state, ready, action, tree, outcome)
       } yield transition
     }
@@ -200,6 +221,7 @@ final class OathRules(catalog: ExecutableCatalog,
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
       tree <- buildWalker(action, ready, pending.actor, starting = false)
+      _ <- checkRestrictions(tree, ready, pending.actor)
     } yield (ready, action, tree, pending)
     case _ => Left(GameNotStarted)
   }
