@@ -633,14 +633,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // the id `OathRules.startWalker` will accept -- not merely "some id
     // that happens to work". A defect here (offered-but-rejected, or
     // accepted-but-never-offered) is precisely what Task 9a exists to
-    // prevent. Exercised directly against `OathRules` (the layer that owns
-    // `validateModifiers`, the accepting predicate) rather than through
-    // `service.handle`, because persisting the resulting events hits an
-    // unrelated, pre-existing gap: `WalkerEventCodec` cannot yet encode a
-    // recorded op whose location is `Location.Deck` (Catacombs' relic
-    // move), so `StartWalker` succeeds at the rules layer but the service
-    // call fails trying to append the event. Flagged separately -- out of
-    // this task's scope, which is the preview, not the walker event codec.
+    // prevent. Asserted directly against `OathRules` because that is the
+    // layer owning `validateModifiers`, the accepting predicate; the
+    // persisted path the preview actually feeds is covered separately by
+    // "StartWalker drives Catacombs through the full persisted path" above.
+    // (That test exists because this rules-only assertion once hid a real
+    // defect: `WalkerEventCodec` could not encode the `Location.Deck` in
+    // Catacombs' relic move, so `StartWalker` passed here and failed at
+    // append. The codec is now total over `Location`.)
     val rules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
     val started = rules.startWalker(prepared.state, ActionRef.Recover, actor,
