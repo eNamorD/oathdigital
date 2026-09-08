@@ -182,15 +182,21 @@ object ProcedureWalker {
             .left.map(_.toViolation)
         } yield updated
 
-      case WalkerParked(actor, action, at, answered) => for {
+      case WalkerParked(actor, action, at, answered, modifiers) => for {
         _ <- validateActor(actor)
         _ <- Either.cond(at.nonEmpty && at.forall(segment =>
           segment.nonEmpty && segment.forall(_.isDigit)), (),
           OathViolation.InvalidEventOrder("invalid durable walker park path"))
         _ <- ready.game.current.walkerAction match {
-          case Some(existing) => Either.cond(existing == action, (),
-            OathViolation.InvalidEventOrder(
-              s"walker action ${action.key} does not match ${existing.key}"))
+          case Some(existing) => for {
+            _ <- Either.cond(existing == action, (),
+              OathViolation.InvalidEventOrder(
+                s"walker action ${action.key} does not match ${existing.key}"))
+            _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
+              OathViolation.InvalidEventOrder(
+                "durable walker park modifiers do not match the recorded " +
+                  "selection"))
+          } yield ()
           case None => Right(())
         }
         _ <- ready.game.current.walkerPending match {
@@ -204,7 +210,8 @@ object ProcedureWalker {
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
           walkerPending = Some(PendingTree(at, answered, actor)),
-          walkerAction = Some(action))))
+          walkerAction = Some(action),
+          walkerModifiers = modifiers)))
 
       case WalkerCompleted(actor, action) => for {
         _ <- validateActor(actor)
@@ -218,6 +225,7 @@ object ProcedureWalker {
         ready.game.current.copy(
           walkerPending = None,
           walkerAction = None,
+          walkerModifiers = Vector.empty,
           rollPools = Map.empty,
           rollOutcomes = Map.empty)))
 
@@ -310,11 +318,15 @@ object ProcedureWalker {
     * `pool` and the face count that node requires (read from
     * `state.rollPools`), so the app layer can pre-roll exactly that many
     * faces for the next `roll` command (Task 6 consumes it). `None` when the
-    * park is a Decide or the position does not resolve to a Roll.
+    * park is a Decide or the position does not resolve to a Roll. `powers`
+    * (fix-round ruling J) must be the same vector the live walk that parked
+    * here used -- `leafAt` folds every window on the path exactly like the
+    * walk does, so a transform that inserts operations around a windowed
+    * node does not make this address the wrong leaf.
     */
   def parkedRoll(state: ReadyGame, action: Operation,
-      pending: PendingTree): Option[(PoolKey, Int)] =
-    leafAt(state, action, pending).collect {
+      pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
+    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
       case Roll(pool, _) => (pool, poolCount(state, pool))
     }
 
@@ -326,8 +338,8 @@ object ProcedureWalker {
     * resolve to a Decide.
     */
   def parkedDecide(state: ReadyGame, action: Operation,
-      pending: PendingTree): Option[Decide] =
-    leafAt(state, action, pending).collect {
+      pending: PendingTree, powers: WalkerPowers): Option[Decide] =
+    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
       case decide: Decide => decide
     }
 
@@ -763,35 +775,4 @@ object ProcedureWalker {
         .updated(outcome.pool, accumulated))))
   }
 
-  /** Resolves the node addressed by `pending.at` (a child-index path rooted
-    * at `action`), or `None` when a segment is non-numeric or out of range (a
-    * fabricated or stale position). A [[Branch]] encountered along the path
-    * is resolved the same way a live walk would reach it: `select(state, ...)`
-    * is evaluated (with `at` set to the path consumed so far, matching
-    * `walkBranch`'s `branchTree`) to get its current children before
-    * indexing into the next path segment, so a park inside a Branch's
-    * dynamically-selected children (e.g. Recover's success-only relic
-    * decision) resolves to the real node instead of `None`.
-    */
-  private def leafAt(state: ReadyGame, action: Operation,
-      pending: PendingTree): Option[Operation] =
-    resolveAt(state, pending, action, pending.at, Vector.empty)
-
-  private def resolveAt(state: ReadyGame, pending: PendingTree,
-      node: Operation, remaining: Vector[String],
-      consumed: Vector[String]): Option[Operation] =
-    remaining.headOption match {
-      case None => Some(node)
-      case Some(segment) => segment.toIntOption.flatMap { index =>
-        val children = node match {
-          case branch: Branch =>
-            branch.select(state, pending.copy(at = consumed))
-          case other => other.children
-        }
-        if (index >= 0 && index < children.size)
-          resolveAt(state, pending, children(index), remaining.tail,
-            consumed :+ segment)
-        else None
-      }
-    }
 }

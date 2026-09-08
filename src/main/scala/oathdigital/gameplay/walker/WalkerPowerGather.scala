@@ -11,9 +11,11 @@ import oathdigital.model.{PendingTree, PlayerId, PowerId}
   * per-file line bound (`BackendArchitectureSuite`'s "all production Scala
   * files stay bounded"). Everything here is `private[walker]`:
   * `ProcedureWalker` is the sole caller, and the only power-shaped surface it
-  * re-exports publicly is `WalkerPowers` (declared on `ProcedureWalker`) and
-  * `ProcedureWalker.restrictionViolations`, which just delegates to
-  * [[restrictionViolations]] below.
+  * re-exports publicly is `WalkerPowers` (declared on `ProcedureWalker`),
+  * `ProcedureWalker.restrictionViolations` (delegates to
+  * [[restrictionViolations]] below), and `ProcedureWalker.parkedRoll`/
+  * `ProcedureWalker.parkedDecide` (delegate to [[leafAt]] below, fix-round
+  * ruling J).
   */
 private[walker] object WalkerPowerGather {
 
@@ -92,6 +94,78 @@ private[walker] object WalkerPowerGather {
       }
     }
   }
+
+  /** Resolves the node addressed by `pending.at` (a child-index path rooted
+    * at `action`), or `None` when a segment is non-numeric or out of range (a
+    * fabricated or stale position). Each step down the path resolves children
+    * through [[foldedChildrenAt]] -- the SAME fold the live walk applied on
+    * its way to this park (fix-round ruling J) -- rather than the declared,
+    * unfolded tree: a `Branch` is resolved by evaluating `select(state, ...)`
+    * (with `at` set to the path consumed so far, matching `walkBranch`'s
+    * `branchTree`), and any windowed node's children are folded through
+    * `powers` exactly as `walkComposite`/`walkBranch`/`walkLeaf` do, so a
+    * transform that inserts operations around a windowed node does not make
+    * this address the wrong node. `powers` MUST be the same vector the live
+    * walk that parked here used -- a `Transform` is required to be a pure
+    * function of state (same invariant `Branch.select` already carries), so
+    * re-folding here with the same `powers` reproduces the exact indices the
+    * walk parked at. The sole caller is [[ProcedureWalker.parkedRoll]]/
+    * [[ProcedureWalker.parkedDecide]] (in turn `OathRules.parkedContinue`),
+    * moved here (like [[applyWindow]]/[[restrictionViolations]] above) to
+    * keep `ProcedureWalker.scala` under the project's line bound.
+    */
+  def leafAt(state: ReadyGame, action: Operation, pending: PendingTree,
+      powers: WalkerPowers): Option[Operation] =
+    resolveAt(state, pending, powers, action, pending.at, Vector.empty,
+      Set.empty)
+
+  private def resolveAt(state: ReadyGame, pending: PendingTree,
+      powers: WalkerPowers, node: Operation, remaining: Vector[String],
+      consumed: Vector[String], gathered: Set[PowerWindow]): Option[Operation] =
+    remaining.headOption match {
+      case None => Some(node)
+      case Some(segment) => segment.toIntOption.flatMap { index =>
+        val (children, nextGathered) = foldedChildrenAt(state, pending,
+          powers, node, consumed, gathered)
+        if (index >= 0 && index < children.size)
+          resolveAt(state, pending, powers, children(index), remaining.tail,
+            consumed :+ segment, nextGathered)
+        else None
+      }
+    }
+
+  /** The children `node` presents at `path` for the purpose of navigating one
+    * more path segment -- mirroring `walkBranch`/`walkLeaf`/`walkComposite`'s
+    * dispatch, but computing only the folded children rather than executing
+    * anything. `gathered` mirrors [[WalkerHooks.gathered]]: a windowed leaf's
+    * own fold (applied to `Vector(leaf)`, since a `PrimitiveOperation`'s
+    * `children` is a self-reference) is applied at most once per branch, so a
+    * transform that hands the leaf back unchanged does not re-trigger its own
+    * window on the next path segment. A composite's fold needs no such guard
+    * -- its fold cannot reproduce the composite itself, only its children.
+    */
+  private def foldedChildrenAt(state: ReadyGame, pending: PendingTree,
+      powers: WalkerPowers, node: Operation, path: Vector[String],
+      gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) =
+    node match {
+      case branch: Branch =>
+        val selected = branch.select(state, pending.copy(at = path))
+        val (folded, _) = applyWindow(branch.window, state, pending.actor,
+          powers, path, selected)
+        (folded, gathered)
+      case leaf: PrimitiveOperation =>
+        leaf.window match {
+          case Some(w) if !gathered.contains(w) =>
+            val (folded, _) = applyWindow(Some(w), state, pending.actor,
+              powers, path, Vector(leaf))
+            (folded, gathered + w)
+          case _ => (leaf.children, gathered)
+        }
+      case composite =>
+        val (folded, _) = applyWindow(composite.window, state, pending.actor,
+          powers, path, composite.children)
+        (folded, gathered)
+    }
 }
 
 /** Power attribution and re-entry guard threaded DOWN one walk branch (unlike

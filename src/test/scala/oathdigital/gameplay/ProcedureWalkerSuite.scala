@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
-  PowerCtx, PowerWindow, Restriction, Transform}
+  PowerCtx, PowerResolution, PowerWindow, Restriction, Transform}
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
 import oathdigital.gameplay.walker.{ChoicePayload, OwnerQuery, ProcedureWalker,
@@ -34,7 +34,8 @@ object ProcedureWalkerSuite {
     * pulling in the real power catalog.
     */
   final case class TestTransformPower(id: PowerId, hook: PowerWindow,
-      fn: (PowerCtx, Vector[Operation]) => Vector[Operation])
+      fn: (PowerCtx, Vector[Operation]) => Vector[Operation],
+      override val resolution: PowerResolution = PowerResolution.Automatic)
       extends ContributingPower {
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] =
@@ -351,8 +352,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     assertEquals(pending.answered, Vector.empty[Answered])
     assertEquals(parkedState.game.current.rollPools,
       Map(recoverPool -> DicePoolState(2)))
-    assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending),
-      Some((recoverPool, 2)))
+    assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending,
+      noPowers), Some((recoverPool, 2)))
   }
 
   test("malformed and overflowing Roll paths return typed failures") {
@@ -362,7 +363,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     paths.foreach { path =>
       val pending = PendingTree(path, Vector.empty, actor)
-      assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending), None)
+      assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending,
+        noPowers), None)
       assert(ProcedureWalker.roll(parkedState, tree, pending,
         Vector(DefenseDieFace.Blank, DefenseDieFace.Blank), noPowers)
         .left.toOption
@@ -727,5 +729,84 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case (left, _) => left
     }
     assertEquals(replayed, Right(OathState.Ready(finalState)))
+  }
+
+  // -------------------------------------------------------------------------
+  // Fix-round ruling J: `leafAt`/`resolveAt` (behind `parkedRoll`/
+  // `parkedDecide`) must resolve a park position against the FOLDED tree, not
+  // the declared one -- an inserting `Transform` at a windowed composite
+  // shifts a later sibling's index in the fold without moving it in the
+  // composite's own declared `children`. `OathRules.parkedContinue` (and,
+  // through it, the client-facing continuation prompt) is the only caller;
+  // these tests drive `parkedRoll`/`parkedDecide` directly, synthetically,
+  // exactly like Task 3's own `WindowedNode`/`TestTransformPower` doubles --
+  // no dependency on Recover or the catalog.
+  // -------------------------------------------------------------------------
+
+  test("parkedDecide resolves an inserting transform's shifted index, not " +
+      "the windowed composite's declared (unfolded) children") {
+    val powerId = PowerId("test.insert-before-decide-park")
+    val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
+    // Declared children of `windowed` are `Vector(decide)` -- one element, at
+    // declared index 0.
+    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow, Vector(decide))
+    val tree: Operation = Sequence(windowed)
+    val powers = WalkerPowers(Vector(power))
+
+    // The live walk folds `adjust` in FIRST, so the real park is at folded
+    // index 1 ("0.1"), one deeper than the declared "0.0" -- the exact shape
+    // Task 5's first inserting power (Catacombs, at the root window) produces.
+    val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
+        powers) match {
+      case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
+      case other => fail(s"expected a park at the folded Decide, got $other")
+    }
+    assertEquals(parked.at, Vector("0", "1"))
+    assertEquals(parkEvents.size, 1)
+
+    val parkedState = applyEvents(ready, parkEvents)
+
+    // Before ruling J's fix, `leafAt` indexed `windowed.children` (the
+    // DECLARED, unfolded `Vector(decide)`) directly: index 1 was out of
+    // range there, so this returned `None` even though the walk is
+    // legitimately parked on a real Decide -- `OathRules.parkedContinue`
+    // would have rejected a live client's resume with "parked walker
+    // position is neither a Roll nor a Decide".
+    assertEquals(ProcedureWalker.parkedDecide(parkedState, tree, parked,
+      powers), Some(decide))
+    assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, parked,
+      powers), None)
+  }
+
+  test("parkedRoll resolves an inserting transform's shifted index on a " +
+      "windowed composite whose folded Roll sits one index deeper") {
+    val powerId = PowerId("test.insert-before-roll-park")
+    val power = transformPower(powerId.value, testWindow)((_, ops) => adjust +: ops)
+    // Declared children are `Vector(ModifyDicePool(...), defenseRoll)` -- the
+    // Roll at declared index 1.
+    val windowed = ProcedureWalkerSuite.WindowedNode(testWindow,
+      Vector(ModifyDicePool(recoverPool, 2), defenseRoll))
+    val tree: Operation = Sequence(windowed)
+    val powers = WalkerPowers(Vector(power))
+
+    // Folded: [adjust, ModifyDicePool, Roll] -- the Roll now sits at folded
+    // index 2, not its declared index 1.
+    val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,
+        powers) match {
+      case Right(WalkerOutcome.Parked(pending, events)) => (pending, events)
+      case other => fail(s"expected a park at the folded Roll, got $other")
+    }
+    assertEquals(parked.at, Vector("0", "2"))
+    assertEquals(parkEvents.size, 2)
+
+    val parkedState = applyEvents(ready, parkEvents)
+
+    // Before ruling J's fix, `leafAt` indexed the declared children directly:
+    // index 2 there is out of range (only 2 declared children), so this
+    // returned `None` even though the walk legitimately parked on the Roll.
+    assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, parked,
+      powers), Some((recoverPool, 2)))
+    assertEquals(ProcedureWalker.parkedDecide(parkedState, tree, parked,
+      powers), None)
   }
 }

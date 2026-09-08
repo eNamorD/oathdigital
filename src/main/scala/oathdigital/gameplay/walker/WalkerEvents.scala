@@ -76,13 +76,18 @@ final case class WalkerStepRecorded(
 
 /** Durable state fact written whenever walking stops at a Decide or Roll.
   * `action` is stored beside pointer-only PendingTree on replay so generic
-  * resume commands can rebuild the correct tree after reload.
+  * resume commands can rebuild the correct tree after reload. `modifiers`
+  * (fix-round ruling I) is the player-selected power ids chosen when the
+  * walker action started, carried on every park of this action so replay
+  * restores `CurrentGameState.walkerModifiers` from this fact alone, without
+  * re-running the walker or re-deriving anything.
   */
 final case class WalkerParked(
     actor: PlayerId,
     action: ActionRef,
     at: Vector[String],
-    answered: Vector[Answered]
+    answered: Vector[Answered],
+    modifiers: Vector[PowerId]
 ) extends WalkerEvent
 
 /** Durable action-boundary fact. Replay clears every walker-owned scratch

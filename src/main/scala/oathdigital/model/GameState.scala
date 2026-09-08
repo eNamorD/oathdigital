@@ -132,7 +132,13 @@ final case class CurrentGameState(
     rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty,
     // Stored beside, not inside, pointer-only PendingTree. Rebuilds the
     // command-local operation tree after reload.
-    walkerAction: Option[ActionRef] = None
+    walkerAction: Option[ActionRef] = None,
+    // The player-selected power ids chosen when the walker action started
+    // (fix-round ruling I). Stored beside, not inside, pointer-only
+    // PendingTree for the same reason as `walkerAction`: replay restores it
+    // from the durable `WalkerParked` fact rather than re-deriving it, and
+    // `WalkerCompleted` clears it alongside `walkerPending`/`walkerAction`.
+    walkerModifiers: Vector[PowerId] = Vector.empty
 )
 
 final case class OathGame(

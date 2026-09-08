@@ -2,11 +2,12 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.PowerWindow
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
+  PowerCtx, PowerResolution, PowerWindow}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
-import oathdigital.gameplay.walker.{ChoicePayload, WalkerParked, WalkerPowers,
-  WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
+  WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
 
@@ -114,5 +115,159 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
     assertEquals(rules(actor, forbidding).resolveWalker(started.state, answer),
       Left(violation))
+  }
+
+  // -------------------------------------------------------------------------
+  // Fix-round ruling I: a player-selected `StartWalker` modifier must persist
+  // across a resume -- `walkerResumeContext` reads
+  // `CurrentGameState.walkerModifiers` (restored from the durable
+  // `WalkerParked` fact), not an empty vector, so the SAME fold applies on
+  // every command of one action.
+  // -------------------------------------------------------------------------
+
+  private def insertingPower(id: PowerId, actor: PlayerId,
+      resolution: PowerResolution): ProcedureWalkerSuite.TestTransformPower =
+    ProcedureWalkerSuite.TestTransformPower(id, window,
+      (_, ops) => AdjustSupply(actor, -1) +: ops, resolution)
+
+  test("a player-selected modifier chosen at StartWalker is still folded on " +
+      "resume, so the resumed park addresses the leaf that actually parked") {
+    val (ready, actor) = actable
+    val powerId = PowerId("test.insert-adjust")
+    val power = insertingPower(powerId, actor, PowerResolution.PlayerSelected)
+    val rulesInstance = rules(actor, WalkerPowers(Vector(power)))
+
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
+        actor, Vector(powerId)) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the modifier-selected start to run, got $other")
+    }
+    // The transform fired at start: the inserted AdjustSupply ran before the
+    // first Decide, so the park sits one index deeper than the bare tree
+    // would (folded index 1, not declared index 0) -- proof the modifier was
+    // in effect for this command.
+    val Ready(atFirstPark) = started.state: @unchecked
+    assertEquals(atFirstPark.game.current.walkerPending.map(_.at),
+      Some(Vector("0", "1")))
+    assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
+
+    val answer = Answered(RecoverProcedure.choiceDecisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    // Without ruling I's fix, `walkerResumeContext` would fold this command
+    // with an EMPTY modifiers vector: the AdjustSupply would no longer be
+    // prepended, the folded vector would shift back by one, and this resume
+    // would address the SECOND Decide instead of the first -- a decisionId
+    // mismatch, rejected with InvalidEventOrder instead of resolving cleanly.
+    val resumed = rulesInstance.resolveWalker(started.state, answer) match {
+      case Right(transition) => transition
+      case other => fail(
+        s"expected the resume to address the parked Decide, got $other")
+    }
+    assert(resumed.events.exists {
+      case step: WalkerStepRecorded => step.payload.isInstanceOf[ChoicePayload]
+      case _ => false
+    })
+  }
+
+  test("the persisted modifiers survive a replay of the event stream, " +
+      "without the walker being re-run") {
+    val (ready, actor) = actable
+    val powerId = PowerId("test.insert-adjust")
+    val power = insertingPower(powerId, actor, PowerResolution.PlayerSelected)
+
+    val started = rules(actor, WalkerPowers(Vector(power)))
+      .startWalker(Ready(ready), ActionRef.Recover, actor,
+        Vector(powerId)) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the modifier-selected start to run, got $other")
+    }
+
+    // Replay applies recorded facts only, through `ProcedureWalker
+    // .applyRecorded` -- the identical dispatch `OathRules.evolve` uses for
+    // these event types in production (spec decision 5: replay never
+    // re-gathers, re-transforms, or re-walks). Reconstructing purely from
+    // `started.events` must reach `walkerModifiers == Vector(powerId)`
+    // without invoking the walker or the power at all.
+    val replayed = started.events.foldLeft[Either[OathViolation, OathState]](
+        Right(OathState.Ready(ready))) {
+      case (Right(state), event: WalkerEvent) =>
+        ProcedureWalker.applyRecorded(state, event)
+      case (Right(state), _) => Right(state)
+      case (left, _) => left
+    }
+    assertEquals(replayed, Right(started.state))
+    val Right(Ready(replayedReady)) = replayed: @unchecked
+    assertEquals(replayedReady.game.current.walkerModifiers, Vector(powerId))
+  }
+
+  test("WalkerCompleted clears walkerModifiers along with walkerPending and " +
+      "walkerAction") {
+    val (ready, actor) = actable
+    val powerId = PowerId("test.insert-adjust")
+    val power = insertingPower(powerId, actor, PowerResolution.PlayerSelected)
+    val rulesInstance = rules(actor, WalkerPowers(Vector(power)))
+
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
+        actor, Vector(powerId)) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the modifier-selected start to run, got $other")
+    }
+    val Ready(atFirstPark) = started.state: @unchecked
+    assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
+
+    val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    val afterFirst = rulesInstance.resolveWalker(started.state,
+        firstAnswer) match {
+      case Right(transition) => transition
+      case other => fail(
+        s"expected the first resume to park at the second Decide, got $other")
+    }
+    val Ready(atSecondPark) = afterFirst.state: @unchecked
+    assertEquals(atSecondPark.game.current.walkerModifiers, Vector(powerId))
+
+    val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+    val finished = rulesInstance.resolveWalker(afterFirst.state,
+        secondAnswer) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the second resume to finish the tree, got $other")
+    }
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    val Ready(afterCompletion) = finished.state: @unchecked
+    assertEquals(afterCompletion.game.current.walkerModifiers,
+      Vector.empty[PowerId])
+    assert(afterCompletion.game.current.walkerAction.isEmpty)
+    assert(afterCompletion.game.current.walkerPending.isEmpty)
+  }
+
+  // -------------------------------------------------------------------------
+  // The untested `validateModifiers` branch: a known, PlayerSelected power
+  // id whose `applicable` returns false must reject distinctly from an
+  // unknown id (already covered in GameApplicationServiceSuite), before the
+  // walk ever starts.
+  // -------------------------------------------------------------------------
+
+  test("StartWalker rejects a known but inapplicable modifier id before the " +
+      "walk runs") {
+    val (ready, actor) = actable
+    val powerId = PowerId("test.inapplicable")
+    val inapplicable = new ContributingPower {
+      def id: PowerId = powerId
+      def source: RuleSourceRef = RuleSourceRef.GameRule(powerId.value)
+      def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
+      override def resolution: PowerResolution = PowerResolution.PlayerSelected
+      override def applicable(ctx: PowerCtx): Boolean = false
+    }
+
+    rules(actor, WalkerPowers(Vector(inapplicable)))
+      .startWalker(Ready(ready), ActionRef.Recover, actor,
+        Vector(powerId)) match {
+      case Left(rejection: OathViolation.InvalidEventOrder) =>
+        assert(rejection.detail.contains("is not applicable"),
+          s"violation detail '${rejection.detail}' should mention " +
+            "inapplicability")
+      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
+    }
   }
 }

@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.ReadyGame
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.walker.ProcedureWalker
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model.{ActionRef, PendingTree, PlayerId}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
@@ -39,13 +39,20 @@ private[application] final class WalkerDecisionProjector(
       case ActionRef.Recover => RecoverProcedure.rebuild(catalog, ready, actor)
     }
 
+  // No power source is wired into this projector today: production always
+  // constructs `OathRules` with the default empty `walkerPowerCatalog`
+  // (`GameApplicationService`), so `WalkerPowers.empty` here folds identically
+  // to whatever `OathRules.parkedContinue` used to produce this park -- this
+  // stays true only as long as that default holds; Task 5's first real power
+  // must give this projector a real power source alongside it.
   private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
       pending: PendingTree): Option[WalkerDecisionProjection] =
-    ProcedureWalker.parkedRoll(ready, tree, pending) match {
+    ProcedureWalker.parkedRoll(ready, tree, pending, WalkerPowers.empty) match {
       case Some((pool, count)) => Some(WalkerDecisionProjection(action.key,
         RecoverProcedure.rollDecisionId, "roll", pool = Some(pool.value),
         count = Some(count)))
-      case None => ProcedureWalker.parkedDecide(ready, tree, pending).map(
+      case None => ProcedureWalker.parkedDecide(ready, tree, pending,
+          WalkerPowers.empty).map(
         decide => WalkerDecisionProjection(action.key, decide.decisionId,
           "decide"))
     }

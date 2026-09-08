@@ -35,11 +35,12 @@ private[serialization] trait WalkerEventCodec {
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(actor, action, at, answered) => ujson.Obj(
+    case WalkerParked(actor, action, at, answered, modifiers) => ujson.Obj(
       "actorPlayerId" -> actor.value,
       "action" -> action.key,
       "at" -> stringArray(at),
-      "answered" -> ujson.Arr.from(answered.map(encodeAnswered)))
+      "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
+      "modifiers" -> stringArray(modifiers.map(_.value)))
     case WalkerCompleted(actor, action) => ujson.Obj(
       "actorPlayerId" -> actor.value,
       "action" -> action.key)
@@ -300,8 +301,9 @@ private[serialization] trait WalkerEventCodec {
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
     }
+    modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
   } yield WalkerParked(PlayerId(value("actorPlayerId").str), action,
-    value("at").arr.toVector.map(_.str), answered)
+    value("at").arr.toVector.map(_.str), answered, modifiers)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }
 }

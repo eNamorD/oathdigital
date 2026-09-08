@@ -171,7 +171,8 @@ final class OathRules(catalog: ExecutableCatalog,
           _ <- checkRestrictions(tree, powers, ready, actor)
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
             powers))
-          transition <- walkerTransition(state, ready, action, tree, outcome)
+          transition <- walkerTransition(state, ready, action, tree, outcome,
+            powers, modifiers)
         } yield transition
       }
       case _ => Left(GameNotStarted)
@@ -184,9 +185,12 @@ final class OathRules(catalog: ExecutableCatalog,
     * only when its id appears in `modifiers` -- already validated against
     * the catalog by `validateModifiers` before this runs on `startWalker`'s
     * path. A resumed command (`resolveWalker`/`rollWalkerPrepared`) carries
-    * no `modifiers` of its own and calls this with an empty vector, so only
-    * the automatic set reaches it; see the Task 4 report for why a Start
-    * command's player-selected choice is not yet threaded across resume.
+    * no `modifiers` of its own: `walkerResumeContext` (fix-round ruling I)
+    * reads the durable `CurrentGameState.walkerModifiers` -- persisted from
+    * `startWalker`'s choice via the `WalkerParked` fact -- and passes THAT
+    * here, so a player-selected power chosen at start is still offered on
+    * every later resume, and the fold at a shared window (e.g. the tree
+    * root) stays identical across the whole action.
     */
   def walkerPowers(ready: ReadyGame, actor: PlayerId,
       modifiers: Vector[PowerId]): WalkerPowers =
@@ -237,9 +241,10 @@ final class OathRules(catalog: ExecutableCatalog,
     */
   def resolveWalker(state: OathState,
       answer: Answered): Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending, powers) =>
+    resumeWalker(state) { case (ready, action, tree, pending, powers, modifiers) =>
       walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
-        powers)).flatMap(walkerTransition(state, ready, action, tree, _))
+        powers)).flatMap(walkerTransition(state, ready, action, tree, _,
+          powers, modifiers))
     }
 
   /** Validates and derives the action tree once, then asks the application for
@@ -248,30 +253,40 @@ final class OathRules(catalog: ExecutableCatalog,
   def rollWalkerPrepared(state: OathState, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
       : Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending, powers) =>
+    resumeWalker(state) { case (ready, action, tree, pending, powers, modifiers) =>
       for {
-        parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending)
-          .toRight(InvalidEventOrder(
+        parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
+          powers).toRight(InvalidEventOrder(
             "current walker position is not a Roll park")))
         _ <- Either.cond(parked._1 == pool, (), InvalidEventOrder(
           s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
         faces <- prepareFaces(parked._2)
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
           powers))
-        transition <- walkerTransition(state, ready, action, tree, outcome)
+        transition <- walkerTransition(state, ready, action, tree, outcome,
+          powers, modifiers)
       } yield transition
     }
 
   private def resumeWalker(state: OathState)(run: (ReadyGame, ActionRef,
-      Operation, PendingTree, WalkerPowers) => Either[OathViolation, OathTransition])
+      Operation, PendingTree, WalkerPowers, Vector[PowerId]) =>
+      Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
     walkerResumeContext(state).flatMap {
-      case (ready, action, tree, pending, powers) =>
-        run(ready, action, tree, pending, powers)
+      case (ready, action, tree, pending, powers, modifiers) =>
+        run(ready, action, tree, pending, powers, modifiers)
     }
 
+  /** `modifiers` (fix-round ruling I) is read from the durable
+    * `CurrentGameState.walkerModifiers` -- restored by replay from the
+    * `WalkerParked` fact `startWalker` wrote, never re-derived -- so a
+    * resumed command offers the SAME player-selected powers `startWalker`
+    * validated, keeping every shared window's fold identical across the
+    * whole action.
+    */
   private def walkerResumeContext(state: OathState): Either[OathViolation,
-      (ReadyGame, ActionRef, Operation, PendingTree, WalkerPowers)] =
+      (ReadyGame, ActionRef, Operation, PendingTree, WalkerPowers,
+        Vector[PowerId])] =
     state match {
     case Ready(ready) => for {
       action <- ready.game.current.walkerAction.toRight(
@@ -285,9 +300,10 @@ final class OathRules(catalog: ExecutableCatalog,
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
       tree <- buildWalker(action, ready, pending.actor, starting = false)
-      powers = walkerPowers(ready, pending.actor, Vector.empty)
+      modifiers = ready.game.current.walkerModifiers
+      powers = walkerPowers(ready, pending.actor, modifiers)
       _ <- checkRestrictions(tree, powers, ready, pending.actor)
-    } yield (ready, action, tree, pending, powers)
+    } yield (ready, action, tree, pending, powers, modifiers)
     case _ => Left(GameNotStarted)
   }
 
@@ -304,11 +320,12 @@ final class OathRules(catalog: ExecutableCatalog,
     }
 
   private def walkerTransition(state: OathState, ready: ReadyGame,
-      action: ActionRef, tree: Operation, outcome: WalkerOutcome)
+      action: ActionRef, tree: Operation, outcome: WalkerOutcome,
+      powers: WalkerPowers, modifiers: Vector[PowerId])
       : Either[OathViolation, OathTransition] = outcome match {
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(pending.actor, action, pending.at,
-        pending.answered)
+        pending.answered, modifiers)
       // The park's continuation prompt can depend on a Branch selecting its
       // children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so `continue` must be derived
@@ -322,7 +339,7 @@ final class OathRules(catalog: ExecutableCatalog,
           case _ => Left(InvalidEventOrder(
             "walker park did not resolve to a Ready state"))
         }
-        continue <- parkedContinue(liveReady, tree, pending)
+        continue <- parkedContinue(liveReady, tree, pending, powers)
         finalState <- evolve(afterSteps, fact)
       } yield OathTransition(finalState, steps :+ fact, continue)
 
@@ -354,11 +371,13 @@ final class OathRules(catalog: ExecutableCatalog,
     * prompt (and decision id) with no error.
     */
   private def parkedContinue(ready: ReadyGame, tree: Operation,
-      pending: PendingTree): Either[OathViolation, OathContinue] =
-    ProcedureWalker.parkedRoll(ready, tree, pending) match {
+      pending: PendingTree, powers: WalkerPowers)
+      : Either[OathViolation, OathContinue] =
+    ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
       case Some(_) => Right(OathContinue.AwaitingRecoverRoll(pending.actor,
         DecisionId(RecoverProcedure.rollDecisionId)))
-      case None => ProcedureWalker.parkedDecide(ready, tree, pending) match {
+      case None => ProcedureWalker.parkedDecide(ready, tree, pending,
+          powers) match {
         case Some(decide)
             if decide.decisionId == RecoverProcedure.relicDecisionId =>
           Right(OathContinue.AwaitingRecoverRelic(pending.actor,
