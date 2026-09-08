@@ -137,8 +137,9 @@ leaked. Keep the raw loopback development event log separate.
    frontend assets, database close, and shutdown without sbt or Node, then
    reopens the same database directory in a second process so persistence is
    proved by a successful restart rather than by file existence. The OCI
-   process smoke remains an environment-dependent release gate; it was not run
-   on the verification host because Docker was unavailable. Multi-architecture
+   process smoke passed on 2026-09-08 against `oathdigital:0.1.0-SNAPSHOT` on
+   Docker 29.7.2 (arm64): readiness, index, asset, restart, and shutdown, with
+   the image's own default bind host and database path. Multi-architecture
    OCI publication is deferred to item 5. See
    the [implementation plan](superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
    and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
