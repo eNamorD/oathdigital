@@ -287,8 +287,13 @@ it, folding `ContributingPower` contributions (`Transform`/`Restriction`) at
 with one-pass named ignore and the deterministic
 `(priority, source.stableKey, powerId)` sort (decision 10). Catacombs
 (`src/main/scala/oathdigital/gameplay/powers/recover/CatacombsContribution.scala`)
-is the first power ported onto this seam: one 50-line object with no
-`gameplay/walker`/`gameplay/operations` import, offered to a walk when the
+is the first power ported onto this seam: one 50-line object that imports
+`gameplay.operations` (its `Transform` returns `Vector[Operation]`, building
+`Move`/`PayCost` to place the relic and charge the secret) but no
+`gameplay.walker` import — the authoring bar `BackendArchitectureSuite`
+("a walker power is one small file with no engine imports") actually
+enforces is the walker import alone, not the operations vocabulary a power
+needs to describe its own effect. Offered to a walk when the
 player selects it as a `StartWalker` modifier. A player completes Recover,
 with and without Catacombs, entirely through the wire's `StartWalker`/
 `RollWalker`/`ResolveWalker` intents; the legacy `BeginRecover`/
@@ -393,9 +398,36 @@ for a powered action, not only an unpowered one.
   contradiction between the doc comment and the code.
 
 Minor deferred items (structure, coverage, one memoization opportunity, the
-hardcoded preview window above) are listed in the SDD ledger
-(`.superpowers/sdd/2026-09-07-walker-powers-and-recover-cutover/progress.md`)
-and are non-blocking.
+hardcoded preview window above) were tracked in the SDD ledger for this
+slice; that ledger is git-ignored scratch, deleted once this branch
+finishes, so the two items below that must actually survive for the batch
+port are inlined here instead of left behind a dangling pointer:
+
+- **`ContributingPower.resolution` is one flag per power, but `contributions`
+  spans windows.** `resolution` (`Automatic`/`PlayerSelected`) is a single
+  field on the whole power object, while a power's `contributions` can
+  declare `Transform`/`Restriction` entries at several different
+  `PowerWindow`s. A power that wants an automatic `Restriction` at one
+  window (say, forbidding the action outright under some condition) AND a
+  player-selected `Transform` at another (an optional effect the player
+  opts into) cannot express that split with one `ContributingPower` — it
+  needs two objects registered under two `PowerId`s, one per resolution
+  kind. This is a real shape limit the batch port will hit the first time
+  an MVP power wants exactly that combination; it is not a bug in
+  Catacombs (which only ever needed one resolution kind), just a
+  constraint the type doesn't yet express.
+- **I4's four Recover-specific walker hardcodes are now all generalized**
+  (final fix wave, commit `9aa29a9`, after this design doc's Task 10
+  checkpoint above was written): `OathRules.startWalker`'s fallback-kind
+  literal, `OathRules.parkedContinue`'s decision-id match, the roll
+  decision id `WalkerDecisionProjector` projected, and
+  `GameApplicationService`'s hardcoded roll-pool-size check all now read
+  from `WalkerActionRegistry` (`fallbackKind`/`rollDecisionId`/
+  `continuationFor`) or `DefenseDicePort.diceCount` instead of a
+  Recover-only literal or `RecoverProcedure` reference. None of the four
+  remain outstanding for the batch port; a second registered action
+  supplies its own registry entry and dice-count expectation rather than
+  editing these call sites.
 
 ## Out of scope / deferred
 
