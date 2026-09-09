@@ -7,8 +7,10 @@
 The engine will host 100+ powers, most simple, all interacting with shared game
 state. Future expansions add more. Two constraints rule everything:
 
-1. Adding a power must be one small file (≤50 lines) and never require an engine
-   change.
+1. Adding a power must be one small class (≤50 lines) and never require an
+   engine change. The unit is the class, not the file: related powers are
+   expected to sit together in one file (a Recover-powers file, a Travel-powers
+   file), each still its own ≤50-line contribution object.
 2. Powers must be able to examine and modify game procedures at a granular
    level — not only add effects after the fact.
 
@@ -232,7 +234,8 @@ factory (`CatacombsContribution.forCatalog`, assembled by
 established pattern for catalog-dependent powers, not a `PowerCtx` gap:
 `PowerCtx` stays catalog-free by design.
 
-Power authorship stays one file. Example shape:
+Power authorship stays one small class, grouped with its neighbours in a
+shared file. Example shape:
 
 ```scala
 object RelicWorship extends Power {
@@ -288,8 +291,12 @@ this design and will be replanned.
 - Full gate stays green through migration (`./sbtw "test"
   "frontend/test" "frontend/fastLinkJS"`).
 - Drift suites: recorded ops == recomputed tree ops, in dev/test only.
-- Power-authoring bar: one file, ≤50 lines, engine untouched (asserted in a
-  BackendArchitecture-style test per power family).
+- Power-authoring bar: one class, ≤50 lines, engine untouched (asserted in a
+  BackendArchitecture-style test per power family). Note the guard in
+  `BackendArchitectureSuite` measures whole *files*, which matched the bar only
+  while every file held exactly one power (Catacombs). It must be re-pointed at
+  per-class line counts — and its power-name derivation moved off the file name
+  — the first time the batch port puts two contributions in one file.
 - Human-readable log lines rendered from event payloads.
 
 ## Slice status: Recover fully migrated, powers and UI (Task 10 checkpoint, 2026-09-08)
