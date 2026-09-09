@@ -129,8 +129,14 @@ object ForgeProcedure {
 
   /** The site's printed Forge cost, worded exactly as `ForgeRules.validate`
     * words the same rejection so a resume and a start fail alike.
+    *
+    * Public for the same reason [[eligibleTargets]] is (Task 3): the
+    * application-layer projector tells the client how many favor and how
+    * many secrets its answer must name, and that number must be the one
+    * this tree's `validate` accepts an answer against -- one definition,
+    * not a second read of `forgeRequirements` at the projector.
     */
-  private def printedCost(catalog: ExecutableCatalog,
+  def printedCost(catalog: ExecutableCatalog,
       siteId: SiteId): Either[OathViolation, Tokens] =
     catalog.sites.find(_.id == siteId).flatMap(_.forgeRequirements)
       .toRight(OathViolation.ForgeUnavailable("site has no printed Forge cost"))

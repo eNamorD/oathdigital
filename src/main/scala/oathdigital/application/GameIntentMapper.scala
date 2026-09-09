@@ -3,8 +3,8 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
   WakeResource}
 import oathdigital.model._
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload, RecoverChoice,
+  RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -188,6 +188,11 @@ object GameIntentMapper {
       RelicId.fromValue(relicId).map(RecoverRelicPayload).toRight(
         GameIntentMappingFailure("$.intent.payload.relicId",
           s"invalid relic id '$relicId'"))
+    // Reuses `forge` above -- the same `ForgeAssignment` row decode the
+    // (deleted) legacy `CompleteForge` intent used, so the walker answer
+    // and the legacy command never had two spellings of one fact.
+    case DecisionPayloadWire.ForgeAssignmentWire(assignments) =>
+      traverse(assignments)(forge).map(ForgeAssignmentPayload)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

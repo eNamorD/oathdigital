@@ -13,8 +13,8 @@ import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
+  RecoverChoice, RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts.
@@ -167,6 +167,19 @@ private[serialization] trait WalkerEventCodec {
         }))
       case RecoverRelicPayload(relic) => ujson.Obj(
         "kind" -> "recover-relic", "relicId" -> relic.value)
+      // Batch-1 Task 3, Step 2c: without this the FIRST journalled Forge
+      // hits the throw below (proven by mutation, not by review).
+      case ForgeAssignmentPayload(assignments) => ujson.Obj(
+        "kind" -> "forge-assignment",
+        "assignments" -> ujson.Arr.from(assignments.map(assignment =>
+          ujson.Obj("siteId" -> assignment.target.siteId.value,
+            "denizenId" -> assignment.target.denizenId.value,
+            "resource" -> assignment.resource.key))))
+      // R19: still a throw. `DecisionPayload` is open by design (spec
+      // decision 11), so no exhaustiveness check can make a missing branch
+      // a compile error; the fix is the typed `WireError` the decode side
+      // already returns, carried to Task 8 rather than folded into the
+      // commit that deletes an action's legacy path.
       case other => throw new IllegalArgumentException(
         s"unsupported walker decision payload $other")
     }
@@ -182,6 +195,17 @@ private[serialization] trait WalkerEventCodec {
       }
       case "recover-relic" =>
         Right(RecoverRelicPayload(RelicId(value("relicId").str)))
+      case "forge-assignment" =>
+        traverse(value("assignments").arr.toVector) { entry =>
+          (entry("resource").str match {
+            case "favor" => Right(ForgeResource.Favor)
+            case "secret" => Right(ForgeResource.Secret)
+            case other => Left(InvalidValue(s"$path.assignments.resource",
+              s"unknown Forge resource '$other'"))
+          }).map(resource => ForgeResourceAssignment(SiteDenizenTarget(
+            SiteId(entry("siteId").str), DenizenId(entry("denizenId").str)),
+            resource))
+        }.map(ForgeAssignmentPayload)
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker decision payload '$other'"))
     }

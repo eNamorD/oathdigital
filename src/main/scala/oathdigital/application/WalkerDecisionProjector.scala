@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
@@ -40,7 +40,9 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   */
 private[application] final class WalkerDecisionProjector(
     catalog: ExecutableCatalog, presentation: GamePresentationProjector,
-    walkerPowerCatalog: WalkerPowers) {
+    walkerPowerCatalog: WalkerPowers,
+    rebuildTree: WalkerDecisionProjector.TreeSource =
+      WalkerDecisionProjector.declaredTree) {
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog))
@@ -58,7 +60,7 @@ private[application] final class WalkerDecisionProjector(
     } yield projection
 
   private def rebuild(ready: ReadyGame, action: ActionRef, actor: PlayerId) =
-    WalkerActionRegistry.rebuild(action, catalog, ready, actor)
+    rebuildTree(catalog, action, ready, actor)
 
   private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
       pending: PendingTree, powers: WalkerPowers)
@@ -144,4 +146,28 @@ private[application] final class WalkerDecisionProjector(
     case DefenseDieFace.TwoShields => "two-shields"
     case DefenseDieFace.Doubler => "doubler"
   }
+}
+
+private[application] object WalkerDecisionProjector {
+  /** How this projector obtains the tree it resolves a parked position
+    * against -- the projection-side twin of `OathRules.WalkerTreeSource`,
+    * and injectable for the same reason that one is.
+    *
+    * [[declaredTree]] is the production value and every production caller
+    * takes it by default. A suite substitutes it to reach a branch no
+    * production tree can: R18's `rollDecisionId` rejection in `parked`
+    * runs only on a `Roll` park, and the only registered action declaring
+    * no roll decision id (Forge) also declares a tree with no `Roll` node.
+    *
+    * Note what this seam deliberately does NOT reach. Only the tree comes
+    * from here; `parked` still reads the roll decision id from
+    * `WalkerActionRegistry`'s production entries, so substituting a tree
+    * cannot also substitute the answer under test.
+    */
+  type TreeSource =
+    (ExecutableCatalog, ActionRef, ReadyGame, PlayerId) =>
+      Either[OathViolation, Operation]
+
+  val declaredTree: TreeSource = (catalog, action, ready, actor) =>
+    WalkerActionRegistry.rebuild(action, catalog, ready, actor)
 }

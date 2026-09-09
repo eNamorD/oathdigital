@@ -57,6 +57,11 @@ private[protocol] object CommandNestedCodecs {
       ujson.Obj("kind" -> "recover-choice", "choice" -> choice)
     case DecisionPayloadWire.RecoverRelicWire(relicId) =>
       ujson.Obj("kind" -> "recover-relic", "relicId" -> relicId)
+    case DecisionPayloadWire.ForgeAssignmentWire(assignments) =>
+      ujson.Obj("kind" -> "forge-assignment",
+        "assignments" -> ujson.Arr.from(assignments.map(row => ujson.Obj(
+          "siteId" -> row.siteId, "denizenId" -> row.denizenId,
+          "resource" -> row.resource))))
   }
 
   def decodeDecisionPayloadWire(value: ujson.Value, path: String)
@@ -66,8 +71,23 @@ private[protocol] object CommandNestedCodecs {
         .flatMap(_ => string(root, "choice", path)).map(DecisionPayloadWire.RecoverChoiceWire)
       case "recover-relic" => exact(root, Set("kind", "relicId"), path)
         .flatMap(_ => string(root, "relicId", path)).map(DecisionPayloadWire.RecoverRelicWire)
+      case "forge-assignment" => for {
+        _ <- exact(root, Set("kind", "assignments"), path)
+        raw <- field(root, "assignments", path).flatMap(array(_, s"$path.assignments"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeForgeAssignment(v, s"$path.assignments[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.siteId}/${row.denizenId}"),
+          s"$path.assignments")
+      } yield DecisionPayloadWire.ForgeAssignmentWire(rows)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision payload '$kind'"))
     }}
+
+  private def decodeForgeAssignment(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, ForgeAssignment] = obj(value, path).flatMap { row => for {
+    _ <- exact(row, Set("siteId", "denizenId", "resource"), path)
+    site <- string(row, "siteId", path); denizen <- string(row, "denizenId", path)
+    resource <- string(row, "resource", path)
+  } yield ForgeAssignment(site, denizen, resource) }
 
   private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match {
     case NegotiationInformation.Adviser(owner, card) => ujson.Obj("kind" -> "adviser", "ownerPlayerId" -> owner, "card" -> world(card))

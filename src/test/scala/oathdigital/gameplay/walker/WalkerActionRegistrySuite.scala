@@ -79,9 +79,21 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
     * flattens `None` into a typed rejection rather than handing a sentinel
     * id to `OathRules.parkedContinue` and `WalkerDecisionProjector` -- the
     * two call sites that ask it "which id is the Roll park this action just
-    * produced". This test pins the accessor's value; that both call sites
-    * carry the rejection through rather than projecting a sentinel is
-    * proven separately, at the cutover.
+    * produced".
+    *
+    * This test pins the accessor's VALUE only. That both call sites carry
+    * the rejection through rather than continuing on a sentinel is proven
+    * where those call sites actually run, since a `Left` nobody honours
+    * would keep this test green:
+    *  - `OathRulesWalker.parkedContinue` --
+    *    `OathRulesWalkerPowerSuite`, "a Roll park under an action declaring
+    *    no roll decision id rejects the whole command with the accessor's
+    *    typed Left, appending nothing".
+    *  - `WalkerDecisionProjector` --
+    *    `GameApplicationServiceSuite`, "walker Forge completes through
+    *    StartWalker/ResolveWalker alone and replays to the same final
+    *    state", which asserts the parked Forge decision carries no
+    *    `rollOutcome`.
     */
   test("rollDecisionId rejects an action whose entry declares none, and " +
       "still answers for the action that has one") {

@@ -43,7 +43,12 @@ class CommandProtocolSuite extends munit.FunSuite {
     RollWalker("recover.pool"),
     ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("continue")),
     ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")),
-    ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1"))
+    ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1")),
+    StartWalker("forge", Vector.empty),
+    ResolveWalker("forge.assignment", DecisionPayloadWire.ForgeAssignmentWire(
+      Vector(ForgeAssignment("site:a", "d1", "favor"),
+        ForgeAssignment("site:a", "d2", "favor"),
+        ForgeAssignment("site:a", "d3", "secret"))))
   )
 
   test("every actorless command intent round trips through the shared codec") {
@@ -104,6 +109,20 @@ class CommandProtocolSuite extends munit.FunSuite {
     assertEquals(failure.path, "$.intent.payload.kind")
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
     assert(failure.message.contains("unknown decision payload"))
+  }
+
+  test("a Forge assignment payload naming one denizen twice is rejected at " +
+      "its exact path") {
+    val row = """{"siteId":"site:a","denizenId":"d1","resource":"favor"}"""
+    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
+      s""""decisionId":"forge.assignment","payload":{"kind":"forge-assignment",""" +
+      s""""assignments":[$row,$row]}}}"""
+    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.assignments")
+    // The engine rejects a duplicated target too (`ForgeProcedure`'s
+    // `Decide.validate`); catching it here keeps the transport's own
+    // duplicate rule the same shape as `completeForge`'s was.
+    assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
   }
 
   test("an unknown walker intent type is rejected without throwing") {

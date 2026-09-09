@@ -42,14 +42,16 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
       GameIntent.BeginForge,
       GameIntent.StartWalker("recover", Vector.empty),
+      GameIntent.StartWalker("forge", Vector.empty),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "forge", "recover", "search"))
+      Vector("search", "forge", "recover", "forge", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
-    // A walker action other than Recover must not be swept into the same
-    // modifier-offering path -- only "recover" is registered on the walker
-    // in this slice.
+    // An UNREGISTERED walker action must not be swept into the same
+    // modifier-offering path: only the keys the engine registers on the
+    // walker ("recover" and, since batch-1 Task 3, "forge") map to a
+    // preview the server will answer.
     assertEquals(ModifierWorkflow.action(GameIntent.StartWalker("teleport", Vector.empty)),
       None)
   }

@@ -1,6 +1,7 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{ForgeAssignment, GameIntent => GameCommand}
+import oathdigital.protocol.{DecisionPayloadWire, ForgeAssignment,
+  GameIntent => GameCommand}
 
 private[frontend] final case class ForgeAssignmentState(
     context: BoardSelectionContext,
@@ -16,11 +17,19 @@ private[frontend] final case class ForgeAssignmentState(
     assignments.count(_ == "favor") == forge.favor &&
     assignments.count(_ == "secret") == forge.secrets
 
-  def command(playerId: String): Option[GameCommand.CompleteForge] =
-    Option.when(canConfirm)(GameCommand.CompleteForge(forge.decisionId,
-      forge.targets.zip(assignments).map { case (target, resource) =>
-        ForgeAssignment(target.siteId, target.denizenId, resource)
-      }))
+  /** Forge is a walker action (batch-1 Task 3), so a confirmed assignment
+    * answers its parked `"forge.assignment"` decision through
+    * `ResolveWalker` -- `forge.decisionId` is that decision's id, projected
+    * by the server from the walker's own parked position, not a
+    * per-command `DecisionId` the way the deleted `CompleteForge` intent's
+    * was.
+    */
+  def command(playerId: String): Option[GameCommand.ResolveWalker] =
+    Option.when(canConfirm)(GameCommand.ResolveWalker(forge.decisionId,
+      DecisionPayloadWire.ForgeAssignmentWire(
+        forge.targets.zip(assignments).map { case (target, resource) =>
+          ForgeAssignment(target.siteId, target.denizenId, resource)
+        })))
 }
 
 private[frontend] object ForgeAssignmentState {

@@ -7,6 +7,7 @@ import java.nio.file.Files
 
 import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, CoreOperation,
   Cost, Location, ModifyDicePool, Move, PayCost, Piece, PositionedLocation,
@@ -18,8 +19,8 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
+  RecoverChoice, RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
@@ -728,6 +729,138 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Vector("peoples-favor" -> 2))
   }
 
+  // ---------------------------------------------------------------------------
+  // Batch-1 Task 3, P1 + P2: Forge runs end to end on the generic walker,
+  // through `StartWalker`/`ResolveWalker` alone, and its journal replays to
+  // the same state. P2 is what proves Step 2c's codec branches: the answer's
+  // `ForgeAssignmentPayload` rides both a `WalkerStepRecorded` ChoicePayload
+  // and the `WalkerParked` fact, so `encodeDecisionPayload` is reached on
+  // append and `decodeDecisionPayload` on every reload -- P1 alone would not
+  // necessarily touch either.
+  // ---------------------------------------------------------------------------
+
+  test("walker Forge completes through StartWalker/ResolveWalker alone and " +
+      "replays to the same final state") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice)
+    val gameId = "game-walker-forge"
+    val (ready, actor, forgeSite) = forgeReadyGame(service, gameId)
+    val Ready(beforeStart) = ready.state: @unchecked
+    val supplyBefore = beforeStart.game.current.players
+      .find(_.player == actor).get.board.supply.supply
+    val relic = beforeStart.game.current.commonCards.relicDeck.head
+    val banksBefore = beforeStart.banks.favor
+
+    val started = service.handle(gameId, ready.nextSequence,
+      GameCommand.StartWalker(ActionRef.Forge, StartPayload(actor)))
+      .fold(error => fail(s"walker Forge start rejected: $error"), identity)
+    assert(started.events.last.isInstanceOf[WalkerParked])
+    assertEquals(started.continue, OathContinue.AwaitingForgeAssignment(actor,
+      DecisionId(ForgeProcedure.assignmentDecisionId)))
+    val Ready(parked) = started.state: @unchecked
+    assertEquals(parked.game.current.walkerAction, Some(ActionRef.Forge))
+    assert(parked.game.current.pending.isEmpty,
+      "the walker path must not populate the legacy pending slot")
+    assertEquals(parked.game.current.players.find(_.player == actor).get
+      .board.supply.supply, supplyBefore - 1)
+
+    // The prompt the client actually answers from, reloaded through the
+    // codec rather than read off the in-memory transition.
+    val parkedLoaded = service.load(gameId).toOption.flatten.get
+    assertEquals(parkedLoaded.state, started.state)
+    val projector = new GameProjector(catalog)
+    val owner = projector.project(gameId, parkedLoaded, actor)
+    val other = parked.game.current.players.find(_.player != actor).get.player
+    val prompt = owner.forge.getOrElse(
+      fail("the parked actor must be offered the Forge assignment prompt"))
+    assertEquals(prompt.decisionId, ForgeProcedure.assignmentDecisionId)
+    assertEquals(prompt.targets.map(_.siteId).distinct, Vector(forgeSite.value))
+    assertEquals(prompt.targets.size, 3)
+    assertEquals(prompt.favor + prompt.secrets, 3)
+    assertEquals(owner.phase, "forge-walker-decision")
+    assertEquals(owner.legalControls, Vector("resolveWalkerDecision"))
+    // Forge has no dice, and its parked decision says so. (This is a
+    // client-facing fact, not R18's proof: no site in the catalog carries
+    // both a printed Forge cost and a Recover difficulty, so `rollOutcome`
+    // is `None` here for want of a difficulty either way. R18's projector
+    // call site is proven in `WalkerDecisionProjectorSuite`.)
+    assertEquals(owner.walkerDecision.flatMap(_.rollOutcome), None)
+    assertEquals(projector.project(gameId, parkedLoaded, other).forge, None)
+    assertEquals(projector.projectPublic(gameId, parkedLoaded).forge, None)
+
+    // The answer is built from the projected prompt, exactly as the UI
+    // builds it: the offered targets, in order, taking the offered counts.
+    val resources = Vector.fill(prompt.favor)(ForgeResource.Favor) ++
+      Vector.fill(prompt.secrets)(ForgeResource.Secret)
+    val assignments = prompt.targets.zip(resources).map { case (target, resource) =>
+      ForgeResourceAssignment(SiteDenizenTarget(SiteId(target.siteId),
+        DenizenId(target.denizenId)), resource) }
+
+    val beforeRejected = repository.load(gameId).toOption.flatten.get.records
+    Vector[GameCommand](
+      GameCommand.ResolveWalker(actor, TreeDecision("forge.stale",
+        ForgeAssignmentPayload(assignments))),
+      GameCommand.ResolveWalker(other, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        ForgeAssignmentPayload(assignments))),
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        ForgeAssignmentPayload(assignments.updated(1, assignments.head)))),
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId, ForgeAssignmentPayload(
+          assignments.map(_.copy(resource = ForgeResource.Secret))))),
+      GameCommand.BeginForge(actor)
+    ).foreach(command => assert(service.handle(gameId, started.nextSequence,
+      command).isLeft, s"$command must be rejected while Forge is parked"))
+    assertEquals(repository.load(gameId).toOption.flatten.get.records,
+      beforeRejected, "a rejected command must append nothing")
+
+    val finished = service.handle(gameId, started.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        ForgeProcedure.assignmentDecisionId,
+        ForgeAssignmentPayload(assignments))))
+      .fold(error => fail(s"walker Forge answer rejected: $error"), identity)
+    assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
+    val Ready(after) = finished.state: @unchecked
+
+    // The same final state the legacy `ForgeCommand` path produced: three
+    // denizens each carrying exactly one resource, the relic facedown in the
+    // actor's play area, the deck advanced by one, one Supply spent in total,
+    // and nothing pending on either mechanism.
+    assertEquals(after.game.current.map.sites(forgeSite).denizens.collect {
+      case d: DenizenState => d.tokens.favor + d.tokens.secrets }, Vector(1, 1, 1))
+    assertEquals(after.game.current.players.find(_.player == actor).get.relics.last,
+      RelicState(relic, Orientation.FaceDown, Tokens.empty))
+    assertEquals(after.game.current.commonCards.relicDeck,
+      beforeStart.game.current.commonCards.relicDeck.drop(1))
+    assertEquals(after.game.current.players.find(_.player == actor).get
+      .board.supply.supply, supplyBefore - 1)
+    assert(after.game.current.pending.isEmpty)
+    assert(after.game.current.walkerPending.isEmpty)
+    assert(after.game.current.walkerAction.isEmpty)
+
+    // Each favor assignment came out of its target denizen's own suit bank.
+    assignments.filter(_.resource == ForgeResource.Favor).groupBy { assignment =>
+      catalog.denizens.find(_.id.value == assignment.target.denizenId.value)
+        .flatMap(d => Suit.all.find(_.key == d.suit.value)).get
+    }.foreach { case (suit, drawn) =>
+      assertEquals(after.banks.favor(suit), banksBefore(suit) - drawn.size)
+    }
+
+    // P2: reconstructing purely from the journal reproduces that state.
+    val replayed = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(replayed.state, finished.state)
+
+    // The forged relic stays private to its owner.
+    val otherJson = GameHttpWire.encodeProjection(
+      projector.project(gameId, replayed, other))
+    assert(!otherJson.contains(relic.value))
+    assert(!GameHttpWire.encodeProjection(
+      projector.projectPublic(gameId, replayed)).contains(relic.value))
+  }
+
   test("Forge persists private pending and completed state and prepares relic once") {
     val repository = new InMemoryEventStreamRepository
     var prepared = 0
@@ -742,6 +875,65 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
       def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
     }
+    val service = new GameApplicationService(catalog, repository,
+      relicDrawPort = relicPort, campaignDicePort = dice)
+    val gameId = "game-forge-persistence"
+    val (accepted, actor, forgeSite) = forgeReadyGame(service, gameId)
+    val begun = service.handle(gameId, accepted.nextSequence,
+      GameCommand.BeginForge(actor)).fold(error => fail(error.toString), identity)
+    val reloadedService = new GameApplicationService(catalog, repository,
+      relicDrawPort = relicPort, campaignDicePort = dice)
+    val pendingLoaded = reloadedService.load(gameId).toOption.flatten.get
+    assertEquals(pendingLoaded.state, begun.state)
+    val Ready(forgeReady) = pendingLoaded.state: @unchecked
+    val pending = forgeReady.game.current.pending.get.asInstanceOf[PendingProcedure.Forge]
+    val other = forgeReady.game.current.players.find(_.player != actor).get.player
+    val projector = new GameProjector(catalog)
+    assert(projector.project(gameId, pendingLoaded, actor).forge.nonEmpty)
+    assertEquals(projector.project(gameId, pendingLoaded, other).forge, None)
+    assertEquals(projector.projectPublic(gameId, pendingLoaded).forge, None)
+    val resources = Vector.fill(pending.cost.favor)(ForgeResource.Favor) ++
+      Vector.fill(pending.cost.secrets)(ForgeResource.Secret)
+    val assignments = pending.eligibleTargets.zip(resources).map {
+      case (target, resource) => ForgeResourceAssignment(target, resource) }
+    val beforeRejected = repository.load(gameId).toOption.flatten.get.records
+    Vector[GameCommand](
+      GameCommand.CompleteForge(actor, DecisionId("stale"), assignments),
+      GameCommand.CompleteForge(other, pending.decision, assignments),
+      GameCommand.CompleteForge(actor, pending.decision,
+        assignments.updated(1, assignments.head)),
+      GameCommand.CompleteForge(actor, pending.decision,
+        assignments.map(_.copy(resource = ForgeResource.Secret)))
+    ).foreach(command => assert(reloadedService.handle(gameId,
+      begun.nextSequence, command).isLeft))
+    assertEquals(prepared, 0)
+    assertEquals(repository.load(gameId).toOption.flatten.get.records, beforeRejected)
+    val relic = forgeReady.game.current.commonCards.relicDeck.head
+    val completed = reloadedService.handle(gameId, begun.nextSequence,
+      GameCommand.CompleteForge(actor, pending.decision, assignments)).toOption.get
+    assertEquals(prepared, 1)
+    val completedLoaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(completedLoaded.state, completed.state)
+    val otherJson = GameHttpWire.encodeProjection(
+      projector.project(gameId, completedLoaded, other))
+    val publicJson = GameHttpWire.encodeProjection(
+      projector.projectPublic(gameId, completedLoaded))
+    assert(!otherJson.contains(relic.value))
+    assert(!publicJson.contains(relic.value))
+  }
+  /** Drives a real, journalled game to the point where `p2` can start a
+    * Forge: a ruled site with a printed Forge cost, exactly three empty
+    * faceup denizens on it, supply in hand and a non-empty relic deck.
+    *
+    * Extracted (batch-1 Task 3) so the walker end-to-end Forge and the
+    * legacy `ForgeCommand` one assert their final states against the SAME
+    * board reached by the SAME commands -- an equivalence a second
+    * hand-built fixture could only approximate. Returns the accepted
+    * position to start from, the actor, and the Forge site.
+    */
+  private def forgeReadyGame(service: GameApplicationService, gameId: String)
+      : (GameAccepted, PlayerId, SiteId) = {
     val forgeSite = catalog.sites.find(site => site.forgeRequirements.nonEmpty &&
       !site.handlers.exists(_.contains(".homeland-"))).get.id
     val sitePlayable = plan.worldDeckOrder.collect { case id: DenizenId
@@ -752,9 +944,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val forgePlan = plan.copy(orderedSites = forgeSite +:
       plan.orderedSites.filterNot(_ == forgeSite),
       worldDeckOrder = sitePlayable ++ plan.worldDeckOrder.filterNot(sitePlayable.contains))
-    val service = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val gameId = "game-forge-persistence"
     var accepted = service.handle(gameId, 0L, GameCommand.Begin(forgePlan)).toOption.get
     val order = Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1"))
     order.zipWithIndex.foreach { case (playerId, index) =>
@@ -817,49 +1006,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     searchOne()
-    val begun = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginForge(actor)).fold(error => fail(error.toString), identity)
-    val reloadedService = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val pendingLoaded = reloadedService.load(gameId).toOption.flatten.get
-    assertEquals(pendingLoaded.state, begun.state)
-    val Ready(forgeReady) = pendingLoaded.state: @unchecked
-    val pending = forgeReady.game.current.pending.get.asInstanceOf[PendingProcedure.Forge]
-    val other = forgeReady.game.current.players.find(_.player != actor).get.player
-    val projector = new GameProjector(catalog)
-    assert(projector.project(gameId, pendingLoaded, actor).forge.nonEmpty)
-    assertEquals(projector.project(gameId, pendingLoaded, other).forge, None)
-    assertEquals(projector.projectPublic(gameId, pendingLoaded).forge, None)
-    val resources = Vector.fill(pending.cost.favor)(ForgeResource.Favor) ++
-      Vector.fill(pending.cost.secrets)(ForgeResource.Secret)
-    val assignments = pending.eligibleTargets.zip(resources).map {
-      case (target, resource) => ForgeResourceAssignment(target, resource) }
-    val beforeRejected = repository.load(gameId).toOption.flatten.get.records
-    Vector[GameCommand](
-      GameCommand.CompleteForge(actor, DecisionId("stale"), assignments),
-      GameCommand.CompleteForge(other, pending.decision, assignments),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.updated(1, assignments.head)),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.map(_.copy(resource = ForgeResource.Secret)))
-    ).foreach(command => assert(reloadedService.handle(gameId,
-      begun.nextSequence, command).isLeft))
-    assertEquals(prepared, 0)
-    assertEquals(repository.load(gameId).toOption.flatten.get.records, beforeRejected)
-    val relic = forgeReady.game.current.commonCards.relicDeck.head
-    val completed = reloadedService.handle(gameId, begun.nextSequence,
-      GameCommand.CompleteForge(actor, pending.decision, assignments)).toOption.get
-    assertEquals(prepared, 1)
-    val completedLoaded = new GameApplicationService(catalog, repository)
-      .load(gameId).toOption.flatten.get
-    assertEquals(completedLoaded.state, completed.state)
-    val otherJson = GameHttpWire.encodeProjection(
-      projector.project(gameId, completedLoaded, other))
-    val publicJson = GameHttpWire.encodeProjection(
-      projector.projectPublic(gameId, completedLoaded))
-    assert(!otherJson.contains(relic.value))
-    assert(!publicJson.contains(relic.value))
+    (accepted, actor, forgeSite)
   }
+
   private def safeCampaignSite: SiteId = catalog.sites.find(site =>
     site.handlers.forall(h => !h.endsWith(".mountain") &&
       !h.endsWith(".plains") && !h.contains(".homeland-"))).get.id

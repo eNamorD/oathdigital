@@ -25,6 +25,16 @@ private[frontend] final case class ModifierWorkflow(
 }
 
 private[frontend] object ModifierWorkflow {
+  /** The `ActionRef` wire keys registered on the generic walker, as plain
+    * strings for the same reason `ServerUiSupport` spells Recover's
+    * decision ids out: `ActionRef` lives in the JVM-only engine sources the
+    * frontend cannot depend on, and the key rides every walker command as
+    * an uninterpreted string already. A key absent here falls through to
+    * `None`, which is the safe answer -- the server rejects a preview for
+    * an action it does not recognise.
+    */
+  private val walkerActions: Set[String] = Set("recover", "forge")
+
   private val targetedActions = Map(
     "travel" -> ("travel" -> Map.empty[String, String]),
     "campaign-conquest" -> ("campaign" -> Map("kind" -> "conquest")),
@@ -49,7 +59,11 @@ private[frontend] object ModifierWorkflow {
     case GameIntent.BeginSearch(source) => Some("search" ->
       (Map("source" -> source.source) ++ source.region.map("region" -> _)))
     case GameIntent.BeginForge => Some("forge" -> Map.empty)
-    case GameIntent.StartWalker("recover", _) => Some("recover" -> Map.empty)
+    // Every action registered on the walker offers its modifiers through
+    // `StartWalker`; an unregistered key must NOT be swept in, since the
+    // server would reject the preview for an action it does not know.
+    case GameIntent.StartWalker(action, _) if walkerActions(action) =>
+      Some(action -> Map.empty)
     case GameIntent.ResolveFacedownAdviser(_, _) =>
       Some("search" -> Map("procedure" -> "facedown-adviser"))
     case _ => None

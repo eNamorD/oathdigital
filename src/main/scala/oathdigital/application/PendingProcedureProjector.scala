@@ -3,6 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules,
   SearchRules}
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -13,13 +14,13 @@ private[application] final class PendingProcedureProjector(
 ) {
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
-    val forge = forgeProjection(context)
+    val walkerDecision = walkerDecisions.project(context)
+    val forge = forgeProjection(context, walkerDecision)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
     val recipient = oathkeeperRecipient(context)
     val restPower = restPowerProjection(context)
-    val walkerDecision = walkerDecisions.project(context)
     PendingProjection(
       phase(context, cardDecision, forge, challenge, campaign,
         relocation, recipient, walkerDecision),
@@ -90,14 +91,50 @@ private[application] final class PendingProcedureProjector(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
     }
 
-  private def forgeProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case f: PendingProcedure.Forge if context.viewer.contains(f.actor) =>
-        ForgeProjection(f.decision.value, f.actor.value, f.cost.favor,
-          f.cost.secrets, f.eligibleTargets.map(target =>
-            ForgeAssignmentTargetProjection(target.siteId.value,
-              target.denizenId.value, presentation.denizenLabel(target.denizenId))))
-    }
+  /** Forge's assignment prompt, projected off the WALKER's parked decision
+    * (batch-1 Task 3) rather than the legacy `PendingProcedure.Forge` this
+    * read before the cutover.
+    *
+    * `walkerDecision` is passed in rather than recomputed: it is already
+    * owner-private (`WalkerDecisionProjector` returns it only to the parked
+    * actor), so gating on it inherits that scoping instead of restating it,
+    * and it names the decision the walker is ACTUALLY parked on -- so this
+    * cannot offer an assignment prompt for a Forge parked somewhere else.
+    *
+    * Both halves of the prompt are read from the single definitions
+    * `ForgeProcedure`'s own `Decide.validate` accepts an answer against
+    * (ruling R14): [[ForgeProcedure.eligibleTargets]] for the three
+    * denizens, live off state, and [[ForgeProcedure.printedCost]] for how
+    * many favor and secrets to spread over them. A second derivation here
+    * is exactly the drift R14 exists to prevent.
+    */
+  private def forgeProjection(context: ScopedProjectionContext,
+      walkerDecision: Option[WalkerDecisionProjection]) =
+    walkerForgeProjection(context, walkerDecision).orElse(
+      // The legacy `ForgeCommand` path is still live for exactly one commit
+      // (batch-1 Task 3 lands the wiring and the deletion separately, R23);
+      // this arm goes with `PendingProcedure.Forge` itself.
+      context.current.pending.collect {
+        case f: PendingProcedure.Forge if context.viewer.contains(f.actor) =>
+          ForgeProjection(f.decision.value, f.actor.value, f.cost.favor,
+            f.cost.secrets, f.eligibleTargets.map(target =>
+              ForgeAssignmentTargetProjection(target.siteId.value,
+                target.denizenId.value,
+                presentation.denizenLabel(target.denizenId))))
+      })
+
+  private def walkerForgeProjection(context: ScopedProjectionContext,
+      walkerDecision: Option[WalkerDecisionProjection]) = for {
+    decision <- walkerDecision
+    if decision.action == ActionRef.Forge.key &&
+      decision.decisionId == ForgeProcedure.assignmentDecisionId
+    actor <- context.current.walkerPending.map(_.actor)
+    site <- ForgeProcedure.actorSite(context.ready, actor)
+    cost <- ForgeProcedure.printedCost(catalog, site).toOption
+  } yield ForgeProjection(decision.decisionId, actor.value, cost.favor,
+    cost.secrets, ForgeProcedure.eligibleTargets(context.ready, actor).map(
+      target => ForgeAssignmentTargetProjection(target.siteId.value,
+        target.denizenId.value, presentation.denizenLabel(target.denizenId))))
 
   private def challengeProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {

@@ -250,7 +250,8 @@ private[frontend] object ActionDecisionRenderer {
        if (value.legalControls.contains("beginForge")) {
          val forge = button("Forge (1 Supply)", "act-action forge-action")
          forge.disabled = !canControl
-         forge.onclick = _ => submitCommand(GameCommand.BeginForge)
+         forge.onclick = _ => submitCommand(
+           GameCommand.StartWalker("forge", Vector.empty))
          groups.appendKind("forge", forge)
        }
        if (value.legalControls.contains("placeBannerResource")) {

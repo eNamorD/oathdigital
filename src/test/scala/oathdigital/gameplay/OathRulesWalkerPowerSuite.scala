@@ -526,6 +526,54 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
         "no walker action registered for recover")))
   }
 
+  // -------------------------------------------------------------------------
+  // Batch-1 Task 3, ruling R18 (P4), first consulting call site.
+  //
+  // `WalkerActionRegistry.rollDecisionId` returns a typed `Left` for an
+  // action whose entry declares none, and `WalkerActionRegistrySuite` pins
+  // that value. What that pin does NOT prove is that anyone honours it: a
+  // call site that recovered with `.getOrElse("")` -- or that had been
+  // handed a sentinel id instead of an Option in the first place -- would
+  // keep the accessor's test green while parking the player on a decision
+  // id no tree ever declares, which is precisely the failure R18 exists to
+  // prevent.
+  //
+  // `parkedContinue`'s Roll branch is only reachable from a tree carrying a
+  // `Roll` node, and Forge's real tree has none, so the injected
+  // `walkerTree` seam supplies one. The control below is the same tree
+  // under `ActionRef.Recover`: the ONLY difference between the two calls is
+  // which action's entry the accessor is asked about.
+  // -------------------------------------------------------------------------
+
+  test("a Roll park under an action declaring no roll decision id rejects " +
+      "the whole command with the accessor's typed Left, appending nothing") {
+    val (ready, actor) = actable
+    val rollTree: Operation = Sequence(
+      Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
+    val rulesInstance = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowers.empty,
+      walkerTree = (_, _, _, _, _, _) => Right(rollTree))
+
+    // Control: the identical tree under Recover, whose entry DOES declare a
+    // roll decision id, parks and is handed that id's continuation.
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
+        actor) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the Recover roll park to run, got $other")
+    }
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
+    assert(started.events.nonEmpty)
+
+    // Forge declares none: the rejection is carried through as the command's
+    // own `Left`, so no `WalkerParked` is appended and the client is never
+    // handed a decision id to send back.
+    assertEquals(
+      rulesInstance.startWalker(Ready(ready), ActionRef.Forge, actor),
+      Left(OathViolation.InvalidEventOrder(
+        "walker action forge declares no roll decision id")))
+  }
+
   test("Recover parity: a Transform at RecoverActionEligibility still relaxes " +
       "Recover, and Forge's registered entry does not relax on it") {
     val (ready, actor) = actable

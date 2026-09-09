@@ -128,10 +128,11 @@ object DecisionResolution {
       placement: Placement) extends DecisionResolution
 }
 
-/** Wire form of the engine's open `DecisionPayload` trait, bounded to
-  * Recover's two payloads for this slice. A power that adds a walker
-  * decision widens this family the same way it widens `DecisionPayload`
-  * itself -- the engine stays generic over both.
+/** Wire form of the engine's open `DecisionPayload` trait, bounded to the
+  * payloads the registered walker actions declare -- Recover's two and
+  * Forge's assignment. An action or power that adds a walker decision
+  * widens this family the same way it widens `DecisionPayload` itself --
+  * the engine stays generic over both.
   */
 sealed trait DecisionPayloadWire extends Product with Serializable
 object DecisionPayloadWire {
@@ -141,4 +142,12 @@ object DecisionPayloadWire {
     */
   final case class RecoverChoiceWire(choice: String) extends DecisionPayloadWire
   final case class RecoverRelicWire(relicId: String) extends DecisionPayloadWire
+  /** Answers Forge's `"forge.assignment"` decision. Reuses the
+    * [[ForgeAssignment]] row the (now walker-driven) Forge assignment has
+    * always ridden on, so there is one wire spelling of "this denizen gets
+    * this resource" rather than two; `resource` is validated at the
+    * application mapping boundary, like every other enum-shaped field here.
+    */
+  final case class ForgeAssignmentWire(assignments: Vector[ForgeAssignment])
+      extends DecisionPayloadWire
 }

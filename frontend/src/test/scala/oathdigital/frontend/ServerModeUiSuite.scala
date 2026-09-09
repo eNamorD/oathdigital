@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
-import oathdigital.protocol.DecisionPayloadWire
+import oathdigital.protocol.{DecisionPayloadWire, ForgeAssignment}
 
 class ServerModeUiSuite extends FunSuite {
   test("secret summaries lead with available over total and explain unavailable tokens") {
@@ -72,8 +72,13 @@ class ServerModeUiSuite extends FunSuite {
     val initial = ForgeAssignmentState.reconcile(None, context, Some(forge)).get
     assertEquals(initial.assignments, Vector("favor", "favor", "secret"))
     assert(initial.canConfirm)
-    assertEquals(initial.command("red"), Some(GameCommand.CompleteForge(
-      "red", "forge-9", targets.zip(initial.assignments))))
+    // Forge is a walker action: a confirmed assignment answers its parked
+    // decision through `ResolveWalker`, carrying the same `ForgeAssignment`
+    // rows the deleted `CompleteForge` intent carried.
+    assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
+      "red", "forge-9", DecisionPayloadWire.ForgeAssignmentWire(
+        targets.zip(initial.assignments).map { case (target, resource) =>
+          ForgeAssignment(target.siteId, target.denizenId, resource) }))))
     val invalid = initial.choose(2, "favor")
     assert(!invalid.canConfirm)
     assertEquals(invalid.command("red"), None)
