@@ -14,7 +14,6 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
-import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   ContributionCollector, PowerCtx, PowerResolution, PowerWindow}
@@ -136,19 +135,20 @@ final class OathRules(catalog: ExecutableCatalog,
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
           ready.game.current.walkerAction.nonEmpty =>
         Left(InvalidEventOrder("a walker action is already pending"))
-      case Ready(ready) => withFallback(state, actor, MajorActionKind.Recover) {
-        for {
-          _ <- validateModifiers(ready, actor, modifiers)
-          powers = walkerPowers(ready, actor, modifiers)
-          tree <- buildWalker(action, ready, actor, starting = true,
-            eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
-          _ <- checkRestrictions(tree, powers, ready, actor)
-          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
-            powers))
-          transition <- walkerTransition(state, ready, action, tree, outcome,
-            powers, modifiers)
-        } yield transition
-      }
+      case Ready(ready) => WalkerActionRegistry.fallbackKind(action)
+        .flatMap(kind => withFallback(state, actor, kind) {
+          for {
+            _ <- validateModifiers(ready, actor, modifiers)
+            powers = walkerPowers(ready, actor, modifiers)
+            tree <- buildWalker(action, ready, actor, starting = true,
+              eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
+            _ <- checkRestrictions(tree, powers, ready, actor)
+            outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
+              powers))
+            transition <- walkerTransition(state, ready, action, tree, outcome,
+              powers, modifiers)
+          } yield transition
+        })
       case _ => Left(GameNotStarted)
     }
 
@@ -361,7 +361,7 @@ final class OathRules(catalog: ExecutableCatalog,
           case _ => Left(InvalidEventOrder(
             "walker park did not resolve to a Ready state"))
         }
-        continue <- parkedContinue(liveReady, tree, pending, powers)
+        continue <- parkedContinue(liveReady, tree, pending, powers, action)
         finalState <- evolve(afterSteps, fact)
       } yield OathTransition(finalState, steps :+ fact, continue)
 
@@ -391,30 +391,35 @@ final class OathRules(catalog: ExecutableCatalog,
     * or reordering a node in the action's tree would silently change which
     * path a given decision parks at, and the client would be handed the wrong
     * prompt (and decision id) with no error.
+    *
+    * The decision id -> continuation mapping itself is looked up on
+    * [[WalkerActionRegistry.continuationFor]] for `action` (I4), rather than
+    * matched here against one action's own constants (previously
+    * `RecoverProcedure.rollDecisionId`/`relicDecisionId`/`choiceDecisionId`)
+    * -- this module has no reason to know which decision ids any given
+    * action declares, only how to resolve the one the walker just parked
+    * on.
     */
   private def parkedContinue(ready: ReadyGame, tree: Operation,
-      pending: PendingTree, powers: WalkerPowers)
-      : Either[OathViolation, OathContinue] =
+      pending: PendingTree, powers: WalkerPowers, action: ActionRef)
+      : Either[OathViolation, OathContinue] = {
+    def continuationFor(decisionId: String): Either[OathViolation, OathContinue] =
+      WalkerActionRegistry.continuationFor(action, decisionId, pending.actor,
+        DecisionId(decisionId)).flatMap(_.toRight(InvalidEventOrder(
+          "no client continuation is registered for walker decision " +
+            decisionId)))
+
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
-      case Some(_) => Right(OathContinue.AwaitingRecoverRoll(pending.actor,
-        DecisionId(RecoverProcedure.rollDecisionId)))
+      case Some(_) => WalkerActionRegistry.rollDecisionId(action)
+        .flatMap(continuationFor)
       case None => ProcedureWalker.parkedDecide(ready, tree, pending,
           powers) match {
-        case Some(decide)
-            if decide.decisionId == RecoverProcedure.relicDecisionId =>
-          Right(OathContinue.AwaitingRecoverRelic(pending.actor,
-            DecisionId(RecoverProcedure.relicDecisionId)))
-        case Some(decide)
-            if decide.decisionId == RecoverProcedure.choiceDecisionId =>
-          Right(OathContinue.AwaitingRecoverRoll(pending.actor,
-            DecisionId(RecoverProcedure.choiceDecisionId)))
-        case Some(decide) => Left(InvalidEventOrder(
-          "no client continuation is registered for walker decision " +
-            decide.decisionId))
+        case Some(decide) => continuationFor(decide.decisionId)
         case None => Left(InvalidEventOrder(
           "parked walker position is neither a Roll nor a Decide"))
       }
     }
+  }
 
   def handle(state: OathState, command: ForgeCommand)
       : Either[OathViolation, OathTransition] =
@@ -735,9 +740,10 @@ object OathRules {
     * command may proceed. `recoverEligible` passes the FULL catalog because
     * it answers a different question -- "could some power relax this if the
     * player chose it as a modifier" -- asked before any modifier has been
-    * picked, so the Recover button can appear on a relic-less Catacombs
-    * site even though the eventual `StartWalker` command still must select
-    * the power to actually use it.
+    * picked, so the Recover button can appear on a relic-less site whose
+    * only eligibility-granting power has not been selected yet, even
+    * though the eventual `StartWalker` command still must select the power
+    * to actually use it.
     *
     * NOTE: this checks the *presence* of a Transform, not its *effect*. A
     * future power whose Transform at this window does not actually supply a

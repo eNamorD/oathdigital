@@ -61,9 +61,10 @@ private[application] final class WalkerDecisionProjector(
       pending: PendingTree, powers: WalkerPowers)
       : Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
-      case Some((pool, count)) => Some(WalkerDecisionProjection(action.key,
-        RecoverProcedure.rollDecisionId, "roll", pool = Some(pool.value),
-        count = Some(count)))
+      case Some((pool, count)) =>
+        WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
+          WalkerDecisionProjection(action.key, rollId, "roll",
+            pool = Some(pool.value), count = Some(count)))
       case None => ProcedureWalker.parkedDecide(ready, tree, pending,
           powers).map { decide =>
         val candidates = if (decide.decisionId == RecoverProcedure.relicDecisionId)

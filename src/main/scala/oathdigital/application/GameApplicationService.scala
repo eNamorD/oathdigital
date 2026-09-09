@@ -312,9 +312,10 @@ final class GameApplicationService(
           treeDecision.payload))
       case GameCommand.RollWalker(actor, pool) =>
         rules.rollWalkerPrepared(state, actor, pool) { count =>
-          Either.cond(count == 2, defenseDicePort.rollTwo(),
-            OathViolation.InvalidEventOrder(
-              s"Recover walker expected 2 defense dice but pool count is $count"))
+          Either.cond(count == defenseDicePort.diceCount,
+            defenseDicePort.rollTwo(), OathViolation.InvalidEventOrder(
+              s"walker roll pool ${pool.value} requested $count dice but " +
+                s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
         }
       case GameCommand.PlacePawn(playerId, siteId) =>
         setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
