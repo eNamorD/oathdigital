@@ -75,16 +75,16 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   test("schema upgrades from version zero and initialization is idempotent") {
     val repository = open(databasePath("schema"))
     try {
-      assertEquals(repository.schemaVersion, Right(3))
+      assertEquals(repository.schemaVersion, Right(4))
       assertEquals(repository.initializeSchema(), Right(()))
       assertEquals(repository.initializeSchema(), Right(()))
-      assertEquals(repository.schemaVersion, Right(3))
+      assertEquals(repository.schemaVersion, Right(4))
     } finally repository.close()
   }
 
   test("rejects newer and non-contiguous schema ledgers and releases files") {
     Vector(
-      "newer" -> Vector(4),
+      "newer" -> Vector(5),
       "gapped" -> Vector(0, 1)
     ).foreach { case (label, versions) =>
       val path = databasePath(label)

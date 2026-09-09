@@ -167,5 +167,11 @@ class MembershipAuthorizationServiceSuite extends munit.FunSuite {
     override def revokeSession(digest: SessionTokenDigest, now: Long) = unused
     override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
       unused
+    override def createTrustedSeats(
+        gameId: String,
+        seats: Vector[(SeatCodeDigest, String)],
+        now: Long
+    ) = unused
+    override def resolveTrustedSeat(digest: SeatCodeDigest) = unused
   }
 }

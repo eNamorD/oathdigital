@@ -223,6 +223,13 @@ final class OwnedHsqldbIdentityRepository private (
     adapter.revokeSession(digest, now)
   override def touchSession(digest: SessionTokenDigest, seen: Long, idle: Long) =
     adapter.touchSession(digest, seen, idle)
+  override def createTrustedSeats(
+      gameId: String,
+      seats: Vector[(SeatCodeDigest, String)],
+      now: Long
+  ) = adapter.createTrustedSeats(gameId, seats, now)
+  override def resolveTrustedSeat(digest: SeatCodeDigest) =
+    adapter.resolveTrustedSeat(digest)
   private[persistence] def createGameWithBeforeOwnerMembership(
       gameId: String,
       ownerId: UserId,
@@ -230,6 +237,7 @@ final class OwnedHsqldbIdentityRepository private (
   )(before: java.sql.Connection => Either[IdentityFailure, Unit]) =
     adapter.createGameWithBeforeOwnerMembership(gameId, ownerId, now)(before)
   private[persistence] def sessionColumnNames = adapter.sessionColumnNames
+  private[persistence] def trustedSeatColumnNames = adapter.trustedSeatColumnNames
   def initializeSchema(): Either[IdentityFailure, Unit] =
     owner.initializeSchema().left.map(failure =>
       IdentityFailure.StorageFailure(failure.toString))
