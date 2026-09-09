@@ -153,7 +153,8 @@ private[application] final class LegalActionProjector(
     RecoverRules.validate(catalog, context.ready, active, siteId).isRight ||
       (RecoverRules.validatePotential(catalog, context.ready, active,
         siteId).isRight && OathRules.eligibilityRelaxed(context.ready,
-        active.player, walkerPowerCatalog.powers))
+        active.player, ActionRef.Recover, walkerPowerCatalog.powers)
+        .getOrElse(false))
 
   /** While a generic-walker action is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command

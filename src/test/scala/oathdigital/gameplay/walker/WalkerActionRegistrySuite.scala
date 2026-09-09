@@ -1,8 +1,11 @@
 package oathdigital.gameplay.walker
 
+import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.model.{ActionRef, PlayerId}
+import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
+  ReadyGame}
+import oathdigital.model.{ActionRef, DecisionId, PlayerId}
 
 /** Task 8: `WalkerActionRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -69,5 +72,65 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
       WalkerActionRegistry.modifierWindow(ActionRef.Recover, unregistered),
       Left(OathViolation.InvalidEventOrder(
         "no walker action registered for recover")))
+  }
+
+  /** Batch-1 Task 3, ruling R18. `Entry.rollDecisionId` is `Option[String]`
+    * because Forge's tree has no `Roll` node at all, and the accessor
+    * flattens `None` into a typed rejection rather than handing a sentinel
+    * id to `OathRules.parkedContinue` and `WalkerDecisionProjector` -- the
+    * two call sites that ask it "which id is the Roll park this action just
+    * produced". This test pins the accessor's value; that both call sites
+    * carry the rejection through rather than projecting a sentinel is
+    * proven separately, at the cutover.
+    */
+  test("rollDecisionId rejects an action whose entry declares none, and " +
+      "still answers for the action that has one") {
+    assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Recover),
+      Right(RecoverProcedure.rollDecisionId))
+    assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Forge),
+      Left(OathViolation.InvalidEventOrder(
+        "walker action forge declares no roll decision id")))
+    assertEquals(
+      WalkerActionRegistry.rollDecisionId(ActionRef.Recover, unregistered),
+      Left(OathViolation.InvalidEventOrder(
+        "no walker action registered for recover")))
+  }
+
+  /** Batch-1 Task 3, Step 2b: the eligibility window is registry data
+    * alongside `modifierWindow`. Each registered action declares its own;
+    * `OathRules.eligibilityRelaxed` reads it instead of naming
+    * `RecoverActionEligibility`.
+    */
+  test("eligibilityWindow reads the registered entry, and an unregistered " +
+      "action is a typed Left") {
+    assertEquals(WalkerActionRegistry.eligibilityWindow(ActionRef.Recover),
+      Right(Some(PowerWindow.RecoverActionEligibility)))
+    assertEquals(WalkerActionRegistry.eligibilityWindow(ActionRef.Forge),
+      Right(Some(PowerWindow.ForgeActionEligibility)))
+    assertEquals(
+      WalkerActionRegistry.eligibilityWindow(ActionRef.Recover, unregistered),
+      Left(OathViolation.InvalidEventOrder(
+        "no walker action registered for recover")))
+  }
+
+  /** The Forge entry's own facts, asserted as a whole rather than left to
+    * whichever end-to-end test happens to exercise them: a wrong
+    * `fallbackKind` or `modifierWindow` here is a silent misrouting, not a
+    * failure.
+    */
+  test("the Forge entry declares Forge's own kind, windows and continuation") {
+    val entry = WalkerActionRegistry.entries(ActionRef.Forge)
+    assertEquals(entry.fallbackKind, MajorActionKind.Forge)
+    assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
+    assertEquals(entry.eligibilityWindow,
+      Some(PowerWindow.ForgeActionEligibility))
+    assertEquals(entry.rollDecisionId, None)
+    val actor = PlayerId("p1")
+    val decision = DecisionId("forge-1")
+    assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Forge,
+      ForgeProcedure.assignmentDecisionId, actor, decision),
+      Right(Some(OathContinue.AwaitingForgeAssignment(actor, decision))))
+    assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Forge,
+      "recover.relic", actor, decision), Right(None))
   }
 }

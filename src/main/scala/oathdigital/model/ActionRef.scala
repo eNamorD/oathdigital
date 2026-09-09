@@ -9,8 +9,13 @@ sealed trait ActionRef extends Product with Serializable {
 
 object ActionRef {
   case object Recover extends ActionRef { val key = "recover" }
+  case object Forge extends ActionRef { val key = "forge" }
 
-  val all: Vector[ActionRef] = Vector(Recover)
+  /** Every key here is also a [[oathdigital.gameplay.MajorActionKind]] key by
+    * convention -- `GameApplicationService.walkerAction` and
+    * `GameIntentMapper.actionRef` both bridge across on the string alone.
+    */
+  val all: Vector[ActionRef] = Vector(Recover, Forge)
 
   def fromKey(key: String): Option[ActionRef] = all.find(_.key == key)
 }

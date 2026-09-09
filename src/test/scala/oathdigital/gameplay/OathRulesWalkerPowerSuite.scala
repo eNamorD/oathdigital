@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerCtx, PowerResolution, PowerWindow}
+  PowerCtx, PowerResolution, PowerWindow, Transform}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
@@ -40,6 +40,22 @@ object OathRulesWalkerPowerSuite {
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
     override def resolution: PowerResolution = PowerResolution.PlayerSelected
+    override def applicable(ctx: PowerCtx): Boolean = ctx.window == at
+  }
+
+  /** Batch-1 Task 3 Step 2b: an `Automatic` power declaring a `Transform` at
+    * exactly one eligibility window and applicable nowhere else -- so
+    * "which window did `eligibilityRelaxed` gather at?" is directly
+    * observable from its boolean answer. A `Transform` (not a
+    * `Restriction`) because `eligibilityRelaxed` deliberately counts only
+    * transforms: a restriction at the window forbids the action, it does
+    * not enable it.
+    */
+  final case class EligibilityTransformPower(id: PowerId, at: PowerWindow)
+      extends ContributingPower {
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(at -> Vector(Transform((_, ops) => ops)))
     override def applicable(ctx: PowerCtx): Boolean = ctx.window == at
   }
 }
@@ -364,12 +380,15 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     * `modifierWindow`. `build`/`rebuild` are never invoked on these paths --
     * `offerableWalkerPowers`/`validateModifiers` read the window and stop.
     */
-  private def entryWindowed(modifierWindow: Option[PowerWindow])
+  private def entryWindowed(modifierWindow: Option[PowerWindow],
+      eligibilityWindow: Option[PowerWindow] =
+        Some(PowerWindow.RecoverActionEligibility))
       : WalkerActionRegistry.Entry =
     WalkerActionRegistry.Entry(
       fallbackKind = MajorActionKind.Recover,
-      rollDecisionId = RecoverProcedure.rollDecisionId,
+      rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = modifierWindow,
+      eligibilityWindow = eligibilityWindow,
       continuationFor = (_, _, _) => None,
       build = (_, _, _, _) =>
         Left(OathViolation.InvalidEventOrder("build is not exercised here")),
@@ -379,6 +398,11 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   private def registered(modifierWindow: Option[PowerWindow])
       : Map[ActionRef, WalkerActionRegistry.Entry] =
     Map(ActionRef.Recover -> entryWindowed(modifierWindow))
+
+  private def eligibilityRegistered(window: Option[PowerWindow])
+      : Map[ActionRef, WalkerActionRegistry.Entry] =
+    Map(ActionRef.Recover -> entryWindowed(
+      Some(PowerWindow.RecoverModifierSelection), window))
 
   private val forgeWindowed = PowerId("test.forge-windowed")
 
@@ -449,5 +473,70 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       .offerableWalkerPowers(ready, actor, ActionRef.Recover)
       .map(_.map(_.id)),
       Right(Vector(recoverWindowed)))
+  }
+
+  // -------------------------------------------------------------------------
+  // Batch-1 Task 3, Step 2b (P3): the ELIGIBILITY window is per-action too.
+  // `OathRules.eligibilityRelaxed` named `PowerWindow.RecoverActionEligibility`
+  // as a literal, and every `startWalker` reaches it -- so with a second
+  // registered action every action's start gathered at Recover's window.
+  //
+  // Same `registrations` stand-in as the modifier-window tests above, for the
+  // same reason: behaviour that differs BETWEEN actions is otherwise
+  // unprovable while `eligibilityRelaxed` is total over one literal.
+  // -------------------------------------------------------------------------
+
+  private def eligibilityScoped(id: PowerId, at: PowerWindow)
+      : ContributingPower =
+    OathRulesWalkerPowerSuite.EligibilityTransformPower(id, at)
+
+  private val forgeEligible = PowerId("test.forge-eligibility")
+
+  test("eligibilityRelaxed reads the registered entry's eligibility window: a " +
+      "power applicable only at another action's window relaxes for that " +
+      "action and not for Recover") {
+    val (ready, actor) = actable
+    val powers = Vector(eligibilityScoped(forgeEligible,
+      PowerWindow.ForgeActionEligibility))
+
+    // Relaxed for the entry whose eligibilityWindow is ForgeActionEligibility.
+    assertEquals(OathRules.eligibilityRelaxed(ready, actor, ActionRef.Recover,
+      powers, eligibilityRegistered(Some(PowerWindow.ForgeActionEligibility))),
+      Right(true))
+
+    // NOT relaxed for Recover's own production entry, whose eligibilityWindow
+    // is RecoverActionEligibility. Before this task the literal made both
+    // sides gather at Recover's window, so both returned the same answer.
+    assertEquals(
+      OathRules.eligibilityRelaxed(ready, actor, ActionRef.Recover, powers),
+      Right(false))
+  }
+
+  test("an entry declaring no eligibility window never relaxes, and an " +
+      "unregistered action is a typed Left") {
+    val (ready, actor) = actable
+    val powers = Vector(eligibilityScoped(forgeEligible,
+      PowerWindow.ForgeActionEligibility))
+
+    assertEquals(OathRules.eligibilityRelaxed(ready, actor, ActionRef.Recover,
+      powers, eligibilityRegistered(None)), Right(false))
+
+    assertEquals(OathRules.eligibilityRelaxed(ready, actor, ActionRef.Recover,
+      powers, Map.empty), Left(OathViolation.InvalidEventOrder(
+        "no walker action registered for recover")))
+  }
+
+  test("Recover parity: a Transform at RecoverActionEligibility still relaxes " +
+      "Recover, and Forge's registered entry does not relax on it") {
+    val (ready, actor) = actable
+    val powers = Vector(eligibilityScoped(PowerId("test.recover-eligibility"),
+      PowerWindow.RecoverActionEligibility))
+
+    assertEquals(
+      OathRules.eligibilityRelaxed(ready, actor, ActionRef.Recover, powers),
+      Right(true))
+    assertEquals(
+      OathRules.eligibilityRelaxed(ready, actor, ActionRef.Forge, powers),
+      Right(false))
   }
 }

@@ -16,7 +16,7 @@ import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.{ContributingPower,
-  ContributionCollector, PowerCtx, PowerWindow}
+  ContributionCollector, PowerCtx}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
   WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay._
@@ -424,7 +424,19 @@ object OathRules {
     * apart the way a hand-copied second implementation eventually will.
     *
     * True when SOME applicable power in `powers` declares a `Transform` at
-    * `RecoverActionEligibility`. A `Restriction` at this window never grants
+    * ACTION'S OWN eligibility window, read from
+    * `WalkerActionRegistry.eligibilityWindow(action)` (batch-1 Task 3,
+    * Step 2b) rather than the `PowerWindow.RecoverActionEligibility`
+    * literal this method used to name. Every `startWalker` reaches here, so
+    * with a second registered action the literal would have gathered
+    * Forge's start at Recover's window -- invisible only for as long as no
+    * power is applicable there. An entry declaring `eligibilityWindow =
+    * None` never relaxes (no gather at all); an action absent from
+    * `registrations` is a `Left`, since "registers no window" and "is not
+    * registered" are different facts and only the first is a rule -- the
+    * same split `offerableWalkerPowers` makes one window over.
+    *
+    * A `Restriction` at this window never grants
     * eligibility on its own -- it can only reject the action for an
     * unrelated reason, and its mere presence must not be read as "eligible"
     * (that reading previously let a power that *forbids* Recover also
@@ -449,13 +461,16 @@ object OathRules {
     * relic would still relax the gate. Known limitation, worth revisiting
     * once a second power hooks this window.
     */
-  def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
-      powers: Vector[ContributingPower]): Boolean = {
-    val window = PowerWindow.RecoverActionEligibility
-    ContributionCollector.gather(window, powers,
-      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
-      .transforms.nonEmpty
-  }
+  def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId, action: ActionRef,
+      powers: Vector[ContributingPower],
+      registrations: Map[ActionRef, WalkerActionRegistry.Entry] =
+        WalkerActionRegistry.entries): Either[OathViolation, Boolean] =
+    WalkerActionRegistry.eligibilityWindow(action, registrations).map {
+      case None => false
+      case Some(window) => ContributionCollector.gather(window, powers,
+        power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+        .transforms.nonEmpty
+    }
 }
 
 private[gameplay] object GameStateUpdates {

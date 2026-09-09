@@ -58,8 +58,9 @@ private[gameplay] trait OathRulesWalker {
           for {
             _ <- validateModifiers(ready, actor, action, modifiers)
             powers = walkerPowers(ready, actor, modifiers)
+            relaxed <- eligibilityGathered(ready, actor, action, powers)
             tree <- buildWalker(action, ready, actor, starting = true,
-              eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
+              eligibilityRelaxed = relaxed)
             _ <- checkRestrictions(tree, powers, ready, actor)
             outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
               powers))
@@ -172,12 +173,15 @@ private[gameplay] trait OathRulesWalker {
     ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
       .headOption.toLeft(())
 
-  /** Ruling C (narrowed by fix-round ruling L): the base start gate (a
-    * facedown relic already at the site) relaxes only when some applicable
-    * power declares a `Transform` at `RecoverActionEligibility`. Gathered
-    * directly against the window, with no tree needed yet -- this runs
-    * BEFORE `buildWalker` so its answer can steer the build (ruling B: the
-    * relaxed check lives here, not inside `RecoverProcedure.build`).
+  /** Ruling C (narrowed by fix-round ruling L): the base start gate (for
+    * Recover, a facedown relic already at the site) relaxes only when some
+    * applicable power declares a `Transform` at THAT ACTION'S eligibility
+    * window -- read from the registry entry since batch-1 Task 3's Step 2b,
+    * not the `RecoverActionEligibility` literal, which every action's start
+    * used to gather at. Gathered directly against the window, with no tree
+    * needed yet -- this runs BEFORE `buildWalker` so its answer can steer
+    * the build (ruling B: the relaxed check lives here, not inside
+    * `RecoverProcedure.build`).
     *
     * Delegates to `OathRules.eligibilityRelaxed` (I6): the SAME predicate
     * `LegalActionProjector.recoverEligible` uses to decide whether the
@@ -188,8 +192,9 @@ private[gameplay] trait OathRulesWalker {
     * two sets legitimately differ).
     */
   private def eligibilityGathered(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean =
-    OathRules.eligibilityRelaxed(ready, actor, powers.powers)
+      action: ActionRef, powers: WalkerPowers)
+      : Either[OathViolation, Boolean] =
+    OathRules.eligibilityRelaxed(ready, actor, action, powers.powers)
 
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.

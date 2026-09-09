@@ -64,6 +64,11 @@ private[application] final class WalkerDecisionProjector(
       pending: PendingTree, powers: WalkerPowers)
       : Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
+      // R18: an action whose entry declares no roll decision id has no
+      // answer to "which id is this Roll park", so the accessor's typed
+      // rejection is carried through as "there is nothing to project" --
+      // never as a projection naming a sentinel the client would then
+      // send back as a `ResolveWalker` decision id.
       case Some((pool, count)) =>
         WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
           WalkerDecisionProjection(action.key, rollId, "roll",
