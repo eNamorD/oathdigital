@@ -38,4 +38,20 @@ object DecisionPayload {
     */
   final case class RecoverRelicPayload(relicId: RelicId)
       extends DecisionPayload
+
+  /** Answer to the `"forge.assignment"` decision: which of the site's three
+    * empty denizens receives each of the printed Forge cost's three
+    * resources.
+    *
+    * Placed and shaped like [[RecoverRelicPayload]] (Task 2 ruling R13):
+    * plain model data next to the family root, carrying only the choice the
+    * player made. [[ForgeResourceAssignment]] is already model data (it is
+    * what the legacy `ForgeCommand.Complete` carried), so this case reuses it
+    * rather than inventing a second spelling of the same fact. The forged
+    * relic is deliberately NOT a field: it is the authoritative relic-deck
+    * top, read off state when the trailing operation node runs (ruling R12),
+    * so there is no free choice here to record.
+    */
+  final case class ForgeAssignmentPayload(
+      assignments: Vector[ForgeResourceAssignment]) extends DecisionPayload
 }
