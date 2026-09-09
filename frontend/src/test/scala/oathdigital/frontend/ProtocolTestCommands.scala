@@ -41,7 +41,6 @@ private[frontend] object GameCommand {
   def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))
   def Trade(actor: String, target: oathdigital.frontend.EconomyTarget, resource: String) = Intent.Trade(oathdigital.protocol.EconomyTarget(target.kind, target.id), resource)
   def BeginSearch(actor: String, source: String, region: Option[String]) = Intent.BeginSearch(SearchSource(source, region))
-  def BeginRecover(actor: String) = Intent.BeginRecover
   def BeginForge(actor: String) = Intent.BeginForge
   def CompleteForge(actor: String, id: String, values: Vector[(ForgeTarget, String)]) = Intent.CompleteForge(id, values.map { case (v,r) => ForgeAssignment(v.siteId, v.denizenId, r) })
   def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
@@ -57,8 +56,6 @@ private[frontend] object GameCommand {
       case "held-relic" => NegotiationInformation.HeldRelic(v.ownerPlayerId.get, v.cardId)
       case "site-relic" => NegotiationInformation.SiteRelic(v.siteId.get, v.cardId)
     }))))
-  def AddRecoverDice(actor: String, id: String) = Intent.AddRecoverDice(id)
-  def StopRecover(actor: String, id: String) = Intent.StopRecover(id)
   def ResolveCardDecision(actor: String, id: String, value: DecisionResolution.Value) = Intent.ResolveCardDecision(id, value.intent)
   def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
     Intent.StartWalker(action, modifiers)
@@ -75,7 +72,6 @@ private[frontend] object ConspiracyTarget {
 private[frontend] object DecisionResolution {
   sealed trait Value { def intent: oathdigital.protocol.DecisionResolution }
   final case class StartingAdviser(id: String) extends Value { val intent = oathdigital.protocol.DecisionResolution.StartingAdviser(id) }
-  final case class TakeFacedownRelic(id: String) extends Value { val intent = oathdigital.protocol.DecisionResolution.TakeFacedownRelic(id) }
   final case class Search(kept: CardDetails, discarded: Vector[CardDetails], placement: String,
       orientation: Option[String], replacement: Option[CardDetails]) extends Value {
     val intent = oathdigital.protocol.DecisionResolution.Search(

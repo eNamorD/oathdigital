@@ -19,7 +19,6 @@ object GameIntent {
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
-  case object BeginRecover extends GameIntent
   case object BeginForge extends GameIntent
   final case class CompleteForge(decisionId: String,
       assignments: Vector[ForgeAssignment]) extends GameIntent
@@ -40,8 +39,6 @@ object GameIntent {
       extends GameIntent
   final case class AcceptNegotiation(decisionId: String) extends GameIntent
   final case class DeclineNegotiation(decisionId: String) extends GameIntent
-  final case class AddRecoverDice(decisionId: String) extends GameIntent
-  final case class StopRecover(decisionId: String) extends GameIntent
   final case class BeginCampaignConquest(targetSiteIds: Vector[String],
       attackDiceCount: Int) extends GameIntent
   final case class BeginCampaignRaid(targets: Vector[CampaignRaidTarget],
@@ -129,7 +126,6 @@ object DecisionResolution {
   final case class StartingAdviser(adviserId: String) extends DecisionResolution
   final case class Search(kept: WorldCard, discardedInOrder: Vector[WorldCard],
       placement: Placement) extends DecisionResolution
-  final case class TakeFacedownRelic(relicId: String) extends DecisionResolution
 }
 
 /** Wire form of the engine's open `DecisionPayload` trait, bounded to

@@ -5,10 +5,12 @@ import oathdigital.gameplay.{WakeResource}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.phases.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
+  Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules,
   VisionRules, Visions}
 import oathdigital.gameplay.phases.Rest
-import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powerresolver.{ContributionCollector, PowerCtx,
+  PowerWindow}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -77,10 +79,6 @@ private[application] final class LegalActionProjector(
       case Some(r: PendingProcedure.CampaignRaidRelocation)
           if context.viewer.contains(r.actor) => Vector("relocateCampaignRaidPawn")
       case _ if !context.viewerIsActive => Vector.empty
-      case Some(r: PendingProcedure.Recover) if !r.successful =>
-        Vector(Option.when(active.board.supply.supply > 0)("addRecoverDice"),
-          Some("stopRecover")).flatten
-      case Some(_: PendingProcedure.Recover) => Vector.empty
       case Some(_: PendingProcedure.Forge) => Vector("completeForge")
       case Some(c: PendingProcedure.Challenge) if context.viewer.contains(c.actor) =>
         if (c.remainingRibbonResources == 0) Vector("completeChallenge")
@@ -95,8 +93,8 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site => RecoverPowerIntegration.validatePotential(
-            catalog, context.ready, active, site).isRight))("beginRecover"),
+          Option.when(active.pawnSite.exists(site =>
+            recoverEligible(context, active, site)))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
           Option.when(ChallengeRules.legal(catalog, context.ready,
@@ -135,6 +133,27 @@ private[application] final class LegalActionProjector(
       }
     }
   }
+
+  /** Whether `active` can legally start Recover at `siteId` right now: either
+    * a facedown relic already sits at the site (`RecoverRules.validate`), or
+    * some applicable walker power -- Catacombs today -- declares a Transform
+    * at `RecoverActionEligibility` and could supply one once selected as a
+    * `StartWalker` modifier (mirrors `OathRules.eligibilityGathered`'s
+    * relaxed-eligibility gate, but over every catalog power rather than only
+    * the ones a command has already selected, since the player has not
+    * chosen a modifier yet at this "should the button show" question).
+    */
+  private def recoverEligible(context: ScopedProjectionContext,
+      active: PlayerState, siteId: SiteId): Boolean =
+    RecoverRules.validate(catalog, context.ready, active, siteId).isRight ||
+      (RecoverRules.validatePotential(catalog, context.ready, active,
+        siteId).isRight && {
+        val window = PowerWindow.RecoverActionEligibility
+        ContributionCollector.gather(window,
+          WalkerPowerCatalog.default(catalog).powers,
+          power => PowerCtx(context.ready, active.player, power.source,
+            window, Vector.empty)).transforms.nonEmpty
+      })
 
   /** While a generic-walker action is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command

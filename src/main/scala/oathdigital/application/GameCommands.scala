@@ -34,7 +34,6 @@ object GameCommand {
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
-  final case class BeginRecover(playerId: PlayerId) extends GameCommand
   final case class BeginForge(playerId: PlayerId) extends GameCommand
   final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
       assignments: Vector[ForgeResourceAssignment]) extends GameCommand
@@ -63,10 +62,6 @@ object GameCommand {
   final case class AcceptNegotiation(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class DeclineNegotiation(playerId: PlayerId, decision: DecisionId)
-      extends GameCommand
-  final case class AddRecoverDice(playerId: PlayerId, decision: DecisionId)
-      extends GameCommand
-  final case class StopRecover(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class BeginCampaignConquest(playerId: PlayerId, targetSiteIds: Vector[SiteId],
       attackDiceCount: Int) extends GameCommand
@@ -135,6 +130,4 @@ object CardDecisionResolution {
       discardedInOrder: Vector[WorldCardId],
       placement: SearchPlacement
   ) extends CardDecisionResolution
-  final case class TakeFacedownRelic(relicId: RelicId)
-      extends CardDecisionResolution
 }

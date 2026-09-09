@@ -199,9 +199,18 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("Catacombs mechanics remain owned by Recover powers") {
+    // Post-cutover (Task 9b): the legacy `Recover.scala`/
+    // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
+    // the property they used to stand in for directly -- the application
+    // and rules-dispatch layers route every Recover command generically and
+    // never learn Catacombs' name -- while the walker's typed contribution
+    // is the one place that does.
+    val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
+      "powers/recover/CatacombsContribution.scala")
+    assert(Files.exists(contribution), s"$contribution must exist")
     Vector(
-      Paths.get("src/main/scala/oathdigital/gameplay/actions/Recover.scala"),
-      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala")
+      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/OathRules.scala")
     ).foreach { path =>
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")
@@ -212,9 +221,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
     // The spec's power-authoring bar (Task 5): a power on the walker seam is
     // ONE object under `gameplay/powers/`, and the engine it hooks into
     // (`gameplay/walker`, `gameplay/operations`) stays entirely ignorant of
-    // it. This asserts the bar for the first ported power; it replaces
-    // nothing -- the legacy Catacombs guard on `Recover.scala` above stays
-    // until the legacy path is deleted.
+    // it. This asserts the bar for the first ported power.
     val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
       "powers/recover/CatacombsContribution.scala")
     assert(Files.exists(contribution), s"$contribution must exist")
@@ -243,12 +250,20 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "src/main/scala/oathdigital/gameplay/OathRules.scala"))
     val codec = Files.readString(Paths.get(
       "src/main/scala/oathdigital/serialization/ActionEventCodec.scala"))
+    val walkerEvents = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala"))
     Vector("CostsPaid", "RelicPlacedAtSite").foreach { name =>
       assert(!protocol.contains(s"case class $name"))
       assert(!aggregate.contains(s"case event: $name"))
       assert(!codec.contains(s"case _: $name"))
+      assert(!walkerEvents.contains(s"case class $name"))
     }
-    assert(protocol.contains("case class CatacombsResolved"))
+    // Post-cutover (Task 9b): Catacombs no longer has its own
+    // `CatacombsResolved` case class in `GameEventProtocol.scala` -- it
+    // records through the walker's own aggregate event instead. The
+    // property this test guards (granular operations never become their own
+    // replayable event) now rests on `WalkerStepRecorded`.
+    assert(walkerEvents.contains("case class WalkerStepRecorded"))
   }
 
   test("individual power definitions use factories instead of handler subclasses") {

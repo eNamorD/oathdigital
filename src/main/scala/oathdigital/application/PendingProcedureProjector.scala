@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules,
-  RecoverRules, SearchRules}
+  SearchRules}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -22,7 +22,7 @@ private[application] final class PendingProcedureProjector(
     val restPower = restPowerProjection(context)
     val walkerDecision = walkerDecisions.project(context)
     PendingProjection(
-      phase(context, cardDecision, recover, forge, challenge, campaign,
+      phase(context, cardDecision, forge, challenge, campaign,
         relocation, recipient, walkerDecision),
       cardDecision, recover, forge, campaign, relocation, recipient, challenge,
       negotiationProjection(context),
@@ -89,29 +89,15 @@ private[application] final class PendingProcedureProjector(
           1, 1, orderingRequired = true,
           drawn.map(card => card.value -> groupedResolutions(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
-      case recover: PendingProcedure.Recover
-          if recover.successful && context.viewer.contains(recover.actor) =>
-        val relics = context.current.map.sites(recover.site).relics
-        PendingCardDecisionProjection(recover.decision.value, "recover-relic",
-          recover.actor.value, "Choose a relic to recover",
-          Vector("You privately peek at the site's relics.",
-            "Take exactly one; it remains facedown."),
-          relics.map(r => presentation.cardDetails(r.id,
-            Some(Orientation.FaceDown), hidden = false)),
-          1, 1, orderingRequired = false,
-          relics.map(r => r.id.value -> Vector(
-            CardResolutionProjection("take-facedown-relic"))).toMap)
     }
 
-  private def recoverProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case r: PendingProcedure.Recover if context.viewer.contains(r.actor) =>
-        val remaining = context.current.players.find(_.player == r.actor).get
-          .board.supply.supply
-        RecoverProjection(r.decision.value, r.rolls.flatten.map(defenseFaceName),
-          RecoverRules.score(r.rolls.flatten), r.difficulty, r.supplySpent,
-          remaining, !r.successful && remaining > 0, !r.successful)
-    }
+  /** Recover now runs entirely on the generic walker (`walkerDecision`
+    * below): no `PendingProcedure` case ever populates this legacy
+    * projection anymore, so it always reports `None`, the same as the
+    * walker path always has.
+    */
+  private def recoverProjection(context: ScopedProjectionContext)
+      : Option[RecoverProjection] = None
 
   private def forgeProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {
@@ -329,7 +315,7 @@ private[application] final class PendingProcedureProjector(
   }
 
   private def phase(context: ScopedProjectionContext,
-      card: Option[PendingCardDecisionProjection], recover: Option[RecoverProjection],
+      card: Option[PendingCardDecisionProjection],
       forge: Option[ForgeProjection], challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
@@ -360,11 +346,6 @@ private[application] final class PendingProcedureProjector(
     else context.current.pending match {
       case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"
       case Some(_: PendingProcedure.Search) => "search-waiting"
-      case Some(r: PendingProcedure.Recover)
-          if context.viewer.contains(r.actor) && r.successful => "recover-relic-decision"
-      case Some(_: PendingProcedure.Recover) if recover.nonEmpty => "recover-rolling"
-      case Some(_: PendingProcedure.Recover) => "recover-waiting"
-      case Some(_: PendingProcedure.RecoverPowerApplied) => "recover-waiting"
       case Some(_: PendingProcedure.Forge) if forge.nonEmpty => "forge-assignment"
       case Some(_: PendingProcedure.Forge) => "forge-waiting"
       case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"

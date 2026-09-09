@@ -30,7 +30,6 @@ private[protocol] object CommandNestedCodecs {
       "kind" -> "search", "kept" -> world(kept),
       "discardedInOrder" -> ujson.Arr.from(discarded.map(world)),
       "placement" -> encodePlacement(placement))
-    case DecisionResolution.TakeFacedownRelic(id) => ujson.Obj("kind" -> "take-facedown-relic", "relicId" -> id)
   }
 
   def decodeDecision(value: ujson.Value, path: String)
@@ -46,8 +45,6 @@ private[protocol] object CommandNestedCodecs {
         _ <- noDuplicates((kept +: discarded).map(v => s"${v.kind}/${v.id}"), s"$path.discardedInOrder")
         placement <- field(root, "placement", path).flatMap(decodePlacement(_, s"$path.placement"))
       } yield DecisionResolution.Search(kept, discarded, placement)
-      case "take-facedown-relic" => exact(root, Set("kind", "relicId"), path)
-        .flatMap(_ => string(root, "relicId", path)).map(DecisionResolution.TakeFacedownRelic)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision resolution '$kind'"))
     }}
 

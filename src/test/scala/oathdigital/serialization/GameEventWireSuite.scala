@@ -7,11 +7,9 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
-  RelicRecovered}
+  WealthTaken}
 import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, Cost, Location,
-  ModifyDicePool, Move, PayCost, Piece, PositionedLocation, RelicPlacement,
-  StackPosition}
+  ModifyDicePool, Move, PayCost, Piece, PositionedLocation, StackPosition}
 import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
@@ -256,41 +254,6 @@ class GameEventWireSuite extends munit.FunSuite {
     val source = duplicate(2)("payload")("orderedSources")(0)
     duplicate(2)("payload")("orderedSources") = ujson.Arr(source, source)
     assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
-  }
-
-  test("current Recover and operation events round-trip exact typed data") {
-    val events = Vector[OathEvent](
-      CatacombsResolved(PlayerId("red"), DecisionId("recover-1"),
-        PowerId("denizen.catacombs"), RuleSourceRef.SiteCard(SiteId("site"),
-          DenizenId("201")), Cost(secret = 1),
-        RelicPlacement(PlayerId("red"), RelicId("relic"), SiteId("site"),
-          Orientation.FaceDown)),
-      RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
-        Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
-      RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
-      RelicRecovered(PlayerId("red"), DecisionId("recover-2"), SiteId("site"),
-        RelicId("relic")))
-    val encoded = GameEventWire.encodeStream("recover", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
-      .toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
-    assertEquals(decoded.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered(1)("payload")("dice")(0) = "opaque-integer"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-    val malformedCost = ujson.read(encoded).arr
-    malformedCost(0)("payload")("cost")("secret") = -1
-    assert(GameEventWire.decodeStream(ujson.write(malformedCost)).isLeft)
-    val malformedBurn = ujson.read(encoded).arr
-    malformedBurn(0)("payload")("cost")("favorBurnt") = "lose"
-    assert(GameEventWire.decodeStream(ujson.write(malformedBurn)).isLeft)
-    Vector("gameplay.costs-paid", "gameplay.relic-placed-at-site").foreach {
-      eventType =>
-        val injected = ujson.read(encoded).arr
-        injected(0)("eventType") = eventType
-        assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft)
-    }
   }
 
   test("walker delta events round-trip independent semantic facts") {

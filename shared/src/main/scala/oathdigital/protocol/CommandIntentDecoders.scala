@@ -41,7 +41,6 @@ private[protocol] object CommandIntentDecoders {
         case _ => Left(InvalidValue(s"$path.region", "expected string or null"))
       }
     } yield BeginSearch(SearchSource(source, region))
-    case "beginRecover" => empty(value, path, BeginRecover)
     case "beginForge" => empty(value, path, BeginForge)
     case "completeForge" => for {
       _ <- exact(value, Set("type", "decisionId", "assignments"), path)
@@ -93,8 +92,6 @@ private[protocol] object CommandIntentDecoders {
     } yield ReplaceNegotiationTerms(id, terms)
     case "acceptNegotiation" => decision(value, path)(AcceptNegotiation)
     case "declineNegotiation" => decision(value, path)(DeclineNegotiation)
-    case "addRecoverDice" => decision(value, path)(AddRecoverDice)
-    case "stopRecover" => decision(value, path)(StopRecover)
     case "beginCampaignConquest" => for {
       _ <- exact(value, Set("type", "targetSiteIds", "attackDiceCount"), path)
       sites <- field(value, "targetSiteIds", path).flatMap(strings(_, s"$path.targetSiteIds"))

@@ -30,7 +30,6 @@ object GameIntentMapper {
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
-      case Intent.BeginRecover => Right(actor.beginRecover)
       case Intent.BeginForge => Right(actor.beginForge)
       case Intent.CompleteForge(id, values) => traverse(values)(forge).map(actor.completeForge(DecisionId(id), _))
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
@@ -50,8 +49,6 @@ object GameIntentMapper {
       case Intent.ReplaceNegotiationTerms(id, value) => negotiation(value).map(actor.replaceNegotiationTerms(DecisionId(id), _))
       case Intent.AcceptNegotiation(id) => Right(actor.acceptNegotiation(DecisionId(id)))
       case Intent.DeclineNegotiation(id) => Right(actor.declineNegotiation(DecisionId(id)))
-      case Intent.AddRecoverDice(id) => Right(actor.addRecoverDice(DecisionId(id)))
-      case Intent.StopRecover(id) => Right(actor.stopRecover(DecisionId(id)))
       case Intent.BeginCampaignConquest(sites, count) => Right(actor.beginCampaignConquest(sites.map(SiteId), count))
       case Intent.BeginCampaignRaid(values, count) => traverse(values)(raid).map(actor.beginCampaignRaid(_, count))
       case Intent.ChooseCampaignPlan(id, value) => plan(value).map(actor.chooseCampaignPlan(DecisionId(id), _))
@@ -193,7 +190,6 @@ object GameIntentMapper {
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
     case DecisionResolution.Search(kept, discarded, p) => for { k <- world(kept, "$.intent.resolution.kept"); d <- traverse(discarded)(world(_, "$.intent.resolution.discardedInOrder")); selected <- placement(p) } yield CardDecisionResolution.Search(k, d, selected)
-    case DecisionResolution.TakeFacedownRelic(id) => Right(CardDecisionResolution.TakeFacedownRelic(RelicId(id)))
   }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
   private def option[A,B](value: Option[A])(f: A => Result[B]): Result[Option[B]] = value match { case Some(v) => f(v).map(Some(_)); case None => Right(None) }

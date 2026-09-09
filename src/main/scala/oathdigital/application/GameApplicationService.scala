@@ -7,8 +7,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
-  RecoverCommand, SearchCommand, TravelCommand}
-import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
+  SearchCommand, TravelCommand}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -299,17 +298,7 @@ final class GameApplicationService(
                 "a modifier may be invoked only once"))
               else unavailable.map(value => Left(OathViolation.InvalidModifierInvocation(
                 s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
-                .getOrElse((inner, ordered) match {
-                  case (GameCommand.BeginRecover(player), values) =>
-                    val decision = DecisionId(s"recover-$nextSequence")
-                    RecoverPowerIntegration.prepare(catalog, ready, player,
-                      decision, values,
-                      () => relicDrawPort.prepare(ready)).flatMap(modifier =>
-                      rules.handle(state, RecoverCommand.Start(player,
-                        decision,
-                        defenseDicePort.rollTwo(), modifier)))
-                  case _ => applyCommand(state, inner, nextSequence)
-                })
+                .getOrElse(applyCommand(state, inner, nextSequence))
             }
           }
         case _ => Left(OathViolation.GameNotStarted)
@@ -356,9 +345,6 @@ final class GameApplicationService(
           } yield result
         case _ => Left(OathViolation.GameNotStarted)
       }
-      case GameCommand.BeginRecover(playerId) =>
-        rules.handle(state, RecoverCommand.Start(playerId,
-          DecisionId(s"recover-$nextSequence"), defenseDicePort.rollTwo(), None))
       case GameCommand.BeginForge(playerId) =>
         rules.handle(state, ForgeCommand.Begin(playerId,
           DecisionId(s"forge-$nextSequence")))
@@ -409,11 +395,6 @@ final class GameApplicationService(
         rules.handle(state, NegotiationCommand.Accept(playerId, decision))
       case GameCommand.DeclineNegotiation(playerId, decision) =>
         rules.handle(state, NegotiationCommand.Decline(playerId, decision))
-      case GameCommand.AddRecoverDice(playerId, decision) =>
-        rules.handle(state, RecoverCommand.Roll(playerId, decision,
-          defenseDicePort.rollTwo()))
-      case GameCommand.StopRecover(playerId, decision) =>
-        rules.handle(state, RecoverCommand.Stop(playerId, decision))
       case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
           DecisionId(s"campaign-$nextSequence"), targets, count))
@@ -467,9 +448,6 @@ final class GameApplicationService(
           case CardDecisionResolution.Search(kept, discarded, placement) =>
             rules.handle(state, SearchCommand.Complete(
               playerId, decision, kept, discarded, placement))
-          case CardDecisionResolution.TakeFacedownRelic(relicId) =>
-            rules.handle(state, RecoverCommand.TakeRelic(
-              playerId, decision, relicId))
         }
       case GameCommand.BeginRest(playerId) =>
         rules.handle(state, RestCommand.Begin(playerId))
@@ -495,7 +473,6 @@ final class GameApplicationService(
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
       case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
         Some(actor -> MajorActionKind.Search)
-      case GameCommand.BeginRecover(actor) => Some(actor -> MajorActionKind.Recover)
       case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)
