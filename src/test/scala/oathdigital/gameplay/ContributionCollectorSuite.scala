@@ -46,11 +46,53 @@ class ContributionCollectorSuite extends munit.FunSuite {
       def contributions: Map[PowerWindow, Vector[Contribution]] =
         windows.map(_ -> contribs).toMap
       override def applicable(ctx: PowerCtx): Boolean = applicableFlag
-      override def shouldIgnore(other: PowerId): Boolean = ignore(other.value)
+      override def shouldIgnore(other: ContributingPower): Boolean =
+        ignore(other.id.value)
     }
 
   private val window = PowerWindow.RecoverEligibility
   private val otherWindow = PowerWindow.RecoverBeforeFirstRoll
+
+  /** A power classifying its target by the major action its windows belong to
+    * rather than by name — the shape `shouldIgnore(PowerId)` could not express,
+    * since a `PowerId` carries no classification.
+    */
+  private def ignoresTravelModifiers(
+      idValue: String, sourceKey: String,
+      contribs: Vector[Contribution]): ContributingPower =
+    new ContributingPower {
+      def id: PowerId = PowerId(idValue)
+      def source: RuleSourceRef = RuleSourceRef.GameRule(sourceKey)
+      def contributions: Map[PowerWindow, Vector[Contribution]] =
+        Map(window -> contribs)
+      override def shouldIgnore(other: ContributingPower): Boolean =
+        other.contributions.keys.flatMap(_.associatedMajorAction)
+          .exists(_ == MajorActionType.Travel)
+    }
+
+  test("a power may ignore candidates by classification, not only by name") {
+    val ignorerTransform = Transform((_, ops) => ops)
+    val travelTransform = Transform((_, ops) => ops)
+    val plainTransform = Transform((_, ops) => ops)
+    // Declares the gathered window plus a Travel window, so it classifies as
+    // a Travel modifier while still being a candidate here.
+    val travelModifier = fixturePower(
+      "power.travel", "src-travel", Set(window, PowerWindow.TravelCost),
+      Vector(travelTransform))
+    val plain = fixturePower(
+      "power.plain", "src-plain", Set(window), Vector(plainTransform))
+    val ignorer = ignoresTravelModifiers(
+      "power.ignorer", "src-ignorer", Vector(ignorerTransform))
+
+    val gathered = ContributionCollector.gather(
+      window, Vector(ignorer, travelModifier, plain), ctxFor(_, window))
+
+    assertEquals(gathered.order,
+      Vector(PowerId("power.ignorer"), PowerId("power.plain")))
+    assertEquals(gathered.transforms, Vector(
+      PowerId("power.ignorer") -> ignorerTransform,
+      PowerId("power.plain") -> plainTransform))
+  }
 
   test("a power that does not declare the window is not gathered") {
     val declaresElsewhere = fixturePower(

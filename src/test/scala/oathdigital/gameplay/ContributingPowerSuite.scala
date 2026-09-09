@@ -56,6 +56,6 @@ class ContributingPowerSuite extends munit.FunSuite {
 
     assertEquals(power.priority, 0)
     assertEquals(power.applicable(ctx), true)
-    assertEquals(power.shouldIgnore(PowerId("power.anyone")), false)
+    assertEquals(power.shouldIgnore(power), false)
   }
 }

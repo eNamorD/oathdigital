@@ -36,7 +36,7 @@ object ContributionCollector {
     // power's votes are collected against the full applicable set before
     // any power is dropped, so a dropped power's votes still count.
     val ignored: Set[PowerId] = applicable.flatMap { power =>
-      applicable.map(_.id).filter(power.shouldIgnore)
+      applicable.filter(power.shouldIgnore).map(_.id)
     }.toSet
     val survivors = applicable.filterNot(power => ignored.contains(power.id))
 

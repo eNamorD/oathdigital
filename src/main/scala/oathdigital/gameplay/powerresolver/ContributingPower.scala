@@ -61,7 +61,13 @@ trait ContributingPower {
   def priority: Int = 0
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
-  def shouldIgnore(other: PowerId): Boolean = false
+  /** Decision 10(b)'s named ignore. Receives the whole candidate rather than
+    * its id, because a rule of the shape "ignore other modifiers of this
+    * action" needs the candidate's classification, and that lives on the
+    * windows it hooks (`PowerWindow.associatedMajorAction`) rather than in
+    * its `PowerId`.
+    */
+  def shouldIgnore(other: ContributingPower): Boolean = false
   def resolution: PowerResolution = PowerResolution.Automatic
 }
 
