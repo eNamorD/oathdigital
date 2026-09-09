@@ -18,6 +18,7 @@ final class ServerRuntime private (
     val authorization: MembershipAuthorizationService,
     val identities: IdentityRepository,
     val trustedGameProvisioning: TrustedGameProvisioning,
+    val trustedGame: TrustedGameGateway,
     private val database: HsqldbDatabaseOwner
 ) extends AutoCloseable {
   override def close(): Unit = database.close()
@@ -81,6 +82,7 @@ object ServerRuntime {
             authorization,
             database.identities,
             new TrustedGameProvisioning(firstGameService, planFactory, database.trustedGames),
+            new TrustedGameGateway(firstGameService, projector),
             database
           )
         }

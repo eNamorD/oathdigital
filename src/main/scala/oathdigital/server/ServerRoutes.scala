@@ -55,7 +55,12 @@ object ServerRoutes {
             blockingExecutionContext
           ).route
         }
-      case ServerMode.TrustedAlpha => ProductionFrontendRoutes.route
+      case ServerMode.TrustedAlpha =>
+        val publicOrigin = config.publicBaseUrl.getOrElse(
+          new java.net.URI("http", null, config.host, config.port, null, null, null))
+        new TrustedSeatRoutes(runtime.identities, runtime.trustedGameProvisioning,
+          runtime.trustedGame, publicOrigin, blockingExecutionContext).route ~
+          ProductionFrontendRoutes.route
     }
     HealthRoutes.route(readiness) ~ application
   }

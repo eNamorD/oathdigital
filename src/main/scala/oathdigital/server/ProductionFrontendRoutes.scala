@@ -15,11 +15,14 @@ object ProductionFrontendRoutes {
     "public, max-age=0, must-revalidate"
   )
 
+  val gamePage: Route =
+    respondWithHeader(IndexCacheControl) {
+      getFromResource("oathdigital/frontend/index.html")
+    }
+
   val route: Route =
     pathEndOrSingleSlash {
-      respondWithHeader(IndexCacheControl) {
-        getFromResource("oathdigital/frontend/index.html")
-      }
+      gamePage
     } ~
       pathPrefix("assets") {
         respondWithHeader(AssetCacheControl) {
