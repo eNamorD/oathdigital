@@ -223,27 +223,22 @@ final class OathRules(catalog: ExecutableCatalog,
 
   /** Ruling C (narrowed by fix-round ruling L): the base start gate (a
     * facedown relic already at the site) relaxes only when some applicable
-    * power declares a `Transform` at `RecoverActionEligibility`. A
-    * `Restriction` at this window never grants eligibility -- it can only
-    * reject the action for an unrelated reason, and its mere presence must
-    * not be read as "eligible" (that reading previously let a power that
-    * *forbids* Recover also *enable* it). Gathered directly against the
-    * window, with no tree needed yet -- this runs BEFORE `buildWalker` so
-    * its answer can steer the build (ruling B: the relaxed check lives
-    * here, not inside `RecoverProcedure.build`).
+    * power declares a `Transform` at `RecoverActionEligibility`. Gathered
+    * directly against the window, with no tree needed yet -- this runs
+    * BEFORE `buildWalker` so its answer can steer the build (ruling B: the
+    * relaxed check lives here, not inside `RecoverProcedure.build`).
     *
-    * NOTE: this checks the *presence* of a Transform, not its *effect*. A
-    * future power whose Transform at this window does not actually supply a
-    * relic would still relax the gate. Known limitation, worth revisiting
-    * once a second power hooks this window.
+    * Delegates to `OathRules.eligibilityRelaxed` (I6): the SAME predicate
+    * `LegalActionProjector.recoverEligible` uses to decide whether the
+    * Recover button should appear before a modifier is even chosen -- one
+    * shared rule instead of a hand-copied second implementation. This call
+    * site passes the command's SELECTED powers (`powers.powers`); the
+    * projector passes the full catalog (see that method's doc for why the
+    * two sets legitimately differ).
     */
   private def eligibilityGathered(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean = {
-    val window = PowerWindow.RecoverActionEligibility
-    ContributionCollector.gather(window, powers.powers,
-      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
-      .transforms.nonEmpty
-  }
+      powers: WalkerPowers): Boolean =
+    OathRules.eligibilityRelaxed(ready, actor, powers.powers)
 
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.
@@ -718,6 +713,44 @@ object OathRules {
       if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
         eligibilityRelaxed)
       else WalkerActionRegistry.rebuild(action, catalog, ready, actor)
+
+  /** I6: the single relaxed-eligibility rule, shared between the command
+    * (`OathRules.startWalker`, via `eligibilityGathered`) and the projection
+    * layer (`LegalActionProjector.recoverEligible`), so the two never drift
+    * apart the way a hand-copied second implementation eventually will.
+    *
+    * True when SOME applicable power in `powers` declares a `Transform` at
+    * `RecoverActionEligibility`. A `Restriction` at this window never grants
+    * eligibility on its own -- it can only reject the action for an
+    * unrelated reason, and its mere presence must not be read as "eligible"
+    * (that reading previously let a power that *forbids* Recover also
+    * *enable* it).
+    *
+    * This method's contract is only the window and the Transform-presence
+    * check; it takes no position on WHICH powers `powers` should contain --
+    * that choice is deliberately the caller's, and the two production
+    * callers deliberately choose different sets. `startWalker` passes the
+    * command's SELECTED powers (`WalkerPowers.selected`, already narrowed to
+    * the modifiers this command chose) because it is deciding whether THIS
+    * command may proceed. `recoverEligible` passes the FULL catalog because
+    * it answers a different question -- "could some power relax this if the
+    * player chose it as a modifier" -- asked before any modifier has been
+    * picked, so the Recover button can appear on a relic-less Catacombs
+    * site even though the eventual `StartWalker` command still must select
+    * the power to actually use it.
+    *
+    * NOTE: this checks the *presence* of a Transform, not its *effect*. A
+    * future power whose Transform at this window does not actually supply a
+    * relic would still relax the gate. Known limitation, worth revisiting
+    * once a second power hooks this window.
+    */
+  def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
+      powers: Vector[ContributingPower]): Boolean = {
+    val window = PowerWindow.RecoverActionEligibility
+    ContributionCollector.gather(window, powers,
+      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+      .transforms.nonEmpty
+  }
 }
 
 private[gameplay] object GameStateUpdates {
