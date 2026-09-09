@@ -28,6 +28,8 @@ final class HsqldbDatabaseOwner private (
     new HsqldbEventStreamRepository(database)
   val identities: HsqldbIdentityRepository =
     new HsqldbIdentityRepository(database)
+  val trustedGames: HsqldbTrustedGameStore =
+    new HsqldbTrustedGameStore(database)
 
   def initializeSchema(): Either[RepositoryFailure, Unit] =
     run("initialize schema")(schema.initialize)

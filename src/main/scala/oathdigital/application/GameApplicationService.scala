@@ -17,6 +17,7 @@ import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
+  FirstGameSetupPlan,
   FirstGameSetupRules
 }
 
@@ -31,6 +32,12 @@ final case class GameAccepted(
 final case class LoadedGame(
     state: OathState,
     nextSequence: Long
+)
+final case class PreparedGameBootstrap(
+    records: Vector[String],
+    state: OathState,
+    events: Vector[OathEvent],
+    continue: OathContinue
 )
 final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     options: Vector[OrderedRuleInvocation],
@@ -85,6 +92,15 @@ final class GameApplicationService(
   private val rules = new OathRules(catalog,
     warExhaustionRandomPort = warExhaustionRandomPort)
   private val replay = new EventReplayEngine(rules)
+
+  /** Derives a validated initial journal and state without accessing storage. */
+  def prepareBootstrap(
+      gameId: String,
+      request: FirstGameSetupPlan
+  ): Either[GameApplicationError, PreparedGameBootstrap] =
+    prepareTransition(gameId, rules.initialState, GameCommand.Begin(request), 0L)
+      .map { case (transition, records) => PreparedGameBootstrap(
+        records, transition.state, transition.events, transition.continue) }
 
   /** Privileged development support. Never include this in a player projection. */
   def rawEventHistory(
@@ -207,8 +223,8 @@ final class GameApplicationService(
       nextSequence: Long
   ): Either[GameApplicationError, GameAccepted] =
     for {
-      transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected)
-      records <- encode(gameId, nextSequence, transition.events)
+      prepared <- prepareTransition(gameId, state, command, nextSequence)
+      (transition, records) = prepared
       result <- repository.append(gameId, expected, records)
         .left.map(storageError)
       accepted <- result match {
@@ -232,6 +248,16 @@ final class GameApplicationService(
           ))
       }
     } yield accepted
+
+  private def prepareTransition(
+      gameId: String,
+      state: OathState,
+      command: GameCommand,
+      nextSequence: Long
+  ): Either[GameApplicationError, (OathTransition, Vector[String])] = for {
+    transition <- applyCommand(state, command, nextSequence).left.map(CommandRejected)
+    records <- encode(gameId, nextSequence, transition.events)
+  } yield transition -> records
 
   private def applyCommand(
       state: OathState,
