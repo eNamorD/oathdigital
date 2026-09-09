@@ -102,13 +102,15 @@ class ServerModeUiSuite extends FunSuite {
       }
     }
     Main.start(browser.mount, "/", trustedAlpha = false, transport)
-    browser.settle.map { _ =>
+    browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
       assertEquals(requests.toVector, Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
-        "GET" -> "/api/dev/first-games/existing/events?limit=25"))
+        "GET" -> "/api/dev/first-games/existing/events?limit=25",
+        "GET" -> "/api/dev/first-games/existing?playerId=red"))
       assert(browser.byClass("debug-toolbar").nonEmpty)
       assert(browser.byClass("player-selector").nonEmpty)
       assert(browser.byClass("raw-event-log").nonEmpty)
       assert(browser.urls.last.contains("gameId=existing&playerId=red"))
+      assert(!browser.text.contains("assigned seat link"))
     }.andThen { case _ => browser.close() }
   }
 
@@ -195,6 +197,79 @@ class ServerModeUiSuite extends FunSuite {
       assert(browser.byClass("wake-actions").isEmpty)
       browser.tick()
       assertEquals(requests, 2)
+    }.andThen { case _ => browser.close() }
+  }
+
+  Vector("changed" -> Some("red"), "absent" -> None,
+    "invalid" -> Some("unknown-seat")).foreach { case (label, viewer) =>
+    test(s"trusted same-sequence poll rejects $label viewer and disables old controls") {
+      val browser = new TestBrowser
+      val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+      val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
+        .replace("\"awaiting-pawn\"", "\"wake\"")
+        .replace("\"legalControls\":[]", "\"legalControls\":[\"endWake\"]")
+        .replace("\"ready\":false", "\"ready\":true")
+      val replacement = viewer.fold(active.replace("\"viewerPlayerId\":\"blue\",", "")) { id =>
+        active.replace("\"viewerPlayerId\":\"blue\"", s"\"viewerPlayerId\":\"$id\"")
+      }
+      val transport = new JsonTransport {
+        def request(method: String, url: String, body: Option[String]) = {
+          requests += method -> url
+          scala.concurrent.Future.successful(Right(TransportResponse(200,
+            if (requests.size == 1) active else replacement)))
+        }
+      }
+      Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+      browser.settle.flatMap { _ =>
+        val oldControl = browser.byClass("wake-action").head.asInstanceOf[scala.scalajs.js.Dynamic]
+        browser.tick()
+        browser.settle.map { _ =>
+          assert(browser.text.contains("assigned seat link"))
+          assert(browser.byClass("wake-actions").isEmpty)
+          assert(browser.byClass("wake-action").isEmpty)
+          oldControl.onclick(scala.scalajs.js.Dynamic.literal())
+          browser.tick()
+          assertEquals(requests.toVector, Vector(
+            "GET" -> "/games/my%20game/api", "GET" -> "/games/my%20game/api"))
+        }
+      }.andThen { case _ => browser.close() }
+    }
+  }
+
+  test("trusted identity loss rejects a late command response from the previous seat session") {
+    val browser = new TestBrowser
+    val pending = scala.concurrent.Promise[Either[GameClientFailure, TransportResponse]]()
+    val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
+      .replace("\"awaiting-pawn\"", "\"wake\"")
+      .replace("\"legalControls\":[]", "\"legalControls\":[\"endWake\"]")
+      .replace("\"ready\":false", "\"ready\":true")
+    var loads = 0
+    var commands = 0
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) =
+        if (method == "POST") { commands += 1; pending.future }
+        else {
+          loads += 1
+          scala.concurrent.Future.successful(Right(TransportResponse(200,
+            if (loads == 1) active else active.replace("\"viewerPlayerId\":\"blue\"",
+              "\"viewerPlayerId\":\"red\""))))
+        }
+    }
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    browser.settle.flatMap { _ =>
+      browser.click("wake-action")
+      browser.tick()
+      browser.settle
+    }.flatMap { _ =>
+      pending.success(Right(TransportResponse(200,
+        active.replace("\"nextSequence\":1", "\"nextSequence\":2"))))
+      browser.settle
+    }.map { _ =>
+      assert(browser.text.contains("assigned seat link"))
+      assert(browser.byClass("wake-action").isEmpty)
+      browser.tick()
+      assertEquals(loads, 2)
+      assertEquals(commands, 1)
     }.andThen { case _ => browser.close() }
   }
 

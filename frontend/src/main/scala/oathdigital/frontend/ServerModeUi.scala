@@ -44,6 +44,11 @@ object ServerModeUi {
       case _ => false
     }
 
+    def invalidTrustedViewer(value: GameProjection): Boolean =
+      fixedSeat && !value.viewerPlayerId.exists(player =>
+        value.players.exists(_.playerId == player) &&
+          (selectedPlayer.isEmpty || selectedPlayer == player))
+
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
       mount.appendChild(text("div", "eyebrow",
@@ -100,8 +105,8 @@ object ServerModeUi {
         notice: Option[GameClientFailure]
     ): Unit = {
       val routed = if (!fixedSeat) coordinator.route(request, value, notice)
-      else value.viewerPlayerId.filter(id => value.players.exists(_.playerId == id)) match {
-        case Some(player) if selectedPlayer.isEmpty || selectedPlayer == player =>
+      else value.viewerPlayerId match {
+        case Some(player) if !invalidTrustedViewer(value) =>
           if (selectedPlayer.isEmpty) {
             selectedPlayer = player
             coordinator.switchSession(gameId, selectedPlayer)
@@ -110,6 +115,7 @@ object ServerModeUi {
           Some(ProjectionRoute.Display(value, notice))
         case _ =>
           polling.foreach(_.stop())
+          coordinator.switchSession(gameId, selectedPlayer)
           projection = None
           failure = Some(GameClientFailure.HttpFailure(403, "seat-changed",
             "Open your assigned seat link."))
@@ -251,6 +257,9 @@ object ServerModeUi {
 
     def poll(request: ServerRequestIdentity): Unit =
       client.load(request.gameId, request.playerId).foreach {
+        case Right(snapshot) if invalidTrustedViewer(snapshot) =>
+          val accepted = polling.exists(_.complete(request, continuePolling = false))
+          if (accepted) accept(request, Right(snapshot))
         case Right(snapshot) =>
           val advances = projection.forall(current =>
             coordinator.snapshotAdvances(
