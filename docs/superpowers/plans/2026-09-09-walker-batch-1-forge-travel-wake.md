@@ -45,7 +45,7 @@ Deliberately excluded from batch 1: Campaign (800 lines, the most likely to need
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerActionRegistry.scala`, `src/main/scala/oathdigital/gameplay/OathRules.scala`, `src/main/scala/oathdigital/application/GameApplicationService.scala`
-- Test: `src/test/scala/oathdigital/gameplay/WalkerActionRegistrySuite.scala`
+- Test: `src/test/scala/oathdigital/gameplay/walker/WalkerActionRegistrySuite.scala`
 
 `OathRules.offerableWalkerPowers` and `validateModifiers` both name `PowerWindow.RecoverModifierSelection` as a literal. With one registered action that reads as harmless; the moment a second action registers, every action's player-selected powers are filtered through Recover's window and a Forge modifier is either wrongly offered or wrongly rejected. This is a known open item and it blocks every later task, so it lands first, alone, while Recover is still the only action and the change is provably behaviour-preserving.
 
@@ -59,6 +59,28 @@ Deliberately excluded from batch 1: Campaign (800 lines, the most likely to need
 - [ ] **Step 3:** re-run the focused suite; expected PASS. Confirm the existing Recover modifier tests still pass untouched.
 - [ ] **Step 4:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
 - [ ] **Step 5: commit** `refactor(walker): let each registered action own its modifier window`.
+
+---
+
+### Task 1b: Extract the walker command surface out of `OathRules`
+
+**Files:**
+- Create: `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/OathRules.scala`
+
+Inserted after Task 1 reported that `OathRules.scala` now sits at exactly 800 lines — the cap `scripts/check-architecture.py` enforces, which fails at 801. Task 1 reached it by tightening doc comments, which is not a strategy that survives another round. Tasks 3, 5 and 7 all modify this file, and Task 5 in particular must thread a travel destination through `startWalker`. The next line added to `OathRules` fails the build, and the global constraints forbid raising the cap.
+
+Doing this now, alone, keeps it a reviewable pure move. Folded into Task 3 instead, the Forge cutover commit would carry a 300-line file relocation alongside its real change, and neither would get read properly.
+
+The walker command surface is already contiguous: `startWalker` at line 131 through `parkedContinue` ending around line 456 — `startWalker`, `walkerPowers`, `offerableWalkerPowers`, `validateModifiers`, `checkRestrictions`, `eligibilityGathered`, `resolveWalker`, `rollWalkerPrepared`, `resumeWalker`, `walkerResumeContext`, `buildWalker`, `walkerCall`, `walkerTransition`, `foldEvents`, `parkedContinue`. That block is the extraction. Everything above it is legacy per-action `handle` methods and everything below is turn/phase plumbing.
+
+The mechanism is the implementer's call — a trait `OathRulesWalker` that `OathRules` mixes in is the cheapest thing that keeps `catalog` and `walkerPowerCatalog` reachable and every call site unchanged, but a collaborator class taking those two as constructor arguments is equally acceptable if it reads better. What is not acceptable is changing what any of these methods does.
+
+- [ ] **Step 1:** move the block. No signature changes, no behaviour changes, no doc-comment rewrites beyond what the move mechanically requires. Public methods stay public; `validateModifiers` keeps the `private[gameplay]` visibility Task 1 gave it.
+- [ ] **Step 2:** the proof of a pure move is that **not one test file is edited**. Run `./sbtw "test"` and confirm 587 passing with `git status` showing no change under `src/test/`. If a test needs editing, the move was not pure — stop and report what forced it.
+- [ ] **Step 3:** `python3 scripts/check-architecture.py`, and record both files' line counts in the report. `OathRules.scala` should land far enough below 800 that Tasks 3, 5 and 7 have room; if it does not, say so, because that means the extraction was too small to solve the problem it exists for.
+- [ ] **Step 4:** `./sbtw "frontend/test" "frontend/fastLinkJS"` and `git diff --check`.
+- [ ] **Step 5: commit** `refactor(walker): extract the walker command surface from OathRules`.
 
 ---
 
