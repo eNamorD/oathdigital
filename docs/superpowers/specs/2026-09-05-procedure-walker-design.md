@@ -193,11 +193,26 @@ trait Power {
 ```
 
 `shouldIgnore` takes the other power's `PowerId`, not the power itself
-(corrected at Task 10; implemented that way from Task 1): decision 10(b)'s
-named ignore is identity-based ("Vow of Peace ignores X"), and no ignore
-decision in the MVP power set needs to inspect the ignored power's
-contributions or state. A future ignore rule that does need the whole power
-widens this one method.
+(implemented that way from Task 1): decision 10(b)'s named ignore is
+identity-based ("Vow of Peace ignores X").
+
+**This is too narrow, and it should be widened before any further power is
+authored.** A `PowerId` is an identity string; it carries no classification.
+Whether a power is a Travel modifier lives on the *window* it hooks —
+`PowerWindow.associatedMajorAction`, fixed per window family
+(`TravelWindow` → `Travel`) — reachable from the power object via
+`contributions.keys` but not from its id. So a rule of the shape "ignore
+other modifiers of this action", which is common in the rulebook, cannot be
+expressed at all today; only ignores that name specific ids can.
+
+The fix is `shouldIgnore(other: ContributingPower)`: one line on this trait
+and one at `ContributionCollector`'s vote step, which already holds both
+power objects. The cost of delay is not in the engine — it is that every
+power authored against the narrow signature becomes a call site to revisit.
+Because the migration cuts each action's UI over and deletes its legacy path
+in one step, the batch port (step 3) authors each action's powers as it
+migrates it, so the window to change this cheaply closes at the *start* of
+the batch port, not at step 5.
 
 `PowerCtx(state, actor, source, window, nodePath)` carries no mutable state
 and no catalog of its own — a contribution reads game state through
@@ -403,6 +418,28 @@ slice; that ledger is git-ignored scratch, deleted once this branch
 finishes, so the two items below that must actually survive for the batch
 port are inlined here instead of left behind a dangling pointer:
 
+- **`walkerModifiers` is action-scoped, and there is no home yet for
+  turn-scoped activations.** `CurrentGameState.walkerModifiers` holds the
+  player-selected powers passed to one `StartWalker`. Its lifetime is exactly
+  that action: written when the action parks (carried on the durable
+  `WalkerParked` fact), read by `walkerResumeContext` on every resume so the
+  fold is identical, cleared by `WalkerCompleted`. That scope exists to serve
+  one invariant — the tree is re-derived per command (S1), so a modifier
+  present at start and absent on resume changes the fold and makes the park
+  cursor address a different node.
+
+  It is therefore the wrong home for a power that is activated once and lasts
+  the whole turn: such a power would evaporate at the first `WalkerCompleted`.
+  The field's scope is also baked into the journal, since `applyRecorded`
+  validates that recorded modifiers match state, so its meaning cannot be
+  quietly widened later. Turn-scoped activations need their own state cleared
+  at the turn boundary, and the gather must then consult both — this action's
+  selections and whatever is active for the turn. The nearer existing
+  precedent is `usedPowers: Set[PowerUseRef]`, which walker code deliberately
+  does not touch. Recommendation: do not design this speculatively; order the
+  batch port so an action carrying a turn-scoped activatable power lands
+  early, and let that real card drive the shape, exactly as Catacombs drove
+  the contribution shape here.
 - **`ContributingPower.resolution` is one flag per power, but `contributions`
   spans windows.** `resolution` (`Automatic`/`PlayerSelected`) is a single
   field on the whole power object, while a power's `contributions` can
