@@ -208,6 +208,81 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     }
   }
 
+  test("seat links and cookies restore private seats after the runtime reopens") {
+    implicit val system: ActorSystem[Nothing] =
+      ActorSystem[Nothing](Behaviors.empty, "trusted-seat-restart-test")
+    val blocking = system.dispatchers.lookup(
+      DispatcherSelector.fromConfig("oathdigital.blocking-dispatcher"))
+    val database = Files.createTempDirectory("trusted-seat-restart-").resolve("database")
+    val catalogPath = Paths.get("docs/catalog/new-foundations-component-catalog.json")
+    val config = ServerConfig("127.0.0.1", 8080, None, database, catalogPath,
+      ServerMode.TrustedAlpha, None, "test")
+    val client = HttpClient.newHttpClient()
+
+    def openServer(): (ServerRuntime, akka.http.scaladsl.Http.ServerBinding, String) = {
+      val runtime = ServerRuntime.open(database, catalogPath).toOption.get
+      val binding = Await.result(Http().newServerAt("127.0.0.1", 0).bind(
+        ServerRoutes.route(runtime, blocking, config, ServerReadiness.starting("test"))), 10.seconds)
+      (runtime, binding, s"http://127.0.0.1:${binding.localAddress.getPort}")
+    }
+
+    def closeServer(runtime: ServerRuntime, binding: akka.http.scaladsl.Http.ServerBinding): Unit = {
+      Await.result(binding.terminate(5.seconds), 10.seconds)
+      runtime.close()
+    }
+
+    var current = openServer()
+    try {
+      val created = create(client, current._3, "restart-game")
+      val firstCode = URI.create(created.seats.head.url).getPath.stripPrefix("/s/")
+      val secondCode = URI.create(created.seats(1).url).getPath.stripPrefix("/s/")
+      val secondEntry = send(client, current._3, s"/s/$secondCode")
+      assertEquals(secondEntry.statusCode(), 303)
+      val retainedCookie = secondEntry.headers().firstValue("Set-Cookie").orElse("")
+        .takeWhile(_ != ';')
+      assert(retainedCookie.nonEmpty)
+      val beforeRestart = send(client, current._3, "/games/restart-game/api",
+        cookie = Some(retainedCookie))
+      assertEquals(beforeRestart.statusCode(), 200, beforeRestart.body())
+      assertEquals(ujson.read(beforeRestart.body())("viewerPlayerId").str, "p2")
+
+      closeServer(current._1, current._2)
+      current = openServer()
+
+      val originalLink = send(client, current._3, s"/s/$secondCode")
+      assertEquals(originalLink.statusCode(), 303)
+      assertEquals(originalLink.headers().firstValue("Location").orElse(""), "/games/restart-game")
+      val reenteredCookie = originalLink.headers().firstValue("Set-Cookie").orElse("")
+        .takeWhile(_ != ';')
+      val api = "/games/restart-game/api"
+      val restored = send(client, current._3, api, cookie = Some(retainedCookie))
+      assertEquals(restored.statusCode(), 200, restored.body())
+      assertEquals(ujson.read(restored.body())("viewerPlayerId").str, "p2")
+      val reentered = send(client, current._3, api, cookie = Some(reenteredCookie))
+      assertEquals(reentered.statusCode(), 200, reentered.body())
+      assertEquals(ujson.read(reentered.body())("viewerPlayerId").str, "p2")
+
+      val otherCookie = s"oath_seat=$firstCode"
+      val otherSeat = send(client, current._3, api, cookie = Some(otherCookie))
+      assertEquals(otherSeat.statusCode(), 200, otherSeat.body())
+      assertEquals(ujson.read(otherSeat.body())("viewerPlayerId").str, "p1")
+      assert(ujson.read(otherSeat.body())("pendingCardDecision").isNull)
+      val site = ujson.read(restored.body())("world")(0)("sites")(0)("siteId").str
+      val command = ujson.write(ujson.Obj("expectedNextSequence" -> 1,
+        "intent" -> ujson.Obj("type" -> "placePawn", "siteId" -> site)))
+      assertEquals(send(client, current._3, api + "/commands", Some(command),
+        Some(otherCookie)).statusCode(), 422)
+      assertEquals(ujson.read(send(client, current._3, api,
+        cookie = Some(retainedCookie)).body())("nextSequence").num, 1.0)
+      assertEquals(send(client, current._3, api + "/commands", Some(command),
+        Some(retainedCookie)).statusCode(), 200)
+    } finally {
+      closeServer(current._1, current._2)
+      system.terminate()
+      Await.result(system.whenTerminated, 10.seconds)
+    }
+  }
+
   test("storage failures never expose seat credentials in responses or log events") {
     withServer() { (base, runtime) =>
       val client = HttpClient.newHttpClient()

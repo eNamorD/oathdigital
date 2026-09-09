@@ -145,9 +145,14 @@ leaked. Keep the raw loopback development event log separate.
    and [alpha-readiness design](superpowers/specs/2026-09-07-phase-5-alpha-readiness-design.md).
    Deferred review findings and the outstanding container release gate are
    recorded in [Phase 5 follow-ups](operations/phase-5-follow-ups.md).
-2. [ ] Replace development identity assumptions with a minimal safe alpha
+2. [x] Replace development identity assumptions with a minimal safe alpha
    access flow for hosts and invited seats; do not expose the loopback
-   development shim on a network.
+   development shim on a network. Trusted-alpha hosts can now create a game,
+   distribute persistent opaque links, and restore each private seat through a
+   scoped cookie after reload or restart. Route and Universal package smoke
+   tests cover cross-seat command denial, three isolated seats, a representative
+   command, and same-database restart. OCI smoke coverage is implemented but
+   remained unrun on 2026-09-09 because the Docker daemon was unavailable.
 3. [ ] Verify two or more browsers on separate machines can create/join,
    reconnect, reload persisted games, and complete representative multi-player
    turns over a LAN.

@@ -268,3 +268,40 @@
 - [ ] **Step 6: Commit**
 
   Commit as `test(packaging): prove trusted seat restoration`.
+
+## Execution evidence
+
+### 2026-09-09 — Task 5 restart and packaged seat flow
+
+- Host: `arm64`; Docker CLI: `29.7.2` (`a7dcaa6`). Docker daemon socket
+  `/Users/roman/.docker/run/docker.sock` was absent.
+- Restart route test was added before any runtime production change. The first
+  authorized focused run failed 1 of 9 tests because the draft asserted a
+  private decision before any command created that decision. A second run moved
+  the same assertion before restart and failed there, confirming the test
+  expectation was invalid rather than persistence behavior. After narrowing
+  the test to persisted seat identity, link exchange, cookie reload, cross-seat
+  command denial, unchanged sequence, and correct-seat command acceptance,
+  `./sbtw "testOnly oathdigital.server.TrustedSeatRoutesSuite"` passed 9 of 9.
+  Existing runtime persistence needed no production patch.
+- `./sbtw test frontend/fullLinkJS verifyPackageMappings Universal/stage Universal/packageBin Universal/packageZipTarball Docker/stage`
+  exited 0. JVM tests: 561 passed, 0 failed, 0 errors. Optimized frontend
+  linking, package mappings, Universal staging, both Universal archives, and
+  Docker staging succeeded. Existing Scaladoc warnings remained unchanged;
+  Docker staging warned that it could not inspect the unavailable daemon.
+- Universal artifacts:
+  `target/universal/oathdigital-0.1.0-SNAPSHOT.tgz` and
+  `target/universal/oathdigital-0.1.0-SNAPSHOT.zip`. Docker staging artifact:
+  `target/docker/stage/Dockerfile`.
+- `scripts/smoke-packaged-distribution.sh target/universal/stage 18080`
+  exited 0 after proving readiness, packaged frontend, three separate seat
+  exchanges and cookie jars, correct private projections, one accepted command,
+  retained-cookie reloads, original-link exchange after restart, database-close
+  evidence for both runs, and bounded shutdown.
+- `./sbtw Docker/publishLocal` exited 1 because the Docker daemon socket was
+  unavailable. Therefore image `oathdigital:0.1.0-SNAPSHOT` was not built and
+  `scripts/smoke-packaged-container.sh oathdigital:0.1.0-SNAPSHOT 18081` was
+  unrun, not passed.
+- `sh -n scripts/smoke-packaged-distribution.sh` and
+  `sh -n scripts/smoke-packaged-container.sh` exited 0. `git diff --check`
+  exited 0 before evidence was recorded and is rerun as the final gate.
