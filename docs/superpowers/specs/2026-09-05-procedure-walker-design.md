@@ -291,19 +291,23 @@ this design and will be replanned.
 - Full gate stays green through migration (`./sbtw "test"
   "frontend/test" "frontend/fastLinkJS"`).
 - Drift suites: recorded ops == recomputed tree ops, in dev/test only.
-- Power-authoring bar: one class, ≤50 lines, engine untouched (asserted in a
-  BackendArchitecture-style test per power family). The guard in
-  `BackendArchitectureSuite` now measures *per class*: it splits each source
-  under `gameplay/powers/` into top-level declaration blocks, counts the block
-  extending `ContributingPower` from its declaration line to its matching
-  closing brace, and derives the power's name from that declaration identifier
-  (trailing `Contribution`/`Power` stripped) rather than from the file name.
-  So a family file may group several powers and carry shared package/import/
-  companion overhead without any power being charged for it. Remaining gap:
-  because only the `ContributingPower` block is counted, bulk pushed into a
-  companion object or a sibling helper escapes the bar — visible in review,
-  and tightenable later. The no-walker-import check stays file-scoped, since
-  an import is a file-level property.
+- Power-authoring bar: one class, ≤50 lines, engine untouched. The size half
+  is a **design guideline, not an asserted property** (settled 2026-09-09). A
+  power needing 55 lines to state its rule honestly should be allowed them,
+  and a reviewer judges that better than a line count. Enforcing it
+  mechanically also proved expensive out of proportion to its value: measuring
+  per class means splitting Scala by hand, and the splitter that did so
+  silently missed a power declared inside a family object — taking the
+  engine-name check down with it while the suite stayed green.
+- What IS asserted, in `BackendArchitectureSuite` ("a walker power imports no
+  engine, and the engine never learns its name"): a file declaring a
+  `ContributingPower` never imports `gameplay.walker`, and no source under
+  `gameplay/walker` or `gameplay/operations` names a specific power. These are
+  the boundaries that keep the engine generic, and neither needs the file
+  parsed: power names come from the nearest declaration identifier preceding
+  each `extends ContributingPower`, which works at any nesting depth. The
+  import check is file-scoped on purpose, so one power's illegal import taints
+  every power grouped beside it.
 - Human-readable log lines rendered from event payloads.
 
 ## Slice status: Recover fully migrated, powers and UI (Task 10 checkpoint, 2026-09-08)
@@ -322,13 +326,13 @@ it, folding `ContributingPower` contributions (`Transform`/`Restriction`) at
 with one-pass named ignore and the deterministic
 `(priority, source.stableKey, powerId)` sort (decision 10). Catacombs
 (`src/main/scala/oathdigital/gameplay/powers/recover/CatacombsContribution.scala`)
-is the first power ported onto this seam: one 50-line object that imports
-`gameplay.operations` (its `Transform` returns `Vector[Operation]`, building
-`Move`/`PayCost` to place the relic and charge the secret) but no
-`gameplay.walker` import — the authoring bar `BackendArchitectureSuite`
-("a walker power is one small class with no engine imports") actually
-enforces is the walker import alone, not the operations vocabulary a power
-needs to describe its own effect. Offered to a walk when the
+is the first power ported onto this seam: a 31-line class in a 51-line file
+that imports `gameplay.operations` (its `Transform` returns
+`Vector[Operation]`, building `Move`/`PayCost` to place the relic and charge
+the secret) but no `gameplay.walker` import — what
+`BackendArchitectureSuite` enforces is the walker import and the engine's
+ignorance of power names, not the operations vocabulary a power needs to
+describe its own effect. Offered to a walk when the
 player selects it as a `StartWalker` modifier. A player completes Recover,
 with and without Catacombs, entirely through the wire's `StartWalker`/
 `RollWalker`/`ResolveWalker` intents; the legacy `BeginRecover`/
