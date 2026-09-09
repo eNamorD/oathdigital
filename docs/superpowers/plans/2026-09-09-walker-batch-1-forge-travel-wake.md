@@ -117,7 +117,9 @@ The relic id is the authoritative relic-deck top and is **not** closed over by t
 ### Task 3: Forge cuts over and its legacy path is deleted
 
 **Files:**
-- Modify: `src/main/scala/oathdigital/model/ActionRef.scala`, `WalkerActionRegistry.scala`, `WalkerDecisionProjector.scala`, `GameIntentMapper.scala`, `LegalActionProjector.scala`, `PendingProcedureProjector.scala`, `GameApplicationService.scala`, `OathRules.scala`, `frontend/.../ActionDecisionRenderer.scala`
+- Modify: `src/main/scala/oathdigital/model/ActionRef.scala`, `WalkerActionRegistry.scala`, `OathRulesWalker.scala`, `OathRules.scala`, `WalkerDecisionProjector.scala`, `GameIntentMapper.scala`, `LegalActionProjector.scala`, `PendingProcedureProjector.scala`, `GameApplicationService.scala`, `frontend/.../ActionDecisionRenderer.scala`
+
+Note (from Task 1b): the walker command surface now lives in `OathRulesWalker.scala`, not `OathRules.scala` — `startWalker`, `buildWalker` and `rollDecisionId`'s call site are all there. `OathRules.scala` keeps `declaredWalkerTree` and `eligibilityRelaxed`.
 - Delete: `src/main/scala/oathdigital/gameplay/actions/Forge.scala`'s `Forge` object (keeping `ForgeRules`, which `ForgeProcedure` consumes), the `ForgeStarted`/`ForgeCompleted` event cases, their `ActionEventCodec` branches and `GameEventWire` types, `PendingProcedure.Forge`, `OathContinue.AwaitingForgeAssignment`, and `ForgeCommand`.
 
 `ActionRef` gains `Forge` and `ActionRef.all` gains it in the same edit — `WalkerActionRegistrySuite` asserts the registry covers `ActionRef.all`, so a missing entry fails loudly rather than at runtime. The entry declares `fallbackKind = MajorActionKind.Forge`, `modifierWindow = Some(PowerWindow.ForgeModifierSelection)`, no `rollDecisionId` park (Forge has no `Roll` node — see the note below), and `continuationFor` mapping `"forge.assignment"` to its client-facing continuation.
@@ -126,6 +128,7 @@ The relic id is the authoritative relic-deck top and is **not** closed over by t
 
 - [ ] **Step 1: failing test** — an end-to-end Forge through `GameApplicationService` using only `StartWalker`/`ResolveWalker`, asserting the same final state the legacy `ForgeCommand` path produced (three denizens each carrying their resource, relic facedown in the play area, 1 supply spent, no pending). Plus a replay assertion: reconstructing from the journal reproduces that state. Expected FAIL: `ActionRef.Forge` does not exist.
 - [ ] **Step 2: implement** the registry entry, the `Option[String]` roll-id change with its two call sites, and the projector/mapper wiring.
+- [ ] **Step 2b: the eligibility window becomes per-action too.** `OathRules.eligibilityRelaxed` names `PowerWindow.RecoverActionEligibility` as a literal — the same shape Task 1 removed from the modifier window, one window over, found by Task 1b. It is reached by every `startWalker`, so registering Forge makes a second action gather at Recover's eligibility window. It is inert only while no power is applicable there, and Task 4 registers real powers. Move the window onto `WalkerActionRegistry.Entry` beside `modifierWindow`, with the same `Option` treatment and the same `registrations` override, and update the projector call site. Prove it the way Task 1 was proven: a fixture power applicable only at another action's eligibility window relaxes for that action and not for Recover, and a mutation restoring the literal fails that test.
 - [ ] **Step 3: delete** the legacy path in the same commit, and delete or port each legacy Forge test to the walker path. A test asserting a deleted event's codec round-trip is deleted with the event.
 - [ ] **Step 4:** re-run; expected PASS. `grep -rn "ForgeCommand\|ForgeStarted\|ForgeCompleted\|PendingProcedure.Forge" src frontend` returns nothing outside the journal fixtures being deleted.
 - [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
@@ -164,7 +167,7 @@ The route facts each `applicable` needs (which site is source, which is destinat
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/travel/TravelProcedure.scala`
-- Modify: `ActionRef.scala`, `WalkerActionRegistry.scala`, the projectors, the frontend renderer
+- Modify: `ActionRef.scala`, `WalkerActionRegistry.scala`, `OathRulesWalker.scala`, the projectors, the frontend renderer
 - Delete: `actions/Travel.scala`'s `Travel` object and `TravelLegality`, `actions/TravelOperationPolicy.scala`, `powers/travel/TravelCostWindow.scala`, `powerresolver/CostContribution` and `SuppressionRegistry` (`PowerContributions.scala`), `TravelPassBlockedCodec`, the `Traveled` event with its codec branch and wire type, and `TravelCommand`
 
 Travel's tree is flat — no `Decide`, no `Roll`:
@@ -176,6 +179,8 @@ Sequence(                                 // window = TravelActionEligibility
 ```
 
 The base cost is the printed region-to-region table from `TravelRules.cost`, with the `TravelCostWindow.fold` call removed — terrain is now Task 4's transforms folding over this node. The destination rides the `StartWalker` command, so the entry's `build` receives it; `Recover` derives its site from state and needs no such parameter, so this is the first action to need a start argument. Carry it the way `eligibilityRelaxed` is carried — as plain data on the entry's `build` — rather than teaching the walker about destinations.
+
+Task 1b's finding, which shapes this: the resume path passes no extra data to `buildWalker`, so anything threaded into a `starting` build must be re-derivable from state on resume or persisted the way `walkerModifiers` already is. Travel's flat tree may never park, in which case this is moot — establish that first rather than building persistence for a resume that cannot happen.
 
 Deleting `CostContribution` and `SuppressionRegistry` is the point of this task, not a bonus. If either still has a live reference after the port, the reconciliation is incomplete: say so rather than leaving both vocabularies alive.
 
@@ -227,6 +232,11 @@ Sequence(                                          // window = WakeTakeWealth
 Start gates: Wake phase (not Act — this is the first registered action gating on a phase other than Act, and it is the point of including Wake), actor's pawn at the site, no enemy pawn at the site, the requested resource present in the site's tokens. The once-per-turn gate is Task 6's restriction, gathered at the root window, not a gate in `build`.
 
 The entry declares `fallbackKind = MajorActionKind.Wake` and `modifierWindow = None` — Take Wealth has no modifier-selection window, which is the case Task 1 made the field optional for.
+
+**Two Act-phase assumptions in the walker surface, found by Task 1b, that this task is the first to meet.** Neither is a bug today; both are decisions this task must take deliberately rather than discover.
+
+1. `walkerResumeContext` requires `Phase.Act` and rejects any other phase with `WrongPhase`. The plan's claim that the walker never checks phase is true of `startWalker` and false of resume. It only matters if Take Wealth's tree ever parks — a flat two-leaf tree does not, so establish that before changing anything. If it never parks, say so in the report and leave the check alone.
+2. `walkerTransition`'s Finished branch hardcodes `OathContinue.ActActionSelection` and runs the Act boundary pipeline through `completeAction` for every completed walker action, whatever the phase. The legacy Wake path never called `completeAction` at all — a completed Take Wealth returns to `AwaitingWakeAction`, not to Act action selection. Porting Wake as-is would therefore end the player's Wake phase after one take. Fix this deliberately, and make the continuation registry data if that is what it takes; do not let it become a behaviour change nobody chose.
 
 `WakeCommand.EndWake` is not an action and does not move to the walker; it stays a phase transition. Keep it and say so, rather than porting it for symmetry.
 
