@@ -122,6 +122,24 @@ class HsqldbIdentityRepositorySuite extends munit.FunSuite {
     } finally repository.close()
   }
 
+  test("trusted seat creation rejects a null player ID before transaction") {
+    val repository = open(databasePath("trusted-seat-null-player"))
+    try {
+      assertEquals(
+        repository.createTrustedSeats(
+          "null-player", Vector(seatDigest(8) -> null), 0L
+        ),
+        Left(InvalidTrustedSeat("trusted seat requires playerId"))
+      )
+      assertEquals(
+        repository.createTrustedSeats(
+          "null-player", Vector(seatDigest(8) -> "p1"), 0L
+        ),
+        Right(())
+      )
+    } finally repository.close()
+  }
+
   test("deleting a game resource cascades to its trusted seats") {
     val path = databasePath("trusted-seat-cascade")
     val digest = seatDigest(8)

@@ -445,7 +445,9 @@ final class HsqldbIdentityRepository private[persistence] (
   private def validateTrustedSeats(seats: Vector[(SeatCodeDigest, String)]) =
     if (seats.isEmpty)
       Left(InvalidTrustedSeat("at least one trusted seat is required"))
-    else if (seats.exists { case (_, playerId) => playerId.trim.isEmpty })
+    else if (seats.exists { case (_, playerId) =>
+        playerId == null || playerId.trim.isEmpty
+      })
       Left(InvalidTrustedSeat("trusted seat requires playerId"))
     else if (seats.map(_._2).distinct.size != seats.size)
       Left(InvalidTrustedSeat("trusted seat player IDs must be unique"))
