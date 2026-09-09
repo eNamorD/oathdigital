@@ -17,12 +17,14 @@ object ServerModeUi {
     "red-exile"
   )
 
-  def start(mount: dom.Element): Unit = {
-    val client = new HttpGameClient(new SameOriginJsonTransport)
+  def start(mount: dom.Element,
+      client: GameClient = new HttpGameClient(new SameOriginJsonTransport),
+      trustedGameId: Option[String] = None): Unit = {
+    val fixedSeat = trustedGameId.nonEmpty
     var projection = Option.empty[GameProjection]
     var failure = Option.empty[GameClientFailure]
-    var selectedPlayer = queryParameter("playerId").getOrElse("red-exile")
-    var gameId = queryParameter("gameId").getOrElse(freshGameId())
+    var selectedPlayer = if (fixedSeat) "" else queryParameter("playerId").getOrElse("red-exile")
+    var gameId = trustedGameId.getOrElse(queryParameter("gameId").getOrElse(freshGameId()))
     val coordinator = new ServerSessionCoordinator(gameId, selectedPlayer)
     var polling = Option.empty[SnapshotPollingCoordinator]
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
@@ -35,10 +37,17 @@ object ServerModeUi {
     var rawEvents = Vector.empty[RawEvent]
     var rawHistorySequence = Option.empty[Long]
 
+    def updateSessionUrl(): Unit = if (!fixedSeat) updateUrl(gameId, selectedPlayer)
+
+    def recovery(error: GameClientFailure): Boolean = error match {
+      case GameClientFailure.HttpFailure(401 | 403, _, _) if fixedSeat => true
+      case _ => false
+    }
+
     def render(): Unit = {
       while (mount.lastChild != null) mount.removeChild(mount.lastChild)
       mount.appendChild(text("div", "eyebrow",
-        "Server mode · JVM-authoritative persisted stream"))
+        if (fixedSeat) "Trusted alpha" else "Server mode · JVM-authoritative persisted stream"))
       mount.appendChild(text("h1", "", "Oath Digital game"))
       coordinator.connectionState match {
         case ServerConnectionState.Disconnected(_) =>
@@ -57,7 +66,11 @@ object ServerModeUi {
         case _ => ()
       }
       failure.foreach(error =>
-        mount.appendChild(text("div", "status error", error.message)))
+        mount.appendChild(text("div", "status error", if (recovery(error))
+          "Open your assigned seat link to restore access to this game." else error.message)))
+      if (fixedSeat && selectedPlayer.nonEmpty)
+        mount.appendChild(text("p", "seat-identity", "Your seat: " +
+          projection.fold(selectedPlayer)(playerDisplayName(_, selectedPlayer))))
       projection match {
         case None if failure.isEmpty =>
           mount.appendChild(text("div", "status", "Loading server projection…"))
@@ -69,16 +82,41 @@ object ServerModeUi {
           mount.appendChild(WorldBoardRenderer.world(value, presentation, ui))
           mount.appendChild(WorldBoardRenderer.playerBoards(value, ui))
       }
-      mount.appendChild(DevelopmentRenderer.controls(ui))
-      if (projection.nonEmpty) mount.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      if (!fixedSeat) {
+        mount.appendChild(DevelopmentRenderer.controls(ui))
+        if (projection.nonEmpty) mount.appendChild(DevelopmentRenderer.rawEventLog(rawEvents))
+      } else coordinator.connectionState match {
+        case ServerConnectionState.Disconnected(_) =>
+          val retry = button("Reconnect", "reconnectSession")
+          retry.onclick = _ => reconnect()
+          mount.appendChild(retry)
+        case _ => ()
+      }
     }
 
     def store(
         request: ServerRequestIdentity,
         value: GameProjection,
         notice: Option[GameClientFailure]
-    ): Unit =
-      coordinator.route(request, value, notice).foreach {
+    ): Unit = {
+      val routed = if (!fixedSeat) coordinator.route(request, value, notice)
+      else value.viewerPlayerId.filter(id => value.players.exists(_.playerId == id)) match {
+        case Some(player) if selectedPlayer.isEmpty || selectedPlayer == player =>
+          if (selectedPlayer.isEmpty) {
+            selectedPlayer = player
+            coordinator.switchSession(gameId, selectedPlayer)
+          }
+          coordinator.recordSnapshotSuccess(coordinator.capture)
+          Some(ProjectionRoute.Display(value, notice))
+        case _ =>
+          polling.foreach(_.stop())
+          projection = None
+          failure = Some(GameClientFailure.HttpFailure(403, "seat-changed",
+            "Open your assigned seat link."))
+          render()
+          None
+      }
+      routed.foreach {
         case ProjectionRoute.Display(displayed, retainedNotice) =>
           modifierWorkflow = ModifierWorkflow.reconcile(modifierWorkflow,
             gameId, selectedPlayer, displayed.nextSequence)
@@ -109,11 +147,14 @@ object ServerModeUi {
           failure = retainedNotice
           render()
           polling.foreach(_.resume(coordinator.capture))
-          if (!rawHistorySequence.contains(displayed.nextSequence)) {
+          if (!fixedSeat && !rawHistorySequence.contains(displayed.nextSequence)) {
             rawHistorySequence = Some(displayed.nextSequence)
-            client.loadRawEventHistory(gameId).foreach {
-              case Right(events) => rawEvents = events; render()
-              case Left(_) => ()
+            client match {
+              case development: HttpGameClient => development.loadRawEventHistory(gameId).foreach {
+                case Right(events) => rawEvents = events; render()
+                case Left(_) => ()
+              }
+              case _ => ()
             }
           }
         case ProjectionRoute.ReloadForActivePlayer(
@@ -131,12 +172,13 @@ object ServerModeUi {
           projection = Some(displayed)
           failure = retainedNotice
           selectedPlayer = nextRequest.playerId
-          updateUrl(gameId, selectedPlayer)
+          updateSessionUrl()
           render()
           client.load(gameId, selectedPlayer).foreach { result =>
             accept(nextRequest, result, retainedNotice)
           }
       }
+    }
 
     def accept(
         request: ServerRequestIdentity,
@@ -147,13 +189,15 @@ object ServerModeUi {
         case Right(value) => store(request, value, notice)
         case Left(error) =>
           coordinator.recordFailure(request, error)
-          if (GameClientFailure.isTransient(error))
+          if (GameClientFailure.isTransient(error) || recovery(error))
             polling.foreach(_.stop())
+          if (recovery(error)) projection = None
           failure = Some(error)
           render()
       }
 
     def loadExisting(id: String, playerId: String): Unit = {
+      if (fixedSeat) return
       polling.foreach(_.stop())
       gameId = id.trim
       projection = None
@@ -170,12 +214,13 @@ object ServerModeUi {
         case value => value
       }
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
 
     def newGame(): Unit = {
+      if (fixedSeat) return
       polling.foreach(_.stop())
       gameId = freshGameId()
       selectedPlayer = bootstrap.firstPlayer
@@ -189,7 +234,7 @@ object ServerModeUi {
       rawHistorySequence = None
       failure = None
       val request = coordinator.switchSession(gameId, selectedPlayer)
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.bootstrap(gameId, selectedPlayer, bootstrap)
         .foreach(accept(request, _))
@@ -199,7 +244,7 @@ object ServerModeUi {
       polling.foreach(_.stop())
       failure = None
       val request = coordinator.reconnect()
-      updateUrl(gameId, selectedPlayer)
+      updateSessionUrl()
       render()
       client.load(gameId, selectedPlayer).foreach(accept(request, _))
     }
@@ -453,7 +498,8 @@ object ServerModeUi {
     polling.foreach(_.visibilityChanged(dom.document.hidden))
 
     render()
-    queryParameter("gameId") match {
+    if (fixedSeat) client.load(gameId, selectedPlayer).foreach(accept(coordinator.capture, _))
+    else queryParameter("gameId") match {
       case Some(existing) => loadExisting(existing, selectedPlayer)
       case None => newGame()
     }

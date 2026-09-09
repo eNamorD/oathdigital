@@ -18,7 +18,7 @@ object GameProjectionCodec {
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
-    "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting")
+    "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting", "viewerPlayerId")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -26,7 +26,8 @@ object GameProjectionCodec {
     catch { case NonFatal(error) => Left(MalformedJson("$",
       Option(error.getMessage).getOrElse("malformed JSON"))) }
 
-  private[projection] def encodeValue(value: GameProjection): ujson.Value = ujson.Obj(
+  private[projection] def encodeValue(value: GameProjection): ujson.Value = {
+    val result = ujson.Obj(
     "gameId" -> value.gameId, "nextSequence" -> ujson.Num(value.nextSequence.toDouble),
     "phase" -> value.phase, "activeParticipantId" -> stringOption(value.activeParticipantId),
     "players" -> encoded(value.players)(encodePlayer),
@@ -106,6 +107,9 @@ object GameProjectionCodec {
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
     "restPower" -> option(value.restPower)(encodeRestPower),
     "restPowerWaiting" -> value.restPowerWaiting)
+    value.viewerPlayerId.foreach(player => result("viewerPlayerId") = ujson.Str(player))
+    result
+  }
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -170,11 +174,12 @@ object GameProjectionCodec {
     preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
     restPower <- optionalAbsent(value, "restPower", path)(decodeRestPower)
     restWaiting <- boolOr(value, "restPowerWaiting", path, false)
+    viewer <- optionalAbsent(value, "viewerPlayerId", path)(string)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, recover, forge, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
-    negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting)
+    negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting, viewer)
 
   private def encodeRestPower(value: RestPowerProjection): ujson.Value = {
     value.payload match {

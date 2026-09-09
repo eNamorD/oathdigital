@@ -269,6 +269,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   }
 
   private def assertNoHiddenPlan(body: String): Unit = {
+    assert(!ujson.read(body).obj.contains("viewerPlayerId"))
     assert(!body.contains("worldDeckOrder"))
     assert(!body.contains("relicOrder"))
     assert(!body.contains("denizenOrder"))

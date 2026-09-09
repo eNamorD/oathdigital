@@ -645,6 +645,14 @@ private[frontend] object ServerUiSupport {
   private[frontend] def freshGameId(): String =
     s"manual-${js.Date.now().toLong}-${(js.Math.random() * 1000000).toInt}"
 
+  private[frontend] def canonicalGameId(pathname: String): Option[String] =
+    pathname.split("/", -1).toVector match {
+      case Vector("", "games", encoded) if encoded.nonEmpty =>
+        try Option(js.URIUtils.decodeURIComponent(encoded)).filter(_.nonEmpty)
+        catch { case scala.util.control.NonFatal(_) => None }
+      case _ => None
+    }
+
   private[frontend] def queryParameter(name: String): Option[String] =
     dom.window.location.search.stripPrefix("?").split("&").toVector
       .flatMap { pair =>

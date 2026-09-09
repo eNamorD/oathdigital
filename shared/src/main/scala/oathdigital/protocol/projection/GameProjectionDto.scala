@@ -42,4 +42,5 @@ final case class GameProjection(
     ,privateAdviserPreview: Vector[CardDetailsProjection] = Vector.empty
     ,restPower: Option[RestPowerProjection] = None
     ,restPowerWaiting: Boolean = false
+    ,viewerPlayerId: Option[String] = None
 )

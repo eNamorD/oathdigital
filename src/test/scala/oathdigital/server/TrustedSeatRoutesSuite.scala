@@ -22,6 +22,14 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     val seat = TrustedSeat("trusted", "p2")
     val command = GameHttpWire.decodeCommand(s"""{"expectedNextSequence":1,"intent":{"type":"placePawn","siteId":"${sites.head.value}"}}""").toOption.get
     val accepted = gateway.submit("trusted", seat, command).toOption.get
+    assertEquals(accepted.viewerPlayerId, Some("p2"))
+    assertEquals(gateway.load("trusted", TrustedSeat("trusted", "p3"))
+      .toOption.get.viewerPlayerId, Some("p3"))
+    val development = new GameProjector(catalog).project("trusted",
+      service.load("trusted").toOption.flatten.get, oathdigital.model.PlayerId("p2"))
+    assertEquals(development.viewerPlayerId, None)
+    assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(development)
+      .contains("viewerPlayerId"))
     assert(accepted.pendingCardDecision.nonEmpty)
     assert(gateway.load("trusted", seat).toOption.get.pendingCardDecision.nonEmpty)
     assert(gateway.load("trusted", TrustedSeat("trusted", "p3")).toOption.get.pendingCardDecision.isEmpty)

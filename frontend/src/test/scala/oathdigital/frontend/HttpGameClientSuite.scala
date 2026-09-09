@@ -8,6 +8,60 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   GameIntent, MajorActionPreviewRequest, ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
+  test("trusted viewer identity round trips while old projections omit it") {
+    val old = GameJson.decodeProjection(projectionJson(1)).toOption.get
+    assertEquals(old.viewerPlayerId, None)
+    val json = oathdigital.protocol.projection.GameProjectionCodec.encode(
+      old.copy(viewerPlayerId = Some("blue-exile")))
+    assertEquals(GameJson.decodeProjection(json).toOption.get.viewerPlayerId,
+      Some("blue-exile"))
+    assert(!oathdigital.protocol.projection.GameProjectionCodec.encode(old)
+      .contains("viewerPlayerId"))
+  }
+  test("trusted client uses canonical cookie APIs and actorless bodies") {
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(200, projectionJson(7))),
+      Right(TransportResponse(200, """{"nextSequence":7,"action":"trade","modifiers":[],"ignoredRules":[],"targets":[]}""")),
+      Right(TransportResponse(200, projectionJson(8)))))
+    val client = new TrustedHttpGameClient(transport)
+    client.load("game /?", "seat-must-not-travel").flatMap { loaded =>
+      assertEquals(loaded.toOption.get.nextSequence, 7L)
+      client.preview("game /?", "seat-must-not-travel",
+        MajorActionPreviewRequest(7, "trade", Map("resource" -> "favor")))
+    }.flatMap { preview =>
+      assertEquals(preview.toOption.get.nextSequence, 7L)
+      client.submit("game /?", "seat-must-not-travel", 7, GameIntent.PlacePawn("site:a"))
+    }.map { submitted =>
+      assertEquals(submitted.toOption.get.nextSequence, 8L)
+      assertEquals(transport.requests.map(r => r._1 -> r._2).toVector, Vector(
+        "GET" -> "/games/game%20%2F%3F/api",
+        "POST" -> "/games/game%20%2F%3F/api/preview",
+        "POST" -> "/games/game%20%2F%3F/api/commands"))
+      assertEquals(transport.requests.head._3, None)
+      assertEquals(ActorlessCommandCodec.decode(transport.requests.last._3.get),
+        Right(ActorlessCommandRequest(7, GameIntent.PlacePawn("site:a"))))
+      assert(!transport.requests.toString.contains("seat-must-not-travel"))
+    }
+  }
+
+  test("trusted conflict allows one reload without retry and bootstrap never sends") {
+    val transport = new StubTransport(Vector(
+      Right(TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}""")),
+      Right(TransportResponse(200, projectionJson(8)))))
+    val client = new TrustedHttpGameClient(transport)
+    client.submit("game-1", "red-exile", 7, GameIntent.PlacePawn("site:a")).flatMap {
+      case Left(_: GameClientFailure.StalePosition) => client.load("game-1", "red-exile")
+      case other => fail(s"expected conflict: $other")
+    }.flatMap { loaded =>
+      assertEquals(loaded.toOption.get.nextSequence, 8L)
+      client.bootstrap("game-1", "red-exile",
+        oathdigital.protocol.FirstGameBootstrapRequest(0, Vector.empty, "red-exile"))
+    }.map { result =>
+      assert(result.isLeft)
+      assertEquals(transport.requests.map(_._1).toVector, Vector("POST", "GET"))
+    }
+  }
+
   test("production client previews and submits the same ordered modifiers") {
     val previewJson = """{"nextSequence":7,"action":"trade","modifiers":[{"sourceKey":"adviser:red-exile:denizen:35","handlerId":"h.one","description":"First"},{"sourceKey":"site-card:site:a:denizen:36","handlerId":"h.two","description":"Second"}],"ignoredRules":[],"targets":[]}"""
     val transport = new StubTransport(Vector(

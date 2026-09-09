@@ -2,8 +2,202 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 class ServerModeUiSuite extends FunSuite {
+  test("canonical path decodes only a single game segment") {
+    assertEquals(ServerUiSupport.canonicalGameId("/games/my%20game"), Some("my game"))
+    assertEquals(ServerUiSupport.canonicalGameId("/"), None)
+    assertEquals(ServerUiSupport.canonicalGameId("/games/"), None)
+    assertEquals(ServerUiSupport.canonicalGameId("/games/a/api"), None)
+    assertEquals(ServerUiSupport.canonicalGameId("/games/%broken"), None)
+  }
+
+  test("trusted player renders its fixed seat and never bootstraps switches or loads raw events") {
+    val browser = new TestBrowser("?gameId=wrong&playerId=red")
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += ((method, url, body))
+        scala.concurrent.Future.successful(Right(TransportResponse(200, trustedProjection)))
+      }
+    }
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    browser.settle.map { _ =>
+      assertEquals(requests.map(r => r._1 -> r._2).toVector,
+        Vector("GET" -> "/games/my%20game/api"))
+      assert(browser.text.contains("Blue Exile"))
+      assert(browser.text.contains("Waiting for"))
+      assert(browser.byClass("seat-identity").head.textContent.contains("Blue Exile"))
+      assert(browser.byClass("debug-toolbar").isEmpty)
+      assert(browser.byClass("player-selector").isEmpty)
+      assert(browser.byClass("raw-event-log").isEmpty)
+      assert(browser.byClass("restart").isEmpty)
+      assert(browser.urls.isEmpty)
+    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+  }
+
+  test("trusted unauthorized player displays seat-link recovery without bootstrap") {
+    val browser = new TestBrowser
+    var requests = 0
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += 1
+        scala.concurrent.Future.successful(Right(TransportResponse(401,
+          """{"error":"unauthorized","message":"internal detail"}""")))
+      }
+    }
+    Main.start(browser.mount, "/games/missing", trustedAlpha = true, transport)
+    browser.settle.map { _ =>
+      assertEquals(requests, 1)
+      assert(browser.text.contains("assigned seat link"))
+      assert(!browser.text.contains("internal detail"))
+      assert(browser.byClass("restart").isEmpty)
+    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+  }
+
+  test("trusted root posts host form and displays ordered copyable seat links") {
+    val browser = new TestBrowser("?gameId=ignored&playerId=ignored")
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String, Option[String])]
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += ((method, url, body))
+        scala.concurrent.Future.successful(Right(TransportResponse(201,
+          """{"gameId":"host-game","seats":[{"playerId":"blue","url":"https://oath.test/s/blue-code"},{"playerId":"red","url":"https://oath.test/s/red-code"}]}""")))
+      }
+    }
+    Main.start(browser.mount, "/", trustedAlpha = true, transport)
+    assertEquals(requests.size, 0)
+    browser.input("Game ID").value = "host-game"
+    browser.input("Seat definitions").value = "blue,blue-lineage,blue\nred,red-lineage,red"
+    browser.input("First player ID").value = "blue"
+    browser.click("create-trusted-game")
+    browser.settle.map { _ =>
+      assertEquals(requests.map(r => r._1 -> r._2).toVector, Vector("POST" -> "/games"))
+      val request = oathdigital.protocol.TrustedGameCreateRequestCodec.decode(requests.head._3.get).toOption.get
+      assertEquals(request.participants.map(_.playerId), Vector("blue", "red"))
+      assertEquals(request.firstPlayerId, "blue")
+      val links = browser.byClass("seat-link").map(_.asInstanceOf[org.scalajs.dom.html.Input])
+      assertEquals(links.map(_.value), Vector("https://oath.test/s/blue-code", "https://oath.test/s/red-code"))
+      assert(links.forall(_.readOnly))
+      assertEquals(browser.byClass("copy-seat-link").size, 2)
+      assert(browser.urls.isEmpty)
+      browser.click("copy-seat-link")
+      assertEquals(browser.copied, Vector("https://oath.test/s/blue-code"))
+    }.andThen { case _ => browser.close() }(scala.scalajs.concurrent.JSExecutionContext.queue)
+  }
+
+  private def trustedProjection: String =
+    """{"gameId":"my game","nextSequence":1,"phase":"awaiting-pawn","activeParticipantId":"red","viewerPlayerId":"blue","players":[{"playerId":"red","displayName":"Red Exile","role":"exile","colorToken":"red"},{"playerId":"blue","displayName":"Blue Exile","role":"exile","colorToken":"blue"}],"world":[],"pawnLocations":[],"legalControls":[],"ready":false,"completed":false}"""
+
+  test("development root retains query loading and raw history") {
+    val browser = new TestBrowser("?gameId=existing&playerId=red")
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += method -> url
+        val json = if (url.contains("/events")) """{"events":[]}"""
+          else trustedProjection.replace("\"viewerPlayerId\":\"blue\",", "")
+        scala.concurrent.Future.successful(Right(TransportResponse(200, json)))
+      }
+    }
+    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    browser.settle.map { _ =>
+      assertEquals(requests.toVector, Vector("GET" -> "/api/dev/first-games/existing?playerId=red",
+        "GET" -> "/api/dev/first-games/existing/events?limit=25"))
+      assert(browser.byClass("debug-toolbar").nonEmpty)
+      assert(browser.byClass("player-selector").nonEmpty)
+      assert(browser.byClass("raw-event-log").nonEmpty)
+      assert(browser.urls.last.contains("gameId=existing&playerId=red"))
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("host duplicate game response keeps form editable and explains choosing another ID") {
+    val browser = new TestBrowser
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) =
+        scala.concurrent.Future.successful(Right(TransportResponse(409,
+          """{"error":"game-already-exists","message":"Game already exists"}""")))
+    }
+    Main.start(browser.mount, "/", trustedAlpha = true, transport)
+    browser.click("create-trusted-game")
+    browser.settle.map { _ =>
+      assert(browser.text.contains("Choose another game ID"))
+      assert(!browser.text.contains("refreshed"))
+      assert(!browser.byClass("create-trusted-game").head.asInstanceOf[org.scalajs.dom.html.Button].disabled)
+      assert(browser.byClass("seat-link").isEmpty)
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("development root without query still bootstraps a new game") {
+    val browser = new TestBrowser
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += method -> url
+        scala.concurrent.Future.successful(Left(GameClientFailure.NetworkFailure("offline")))
+      }
+    }
+    Main.start(browser.mount, "/", trustedAlpha = false, transport)
+    browser.settle.map { _ =>
+      assertEquals(requests.size, 1)
+      assertEquals(requests.head._1, "POST")
+      assert(requests.head._2.endsWith("/bootstrap?playerId=red-exile"))
+      assert(browser.byClass("restart").nonEmpty)
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("trusted UI reloads after command conflict without retrying or changing seat") {
+    val browser = new TestBrowser
+    val requests = scala.collection.mutable.ArrayBuffer.empty[(String, String)]
+    val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
+      .replace("\"awaiting-pawn\"", "\"wake\"").replace("\"legalControls\":[]", "\"legalControls\":[\"endWake\"]")
+      .replace("\"ready\":false", "\"ready\":true")
+    val responses = scala.collection.mutable.Queue(
+      TransportResponse(200, active),
+      TransportResponse(409, """{"error":"stale-client-position","message":"position changed"}"""),
+      TransportResponse(200, trustedProjection.replace("\"nextSequence\":1", "\"nextSequence\":2")))
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += method -> url
+        scala.concurrent.Future.successful(Right(responses.dequeue()))
+      }
+    }
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    browser.settle.flatMap { _ =>
+      browser.click("wake-action")
+      browser.settle
+    }.map { _ =>
+      assertEquals(requests.toVector, Vector("GET" -> "/games/my%20game/api",
+        "POST" -> "/games/my%20game/api/commands", "GET" -> "/games/my%20game/api"))
+      assert(browser.byClass("seat-identity").head.textContent.contains("Blue Exile"))
+      assert(browser.text.contains("Waiting for"))
+      assert(browser.text.contains("refreshed without retrying"))
+      assert(browser.urls.isEmpty)
+    }.andThen { case _ => browser.close() }
+  }
+
+  test("trusted polling stops and clears private state when cookie access is lost") {
+    val browser = new TestBrowser
+    var requests = 0
+    val transport = new JsonTransport {
+      def request(method: String, url: String, body: Option[String]) = {
+        requests += 1
+        scala.concurrent.Future.successful(Right(if (requests == 1)
+          TransportResponse(200, trustedProjection) else TransportResponse(403,
+            """{"error":"forbidden","message":"denied"}""")))
+      }
+    }
+    Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
+    browser.settle.flatMap { _ => browser.tick(); browser.settle }.map { _ =>
+      assertEquals(requests, 2)
+      assert(browser.text.contains("assigned seat link"))
+      assert(browser.byClass("wake-actions").isEmpty)
+      browser.tick()
+      assertEquals(requests, 2)
+    }.andThen { case _ => browser.close() }
+  }
+
   test("secret summaries lead with available over total and explain unavailable tokens") {
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 1, 0, 0),
       "1 available of 1 owned; 0 facedown and 0 committed")

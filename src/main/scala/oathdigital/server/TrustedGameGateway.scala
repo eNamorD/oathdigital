@@ -25,7 +25,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
       player <- actor(gameId, seat)
       loaded <- service.load(gameId).left.map(Application)
       game <- loaded.toRight(Application(GameApplicationError.StreamNotFound(gameId)))
-    } yield projector.project(gameId, game, player)
+    } yield projector.project(gameId, game, player).copy(viewerPlayerId = Some(player.value))
 
   def submit(gameId: String, seat: TrustedSeat, request: ActorlessCommandRequest)
       : Either[TrustedSeatFailure, GameProjection] = for {
@@ -34,6 +34,7 @@ final class TrustedGameGateway(service: GameApplicationService, projector: GameP
       .left.map(_ => InvalidIntent)
     accepted <- service.handle(gameId, request.expectedNextSequence, command).left.map(Application)
   } yield projector.project(gameId, LoadedGame(accepted.state, accepted.nextSequence), player)
+    .copy(viewerPlayerId = Some(player.value))
 
   def preview(gameId: String, seat: TrustedSeat, request: MajorActionPreviewRequest)
       : Either[TrustedSeatFailure, MajorActionPreviewResponse] = for {
