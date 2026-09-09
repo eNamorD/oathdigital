@@ -129,7 +129,8 @@ Note (from Task 1b): the walker command surface now lives in `OathRulesWalker.sc
 - [ ] **Step 1: failing test** — an end-to-end Forge through `GameApplicationService` using only `StartWalker`/`ResolveWalker`, asserting the same final state the legacy `ForgeCommand` path produced (three denizens each carrying their resource, relic facedown in the play area, 1 supply spent, no pending). Plus a replay assertion: reconstructing from the journal reproduces that state. Expected FAIL: `ActionRef.Forge` does not exist.
 - [ ] **Step 2: implement** the registry entry, the `Option[String]` roll-id change with its two call sites, and the projector/mapper wiring.
 - [ ] **Step 2b: the eligibility window becomes per-action too.** `OathRules.eligibilityRelaxed` names `PowerWindow.RecoverActionEligibility` as a literal — the same shape Task 1 removed from the modifier window, one window over, found by Task 1b. It is reached by every `startWalker`, so registering Forge makes a second action gather at Recover's eligibility window. It is inert only while no power is applicable there, and Task 4 registers real powers. Move the window onto `WalkerActionRegistry.Entry` beside `modifierWindow`, with the same `Option` treatment and the same `registrations` override, and update the projector call site. Prove it the way Task 1 was proven: a fixture power applicable only at another action's eligibility window relaxes for that action and not for Recover, and a mutation restoring the literal fails that test.
-- [ ] **Step 3: delete** the legacy path in the same commit, and delete or port each legacy Forge test to the walker path. A test asserting a deleted event's codec round-trip is deleted with the event.
+- [ ] **Step 2c: the walker event codec has no branch for the Forge assignment payload** (found by Task 2). `WalkerEventCodec.encodeDecisionPayload` matches the two Recover payloads and then *throws* `IllegalArgumentException`; the decode side returns a typed `Left`. So the first journalled Forge throws, and no test in Task 2 could catch it because nothing there reaches the codec. Add both branches. Note the file is at 771 of the 800-line cap, so budget for that the way Task 1b had to. Two further things while you are in there, both judgement calls to make explicitly rather than by default: whether the encode side should return a typed error like its decode counterpart instead of throwing, and whether an exhaustive match would have made this a compile error rather than a runtime one.
+- [ ] **Step 3: delete** the legacy path in the same commit, and delete or port each legacy Forge test to the walker path. A test asserting a deleted event's codec round-trip is deleted with the event. `OathViolation.ForgeDecisionMismatch` loses its only producer with the legacy path — the walker checks actor, phase and decision id generically — so it goes too.
 - [ ] **Step 4:** re-run; expected PASS. `grep -rn "ForgeCommand\|ForgeStarted\|ForgeCompleted\|PendingProcedure.Forge" src frontend` returns nothing outside the journal fixtures being deleted.
 - [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
 - [ ] **Step 6: commit** `feat(walker): move Forge onto the walker and delete its legacy path`.
@@ -153,11 +154,18 @@ Each terrain site power becomes its own contribution class, grouped in one file:
 - **Coast**: a `Transform` at the same window that *replaces* the amount with 1, applicable only on a coast route (this power's site is the source, the source is coastal, the destination is coastal or an island). It declares `priority` above the adds so a replace lands last, and `shouldIgnore(other)` drops the destination-side adds — this is the named-ignore that `SuppressionRegistry` expresses today, now stated on the power that owns the rule.
 - **Narrow Pass**: a `Restriction` at `PowerWindow.TravelActionEligibility` returning `OathViolation.TravelPassBlocked` — the typed violation directly, which retires `TravelPassBlockedCodec`'s encode/decode round-trip through a reason string.
 
+**How a windowed node presents its children, which decides the shape of every transform here** (found by Task 2). A `Transform` receives the hooked node's children vector. For a `PrimitiveOperation` that vector is `Vector(theLeafItself)` — a leaf's `children` is a self-reference — so a transform hooked on a windowed *leaf* can only replace that leaf wholesale, and cannot see inside a `BuildOps` closure at all. For a composite it is the real children.
+
+Therefore Travel's cost node is a bare `AdjustSupply` leaf inside a `Sequence` carrying `PowerWindow.TravelCost`, **not** a `BuildOps` wrapping an `AdjustSupply`. The walker executes a plain delta leaf directly, so nothing is lost, and a terrain transform then receives `Vector(AdjustSupply(actor, -base))` and rewrites the amount honestly. Written the other way, the transform would have to reconstruct the base-cost computation inside its own replacement closure, which is exactly the engine knowledge a power is not supposed to hold.
+
+Only four `Operation` cases carry a `window` at all — `ModifyDicePool`, `Decide`, `BuildOps` and `Sequence` — so a delta that needs to be hookable is made hookable by the composite it sits in, not by itself.
+
 The route facts each `applicable` needs (which site is source, which is destination) are not on `PowerCtx`. Read them from `ctx.state`: the actor's pawn site is the source and the destination rides the tree. **This is the open question of the task** — if the destination is not reachable from `PowerCtx` plus `ctx.state`, do not widen `PowerCtx` to fix it. Record the gap in the ledger with what the power actually needed, and stop for a ruling. `PowerCtx` staying catalog-free and narrow is a spec commitment, not an accident, and the last time a power needed static catalog data the answer was a factory on the power (`CatacombsContribution.forCatalog`), not a new context field.
 
 - [ ] **Step 1: failing tests** in `TravelSitePowersSuite` driving `ContributionCollector.gather` directly, one per parity case the retired `TravelCostWindow.fold` implements: ordinary route to a mountain (+1), to an island (+2), coast route (replaced with 1), coast route where the destination also has an add (the add is ignored, not stacked), non-coast route from a coastal site (no replace), and a pass crossing regions (blocked) versus a coast route past a pass (allowed). Expected FAIL: the powers do not exist.
 - [ ] **Step 2: implement** the powers and register them in `WalkerPowerCatalog.default`.
 - [ ] **Step 3:** re-run; expected PASS. Confirm each case's number matches what `TravelCostWindow.fold` returns for the same route today — parity is the acceptance criterion, not plausibility.
+- [ ] **Step 3b: prove each transform actually fires.** A transform whose pattern match hits nothing returns its input unchanged and is indistinguishable from an absent power in every assertion about a *route*, because the base cost still comes back. So for each terrain kind, assert the cost differs from the base cost with that power absent, and additionally mutate one transform's match so it hits nothing and quote the resulting failure. This is the vacuity trap this task is most likely to fall into, and a green suite is not evidence against it.
 - [ ] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`. The architecture suite must still find no engine source naming any of these powers.
 - [ ] **Step 5: commit** `feat(powers): state Travel terrain costs as walker contributions`.
 
@@ -173,10 +181,12 @@ The route facts each `applicable` needs (which site is source, which is destinat
 Travel's tree is flat — no `Decide`, no `Roll`:
 
 ```
-Sequence(                                 // window = TravelActionEligibility
-  BuildOps(AdjustSupply(actor, -base)),   // window = TravelCost
-  BuildOps(Move(Pawn, source -> destination)))
+Sequence(                                  // window = TravelActionEligibility
+  Sequence(AdjustSupply(actor, -base)),    // window = TravelCost
+  Move(Pawn, source -> destination))
 ```
+
+The cost node is a windowed `Sequence` around a bare `AdjustSupply` leaf, for the reason Task 4 sets out: a transform hooked on a windowed leaf receives only that leaf and cannot reach inside it, while a composite hands over its real children.
 
 The base cost is the printed region-to-region table from `TravelRules.cost`, with the `TravelCostWindow.fold` call removed — terrain is now Task 4's transforms folding over this node. The destination rides the `StartWalker` command, so the entry's `build` receives it; `Recover` derives its site from state and needs no such parameter, so this is the first action to need a start argument. Carry it the way `eligibilityRelaxed` is carried — as plain data on the entry's `build` — rather than teaching the walker about destinations.
 
