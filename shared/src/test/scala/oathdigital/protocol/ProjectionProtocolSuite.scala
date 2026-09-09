@@ -41,7 +41,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Map("hidden" -> Vector(CardResolutionProjection("discard")),
         "known" -> Vector(CardResolutionProjection("play-site", Some("faceup"), true,
           Vector(hidden)))))),
-    recover = Some(RecoverProjection("recover", Vector("blank"), 0, 2, 1, 3, true, true)),
     forge = Some(ForgeProjection("forge", "red", 1, 1,
       Vector(ForgeAssignmentTargetProjection("site:a", "known", "Known")))),
     campaign = Some(CampaignProjection("campaign", Vector("site:a"), 2, false,

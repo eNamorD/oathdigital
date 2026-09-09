@@ -164,7 +164,7 @@ object RecoverProcedure {
     // Payload markers: a Decide's `payload` only type-tags the choice; the
     // concrete answer rides `resolve`. The relic marker carries one known
     // facedown site relic id (Replay-safe: the marker never leaves the tree).
-    // A site with no facedown relic yet (Task 5: a power like Catacombs may
+    // A site with no facedown relic yet (Task 5: an eligible walker power may
     // still supply one before the first roll opens) has no real id to name
     // here -- "none" is an inert placeholder a real relic id can never equal
     // (catalog relic ids are printed component codes, e.g. "R01"), and the

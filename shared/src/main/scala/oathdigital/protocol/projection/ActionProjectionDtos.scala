@@ -90,10 +90,6 @@ final case class PendingCardDecisionProjection(
     orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
 )
-final case class RecoverProjection(
-    decisionId: String, dice: Vector[String], shields: Int,
-    difficulty: Int, supplySpent: Int, supplyRemaining: Int,
-    canAddDice: Boolean, canStop: Boolean)
 final case class ForgeAssignmentTargetProjection(
     siteId: String, denizenId: String, label: String)
 final case class ForgeProjection(
@@ -101,10 +97,10 @@ final case class ForgeProjection(
     targets: Vector[ForgeAssignmentTargetProjection])
 /** Wire projection of a parked generic-walker decision (Task 6:
   * `CurrentGameState.walkerPending`/`walkerAction`) -- the walker path's
-  * counterpart to [[RecoverProjection]]/[[PendingCardDecisionProjection]]
-  * above, which the walker deliberately never populates.
+  * counterpart to [[PendingCardDecisionProjection]] above, which the walker
+  * deliberately never populates.
   *
-  * Owner-private the same way those two are: the projector only ever
+  * Owner-private the same way that one is: the projector only ever
   * returns this for the parked actor, so `GameProjection.walkerDecision`
   * is `None` for every other viewer -- not a redacted copy of this type.
   *

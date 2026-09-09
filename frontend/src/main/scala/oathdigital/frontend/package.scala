@@ -75,8 +75,6 @@ package object frontend {
   }
   type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
   val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
-  type RecoverState = protocol.projection.RecoverProjection
-  val RecoverState = protocol.projection.RecoverProjection
   type ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
   val ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
   type ForgeState = protocol.projection.ForgeProjection

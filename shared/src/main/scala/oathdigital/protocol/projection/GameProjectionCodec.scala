@@ -14,7 +14,7 @@ object GameProjectionCodec {
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
     "currentSiteResources", "actionSelectionOpen", "actionFamilies",
     "legalTravelDestinations", "legalSearchSources", "legalMusters", "legalTrades",
-    "boardTargetActions", "pendingCardDecision", "recover", "forge", "campaign",
+    "boardTargetActions", "pendingCardDecision", "forge", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
@@ -59,11 +59,6 @@ object GameProjectionCodec {
       "supplyCost" -> t.supplyCost, "gained" -> t.gained)),
     "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
     "pendingCardDecision" -> option(value.pendingCardDecision)(encodePending),
-    "recover" -> option(value.recover)(r => ujson.Obj(
-      "decisionId" -> r.decisionId, "dice" -> encoded(r.dice)(ujson.Str(_)),
-      "shields" -> r.shields, "difficulty" -> r.difficulty, "supplySpent" -> r.supplySpent,
-      "supplyRemaining" -> r.supplyRemaining, "canAddDice" -> r.canAddDice,
-      "canStop" -> r.canStop)),
     "forge" -> option(value.forge)(f => ujson.Obj(
       "decisionId" -> f.decisionId, "actorPlayerId" -> f.actorPlayerId,
       "favor" -> f.favor, "secrets" -> f.secrets,
@@ -138,7 +133,6 @@ object GameProjectionCodec {
     actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
     actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
     pending <- optionalAbsent(value, "pendingCardDecision", path)(decodePending)
-    recover <- optionalAbsent(value, "recover", path)(decodeRecover)
     forge <- optionalAbsent(value, "forge", path)(decodeForge)
     campaign <- optionalAbsent(value, "campaign", path)(CampaignProjectionCodec.decode)
     relocation <- optionalAbsent(value, "campaignRaidRelocation", path)(decodeRelocation)
@@ -175,7 +169,7 @@ object GameProjectionCodec {
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
-    sources, musters, trades, actions, pending, recover, forge, campaign, relocation,
+    sources, musters, trades, actions, pending, forge, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
     walkerDecision)
@@ -259,13 +253,6 @@ object GameProjectionCodec {
     label <- string(v, "label", path); suit <- string(v, "suit", path)
     resource <- string(v, "resource", path); cost <- int(v, "supplyCost", path); gained <- int(v, "gained", path)
   } yield LegalTradeProjection(target._1, target._2, label, suit, resource, cost, gained)
-  private def decodeRecover(raw: ujson.Value, path: String): Result[RecoverProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("decisionId", "dice", "shields", "difficulty", "supplySpent", "supplyRemaining", "canAddDice", "canStop"), path)
-    decision <- string(v, "decisionId", path); dice <- strings(v, "dice", path)
-    shields <- int(v, "shields", path); difficulty <- int(v, "difficulty", path)
-    spent <- int(v, "supplySpent", path); remaining <- int(v, "supplyRemaining", path)
-    add <- bool(v, "canAddDice", path); stop <- bool(v, "canStop", path)
-  } yield RecoverProjection(decision, dice, shields, difficulty, spent, remaining, add, stop)
   private def decodeForge(raw: ujson.Value, path: String): Result[ForgeProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "favor", "secrets", "targets"), path)
     decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)

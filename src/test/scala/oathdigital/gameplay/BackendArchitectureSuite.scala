@@ -202,15 +202,17 @@ class BackendArchitectureSuite extends munit.FunSuite {
     // Post-cutover (Task 9b): the legacy `Recover.scala`/
     // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
     // the property they used to stand in for directly -- the application
-    // and rules-dispatch layers route every Recover command generically and
-    // never learn Catacombs' name -- while the walker's typed contribution
-    // is the one place that does.
+    // layer, the rules-dispatch layer, and the Recover action module itself
+    // route every Recover command generically and never learn Catacombs'
+    // name -- while the walker's typed contribution is the one place that
+    // does.
     val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
       "powers/recover/CatacombsContribution.scala")
     assert(Files.exists(contribution), s"$contribution must exist")
     Vector(
       Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala"),
-      Paths.get("src/main/scala/oathdigital/gameplay/OathRules.scala")
+      Paths.get("src/main/scala/oathdigital/gameplay/OathRules.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala")
     ).foreach { path =>
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")

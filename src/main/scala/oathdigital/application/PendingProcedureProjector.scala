@@ -13,7 +13,6 @@ private[application] final class PendingProcedureProjector(
 ) {
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
-    val recover = recoverProjection(context)
     val forge = forgeProjection(context)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
@@ -24,7 +23,7 @@ private[application] final class PendingProcedureProjector(
     PendingProjection(
       phase(context, cardDecision, forge, challenge, campaign,
         relocation, recipient, walkerDecision),
-      cardDecision, recover, forge, campaign, relocation, recipient, challenge,
+      cardDecision, forge, campaign, relocation, recipient, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -90,14 +89,6 @@ private[application] final class PendingProcedureProjector(
           drawn.map(card => card.value -> groupedResolutions(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
     }
-
-  /** Recover now runs entirely on the generic walker (`walkerDecision`
-    * below): no `PendingProcedure` case ever populates this legacy
-    * projection anymore, so it always reports `None`, the same as the
-    * walker path always has.
-    */
-  private def recoverProjection(context: ScopedProjectionContext)
-      : Option[RecoverProjection] = None
 
   private def forgeProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {

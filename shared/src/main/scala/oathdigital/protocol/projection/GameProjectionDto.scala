@@ -22,7 +22,6 @@ final case class GameProjection(
     legalTrades: Vector[LegalTradeProjection] = Vector.empty,
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
-    recover: Option[RecoverProjection] = None,
     forge: Option[ForgeProjection] = None,
     campaign: Option[CampaignProjection] = None,
     campaignRaidRelocation: Option[CampaignRaidRelocationProjection] = None,
