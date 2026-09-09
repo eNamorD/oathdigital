@@ -117,6 +117,14 @@ class GameHttpWireSuite extends munit.FunSuite {
     assertEquals(failure.path, "$.intent.payload.choice")
   }
 
+  test("a blank relic id is rejected with a typed failure, not an " +
+      "IllegalArgumentException escaping the mapper (finding I7)") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.ResolveWalker("recover.relic",
+        DecisionPayloadWire.RecoverRelicWire(""))).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.relicId")
+  }
+
   test("malformed actorless requests retain typed paths") {
     assertEquals(GameHttpWire.decodeCommand("{").left.toOption.get.path, "$")
     val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""

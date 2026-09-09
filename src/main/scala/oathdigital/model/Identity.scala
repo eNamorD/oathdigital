@@ -58,6 +58,13 @@ final case class RelicId(value: String) extends CardId {
   override val kind: String = "relic"
 }
 
+object RelicId {
+  /** Safe parse for untrusted (e.g. wire) input: `None` rather than throwing
+   * when `value` is blank. Mirrors `PowerId.fromValue`. */
+  def fromValue(value: String): Option[RelicId] =
+    if (value.trim.nonEmpty) Some(RelicId(value)) else None
+}
+
 final case class EdificeId(value: String) extends CardId {
   IdentityValidation.nonBlank("edifice ID", value)
   override val kind: String = "edifice"

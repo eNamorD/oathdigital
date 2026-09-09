@@ -185,7 +185,9 @@ object GameIntentMapper {
       case v => invalid("$.intent.payload.choice", v, "Recover choice")
     }
     case DecisionPayloadWire.RecoverRelicWire(relicId) =>
-      Right(RecoverRelicPayload(RelicId(relicId)))
+      RelicId.fromValue(relicId).map(RecoverRelicPayload).toRight(
+        GameIntentMappingFailure("$.intent.payload.relicId",
+          s"invalid relic id '$relicId'"))
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
