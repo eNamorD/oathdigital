@@ -187,10 +187,29 @@ trait Power {
   def source: RuleSourceRef
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
-  def shouldIgnore(other: Power): Boolean = false
+  def shouldIgnore(other: PowerId): Boolean = false
   def priority: Int = 0
 }
 ```
+
+`shouldIgnore` takes the other power's `PowerId`, not the power itself
+(corrected at Task 10; implemented that way from Task 1): decision 10(b)'s
+named ignore is identity-based ("Vow of Peace ignores X"), and no ignore
+decision in the MVP power set needs to inspect the ignored power's
+contributions or state. A future ignore rule that does need the whole power
+widens this one method.
+
+`PowerCtx(state, actor, source, window, nodePath)` carries no mutable state
+and no catalog of its own — a contribution reads game state through
+`ctx.state` and identifies itself through its own `source`. A contribution
+needing STATIC catalog data that neither `ReadyGame` nor `BuildOps.build`
+exposes (e.g. a site's `relicSlots`) holds an `ExecutableCatalog` reference
+on the contribution object itself, built once by a catalog-parameterized
+factory (`CatacombsContribution.forCatalog`, assembled by
+`WalkerPowerCatalog.default`) — the same precedent
+`ReviewedPowerCatalog.resolver`/`registry` already set. This is the
+established pattern for catalog-dependent powers, not a `PowerCtx` gap:
+`PowerCtx` stays catalog-free by design.
 
 Power authorship stays one file. Example shape:
 
@@ -252,68 +271,131 @@ this design and will be replanned.
   BackendArchitecture-style test per power family).
 - Human-readable log lines rendered from event payloads.
 
-## Slice status: Recover on the walker (Task 8 checkpoint, 2026-09-07)
+## Slice status: Recover fully migrated, powers and UI (Task 10 checkpoint, 2026-09-08)
 
-The vertical slice from the migration plan's step 1 is complete and verified.
-Status, for whoever picks up the next slice:
+Migration plan steps 1 and 2 are complete for Recover and verified end to
+end: the walker carries power contributions, and Recover's UI has been cut
+over — there is no longer a legacy Recover path to fall back to. Status, for
+whoever picks up the batch port (step 3):
 
-**On the walker:** Recover only. `RecoverProcedure.build`/`rebuild`
+**On the walker, powers and all:** `RecoverProcedure.build`/`rebuild`
 (`src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala`)
 declares the tree; `ProcedureWalker`
-(`src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`) walks it.
-The app-level command surface is `GameCommand.StartWalker` /
-`GameCommand.RollWalker` / `GameCommand.ResolveWalker`, routed through
-`OathRules.startWalker`/`rollWalkerPrepared`/`resolveWalker`
-(`src/main/scala/oathdigital/gameplay/OathRules.scala`). A pending walker
-action blocks legacy actions and non-walker commands (`OathLifecycle`,
-`GameApplicationService`) — a parked walker action is a half-executed major
-action; letting a legacy command run around it would produce a state the
-recorded-ops replay could not reproduce.
+(`src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`) walks
+it, folding `ContributingPower` contributions (`Transform`/`Restriction`) at
+`PowerWindow`s through `WalkerPowerGather`/`ContributionCollector`, gathered
+with one-pass named ignore and the deterministic
+`(priority, source.stableKey, powerId)` sort (decision 10). Catacombs
+(`src/main/scala/oathdigital/gameplay/powers/recover/CatacombsContribution.scala`)
+is the first power ported onto this seam: one 50-line object with no
+`gameplay/walker`/`gameplay/operations` import, offered to a walk when the
+player selects it as a `StartWalker` modifier. A player completes Recover,
+with and without Catacombs, entirely through the wire's `StartWalker`/
+`RollWalker`/`ResolveWalker` intents; the legacy `BeginRecover`/
+`AddRecoverDice`/`StopRecover` surface no longer exists.
 
-**Still legacy:** every other action (Search, Economy, Campaign, Forge,
-Challenge, Negotiation, Rest, Wake, CardPlay, Visions, Raid) runs unchanged on
-`PendingProcedure`/evolve. The legacy Recover UI/projection
-(`PendingProcedureProjector`, `ActionDecisionRenderer`) still exists and is
-untouched; the walker Recover path is exercised at the service level only
-(`WalkerDecisionProjector` projects the parked decision server-side, but no
-client issues `StartWalker` this slice — ruling recorded in Task 7 of the SDD
-ledger). Both Recover entry points coexist; a player's Recover this slice
-still runs on the legacy path via the UI.
+**Wire and preview:** the parked decision is projected owner-private as
+`WalkerDecisionProjection` (`decisionId`, `kind`, `pool`/`count` for a roll
+park, `relicCandidates` for the relic park; every field is `None` for a
+non-actor viewer). `GameApplicationService.preview` and
+`OathRules.validateModifiers` both resolve offerable modifiers through the
+shared `OathRules.offerableWalkerPowers(ready, actor)`, so the
+modifier-selection preview offers Catacombs from the same
+`ContributionCollector.gather` call the walker itself folds through — there
+is no second "which powers apply" computation to drift from the first.
 
-**Not wired this slice (deferred to a later slice, per the migration plan):**
-power contributions (Transform/Restriction/ignore), power-authored payloads,
-power windows on walker nodes, and the power collector in the walker.
-`usedPowers` and the power catalog are untouched by walker code.
+**Deleted:** the legacy `Recover.scala` action module and
+`RecoverPowerIntegration`; `PendingProcedure.Recover`/`RecoverPowerApplied`;
+the `RecoverRolled`/`RecoverStopped`/`RelicRecovered`/`CatacombsResolved`
+events and their codec branches; `BeginRecover`/`AddRecoverDice`/
+`StopRecover` and their intents/codecs; the legacy `Catacombs` `Power`
+object (`RelicWorship`/`E13Ruined`/`E17Intact`/`E17Ruined` stay as
+reviewed-but-unimplemented catalog entries; Catacombs' real mechanics now
+live solely in `CatacombsContribution`); and `RecoverProjection` end to end
+(application layer, both DTO codec sides, the wire field). Nothing under
+`gameplay/walker` or `gameplay/operations` names a specific power
+(`BackendArchitectureSuite`, strengthened at Task 10 to scan every
+`ContributingPower` under `gameplay/powers` rather than naming one file, so
+the bar holds as the batch port adds more). Every other action is untouched
+and its own suite stays green.
 
-**What the next slice inherits:**
-- The `Operation` ADT (`CoreOperations.scala`), `ProcedureWalker`,
-  `WalkerEvent`/`WalkerStepRecorded`/`WalkerParked`/`WalkerCompleted`, and the
-  walker command surface are action-agnostic and ready for a second action.
-- `OathRules.buildWalker` currently hardcodes the `ActionRef.Recover` case; a
-  second action needs a branch there (and in `RecoverProcedure`'s sibling
-  object) before it can walk.
-- Known posture difference (accepted, not a defect): `applyRecorded` validates
-  node-id format and pending-pointer equality but never derives a tree from
-  the recorded events, so a walker delta event has a weaker replay-tamper
-  posture than a legacy event (which rejects a tampered payload against
-  re-derived rules). This is by design — J1 forbids replay from re-running the
-  walker — and is covered by the dev/test-only drift check below, not by a
-  runtime guard.
-- Minor deferred items (structure, coverage, one memoization opportunity) are
-  listed in the SDD ledger
-  (`.superpowers/sdd/2026-09-05-procedure-walker-recover-slice/progress.md`)
-  and are non-blocking.
+**What the batch port (migration plan step 3) inherits:**
+- **Registry entry point:** `WalkerActionRegistry`
+  (`src/main/scala/oathdigital/gameplay/walker/WalkerActionRegistry.scala`)
+  is the one place an action registers its `build`/`rebuild` functions,
+  keyed by `ActionRef`; `WalkerActionRegistrySuite` asserts the map covers
+  `ActionRef.all`. A second action is one more `Entry`, not a new `match`
+  arm at each of `OathRules.buildWalker` and
+  `WalkerDecisionProjector.rebuild`.
+- **Contribution vocabulary:** `ContributingPower`/`Contribution`
+  (`Transform`/`Restriction`)/`PowerCtx`/`ContributionCollector`
+  (`src/main/scala/oathdigital/gameplay/powerresolver/`) and `WalkerPowers`/
+  `WalkerPowerGather` (`src/main/scala/oathdigital/gameplay/walker/`) are
+  entirely action-agnostic; a second action's powers register in a
+  `WalkerPowerCatalog`-shaped object and are selected the same way
+  (`WalkerPowers.selected`, `PowerResolution.Automatic`/`PlayerSelected`).
+- **Wire intents:** `StartWalker(action, modifiers)`/`RollWalker(pool)`/
+  `ResolveWalker(decisionId, answer)`
+  (`shared/src/main/scala/oathdigital/protocol/CommandIntents.scala`)
+  already carry a generic `action`/`ActionRef` discriminator; a second
+  action needs no new intent shape.
+- **Preview seam:** `OathRules.offerableWalkerPowers` and
+  `WalkerActionRegistry.isRegistered` already route offer/accept
+  generically, but `offerableWalkerPowers` currently hardcodes
+  `PowerWindow.RecoverModifierSelection` (deferred at Task 9a) — a second
+  action needs that window parameterized, even though the routing itself
+  needs no change.
+
+**Migration plan steps remaining:**
+- Step 3 (port Search, Economy, Forge, Challenge, Campaign, Negotiation,
+  CardPlay, Rest, Wake, Visions in batches) has not started; every action
+  but Recover still runs on `PendingProcedure`/evolve and the legacy
+  `Power`/`PowerHandler`/`PowerResolver` machinery, untouched by this plan.
+- Step 4 (delete retired machinery) is complete for Recover only; the
+  per-action integration seams other actions still use are deliberately out
+  of this plan's scope.
+- Step 5 (author the MVP power set on the new framework) has not started.
+  Catacombs is the framework's proof-of-life power — ported to exercise
+  every part of the seam (Transform, applicability, player-selected
+  resolution, catalog-backed data) — not the first entry of the MVP set.
 
 **Drift check:** `WalkerReplayDriftSuite`
 (`src/test/scala/oathdigital/gameplay/WalkerReplayDriftSuite.scala`, dev/test
-only, never reachable from production replay) asserts, for the slice's
-Recover corpus (single-roll success, multi-roll success via Continue, and
-Stop), that operations recorded in the journal equal the operations the
-walker derives when a fresh tree is rebuilt and re-walked over state
+only, never reachable from production replay) now covers four scripted
+walks: the original three unpowered Recover walks (single-roll success,
+multi-roll success via Continue, and Stop), plus, from Task 10, a
+Catacombs-modified Recover — the first corpus entry where a power changed
+the tree. Every case asserts that operations recorded in the journal equal
+the operations the walker derives when a fresh tree is rebuilt and
+re-walked, with the same contributions re-gathered, over state
 reconstructed purely by replaying those same recorded events through
-`ProcedureWalker.applyRecorded` — the identical function
-`OathRules.evolve` dispatches to in production. It is the "recorded ops ==
-recomputed tree ops" check this spec's Verification section calls for.
+`ProcedureWalker.applyRecorded` — the identical function `OathRules.evolve`
+dispatches to in production. The powered case is what would catch a
+`Transform` (or the gather/fold machinery it runs through) folding
+differently on a second walk; it is the property that makes "replay applies
+recorded ops only, never re-derives or re-folds" (decision 5) safe to trust
+for a powered action, not only an unpowered one.
+
+**Two spec corrections from this plan's reviews** (both applied to the
+"Powers" architecture section above):
+- `shouldIgnore` takes a `PowerId`, not a `Power` — the spec's illustrative
+  code had the latter; the implementation, deliberately, has always had the
+  former (Ruling D, Task 1 review). Named ignore (decision 10b) is
+  identity-based, so the collector never needs to hand a candidate the
+  whole set of other candidates.
+- `PowerCtx` carries no catalog, and still doesn't — but a *contribution*
+  may hold one on itself. `CatacombsContribution` holds an
+  `ExecutableCatalog` field because it needs static catalog data
+  (`relicSlots`) that neither `ReadyGame` nor `BuildOps.build` exposes; it
+  gets one via a `forCatalog`-style factory, the same precedent
+  `ReviewedPowerCatalog.resolver`/`registry` set. Recorded here as the
+  established pattern for catalog-dependent powers, not left as a
+  contradiction between the doc comment and the code.
+
+Minor deferred items (structure, coverage, one memoization opportunity, the
+hardcoded preview window above) are listed in the SDD ledger
+(`.superpowers/sdd/2026-09-07-walker-powers-and-recover-cutover/progress.md`)
+and are non-blocking.
 
 ## Out of scope / deferred
 
