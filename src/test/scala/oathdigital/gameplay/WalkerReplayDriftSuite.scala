@@ -3,6 +3,10 @@ package oathdigital.gameplay
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.recover.CatacombsContribution
+import oathdigital.gameplay.powerresolver.{ContributionCollector, PowerCtx,
+  PowerWindow}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
@@ -63,15 +67,30 @@ import oathdigital.model._
   * (already the sole replay mechanism) — it never wires a second, walker-
   * rerunning replay path into the application.
   *
-  * Corpus: the three scripted walks below cover every scenario shape
-  * `RecoverProcedureSuite` covers EXCEPT its two rejection-only scenarios
-  * (insufficient supply on Continue, and resolving the relic decision with a
-  * relic that isn't facedown at the site). Both of those end in
-  * `Left(violation)` with no `WalkerOutcome` and no journal at all, so
+  * Corpus: the three unpowered scripted walks below cover every scenario
+  * shape `RecoverProcedureSuite` covers EXCEPT its two rejection-only
+  * scenarios (insufficient supply on Continue, and resolving the relic
+  * decision with a relic that isn't facedown at the site). Both of those end
+  * in `Left(violation)` with no `WalkerOutcome` and no journal at all, so
   * there is nothing to fold into a "live" track or replay through
   * `applyRecorded` — a drift comparison needs two independently
   * reconstructed op sequences to diff, and a rejected command produces
   * neither.
+  *
+  * A fourth walk (Task 10 step 3) adds Catacombs: the first drift case where
+  * a POWER changed the tree. `CatacombsContributionSuite` already pins that
+  * one live walk's recorded ops/state against hand-written expectations, the
+  * same relationship `RecoverProcedureSuite` has to the unpowered corpus
+  * above; this suite's job is not to re-pin those values but to prove that
+  * independently re-deriving them from replayed state -- with the fold
+  * re-run by a freshly rebuilt tree -- reproduces exactly what the live walk
+  * recorded. If `CatacombsContribution`'s `Transform` (or the gather/fold
+  * machinery it runs through) ever depended on anything beyond the pure
+  * `(PowerCtx, ops)` it is handed -- e.g. mutable state, iteration order that
+  * isn't reconstructed by a pure replay -- the second fold would insert its
+  * placement-and-cost step at a different node, with different operations,
+  * or not at all, and this comparison (unlike the unpowered ones) would be
+  * the first thing in the suite to catch it.
   */
 /** One command in a scripted Recover walk (top-level so pattern matches on it
   * carry no per-instance outer reference).
@@ -92,6 +111,22 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     * and both the live track and the re-derivation see it.
     */
   private val walkerPowers: WalkerPowers = WalkerPowers.empty
+
+  /** Task 10 step 3: the same production selection `OathRules.startWalker`
+    * performs (`WalkerPowers.selected` over the real `WalkerPowerCatalog`),
+    * pinned to Catacombs being player-selected for this walk. Both tracks in
+    * `assertNoDrift` receive this SAME value (never re-selected per track),
+    * matching the invariant the suite-level doc states: "the powered walk
+    * must gather the same contributions on both tracks, or you are testing
+    * your test harness rather than the engine."
+    */
+  private val catacombsPowers: WalkerPowers = {
+    val selected = WalkerPowers.selected(WalkerPowerCatalog.default(catalog),
+      Vector(CatacombsContribution.id))
+    assert(selected.powers.nonEmpty,
+      "fixture catalog must declare the Catacombs card for this drift case")
+    selected
+  }
 
   private def recoverable: (ReadyGame, PlayerId, SiteId, RelicState) = {
     val Ready(base) = execute(setup)._1: @unchecked
@@ -191,6 +226,24 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     }
   }
 
+  /** Mirrors `OathRules.eligibilityGathered` (ruling C/B): whether `powers`
+    * gathers a `Transform` at `RecoverActionEligibility`, which is what lets
+    * `RecoverProcedure.build`'s start-only facedown-relic gate relax. This
+    * suite drives `ProcedureWalker`/`RecoverProcedure.build` directly, one
+    * layer below `OathRules`, so it needs the same one-line policy `OathRules`
+    * applies before calling `build` -- not a second implementation of any
+    * walker or gather mechanics, just the same production `PowerWindow`
+    * lookup `OathRules.startWalker` performs, applied identically to both the
+    * live and replay tracks.
+    */
+  private def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean = {
+    val window = PowerWindow.RecoverActionEligibility
+    ContributionCollector.gather(window, powers.powers,
+      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+      .transforms.nonEmpty
+  }
+
   /** Drives `script` to completion. At every command it independently
     * rebuilds the tree from, and re-walks, the replay-reconstructed state
     * (never the live state, never a tree cached from an earlier command) and
@@ -206,7 +259,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       val resume = remaining.head
 
       val liveTree =
-        if (starting) RecoverProcedure.build(catalog, liveState, actor)
+        if (starting) RecoverProcedure.build(catalog, liveState, actor,
+          relaxEligibility = eligibilityRelaxed(liveState, actor, powers))
           .toOption.get
         else RecoverProcedure.rebuild(catalog, liveState, actor).toOption.get
       val liveOutcome = runResume(resume, liveState, liveTree, livePending,
@@ -214,7 +268,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
       val Ready(replayReady) = replayState: @unchecked
       val replayTree =
-        if (starting) RecoverProcedure.build(catalog, replayReady, actor)
+        if (starting) RecoverProcedure.build(catalog, replayReady, actor,
+          relaxEligibility = eligibilityRelaxed(replayReady, actor, powers))
           .toOption.get
         else RecoverProcedure.rebuild(catalog, replayReady, actor).toOption.get
       val replayPending = replayReady.game.current.walkerPending
@@ -287,6 +342,24 @@ class WalkerReplayDriftSuite extends munit.FunSuite
           .get.relics, Vector.empty)
         assertEquals(treeless.game.current.map.sites(siteId).relics,
           Vector(relic))
+      case other => fail(s"expected a Finished outcome, got $other")
+    }
+  }
+
+  test("drift check: Catacombs-modified Recover (advance -> roll -> resolve) " +
+      "-- the first corpus entry where a power changed the tree") {
+    val fixture = CatacombsContributionSuite.reliclessSite(setup)
+    val finished = assertNoDrift(fixture.ready, fixture.actor,
+      Vector(StartWalk, RollResume(highRoll),
+        AnswerResume(Answered(RecoverProcedure.relicDecisionId,
+          RecoverRelicPayload(fixture.topRelic)))), catacombsPowers)
+    finished match {
+      case WalkerOutcome.Finished(treeless, _) =>
+        assertEquals(treeless.game.current.map.sites(fixture.site).relics,
+          Vector.empty)
+        assertEquals(treeless.game.current.players.find(
+          _.player == fixture.actor).get.relics.map(_.id),
+          Vector(fixture.topRelic))
       case other => fail(s"expected a Finished outcome, got $other")
     }
   }

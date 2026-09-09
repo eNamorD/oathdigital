@@ -219,27 +219,56 @@ class BackendArchitectureSuite extends munit.FunSuite {
     }
   }
 
-  test("a walker power is one small file the engine never learns the name of") {
-    // The spec's power-authoring bar (Task 5): a power on the walker seam is
-    // ONE object under `gameplay/powers/`, and the engine it hooks into
-    // (`gameplay/walker`, `gameplay/operations`) stays entirely ignorant of
-    // it. This asserts the bar for the first ported power.
-    val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
-      "powers/recover/CatacombsContribution.scala")
-    assert(Files.exists(contribution), s"$contribution must exist")
-    val lines = Files.readAllLines(contribution).size
-    assert(lines <= 50,
-      s"$contribution is $lines lines; the power-authoring bar is 50")
+  test("a walker power is one small file with no engine imports, and the " +
+      "engine never learns its name") {
+    // The spec's power-authoring bar (Task 5, sharpened at Task 10): a power
+    // on the walker seam is ONE object under `gameplay/powers/`, at most 50
+    // lines, that imports no part of the walker engine it hooks into -- it
+    // sees only the `Operation`/contribution vocabulary
+    // (`gameplay.operations`, `gameplay.powerresolver`), never
+    // `gameplay.walker` itself. Symmetrically, the engine
+    // (`gameplay/walker`, `gameplay/operations`) never learns a specific
+    // power's name. Scans every `ContributingPower` under `gameplay/powers`
+    // (Catacombs today; the batch port adds more without this test needing
+    // to change) rather than naming one file, so the bar holds for every
+    // power ever ported onto this seam, not just the first.
+    val powersRoot = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val contributionStream = Files.walk(powersRoot)
+    val contributions =
+      try contributionStream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala") &&
+          Files.readString(path).contains("extends ContributingPower"))
+        .toVector
+      finally contributionStream.close()
+    assert(contributions.nonEmpty,
+      s"expected at least one ContributingPower under $powersRoot")
+
+    val oversized = contributions.flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > 50)(s"$path is $lines lines; the power-authoring " +
+        "bar is 50")
+    }.sorted
+    assertEquals(oversized, Vector.empty)
+
+    val engineImporting = contributions.filter(path =>
+      Files.readString(path).contains("import oathdigital.gameplay.walker"))
+      .map(_.toString).sorted
+    assertEquals(engineImporting, Vector.empty,
+      "a power must import no part of the walker engine")
 
     val engineRoots = Vector(
       Paths.get("src/main/scala/oathdigital/gameplay/walker"),
       Paths.get("src/main/scala/oathdigital/gameplay/operations"))
+    val powerNames = contributions.map(
+      _.getFileName.toString.stripSuffix(".scala").stripSuffix("Contribution"))
     val offenders = engineRoots.flatMap { root =>
       val stream = Files.walk(root)
       try stream.iterator.asScala.filter(path =>
-        path.toString.endsWith(".scala") &&
-          Files.readString(path).toLowerCase.contains("catacombs"))
-        .map(_.toString).toVector
+        path.toString.endsWith(".scala")).flatMap { path =>
+        val source = Files.readString(path).toLowerCase
+        powerNames.filter(name => source.contains(name.toLowerCase))
+          .map(name => s"$path names power file $name")
+      }.toVector
       finally stream.close()
     }.sorted
     assertEquals(offenders, Vector.empty)
