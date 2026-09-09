@@ -219,34 +219,132 @@ class BackendArchitectureSuite extends munit.FunSuite {
     }
   }
 
-  test("a walker power is one small file with no engine imports, and the " +
+  test("a walker power is one small class with no engine imports, and the " +
       "engine never learns its name") {
-    // The spec's power-authoring bar (Task 5, sharpened at Task 10): a power
-    // on the walker seam is ONE object under `gameplay/powers/`, at most 50
-    // lines, that imports no part of the walker engine it hooks into -- it
-    // sees only the `Operation`/contribution vocabulary
-    // (`gameplay.operations`, `gameplay.powerresolver`), never
-    // `gameplay.walker` itself. Symmetrically, the engine
-    // (`gameplay/walker`, `gameplay/operations`) never learns a specific
-    // power's name. Scans every `ContributingPower` under `gameplay/powers`
-    // (Catacombs today; the batch port adds more without this test needing
-    // to change) rather than naming one file, so the bar holds for every
-    // power ever ported onto this seam, not just the first.
+    // The spec's power-authoring bar (Task 5, sharpened at Task 10, re-pointed
+    // per class 2026-09-09): a power on the walker seam is ONE declaration
+    // under `gameplay/powers/` extending `ContributingPower`, at most 50 lines
+    // from its declaration line to its matching closing brace, in a file that
+    // imports no part of the walker engine it hooks into -- a power sees only
+    // the `Operation`/contribution vocabulary (`gameplay.operations`,
+    // `gameplay.powerresolver`), never `gameplay.walker` itself.
+    // Symmetrically, the engine (`gameplay/walker`, `gameplay/operations`)
+    // never learns a specific power's name.
+    //
+    // The unit measured is the CLASS, not the file, because the intended
+    // shape is one file per power family (a Recover-powers file, a
+    // Travel-powers file) holding several small contributions. Package line,
+    // imports, file-level doc comments and companion objects are shared
+    // per-file overhead: charging them to whichever power happens to be first
+    // in the file would make the bar depend on declaration order. Power names
+    // likewise come from the declaration identifier (trailing `Contribution`
+    // or `Power` stripped), not the file name, which becomes a family name
+    // once powers are grouped. `PowerId` literals were considered and
+    // rejected as the name source: they yield generic trailing segments a
+    // travel power would share with the engine's own `Travel` vocabulary, and
+    // Catacombs' literal lives in its companion object, outside the class
+    // block entirely.
+    //
+    // Limits worth knowing. (1) The 50-line bar covers only the
+    // `ContributingPower` block, so bulk moved into a companion object or a
+    // sibling helper escapes it; that is visible in ordinary review, and the
+    // guard can be tightened if anyone starts hiding rule text there.
+    // (2) `blockSplitter` matches braces by hand -- there is no Scala parser
+    // here. It drops `//` and `/* */` comments and string/char literals
+    // before counting, but it does not understand nested block comments,
+    // triple-quoted strings, or the brace of an interpolation splice written
+    // across two lines; and it only sees TOP-LEVEL declarations, so a power
+    // nested inside another object would not be measured at all. R3's
+    // per-file "found at least one block" assertion exists so a splitter bug
+    // that finds nothing fails loudly instead of silently deleting the bar.
+    // (3) The no-walker-import check stays FILE-scoped on purpose: an import
+    // is a file-level property, and one power's illegal import taints every
+    // power grouped beside it, which is exactly the pressure we want.
+    // (4) The engine-name scan is a lowercase substring match, so a short or
+    // dictionary-word power name could collide with unrelated engine text;
+    // rename the power rather than loosening the scan.
     val powersRoot = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val declaresPower = "(?:extends|with)\\s+ContributingPower\\b".r
     val contributionStream = Files.walk(powersRoot)
     val contributions =
       try contributionStream.iterator.asScala.filter(path =>
         path.toString.endsWith(".scala") &&
-          Files.readString(path).contains("extends ContributingPower"))
+          declaresPower.findFirstIn(Files.readString(path)).isDefined)
         .toVector
       finally contributionStream.close()
     assert(contributions.nonEmpty,
       s"expected at least one ContributingPower under $powersRoot")
 
-    val oversized = contributions.flatMap { path =>
-      val lines = Files.readAllLines(path).size
-      Option.when(lines > 50)(s"$path is $lines lines; the power-authoring " +
-        "bar is 50")
+    // Strip comments and literals so their braces cannot move the depth
+    // counter; returns the code-only text plus whether a block comment is
+    // still open at end of line.
+    def stripNonCode(line: String, openComment: Boolean): (String, Boolean) = {
+      val code = new StringBuilder
+      var comment = openComment
+      var at = 0
+      while (at < line.length) {
+        if (comment) {
+          if (line.startsWith("*/", at)) { comment = false; at += 2 } else at += 1
+        } else if (line.startsWith("/*", at)) { comment = true; at += 2 }
+        else if (line.startsWith("//", at)) at = line.length
+        else if (line.charAt(at) == '"') {
+          at += 1
+          var closed = false
+          while (at < line.length && !closed) {
+            if (line.charAt(at) == '\\') at += 2
+            else { closed = line.charAt(at) == '"'; at += 1 }
+          }
+        } else if (line.charAt(at) == '\'' && at + 2 < line.length &&
+            line.charAt(at + 2) == '\'') at += 3
+        else { code += line.charAt(at); at += 1 }
+      }
+      (code.toString, comment)
+    }
+
+    // Every top-level class/object/trait block as (name, firstLine, lastLine,
+    // source). A declaration seen while no block is open replaces any pending
+    // brace-less one, so `sealed trait X` above a power does not swallow it.
+    val declaration = ("^\\s*(?:(?:final|sealed|abstract|implicit|private|" +
+      "protected|case)\\s+)*(?:class|object|trait)\\s+([A-Za-z0-9_]+)").r
+    def blockSplitter(path: java.nio.file.Path)
+        : Vector[(String, Int, Int, String)] = {
+      val lines = Files.readAllLines(path).asScala.toVector
+      val found = Vector.newBuilder[(String, Int, Int, String)]
+      var depth = 0
+      var comment = false
+      var pending = Option.empty[(String, Int)]
+      var entered = false
+      lines.zipWithIndex.foreach { case (line, index) =>
+        val (code, stillOpen) = stripNonCode(line, comment)
+        comment = stillOpen
+        if (depth == 0 && !entered) declaration.findFirstMatchIn(code)
+          .foreach(hit => pending = Some((hit.group(1), index)))
+        depth += code.count(_ == '{') - code.count(_ == '}')
+        if (depth > 0) entered = true
+        if (depth <= 0 && entered) {
+          pending.foreach { case (name, start) => found += ((name, start + 1,
+            index + 1, lines.slice(start, index + 1).mkString("\n"))) }
+          pending = None
+          entered = false
+          depth = 0
+        }
+      }
+      found.result()
+    }
+
+    val powerBlocks = contributions.flatMap { path =>
+      val declared = blockSplitter(path)
+        .filter(block => declaresPower.findFirstIn(block._4).isDefined)
+      assert(declared.nonEmpty, s"$path declares a ContributingPower but the " +
+        "block splitter found none in it -- the splitter is broken, which " +
+        "would silently pass the size bar over an empty collection")
+      declared.map(block => (path, block))
+    }
+
+    val oversized = powerBlocks.flatMap { case (path, (name, first, last, _)) =>
+      val size = last - first + 1
+      Option.when(size > 50)(s"$name ($path:$first-$last) is $size lines; " +
+        "the power-authoring bar is 50 lines per power class")
     }.sorted
     assertEquals(oversized, Vector.empty)
 
@@ -259,15 +357,17 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val engineRoots = Vector(
       Paths.get("src/main/scala/oathdigital/gameplay/walker"),
       Paths.get("src/main/scala/oathdigital/gameplay/operations"))
-    val powerNames = contributions.map(
-      _.getFileName.toString.stripSuffix(".scala").stripSuffix("Contribution"))
+    val powerNames = powerBlocks.map(
+      _._2._1.stripSuffix("Contribution").stripSuffix("Power")).distinct
+    assert(powerNames.forall(_.nonEmpty),
+      s"a power name stripped to empty; blocks were ${powerBlocks.map(_._2._1)}")
     val offenders = engineRoots.flatMap { root =>
       val stream = Files.walk(root)
       try stream.iterator.asScala.filter(path =>
         path.toString.endsWith(".scala")).flatMap { path =>
         val source = Files.readString(path).toLowerCase
         powerNames.filter(name => source.contains(name.toLowerCase))
-          .map(name => s"$path names power file $name")
+          .map(name => s"$path names power $name")
       }.toVector
       finally stream.close()
     }.sorted

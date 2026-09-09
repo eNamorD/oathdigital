@@ -292,11 +292,18 @@ this design and will be replanned.
   "frontend/test" "frontend/fastLinkJS"`).
 - Drift suites: recorded ops == recomputed tree ops, in dev/test only.
 - Power-authoring bar: one class, ≤50 lines, engine untouched (asserted in a
-  BackendArchitecture-style test per power family). Note the guard in
-  `BackendArchitectureSuite` measures whole *files*, which matched the bar only
-  while every file held exactly one power (Catacombs). It must be re-pointed at
-  per-class line counts — and its power-name derivation moved off the file name
-  — the first time the batch port puts two contributions in one file.
+  BackendArchitecture-style test per power family). The guard in
+  `BackendArchitectureSuite` now measures *per class*: it splits each source
+  under `gameplay/powers/` into top-level declaration blocks, counts the block
+  extending `ContributingPower` from its declaration line to its matching
+  closing brace, and derives the power's name from that declaration identifier
+  (trailing `Contribution`/`Power` stripped) rather than from the file name.
+  So a family file may group several powers and carry shared package/import/
+  companion overhead without any power being charged for it. Remaining gap:
+  because only the `ContributingPower` block is counted, bulk pushed into a
+  companion object or a sibling helper escapes the bar — visible in review,
+  and tightenable later. The no-walker-import check stays file-scoped, since
+  an import is a file-level property.
 - Human-readable log lines rendered from event payloads.
 
 ## Slice status: Recover fully migrated, powers and UI (Task 10 checkpoint, 2026-09-08)
@@ -319,7 +326,7 @@ is the first power ported onto this seam: one 50-line object that imports
 `gameplay.operations` (its `Transform` returns `Vector[Operation]`, building
 `Move`/`PayCost` to place the relic and charge the secret) but no
 `gameplay.walker` import — the authoring bar `BackendArchitectureSuite`
-("a walker power is one small file with no engine imports") actually
+("a walker power is one small class with no engine imports") actually
 enforces is the walker import alone, not the operations vocabulary a power
 needs to describe its own effect. Offered to a walk when the
 player selects it as a `StartWalker` modifier. A player completes Recover,
