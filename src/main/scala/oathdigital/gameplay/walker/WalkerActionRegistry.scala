@@ -3,6 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, PlayerId}
@@ -54,17 +55,36 @@ object WalkerActionRegistry {
     * on `decisionId`). `None` for an id this action does not recognise.
     * This is the single place `OathRules.parkedContinue` consults, so it
     * carries no `RecoverProcedure`-specific match of its own.
+    *
+    * `modifierWindow` (batch-1 Task 1) is the [[PowerWindow]] at which a
+    * player-selected `ContributingPower` is offered as a `StartWalker`
+    * modifier for this action -- previously a bare
+    * `PowerWindow.RecoverModifierSelection` literal at both
+    * `OathRules.offerableWalkerPowers` and `OathRules.validateModifiers`,
+    * which would have filtered every action's offers through Recover's
+    * window the moment a second action registered.
+    *
+    * It is `Option` because not every action has such a window:
+    * `PowerWindow` carries a `*ModifierSelection` case for each of the eight
+    * [[oathdigital.gameplay.powerresolver.MajorActionType]]s and Take Wealth
+    * is not one of them -- its only window is `WakeTakeWealth`, an
+    * `OtherWindow` whose `associatedMajorAction` is `None`. `None` here means
+    * the action offers no player-selected powers at all: `offerableWalkerPowers`
+    * returns empty and `validateModifiers` rejects every id. Inventing a
+    * `WakeModifierSelection` case purely to keep this field total would put a
+    * window in the audited vocabulary that no rulebook clause backs.
     */
-  private[walker] final case class Entry(
+  private[gameplay] final case class Entry(
       fallbackKind: MajorActionKind,
       rollDecisionId: String,
+      modifierWindow: Option[PowerWindow],
       continuationFor: (String, PlayerId, DecisionId) => Option[OathContinue],
       build: (ExecutableCatalog, ReadyGame, PlayerId, Boolean) =>
         Either[OathViolation, Operation],
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId) =>
         Either[OathViolation, Operation])
 
-  /** `private[walker]`, not `private`: [[WalkerActionRegistrySuite]] asserts
+  /** `private[gameplay]`, not `private`: [[WalkerActionRegistrySuite]] asserts
     * this map's keys cover `ActionRef.all` (catching a registered action
     * missing its entry) and its type is referenced when the suite calls
     * `build`/`rebuild` with a `registrations` map that omits a real,
@@ -73,11 +93,18 @@ object WalkerActionRegistry {
     * "absent from the registrations" branch without a genuinely
     * unregistered `ActionRef`, which cannot be constructed outside
     * `ActionRef.scala`.
+    *
+    * Widened from `private[walker]` at batch-1 Task 1: `OathRules`
+    * (`oathdigital.gameplay`) now takes the same `registrations` parameter on
+    * `offerableWalkerPowers`/`validateModifiers`, for the same reason and by
+    * the same precedent, so the `Entry` type has to be nameable one package
+    * up. It stays out of reach of every other package.
     */
-  private[walker] val entries: Map[ActionRef, Entry] = Map(
+  private[gameplay] val entries: Map[ActionRef, Entry] = Map(
     ActionRef.Recover -> Entry(
       fallbackKind = MajorActionKind.Recover,
       rollDecisionId = RecoverProcedure.rollDecisionId,
+      modifierWindow = Some(PowerWindow.RecoverModifierSelection),
       continuationFor = (decisionId, actor, decision) => decisionId match {
         case RecoverProcedure.rollDecisionId =>
           Some(OathContinue.AwaitingRecoverRoll(actor, decision))
@@ -145,6 +172,19 @@ object WalkerActionRegistry {
     */
   def rollDecisionId(action: ActionRef): Either[OathViolation, String] =
     lookup(action, entries).map(_.rollDecisionId)
+
+  /** `action`'s modifier-selection [[PowerWindow]], or `None` when the action
+    * offers no player-selected powers at all -- see `Entry`'s doc.
+    * `OathRules.offerableWalkerPowers` and `OathRules.validateModifiers` read
+    * this instead of naming `PowerWindow.RecoverModifierSelection`.
+    *
+    * `registrations` defaults to the production `entries` map -- see `build`'s
+    * doc for why it is a parameter at all.
+    */
+  def modifierWindow(action: ActionRef,
+      registrations: Map[ActionRef, Entry] = entries)
+      : Either[OathViolation, Option[PowerWindow]] =
+    lookup(action, registrations).map(_.modifierWindow)
 
   /** `action`'s client-facing continuation for `decisionId` (I4) -- see
     * `Entry`'s doc. `OathRules.parkedContinue` is the sole caller: it

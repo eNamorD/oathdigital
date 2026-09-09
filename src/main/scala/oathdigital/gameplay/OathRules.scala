@@ -138,7 +138,7 @@ final class OathRules(catalog: ExecutableCatalog,
       case Ready(ready) => WalkerActionRegistry.fallbackKind(action)
         .flatMap(kind => withFallback(state, actor, kind) {
           for {
-            _ <- validateModifiers(ready, actor, modifiers)
+            _ <- validateModifiers(ready, actor, action, modifiers)
             powers = walkerPowers(ready, actor, modifiers)
             tree <- buildWalker(action, ready, actor, starting = true,
               eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
@@ -171,44 +171,77 @@ final class OathRules(catalog: ExecutableCatalog,
     WalkerPowers.selected(walkerPowerCatalog, modifiers)
 
   /** The exact `ContributingPower`s a player may choose as a `modifiers` id
-    * for `actor` right now: `PlayerSelected` powers in `walkerPowerCatalog`
-    * that are `applicable` at `RecoverModifierSelection` -- the window a
-    * player-selected power is offered at (not a tree node; see
-    * `RecoverProcedure`'s doc). `validateModifiers` (below) rejects any id
-    * outside this set on `startWalker`; the pre-start preview
-    * (`GameApplicationService.preview`, Task 9a) offers exactly this set so
-    * the two can never drift apart -- one predicate, not a copy on each
-    * side.
+    * for `actor` on `action` right now: `PlayerSelected` powers in
+    * `walkerPowerCatalog` that are `applicable` at THAT ACTION'S
+    * modifier-selection window (not a tree node; see `RecoverProcedure`'s
+    * doc). `validateModifiers` (below) rejects any id outside this set on
+    * `startWalker`, and the pre-start preview
+    * (`GameApplicationService.preview`, Task 9a) offers exactly this set, so
+    * the two can never drift -- one predicate, not a copy on each side.
+    *
+    * Batch-1 Task 1: the window comes from
+    * `WalkerActionRegistry.modifierWindow(action)`, not the
+    * `PowerWindow.RecoverModifierSelection` literal this method used to name
+    * -- harmless with one registered action, but with two it would filter
+    * every action's offers through Recover's window. An entry declaring
+    * `modifierWindow = None` offers nothing; an action absent from
+    * `registrations` is a `Left`, since "registers no window" and "is not
+    * registered" are different facts and only the first is a rule.
+    *
+    * `registrations` defaults to the production `WalkerActionRegistry
+    * .entries`, so production call sites pass nothing. It exists for the same
+    * reason `WalkerActionRegistry.build`/`rebuild` carry one (see
+    * `WalkerActionRegistrySuite`'s doc): `ActionRef` is sealed with one
+    * inhabitant, so behaviour differing BETWEEN actions -- the whole point of
+    * this change -- is otherwise unprovable until a second one registers.
     */
-  def offerableWalkerPowers(ready: ReadyGame, actor: PlayerId)
-      : Vector[ContributingPower] =
-    walkerPowerCatalog.powers.filter(power =>
-      power.resolution == PowerResolution.PlayerSelected &&
-      power.applicable(PowerCtx(ready, actor, power.source,
-        PowerWindow.RecoverModifierSelection, Vector.empty)))
+  def offerableWalkerPowers(ready: ReadyGame, actor: PlayerId,
+      action: ActionRef,
+      registrations: Map[ActionRef, WalkerActionRegistry.Entry] =
+        WalkerActionRegistry.entries)
+      : Either[OathViolation, Vector[ContributingPower]] =
+    WalkerActionRegistry.modifierWindow(action, registrations).map {
+      case None => Vector.empty
+      case Some(window) => walkerPowerCatalog.powers.filter(power =>
+        power.resolution == PowerResolution.PlayerSelected &&
+        power.applicable(PowerCtx(ready, actor, power.source, window,
+          Vector.empty)))
+    }
 
   /** Rejects an unknown or inapplicable `modifiers` id with
     * `InvalidEventOrder` before any node walks and before any event is
     * appended (Task 4). A valid id names a `PlayerSelected` power in
-    * `walkerPowerCatalog` that is `applicable` at `RecoverModifierSelection`
-    * -- exactly `offerableWalkerPowers`' set, queried above rather than
-    * recomputed here. An empty `modifiers` validates trivially, matching
-    * every Recover before this task.
+    * `walkerPowerCatalog` that is `applicable` at `action`'s own
+    * modifier-selection window -- exactly `offerableWalkerPowers`' set,
+    * queried above rather than recomputed here, so an action declaring
+    * `modifierWindow = None` rejects every id for free. An empty `modifiers`
+    * validates trivially, matching every Recover before this task.
+    * `private[gameplay]`, not `private`, so a suite can pass `registrations`
+    * (see `offerableWalkerPowers`): `startWalker` carries no such parameter
+    * of its own to thread one through. Production passes nothing.
     */
-  private def validateModifiers(ready: ReadyGame, actor: PlayerId,
-      modifiers: Vector[PowerId]): Either[OathViolation, Unit] = {
-    val offered: Set[PowerId] = offerableWalkerPowers(ready, actor).map(_.id).toSet
-    val selectable: Set[PowerId] = walkerPowerCatalog.powers
-      .filter(_.resolution == PowerResolution.PlayerSelected).map(_.id).toSet
-    modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
-      case (Right(_), id) if offered(id) => Right(())
-      case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
-        s"power ${id.value} is not applicable to this Recover"))
-      case (Right(_), id) => Left(InvalidEventOrder(
-        s"unknown or non-selectable power id ${id.value}"))
-      case (left, _) => left
+  private[gameplay] def validateModifiers(ready: ReadyGame, actor: PlayerId,
+      action: ActionRef, modifiers: Vector[PowerId],
+      registrations: Map[ActionRef, WalkerActionRegistry.Entry] =
+        WalkerActionRegistry.entries): Either[OathViolation, Unit] =
+    offerableWalkerPowers(ready, actor, action, registrations).flatMap {
+      offerable =>
+        val offered: Set[PowerId] = offerable.map(_.id).toSet
+        val selectable: Set[PowerId] = walkerPowerCatalog.powers
+          .filter(_.resolution == PowerResolution.PlayerSelected)
+          .map(_.id).toSet
+        modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
+          case (Right(_), id) if offered(id) => Right(())
+          // Ruling R3: name the action, not "Recover" -- this string is
+          // user-visible and would be flatly wrong for every action the
+          // batch port adds.
+          case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
+            s"power ${id.value} is not applicable to this ${action.key}"))
+          case (Right(_), id) => Left(InvalidEventOrder(
+            s"unknown or non-selectable power id ${id.value}"))
+          case (left, _) => left
+        }
     }
-  }
 
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via

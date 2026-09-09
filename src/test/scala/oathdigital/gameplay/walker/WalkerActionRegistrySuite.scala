@@ -1,5 +1,6 @@
 package oathdigital.gameplay.walker
 
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.model.{ActionRef, PlayerId}
 
@@ -52,5 +53,21 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
 
   test("the production entries register every known action") {
     assertEquals(WalkerActionRegistry.entries.keySet, ActionRef.all.toSet)
+  }
+
+  /** Batch-1 Task 1: the modifier-selection window is per-action registry
+    * data, alongside `fallbackKind`/`rollDecisionId`. Recover declares the
+    * window both `OathRules.offerableWalkerPowers` and
+    * `validateModifiers` used to name as a literal, so its behaviour is
+    * unchanged by construction.
+    */
+  test("modifierWindow reads the registered entry, and an unregistered " +
+      "action is a typed Left") {
+    assertEquals(WalkerActionRegistry.modifierWindow(ActionRef.Recover),
+      Right(Some(PowerWindow.RecoverModifierSelection)))
+    assertEquals(
+      WalkerActionRegistry.modifierWindow(ActionRef.Recover, unregistered),
+      Left(OathViolation.InvalidEventOrder(
+        "no walker action registered for recover")))
   }
 }

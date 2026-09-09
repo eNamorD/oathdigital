@@ -119,10 +119,18 @@ final class GameApplicationService(
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
       case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
         walkerAction(action) match {
-          case Some(_) =>
-            val options = rules.offerableWalkerPowers(ready, actor).map(power =>
+          // The `ActionRef` this match already resolved is bound rather than
+          // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
+          // action's own modifier-selection window from the registry, so the
+          // preview offers what THIS action offers instead of what Recover
+          // does. It is the same ref, not a second derivation.
+          case Some(actionRef) => for {
+            offerable <- rules.offerableWalkerPowers(ready, actor, actionRef)
+              .left.map(CommandRejected)
+            options = offerable.map(power =>
               OrderedRuleInvocation(power.source, power.id.value))
-            acceptPreview(loaded, options, selected, Vector.empty)
+            accepted <- acceptPreview(loaded, options, selected, Vector.empty)
+          } yield accepted
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
               .left.map(CommandRejected)
