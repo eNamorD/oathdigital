@@ -187,32 +187,38 @@ trait Power {
   def source: RuleSourceRef
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
-  def shouldIgnore(other: PowerId): Boolean = false
+  def shouldIgnore(other: ContributingPower): Boolean = false
   def priority: Int = 0
 }
 ```
 
-`shouldIgnore` takes the other power's `PowerId`, not the power itself
-(implemented that way from Task 1): decision 10(b)'s named ignore is
-identity-based ("Vow of Peace ignores X").
+`shouldIgnore` receives the whole candidate, not its `PowerId`. It was
+originally written to take an id, on the reading that decision 10(b)'s named
+ignore is purely identity-based ("Vow of Peace ignores X"); that was too
+narrow and was widened immediately after the Recover cutover, before any
+further power was authored.
 
-**This is too narrow, and it should be widened before any further power is
-authored.** A `PowerId` is an identity string; it carries no classification.
+The reason: a `PowerId` is an identity string carrying no classification.
 Whether a power is a Travel modifier lives on the *window* it hooks —
-`PowerWindow.associatedMajorAction`, fixed per window family
-(`TravelWindow` → `Travel`) — reachable from the power object via
-`contributions.keys` but not from its id. So a rule of the shape "ignore
-other modifiers of this action", which is common in the rulebook, cannot be
-expressed at all today; only ignores that name specific ids can.
+`PowerWindow.associatedMajorAction`, fixed per window family (`TravelWindow`
+→ `Travel`) — reachable from the power object via `contributions.keys` but
+not from its id. So a rule of the shape "ignore other modifiers of this
+action" was inexpressible; only ignores naming specific ids could be
+written. A power now classifies its target directly:
 
-The fix is `shouldIgnore(other: ContributingPower)`: one line on this trait
-and one at `ContributionCollector`'s vote step, which already holds both
-power objects. The cost of delay is not in the engine — it is that every
-power authored against the narrow signature becomes a call site to revisit.
-Because the migration cuts each action's UI over and deletes its legacy path
-in one step, the batch port (step 3) authors each action's powers as it
-migrates it, so the window to change this cheaply closes at the *start* of
-the batch port, not at step 5.
+```scala
+override def shouldIgnore(other: ContributingPower): Boolean =
+  other.contributions.keys.flatMap(_.associatedMajorAction)
+    .exists(_ == MajorActionType.Travel)
+```
+
+The timing mattered more than the size. Because the migration cuts each
+action's UI over and deletes its legacy path in one step, the batch port
+(step 3) authors each action's powers as it migrates it — so every power
+written against the narrow signature would have become a call site to
+revisit. Changed while exactly one `ContributingPower` existed, it was one
+line on this trait and one at `ContributionCollector`'s vote step, which
+already held both power objects.
 
 `PowerCtx(state, actor, source, window, nodePath)` carries no mutable state
 and no catalog of its own — a contribution reads game state through
