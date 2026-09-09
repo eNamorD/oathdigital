@@ -335,34 +335,7 @@ private[frontend] object ActionDecisionRenderer {
        }
      }
    }
-   value.walkerDecision.filter(_ => presentation.showGameplayControls)
-       .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
-       .foreach {
-     case (decision, RecoverWalkerStep.Roll(pool)) =>
-       panel.appendChild(text("h2", "", "Recover"))
-       val roll = button("Roll", "recover-roll")
-       roll.disabled = !canControl
-       roll.onclick = _ => submitCommand(GameCommand.RollWalker(pool))
-       panel.appendChild(roll)
-     case (decision, RecoverWalkerStep.Choice) =>
-       panel.appendChild(text("h2", "", "Recover"))
-       val continue = button("Spend 1 Supply for two dice", "recover-add")
-       continue.disabled = !canControl
-       continue.onclick = _ => submitCommand(resolveRecoverChoiceCommand(decision, "continue"))
-       panel.appendChild(continue)
-       val stop = button("Stop Recover", "recover-stop")
-       stop.disabled = !canControl
-       stop.onclick = _ => submitCommand(resolveRecoverChoiceCommand(decision, "stop"))
-       panel.appendChild(stop)
-     case (decision, RecoverWalkerStep.Relic(candidates)) =>
-       panel.appendChild(text("h2", "", "Take a relic"))
-       candidates.foreach { card =>
-         val choose = button(s"Take ${card.name} facedown", "recover-relic-choice")
-         choose.disabled = !canControl
-         choose.onclick = _ => submitCommand(resolveRecoverRelicCommand(decision, card.cardId))
-         panel.appendChild(choose)
-       }
-   }
+   renderRecoverPanel(value, presentation, canControl, panel, ui)
    value.forge.filter(_ => presentation.showGameplayControls).foreach { forge =>
      panel.appendChild(text("h2", "", "Forge a relic"))
      panel.appendChild(text("p", "forge-instruction",

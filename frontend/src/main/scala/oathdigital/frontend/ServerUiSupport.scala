@@ -605,6 +605,71 @@ private[frontend] object ServerUiSupport {
     GameCommand.ResolveWalker(decision.decisionId,
       DecisionPayloadWire.RecoverRelicWire(relicId))
 
+  /** Renders the parked Recover's accumulated roll feedback (I5) -- the
+    * dice faces rolled so far, the derived score, and the site's Recover
+    * difficulty -- the same information the legacy (deleted)
+    * `RecoverProjection`-backed panel showed, now sourced from
+    * `WalkerDecisionState.rollOutcome`. Before any roll `faces` is empty:
+    * the difficulty is still worth showing so the player knows the target
+    * before rolling.
+    */
+  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
+    if (outcome.faces.isEmpty)
+      s"Need ${outcome.difficulty} shields to succeed."
+    else
+      s"Rolled ${outcome.faces.mkString(", ")} -- ${outcome.score} shields " +
+        s"so far (need ${outcome.difficulty})."
+
+  /** Renders the Recover panel for whichever of the three parks
+    * (`recoverWalkerStep`) the walker is at, moved out of
+    * `ActionDecisionRenderer.actionsPanel` to keep that file under the
+    * architecture line bound. Shows `rollOutcomeSummary` (I5) above each
+    * park's controls, and gates "Spend 1 Supply for two dice" on the
+    * player actually having supply -- as the legacy (deleted) Recover
+    * panel did.
+    */
+  private[frontend] def renderRecoverPanel(value: GameProjection,
+      presentation: ViewerPresentation, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit = {
+    value.walkerDecision.filter(_ => presentation.showGameplayControls)
+        .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
+        .foreach {
+      case (decision, RecoverWalkerStep.Roll(pool)) =>
+        panel.appendChild(text("h2", "", "Recover"))
+        decision.rollOutcome.foreach(outcome => panel.appendChild(
+          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
+        val roll = button("Roll", "recover-roll")
+        roll.disabled = !canControl
+        roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
+        panel.appendChild(roll)
+      case (decision, RecoverWalkerStep.Choice) =>
+        panel.appendChild(text("h2", "", "Recover"))
+        decision.rollOutcome.foreach(outcome => panel.appendChild(
+          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
+        val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
+        val continue = button("Spend 1 Supply for two dice", "recover-add")
+        continue.disabled = !canControl || !hasSupply
+        continue.onclick = _ => ui.submitCommand(
+          resolveRecoverChoiceCommand(decision, "continue"))
+        panel.appendChild(continue)
+        val stop = button("Stop Recover", "recover-stop")
+        stop.disabled = !canControl
+        stop.onclick = _ => ui.submitCommand(resolveRecoverChoiceCommand(decision, "stop"))
+        panel.appendChild(stop)
+      case (decision, RecoverWalkerStep.Relic(candidates)) =>
+        panel.appendChild(text("h2", "", "Take a relic"))
+        decision.rollOutcome.foreach(outcome => panel.appendChild(
+          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
+        candidates.foreach { card =>
+          val choose = button(s"Take ${card.name} facedown", "recover-relic-choice")
+          choose.disabled = !canControl
+          choose.onclick = _ => ui.submitCommand(
+            resolveRecoverRelicCommand(decision, card.cardId))
+          panel.appendChild(choose)
+        }
+    }
+  }
+
   private[frontend] def takeWealthActions(
       value: GameProjection,
       playerId: String

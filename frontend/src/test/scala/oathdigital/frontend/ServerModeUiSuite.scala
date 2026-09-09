@@ -15,6 +15,19 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
       "1 available of 2 owned; 0 facedown and 1 committed")
   }
+  test("the Recover roll outcome summary shows the target before any roll " +
+      "and the accumulated dice and score after") {
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector.empty, 0, 4)),
+      "Need 4 shields to succeed.")
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector("blank", "blank"), 0, 4)),
+      "Rolled blank, blank -- 0 shields so far (need 4).")
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector("two-shields", "doubler"), 4, 4)),
+      "Rolled two-shields, doubler -- 4 shields so far (need 4).")
+  }
+
   test("Negotiation editor restores only authored relic and disclosure selections") {
     val relic = CardDetails("R1", "relic", "Public Relic")
     val adviser = CardDetails("D1", "denizen", "Hidden Adviser")

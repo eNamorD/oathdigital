@@ -2,13 +2,16 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.ReadyGame
+import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
   WalkerPowers}
-import oathdigital.model.{ActionRef, Orientation, PendingTree, PlayerId}
-import oathdigital.protocol.projection.{CardDetailsProjection, WalkerDecisionProjection}
+import oathdigital.model.{ActionRef, DefenseDieFace, Orientation, PendingTree,
+  PlayerId}
+import oathdigital.protocol.projection.{CardDetailsProjection,
+  WalkerDecisionProjection, WalkerRollOutcomeProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerAction`, Task 6) into the small owner-private
@@ -64,13 +67,15 @@ private[application] final class WalkerDecisionProjector(
       case Some((pool, count)) =>
         WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
           WalkerDecisionProjection(action.key, rollId, "roll",
-            pool = Some(pool.value), count = Some(count)))
+            pool = Some(pool.value), count = Some(count),
+            rollOutcome = rollOutcome(ready, pending.actor)))
       case None => ProcedureWalker.parkedDecide(ready, tree, pending,
           powers).map { decide =>
         val candidates = if (decide.decisionId == RecoverProcedure.relicDecisionId)
           relicCandidates(ready, pending.actor) else Vector.empty
         WalkerDecisionProjection(action.key, decide.decisionId, "decide",
-          relicCandidates = candidates)
+          relicCandidates = candidates,
+          rollOutcome = rollOutcome(ready, pending.actor))
       }
     }
 
@@ -88,4 +93,50 @@ private[application] final class WalkerDecisionProjector(
     RecoverProcedure.actorFacedownRelics(ready, actor).map(relic =>
       presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
         hidden = false))
+
+  /** The accumulated roll feedback for `actor`'s parked Recover (I5): the
+    * dice faces and derived score `ProcedureWalker` has written into
+    * `CurrentGameState.rollOutcomes` for `RecoverProcedure.recoverPool` SO
+    * FAR (empty/zero before the first roll -- the difficulty is still worth
+    * showing then), plus the actor's current site's Recover difficulty --
+    * the same two values `RecoverProcedure.build`/`rebuild` read to size the
+    * tree and `RecoverRules.difficulty` exposes.
+    *
+    * `None` only when the actor has no pawn site or that site has no
+    * configured difficulty, which should not happen for an already-started
+    * Recover (`RecoverProcedure.build` requires both) -- this mirrors that
+    * method's own `Option`-returning reads rather than asserting.
+    *
+    * Reads `RecoverProcedure`/`RecoverRules` directly, same as
+    * `relicCandidates` above: this projector is already action-specific
+    * (Recover is the only registered action), not a generic walker-wide
+    * concept -- a second action's roll feedback would need its own pool/
+    * site/difficulty story here.
+    */
+  private def rollOutcome(ready: ReadyGame, actor: PlayerId)
+      : Option[WalkerRollOutcomeProjection] = for {
+    site <- RecoverProcedure.actorSite(ready, actor)
+    difficulty <- RecoverRules.difficulty(catalog, site)
+  } yield {
+    val outcome = ready.game.current.rollOutcomes.get(RecoverProcedure.recoverPool)
+    WalkerRollOutcomeProjection(
+      faces = outcome.fold(Vector.empty[DefenseDieFace])(_.faces.collect {
+        case face: DefenseDieFace => face
+      }).map(defenseFaceName),
+      score = outcome.fold(0)(_.score),
+      difficulty = difficulty)
+  }
+
+  /** Local duplicate of `WalkerEventCodec`'s (serialization-layer)
+    * `encodeDefenseFace` vocabulary: the application layer may not import
+    * the serialization layer (`BackendArchitectureSuite`), and
+    * `PendingProcedureProjector.defenseFaceName` already establishes this
+    * exact precedent for Campaign's dice projections.
+    */
+  private def defenseFaceName(value: DefenseDieFace): String = value match {
+    case DefenseDieFace.Blank => "blank"
+    case DefenseDieFace.OneShield => "one-shield"
+    case DefenseDieFace.TwoShields => "two-shields"
+    case DefenseDieFace.Doubler => "doubler"
+  }
 }

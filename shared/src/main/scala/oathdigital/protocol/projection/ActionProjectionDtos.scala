@@ -120,6 +120,14 @@ final case class ForgeProjection(
   * only to type-tag the Decide node; that marker is never surfaced here,
   * since it is not a preselected or committed choice -- the concrete
   * relic rides the `ResolveWalker` answer.
+  *
+  * `rollOutcome` (I5) carries the parked pool's accumulated roll feedback --
+  * the dice faces rolled so far, the derived score, and the site's
+  * Recover difficulty -- so the panel can show the player what they rolled
+  * and how close they are, matching the legacy (deleted) `RecoverProjection`
+  * this replaced. Owner-private exactly like the rest of this projection:
+  * the projector only ever returns the whole `WalkerDecisionProjection` for
+  * the parked actor, so no other viewer sees a roll outcome either.
   */
 final case class WalkerDecisionProjection(
     action: String,
@@ -127,7 +135,20 @@ final case class WalkerDecisionProjection(
     kind: String,
     pool: Option[String] = None,
     count: Option[Int] = None,
-    relicCandidates: Vector[CardDetailsProjection] = Vector.empty
+    relicCandidates: Vector[CardDetailsProjection] = Vector.empty,
+    rollOutcome: Option[WalkerRollOutcomeProjection] = None
+)
+/** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
+  * order across every roll of the parked pool so far; `score` is the
+  * derived total (a `Doubler` on a later roll multiplies earlier shields,
+  * so this is not simply a per-face sum); `difficulty` is the acting
+  * player's current site's Recover difficulty, the target `score` must
+  * reach.
+  */
+final case class WalkerRollOutcomeProjection(
+    faces: Vector[String],
+    score: Int,
+    difficulty: Int
 )
 final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
