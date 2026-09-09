@@ -274,6 +274,51 @@ class BackendArchitectureSuite extends munit.FunSuite {
     assertEquals(offenders, Vector.empty)
   }
 
+  test("wire decoders read strings through the validating helpers") {
+    // Untrusted client JSON reaches the engine through `protocol`'s decoders,
+    // and the id types it feeds (`SiteId`, `DecisionId`, `RelicId`, ...)
+    // validate with a THROWING `require(value.trim.nonEmpty)`. Nothing today
+    // can trip that, because every decoded string goes through
+    // `CommandJsonSupport.string`/`strings`, which reject a blank with a
+    // typed `InvalidValue` first -- so the constructors' `require` is
+    // unreachable rather than merely unexercised.
+    //
+    // That safety is a property of the decoders, not of the id types, and it
+    // is one `value("id").str` away from being lost: the raw accessor throws
+    // on a non-string and yields "" for a blank without complaint, handing
+    // the mapper a value the constructor then rejects with an exception
+    // escaping as a 500 instead of a typed 400. This guard pins the property
+    // for all ~48 id constructions in `GameIntentMapper` at once, and for
+    // every one added later, rather than defensively parsing at each site.
+    //
+    // Limits worth knowing: it catches the raw accessor, which is the
+    // reachable footgun, not every conceivable bypass -- an inline
+    // `case ujson.Str(v) =>` without a blank guard would still slip past.
+    // And it says nothing about validation STRICTER than non-blank: `PowerId`
+    // carries a regex, so a well-formed non-blank string can still fail it,
+    // which is why that type ships a `fromValue` safe parse. Any future id
+    // validating beyond non-blank needs the same.
+    //
+    // Like this suite's other file-content guards, it scans text, so a `.str`
+    // written inside a comment trips it too -- reword the comment rather than
+    // loosening the pattern.
+    val protocolRoot = Paths.get("shared/src/main/scala/oathdigital/protocol")
+    val stream = Files.walk(protocolRoot)
+    val sources =
+      try stream.iterator.asScala
+        .filter(_.toString.endsWith(".scala")).toVector
+      finally stream.close()
+    assert(sources.nonEmpty, s"expected decoder sources under $protocolRoot")
+
+    val rawAccessor = """\.str\b""".r
+    val offenders = sources.filter(path =>
+      rawAccessor.findFirstIn(Files.readString(path)).isDefined)
+      .map(_.toString).sorted
+    assertEquals(offenders, Vector.empty,
+      "decode wire strings with CommandJsonSupport.string/strings, which " +
+        "reject blanks with a typed error, not the raw .str accessor")
+  }
+
   test("generic power operations are not independently replayable events") {
     val protocol = Files.readString(Paths.get(
       "src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala"))
