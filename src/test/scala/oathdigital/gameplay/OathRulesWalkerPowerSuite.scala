@@ -103,7 +103,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
     // Control: the resume is legal from this parked state.
     val resumed = rules(actor, WalkerPowers.empty)
-      .resolveWalker(started.state, answer)
+      .resolveWalker(started.state, actor, answer)
     val events = resumed match {
       case Right(transition) => transition.events
       case other => fail(s"expected the unrestricted resume to run, got $other")
@@ -113,8 +113,64 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case _ => false
     })
 
-    assertEquals(rules(actor, forbidding).resolveWalker(started.state, answer),
+    assertEquals(rules(actor, forbidding).resolveWalker(started.state, actor, answer),
       Left(violation))
+  }
+
+  // -------------------------------------------------------------------------
+  // C1: the requester bound by the transport must match the parked
+  // position's own actor. `Authorization.authorizeCommand` only proves the
+  // caller is SOME seated player in this game -- without this check, any
+  // other seated player could resolve or roll for the actor actually parked.
+  // -------------------------------------------------------------------------
+
+  test("a seated non-active player's ResolveWalker against another " +
+      "player's parked decision is rejected, and appends nothing") {
+    val (ready, actor) = actable
+    val intruder = ready.game.current.players.map(_.player)
+      .find(_ != actor).get
+    val started = rules(actor, WalkerPowers.empty)
+      .startWalker(Ready(ready), ActionRef.Recover, actor) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the unrestricted start to run, got $other")
+    }
+    val answer = Answered(RecoverProcedure.choiceDecisionId,
+      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+
+    // The intruder is rejected with WrongPlayer -- a `Left` carries no
+    // transition, so nothing is appended to the actor's parked action.
+    assertEquals(
+      rules(actor, WalkerPowers.empty).resolveWalker(started.state, intruder,
+        answer),
+      Left(OathViolation.WrongPlayer(actor, intruder)))
+
+    // The actual actor can still resolve their own parked decision: the
+    // check rejects the wrong caller, not the command shape.
+    val resumed = rules(actor, WalkerPowers.empty)
+      .resolveWalker(started.state, actor, answer)
+    assert(resumed.isRight,
+      s"the actual actor's own resume must still succeed, got $resumed")
+  }
+
+  test("a seated non-active player's RollWalker against another player's " +
+      "parked pool is rejected, and appends nothing") {
+    val fixture = CatacombsContributionSuite.relicSite(setup)
+    val intruder = fixture.ready.game.current.players.map(_.player)
+      .find(_ != fixture.actor).get
+    val rulesInstance = new OathRules(catalog,
+      walkerPowerCatalog = oathdigital.gameplay.powers.WalkerPowerCatalog
+        .default(catalog))
+    val started = rulesInstance.startWalker(Ready(fixture.ready),
+        ActionRef.Recover, fixture.actor, Vector.empty) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the walker start to run, got $other")
+    }
+
+    assertEquals(
+      rulesInstance.rollWalkerPrepared(started.state, intruder,
+        RecoverProcedure.recoverPool)(count => Right(
+          Vector.fill(count)(DefenseDieFace.Blank))),
+      Left(OathViolation.WrongPlayer(fixture.actor, intruder)))
   }
 
   // -------------------------------------------------------------------------
@@ -158,7 +214,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     // prepended, the folded vector would shift back by one, and this resume
     // would address the SECOND Decide instead of the first -- a decisionId
     // mismatch, rejected with InvalidEventOrder instead of resolving cleanly.
-    val resumed = rulesInstance.resolveWalker(started.state, answer) match {
+    val resumed = rulesInstance.resolveWalker(started.state, actor, answer) match {
       case Right(transition) => transition
       case other => fail(
         s"expected the resume to address the parked Decide, got $other")
@@ -217,7 +273,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
     val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
       ProcedureWalkerSuite.TestDecisionPayload("continue"))
-    val afterFirst = rulesInstance.resolveWalker(started.state,
+    val afterFirst = rulesInstance.resolveWalker(started.state, actor,
         firstAnswer) match {
       case Right(transition) => transition
       case other => fail(
@@ -228,7 +284,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
     val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
       ProcedureWalkerSuite.TestDecisionPayload("continue"))
-    val finished = rulesInstance.resolveWalker(afterFirst.state,
+    val finished = rulesInstance.resolveWalker(afterFirst.state, actor,
         secondAnswer) match {
       case Right(transition) => transition
       case other => fail(s"expected the second resume to finish the tree, got $other")

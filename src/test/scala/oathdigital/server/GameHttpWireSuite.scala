@@ -66,25 +66,30 @@ class GameHttpWireSuite extends munit.FunSuite {
         StartPayload(PlayerId("actor-1")))))
     // RollWalker takes only a pool key -- there is no field on the wire
     // intent, the codec, or GameCommand.RollWalker for a client to place
-    // die faces into.
+    // die faces into. It DOES carry the transport-bound actor (C1): the
+    // rules layer checks the requester against the parked position's owner
+    // before resuming anything.
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.RollWalker("recover.pool")),
-      Right(GameCommand.RollWalker(PoolKey("recover.pool"))))
+      Right(GameCommand.RollWalker(PlayerId("actor-1"), PoolKey("recover.pool"))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
         DecisionPayloadWire.RecoverChoiceWire("continue"))),
-      Right(GameCommand.ResolveWalker(TreeDecision("recover.choice",
-        RecoverChoicePayload(RecoverChoice.Continue)))))
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.choice",
+          RecoverChoicePayload(RecoverChoice.Continue)))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
         DecisionPayloadWire.RecoverChoiceWire("stop"))),
-      Right(GameCommand.ResolveWalker(TreeDecision("recover.choice",
-        RecoverChoicePayload(RecoverChoice.Stop)))))
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.choice",
+          RecoverChoicePayload(RecoverChoice.Stop)))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.relic",
         DecisionPayloadWire.RecoverRelicWire("relic-1"))),
-      Right(GameCommand.ResolveWalker(TreeDecision("recover.relic",
-        RecoverRelicPayload(RelicId("relic-1"))))))
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.relic",
+          RecoverRelicPayload(RelicId("relic-1"))))))
   }
 
   test("an unknown walker action string is rejected without throwing") {

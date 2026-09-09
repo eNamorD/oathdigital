@@ -307,11 +307,11 @@ final class GameApplicationService(
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.StartWalker(action, start) =>
         rules.startWalker(state, action, start.actor, start.modifiers)
-      case GameCommand.ResolveWalker(treeDecision) =>
-        rules.resolveWalker(state, Answered(treeDecision.decisionId,
+      case GameCommand.ResolveWalker(actor, treeDecision) =>
+        rules.resolveWalker(state, actor, Answered(treeDecision.decisionId,
           treeDecision.payload))
-      case GameCommand.RollWalker(pool) =>
-        rules.rollWalkerPrepared(state, pool) { count =>
+      case GameCommand.RollWalker(actor, pool) =>
+        rules.rollWalkerPrepared(state, actor, pool) { count =>
           Either.cond(count == 2, defenseDicePort.rollTwo(),
             OathViolation.InvalidEventOrder(
               s"Recover walker expected 2 defense dice but pool count is $count"))

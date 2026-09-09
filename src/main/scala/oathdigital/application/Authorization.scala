@@ -158,6 +158,12 @@ final case class AuthorizedPlayer private (
       resolution: CardDecisionResolution
   ): GameCommand = GameCommand.ResolveCardDecision(
     access.playerId, decision, resolution)
+
+  def rollWalker(pool: PoolKey): GameCommand =
+    GameCommand.RollWalker(access.playerId, pool)
+
+  def resolveWalker(treeDecision: TreeDecision): GameCommand =
+    GameCommand.ResolveWalker(access.playerId, treeDecision)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

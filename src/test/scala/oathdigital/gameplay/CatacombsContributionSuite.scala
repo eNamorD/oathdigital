@@ -127,7 +127,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     val parkedAt = parked.game.current.walkerPending.map(_.at)
     assertEquals(parkedAt, Some(Vector("2", "0", "0")))
 
-    val rolled = rules.rollWalkerPrepared(transition.state,
+    val rolled = rules.rollWalkerPrepared(transition.state, fixture.actor,
       RecoverProcedure.recoverPool)(count => Right(
         Vector.fill(count)(DefenseDieFace.Blank))) match {
       case Right(next) => next

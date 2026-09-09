@@ -142,7 +142,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       new FixedRecoverDice(Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
     val rolled = service.handle("walker-projection-choice",
       started.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
 
     val Ready(ready) = rolled.state: @unchecked
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
@@ -181,7 +181,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
         DefenseDieFace.Doubler)), maxDifficulty = 4, minRelicSlots = 2)
     val rolled = service.handle("walker-projection-relic",
       started.nextSequence,
-      GameCommand.RollWalker(RecoverProcedure.recoverPool)).toOption.get
+      GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
     val Ready(ready) = rolled.state: @unchecked
     val other = ready.game.current.players.map(_.player).find(_ != actor).get
     val owner = ScopedProjectionContext(ready, Some(actor))
@@ -246,7 +246,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     // diverging from `RecoverProcedure`'s own `validateRelic`.
     val chosen = RelicId(expectedCandidates.head.cardId)
     val resolved = service.handle("walker-projection-relic", rolled.nextSequence,
-      GameCommand.ResolveWalker(TreeDecision(RecoverProcedure.relicDecisionId,
+      GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
         DecisionPayload.RecoverRelicPayload(chosen))))
     assert(resolved.isRight, s"expected a projected candidate relic to be " +
       s"accepted by the engine, got $resolved")

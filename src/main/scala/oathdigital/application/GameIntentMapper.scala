@@ -62,9 +62,9 @@ object GameIntentMapper {
         ref <- actionRef(value)
         ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
       } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
-      case Intent.RollWalker(pool) => Right(GameCommand.RollWalker(PoolKey(pool)))
+      case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
-        GameCommand.ResolveWalker(TreeDecision(id, p)))
+        actor.resolveWalker(TreeDecision(id, p)))
     }
   }
 

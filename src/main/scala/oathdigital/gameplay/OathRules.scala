@@ -247,10 +247,15 @@ final class OathRules(catalog: ExecutableCatalog,
 
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.
+    *
+    * `actor` is the requester bound by the transport (C1): it is checked
+    * against the durable parked position's own actor in
+    * `walkerResumeContext` before anything runs, so a seated player can
+    * never resume another player's parked walker action.
     */
-  def resolveWalker(state: OathState,
+  def resolveWalker(state: OathState, actor: PlayerId,
       answer: Answered): Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending, powers, modifiers) =>
+    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
       walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
         powers)).flatMap(walkerTransition(state, ready, action, tree, _,
           powers, modifiers))
@@ -258,11 +263,13 @@ final class OathRules(catalog: ExecutableCatalog,
 
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
+    *
+    * `actor` is the requester bound by the transport (C1); see `resolveWalker`.
     */
-  def rollWalkerPrepared(state: OathState, pool: PoolKey)(
+  def rollWalkerPrepared(state: OathState, actor: PlayerId, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
       : Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending, powers, modifiers) =>
+    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
       for {
         parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
           powers).toRight(InvalidEventOrder(
@@ -277,11 +284,11 @@ final class OathRules(catalog: ExecutableCatalog,
       } yield transition
     }
 
-  private def resumeWalker(state: OathState)(run: (ReadyGame, ActionRef,
-      Operation, PendingTree, WalkerPowers, Vector[PowerId]) =>
+  private def resumeWalker(state: OathState, actor: PlayerId)(run: (ReadyGame,
+      ActionRef, Operation, PendingTree, WalkerPowers, Vector[PowerId]) =>
       Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
-    walkerResumeContext(state).flatMap {
+    walkerResumeContext(state, actor).flatMap {
       case (ready, action, tree, pending, powers, modifiers) =>
         run(ready, action, tree, pending, powers, modifiers)
     }
@@ -292,8 +299,16 @@ final class OathRules(catalog: ExecutableCatalog,
     * resumed command offers the SAME player-selected powers `startWalker`
     * validated, keeping every shared window's fold identical across the
     * whole action.
+    *
+    * `actor` is the requester bound by the transport (C1): it is checked
+    * against `pending.actor` -- the durable owner of the parked position --
+    * independently of the `pending.actor == turn.activePlayer` sanity check
+    * below (that check compares two pieces of state against each other and
+    * proves nothing about who is asking; this one compares the caller
+    * against the state).
     */
-  private def walkerResumeContext(state: OathState): Either[OathViolation,
+  private def walkerResumeContext(state: OathState, actor: PlayerId)
+      : Either[OathViolation,
       (ReadyGame, ActionRef, Operation, PendingTree, WalkerPowers,
         Vector[PowerId])] =
     state match {
@@ -304,6 +319,8 @@ final class OathRules(catalog: ExecutableCatalog,
         InvalidEventOrder("no walker position is pending"))
       _ <- Either.cond(pending.actor == ready.game.current.turn.activePlayer, (),
         WrongPlayer(ready.game.current.turn.activePlayer, pending.actor))
+      _ <- Either.cond(actor == pending.actor, (),
+        WrongPlayer(pending.actor, actor))
       _ <- Either.cond(ready.game.current.turn.phase == Phase.Act, (),
         WrongPhase(Phase.Act, ready.game.current.turn.phase))
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
