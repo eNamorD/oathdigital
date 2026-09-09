@@ -167,6 +167,35 @@ private[projection] object ActionProjectionCodec {
     toBoard <- int(value, "maxSiteToBoard", path)
   } yield MinorActionsProjection(advisers, peek, relics, site, toSite, toBoard)
 
+  def encodeRollOutcome(value: WalkerRollOutcomeProjection): ujson.Value = ujson.Obj(
+    "faces" -> encoded(value.faces)(ujson.Str(_)), "score" -> value.score,
+    "difficulty" -> value.difficulty)
+  def decodeRollOutcome(raw: ujson.Value, path: String)
+      : Result[WalkerRollOutcomeProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("faces", "score", "difficulty"), path)
+    faces <- strings(value, "faces", path)
+    score <- int(value, "score", path); difficulty <- int(value, "difficulty", path)
+  } yield WalkerRollOutcomeProjection(faces, score, difficulty)
+
+  def encodeWalkerDecision(value: WalkerDecisionProjection): ujson.Value = ujson.Obj(
+    "action" -> value.action, "decisionId" -> value.decisionId, "kind" -> value.kind,
+    "pool" -> stringOption(value.pool), "count" -> intOption(value.count),
+    "relicCandidates" -> encoded(value.relicCandidates)(encodeCard),
+    "rollOutcome" -> option(value.rollOutcome)(encodeRollOutcome))
+  def decodeWalkerDecision(raw: ujson.Value, path: String): Result[WalkerDecisionProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("action", "decisionId", "kind", "pool", "count",
+      "relicCandidates", "rollOutcome"), path)
+    action <- string(value, "action", path); decision <- string(value, "decisionId", path)
+    kind <- string(value, "kind", path); pool <- optionalString(value, "pool", path)
+    count <- optionalInt(value, "count", path)
+    relicRaws <- array(value, "relicCandidates", path)
+    relics <- traverse(relicRaws, s"$path.relicCandidates")(decodeCard)
+    rollOutcome <- optionalAbsent(value, "rollOutcome", path)(decodeRollOutcome)
+  } yield WalkerDecisionProjection(action, decision, kind, pool, count, relics,
+    rollOutcome)
+
   def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
     "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,
     "siteId" -> value.siteId,

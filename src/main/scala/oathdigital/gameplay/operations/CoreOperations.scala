@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.OwnerQuery
 import oathdigital.model._
 
@@ -459,8 +460,12 @@ final case class Take(piece: Piece, player: PlayerId,
 // once power windows land.
 // ---------------------------------------------------------------------------
 
-/** Adds `delta` dice to a named pool's count in state. */
-final case class ModifyDicePool(pool: PoolKey, delta: Int)
+/** Adds `delta` dice to a named pool's count in state. `window` makes the
+  * node hookable exactly like `Decide` (Task 4: Recover's head `ModifyDicePool`
+  * carries `RecoverBeforeFirstRoll`).
+  */
+final case class ModifyDicePool(pool: PoolKey, delta: Int,
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
@@ -483,12 +488,18 @@ final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
   * the concrete answer rides the resolve command as an [[Answered]]);
   * `owner` resolves who decides at walk/resume time; `validate` (when
   * present) is a semantic legality check the walker runs against the resolved
-  * answer before recording it (Task 5 ruling 5.3).
+  * answer before recording it (Task 5 ruling 5.3). `window` makes the
+  * decision hookable: the walker folds the gathered transforms over
+  * `Vector(this)` before walking it, so a power may insert operations around
+  * the decision or replace it (decision 7 — the first leaf to take up this
+  * file's own "Roll and Decide are the future window-hook candidates" note).
   */
 final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
     decisionId: String,
     validate: Option[(ReadyGame, PendingTree, DecisionPayload) =>
-      Either[OathViolation, Unit]] = None) extends PrimitiveOperation
+      Either[OathViolation, Unit]] = None,
+    override val window: Option[PowerWindow] = None)
+    extends PrimitiveOperation
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever
@@ -502,7 +513,8 @@ final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
   * Flatten sees a leaf: `Operation.flatten(BuildOps(...))` is itself.
   */
 final case class BuildOps(build: (ReadyGame, PendingTree) =>
-    Either[OathViolation, Vector[CoreOperation]])
+    Either[OathViolation, Vector[CoreOperation]],
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command
@@ -533,8 +545,8 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
 /** Runs `children` in order. The walker's sequence composite; `Repeat`,
   * `Sequence`, and `Branch` are the composites the walker consumes this slice.
   */
-final case class Sequence(override val children: Vector[Operation])
-    extends CoreOperation
+final case class Sequence(override val children: Vector[Operation],
+    override val window: Option[PowerWindow] = None) extends CoreOperation
 
 object Sequence {
   /** Vararg builder so action trees read `Sequence(a, b)` (the Task 3

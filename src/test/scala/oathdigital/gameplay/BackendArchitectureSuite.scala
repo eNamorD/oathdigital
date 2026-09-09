@@ -199,13 +199,79 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("Catacombs mechanics remain owned by Recover powers") {
+    // Post-cutover (Task 9b): the legacy `Recover.scala`/
+    // `RecoverPowerIntegration.scala` are gone, so this guard now asserts
+    // the property they used to stand in for directly -- the application
+    // layer, the rules-dispatch layer, and the Recover action module itself
+    // route every Recover command generically and never learn Catacombs'
+    // name -- while the walker's typed contribution is the one place that
+    // does.
+    val contribution = Paths.get("src/main/scala/oathdigital/gameplay/" +
+      "powers/recover/CatacombsContribution.scala")
+    assert(Files.exists(contribution), s"$contribution must exist")
     Vector(
-      Paths.get("src/main/scala/oathdigital/gameplay/actions/Recover.scala"),
-      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala")
+      Paths.get("src/main/scala/oathdigital/application/GameApplicationService.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/OathRules.scala"),
+      Paths.get("src/main/scala/oathdigital/gameplay/actions/recover/RecoverProcedure.scala")
     ).foreach { path =>
       assert(!Files.readString(path).toLowerCase.contains("catacombs"),
         s"$path must use the typed Recover power boundary")
     }
+  }
+
+  test("a walker power is one small file with no engine imports, and the " +
+      "engine never learns its name") {
+    // The spec's power-authoring bar (Task 5, sharpened at Task 10): a power
+    // on the walker seam is ONE object under `gameplay/powers/`, at most 50
+    // lines, that imports no part of the walker engine it hooks into -- it
+    // sees only the `Operation`/contribution vocabulary
+    // (`gameplay.operations`, `gameplay.powerresolver`), never
+    // `gameplay.walker` itself. Symmetrically, the engine
+    // (`gameplay/walker`, `gameplay/operations`) never learns a specific
+    // power's name. Scans every `ContributingPower` under `gameplay/powers`
+    // (Catacombs today; the batch port adds more without this test needing
+    // to change) rather than naming one file, so the bar holds for every
+    // power ever ported onto this seam, not just the first.
+    val powersRoot = Paths.get("src/main/scala/oathdigital/gameplay/powers")
+    val contributionStream = Files.walk(powersRoot)
+    val contributions =
+      try contributionStream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala") &&
+          Files.readString(path).contains("extends ContributingPower"))
+        .toVector
+      finally contributionStream.close()
+    assert(contributions.nonEmpty,
+      s"expected at least one ContributingPower under $powersRoot")
+
+    val oversized = contributions.flatMap { path =>
+      val lines = Files.readAllLines(path).size
+      Option.when(lines > 50)(s"$path is $lines lines; the power-authoring " +
+        "bar is 50")
+    }.sorted
+    assertEquals(oversized, Vector.empty)
+
+    val engineImporting = contributions.filter(path =>
+      Files.readString(path).contains("import oathdigital.gameplay.walker"))
+      .map(_.toString).sorted
+    assertEquals(engineImporting, Vector.empty,
+      "a power must import no part of the walker engine")
+
+    val engineRoots = Vector(
+      Paths.get("src/main/scala/oathdigital/gameplay/walker"),
+      Paths.get("src/main/scala/oathdigital/gameplay/operations"))
+    val powerNames = contributions.map(
+      _.getFileName.toString.stripSuffix(".scala").stripSuffix("Contribution"))
+    val offenders = engineRoots.flatMap { root =>
+      val stream = Files.walk(root)
+      try stream.iterator.asScala.filter(path =>
+        path.toString.endsWith(".scala")).flatMap { path =>
+        val source = Files.readString(path).toLowerCase
+        powerNames.filter(name => source.contains(name.toLowerCase))
+          .map(name => s"$path names power file $name")
+      }.toVector
+      finally stream.close()
+    }.sorted
+    assertEquals(offenders, Vector.empty)
   }
 
   test("generic power operations are not independently replayable events") {
@@ -215,12 +281,20 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "src/main/scala/oathdigital/gameplay/OathRules.scala"))
     val codec = Files.readString(Paths.get(
       "src/main/scala/oathdigital/serialization/ActionEventCodec.scala"))
+    val walkerEvents = Files.readString(Paths.get(
+      "src/main/scala/oathdigital/gameplay/walker/WalkerEvents.scala"))
     Vector("CostsPaid", "RelicPlacedAtSite").foreach { name =>
       assert(!protocol.contains(s"case class $name"))
       assert(!aggregate.contains(s"case event: $name"))
       assert(!codec.contains(s"case _: $name"))
+      assert(!walkerEvents.contains(s"case class $name"))
     }
-    assert(protocol.contains("case class CatacombsResolved"))
+    // Post-cutover (Task 9b): Catacombs no longer has its own
+    // `CatacombsResolved` case class in `GameEventProtocol.scala` -- it
+    // records through the walker's own aggregate event instead. The
+    // property this test guards (granular operations never become their own
+    // replayable event) now rests on `WalkerStepRecorded`.
+    assert(walkerEvents.contains("case class WalkerStepRecorded"))
   }
 
   test("individual power definitions use factories instead of handler subclasses") {

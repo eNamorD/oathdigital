@@ -30,7 +30,6 @@ private[protocol] object CommandNestedCodecs {
       "kind" -> "search", "kept" -> world(kept),
       "discardedInOrder" -> ujson.Arr.from(discarded.map(world)),
       "placement" -> encodePlacement(placement))
-    case DecisionResolution.TakeFacedownRelic(id) => ujson.Obj("kind" -> "take-facedown-relic", "relicId" -> id)
   }
 
   def decodeDecision(value: ujson.Value, path: String)
@@ -46,9 +45,28 @@ private[protocol] object CommandNestedCodecs {
         _ <- noDuplicates((kept +: discarded).map(v => s"${v.kind}/${v.id}"), s"$path.discardedInOrder")
         placement <- field(root, "placement", path).flatMap(decodePlacement(_, s"$path.placement"))
       } yield DecisionResolution.Search(kept, discarded, placement)
-      case "take-facedown-relic" => exact(root, Set("kind", "relicId"), path)
-        .flatMap(_ => string(root, "relicId", path)).map(DecisionResolution.TakeFacedownRelic)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision resolution '$kind'"))
+    }}
+
+  /** Mirrors `WalkerEventCodec`'s "kind" discriminator for the same two
+    * Recover payloads (`"recover-choice"` / `"recover-relic"`); an unknown
+    * kind fails with the same typed `InvalidValue`, never an exception.
+    */
+  def encodeDecisionPayloadWire(value: DecisionPayloadWire): ujson.Obj = value match {
+    case DecisionPayloadWire.RecoverChoiceWire(choice) =>
+      ujson.Obj("kind" -> "recover-choice", "choice" -> choice)
+    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
+      ujson.Obj("kind" -> "recover-relic", "relicId" -> relicId)
+  }
+
+  def decodeDecisionPayloadWire(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionPayloadWire] = obj(value, path).flatMap { root =>
+    string(root, "kind", path).flatMap {
+      case "recover-choice" => exact(root, Set("kind", "choice"), path)
+        .flatMap(_ => string(root, "choice", path)).map(DecisionPayloadWire.RecoverChoiceWire)
+      case "recover-relic" => exact(root, Set("kind", "relicId"), path)
+        .flatMap(_ => string(root, "relicId", path)).map(DecisionPayloadWire.RecoverRelicWire)
+      case kind => Left(InvalidValue(s"$path.kind", s"unknown decision payload '$kind'"))
     }}
 
   private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match {

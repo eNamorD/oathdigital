@@ -20,8 +20,12 @@ object MajorActionPreviewCodec {
   import ProtocolDecodeFailure._
 
   def encodeRequest(value: MajorActionPreviewRequest): String = {
+    // `BeginForge` is used only as an arbitrary carrier intent to reuse the
+    // shared envelope's ordered-modifiers encode/decode machinery, which
+    // attaches to any `GameIntent` -- this preview covers every major
+    // action, not just Forge (see `action` below, encoded separately).
     val envelope = ActorlessCommandRequest(value.expectedNextSequence,
-      GameIntent.BeginRecover, value.orderedModifiers)
+      GameIntent.BeginForge, value.orderedModifiers)
     val encodedModifiers = ujson.read(ActorlessCommandCodec.encode(envelope))
       .obj.value.get("orderedModifiers").getOrElse(ujson.Arr())
     ujson.write(ujson.Obj("expectedNextSequence" -> ujson.Num(
@@ -56,7 +60,7 @@ object MajorActionPreviewCodec {
           case None => Right(Vector.empty)
           case Some(value) => ActorlessCommandCodec.decodeValue(ujson.Obj(
             "expectedNextSequence" -> ujson.Num(sequence.toDouble),
-            "intent" -> ujson.Obj("type" -> "beginRecover"),
+            "intent" -> ujson.Obj("type" -> "beginForge"),
             "orderedModifiers" -> value)).map(_.orderedModifiers)
         }
       } yield MajorActionPreviewRequest(sequence, action, parameters, modifiers)

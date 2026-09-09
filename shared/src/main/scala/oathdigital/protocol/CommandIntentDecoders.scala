@@ -41,7 +41,6 @@ private[protocol] object CommandIntentDecoders {
         case _ => Left(InvalidValue(s"$path.region", "expected string or null"))
       }
     } yield BeginSearch(SearchSource(source, region))
-    case "beginRecover" => empty(value, path, BeginRecover)
     case "beginForge" => empty(value, path, BeginForge)
     case "completeForge" => for {
       _ <- exact(value, Set("type", "decisionId", "assignments"), path)
@@ -93,8 +92,6 @@ private[protocol] object CommandIntentDecoders {
     } yield ReplaceNegotiationTerms(id, terms)
     case "acceptNegotiation" => decision(value, path)(AcceptNegotiation)
     case "declineNegotiation" => decision(value, path)(DeclineNegotiation)
-    case "addRecoverDice" => decision(value, path)(AddRecoverDice)
-    case "stopRecover" => decision(value, path)(StopRecover)
     case "beginCampaignConquest" => for {
       _ <- exact(value, Set("type", "targetSiteIds", "attackDiceCount"), path)
       sites <- field(value, "targetSiteIds", path).flatMap(strings(_, s"$path.targetSiteIds"))
@@ -129,6 +126,18 @@ private[protocol] object CommandIntentDecoders {
       id <- string(value, "decisionId", path)
       resolution <- field(value, "resolution", path).flatMap(CommandNestedCodecs.decodeDecision(_, s"$path.resolution"))
     } yield ResolveCardDecision(id, resolution)
+    case "startWalker" => for {
+      _ <- exact(value, Set("type", "action", "modifiers"), path)
+      action <- string(value, "action", path)
+      modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
+    } yield StartWalker(action, modifiers)
+    case "rollWalker" => one(value, path, "pool")(RollWalker)
+    case "resolveWalker" => for {
+      _ <- exact(value, Set("type", "decisionId", "payload"), path)
+      id <- string(value, "decisionId", path)
+      payload <- field(value, "payload", path).flatMap(
+        CommandNestedCodecs.decodeDecisionPayloadWire(_, s"$path.payload"))
+    } yield ResolveWalker(id, payload)
     case other => Left(InvalidValue(s"$path.type", s"unknown intent type '$other'"))
   }
 

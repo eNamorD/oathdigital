@@ -359,23 +359,6 @@ object PendingProcedure {
       "Raid relocation sites must be distinct and exclude the origin")
   }
 
-  final case class Recover(
-      decision: DecisionId,
-      actor: PlayerId,
-      site: SiteId,
-      difficulty: Int,
-      rolls: Vector[Vector[DefenseDieFace]],
-      supplySpent: Int,
-      successful: Boolean
-  ) extends PendingProcedure
-
-  final case class RecoverPowerApplied(
-      decision: DecisionId,
-      actor: PlayerId,
-      site: SiteId,
-      powerId: PowerId
-  ) extends PendingProcedure
-
   final case class RestPowerDecision(
       decision: DecisionId,
       restActor: PlayerId,

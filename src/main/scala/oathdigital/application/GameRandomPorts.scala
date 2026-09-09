@@ -5,7 +5,14 @@ import oathdigital.gameplay.actions.SearchRules
 import oathdigital.model._
 
 
+/** `diceCount` (I4) is the number of dice `rollTwo` produces -- named here
+  * as the port's own declared capacity so a caller validating a parked
+  * pool's requested count (e.g. `GameApplicationService`'s `RollWalker`
+  * handling) checks against this instead of a bare literal `2` scattered at
+  * the call site.
+  */
 trait DefenseDicePort {
+  val diceCount: Int = 2
   def rollTwo(): Vector[DefenseDieFace]
 }
 object DefenseDicePort {
@@ -14,7 +21,7 @@ object DefenseDicePort {
     private val faces = Vector(DefenseDieFace.Blank, DefenseDieFace.Blank,
       DefenseDieFace.OneShield, DefenseDieFace.OneShield,
       DefenseDieFace.TwoShields, DefenseDieFace.Doubler)
-    def rollTwo(): Vector[DefenseDieFace] = Vector.fill(2)(faces(rng.nextInt(6)))
+    def rollTwo(): Vector[DefenseDieFace] = Vector.fill(diceCount)(faces(rng.nextInt(6)))
   }
 }
 

@@ -75,8 +75,6 @@ package object frontend {
   }
   type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
   val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
-  type RecoverState = protocol.projection.RecoverProjection
-  val RecoverState = protocol.projection.RecoverProjection
   type ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
   val ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
   type ForgeState = protocol.projection.ForgeProjection
@@ -141,4 +139,8 @@ package object frontend {
   val OathkeeperStatus = protocol.projection.OathkeeperProjection
   type OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
   val OathkeeperRecipientDecision = protocol.projection.OathkeeperRecipientProjection
+  type WalkerDecisionState = protocol.projection.WalkerDecisionProjection
+  val WalkerDecisionState = protocol.projection.WalkerDecisionProjection
+  type WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
+  val WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
 }

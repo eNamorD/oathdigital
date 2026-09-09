@@ -7,16 +7,20 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
-  WealthTaken, CatacombsResolved, RecoverRolled, RecoverStopped,
-  RelicRecovered}
-import oathdigital.gameplay.operations.{AdjustSupply, Cost, Location,
-  ModifyDicePool, Move, Piece, PositionedLocation, RelicPlacement}
-import oathdigital.gameplay.walker.{DeltaMeaning, WalkerStepPayload,
-  WalkerStepRecorded}
+  WealthTaken}
+import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
+  BuryableCard, Bury, CardDeck, ClearDicePool, CoreOperation, Cost, Decide,
+  Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
+  ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
+  PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
+  Sequence, StackPosition, Swap, Take}
+import oathdigital.gameplay.walker.{DeltaMeaning, OwnerQuery, WalkerCtx,
+  WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.DecisionPayload.RecoverRelicPayload
 
 class GameEventWireSuite extends munit.FunSuite {
   test("ignored-rule diagnostics round trip durable source timing and reason") {
@@ -257,41 +261,6 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
   }
 
-  test("current Recover and operation events round-trip exact typed data") {
-    val events = Vector[OathEvent](
-      CatacombsResolved(PlayerId("red"), DecisionId("recover-1"),
-        PowerId("denizen.catacombs"), RuleSourceRef.SiteCard(SiteId("site"),
-          DenizenId("201")), Cost(secret = 1),
-        RelicPlacement(PlayerId("red"), RelicId("relic"), SiteId("site"),
-          Orientation.FaceDown)),
-      RecoverRolled(PlayerId("red"), DecisionId("recover-1"), SiteId("site"), 1,
-        Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler)),
-      RecoverStopped(PlayerId("red"), DecisionId("recover-1")),
-      RelicRecovered(PlayerId("red"), DecisionId("recover-2"), SiteId("site"),
-        RelicId("relic")))
-    val encoded = GameEventWire.encodeStream("recover", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
-      .toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
-    assertEquals(decoded.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered(1)("payload")("dice")(0) = "opaque-integer"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-    val malformedCost = ujson.read(encoded).arr
-    malformedCost(0)("payload")("cost")("secret") = -1
-    assert(GameEventWire.decodeStream(ujson.write(malformedCost)).isLeft)
-    val malformedBurn = ujson.read(encoded).arr
-    malformedBurn(0)("payload")("cost")("favorBurnt") = "lose"
-    assert(GameEventWire.decodeStream(ujson.write(malformedBurn)).isLeft)
-    Vector("gameplay.costs-paid", "gameplay.relic-placed-at-site").foreach {
-      eventType =>
-        val injected = ujson.read(encoded).arr
-        injected(0)("eventType") = eventType
-        assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft)
-    }
-  }
-
   test("walker delta events round-trip independent semantic facts") {
     val player = PlayerId("red")
     val pool = PoolKey("recover")
@@ -304,12 +273,13 @@ class GameEventWireSuite extends munit.FunSuite {
     val events = Vector[OathEvent](
       WalkerStepRecorded(player, "0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.DicePoolModified(pool, 2)),
-        Vector(ModifyDicePool(pool, 2))),
+        Vector(ModifyDicePool(pool, 2)), Vector.empty),
       WalkerStepRecorded(player, "1.0.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.SupplySpent(player, 1)),
-        Vector(AdjustSupply(player, -1))),
+        Vector(AdjustSupply(player, -1)), Vector.empty),
       WalkerStepRecorded(player, "2.1", WalkerStepPayload.DeltaRecorded(
-        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move)))
+        DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
+        Vector.empty))
 
     val encoded = GameEventWire.encodeStream("walker", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
@@ -322,6 +292,126 @@ class GameEventWireSuite extends munit.FunSuite {
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
   }
 
+  test("Catacombs' recorded batch round-trips: a relic move off the top of " +
+      "the relic deck and a cost placed on a card") {
+    // The exact op vector `CatacombsContribution` builds. Encoding it used to
+    // throw on `Location.Deck` and again on `PayCost`, which the append path
+    // turned into a codec failure -- so `StartWalker` + Catacombs, the only
+    // end-to-end route to this power once the legacy object goes, could never
+    // be persisted.
+    val player = PlayerId("red")
+    val relic = RelicId("R1")
+    val site = SiteId("site")
+    val denizen = DenizenId("catacombs")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
+        "catacombs.place")),
+      Vector(
+        Move(Piece.Card(relic),
+          PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+          PositionedLocation(Location.Site(site)),
+          resultingOrientation = Some(Orientation.FaceDown)),
+        PayCost(player, Location.OnCard(denizen), Cost(secret = 1))),
+      Vector(PowerId("denizen.catacombs")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    val ops = ujson.read(encoded).arr.head("payload")("ops").arr
+    assertEquals(ops.map(_("kind").str).toVector, Vector("move", "pay-cost"))
+    assertEquals(ops(0)("from")("location")("deck").str, "relic")
+    assertEquals(ops(0)("from")("position").str, "top")
+    assertEquals(ops(1)("placedAt")("card")("id").str, "catacombs")
+    assertEquals(ops(1)("cost")("secret").num, 1d)
+  }
+
+  test("every Location variant round-trips through the walker codec") {
+    // `encodeLocation` is total over the sealed hierarchy, so this list is
+    // the whole of it. Keeping the list exhaustive is what makes the
+    // compiler's totality check meaningful on the decode side too: a new
+    // variant fails to compile in the encoder and fails this test in the
+    // decoder.
+    val player = PlayerId("red")
+    val locations = Vector[Location](
+      Location.Hand(player),
+      // Not `player`'s own play area: `PayCost`'s children move the favor out
+      // of the payer's play area, and a move to the same location is illegal.
+      Location.PlayArea(PlayerId("blue")),
+      Location.Site(SiteId("site")),
+      Location.OnCard(DenizenId("catacombs")),
+      Location.OnBanner(Banner.DarkestSecret),
+      Location.FavorBank(Suit.Arcane),
+      Location.WarbandBank(ForceKind.Exile(LineageId("lineage"))),
+      Location.WarbandBank(ForceKind.Imperial),
+      Location.Deck(CardDeck.World),
+      Location.Deck(CardDeck.Relic),
+      Location.Deck(CardDeck.Edifice),
+      Location.Deck(CardDeck.Legacy),
+      Location.RegionalDiscard(Region.Cradle),
+      Location.SharedBank,
+      Location.SetAsideRelics,
+      Location.Reliquary,
+      Location.Atlas,
+      Location.Dispossessed)
+    // `PayCost` carries a bare `Location`, so it exercises each variant
+    // without the stack-position wrapper or `Move`'s from/to constraints.
+    val events = locations.map(location => WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, location, Cost(favor = 1))),
+      Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("placedAt")("kind").str).toVector.distinct.size,
+      locations.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("an unknown walker location kind, deck or negative cost decodes to a " +
+      "typed WireError") {
+    val player = PlayerId("red")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
+      Vector(PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1))),
+      Vector.empty)
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assert(GameEventWire.decodeStream(encoded).isRight)
+
+    Vector[ujson.Value => Unit](
+      _("payload")("ops")(0)("placedAt")("kind") = "not-a-location",
+      _("payload")("ops")(0)("placedAt")("deck") = "not-a-deck",
+      _("payload")("ops")(0)("cost")("secret") = -1,
+      _("payload")("ops")(0)("kind") = "not-an-operation"
+    ).foreach { corrupt =>
+      val injected = ujson.read(encoded).arr
+      corrupt(injected(0))
+      assert(GameEventWire.decodeStream(ujson.write(injected)).isLeft,
+        s"expected a typed WireError for ${ujson.write(injected)}")
+    }
+  }
+
+  test("a WalkerStepRecorded carrying two contribution ids round-trips") {
+    val player = PlayerId("red")
+    val pool = PoolKey("recover")
+    val event: OathEvent = WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.DicePoolModified(pool, 2)),
+      Vector(ModifyDicePool(pool, 2)),
+      Vector(PowerId("power.one"), PowerId("power.two")))
+
+    val encoded = GameEventWire.encodeStream("walker", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      Vector(event))
+    assertEquals(ujson.read(encoded).arr.head("payload")("contributions").arr
+      .map(_.str).toVector, Vector("power.one", "power.two"))
+  }
+
   test("an unencodable walker step payload returns a typed WireError, " +
       "not a thrown exception") {
     // WalkerStepPayload is intentionally open (WalkerEvents.scala) so a
@@ -330,10 +420,152 @@ class GameEventWireSuite extends munit.FunSuite {
     // WireError, exactly like an unrecognized value on the decode side.
     case object UnknownStepPayload extends WalkerStepPayload
     val event = WalkerStepRecorded(PlayerId("red"), "0", UnknownStepPayload,
-      Vector.empty)
+      Vector.empty, Vector.empty)
     GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
       case Left(_) => ()
       case Right(value) => fail(s"expected a WireError, got $value")
+    }
+  }
+
+  test("every CoreOperation variant round-trips through the walker codec") {
+    // `encodeOperation`/`encodePiece` are total over the sealed hierarchy
+    // (I8), exactly like `encodeLocation` above -- this list is every
+    // `CoreOperation` case EXCEPT the five walker tree-control nodes
+    // (`Decide`/`BuildOps`/`Repeat`/`Branch`/`Sequence`), which can never be
+    // a recorded, already-applied operation and are covered by the
+    // "surfaces a typed WireError" test below instead.
+    val player = PlayerId("red")
+    val other = PlayerId("blue")
+    val site = SiteId("site")
+    val denizen = DenizenId("denizen")
+    val vision = VisionId("vision")
+    val relic = RelicId("relic")
+    val edifice = EdificeId("edifice")
+    val lineage = LineageId("lineage")
+    val operations: Vector[CoreOperation] = Vector(
+      AdjustSupply(player, 2),
+      ModifyDicePool(PoolKey("recover"), 2),
+      Move(Piece.Card(relic),
+        PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+        PositionedLocation(Location.Site(site)), Some(Orientation.FaceDown)),
+      PayCost(player, Location.OnCard(denizen), Cost(favor = 1)),
+      Peek(player, denizen, Location.Site(site)),
+      Flip(denizen, Location.Site(site), Orientation.FaceUp),
+      FlipSecrets(player, 2, SecretSide.FaceUp, SecretSide.FaceDown),
+      Burn.favor(3, PositionedLocation(Location.PlayArea(player))),
+      Bury(BuryableCard.Relic(relic), PositionedLocation(Location.PlayArea(player))),
+      Discard.Denizen(denizen, PositionedLocation(Location.Site(site)),
+        Region.Cradle, Suit.Arcane, favor = 1, secrets = 1,
+        actingPlayer = player),
+      Discard.Vision(vision, PositionedLocation(Location.Hand(player)),
+        Region.Provinces),
+      Discard.RuinedEdifice(edifice, PositionedLocation(Location.Site(site)),
+        Suit.Order, favor = 0, secrets = 0, actingPlayer = player),
+      Discard.Relic(relic, PositionedLocation(Location.PlayArea(player)),
+        secrets = 2, actingPlayer = player),
+      Draw(player, Vector(relic), Location.Deck(CardDeck.Relic),
+        Location.PlayArea(player)),
+      Exchange(
+        Give(Piece.Favor(1), player, Location.PlayArea(player),
+          Location.PlayArea(other)),
+        Give(Piece.Secrets(1), other, Location.PlayArea(other),
+          Location.PlayArea(player))),
+      Gain.Favor(player, Suit.Beast, 2),
+      Gain.Secrets(player, 3),
+      Gain.Warbands(player, ForceKind.Imperial, 4),
+      Give(Piece.Secrets(2), player, Location.PlayArea(player),
+        Location.PlayArea(other)),
+      Kill(Piece.Warbands(ForceKind.Imperial, 3),
+        PositionedLocation(Location.Site(site))),
+      Play(denizen, PositionedLocation(Location.Hand(player)),
+        Location.Site(site), Orientation.FaceUp),
+      Replace(Piece.Warbands(ForceKind.Imperial, 2),
+        Piece.Warbands(ForceKind.Exile(lineage), 2),
+        PositionedLocation(Location.Site(site))),
+      Reveal(denizen, Location.Site(site)),
+      Sacrifice(player, Piece.Warbands(ForceKind.Exile(lineage), 1),
+        PositionedLocation(Location.Site(site))),
+      Swap(denizen, PositionedLocation(Location.Hand(player)),
+        vision, PositionedLocation(Location.PlayArea(player))),
+      Take(Piece.Secrets(1), player, Location.SharedBank,
+        Location.PlayArea(player)),
+      Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense)),
+      ModifyRollOutcome(PoolKey("recover"), Some(1), Some(2)),
+      ClearDicePool(PoolKey("recover")))
+
+    val events = operations.map(operation => WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("op")),
+      Vector(operation), Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker-ops", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("kind").str).toVector.distinct.size,
+      operations.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("every Piece variant round-trips through the walker codec") {
+    // `encodePiece` is fully total (I8): unlike `encodeOperation`, it has no
+    // throwing arm at all, so this list is the whole of `Piece`. `Take`
+    // carries a bare `Piece`, so it exercises each variant the same way
+    // `PayCost` exercises `Location` above.
+    val player = PlayerId("red")
+    val relic = RelicId("relic")
+    val lineage = LineageId("lineage")
+    val pieces: Vector[Piece] = Vector(
+      Piece.Card(relic),
+      Piece.Banner(Banner.PeoplesFavor),
+      Piece.Pawn(player),
+      Piece.Favor(1),
+      Piece.Secrets(2),
+      Piece.Warbands(ForceKind.Exile(lineage), 3))
+    val events = pieces.map(piece => WalkerStepRecorded(player, "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
+      Vector(Take(piece, player, Location.SharedBank,
+        Location.PlayArea(player))), Vector.empty): OathEvent)
+
+    val encoded = GameEventWire.encodeStream("walker-pieces", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event)
+      }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("ops")(0)("piece")("kind").str).toVector.distinct.size,
+      pieces.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("a walker tree-control node can never be recorded, and surfaces a " +
+      "typed WireError instead of an opaque exception") {
+    // Decide/BuildOps/Repeat/Branch/Sequence are `encodeOperation`'s five
+    // documented exceptions to totality (I8): three close over a Scala
+    // function value with no data representation, and none can legally
+    // reach this codec (ProcedureWalker only ever records an
+    // ALREADY-APPLIED delta batch, never one of its own control nodes). If
+    // one somehow did, this proves the failure is `UnencodableOperation`
+    // unwrapped into a typed `WireError` -- not an exception escaping the
+    // append path.
+    val player = PlayerId("red")
+    val noOwner = new OwnerQuery { def owner(ctx: WalkerCtx): Option[PlayerId] = None }
+    val nodes: Vector[CoreOperation] = Vector(
+      Decide(RecoverRelicPayload(RelicId("r")), noOwner, "recover.relic"),
+      BuildOps((_, _) => Right(Vector.empty)),
+      Repeat((_, _) => false, AdjustSupply(player, 1)),
+      Branch((_, _) => Vector.empty),
+      Sequence(Vector(AdjustSupply(player, 1))))
+    nodes.foreach { node =>
+      val event: OathEvent = WalkerStepRecorded(player, "0",
+        WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),
+        Vector(node), Vector.empty)
+      GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
+        case Left(_: WireError) => ()
+        case Right(value) => fail(s"expected a typed WireError for $node, " +
+          s"got $value")
+      }
     }
   }
 

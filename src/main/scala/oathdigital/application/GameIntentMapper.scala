@@ -3,6 +3,8 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
   WakeResource}
 import oathdigital.model._
+import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
+  RecoverRelicPayload}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -28,7 +30,6 @@ object GameIntentMapper {
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
-      case Intent.BeginRecover => Right(actor.beginRecover)
       case Intent.BeginForge => Right(actor.beginForge)
       case Intent.CompleteForge(id, values) => traverse(values)(forge).map(actor.completeForge(DecisionId(id), _))
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
@@ -48,8 +49,6 @@ object GameIntentMapper {
       case Intent.ReplaceNegotiationTerms(id, value) => negotiation(value).map(actor.replaceNegotiationTerms(DecisionId(id), _))
       case Intent.AcceptNegotiation(id) => Right(actor.acceptNegotiation(DecisionId(id)))
       case Intent.DeclineNegotiation(id) => Right(actor.declineNegotiation(DecisionId(id)))
-      case Intent.AddRecoverDice(id) => Right(actor.addRecoverDice(DecisionId(id)))
-      case Intent.StopRecover(id) => Right(actor.stopRecover(DecisionId(id)))
       case Intent.BeginCampaignConquest(sites, count) => Right(actor.beginCampaignConquest(sites.map(SiteId), count))
       case Intent.BeginCampaignRaid(values, count) => traverse(values)(raid).map(actor.beginCampaignRaid(_, count))
       case Intent.ChooseCampaignPlan(id, value) => plan(value).map(actor.chooseCampaignPlan(DecisionId(id), _))
@@ -59,6 +58,13 @@ object GameIntentMapper {
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
+      case Intent.StartWalker(value, modifiers) => for {
+        ref <- actionRef(value)
+        ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
+      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
+      case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
+      case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
+        actor.resolveWalker(TreeDecision(id, p)))
     }
   }
 
@@ -166,10 +172,26 @@ object GameIntentMapper {
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
   }
+  private def actionRef(value: String): Result[ActionRef] =
+    ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
+      s"unknown action '$value'"))
+  private def powerId(value: String, index: Int): Result[PowerId] =
+    PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+      s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
+  private def decisionPayload(value: DecisionPayloadWire): Result[DecisionPayload] = value match {
+    case DecisionPayloadWire.RecoverChoiceWire(choice) => choice match {
+      case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
+      case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
+      case v => invalid("$.intent.payload.choice", v, "Recover choice")
+    }
+    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
+      RelicId.fromValue(relicId).map(RecoverRelicPayload).toRight(
+        GameIntentMappingFailure("$.intent.payload.relicId",
+          s"invalid relic id '$relicId'"))
+  }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
     case DecisionResolution.Search(kept, discarded, p) => for { k <- world(kept, "$.intent.resolution.kept"); d <- traverse(discarded)(world(_, "$.intent.resolution.discardedInOrder")); selected <- placement(p) } yield CardDecisionResolution.Search(k, d, selected)
-    case DecisionResolution.TakeFacedownRelic(id) => Right(CardDecisionResolution.TakeFacedownRelic(RelicId(id)))
   }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
   private def option[A,B](value: Option[A])(f: A => Result[B]): Result[Option[B]] = value match { case Some(v) => f(v).map(Some(_)); case None => Right(None) }

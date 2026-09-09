@@ -6,6 +6,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathState, OathViolation,
   ReadyGame}
+import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model.DecisionPayload.{RecoverChoice,
   RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
@@ -17,8 +18,8 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   * the generic walker:
   *
   * {{{
-  * Sequence(
-  *   ModifyDicePool("recover", +2),
+  * Sequence(                                // window = RecoverActionEligibility
+  *   ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
   *   Repeat(guard = not succeeded && lastChoice != Stop,
   *     Sequence(
   *       Roll("recover", Defense),          // parks; faces ride `roll()`
@@ -26,9 +27,22 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   *       Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *     )),
   *   Branch(if success ->
-  *     Vector(Decide("recover.relic"), BuildOps(move chosen relic facedown)),
+  *     Vector(Decide("recover.relic"),
+  *       BuildOps(move chosen relic facedown)), // window = RecoverAfterRelic
   *     else Vector.empty))                  // stopped: ends with no relic
   * }}}
+  *
+  * Task 4 windows (reusing `PowerModel.scala`'s existing vocabulary, no power
+  * ported yet -- `OathRules.walkerPowers` legitimately offers none until
+  * Task 5): the whole tree's root carries `RecoverActionEligibility`
+  * (eligibility-shaped restrictions/relaxations gather here); the head
+  * `ModifyDicePool` -- the first node the walker ever executes -- carries
+  * `RecoverBeforeFirstRoll`; the `BuildOps` that moves the chosen relic
+  * carries `RecoverAfterRelic`. `RecoverModifierSelection` is not a tree node:
+  * it is the window a player-selected power is offered at, answered by
+  * `StartWalker`'s `modifiers` rather than by anything in this tree (see
+  * `OathRules.startWalker`/`walkerPowers`). No other node in this tree
+  * carries a window.
   *
   * Semantics (ruling 5.5 + legacy parity):
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
@@ -71,13 +85,44 @@ object RecoverProcedure {
 
   private val supplyCost: Int = 1
 
+  /** The actor's current pawn site -- the single definition `build`,
+    * `rebuild`, and [[actorFacedownRelics]] all read, so nothing in this
+    * module (or a caller outside it) can derive "the Recover site" a
+    * different way and silently disagree with the others.
+    */
+  def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
+    state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
+
+  /** The facedown relics at the actor's current site -- exactly the set
+    * `validateRelic` (below) accepts an answer against, read live off
+    * `state.game.current.map.sites` rather than off the tree's closed-over
+    * `siteId` or its inert placeholder marker (see `tree`'s doc comment).
+    * The application-layer projector calls this SAME method to build the
+    * candidate list a client is offered, so the projected candidates and
+    * the set the resolver accepts cannot drift apart: there is exactly one
+    * definition of "the actor's recoverable relics", not two expressions
+    * that merely happen to agree today.
+    */
+  def actorFacedownRelics(state: ReadyGame, actor: PlayerId)
+      : Vector[RelicState] =
+    actorSite(state, actor).flatMap(state.game.current.map.sites.get).fold(
+      Vector.empty[RelicState])(_.relics.filter(
+      _.orientation == Orientation.FaceDown))
+
+  /** `relaxEligibility` skips the facedown-relic gate below: set by
+    * `OathRules.startWalker` (ruling B) when some applicable power's
+    * contribution at `RecoverActionEligibility` promises to supply the
+    * missing relic itself (ruling C) -- a plain data flag, so this module
+    * never imports a power type to make the call.
+    */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] = for {
-    siteId <- state.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+      actor: PlayerId, relaxEligibility: Boolean = false)
+      : Either[OathViolation, Operation] = for {
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     _ <- RecoverRules.validateAction(catalog, OathState.Ready(state), actor,
       siteId)
-    _ <- gateFacedownRelic(state, siteId)
+    _ <- if (relaxEligibility) Right(()) else gateFacedownRelic(state, siteId)
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
@@ -88,8 +133,8 @@ object RecoverProcedure {
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for {
-    siteId <- state.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+    siteId <- actorSite(state, actor).toRight(
+      OathViolation.PawnSiteMissing(actor))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
   } yield tree(state, actor, siteId, difficulty)
@@ -119,9 +164,15 @@ object RecoverProcedure {
     // Payload markers: a Decide's `payload` only type-tags the choice; the
     // concrete answer rides `resolve`. The relic marker carries one known
     // facedown site relic id (Replay-safe: the marker never leaves the tree).
+    // A site with no facedown relic yet (Task 5: an eligible walker power may
+    // still supply one before the first roll opens) has no real id to name
+    // here -- "none" is an inert placeholder a real relic id can never equal
+    // (catalog relic ids are printed component codes, e.g. "R01"), and the
+    // marker is recomputed fresh on every `rebuild`, so once a relic lands
+    // at the site a resumed command's tree carries its real id instead.
     val markerRelic: RelicId =
       state.game.current.map.sites.get(siteId).flatMap(_.relics.headOption)
-        .fold(RelicId(""))(_.id)
+        .fold(RelicId("none"))(_.id)
 
     def supplyOf(ready: ReadyGame): Int =
       ready.game.current.players.find(_.player == actor)
@@ -155,14 +206,20 @@ object RecoverProcedure {
           s"$choiceDecisionId received an unexpected payload: $other"))
       }
 
+    // Reads `actorFacedownRelics(ready, actor)` -- the actor's LIVE pawn
+    // site, re-derived from `ready` on every call -- rather than this
+    // closure's own `siteId` (frozen at tree-build/rebuild time). This is
+    // the same method the projector calls to build the candidate list a
+    // client is offered (Task 7a finding I1): one shared definition of
+    // "the actor's recoverable relics" instead of two independently
+    // written expressions that could silently diverge if a future power
+    // let Recover target a site other than the actor's pawn site.
     def validateRelic(ready: ReadyGame, pending: PendingTree,
         payload: DecisionPayload): Either[OathViolation, Unit] =
       payload match {
         case RecoverRelicPayload(relicId) =>
-          val siteRelics = ready.game.current.map.sites.get(siteId)
-            .fold(Vector.empty[RelicState])(_.relics)
-          if (siteRelics.exists(relic => relic.id == relicId &&
-              relic.orientation == Orientation.FaceDown)) Right(())
+          if (actorFacedownRelics(ready, actor).exists(_.id == relicId))
+            Right(())
           else Left(OathViolation.RecoverOutcomeMismatch(
             "chosen relic is not a facedown relic at the site"))
         case other => Left(OathViolation.InvalidEventOrder(
@@ -191,7 +248,7 @@ object RecoverProcedure {
             resultingOrientation = Some(Orientation.FaceDown))))
         case _ => Left(OathViolation.InvalidEventOrder(
           "no recovered relic answer is recorded"))
-      })
+      }, window = Some(PowerWindow.RecoverAfterRelic))
 
     // Loop body: a roll parks (faces ride roll()), the roll's 1-supply
     // payment runs, then — only while the roll did NOT reach the difficulty —
@@ -214,9 +271,11 @@ object RecoverProcedure {
       else Vector.empty)
 
     Sequence(
-      ModifyDicePool(recoverPool, +2),
+      ModifyDicePool(recoverPool, +2,
+        window = Some(PowerWindow.RecoverBeforeFirstRoll)),
       Repeat(repeatGuard, body),
-      afterLoop)
+      afterLoop
+    ).copy(window = Some(PowerWindow.RecoverActionEligibility))
   }
 
   /** Recover decisions are resolved by the active player (Recover is an Act

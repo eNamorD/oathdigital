@@ -91,7 +91,6 @@ final case class AuthorizedPlayer private (
   def beginSearch(source: SearchSource): GameCommand =
     GameCommand.BeginSearch(access.playerId, source)
 
-  def beginRecover: GameCommand = GameCommand.BeginRecover(access.playerId)
   def beginForge: GameCommand = GameCommand.BeginForge(access.playerId)
   def completeForge(decision: DecisionId,
       assignments: Vector[ForgeResourceAssignment]): GameCommand =
@@ -125,11 +124,6 @@ final case class AuthorizedPlayer private (
     GameCommand.AcceptNegotiation(access.playerId, decision)
   def declineNegotiation(decision: DecisionId): GameCommand =
     GameCommand.DeclineNegotiation(access.playerId, decision)
-  def addRecoverDice(decision: DecisionId): GameCommand =
-    GameCommand.AddRecoverDice(access.playerId, decision)
-  def stopRecover(decision: DecisionId): GameCommand =
-    GameCommand.StopRecover(access.playerId, decision)
-
   def beginCampaignConquest(targetSiteIds: Vector[SiteId],
       attackDiceCount: Int): GameCommand =
     GameCommand.BeginCampaignConquest(
@@ -164,6 +158,12 @@ final case class AuthorizedPlayer private (
       resolution: CardDecisionResolution
   ): GameCommand = GameCommand.ResolveCardDecision(
     access.playerId, decision, resolution)
+
+  def rollWalker(pool: PoolKey): GameCommand =
+    GameCommand.RollWalker(access.playerId, pool)
+
+  def resolveWalker(treeDecision: TreeDecision): GameCommand =
+    GameCommand.ResolveWalker(access.playerId, treeDecision)
 }
 
 sealed trait AuthorizationFailure extends Product with Serializable

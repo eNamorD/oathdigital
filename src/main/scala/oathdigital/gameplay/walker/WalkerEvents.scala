@@ -3,7 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
 import oathdigital.model.{ActionRef, Answered, DecisionPayload, DieFace,
-  PlayerId, PoolKey, RelicId, SiteId}
+  PlayerId, PoolKey, PowerId, RelicId, SiteId}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -58,24 +58,36 @@ final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
   * `CoreOperation`s), so replay applies exactly the deltas that produced this
   * step; `nodeId` is the leaf's child-index path joined with `"."` (repeat
   * passes of one body leaf repeat the same `nodeId` — events stay ordered in
-  * the journal).
+  * the journal). `contributions` is the deterministic order of powers whose
+  * gather produced this step's `ops` (spec decision 10f) — an AUDIT fact
+  * (who influenced this node), never a replay input: `ops` alone is the
+  * replay authority (spec decision 5), so `ProcedureWalker.applyRecorded`
+  * reads `ops` and ignores this field entirely. `Vector.empty` for a node
+  * with no window (no explicit default: every construction site must state
+  * what it recorded).
   */
 final case class WalkerStepRecorded(
     actor: PlayerId,
     nodeId: String,
     payload: WalkerStepPayload,
-    ops: Vector[CoreOperation]
+    ops: Vector[CoreOperation],
+    contributions: Vector[PowerId]
 ) extends WalkerEvent
 
 /** Durable state fact written whenever walking stops at a Decide or Roll.
   * `action` is stored beside pointer-only PendingTree on replay so generic
-  * resume commands can rebuild the correct tree after reload.
+  * resume commands can rebuild the correct tree after reload. `modifiers`
+  * (fix-round ruling I) is the player-selected power ids chosen when the
+  * walker action started, carried on every park of this action so replay
+  * restores `CurrentGameState.walkerModifiers` from this fact alone, without
+  * re-running the walker or re-deriving anything.
   */
 final case class WalkerParked(
     actor: PlayerId,
     action: ActionRef,
     at: Vector[String],
-    answered: Vector[Answered]
+    answered: Vector[Answered],
+    modifiers: Vector[PowerId]
 ) extends WalkerEvent
 
 /** Durable action-boundary fact. Replay clears every walker-owned scratch

@@ -19,7 +19,6 @@ object GameIntent {
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
-  case object BeginRecover extends GameIntent
   case object BeginForge extends GameIntent
   final case class CompleteForge(decisionId: String,
       assignments: Vector[ForgeAssignment]) extends GameIntent
@@ -40,8 +39,6 @@ object GameIntent {
       extends GameIntent
   final case class AcceptNegotiation(decisionId: String) extends GameIntent
   final case class DeclineNegotiation(decisionId: String) extends GameIntent
-  final case class AddRecoverDice(decisionId: String) extends GameIntent
-  final case class StopRecover(decisionId: String) extends GameIntent
   final case class BeginCampaignConquest(targetSiteIds: Vector[String],
       attackDiceCount: Int) extends GameIntent
   final case class BeginCampaignRaid(targets: Vector[CampaignRaidTarget],
@@ -58,6 +55,20 @@ object GameIntent {
       recipientPlayerId: String) extends GameIntent
   final case class ResolveCardDecision(decisionId: String,
       resolution: DecisionResolution) extends GameIntent
+  /** Starts a walker action. `action` is the engine's persisted `ActionRef`
+    * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
+    * player-selected power ids chosen before the walk begins -- validated
+    * engine-side against the audited catalog, never interpreted here.
+    */
+  final case class StartWalker(action: String, modifiers: Vector[String])
+      extends GameIntent
+  /** Answers the currently parked Roll node for `pool`. Carries no die
+    * faces: those are generated application-side once the parked pool is
+    * validated against this command.
+    */
+  final case class RollWalker(pool: String) extends GameIntent
+  final case class ResolveWalker(decisionId: String,
+      payload: DecisionPayloadWire) extends GameIntent
 }
 
 final case class EconomyTarget(kind: String, id: String)
@@ -115,5 +126,19 @@ object DecisionResolution {
   final case class StartingAdviser(adviserId: String) extends DecisionResolution
   final case class Search(kept: WorldCard, discardedInOrder: Vector[WorldCard],
       placement: Placement) extends DecisionResolution
-  final case class TakeFacedownRelic(relicId: String) extends DecisionResolution
+}
+
+/** Wire form of the engine's open `DecisionPayload` trait, bounded to
+  * Recover's two payloads for this slice. A power that adds a walker
+  * decision widens this family the same way it widens `DecisionPayload`
+  * itself -- the engine stays generic over both.
+  */
+sealed trait DecisionPayloadWire extends Product with Serializable
+object DecisionPayloadWire {
+  /** `choice` is `"continue"` or `"stop"`; validated at the application
+    * mapping boundary, not here, matching every other enum-shaped field in
+    * this protocol (e.g. `TakeWealth`'s `resource`).
+    */
+  final case class RecoverChoiceWire(choice: String) extends DecisionPayloadWire
+  final case class RecoverRelicWire(relicId: String) extends DecisionPayloadWire
 }

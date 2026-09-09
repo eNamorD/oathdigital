@@ -3,8 +3,8 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand, Recover,
-  PreparedRecoverModifier, RecoverCommand, Search, SearchCommand, Travel,
+  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand,
+  Search, SearchCommand, Travel,
   TravelCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
@@ -13,23 +13,36 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
 import oathdigital.gameplay.powers.SearchPowers
-import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
-  WalkerOutcome, WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.powerresolver.{ContributingPower,
+  ContributionCollector, PowerCtx, PowerResolution, PowerWindow}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
+  WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 
-/** Deterministic aggregate boundary for setup and gameplay routing. */
+/** Deterministic aggregate boundary for setup and gameplay routing.
+  *
+  * `walkerPowerCatalog` is the full set of `ContributingPower`s this instance
+  * may offer to a walker command (empty in production until Task 5 registers
+  * a real power) -- a constructor parameter so a suite can drive a real
+  * command against a real power. `OathRules.walkerPowers` (Task 4) is the
+  * per-command projection of that catalog: restrictions are gathered from it
+  * at command entry and its transforms fold the tree during the walk.
+  * `walkerTree` is the same injection seam for the action tree a walker
+  * command walks; production derives it from the action's own module.
+  */
 final class OathRules(catalog: ExecutableCatalog,
     campaignLosingForceRegistry: CampaignLosingForceRegistry =
       CampaignLosingForceRegistry.default,
     warExhaustionRandomPort: WarExhaustionRandomPort =
-      WarExhaustionRandomPort.random)
+      WarExhaustionRandomPort.random,
+    walkerPowerCatalog: WalkerPowers = WalkerPowers.empty,
+    walkerTree: OathRules.WalkerTreeSource = OathRules.declaredWalkerTree)
     extends EventEvolution[OathState, OathEvent, OathViolation] {
   private val setup = new FirstGameSetupRules(catalog)
 
@@ -103,90 +116,196 @@ final class OathRules(catalog: ExecutableCatalog,
       case _ => Right(transition)
     }
 
-  def handle(state: OathState, command: RecoverCommand)
-      : Either[OathViolation, OathTransition] =
-    (command match {
-      case start: RecoverCommand.Start => withFallback(state, start.playerId,
-        MajorActionKind.Recover)(start.modifier match {
-          case None => Recover.handle(catalog, state, command)
-          case Some(PreparedRecoverModifier(events)) =>
-            GameplayTransition(state, events,
-              OathContinue.ActActionSelection(start.playerId))(evolve).flatMap {
-              prepared => Recover.handle(catalog, prepared.state, RecoverCommand.Roll(
-                start.playerId, start.decision, start.dice)).map(rolled =>
-                rolled.copy(events = prepared.events ++ rolled.events))
-            }
-          case Some(_) => Left(InvalidModifierInvocation(
-            "unknown Recover modifier contribution"))
-        })
-      case roll: RecoverCommand.Roll => withFallback(state, roll.playerId,
-        MajorActionKind.Recover)(Recover.handle(catalog, state, command))
-      case _ => Recover.handle(catalog, state, command)
-    }).flatMap { transition =>
-      command match {
-        case _: RecoverCommand.Stop | _: RecoverCommand.TakeRelic =>
-          completeAction(transition)
-        case _ => Right(transition)
-      }
-    }
-
   /** Starts one action on the generic procedure walker. Recover is the only
     * registered action in this vertical slice.
+    *
+    * `modifiers` (Task 4) is the ordered list of player-selected power ids
+    * the client chose; every id is validated against `walkerPowerCatalog`
+    * before any node walks (`validateModifiers`), and only the ids that
+    * survive select which `ContributingPower`s `walkerPowers` offers to this
+    * command's collector -- automatic powers are always offered regardless.
+    * An empty `modifiers` behaves exactly like every Recover before this
+    * task: nothing to validate, and `walkerPowers` offers only the
+    * (currently empty) automatic set.
     */
-  def startWalker(state: OathState, action: ActionRef,
-      actor: PlayerId): Either[OathViolation, OathTransition] =
+  def startWalker(state: OathState, action: ActionRef, actor: PlayerId,
+      modifiers: Vector[PowerId] = Vector.empty)
+      : Either[OathViolation, OathTransition] =
     state match {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
           ready.game.current.walkerAction.nonEmpty =>
         Left(InvalidEventOrder("a walker action is already pending"))
-      case Ready(ready) => withFallback(state, actor, MajorActionKind.Recover) {
-        for {
-          tree <- buildWalker(action, ready, actor, starting = true)
-          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None))
-          transition <- walkerTransition(state, ready, action, tree, outcome)
-        } yield transition
-      }
+      case Ready(ready) => WalkerActionRegistry.fallbackKind(action)
+        .flatMap(kind => withFallback(state, actor, kind) {
+          for {
+            _ <- validateModifiers(ready, actor, modifiers)
+            powers = walkerPowers(ready, actor, modifiers)
+            tree <- buildWalker(action, ready, actor, starting = true,
+              eligibilityRelaxed = eligibilityGathered(ready, actor, powers))
+            _ <- checkRestrictions(tree, powers, ready, actor)
+            outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
+              powers))
+            transition <- walkerTransition(state, ready, action, tree, outcome,
+              powers, modifiers)
+          } yield transition
+        })
       case _ => Left(GameNotStarted)
     }
 
+  /** The single place (Task 4) that turns `walkerPowerCatalog` plus the
+    * `modifiers` chosen for THIS command into the vector the walker actually
+    * sees. An automatic power (`PowerResolution.Automatic`, the trait
+    * default) is offered unconditionally; a player-selected power is offered
+    * only when its id appears in `modifiers` -- already validated against
+    * the catalog by `validateModifiers` before this runs on `startWalker`'s
+    * path. A resumed command (`resolveWalker`/`rollWalkerPrepared`) carries
+    * no `modifiers` of its own: `walkerResumeContext` (fix-round ruling I)
+    * reads the durable `CurrentGameState.walkerModifiers` -- persisted from
+    * `startWalker`'s choice via the `WalkerParked` fact -- and passes THAT
+    * here, so a player-selected power chosen at start is still offered on
+    * every later resume, and the fold at a shared window (e.g. the tree
+    * root) stays identical across the whole action.
+    */
+  def walkerPowers(ready: ReadyGame, actor: PlayerId,
+      modifiers: Vector[PowerId]): WalkerPowers =
+    WalkerPowers.selected(walkerPowerCatalog, modifiers)
+
+  /** The exact `ContributingPower`s a player may choose as a `modifiers` id
+    * for `actor` right now: `PlayerSelected` powers in `walkerPowerCatalog`
+    * that are `applicable` at `RecoverModifierSelection` -- the window a
+    * player-selected power is offered at (not a tree node; see
+    * `RecoverProcedure`'s doc). `validateModifiers` (below) rejects any id
+    * outside this set on `startWalker`; the pre-start preview
+    * (`GameApplicationService.preview`, Task 9a) offers exactly this set so
+    * the two can never drift apart -- one predicate, not a copy on each
+    * side.
+    */
+  def offerableWalkerPowers(ready: ReadyGame, actor: PlayerId)
+      : Vector[ContributingPower] =
+    walkerPowerCatalog.powers.filter(power =>
+      power.resolution == PowerResolution.PlayerSelected &&
+      power.applicable(PowerCtx(ready, actor, power.source,
+        PowerWindow.RecoverModifierSelection, Vector.empty)))
+
+  /** Rejects an unknown or inapplicable `modifiers` id with
+    * `InvalidEventOrder` before any node walks and before any event is
+    * appended (Task 4). A valid id names a `PlayerSelected` power in
+    * `walkerPowerCatalog` that is `applicable` at `RecoverModifierSelection`
+    * -- exactly `offerableWalkerPowers`' set, queried above rather than
+    * recomputed here. An empty `modifiers` validates trivially, matching
+    * every Recover before this task.
+    */
+  private def validateModifiers(ready: ReadyGame, actor: PlayerId,
+      modifiers: Vector[PowerId]): Either[OathViolation, Unit] = {
+    val offered: Set[PowerId] = offerableWalkerPowers(ready, actor).map(_.id).toSet
+    val selectable: Set[PowerId] = walkerPowerCatalog.powers
+      .filter(_.resolution == PowerResolution.PlayerSelected).map(_.id).toSet
+    modifiers.foldLeft[Either[OathViolation, Unit]](Right(())) {
+      case (Right(_), id) if offered(id) => Right(())
+      case (Right(_), id) if selectable(id) => Left(InvalidEventOrder(
+        s"power ${id.value} is not applicable to this Recover"))
+      case (Right(_), id) => Left(InvalidEventOrder(
+        s"unknown or non-selectable power id ${id.value}"))
+      case (left, _) => left
+    }
+  }
+
+  /** Task 3 wiring rule: restrictions run once per command, at command entry,
+    * before the walk -- collected across the whole derived `tree` via
+    * [[ProcedureWalker.restrictionViolations]]. The first violation (if any)
+    * rejects the command with no events appended, exactly like any other
+    * `withFallback`/`for`-comprehension short-circuit here.
+    */
+  private def checkRestrictions(tree: Operation, powers: WalkerPowers,
+      ready: ReadyGame, actor: PlayerId): Either[OathViolation, Unit] =
+    ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
+      .headOption.toLeft(())
+
+  /** Ruling C (narrowed by fix-round ruling L): the base start gate (a
+    * facedown relic already at the site) relaxes only when some applicable
+    * power declares a `Transform` at `RecoverActionEligibility`. Gathered
+    * directly against the window, with no tree needed yet -- this runs
+    * BEFORE `buildWalker` so its answer can steer the build (ruling B: the
+    * relaxed check lives here, not inside `RecoverProcedure.build`).
+    *
+    * Delegates to `OathRules.eligibilityRelaxed` (I6): the SAME predicate
+    * `LegalActionProjector.recoverEligible` uses to decide whether the
+    * Recover button should appear before a modifier is even chosen -- one
+    * shared rule instead of a hand-copied second implementation. This call
+    * site passes the command's SELECTED powers (`powers.powers`); the
+    * projector passes the full catalog (see that method's doc for why the
+    * two sets legitimately differ).
+    */
+  private def eligibilityGathered(ready: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean =
+    OathRules.eligibilityRelaxed(ready, actor, powers.powers)
+
   /** Resolves the current parked Decide. Action identity is reconstructed
     * from the durable walkerAction fact, never supplied by the client.
+    *
+    * `actor` is the requester bound by the transport (C1): it is checked
+    * against the durable parked position's own actor in
+    * `walkerResumeContext` before anything runs, so a seated player can
+    * never resume another player's parked walker action.
     */
-  def resolveWalker(state: OathState,
+  def resolveWalker(state: OathState, actor: PlayerId,
       answer: Answered): Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending) =>
-      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer))
-        .flatMap(walkerTransition(state, ready, action, tree, _))
+    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
+      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
+        powers)).flatMap(walkerTransition(state, ready, action, tree, _,
+          powers, modifiers))
     }
 
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
+    *
+    * `actor` is the requester bound by the transport (C1); see `resolveWalker`.
     */
-  def rollWalkerPrepared(state: OathState, pool: PoolKey)(
+  def rollWalkerPrepared(state: OathState, actor: PlayerId, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
       : Either[OathViolation, OathTransition] =
-    resumeWalker(state) { case (ready, action, tree, pending) =>
+    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
       for {
-        parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending)
-          .toRight(InvalidEventOrder(
+        parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
+          powers).toRight(InvalidEventOrder(
             "current walker position is not a Roll park")))
         _ <- Either.cond(parked._1 == pool, (), InvalidEventOrder(
           s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
         faces <- prepareFaces(parked._2)
-        outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces))
-        transition <- walkerTransition(state, ready, action, tree, outcome)
+        outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
+          powers))
+        transition <- walkerTransition(state, ready, action, tree, outcome,
+          powers, modifiers)
       } yield transition
     }
 
-  private def resumeWalker(state: OathState)(run: (ReadyGame, ActionRef,
-      Operation, PendingTree) => Either[OathViolation, OathTransition])
+  private def resumeWalker(state: OathState, actor: PlayerId)(run: (ReadyGame,
+      ActionRef, Operation, PendingTree, WalkerPowers, Vector[PowerId]) =>
+      Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
-    walkerResumeContext(state).flatMap { case (ready, action, tree, pending) =>
-      run(ready, action, tree, pending)
+    walkerResumeContext(state, actor).flatMap {
+      case (ready, action, tree, pending, powers, modifiers) =>
+        run(ready, action, tree, pending, powers, modifiers)
     }
 
-  private def walkerResumeContext(state: OathState)
-      : Either[OathViolation, (ReadyGame, ActionRef, Operation, PendingTree)] =
+  /** `modifiers` (fix-round ruling I) is read from the durable
+    * `CurrentGameState.walkerModifiers` -- restored by replay from the
+    * `WalkerParked` fact `startWalker` wrote, never re-derived -- so a
+    * resumed command offers the SAME player-selected powers `startWalker`
+    * validated, keeping every shared window's fold identical across the
+    * whole action.
+    *
+    * `actor` is the requester bound by the transport (C1): it is checked
+    * against `pending.actor` -- the durable owner of the parked position --
+    * independently of the `pending.actor == turn.activePlayer` sanity check
+    * below (that check compares two pieces of state against each other and
+    * proves nothing about who is asking; this one compares the caller
+    * against the state).
+    */
+  private def walkerResumeContext(state: OathState, actor: PlayerId)
+      : Either[OathViolation,
+      (ReadyGame, ActionRef, Operation, PendingTree, WalkerPowers,
+        Vector[PowerId])] =
     state match {
     case Ready(ready) => for {
       action <- ready.game.current.walkerAction.toRight(
@@ -195,22 +314,24 @@ final class OathRules(catalog: ExecutableCatalog,
         InvalidEventOrder("no walker position is pending"))
       _ <- Either.cond(pending.actor == ready.game.current.turn.activePlayer, (),
         WrongPlayer(ready.game.current.turn.activePlayer, pending.actor))
+      _ <- Either.cond(actor == pending.actor, (),
+        WrongPlayer(pending.actor, actor))
       _ <- Either.cond(ready.game.current.turn.phase == Phase.Act, (),
         WrongPhase(Phase.Act, ready.game.current.turn.phase))
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
       tree <- buildWalker(action, ready, pending.actor, starting = false)
-    } yield (ready, action, tree, pending)
+      modifiers = ready.game.current.walkerModifiers
+      powers = walkerPowers(ready, pending.actor, modifiers)
+      _ <- checkRestrictions(tree, powers, ready, pending.actor)
+    } yield (ready, action, tree, pending, powers, modifiers)
     case _ => Left(GameNotStarted)
   }
 
   private def buildWalker(action: ActionRef, ready: ReadyGame,
-      actor: PlayerId, starting: Boolean): Either[OathViolation, Operation] =
-    action match {
-      case ActionRef.Recover =>
-        if (starting) RecoverProcedure.build(catalog, ready, actor)
-        else RecoverProcedure.rebuild(catalog, ready, actor)
-    }
+      actor: PlayerId, starting: Boolean, eligibilityRelaxed: Boolean = false)
+      : Either[OathViolation, Operation] =
+    walkerTree(catalog, action, ready, actor, starting, eligibilityRelaxed)
 
   private def walkerCall[A](result: => Either[OathViolation, A])
       : Either[OathViolation, A] =
@@ -221,11 +342,12 @@ final class OathRules(catalog: ExecutableCatalog,
     }
 
   private def walkerTransition(state: OathState, ready: ReadyGame,
-      action: ActionRef, tree: Operation, outcome: WalkerOutcome)
+      action: ActionRef, tree: Operation, outcome: WalkerOutcome,
+      powers: WalkerPowers, modifiers: Vector[PowerId])
       : Either[OathViolation, OathTransition] = outcome match {
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(pending.actor, action, pending.at,
-        pending.answered)
+        pending.answered, modifiers)
       // The park's continuation prompt can depend on a Branch selecting its
       // children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so `continue` must be derived
@@ -239,7 +361,7 @@ final class OathRules(catalog: ExecutableCatalog,
           case _ => Left(InvalidEventOrder(
             "walker park did not resolve to a Ready state"))
         }
-        continue <- parkedContinue(liveReady, tree, pending)
+        continue <- parkedContinue(liveReady, tree, pending, powers, action)
         finalState <- evolve(afterSteps, fact)
       } yield OathTransition(finalState, steps :+ fact, continue)
 
@@ -269,28 +391,35 @@ final class OathRules(catalog: ExecutableCatalog,
     * or reordering a node in the action's tree would silently change which
     * path a given decision parks at, and the client would be handed the wrong
     * prompt (and decision id) with no error.
+    *
+    * The decision id -> continuation mapping itself is looked up on
+    * [[WalkerActionRegistry.continuationFor]] for `action` (I4), rather than
+    * matched here against one action's own constants (previously
+    * `RecoverProcedure.rollDecisionId`/`relicDecisionId`/`choiceDecisionId`)
+    * -- this module has no reason to know which decision ids any given
+    * action declares, only how to resolve the one the walker just parked
+    * on.
     */
   private def parkedContinue(ready: ReadyGame, tree: Operation,
-      pending: PendingTree): Either[OathViolation, OathContinue] =
-    ProcedureWalker.parkedRoll(ready, tree, pending) match {
-      case Some(_) => Right(OathContinue.AwaitingRecoverRoll(pending.actor,
-        DecisionId(RecoverProcedure.rollDecisionId)))
-      case None => ProcedureWalker.parkedDecide(ready, tree, pending) match {
-        case Some(decide)
-            if decide.decisionId == RecoverProcedure.relicDecisionId =>
-          Right(OathContinue.AwaitingRecoverRelic(pending.actor,
-            DecisionId(RecoverProcedure.relicDecisionId)))
-        case Some(decide)
-            if decide.decisionId == RecoverProcedure.choiceDecisionId =>
-          Right(OathContinue.AwaitingRecoverRoll(pending.actor,
-            DecisionId(RecoverProcedure.choiceDecisionId)))
-        case Some(decide) => Left(InvalidEventOrder(
+      pending: PendingTree, powers: WalkerPowers, action: ActionRef)
+      : Either[OathViolation, OathContinue] = {
+    def continuationFor(decisionId: String): Either[OathViolation, OathContinue] =
+      WalkerActionRegistry.continuationFor(action, decisionId, pending.actor,
+        DecisionId(decisionId)).flatMap(_.toRight(InvalidEventOrder(
           "no client continuation is registered for walker decision " +
-            decide.decisionId))
+            decisionId)))
+
+    ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
+      case Some(_) => WalkerActionRegistry.rollDecisionId(action)
+        .flatMap(continuationFor)
+      case None => ProcedureWalker.parkedDecide(ready, tree, pending,
+          powers) match {
+        case Some(decide) => continuationFor(decide.decisionId)
         case None => Left(InvalidEventOrder(
           "parked walker position is neither a Roll nor a Decide"))
       }
     }
+  }
 
   def handle(state: OathState, command: ForgeCommand)
       : Either[OathViolation, OathTransition] =
@@ -424,11 +553,6 @@ final class OathRules(catalog: ExecutableCatalog,
       case event: Traded => Economy.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)
       case event: SearchCompleted => Search.evolve(catalog, state, event)
-      case event: RecoverRolled => Recover.evolve(catalog, state, event)
-      case event: RecoverPowerEvent =>
-        RecoverPowerIntegration.evolve(catalog, state, event)
-      case event: RecoverStopped => Recover.evolve(catalog, state, event)
-      case event: RelicRecovered => Recover.evolve(catalog, state, event)
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
@@ -571,6 +695,68 @@ final class OathRules(catalog: ExecutableCatalog,
           })
       }
     }
+}
+
+object OathRules {
+  /** How a walker command derives the action tree it walks. `starting`
+    * distinguishes a fresh `startWalker` (the action's full start gates) from
+    * a resume (rebuild only). `eligibilityRelaxed` (Task 5, ruling B) carries
+    * `startWalker`'s relaxed-eligibility decision through to a `starting`
+    * build; a resume ignores it (its rebuild never re-runs the start gates).
+    */
+  type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
+    Boolean, Boolean) => Either[OathViolation, Operation]
+
+  /** Production tree source: every registered action declares its own tree
+    * via [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) --
+    * this is no longer an exhaustive match on [[ActionRef]], so an
+    * unregistered action rejects with a typed `Left` instead of a
+    * `MatchError`.
+    */
+  val declaredWalkerTree: WalkerTreeSource =
+    (catalog, action, ready, actor, starting, eligibilityRelaxed) =>
+      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
+        eligibilityRelaxed)
+      else WalkerActionRegistry.rebuild(action, catalog, ready, actor)
+
+  /** I6: the single relaxed-eligibility rule, shared between the command
+    * (`OathRules.startWalker`, via `eligibilityGathered`) and the projection
+    * layer (`LegalActionProjector.recoverEligible`), so the two never drift
+    * apart the way a hand-copied second implementation eventually will.
+    *
+    * True when SOME applicable power in `powers` declares a `Transform` at
+    * `RecoverActionEligibility`. A `Restriction` at this window never grants
+    * eligibility on its own -- it can only reject the action for an
+    * unrelated reason, and its mere presence must not be read as "eligible"
+    * (that reading previously let a power that *forbids* Recover also
+    * *enable* it).
+    *
+    * This method's contract is only the window and the Transform-presence
+    * check; it takes no position on WHICH powers `powers` should contain --
+    * that choice is deliberately the caller's, and the two production
+    * callers deliberately choose different sets. `startWalker` passes the
+    * command's SELECTED powers (`WalkerPowers.selected`, already narrowed to
+    * the modifiers this command chose) because it is deciding whether THIS
+    * command may proceed. `recoverEligible` passes the FULL catalog because
+    * it answers a different question -- "could some power relax this if the
+    * player chose it as a modifier" -- asked before any modifier has been
+    * picked, so the Recover button can appear on a relic-less site whose
+    * only eligibility-granting power has not been selected yet, even
+    * though the eventual `StartWalker` command still must select the power
+    * to actually use it.
+    *
+    * NOTE: this checks the *presence* of a Transform, not its *effect*. A
+    * future power whose Transform at this window does not actually supply a
+    * relic would still relax the gate. Known limitation, worth revisiting
+    * once a second power hooks this window.
+    */
+  def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
+      powers: Vector[ContributingPower]): Boolean = {
+    val window = PowerWindow.RecoverActionEligibility
+    ContributionCollector.gather(window, powers,
+      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+      .transforms.nonEmpty
+  }
 }
 
 private[gameplay] object GameStateUpdates {

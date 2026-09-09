@@ -90,15 +90,66 @@ final case class PendingCardDecisionProjection(
     orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
 )
-final case class RecoverProjection(
-    decisionId: String, dice: Vector[String], shields: Int,
-    difficulty: Int, supplySpent: Int, supplyRemaining: Int,
-    canAddDice: Boolean, canStop: Boolean)
 final case class ForgeAssignmentTargetProjection(
     siteId: String, denizenId: String, label: String)
 final case class ForgeProjection(
     decisionId: String, actorPlayerId: String, favor: Int, secrets: Int,
     targets: Vector[ForgeAssignmentTargetProjection])
+/** Wire projection of a parked generic-walker decision (Task 6:
+  * `CurrentGameState.walkerPending`/`walkerAction`) -- the walker path's
+  * counterpart to [[PendingCardDecisionProjection]] above, which the walker
+  * deliberately never populates.
+  *
+  * Owner-private the same way that one is: the projector only ever
+  * returns this for the parked actor, so `GameProjection.walkerDecision`
+  * is `None` for every other viewer -- not a redacted copy of this type.
+  *
+  * `kind` is the client-facing verb, not the tree's structural node type:
+  * `"roll"` means answer with `RollWalker` (no faces ride the command --
+  * `pool`/`count` are informational only), `"decide"` means answer with
+  * `ResolveWalker`. `decisionId` is always the parked node's stable
+  * identity (a synthetic id for a Roll park, since only `Decide` nodes
+  * carry one natively), so the three Recover parks -- roll, the
+  * continue/stop choice, and the relic pick -- are each distinguishable
+  * by `decisionId` alone.
+  *
+  * `relicCandidates` is populated only for the Recover relic Decide
+  * (`"recover.relic"`): the actor's current site's facedown relics, the
+  * same set `RecoverProcedure`'s `validateRelic` accepts at resolve time.
+  * The tree's own payload closes over a placeholder marker relic id used
+  * only to type-tag the Decide node; that marker is never surfaced here,
+  * since it is not a preselected or committed choice -- the concrete
+  * relic rides the `ResolveWalker` answer.
+  *
+  * `rollOutcome` (I5) carries the parked pool's accumulated roll feedback --
+  * the dice faces rolled so far, the derived score, and the site's
+  * Recover difficulty -- so the panel can show the player what they rolled
+  * and how close they are, matching the legacy (deleted) `RecoverProjection`
+  * this replaced. Owner-private exactly like the rest of this projection:
+  * the projector only ever returns the whole `WalkerDecisionProjection` for
+  * the parked actor, so no other viewer sees a roll outcome either.
+  */
+final case class WalkerDecisionProjection(
+    action: String,
+    decisionId: String,
+    kind: String,
+    pool: Option[String] = None,
+    count: Option[Int] = None,
+    relicCandidates: Vector[CardDetailsProjection] = Vector.empty,
+    rollOutcome: Option[WalkerRollOutcomeProjection] = None
+)
+/** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll
+  * order across every roll of the parked pool so far; `score` is the
+  * derived total (a `Doubler` on a later roll multiplies earlier shields,
+  * so this is not simply a per-face sum); `difficulty` is the acting
+  * player's current site's Recover difficulty, the target `score` must
+  * reach.
+  */
+final case class WalkerRollOutcomeProjection(
+    faces: Vector[String],
+    score: Int,
+    difficulty: Int
+)
 final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
   def banner: String = key

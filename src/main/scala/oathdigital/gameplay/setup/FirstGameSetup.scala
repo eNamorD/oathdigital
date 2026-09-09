@@ -251,9 +251,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: RestStarted | _: RestPowerEvent | _: RestCompleted =>
         Left(InvalidEventOrder("Rest requires the gameplay evolution"))
-      case _: RecoverPowerEvent | _: RecoverRolled |
-          _: RecoverStopped | _: RelicRecovered |
-          _: ForgeStarted | _: ForgeCompleted |
+      case _: ForgeStarted | _: ForgeCompleted |
           _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
           _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
@@ -263,7 +261,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>
-        Left(InvalidEventOrder("Recover requires the gameplay evolution"))
+        Left(InvalidEventOrder("Forge requires the gameplay evolution"))
       case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
           _: OathkeeperRecipientChosen | _: UsurperFlipped |
           _: UsurperVictory =>

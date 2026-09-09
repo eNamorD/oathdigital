@@ -7,8 +7,9 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
-  RecoverCommand, SearchCommand, TravelCommand}
-import oathdigital.gameplay.powers.recover.RecoverPowerIntegration
+  SearchCommand, TravelCommand}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -83,7 +84,8 @@ final class GameApplicationService(
 
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog,
-    warExhaustionRandomPort = warExhaustionRandomPort)
+    warExhaustionRandomPort = warExhaustionRandomPort,
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */
@@ -115,18 +117,49 @@ final class GameApplicationService(
       case None => Left(GameApplicationError.StreamNotFound(gameId))
       case Some(loaded) if loaded.nextSequence != expectedNextSequence =>
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
-      case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) => for {
-        options <- PowerRuntime.options(catalog, ready, actor, action)
-          .left.map(CommandRejected)
-        _ <- Either.cond(selected.distinct.size == selected.size &&
-          selected.forall(options.contains), (), CommandRejected(
-          OathViolation.InvalidModifierInvocation(
-            "preview contains a duplicate or unavailable modifier")))
-        ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
-          .left.map(CommandRejected)
-      } yield MajorActionPreviewAccepted(loaded, options, ignored)
+      case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
+        walkerAction(action) match {
+          case Some(_) =>
+            val options = rules.offerableWalkerPowers(ready, actor).map(power =>
+              OrderedRuleInvocation(power.source, power.id.value))
+            acceptPreview(loaded, options, selected, Vector.empty)
+          case None => for {
+            options <- PowerRuntime.options(catalog, ready, actor, action)
+              .left.map(CommandRejected)
+            ignored <- PowerRuntime.ignored(catalog, ready, actor, action)
+              .left.map(CommandRejected)
+            accepted <- acceptPreview(loaded, options, selected, ignored)
+          } yield accepted
+        }
       case Some(_) => Left(CommandRejected(OathViolation.GameNotStarted))
     }
+
+  /** `action` runs on the generic walker (Task 9a) exactly when its wire key
+    * names a registered [[oathdigital.model.ActionRef]] --
+    * `WalkerActionRegistry` stays the single place that knows which actions
+    * are walker-driven, so this needs no per-action `MajorActionKind` match
+    * of its own. `MajorActionKind` and `ActionRef` share their key strings by
+    * convention (see `GameIntentMapper.actionRef`, which bridges the same
+    * way from the wire intent), so a legacy-only kind like `Travel` simply
+    * has no matching `ActionRef` and falls through to the `None` branch.
+    */
+  private def walkerAction(action: MajorActionKind): Option[ActionRef] =
+    ActionRef.fromKey(action.key).filter(WalkerActionRegistry.isRegistered)
+
+  /** Shared acceptance gate for both preview branches: `selected` must be
+    * duplicate-free and a subset of `options`, whichever machinery produced
+    * `options`.
+    */
+  private def acceptPreview(loaded: LoadedGame,
+      options: Vector[OrderedRuleInvocation],
+      selected: Vector[OrderedRuleInvocation],
+      ignored: Vector[IgnoredRuleDiagnostic])
+      : Either[GameApplicationError, MajorActionPreviewAccepted] =
+    Either.cond(selected.distinct.size == selected.size &&
+      selected.forall(options.contains),
+      MajorActionPreviewAccepted(loaded, options, ignored),
+      CommandRejected(OathViolation.InvalidModifierInvocation(
+        "preview contains a duplicate or unavailable modifier")))
 
   def handle(
       gameId: String,
@@ -265,17 +298,7 @@ final class GameApplicationService(
                 "a modifier may be invoked only once"))
               else unavailable.map(value => Left(OathViolation.InvalidModifierInvocation(
                 s"modifier ${value.handlerId} is unavailable from ${value.source.stableKey}")))
-                .getOrElse((inner, ordered) match {
-                  case (GameCommand.BeginRecover(player), values) =>
-                    val decision = DecisionId(s"recover-$nextSequence")
-                    RecoverPowerIntegration.prepare(catalog, ready, player,
-                      decision, values,
-                      () => relicDrawPort.prepare(ready)).flatMap(modifier =>
-                      rules.handle(state, RecoverCommand.Start(player,
-                        decision,
-                        defenseDicePort.rollTwo(), modifier)))
-                  case _ => applyCommand(state, inner, nextSequence)
-                })
+                .getOrElse(applyCommand(state, inner, nextSequence))
             }
           }
         case _ => Left(OathViolation.GameNotStarted)
@@ -283,15 +306,16 @@ final class GameApplicationService(
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.StartWalker(action, start) =>
-        rules.startWalker(state, action, start.actor)
-      case GameCommand.ResolveWalker(treeDecision) =>
-        rules.resolveWalker(state, Answered(treeDecision.decisionId,
+        rules.startWalker(state, action, start.actor, start.modifiers)
+      case GameCommand.ResolveWalker(actor, treeDecision) =>
+        rules.resolveWalker(state, actor, Answered(treeDecision.decisionId,
           treeDecision.payload))
-      case GameCommand.RollWalker(pool) =>
-        rules.rollWalkerPrepared(state, pool) { count =>
-          Either.cond(count == 2, defenseDicePort.rollTwo(),
-            OathViolation.InvalidEventOrder(
-              s"Recover walker expected 2 defense dice but pool count is $count"))
+      case GameCommand.RollWalker(actor, pool) =>
+        rules.rollWalkerPrepared(state, actor, pool) { count =>
+          Either.cond(count == defenseDicePort.diceCount,
+            defenseDicePort.rollTwo(), OathViolation.InvalidEventOrder(
+              s"walker roll pool ${pool.value} requested $count dice but " +
+                s"the defense dice port only rolls ${defenseDicePort.diceCount}"))
         }
       case GameCommand.PlacePawn(playerId, siteId) =>
         setupRules.handle(state, FirstGameSetupCommand.PlacePawn(playerId, siteId))
@@ -322,9 +346,6 @@ final class GameApplicationService(
           } yield result
         case _ => Left(OathViolation.GameNotStarted)
       }
-      case GameCommand.BeginRecover(playerId) =>
-        rules.handle(state, RecoverCommand.Start(playerId,
-          DecisionId(s"recover-$nextSequence"), defenseDicePort.rollTwo(), None))
       case GameCommand.BeginForge(playerId) =>
         rules.handle(state, ForgeCommand.Begin(playerId,
           DecisionId(s"forge-$nextSequence")))
@@ -375,11 +396,6 @@ final class GameApplicationService(
         rules.handle(state, NegotiationCommand.Accept(playerId, decision))
       case GameCommand.DeclineNegotiation(playerId, decision) =>
         rules.handle(state, NegotiationCommand.Decline(playerId, decision))
-      case GameCommand.AddRecoverDice(playerId, decision) =>
-        rules.handle(state, RecoverCommand.Roll(playerId, decision,
-          defenseDicePort.rollTwo()))
-      case GameCommand.StopRecover(playerId, decision) =>
-        rules.handle(state, RecoverCommand.Stop(playerId, decision))
       case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
           DecisionId(s"campaign-$nextSequence"), targets, count))
@@ -433,9 +449,6 @@ final class GameApplicationService(
           case CardDecisionResolution.Search(kept, discarded, placement) =>
             rules.handle(state, SearchCommand.Complete(
               playerId, decision, kept, discarded, placement))
-          case CardDecisionResolution.TakeFacedownRelic(relicId) =>
-            rules.handle(state, RecoverCommand.TakeRelic(
-              playerId, decision, relicId))
         }
       case GameCommand.BeginRest(playerId) =>
         rules.handle(state, RestCommand.Begin(playerId))
@@ -461,7 +474,6 @@ final class GameApplicationService(
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
       case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
         Some(actor -> MajorActionKind.Search)
-      case GameCommand.BeginRecover(actor) => Some(actor -> MajorActionKind.Recover)
       case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)

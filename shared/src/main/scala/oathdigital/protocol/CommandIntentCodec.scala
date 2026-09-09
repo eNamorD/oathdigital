@@ -20,7 +20,6 @@ private[protocol] object CommandIntentCodec {
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
       "region" -> source.region.map(ujson.Str(_)).getOrElse(ujson.Null))
-    case BeginRecover => tagged("beginRecover")
     case BeginForge => tagged("beginForge")
     case CompleteForge(id, assignments) => tagged("completeForge", "decisionId" -> id,
       "assignments" -> ujson.Arr.from(assignments.map(forge)))
@@ -40,8 +39,6 @@ private[protocol] object CommandIntentCodec {
     case ReplaceNegotiationTerms(id, terms) => tagged("replaceNegotiationTerms", "decisionId" -> id, "terms" -> negotiation(terms))
     case AcceptNegotiation(id) => tagged("acceptNegotiation", "decisionId" -> id)
     case DeclineNegotiation(id) => tagged("declineNegotiation", "decisionId" -> id)
-    case AddRecoverDice(id) => tagged("addRecoverDice", "decisionId" -> id)
-    case StopRecover(id) => tagged("stopRecover", "decisionId" -> id)
     case BeginCampaignConquest(sites, count) => tagged("beginCampaignConquest", "targetSiteIds" -> ujson.Arr.from(sites.map(ujson.Str(_))), "attackDiceCount" -> count)
     case BeginCampaignRaid(targets, count) => tagged("beginCampaignRaid", "targets" -> ujson.Arr.from(targets.map(raid)), "attackDiceCount" -> count)
     case ChooseCampaignPlan(id, source) => tagged("chooseCampaignPlan", "decisionId" -> id, "source" -> plan(source))
@@ -51,6 +48,11 @@ private[protocol] object CommandIntentCodec {
     case RelocateCampaignRaidPawn(id, site) => tagged("relocateCampaignRaidPawn", "decisionId" -> id, "destinationSiteId" -> site)
     case ChooseOathkeeperRecipient(id, recipient) => tagged("chooseOathkeeperRecipient", "decisionId" -> id, "recipientPlayerId" -> recipient)
     case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
+    case StartWalker(action, modifiers) => tagged("startWalker", "action" -> action,
+      "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))))
+    case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
+    case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
+      "payload" -> CommandNestedCodecs.encodeDecisionPayloadWire(payload))
   }
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =

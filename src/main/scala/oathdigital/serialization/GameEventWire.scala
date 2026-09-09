@@ -44,10 +44,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val LeagueTreatyResolvedType = "gameplay.league-treaty-resolved"
   val LeagueTreatyDeclinedType = "gameplay.league-treaty-declined"
   val RestCompletedType = "gameplay.rest-completed"
-  val RecoverRolledType = "gameplay.recover-rolled"
-  val CatacombsResolvedType = "gameplay.catacombs-resolved"
-  val RecoverStoppedType = "gameplay.recover-stopped"
-  val RelicRecoveredType = "gameplay.relic-recovered"
   val ForgeStartedType = "gameplay.forge-started"
   val ForgeCompletedType = "gameplay.forge-completed"
   val BannerChallengeStartedType = "gameplay.banner-challenge-started"
@@ -124,17 +120,23 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     }
 
   /** Encoders in this vocabulary are total for every event this build knows
-    * how to construct, but `WalkerStepPayload`/`DeltaMeaning`/`CoreOperation`
-    * are open (or bounded to a slice's current variants), so an unencodable
-    * value reaching this append path must surface as a typed [[WireError]]
-    * rather than escape as a raw exception (matches the decode side's
-    * `NonFatal` boundary in `decodePayload`).
+    * how to construct (I8: `WalkerEventCodec.encodeOperation`/`encodePiece`
+    * are now total over `CoreOperation`/`Piece` too, matching
+    * `encodeLocation`), so an unencodable value reaching this append path
+    * must surface as a typed [[WireError]] rather than escape as a raw
+    * exception (matches the decode side's `NonFatal` boundary in
+    * `decodePayload`). `UnencodableOperation` is special-cased ahead of the
+    * generic `NonFatal` fallback so the FEW genuinely-impractical shapes
+    * (a walker tree-control node closing over a function value) surface
+    * their specific, already-typed `WireError` instead of the generic
+    * "$.payload" / stringified-message fallback below.
     */
   private def encodePayloadSafe(
       event: OathEvent
   ): Either[WireError, ujson.Value] =
     try Right(encodePayload(event))
     catch {
+      case UnencodableOperation(error) => Left(error)
       case NonFatal(error) =>
         Left(
           InvalidValue(

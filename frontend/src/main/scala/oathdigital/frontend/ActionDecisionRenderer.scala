@@ -244,7 +244,7 @@ private[frontend] object ActionDecisionRenderer {
        if (value.legalControls.contains("beginRecover")) {
          val recover = button("Recover (1 Supply)", "act-action recover-action")
          recover.disabled = !canControl
-         recover.onclick = _ => submitCommand(GameCommand.BeginRecover)
+         recover.onclick = _ => submitCommand(GameCommand.StartWalker("recover", Vector.empty))
          groups.appendKind("recover", recover)
        }
        if (value.legalControls.contains("beginForge")) {
@@ -335,24 +335,7 @@ private[frontend] object ActionDecisionRenderer {
        }
      }
    }
-   value.recover.filter(_ => presentation.showGameplayControls).foreach { recover =>
-     panel.appendChild(text("h2", "", "Recover"))
-     panel.appendChild(text("p", "recover-results",
-       s"Dice: ${recover.dice.mkString(", ")} · ${recover.shields}/${recover.difficulty} shields · " +
-         s"${recover.supplySpent} Supply spent · ${recover.supplyRemaining} remaining"))
-     if (recover.canAddDice) {
-       val add = button("Spend 1 Supply for two dice", "recover-add")
-       add.disabled = !canControl
-       add.onclick = _ => submitCommand(GameCommand.AddRecoverDice(recover.decisionId))
-       panel.appendChild(add)
-     }
-     if (recover.canStop) {
-       val stop = button("Stop Recover", "recover-stop")
-       stop.disabled = !canControl
-       stop.onclick = _ => submitCommand(GameCommand.StopRecover(recover.decisionId))
-       panel.appendChild(stop)
-     }
-   }
+   renderRecoverPanel(value, presentation, canControl, panel, ui)
    value.forge.filter(_ => presentation.showGameplayControls).foreach { forge =>
      panel.appendChild(text("h2", "", "Forge a relic"))
      panel.appendChild(text("p", "forge-instruction",
@@ -719,16 +702,7 @@ private[frontend] object ActionDecisionRenderer {
      zones.appendChild(keep); zones.appendChild(discard)
      zones
    }
-   if (decision.kind == "recover-relic") {
-     decision.cards.foreach { card =>
-       val choose = button(s"Take ${card.name} facedown", "resolution-choice")
-       choose.disabled = !canControl
-       choose.onclick = _ => submitCommand(GameCommand.ResolveCardDecision(
-         decision.decisionId,
-         DecisionResolution.TakeFacedownRelic(card.cardId)))
-       shell.appendChild(choose)
-     }
-   } else if (decision.kind == "starting-adviser") {
+   if (decision.kind == "starting-adviser") {
      shell.appendChild(arrangementZones(showDiscardOrder = false))
      val confirm = button("Confirm adviser", "decision-confirm")
      confirm.disabled = !state.arrangementValid(decision.cards) || !canControl

@@ -1,10 +1,13 @@
 package oathdigital.server
 
-import oathdigital.application.{GameCommand, GameIntentMapper}
+import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
+  TreeDecision}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model._
+import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
+  RecoverRelicPayload}
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  GameIntent}
+  DecisionPayloadWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
@@ -49,6 +52,77 @@ class GameHttpWireSuite extends munit.FunSuite {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.TakeWealth("injected-resource")).left.toOption.get
     assertEquals(failure.path, "$.intent.resource")
+  }
+
+  test("walker intents map onto Task 4's StartWalker/RollWalker/ResolveWalker " +
+      "commands, and RollWalker never carries client-supplied faces") {
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.StartWalker("recover", Vector("denizen.catacombs"))),
+      Right(GameCommand.StartWalker(ActionRef.Recover,
+        StartPayload(PlayerId("actor-1"), Vector(PowerId("denizen.catacombs"))))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.StartWalker("recover", Vector.empty)),
+      Right(GameCommand.StartWalker(ActionRef.Recover,
+        StartPayload(PlayerId("actor-1")))))
+    // RollWalker takes only a pool key -- there is no field on the wire
+    // intent, the codec, or GameCommand.RollWalker for a client to place
+    // die faces into. It DOES carry the transport-bound actor (C1): the
+    // rules layer checks the requester against the parked position's owner
+    // before resuming anything.
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.RollWalker("recover.pool")),
+      Right(GameCommand.RollWalker(PlayerId("actor-1"), PoolKey("recover.pool"))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("recover.choice",
+        DecisionPayloadWire.RecoverChoiceWire("continue"))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.choice",
+          RecoverChoicePayload(RecoverChoice.Continue)))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("recover.choice",
+        DecisionPayloadWire.RecoverChoiceWire("stop"))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.choice",
+          RecoverChoicePayload(RecoverChoice.Stop)))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("recover.relic",
+        DecisionPayloadWire.RecoverRelicWire("relic-1"))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("recover.relic",
+          RecoverRelicPayload(RelicId("relic-1"))))))
+  }
+
+  test("an unknown walker action string is rejected without throwing") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.StartWalker("teleport", Vector.empty)).left.toOption.get
+    assertEquals(failure.path, "$.intent.action")
+    assert(failure.message.contains("unknown action"))
+  }
+
+  test("a malformed walker modifier id is rejected with a typed failure, " +
+      "not an exception") {
+    val result = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.StartWalker("recover", Vector("Recover")))
+    val failure = result match {
+      case Left(f) => f
+      case Right(command) => fail(s"expected a typed rejection, got $command")
+    }
+    assertEquals(failure.path, "$.intent.modifiers[0]")
+  }
+
+  test("an unknown Recover choice value is rejected without throwing") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.ResolveWalker("recover.choice",
+        DecisionPayloadWire.RecoverChoiceWire("teleport"))).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.choice")
+  }
+
+  test("a blank relic id is rejected with a typed failure, not an " +
+      "IllegalArgumentException escaping the mapper (finding I7)") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.ResolveWalker("recover.relic",
+        DecisionPayloadWire.RecoverRelicWire(""))).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.relicId")
   }
 
   test("malformed actorless requests retain typed paths") {

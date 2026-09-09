@@ -2,6 +2,7 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
+import oathdigital.protocol.DecisionPayloadWire
 
 class ServerModeUiSuite extends FunSuite {
   test("secret summaries lead with available over total and explain unavailable tokens") {
@@ -14,6 +15,19 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.secretSummaryLabel(1, 2, 0, 1),
       "1 available of 2 owned; 0 facedown and 1 committed")
   }
+  test("the Recover roll outcome summary shows the target before any roll " +
+      "and the accumulated dice and score after") {
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector.empty, 0, 4)),
+      "Need 4 shields to succeed.")
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector("blank", "blank"), 0, 4)),
+      "Rolled blank, blank -- 0 shields so far (need 4).")
+    assertEquals(ServerUiSupport.rollOutcomeSummary(
+      WalkerRollOutcomeState(Vector("two-shields", "doubler"), 4, 4)),
+      "Rolled two-shields, doubler -- 4 shields so far (need 4).")
+  }
+
   test("Negotiation editor restores only authored relic and disclosure selections") {
     val relic = CardDetails("R1", "relic", "Public Relic")
     val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
@@ -332,6 +346,62 @@ class ServerModeUiSuite extends FunSuite {
       GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:b"),
       GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:c")))
     assertEquals(ServerUiSupport.raidRelocationCommands(decision, "blue"), Vector.empty)
+  }
+
+  test("a parked walker roll classifies as a Roll control carrying the projected pool") {
+    val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
+      pool = Some("recover"), count = Some(2))
+    assertEquals(ServerUiSupport.recoverWalkerStep(roll),
+      Some(ServerUiSupport.RecoverWalkerStep.Roll("recover")))
+    // No die faces ride the command -- only the projected pool key does.
+    assertEquals(GameCommand.RollWalker("red", "recover"),
+      oathdigital.protocol.GameIntent.RollWalker("recover"))
+  }
+
+  test("a roll park with no projected pool renders no control rather than guessing one") {
+    assertEquals(ServerUiSupport.recoverWalkerStep(
+      WalkerDecisionState("recover", "walker.recover.roll", "roll")), None)
+  }
+
+  test("the parked Recover choice decision resolves Continue and Stop against its " +
+      "own decision id, distinct from the relic park sharing its \"decide\" kind") {
+    val choice = WalkerDecisionState("recover", "recover.choice", "decide")
+    assertEquals(ServerUiSupport.recoverWalkerStep(choice),
+      Some(ServerUiSupport.RecoverWalkerStep.Choice))
+    assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "continue"),
+      GameCommand.ResolveWalker("red", "recover.choice",
+        DecisionPayloadWire.RecoverChoiceWire("continue")))
+    assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "stop"),
+      GameCommand.ResolveWalker("red", "recover.choice",
+        DecisionPayloadWire.RecoverChoiceWire("stop")))
+  }
+
+  test("the parked Recover relic decision offers one control per projected " +
+      "candidate, never a preselected relic") {
+    val bronze = CardDetails("relic-1", "relic", "Bronze Idol")
+    val silver = CardDetails("relic-2", "relic", "Silver Idol")
+    val relic = WalkerDecisionState("recover", "recover.relic", "decide",
+      relicCandidates = Vector(bronze, silver))
+    assertEquals(ServerUiSupport.recoverWalkerStep(relic),
+      Some(ServerUiSupport.RecoverWalkerStep.Relic(Vector(bronze, silver))))
+    assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, bronze.cardId),
+      GameCommand.ResolveWalker("red", "recover.relic",
+        DecisionPayloadWire.RecoverRelicWire("relic-1")))
+    assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, silver.cardId),
+      GameCommand.ResolveWalker("red", "recover.relic",
+        DecisionPayloadWire.RecoverRelicWire("relic-2")))
+  }
+
+  test("an unrecognized parked walker decision renders no Recover control") {
+    assertEquals(ServerUiSupport.recoverWalkerStep(
+      WalkerDecisionState("recover", "some.other.decision", "decide")), None)
+  }
+
+  test("a parked decision for a walker action other than Recover renders no " +
+      "Recover control, even if it happens to reuse a Recover-shaped kind") {
+    assertEquals(ServerUiSupport.recoverWalkerStep(
+      WalkerDecisionState("teleport", "walker.recover.roll", "roll",
+        pool = Some("recover"))), None)
   }
 
   test("site forces retain accessible labels counts and stable color classes") {

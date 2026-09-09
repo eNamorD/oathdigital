@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.operations.{Cost, RelicPlacement}
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 
 sealed trait OathEvent extends Product with Serializable
@@ -16,13 +15,6 @@ sealed trait OathEvent extends Product with Serializable
   */
 trait WalkerEvent extends OathEvent {
   def actor: PlayerId
-}
-sealed trait RecoverPowerEvent extends OathEvent {
-  def playerId: PlayerId
-  def decision: DecisionId
-  def powerId: PowerId
-  def source: RuleSourceRef.SiteCard
-  final def siteId: SiteId = source.siteId
 }
 sealed trait RestPowerEvent extends OathEvent {
   def restActor: PlayerId
@@ -97,18 +89,6 @@ object OathEvent {
       favorGained: Int = 0,
       discardedWorld: Vector[WorldCardId] = Vector.empty,
       discardedEdifices: Vector[EdificeId] = Vector.empty
-  ) extends OathEvent
-  final case class RecoverRolled(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      supplySpent: Int, dice: Vector[DefenseDieFace]
-  ) extends OathEvent
-  final case class CatacombsResolved(playerId: PlayerId, decision: DecisionId,
-      powerId: PowerId, source: RuleSourceRef.SiteCard, cost: Cost,
-      placement: RelicPlacement) extends RecoverPowerEvent
-  final case class RecoverStopped(playerId: PlayerId, decision: DecisionId)
-      extends OathEvent
-  final case class RelicRecovered(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId, relicId: RelicId
   ) extends OathEvent
   final case class ForgeStarted(
       playerId: PlayerId, decision: DecisionId, siteId: SiteId,
