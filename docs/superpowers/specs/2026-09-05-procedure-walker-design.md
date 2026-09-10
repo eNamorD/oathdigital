@@ -222,9 +222,12 @@ revisit. Changed while exactly one `ContributingPower` existed, it was one
 line on this trait and one at `ContributionCollector`'s vote step, which
 already held both power objects.
 
-`PowerCtx(state, actor, source, window, nodePath)` carries no mutable state
-and no catalog of its own — a contribution reads game state through
-`ctx.state` and identifies itself through its own `source`. A contribution
+`PowerCtx(state, actor, source, window, nodePath, operation)` carries no
+mutable state and no catalog of its own. `operation` is the generic hooked
+operation, so a contribution may inspect its children when applicability needs
+facts carried by the tree (for example Travel's sibling payment and Move).
+A contribution reads game state through `ctx.state` and identifies itself
+through its own `source`. A contribution
 needing STATIC catalog data that neither `ReadyGame` nor `BuildOps.build`
 exposes (e.g. a site's `relicSlots`) holds an `ExecutableCatalog` reference
 on the contribution object itself, built once by a catalog-parameterized

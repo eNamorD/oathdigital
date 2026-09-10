@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
-import oathdigital.gameplay.operations.Operation
+import oathdigital.gameplay.operations.{Operation, Sequence}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
   PowerResolution}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
@@ -124,7 +124,7 @@ private[gameplay] trait OathRulesWalker {
       case Some(window) => walkerPowerCatalog.powers.filter(power =>
         power.resolution == PowerResolution.PlayerSelected &&
         power.applicable(PowerCtx(ready, actor, power.source, window,
-          Vector.empty)))
+          Vector.empty, Sequence(Vector.empty, Some(window)))))
     }
 
   /** Rejects an unknown or inapplicable `modifiers` id with

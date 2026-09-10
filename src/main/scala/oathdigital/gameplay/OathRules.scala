@@ -14,7 +14,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
-import oathdigital.gameplay.operations.Operation
+import oathdigital.gameplay.operations.{Operation, Sequence}
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   ContributionCollector, PowerCtx}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
@@ -453,7 +453,8 @@ object OathRules {
     WalkerActionRegistry.eligibilityWindow(action, registrations).map {
       case None => false
       case Some(window) => ContributionCollector.gather(window, powers,
-        power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+        power => PowerCtx(ready, actor, power.source, window, Vector.empty,
+          Sequence(Vector.empty, Some(window))))
         .transforms.nonEmpty
     }
 }

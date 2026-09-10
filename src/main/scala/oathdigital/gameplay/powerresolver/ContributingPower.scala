@@ -13,7 +13,9 @@ final case class PowerCtx(
     actor: PlayerId,
     source: RuleSourceRef,
     window: PowerWindow,
-    nodePath: Vector[String]
+    nodePath: Vector[String],
+    /** Exact windowed operation a contribution is being collected for. */
+    operation: Operation
 )
 
 /** The two ways a power may speak at a hooked node (spec decision 9). A

@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.gameplay.operations.Sequence
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.model.PowerId
 
@@ -51,7 +52,8 @@ class ContributingPowerSuite extends munit.FunSuite {
       actor = ready.game.current.turn.activePlayer,
       source = power.source,
       window = PowerWindow.RecoverEligibility,
-      nodePath = Vector("root")
+      nodePath = Vector("root"),
+      operation = Sequence(Vector.empty, Some(PowerWindow.RecoverEligibility))
     )
 
     assertEquals(power.priority, 0)

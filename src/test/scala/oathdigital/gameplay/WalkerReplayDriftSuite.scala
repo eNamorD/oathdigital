@@ -240,7 +240,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       powers: WalkerPowers): Boolean = {
     val window = PowerWindow.RecoverActionEligibility
     ContributionCollector.gather(window, powers.powers,
-      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
+      power => PowerCtx(ready, actor, power.source, window, Vector.empty,
+        Sequence(Vector.empty, Some(window))))
       .transforms.nonEmpty
   }
 

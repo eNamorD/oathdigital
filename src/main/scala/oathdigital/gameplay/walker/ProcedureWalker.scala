@@ -443,11 +443,11 @@ object ProcedureWalker {
     * local to this walk. A composite emits no event of its own; its gather
     * order rides down to the leaves it shaped (ruling F).
     */
-  private def walkFolded(window: Option[PowerWindow],
+  private def walkFolded(window: Option[PowerWindow], operation: Operation,
       children: Vector[Operation], ctx: WalkCtx, path: Vector[String],
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
-    val (folded, order) = WalkerPowerGather.applyWindow(window, ctx.state,
+    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
       ctx.actor, ctx.powers, path, children)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
   }
@@ -455,7 +455,7 @@ object ProcedureWalker {
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
-    walkFolded(composite.window, composite.children, ctx, path, cursor,
+    walkFolded(composite.window, composite, composite.children, ctx, path, cursor,
       resume, hooks)
 
   /** A `Branch` has no static children: its `select` chooses the children to
@@ -470,7 +470,7 @@ object ProcedureWalker {
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val branchTree = PendingTree(at = path, answered = ctx.answered,
       actor = ctx.actor)
-    walkFolded(branch.window, branch.select(ctx.state, branchTree), ctx, path,
+    walkFolded(branch.window, branch, branch.select(ctx.state, branchTree), ctx, path,
       cursor, resume, hooks)
   }
 
@@ -488,7 +488,7 @@ object ProcedureWalker {
       */
     def pass(current: WalkCtx,
         at: Option[Vector[String]]): Either[OathViolation, Step] =
-      walkFolded(repeat.window, repeat.children, current, path, at, resume,
+      walkFolded(repeat.window, repeat, repeat.children, current, path, at, resume,
         hooks).flatMap {
           case park: Park => Right(park)
           case Done(next) => passes(next)
@@ -525,7 +525,7 @@ object ProcedureWalker {
       path: Vector[String], cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = leaf.window match {
     case Some(w) if !hooks.gathered.contains(w) =>
-      walkFolded(Some(w), Vector(leaf), ctx, path, cursor, resume,
+      walkFolded(Some(w), leaf, Vector(leaf), ctx, path, cursor, resume,
         hooks.copy(gathered = hooks.gathered + w))
     case _ => runLeaf(leaf, ctx, path, cursor, resume, hooks.inherited)
   }

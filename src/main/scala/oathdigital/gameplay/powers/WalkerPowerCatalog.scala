@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
+import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
@@ -13,5 +14,6 @@ import oathdigital.gameplay.walker.WalkerPowers
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =
-    WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector)
+    WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
+      TravelSitePowers.forCatalog(catalog))
 }
