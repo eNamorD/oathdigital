@@ -87,3 +87,17 @@ with `./sbtw Docker/publishLocal`. Packaged launchers default to
 environment, then default precedence. See
 [runtime configuration](docs/operations/configuration.md) for every option and
 archive/container examples.
+
+## Trusted-alpha operations
+
+Operators should read these guides before inviting players:
+
+- [host and player quick start](docs/operations/quick-start.md)
+- [runtime configuration](docs/operations/configuration.md)
+- [backup, restore, reset, and upgrade policy](docs/operations/data-policy.md)
+- [LAN, HTTPS proxy, logging, and browser guidance](docs/operations/network-and-browser.md)
+- [per-build manual acceptance record](docs/operations/alpha-acceptance.md)
+- [packaged artifact smoke tests](docs/operations/packaged-smoke-test.md)
+
+Seat links grant full control of their seats and are intended only for trusted
+alpha groups. The guides do not add accounts or remote administration.

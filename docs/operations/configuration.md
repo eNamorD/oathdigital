@@ -10,6 +10,11 @@ Universal archives require Java 21 on the host. They do not require sbt or
 Node. The OCI image bundles a Java 21 runtime and runs as the non-root
 `oathdigital` user (UID 10001).
 
+Start with the [trusted-alpha quick start](quick-start.md). Before operating on
+persistent files, read the [data and upgrade policy](data-policy.md). LAN,
+firewall, HTTPS proxy, and provisional browser guidance is in
+[network and browser guidance](network-and-browser.md).
+
 ## Options
 
 | Command-line option | Environment variable | Default |
@@ -38,14 +43,15 @@ OATH_MODE=trusted-alpha \
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
-OATH_DATABASE_PATH=/var/lib/oathdigital/database \
-OATH_CATALOG_PATH=/opt/oathdigital/catalog/new-foundations-component-catalog.json \
+OATH_DATABASE_PATH=/home/alex/oathdigital-data/alpha-1/database \
 bin/oathdigital
 ```
 
-For a catalog bundled in the archive, omit `OATH_CATALOG_PATH`. For loopback
+The example data directory must exist and be writable by the process. For the
+catalog bundled in the archive, omit `OATH_CATALOG_PATH` as shown. For loopback
 use, omit `OATH_HOST` and `OATH_PUBLIC_BASE_URL`. Windows users can set the
-same environment variables and run `bin\oathdigital.bat`.
+same environment variables and run `bin\oathdigital.bat`; complete commands
+for all three host operating systems are in the quick start.
 
 ## OCI image
 
@@ -66,6 +72,11 @@ docker run --rm --name oathdigital \
 Name a volume as shown to keep the database across container replacements; the
 declared volume otherwise becomes an anonymous one.
 
+Stop the container with `docker stop --time 15 oathdigital`, wait for the
+database-close log, and remove only the stopped container with
+`docker rm oathdigital`. The named volume remains. Follow the data policy for
+stopped-volume backup and matching-release restore.
+
 For host-local access only, replace `--publish 8080:8080` with
 `--publish 127.0.0.1:8080:8080` and use a loopback public base URL such as
 `http://127.0.0.1:8080`.
@@ -80,7 +91,8 @@ produces an image for the build host's own architecture only. Multi-architecture
 build and publication for `linux/amd64` and `linux/arm64` is delivered by the
 `phase-5-release-operations` follow-up plan.
 
-Internet exposure requires HTTPS at a trusted reverse proxy. Detailed TLS,
-multi-machine, backup/restore, and release acceptance belongs to the
-`phase-5-release-operations` follow-up plan and is not established by this
-packaging contract.
+Internet exposure requires HTTPS at a trusted reverse proxy. Use the concrete
+proxy and log-redaction requirements in the network guidance, then record
+separate-machine LAN and TLS results in the
+[per-build alpha acceptance record](alpha-acceptance.md). An unexecuted record
+is a template, not acceptance evidence.

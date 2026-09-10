@@ -156,8 +156,10 @@ leaked. Keep the raw loopback development event log separate.
 3. [ ] Verify two or more browsers on separate machines can create/join,
    reconnect, reload persisted games, and complete representative multi-player
    turns over a LAN.
-4. [ ] Add backup and restore guidance plus a clear alpha data reset and upgrade
-   policy.
+4. [x] Add backup and restore guidance plus a clear alpha data reset and upgrade
+   policy. The packaged [data policy](operations/data-policy.md) documents
+   stopped-directory backup, matching-release restore, backup-before-upgrade,
+   newer-schema rejection, and reversible reset without deleting old data.
 5. [ ] Complete release operations: publish multi-architecture Linux OCI images
    for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
    browser support and firewall/reverse-proxy/TLS requirements, and publish a

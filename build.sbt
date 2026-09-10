@@ -55,13 +55,15 @@ lazy val root = (project in file("."))
     ),
     Universal / packageName := "oathdigital",
     executableScriptName := "oathdigital",
-    Universal / mappings ++= Seq(
-      baseDirectory.value /
+    Universal / mappings ++= {
+      val operations = ((baseDirectory.value / "docs/operations") ** "*.md")
+        .get
+        .map(file => file -> s"share/oathdigital/${file.getName}")
+      (baseDirectory.value /
         "docs/catalog/new-foundations-component-catalog.json" ->
-        "share/oathdigital/new-foundations-component-catalog.json",
-      baseDirectory.value / "docs/operations/configuration.md" ->
-        "share/oathdigital/configuration.md"
-    ),
+        "share/oathdigital/new-foundations-component-catalog.json") +:
+        operations
+    },
     Universal / javaOptions += "-Dfile.encoding=UTF-8",
     bashScriptExtraDefines ++= Seq(
       """if [ -z "${OATH_MODE+x}" ]; then OATH_MODE=trusted-alpha; fi""",
@@ -95,7 +97,13 @@ lazy val root = (project in file("."))
         "bin/oathdigital",
         "bin/oathdigital.bat",
         "share/oathdigital/new-foundations-component-catalog.json",
-        "share/oathdigital/configuration.md"
+        "share/oathdigital/configuration.md",
+        "share/oathdigital/packaged-smoke-test.md",
+        "share/oathdigital/phase-5-follow-ups.md",
+        "share/oathdigital/quick-start.md",
+        "share/oathdigital/data-policy.md",
+        "share/oathdigital/network-and-browser.md",
+        "share/oathdigital/alpha-acceptance.md"
       )
       val missingFiles = requiredFiles.filterNot(destinations.contains)
       val serverJarMapped = packageMappings.exists { case (source, path) =>
