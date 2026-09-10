@@ -156,7 +156,12 @@ Each terrain site power becomes its own contribution class, grouped in one file:
 
 **How a windowed node presents its children, which decides the shape of every transform here** (found by Task 2). A `Transform` receives the hooked node's children vector. For a `PrimitiveOperation` that vector is `Vector(theLeafItself)` — a leaf's `children` is a self-reference — so a transform hooked on a windowed *leaf* can only replace that leaf wholesale, and cannot see inside a `BuildOps` closure at all. For a composite it is the real children.
 
-Therefore Travel's cost node is a bare `AdjustSupply` leaf inside a `Sequence` carrying `PowerWindow.TravelCost`, **not** a `BuildOps` wrapping an `AdjustSupply`. The walker executes a plain delta leaf directly, so nothing is lost, and a terrain transform then receives `Vector(AdjustSupply(actor, -base))` and rewrites the amount honestly. Written the other way, the transform would have to reconstruct the base-cost computation inside its own replacement closure, which is exactly the engine knowledge a power is not supposed to hold.
+Therefore Travel's cost node is `Sequence(AdjustSupply, Move)` carrying
+`PowerWindow.TravelCost`, **not** a `BuildOps` wrapping an `AdjustSupply`.
+The walker executes the plain delta leaf directly, and each terrain transform
+receives both `AdjustSupply(actor, -base)` and its sibling destination `Move`.
+It rewrites the amount honestly, without reconstructing base-cost computation
+inside a replacement closure.
 
 Only four `Operation` cases carry a `window` at all — `ModifyDicePool`, `Decide`, `BuildOps` and `Sequence` — so a delta that needs to be hookable is made hookable by the composite it sits in, not by itself.
 
@@ -181,12 +186,17 @@ The route facts each `applicable` needs (which site is source, which is destinat
 Travel's tree is flat — no `Decide`, no `Roll`:
 
 ```
-Sequence(                                  // window = TravelActionEligibility
-  Sequence(AdjustSupply(actor, -base)),    // window = TravelCost
-  Move(Pawn, source -> destination))
+Sequence(                                      // TravelActionEligibility
+  Sequence(                                    // TravelCost
+    AdjustSupply(actor, -base),
+    Move(Pawn, source -> destination)))
 ```
 
-The cost node is a windowed `Sequence` around a bare `AdjustSupply` leaf, for the reason Task 4 sets out: a transform hooked on a windowed leaf receives only that leaf and cannot reach inside it, while a composite hands over its real children.
+The cost node is a windowed `Sequence` around the bare `AdjustSupply` leaf and
+its sibling `Move`, for the reason Task 4 sets out: a transform hooked on a
+windowed leaf receives only that leaf and cannot reach inside it, while this
+composite hands over both real children. The outer eligibility `Sequence` wraps
+that complete cost node, so the Narrow Pass restriction sees the same route.
 
 The base cost is the printed region-to-region table from `TravelRules.cost`, with the `TravelCostWindow.fold` call removed — terrain is now Task 4's transforms folding over this node. The destination rides the `StartWalker` command, so the entry's `build` receives it; `Recover` derives its site from state and needs no such parameter, so this is the first action to need a start argument. Carry it the way `eligibilityRelaxed` is carried — as plain data on the entry's `build` — rather than teaching the walker about destinations.
 

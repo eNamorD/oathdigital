@@ -89,10 +89,10 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       val coastRoute = coastSites.contains(route.source) &&
         coastOrIslandSites.contains(route.destination)
       if (coastRoute) None
-      else SiteRule.ruler(map.sites(site).forces, ctx.state.game.current.players)
-        .toOption.collect {
-          case ruler if ruler != SiteRuler.Player(route.player) =>
-            OathViolation.TravelPassBlocked(site, route.destination)
+      else SiteRule.ruler(map.sites(site).forces, ctx.state.game.current.players) match {
+        case Right(SiteRuler.Player(player)) if player == route.player => None
+        case Right(_) | Left(_) =>
+          Some(OathViolation.TravelPassBlocked(site, route.destination))
         }
     }
 }
@@ -102,26 +102,53 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
   * current route through PowerCtx.operation.
   */
 object TravelSitePowers {
+  private sealed trait Terrain
+  private case object Mountain extends Terrain
+  private case object Island extends Terrain
+  private case object Coast extends Terrain
+  private case object NarrowPass extends Terrain
+  private final case class Supported(id: PowerId, terrain: Terrain)
+
+  /** Explicit reviewed Travel handlers. A catalog may contain unrelated or
+    * future `*.coast`-looking ids; only a reviewed descriptor becomes a power.
+    */
+  private val supported = Vector(
+    Supported(PowerId("site.broken-peaks.mountain"), Mountain),
+    Supported(PowerId("site.desolate-shore.coast"), Coast),
+    Supported(PowerId("site.fair-isle.coast"), Coast),
+    Supported(PowerId("site.fair-isle.island"), Island),
+    Supported(PowerId("site.green-shore.coast"), Coast),
+    Supported(PowerId("site.headwaters.mountain"), Mountain),
+    Supported(PowerId("site.hidden-place.mountain"), Mountain),
+    Supported(PowerId("site.mines.mountain"), Mountain),
+    Supported(PowerId("site.narrow-pass.pass"), NarrowPass),
+    Supported(PowerId("site.rocky-coast.coast"), Coast),
+    Supported(PowerId("site.sunken-isles.coast"), Coast),
+    Supported(PowerId("site.sunken-isles.island"), Island),
+    Supported(PowerId("site.tidal-marshes.coast"), Coast)
+  )
+
   def forCatalog(catalog: ExecutableCatalog): Vector[ContributingPower] = {
-    def powersAt(suffix: String): Vector[(PowerId, SiteId)] = catalog.sites
-      .foldLeft(Vector.empty[(PowerId, SiteId)]) { (found, site) =>
-        found ++ site.handlers.filter(_.endsWith(suffix)).map(handler =>
-          PowerId(handler) -> site.id)
-      }
-    val coasts = powersAt(".coast")
-    val islands = powersAt(".island")
-    val coastOrIslandSites = (coasts.map(_._2) ++ islands.map(_._2)).toSet
-    val mountains = powersAt(".mountain").map { case (id, site) =>
-      MountainSitePower(id, site)
+    val present = supported.foldLeft(Vector.empty[(Supported, SiteId)]) {
+      (found, descriptor) =>
+        catalog.sites.find(_.handlers.contains(descriptor.id.value)) match {
+          case Some(site) => found :+ (descriptor -> site.id)
+          case None => found
+        }
     }
-    val islandPowers = islands.map { case (id, site) => IslandSitePower(id, site) }
-    val coastPowers = coasts.map { case (id, site) =>
-      CoastSitePower(id, site, coastOrIslandSites)
+    val coastSites = present.collect {
+      case (Supported(_, Coast), site) => site
+    }.toSet
+    val coastOrIslandSites = present.collect {
+      case (Supported(_, Coast | Island), site) => site
+    }.toSet
+    present.map {
+      case (Supported(id, Mountain), site) => MountainSitePower(id, site)
+      case (Supported(id, Island), site) => IslandSitePower(id, site)
+      case (Supported(id, Coast), site) =>
+        CoastSitePower(id, site, coastOrIslandSites)
+      case (Supported(id, NarrowPass), site) =>
+        NarrowPassSitePower(id, site, coastSites, coastOrIslandSites)
     }
-    val passes = powersAt(".pass").collect {
-      case (id @ PowerId("site.narrow-pass.pass"), site) =>
-        NarrowPassSitePower(id, site, coasts.map(_._2).toSet, coastOrIslandSites)
-    }
-    mountains ++ islandPowers ++ coastPowers ++ passes
   }
 }

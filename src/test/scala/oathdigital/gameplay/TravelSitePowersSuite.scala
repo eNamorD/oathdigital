@@ -4,7 +4,8 @@ import oathdigital.gameplay.operations.{AdjustSupply, Location, Move, Operation,
   Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.powers.travel.{TravelCostWindow, TravelSitePowers}
+import oathdigital.gameplay.powers.travel.{TravelCostLegality, TravelCostWindow,
+  TravelSitePowers}
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.model._
 
@@ -123,14 +124,16 @@ class TravelSitePowersSuite extends munit.FunSuite {
     }
   }
 
-  private def passMap(source: SiteId, destination: SiteId): MapState = {
+  private def passMap(source: SiteId, destination: SiteId,
+      passForces: SiteForces = SiteForces.Occupied(ForceKind.Bandit, 1))
+      : MapState = {
     def state(id: SiteId, forces: SiteForces): SiteState = {
       val definition = catalog.sites.find(_.id == id).get
       SiteState(forces, Vector.empty, Vector.empty, definition.startingResources)
     }
     MapState(Vector(source), Vector(pass, destination), Vector.empty, Map(
       source -> state(source, SiteForces.Empty),
-      pass -> state(pass, SiteForces.Occupied(ForceKind.Bandit, 1)),
+      pass -> state(pass, passForces),
       destination -> state(destination, SiteForces.Empty)
     ))
   }
@@ -163,8 +166,37 @@ class TravelSitePowersSuite extends munit.FunSuite {
     assertEquals(passViolation(coastReady, eligibilityTree(coast, island)), None)
   }
 
+  test("Narrow Pass fails closed when its ruler lineage is corrupt") {
+    val destination = otherPlain
+    val unknownReady = readyAt(plain, passMap(plain, destination,
+      SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1)))
+    val actorState = unknownReady.game.current.players.find(_.player == actor).get
+    val duplicateReady = unknownReady.copy(game = unknownReady.game.copy(current =
+      unknownReady.game.current.copy(
+        map = passMap(plain, destination,
+          SiteForces.Occupied(ForceKind.Exile(actorState.lineage), 1)),
+        players = unknownReady.game.current.players :+ actorState.copy(
+          player = PlayerId("duplicate-lineage")))))
+
+    Vector(unknownReady, duplicateReady).foreach { ready =>
+      assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
+        TravelCostLegality.blocked(catalog, ready, actor, plain, destination))
+      assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
+        Some(OathViolation.TravelPassBlocked(pass, destination)))
+    }
+  }
+
   test("Walker catalog registers every Travel site contribution") {
     val registered = WalkerPowerCatalog.default(catalog).powers.map(_.id).toSet
     assert(powers.map(_.id).toSet.subsetOf(registered))
+  }
+
+  test("unknown terrain-suffixed handlers never fabricate Travel powers") {
+    val fixturePower = PowerId("site.fixture-site.coast")
+    val fixtureSite = catalog.sites.find(_.id == plain).get.copy(
+      id = SiteId("site:fixture-site"), handlers = Vector(fixturePower.value))
+    val augmented = catalog.copy(sites = catalog.sites :+ fixtureSite)
+
+    assert(!TravelSitePowers.forCatalog(augmented).map(_.id).contains(fixturePower))
   }
 }
