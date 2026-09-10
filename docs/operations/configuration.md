@@ -86,10 +86,11 @@ path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
 them. Command-line options placed after the image name override environment
 values.
 
-This branch's OCI definition is single-architecture: `Docker/publishLocal`
-produces an image for the build host's own architecture only. Multi-architecture
-build and publication for `linux/amd64` and `linux/arm64` is delivered by the
-`phase-5-release-operations` follow-up plan.
+`Docker/publishLocal` produces an image for the build host's own architecture.
+The manual [alpha release workflow](releases.md) builds, loads, and smokes both
+`linux/amd64` and `linux/arm64` before its optional publication job can run.
+Publication is disabled by default; workflow implementation does not establish
+that any registry image has been published.
 
 Internet exposure requires HTTPS at a trusted reverse proxy. Use the concrete
 proxy and log-redaction requirements in the network guidance, then record

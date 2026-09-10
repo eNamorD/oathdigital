@@ -1,0 +1,221 @@
+name: Alpha release
+run-name: Verify ${{ inputs.tag }} (publish=${{ inputs.publish }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing prerelease tag, for example v0.1.0-alpha.1
+        required: true
+        type: string
+      publish:
+        description: Publish verified artifacts to GHCR and GitHub Releases
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# All attempts for a version serialize, including retries after partial publication.
+concurrency:
+  group: alpha-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  archives:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      version: ${{ steps.source.outputs.version }}
+    steps:
+      - name: Validate input before checkout
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ ${#RELEASE_TAG} -le 100 ]]
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-(alpha|beta|rc)\.(0|[1-9][0-9]*)$ ]]
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact tag and record source
+        id: source
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          sh scripts/verify-alpha-release.sh check-tag "$RELEASE_TAG"
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=$(sh scripts/verify-alpha-release.sh validate-tag "$RELEASE_TAG")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - uses: sbt/setup-sbt@6c68d2fe8dfbc0a0534d70101baa2e0420e1a506 # v1.1.9
+      - name: Test and smoke both archives; stage the same binaries for OCI
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          sh scripts/verify-alpha-release.sh archives "$RELEASE_TAG" release-bundle
+          tar -czf docker-context.tgz -C target/docker/stage .
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-bundle
+          path: release-bundle/
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docker-context
+          path: docker-context.tgz
+          if-no-files-found: error
+          retention-days: 14
+
+  images:
+    needs: archives
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.archives.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: docker-context
+          path: context-artifact
+      - uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3.6.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Build, load, and smoke one platform before saving it
+        env:
+          ARCH: ${{ matrix.arch }}
+          RELEASE_VERSION: ${{ needs.archives.outputs.version }}
+          SOURCE_COMMIT: ${{ needs.archives.outputs.commit }}
+        run: |
+          mkdir docker-context image-artifact
+          tar -xzf context-artifact/docker-context.tgz -C docker-context
+          image="oathdigital:$RELEASE_VERSION-$ARCH"
+          docker buildx build --platform "linux/$ARCH" --load --provenance=false \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SOURCE_COMMIT" \
+            --label "org.opencontainers.image.version=$RELEASE_VERSION" \
+            --tag "$image" docker-context
+          test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")" = "linux/$ARCH"
+          test "$(docker image inspect --format '{{.Config.User}}' "$image")" = '10001:0'
+          sh scripts/smoke-packaged-container.sh "$image" 18081
+          docker image inspect --format '{{.Id}}' "$image" > "image-artifact/$ARCH.id"
+          docker save "$image" | gzip > "image-artifact/$ARCH.tar.gz"
+          {
+            printf 'Commit: %s\nPlatform: linux/%s\n' "$SOURCE_COMMIT" "$ARCH"
+            printf 'Image ID: %s\n' "$(cat "image-artifact/$ARCH.id")"
+            printf 'Passed: UID 10001, readiness, frontend, three private seats, command, seat restoration across restart, database close, shutdown.\n'
+          } > "image-artifact/$ARCH-evidence.txt"
+          (cd image-artifact && sha256sum "$ARCH.tar.gz" "$ARCH.id" "$ARCH-evidence.txt" > "$ARCH.sha256")
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-${{ matrix.arch }}
+          path: image-artifact/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    if: ${{ inputs.publish }}
+    needs: [archives, images]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      packages: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      RELEASE_VERSION: ${{ needs.archives.outputs.version }}
+      SOURCE_COMMIT: ${{ needs.archives.outputs.commit }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-bundle
+          path: release-bundle
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: image-*
+          path: images
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+      - name: Verify saved images and refuse existing release or image tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd release-bundle && sha256sum --check SHA256SUMS)
+          for arch in amd64 arm64; do
+            (cd images && sha256sum --check "$arch.sha256")
+            docker load --input "images/$arch.tar.gz"
+            image="oathdigital:$RELEASE_VERSION-$arch"
+            test "$(docker image inspect --format '{{.Id}}' "$image")" = "$(cat "images/$arch.id")"
+            test "$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")" = "linux/$arch"
+            test "$(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image")" = "$SOURCE_COMMIT"
+          done
+          # Reject a tag moved since verification, including annotated tags.
+          object=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG")
+          while [ "$(jq -r '.object.type' <<< "$object")" = tag ]; do
+            object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$(jq -r '.object.sha' <<< "$object")")
+          done
+          test "$(jq -r '.object.sha' <<< "$object")" = "$SOURCE_COMMIT"
+          status=$(curl --silent --show-error --output existing-release.json --write-out '%{http_code}' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          test "$status" = 404 || { echo "Release already exists or API check failed (HTTP $status)" >&2; exit 1; }
+          repository=$(printf '%s' "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "REGISTRY_IMAGE=ghcr.io/$repository" >> "$GITHUB_ENV"
+          token=$(curl --fail --silent --show-error --user "$GITHUB_ACTOR:$GH_TOKEN" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:$repository:pull" | jq -er '.token')
+          echo "::add-mask::$token"
+          for tag in "$RELEASE_TAG" "$RELEASE_TAG-amd64" "$RELEASE_TAG-arm64"; do
+            status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --header "Authorization: Bearer $token" \
+              --header 'Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json' \
+              "https://ghcr.io/v2/$repository/manifests/$tag")
+            test "$status" = 404 || { echo "Image tag exists or registry check failed: $tag (HTTP $status)" >&2; exit 1; }
+          done
+      - name: Publish tested images and assemble the version manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          for arch in amd64 arm64; do
+            docker tag "oathdigital:$RELEASE_VERSION-$arch" "$REGISTRY_IMAGE:$RELEASE_TAG-$arch"
+            docker push "$REGISTRY_IMAGE:$RELEASE_TAG-$arch"
+            docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' \
+              "$REGISTRY_IMAGE:$RELEASE_TAG-$arch" | grep -F "$REGISTRY_IMAGE@sha256:" > "$arch.digest"
+            test "$(wc -l < "$arch.digest" | tr -d ' ')" = 1
+          done
+          docker buildx imagetools create --tag "$REGISTRY_IMAGE:$RELEASE_TAG" \
+            "$(cat amd64.digest)" "$(cat arm64.digest)"
+          docker buildx imagetools inspect --raw "$REGISTRY_IMAGE:$RELEASE_TAG" > manifest.json
+          jq -e '([.manifests[].platform | .os + "/" + .architecture] | sort) == ["linux/amd64", "linux/arm64"]' manifest.json
+          docker buildx imagetools inspect "$REGISTRY_IMAGE:$RELEASE_TAG" > release-bundle/manifest-evidence.txt
+      - name: Create prerelease without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp images/amd64-evidence.txt images/arm64-evidence.txt release-bundle/
+          (cd release-bundle && sha256sum amd64-evidence.txt arm64-evidence.txt manifest-evidence.txt >> SHA256SUMS)
+          gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --verify-tag --prerelease --latest=false --title "Oath Digital $RELEASE_TAG" \
+            --notes-file release-bundle/release-notes.md release-bundle/*

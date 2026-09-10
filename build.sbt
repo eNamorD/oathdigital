@@ -1,6 +1,8 @@
 ThisBuild / scalaVersion := "2.13.16"
 ThisBuild / organization := "dev.oathdigital"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := ReleaseVersion.resolve(sys.env.get("OATH_RELEASE_VERSION"))
+
+lazy val verifyReleaseVersion = taskKey[Unit]("Check release version validation")
 
 lazy val verifyPackageMappings = taskKey[Unit](
   "Verify that every distribution contains its launchers and runtime files"
@@ -53,7 +55,19 @@ lazy val root = (project in file("."))
       "-unchecked",
       "-Xlint"
     ),
-    Universal / packageName := "oathdigital",
+    Universal / packageName := s"oathdigital-${version.value}",
+    verifyReleaseVersion := {
+      assert(ReleaseVersion.resolve(None) == "0.1.0-SNAPSHOT")
+      Seq("0.1.0-alpha.1", "1.2.3-beta.0", "10.20.30-rc.12").foreach { value =>
+        assert(ReleaseVersion.resolve(Some(value)) == value)
+      }
+      Seq("", "1.2.3", "v1.2.3-alpha.1", "01.2.3-alpha.1",
+        "1.2.3-alpha.01", "1.2.3-SNAPSHOT", "1.2.3-alpha.1\n",
+        "1.2.3-alpha.1+build", "../alpha").foreach { value =>
+        assert(scala.util.Try(ReleaseVersion.resolve(Some(value))).isFailure,
+          s"accepted invalid release version: $value")
+      }
+    },
     executableScriptName := "oathdigital",
     Universal / mappings ++= {
       val operations = ((baseDirectory.value / "docs/operations") ** "*.md")
@@ -103,7 +117,8 @@ lazy val root = (project in file("."))
         "share/oathdigital/quick-start.md",
         "share/oathdigital/data-policy.md",
         "share/oathdigital/network-and-browser.md",
-        "share/oathdigital/alpha-acceptance.md"
+        "share/oathdigital/alpha-acceptance.md",
+        "share/oathdigital/releases.md"
       )
       val missingFiles = requiredFiles.filterNot(destinations.contains)
       val serverJarMapped = packageMappings.exists { case (source, path) =>
@@ -177,22 +192,10 @@ lazy val root = (project in file("."))
       if (failures.nonEmpty)
         sys.error("Invalid package mappings: " + failures.mkString(", "))
     },
-    Universal / packageBin := {
-      val archive = (Universal / packageBin)
-        .dependsOn(verifyPackageMappings).value
-      val versioned = archive.getParentFile /
-        s"${(Universal / packageName).value}-${version.value}.zip"
-      IO.move(archive, versioned)
-      versioned
-    },
-    Universal / packageZipTarball := {
-      val archive = (Universal / packageZipTarball)
-        .dependsOn(verifyPackageMappings).value
-      val versioned = archive.getParentFile /
-        s"${(Universal / packageName).value}-${version.value}.tgz"
-      IO.move(archive, versioned)
-      versioned
-    },
+    Universal / packageBin := (Universal / packageBin)
+      .dependsOn(verifyPackageMappings).value,
+    Universal / packageZipTarball := (Universal / packageZipTarball)
+      .dependsOn(verifyPackageMappings).value,
     Docker / stage := (Docker / stage)
       .dependsOn(verifyPackageMappings).value
   )

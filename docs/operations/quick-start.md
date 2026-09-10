@@ -30,7 +30,7 @@ mkdir -p /Users/alex/Applications
 cd /Users/alex/Applications
 tar -xzf /Users/alex/Downloads/oathdigital-0.1.0-SNAPSHOT.tgz
 mkdir -p /Users/alex/OathDigitalData/alpha-1
-cd oathdigital
+cd oathdigital-0.1.0-SNAPSHOT
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
@@ -47,7 +47,7 @@ mkdir -p /home/alex/apps
 cd /home/alex/apps
 tar -xzf /home/alex/Downloads/oathdigital-0.1.0-SNAPSHOT.tgz
 mkdir -p /home/alex/oathdigital-data/alpha-1
-cd oathdigital
+cd oathdigital-0.1.0-SNAPSHOT
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
@@ -69,7 +69,7 @@ $env:OATH_HOST = '0.0.0.0'
 $env:OATH_PORT = '8080'
 $env:OATH_PUBLIC_BASE_URL = 'http://192.168.1.20:8080'
 $env:OATH_DATABASE_PATH = 'C:\OathDigitalData\alpha-1\database'
-.\oathdigital\bin\oathdigital.bat
+.\oathdigital-0.1.0-SNAPSHOT\bin\oathdigital.bat
 ```
 
 Replace `192.168.1.20` with the host's private LAN address. For host-only use,

@@ -34,14 +34,20 @@ default `0.0.0.0` bind is non-loopback under `trusted-alpha`.
 
 Re-run this gate on each alpha build; it is not part of `smokeUniversal`.
 
-## Multi-architecture OCI build — still unconfigured
+## Multi-architecture OCI build — workflow prepared, remote execution pending
 
-Unchanged by Docker becoming available: `build.sbt` has no `dockerBuildCommand`
-or buildx wiring, so `Docker/publishLocal` produces a single image for the host
-architecture only. Docker Desktop's `desktop-linux` builder does now advertise
-`linux/amd64` and `linux/arm64`, so the work is unblocked.
-`phase-5-release-operations` owns it — see the note in the plan's Global
-Constraints.
+The manual [alpha release workflow](releases.md) now stages the tested JVM
+distribution, builds and loads separate Buildx images for `linux/amd64` and
+`linux/arm64`, and runs the container smoke on each. Optional publication reloads
+those tested image artifacts instead of rebuilding. Archive verification and
+both architecture jobs must pass before publication can start; publishing is
+disabled by default. Remote Actions/GHCR execution is still pending.
+`Docker/publishLocal` continues to produce a single image for the host architecture.
+
+The versioned extraction-root defect (former item 17) is resolved by setting
+the Universal package name to `oathdigital-<version>` and removing the redundant
+archive rename. Release tags and version overrides are validated; ordinary
+local builds retain `0.1.0-SNAPSHOT`.
 
 ## Deferred defects
 
@@ -52,7 +58,6 @@ Constraints.
 | 13 | `src/test/resources/oathdigital/frontend/index.html` | The test fixture shadows the generated resource indistinguishably, so the suite cannot detect a wrong generated `index.html`. Add a fixture-only marker and assert on it. |
 | 15 | `build.sbt` docker settings | The scoped/unscoped `dockerEnvVars` and `dockerExposedVolumes` pairs look redundant but are **load-bearing** — sbt-native-packager renders from the unscoped keys, and removing them silently drops the `ENV` and `VOLUME` lines. `verifyPackageMappings` catches it. Do not "simplify" without reading that gate. |
 | 16 | `build.sbt` `verifyPackageMappings` | The Dockerfile ordering assertion hardcodes the literal `oathdigital:root` instead of deriving it from `daemonUser`/`daemonGroup`. A plugin version emitting `chown -R 10001:0` would fail the build loudly, not pass silently. |
-| 17 | `build.sbt` `Universal / packageName` | Universal archives extract to an unversioned `oathdigital/` root, so two alpha builds collide when extracted side by side. |
 | 18 | Docker image | No `HEALTHCHECK`. `/health/ready` is the right probe; the `-jre` base image has no `curl`, so this needs a `wget` or Java-based probe. |
 
 ## Documentation gaps
