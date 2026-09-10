@@ -58,15 +58,20 @@ for all three host operating systems are in the quick start.
 The image sets `OATH_HOST=0.0.0.0` and
 `OATH_DATABASE_PATH=/var/lib/oathdigital/database` itself and declares
 `/var/lib/oathdigital` as a volume, so only the browser-visible origin has to
-be supplied. After `./sbtw Docker/publishLocal`, publish the service on all
-host interfaces for trusted LAN access:
+be supplied. Set `OATH_IMAGE_REFERENCE` to the exact published, versioned image
+reference supplied by the release operator. The placeholder must be replaced
+before use:
 
 ```sh
-docker run --rm --name oathdigital \
+export OATH_IMAGE_REFERENCE='ghcr.io/<owner>/<repository>:v0.1.0-alpha.1'
+docker pull "$OATH_IMAGE_REFERENCE"
+docker volume create oathdigital-data
+docker run --detach --name oathdigital \
   --publish 8080:8080 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
   --volume oathdigital-data:/var/lib/oathdigital \
-  oathdigital:0.1.0-SNAPSHOT
+  "$OATH_IMAGE_REFERENCE"
+docker logs --follow oathdigital
 ```
 
 Name a volume as shown to keep the database across container replacements; the
@@ -86,6 +91,7 @@ path. Add `--env OATH_MODE=...` or `--env OATH_CATALOG_PATH=...` to override
 them. Command-line options placed after the image name override environment
 values.
 
+End users run the published image and need neither sbt nor Node. For developers,
 `Docker/publishLocal` produces an image for the build host's own architecture.
 The manual [alpha release workflow](releases.md) builds, loads, and smokes both
 `linux/amd64` and `linux/arm64` before its optional publication job can run.

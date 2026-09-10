@@ -6,6 +6,34 @@ run derives its image name from the current repository:
 `ghcr.io/<owner>/<repository>:v0.1.0-alpha.1` (lowercase owner and repository).
 The tag here is an example, not a claim that this release exists.
 
+## GHCR access for hosts
+
+GitHub Container Registry packages are private when first published. After the
+first successful publication, a package administrator must choose one of these
+host-access models before distributing the OCI quick start:
+
+- Make the package public so hosts can pull it anonymously. GitHub warns that
+  changing a package from private to public cannot be undone.
+- Keep the package private, grant each host operator read access, and have that
+  operator authenticate to `ghcr.io` with a personal access token (classic)
+  limited to `read:packages` before pulling:
+
+  ```sh
+  printf '%s' "$CR_PAT" | docker login ghcr.io --username '<github-user>' --password-stdin
+  docker pull 'ghcr.io/<owner>/<repository>:v0.1.0-alpha.1'
+  docker logout ghcr.io
+  ```
+
+  Set `CR_PAT` through an approved secret mechanism rather than placing its
+  value in shell history. Replace all placeholders with the access grant and
+  exact versioned image reference supplied by the release operator.
+
+GitHub documents initial private visibility, irreversible public conversion,
+and anonymous access for public container packages in
+[package access and visibility](https://docs.github.com/en/packages/learn-github-packages/configuring-a-packages-access-control-and-visibility).
+Its [Container registry guide](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
+documents private pulls with a classic token scoped to `read:packages`.
+
 ## Versions and compatibility
 
 Release tags must be `vX.Y.Z-alpha.N`, `vX.Y.Z-beta.N`, or `vX.Y.Z-rc.N`, with
@@ -52,6 +80,9 @@ limits before tagging. Schema checks do not replace release-specific policy.
    reloads the tested image archives and checks their saved image IDs; it does
    not rebuild them. Only the version tag and its `-amd64`/`-arm64` child tags
    are published. There is no `latest` tag.
+5. After the first successful GHCR publication, configure public or private
+   host access as described above. Confirm a clean host can pull the exact
+   published reference before distributing OCI startup instructions.
 
 The GitHub prerelease contains both Universal archives, `SHA256SUMS`, these
 release notes, and sanitized archive/image/manifest evidence. Checksums cover

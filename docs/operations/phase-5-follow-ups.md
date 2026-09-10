@@ -2,9 +2,10 @@
 
 Items the Phase 5 whole-branch review raised that were deliberately not fixed on
 `feat/phase-5-alpha-readiness`. None blocks the alpha branch merge; each was
-adjudicated and recorded rather than silently dropped. The follow-up plans named
-in the [implementation plan](../superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
-own the work.
+adjudicated and recorded rather than silently dropped. In a source checkout,
+`docs/superpowers/plans/2026-09-07-phase-5-distribution-runtime.md` records the
+follow-up ownership; source-only plan files are not bundled with these operator
+documents.
 
 ## Final release-operations evidence — local only
 
@@ -12,7 +13,8 @@ Task 2 evidence at commit `5b817f6` recorded a macOS arm64 Java
 `21.0.12.1+1-LTS` build of `0.1.0-alpha.1`: 563 JVM tests and 137 frontend
 tests passed, and separately extracted ZIP and TGZ artifacts each passed the
 Universal smoke. Exact command, artifact checksums, and smoke scope are in the
-[acceptance record](alpha-acceptance.md) and its cited
+[acceptance record](alpha-acceptance.md). A source checkout also contains the
+source-only evidence report at
 `.superpowers/sdd/2026-09-09-phase-5-release-operations/task-2-report.md`.
 
 Task 3 made no code or package changes, so it reuses that exact evidence rather

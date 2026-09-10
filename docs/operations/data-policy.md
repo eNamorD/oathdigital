@@ -92,6 +92,8 @@ The volume is mounted read-only during backup.
 Restore into a new named volume so the old one remains untouched:
 
 ```sh
+export OATH_IMAGE_REFERENCE='ghcr.io/<owner>/<repository>:v0.1.0-alpha.1'
+docker pull "$OATH_IMAGE_REFERENCE"
 docker volume create oathdigital-data-restored-2026-09-09
 docker run --rm \
   --volume oathdigital-data-restored-2026-09-09:/target \
@@ -102,8 +104,13 @@ docker run --detach --name oathdigital \
   --publish 8080:8080 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
   --volume oathdigital-data-restored-2026-09-09:/var/lib/oathdigital \
-  oathdigital:0.1.0-SNAPSHOT
+  "$OATH_IMAGE_REFERENCE"
 ```
+
+Use the exact image release recorded with the backup. If the GHCR package is
+private, authenticate with the access granted by the release operator before
+`docker pull`; [alpha releases](releases.md#ghcr-access-for-hosts) explains the
+visibility choices.
 
 Keep `oathdigital-data` until the restored copy has passed acceptance. Docker's
 official [volume backup and restore guidance](https://docs.docker.com/engine/storage/volumes/#back-up-restore-or-migrate-data-volumes)

@@ -22,15 +22,18 @@ is the database file prefix inside that directory.
 
 ### macOS
 
-This example assumes `oathdigital-0.1.0-SNAPSHOT.tgz` is in Downloads and the
-host's LAN address is `192.168.1.20`:
+These archive examples use version `0.1.0-alpha.1`. Replace that version in the
+filename and extracted directory with the exact version in the archive you
+downloaded. A Git or OCI tag has a leading `v`; the archive filename and
+directory do not. This macOS example also assumes the host's LAN address is
+`192.168.1.20`:
 
 ```sh
 mkdir -p /Users/alex/Applications
 cd /Users/alex/Applications
-tar -xzf /Users/alex/Downloads/oathdigital-0.1.0-SNAPSHOT.tgz
+tar -xzf /Users/alex/Downloads/oathdigital-0.1.0-alpha.1.tgz
 mkdir -p /Users/alex/OathDigitalData/alpha-1
-cd oathdigital-0.1.0-SNAPSHOT
+cd oathdigital-0.1.0-alpha.1
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
@@ -45,9 +48,9 @@ This example assumes the archive is in `/home/alex/Downloads`:
 ```sh
 mkdir -p /home/alex/apps
 cd /home/alex/apps
-tar -xzf /home/alex/Downloads/oathdigital-0.1.0-SNAPSHOT.tgz
+tar -xzf /home/alex/Downloads/oathdigital-0.1.0-alpha.1.tgz
 mkdir -p /home/alex/oathdigital-data/alpha-1
-cd oathdigital-0.1.0-SNAPSHOT
+cd oathdigital-0.1.0-alpha.1
 OATH_HOST=0.0.0.0 \
 OATH_PORT=8080 \
 OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
@@ -63,13 +66,13 @@ Run these commands in PowerShell. This example assumes the ZIP is in
 ```powershell
 New-Item -ItemType Directory -Force -Path C:\OathDigital
 Set-Location C:\OathDigital
-Expand-Archive -LiteralPath C:\Users\Alex\Downloads\oathdigital-0.1.0-SNAPSHOT.zip -DestinationPath .
+Expand-Archive -LiteralPath C:\Users\Alex\Downloads\oathdigital-0.1.0-alpha.1.zip -DestinationPath .
 New-Item -ItemType Directory -Force -Path C:\OathDigitalData\alpha-1
 $env:OATH_HOST = '0.0.0.0'
 $env:OATH_PORT = '8080'
 $env:OATH_PUBLIC_BASE_URL = 'http://192.168.1.20:8080'
 $env:OATH_DATABASE_PATH = 'C:\OathDigitalData\alpha-1\database'
-.\oathdigital-0.1.0-SNAPSHOT\bin\oathdigital.bat
+.\oathdigital-0.1.0-alpha.1\bin\oathdigital.bat
 ```
 
 Replace `192.168.1.20` with the host's private LAN address. For host-only use,
@@ -83,18 +86,29 @@ the `Oath Digital database closed` log line before backing up or moving data.
 
 ## OCI image
 
-The image includes Java 21 and runs as UID 10001. Use a named volume so data
-survives container removal:
+The image includes Java 21 and runs as UID 10001. Ask the release operator for
+the exact published, versioned OCI reference; do not substitute an unversioned
+or `latest` tag. Set that reference before pulling and starting the image. The
+placeholder below must be replaced with the actual lowercase GitHub owner and
+repository:
 
 ```sh
+export OATH_IMAGE_REFERENCE='ghcr.io/<owner>/<repository>:v0.1.0-alpha.1'
+docker pull "$OATH_IMAGE_REFERENCE"
 docker volume create oathdigital-data
 docker run --detach --name oathdigital \
   --publish 8080:8080 \
   --env OATH_PUBLIC_BASE_URL=http://192.168.1.20:8080 \
   --volume oathdigital-data:/var/lib/oathdigital \
-  oathdigital:0.1.0-SNAPSHOT
+  "$OATH_IMAGE_REFERENCE"
 docker logs --follow oathdigital
 ```
+
+The first GHCR publication is private by default. Before giving this command to
+a host, the release operator must either make the package public for anonymous
+pulls or grant that host read access and provide an authorized `docker login`
+procedure. See [alpha releases](releases.md#ghcr-access-for-hosts). Running a
+published image requires neither sbt nor Node.
 
 Stop cleanly before backup, upgrade, or restore, then remove only the stopped
 container. The named volume remains:
