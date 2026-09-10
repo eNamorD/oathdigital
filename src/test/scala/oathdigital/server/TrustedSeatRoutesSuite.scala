@@ -188,6 +188,40 @@ class TrustedSeatRoutesSuite extends munit.FunSuite {
     }
   }
 
+  test("colon game IDs use the same encoded cookie redirect and API paths") {
+    withServer() { (base, _) =>
+      val client = HttpClient.newHttpClient()
+      val created = create(client, base, "alpha:one")
+      val entry = send(client, base, URI.create(created.seats(1).url).getPath)
+      assertEquals(entry.statusCode(), 303)
+      assertEquals(entry.headers().firstValue("Location").orElse(""), "/games/alpha%3Aone")
+      val cookie = entry.headers().firstValue("Set-Cookie").orElse("")
+      assert(cookie.contains("Path=/games/alpha%3Aone;"), cookie)
+      val credential = cookie.takeWhile(_ != ';')
+      assertEquals(send(client, base, "/games/alpha%3Aone", cookie = Some(credential)).statusCode(), 200)
+      val loaded = send(client, base, "/games/alpha%3Aone/api", cookie = Some(credential))
+      assertEquals(loaded.statusCode(), 200, loaded.body())
+      assertEquals(ujson.read(loaded.body())("gameId").str, "alpha:one")
+      assertEquals(ujson.read(loaded.body())("viewerPlayerId").str, "p2")
+    }
+  }
+
+  test("trailing game slash redirects to the same encoded canonical page") {
+    withServer() { (base, _) =>
+      val client = HttpClient.newHttpClient()
+      Vector("alpha", "alpha:one").foreach { game =>
+        val created = create(client, base, game)
+        val entry = send(client, base, URI.create(created.seats.head.url).getPath)
+        val cookie = entry.headers().firstValue("Set-Cookie").orElse("").takeWhile(_ != ';')
+        val path = if (game == "alpha") "/games/alpha" else "/games/alpha%3Aone"
+        val redirected = send(client, base, path + "/", cookie = Some(cookie))
+        assertEquals(redirected.statusCode(), 303, redirected.body())
+        assertEquals(redirected.headers().firstValue("Location").orElse(""), path)
+        assertEquals(send(client, base, path, cookie = Some(cookie)).statusCode(), 200)
+      }
+    }
+  }
+
   test("same-name cookies for two game paths coexist and restore each seat") {
     withServer() { (base, _) =>
       val cookies = new CookieManager(null, CookiePolicy.ACCEPT_ALL)

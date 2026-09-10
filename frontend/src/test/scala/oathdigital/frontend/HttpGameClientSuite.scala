@@ -8,6 +8,14 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   GameIntent, MajorActionPreviewRequest, ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
+  test("trusted colon game uses the encoded canonical cookie path") {
+    val transport = new StubTransport(Vector(Right(TransportResponse(200, projectionJson(1)))))
+    new TrustedHttpGameClient(transport).load("alpha:one", "ignored").map { result =>
+      assert(result.isRight)
+      assertEquals(transport.requests.map(_._2).toVector, Vector("/games/alpha%3Aone/api"))
+    }
+  }
+
   test("trusted viewer identity round trips while old projections omit it") {
     val old = GameJson.decodeProjection(projectionJson(1)).toOption.get
     assertEquals(old.viewerPlayerId, None)

@@ -1,11 +1,12 @@
 package oathdigital.server
 
-import java.net.URI
+import java.net.{URI, URLEncoder}
+import java.nio.charset.StandardCharsets
 import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{HttpCookie, Location, RawHeader, SameSite, `Set-Cookie`}
+import akka.http.scaladsl.model.headers.{HttpCookie, RawHeader, SameSite, `Set-Cookie`}
 import akka.http.scaladsl.server.{Directives, Route}
 import org.slf4j.LoggerFactory
 import oathdigital.application._
@@ -47,11 +48,11 @@ final class TrustedSeatRoutes(
           case Left(_) => invalidLink
           case Right(code) => resolve(code) match {
             case Right(seat) if DevelopmentTrustBoundary.validateIdentifier(seat.gameId, "$.gameId").isRight =>
-              val path = s"/games/${seat.gameId}"
+              val path = canonicalPath(seat.gameId)
               val cookie = HttpCookie(cookieName, code.raw, maxAge = Some(31536000L),
                 path = Some(path), secure = publicBaseUrl.getScheme.equalsIgnoreCase("https"),
                 httpOnly = true).withSameSite(SameSite.Lax)
-              HttpResponse(StatusCodes.SeeOther, headers = List(Location(Uri(path)), `Set-Cookie`(cookie)))
+              HttpResponse(StatusCodes.SeeOther, headers = List(canonicalLocation(seat.gameId), `Set-Cookie`(cookie)))
             case Left(TrustedSeatFailure.StorageFailure) => internalError()
             case _ => invalidLink
           }
@@ -61,7 +62,7 @@ final class TrustedSeatRoutes(
       noQuery {
         if (DevelopmentTrustBoundary.validateIdentifier(gameId, "$.gameId").isLeft) complete(malformed)
         else extractRequest { request =>
-          pathEndOrSingleSlash {
+          pathEnd {
             get {
               onComplete(Future {
                 authenticate(request, gameId).flatMap(gateway.load(gameId, _))
@@ -73,6 +74,9 @@ final class TrustedSeatRoutes(
                 case _ => complete(internalError())
               }
             }
+          } ~ pathSingleSlash {
+            get { complete(HttpResponse(StatusCodes.SeeOther,
+              headers = List(canonicalLocation(gameId)))) }
           } ~ pathPrefix("api") {
             pathEndOrSingleSlash {
               get { async {
@@ -103,6 +107,14 @@ final class TrustedSeatRoutes(
       }
     }
   }
+
+  private def canonicalPath(gameId: String): String =
+    "/games/" + URLEncoder.encode(gameId, StandardCharsets.UTF_8)
+
+  // Preserve the same escaped path used by encodeURIComponent and cookie matching.
+  // Rendering a modeled URI may normalize percent-encoded colons back to literals.
+  private def canonicalLocation(gameId: String): RawHeader =
+    RawHeader("Location", canonicalPath(gameId))
 
   private def noQuery(inner: => Route): Route = parameterMap { parameters =>
     if (parameters.nonEmpty) complete(malformed) else inner

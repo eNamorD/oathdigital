@@ -236,7 +236,8 @@ class ServerModeUiSuite extends FunSuite {
     }
   }
 
-  test("trusted identity loss rejects a late command response from the previous seat session") {
+  Vector(200, 401, 403).foreach { status =>
+  test(s"trusted identity loss with HTTP $status rejects a late command response from the previous seat session") {
     val browser = new TestBrowser
     val pending = scala.concurrent.Promise[Either[GameClientFailure, TransportResponse]]()
     val active = trustedProjection.replace("\"activeParticipantId\":\"red\"", "\"activeParticipantId\":\"blue\"")
@@ -250,9 +251,10 @@ class ServerModeUiSuite extends FunSuite {
         if (method == "POST") { commands += 1; pending.future }
         else {
           loads += 1
-          scala.concurrent.Future.successful(Right(TransportResponse(200,
-            if (loads == 1) active else active.replace("\"viewerPlayerId\":\"blue\"",
-              "\"viewerPlayerId\":\"red\""))))
+          scala.concurrent.Future.successful(Right(if (loads == 1) TransportResponse(200, active)
+            else if (status == 200) TransportResponse(200, active.replace("\"viewerPlayerId\":\"blue\"",
+              "\"viewerPlayerId\":\"red\""))
+            else TransportResponse(status, """{"error":"forbidden","message":"denied"}""")))
         }
     }
     Main.start(browser.mount, "/games/my%20game", trustedAlpha = true, transport)
@@ -271,6 +273,7 @@ class ServerModeUiSuite extends FunSuite {
       assertEquals(loads, 2)
       assertEquals(commands, 1)
     }.andThen { case _ => browser.close() }
+  }
   }
 
   test("secret summaries lead with available over total and explain unavailable tokens") {

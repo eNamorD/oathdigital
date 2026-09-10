@@ -197,7 +197,10 @@ object ServerModeUi {
           coordinator.recordFailure(request, error)
           if (GameClientFailure.isTransient(error) || recovery(error))
             polling.foreach(_.stop())
-          if (recovery(error)) projection = None
+          if (recovery(error)) {
+            coordinator.switchSession(gameId, selectedPlayer)
+            projection = None
+          }
           failure = Some(error)
           render()
       }

@@ -89,7 +89,7 @@ base_url=http://127.0.0.1:$port
 catalog_path=$package_directory/share/oathdigital/new-foundations-component-catalog.json
 database_path=$database_directory/oathdigital
 index_file=$temporary_directory/index.html
-game_id=packaged-seat-smoke
+game_path=/games/alpha%3Aone
 creation_response=$temporary_directory/creation.json
 command_response=$temporary_directory/command.json
 exchange_error=$temporary_directory/exchange-error.log
@@ -173,12 +173,12 @@ create_game() {
     --output "$creation_response" \
     --write-out '%{http_code}' \
     --header 'Content-Type: application/json' \
-    --data '{"gameId":"packaged-seat-smoke","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}],"firstPlayerId":"blue-exile"}' \
+    --data '{"gameId":"alpha:one","participants":[{"playerId":"red-exile","lineageId":"red-lineage","color":"red"},{"playerId":"blue-exile","lineageId":"blue-lineage","color":"blue"},{"playerId":"yellow-exile","lineageId":"yellow-lineage","color":"yellow"}],"firstPlayerId":"blue-exile"}' \
     "$base_url/games") ||
     fail "game creation request failed on run $run_label"
   [ "$creation_status" = 201 ] ||
     fail "game creation returned HTTP $creation_status instead of 201 on run $run_label"
-  grep -F '"gameId":"packaged-seat-smoke"' "$creation_response" >/dev/null ||
+  grep -F '"gameId":"alpha:one"' "$creation_response" >/dev/null ||
     fail "game creation response has the wrong game on run $run_label"
 }
 
@@ -227,7 +227,7 @@ load_seat() {
     --output "$page_file" \
     --write-out '%{http_code}' \
     --cookie "$cookie_jar" \
-    "$base_url/games/$game_id") ||
+    "$base_url$game_path") ||
     fail "$player_id canonical page request failed on run $run_label"
   [ "$page_status" = 200 ] ||
     fail "$player_id canonical page returned HTTP $page_status instead of 200 on run $run_label"
@@ -240,7 +240,7 @@ load_seat() {
     --output "$projection_file" \
     --write-out '%{http_code}' \
     --cookie "$cookie_jar" \
-    "$base_url/games/$game_id/api") ||
+    "$base_url$game_path/api") ||
     fail "$player_id private API request failed on run $run_label"
   [ "$api_status" = 200 ] ||
     fail "$player_id private API returned HTTP $api_status instead of 200 on run $run_label"
@@ -264,7 +264,7 @@ submit_representative_command() {
     --cookie "$blue_cookie_jar" \
     --header 'Content-Type: application/json' \
     --data "{\"expectedNextSequence\":1,\"intent\":{\"type\":\"placePawn\",\"siteId\":\"$site_id\"}}" \
-    "$base_url/games/$game_id/api/commands") ||
+    "$base_url$game_path/api/commands") ||
     fail "representative command request failed on run $run_label"
   [ "$command_status" = 200 ] ||
     fail "representative command returned HTTP $command_status instead of 200 on run $run_label"
