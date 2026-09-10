@@ -50,7 +50,7 @@ two-machine requirement.
 | 12 | A newly generated seat link uses the exact configured HTTPS scheme, host, and port. | UNEXECUTED | Not observed. |
 | 13 | Visiting the seat link stays on the HTTPS origin and returns an `oath_seat` cookie with `Secure`, `HttpOnly`, `SameSite=Lax`, and the exact `/games/{game-id}` path. | UNEXECUTED | Not observed. |
 | 14 | A same-origin gameplay request succeeds; a deliberately mismatched `Origin` request is rejected without changing game state. | UNEXECUTED | Not observed. |
-| 15 | Proxy, CDN, firewall, and application logs contain no raw `/s/{seat-code}`, `Cookie`, or `Set-Cookie` value from this exercise. | UNEXECUTED | Not observed. |
+| 15 | Normal exchange and a controlled failing `/s/` request use a disposable test code; every NGINX access/error log, upstream application log, and applicable proxy, CDN, firewall, WAF, agent, or dashboard log is inspected, and no raw `/s/{seat-code}`, `Cookie`, or `Set-Cookie` value appears. | UNEXECUTED | Not observed. |
 | 16 | Forwarded identity headers do not select or change a seat; the seat cookie remains the only trusted seat identity. | UNEXECUTED | Not observed. |
 
 ## Browser observations

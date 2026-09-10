@@ -127,10 +127,19 @@ documents that an empty `proxy_set_header` value omits that header upstream.
 The credential-exchange `/s/` location disables access logging because its URI
 contains the raw seat code. The remaining log format uses `$uri`, not
 `$request`, and does not include `$args`, `$http_referer`, `$http_cookie`, or
-any `$cookie_*` variable.
-Audit load balancers, CDNs, web-application firewalls, error-reporting agents,
-and hosting dashboards too: either disable request logging for `/s/` there or
-apply tested redaction, and never record `Cookie` or `Set-Cookie` headers.
+any `$cookie_*` variable. This controls only the configured NGINX access logs.
+It does not redact NGINX error logs, upstream application logs, logs emitted
+before or after this location, or logs from a load balancer, CDN,
+web-application firewall, error-reporting agent, or hosting dashboard. Any of
+those layers may still record a raw request URI during an error.
+
+Before Internet use, configure every logging layer to omit or redact `/s/`
+request URIs and to omit `Cookie` and `Set-Cookie` values. Exercise both a
+normal seat exchange and a controlled failing `/s/` request with a disposable
+test code, then inspect every access, error, and upstream log destination. Do
+not expose the service to the Internet if raw-code redaction has not been
+demonstrated across those failure paths. Restrict retained logs to trusted
+operators even after redaction.
 
 Do not expose port 8080 beyond loopback when using this proxy. Do not treat
 `X-Forwarded-User`, `X-Remote-User`, `Remote-User`, `Authorization`, client IP,

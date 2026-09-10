@@ -85,3 +85,21 @@ to the relevant guidance.
 - A reachable Docker daemon is needed for later OCI validation.
 - A configured repository remote and publication destination are needed for
   later prerelease work.
+
+## Review follow-up
+
+Final review identified that `access_log off` affects only NGINX access logs
+and cannot support a claim about NGINX error logs or upstream logging. The
+network guide now states that limitation explicitly. Internet use requires a
+disposable-code exercise of normal and failing `/s/` requests plus inspection
+and demonstrated redaction across every access, error, upstream, and external
+log destination. Acceptance row 15 now records that evidence instead of
+assuming access-log configuration protects all logs.
+
+Prose-only follow-up verification:
+
+- `python3 scripts/check-markdown-links.py` exited 0 with
+  `Markdown link check passed: 47 files`.
+- `git diff --check` exited 0 with no output.
+- The package-mapping build was not rerun because no mapping or packaged-file
+  path changed.
