@@ -5,6 +5,36 @@ Every row below starts as **UNEXECUTED** and must remain so until the named
 check is observed on that build. Use **PASS**, **FAIL**, or **BLOCKED** only with
 dated evidence and operator initials.
 
+## Recorded automated evidence (not manual acceptance)
+
+At commit `5b817f65e13c9561b597c743e746c749c84fa3e3`
+(`build: prepare gated multiarchitecture alpha releases`), Task 2 ran the
+following locally on macOS arm64 with Temurin Java `21.0.12.1+1-LTS`, Node
+`v24.19.0`, and `OATH_RELEASE_VERSION=0.1.0-alpha.1`:
+
+```sh
+export JAVA_HOME='/tmp/oath-release-java21.xc372r/jdk-21.0.12.1+1/Contents/Home'
+export PATH="$JAVA_HOME/bin:/Users/roman/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH"
+export OATH_RELEASE_VERSION=0.1.0-alpha.1
+./sbtw verifyReleaseVersion test frontend/test verifyPackageMappings Universal/packageBin Universal/packageZipTarball Docker/stage
+```
+
+The command exited 0: **563 JVM tests** (67 XML suites) and **137 frontend
+tests** (9 XML suites), all with zero failures and zero errors. It produced
+`oathdigital-0.1.0-alpha.1.zip` (SHA-256
+`4bd90e5f1e2416ab4fc63ae13ab3ceb407d46f67b225288e0776779678e7369e`) and
+`oathdigital-0.1.0-alpha.1.tgz` (SHA-256
+`0fba4eb5841c54f36a31c9677f6cb9a5efeacda6f5f539c57399cf022baa7c00`). Each
+archive was extracted into its own temporary directory and passed
+`sh scripts/smoke-packaged-distribution.sh <extracted-root> 18080` using that
+Java 21 runtime. Both smokes observed readiness, frontend assets, three private
+seats, a command, seat restoration across restart, database close, and shutdown.
+
+This is automated archive evidence only. Source:
+`.superpowers/sdd/2026-09-09-phase-5-release-operations/task-2-report.md` at
+commit `5b817f6`. It does not satisfy any LAN, browser, proxy, TLS, or
+publication row below.
+
 ## Build and environment
 
 | Field | Recorded value |

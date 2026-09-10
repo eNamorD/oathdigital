@@ -50,7 +50,24 @@
 
 **Files:** Update `docs/operations/alpha-acceptance.md`, `docs/operations/phase-5-follow-ups.md`, `docs/ROADMAP.md`, and this plan.
 
-- [ ] Run the final locally available verification and package smoke gates once after changes. Inspect Docker availability and run live container checks if available.
-- [ ] Record exact commands, results, architecture, version, and outstanding external prerequisites. Keep separate-machine acceptance and actual publication unchecked until executed.
-- [ ] Review the complete operations diff against the approved spec; fix actionable findings.
-- [ ] Commit final evidence. Report concrete publication inputs or machine access still needed, without claiming all Phase 5 items complete.
+- [x] Reused Task 2's exact unchanged-code Java 21 evidence instead of repeating
+  broad suites: `./sbtw verifyReleaseVersion test frontend/test
+  verifyPackageMappings Universal/packageBin Universal/packageZipTarball
+  Docker/stage` exited 0 on macOS arm64 with Temurin `21.0.12.1+1-LTS`,
+  `OATH_RELEASE_VERSION=0.1.0-alpha.1`, 563 JVM tests, 137 frontend tests, and
+  two separately extracted Universal smokes. Source:
+  `.superpowers/sdd/2026-09-09-phase-5-release-operations/task-2-report.md`,
+  commit `5b817f6`.
+- [x] Inspected Docker read-only on 2026-09-10. `docker info --format
+  '{{.ServerVersion}} {{.Architecture}}'` reported that
+  `/Users/roman/.docker/run/docker.sock` does not exist; no live container
+  checks could run. Docker socket access was not denied, so no escalation was
+  requested.
+- [x] Recorded exact automated evidence, version, architecture, and external
+  prerequisites in the acceptance record, follow-ups, and roadmap. Item 4 is
+  complete; Items 3 and 5 remain unchecked pending observed manual or remote
+  evidence.
+- [x] Reviewed operations changes against approved alpha-readiness design and
+  Task 2 report. No actionable documentation or workflow finding remains in
+  this unchanged-code evidence pass; final Markdown-link and whitespace checks
+  are recorded with the final-evidence commit.

@@ -6,6 +6,40 @@ adjudicated and recorded rather than silently dropped. The follow-up plans named
 in the [implementation plan](../superpowers/plans/2026-09-07-phase-5-distribution-runtime.md)
 own the work.
 
+## Final release-operations evidence — local only
+
+Task 2 evidence at commit `5b817f6` recorded a macOS arm64 Java
+`21.0.12.1+1-LTS` build of `0.1.0-alpha.1`: 563 JVM tests and 137 frontend
+tests passed, and separately extracted ZIP and TGZ artifacts each passed the
+Universal smoke. Exact command, artifact checksums, and smoke scope are in the
+[acceptance record](alpha-acceptance.md) and its cited
+`.superpowers/sdd/2026-09-09-phase-5-release-operations/task-2-report.md`.
+
+Task 3 made no code or package changes, so it reuses that exact evidence rather
+than rerunning broad suites. On 2026-09-10, read-only
+`docker info --format '{{.ServerVersion}} {{.Architecture}}'` could not connect
+to `/Users/roman/.docker/run/docker.sock`: socket does not exist. Therefore no
+live local container build, load, or smoke was run for this evidence update.
+The earlier Docker 29.7.2 arm64 snapshot smoke below remains useful process
+evidence, but is not a release-build or two-architecture release gate.
+
+Still required before release:
+
+- Two separate LAN machines, three isolated seat profiles, and a completed
+  per-build [LAN/TLS record](alpha-acceptance.md), including browser versions,
+  reconnection, same-database restart, private-view checks, proxy log redaction,
+  configured HTTPS origin, and rejected mismatched Origin request.
+- Docker/Buildx with QEMU or equivalent GitHub-hosted runners to build, load,
+  and smoke `linux/amd64` and `linux/arm64` for exact candidate tag.
+- GitHub repository remote, reviewed existing prerelease tag, Actions and GHCR
+  enabled, protected tag policy, and publisher credentials with `contents:
+  write` and `packages: write` only in publishing job. First run workflow with
+  `publish=false`; inspect artifacts. Only then run same tag with `publish=true`
+  after all gates pass.
+
+No GitHub Actions run, GHCR push, manifest publication, GitHub prerelease,
+firewall/proxy change, or existing-database change has been performed.
+
 ## Container release gate — now executed and passing
 
 Resolved on 2026-09-08. `scripts/smoke-packaged-container.sh` had never run

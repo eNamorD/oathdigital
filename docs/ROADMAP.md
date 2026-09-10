@@ -155,7 +155,9 @@ leaked. Keep the raw loopback development event log separate.
    remained unrun on 2026-09-09 because the Docker daemon was unavailable.
 3. [ ] Verify two or more browsers on separate machines can create/join,
    reconnect, reload persisted games, and complete representative multi-player
-   turns over a LAN.
+   turns over a LAN. Automated archive evidence at `5b817f6` does not replace
+   this gate: two LAN machines, browser/version observations, and the completed
+   [per-build LAN/TLS record](operations/alpha-acceptance.md) are still needed.
 4. [x] Add backup and restore guidance plus a clear alpha data reset and upgrade
    policy. The packaged [data policy](operations/data-policy.md) documents
    stopped-directory backup, matching-release restore, backup-before-upgrade,
@@ -163,8 +165,10 @@ leaked. Keep the raw loopback development event log separate.
 5. [ ] Complete release operations: publish multi-architecture Linux OCI images
    for `linux/amd64` and `linux/arm64`, automate a GitHub prerelease, document
    browser support and firewall/reverse-proxy/TLS requirements, and publish a
-   short host/player quick-start. Rerun the complete verification and packaged
-   smoke gates before each alpha build.
+   short host/player quick-start. Guidance and a gated workflow are committed,
+   but actual `linux/amd64` and `linux/arm64` Buildx smokes, GitHub Actions,
+   GHCR manifest publication, and GitHub prerelease remain unexecuted. Rerun
+   the complete verification and packaged smoke gates before each alpha build.
 
 ### Phase 6 - Empire and campaign continuity
 
