@@ -269,7 +269,23 @@ Record what the batch settled, in the spec, so the next batch's plan is written 
 - The resolution of `CostContribution` versus `Transform`, and that the typed-cost vocabulary is retired.
 - The resolution of turn-scoped activation: whether decision 11 survived contact, and if a ruling changed it, what the new rule is.
 - Anything a power needed that `PowerCtx` could not reach, and what was done instead.
+- That a walker action's decision ids are constants, not per-command tokens. Recover set this at its cutover and Forge inherited it; the legacy Forge path minted `DecisionId(s"forge-$nextSequence")` per command and used it as a stale-request token. Staleness is now covered by `expectedNextSequence` and the one-pending-action invariant instead. Worth stating in the spec so the next batch does not rediscover it as a regression.
 
+**Carried here from Task 3 (R19): the walker event codec's encode side throws.**
+`WalkerEventCodec.encodeDecisionPayload` throws on a payload it has no branch
+for, while its decode counterpart returns a typed error. Task 3 established
+that an exhaustive match cannot fix this — spec decision 11 makes
+`DecisionPayload` an open trait deliberately — so a typed error is the right
+answer. The failure mode argues for it harder than expected: `encodePayloadSafe`
+swallows the throw, so a missing branch makes an action silently unplayable
+*after* its cost has been spent, rather than failing loudly. **The file is at
+795 of the 800-line cap**, so this needs a Task-1b-style extraction FIRST, as
+its own commit, not folded into the conversion.
+
+- [ ] **Step 0:** extract from `WalkerEventCodec.scala` until it has real
+  headroom, as a pure move proven by no test file being edited — the same
+  acceptance criterion Task 1b used. Then convert the encode side to a typed
+  error, as its own commit.
 - [ ] **Step 1:** write the spec updates above. Correct any spec text this batch falsified rather than appending a note beside it.
 - [ ] **Step 2:** `grep -rn "PendingProcedure" src/main` — list which cases remain and which actions still own them, as the starting inventory for the next batch's plan.
 - [ ] **Step 3:** full gate `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
