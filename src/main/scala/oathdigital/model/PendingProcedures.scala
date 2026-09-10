@@ -376,18 +376,6 @@ object PendingProcedure {
     require(remaining.nonEmpty, "Rest power continuation must have remaining hooks")
   }
 
-  final case class Forge(
-      decision: DecisionId,
-      actor: PlayerId,
-      site: SiteId,
-      eligibleTargets: Vector[SiteDenizenTarget],
-      cost: Tokens,
-      supplySpent: Int
-  ) extends PendingProcedure {
-    require(eligibleTargets.size == 3 && eligibleTargets.distinct.size == 3,
-      "Forge requires exactly three distinct denizen targets")
-  }
-
   /** Owner-scoped, replay-stable continuation of the printed banner procedure. */
   final case class Challenge(
       decision: DecisionId,

@@ -91,10 +91,6 @@ final case class AuthorizedPlayer private (
   def beginSearch(source: SearchSource): GameCommand =
     GameCommand.BeginSearch(access.playerId, source)
 
-  def beginForge: GameCommand = GameCommand.BeginForge(access.playerId)
-  def completeForge(decision: DecisionId,
-      assignments: Vector[ForgeResourceAssignment]): GameCommand =
-    GameCommand.CompleteForge(access.playerId, decision, assignments)
   def beginChallenge(banner: Banner): GameCommand =
     GameCommand.BeginChallenge(access.playerId, banner)
   def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =

@@ -30,8 +30,6 @@ object GameIntentMapper {
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
-      case Intent.BeginForge => Right(actor.beginForge)
-      case Intent.CompleteForge(id, values) => traverse(values)(forge).map(actor.completeForge(DecisionId(id), _))
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
       case Intent.ChooseChallengeSecretSite(id, site) => Right(actor.chooseChallengeSecretSite(DecisionId(id), SiteId(site)))
       case Intent.CompleteChallenge(id, amount) => Right(actor.completeChallenge(DecisionId(id), amount))

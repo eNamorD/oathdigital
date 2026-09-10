@@ -90,14 +90,6 @@ object OathEvent {
       discardedWorld: Vector[WorldCardId] = Vector.empty,
       discardedEdifices: Vector[EdificeId] = Vector.empty
   ) extends OathEvent
-  final case class ForgeStarted(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      targets: Vector[SiteDenizenTarget], cost: Tokens, supplySpent: Int
-  ) extends OathEvent
-  final case class ForgeCompleted(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      assignments: Vector[ForgeResourceAssignment], relicId: RelicId
-  ) extends OathEvent
   final case class BannerChallengeStarted(
       playerId: PlayerId, decision: DecisionId, banner: Banner,
       priorHolder: Option[PlayerId], priorResources: Int, supplySpent: Int,

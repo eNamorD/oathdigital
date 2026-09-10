@@ -19,9 +19,6 @@ object GameIntent {
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
-  case object BeginForge extends GameIntent
-  final case class CompleteForge(decisionId: String,
-      assignments: Vector[ForgeAssignment]) extends GameIntent
   final case class BeginChallenge(banner: String) extends GameIntent
   final case class ChooseChallengeSecretSite(decisionId: String, siteId: String)
       extends GameIntent

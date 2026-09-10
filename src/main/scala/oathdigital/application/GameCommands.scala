@@ -39,9 +39,6 @@ object GameCommand {
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
-  final case class BeginForge(playerId: PlayerId) extends GameCommand
-  final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
-      assignments: Vector[ForgeResourceAssignment]) extends GameCommand
   final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
       site: SiteId) extends GameCommand

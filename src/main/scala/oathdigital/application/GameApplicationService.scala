@@ -6,8 +6,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
-  SearchCommand, TravelCommand}
+  ChallengeCommand, EconomyCommand, SearchCommand, TravelCommand}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -72,7 +71,6 @@ final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
-    relicDrawPort: RelicDrawPort = RelicDrawPort.authoritative,
     defenseDicePort: DefenseDicePort = DefenseDicePort.random,
     campaignDicePort: CampaignDicePort = CampaignDicePort.random,
     warExhaustionRandomPort: WarExhaustionRandomPort =
@@ -354,17 +352,6 @@ final class GameApplicationService(
           } yield result
         case _ => Left(OathViolation.GameNotStarted)
       }
-      case GameCommand.BeginForge(playerId) =>
-        rules.handle(state, ForgeCommand.Begin(playerId,
-          DecisionId(s"forge-$nextSequence")))
-      case GameCommand.CompleteForge(playerId, decision, assignments) => state match {
-        case OathState.Ready(ready) =>
-          Forge.prepareComplete(catalog, state, playerId, decision, assignments)
-            .flatMap(_ => relicDrawPort.prepare(ready)).flatMap(relic =>
-              rules.handle(state, ForgeCommand.Complete(playerId, decision,
-                assignments, relic)))
-        case _ => Left(OathViolation.GameNotStarted)
-      }
       case GameCommand.BeginChallenge(playerId, banner) =>
         rules.handle(state, ChallengeCommand.Begin(playerId,
           DecisionId(s"challenge-$nextSequence"), banner))
@@ -482,7 +469,6 @@ final class GameApplicationService(
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
       case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
         Some(actor -> MajorActionKind.Search)
-      case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>

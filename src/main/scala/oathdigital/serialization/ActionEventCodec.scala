@@ -14,8 +14,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
       case _: Traded => TradedType
       case _: SearchStarted => SearchStartedType
       case _: SearchCompleted => SearchCompletedType
-      case _: ForgeStarted => ForgeStartedType
-      case _: ForgeCompleted => ForgeCompletedType
       case _: BannerChallengeStarted => BannerChallengeStartedType
       case _: BannerRibbonChoiceMade => BannerRibbonChoiceMadeType
       case _: BannerChallengeCompleted => BannerChallengeCompletedType
@@ -76,19 +74,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           "discardedEdifices" -> ujson.Arr.from(discardedEdifices.map(id =>
             ujson.Str(id.value)))
         )
-      case ForgeStarted(player, decision, site, targets, cost, spent) => ujson.Obj(
-        "playerId" -> player.value, "decisionId" -> decision.value,
-        "siteId" -> site.value, "supplySpent" -> spent,
-        "cost" -> ujson.Obj("favor" -> cost.favor, "secrets" -> cost.secrets),
-        "targets" -> ujson.Arr.from(targets.map(t => ujson.Obj(
-          "siteId" -> t.siteId.value, "denizenId" -> t.denizenId.value))))
-      case ForgeCompleted(player, decision, site, assignments, relic) => ujson.Obj(
-        "playerId" -> player.value, "decisionId" -> decision.value,
-        "siteId" -> site.value, "relicId" -> relic.value,
-        "assignments" -> ujson.Arr.from(assignments.map(a => ujson.Obj(
-          "siteId" -> a.target.siteId.value,
-          "denizenId" -> a.target.denizenId.value,
-          "resource" -> a.resource.key))))
       case BannerChallengeStarted(player, decision, banner, holder, prior, spent,
           favor, sites) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -225,28 +210,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
             PlayerId(payload("playerId").str),
             DecisionId(payload("decisionId").str), kept, discarded, placement,
             favor, discardedWorld, discardedEdifices)
-        case ForgeStartedType => for {
-          spent <- safeIntField(payload.obj, "supplySpent", path)
-          favor <- safeIntField(payload("cost").obj, "favor", s"$path.cost")
-          secrets <- safeIntField(payload("cost").obj, "secrets", s"$path.cost")
-          targets <- traverse(payload("targets").arr.toVector)(v => Right(
-            SiteDenizenTarget(SiteId(v("siteId").str), DenizenId(v("denizenId").str))))
-        } yield ForgeStarted(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
-          targets, Tokens(favor, secrets), spent)
-        case ForgeCompletedType => for {
-          assignments <- traverse(payload("assignments").arr.toVector) { v =>
-            val resource = v("resource").str match {
-              case "favor" => Right(ForgeResource.Favor)
-              case "secret" => Right(ForgeResource.Secret)
-              case other => Left(InvalidValue(s"$path.assignments.resource", s"unknown Forge resource $other"))
-            }
-            resource.map(r => ForgeResourceAssignment(
-              SiteDenizenTarget(SiteId(v("siteId").str), DenizenId(v("denizenId").str)), r))
-          }
-        } yield ForgeCompleted(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str), SiteId(payload("siteId").str),
-          assignments, RelicId(payload("relicId").str))
         case BannerChallengeStartedType => for {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           prior <- safeIntField(payload.obj, "priorResources", path)

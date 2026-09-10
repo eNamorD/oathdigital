@@ -41,15 +41,6 @@ private[protocol] object CommandIntentDecoders {
         case _ => Left(InvalidValue(s"$path.region", "expected string or null"))
       }
     } yield BeginSearch(SearchSource(source, region))
-    case "beginForge" => empty(value, path, BeginForge)
-    case "completeForge" => for {
-      _ <- exact(value, Set("type", "decisionId", "assignments"), path)
-      id <- string(value, "decisionId", path)
-      raw <- field(value, "assignments", path).flatMap(array(_, s"$path.assignments"))
-      assignments <- traverse(raw.zipWithIndex) { case (v, i) => forge(v, s"$path.assignments[$i]") }
-      keys = assignments.map(v => s"${v.siteId}/${v.denizenId}")
-      _ <- noDuplicates(keys, s"$path.assignments")
-    } yield CompleteForge(id, assignments)
     case "beginChallenge" => one(value, path, "banner")(BeginChallenge)
     case "chooseChallengeSecretSite" => two(value, path, "decisionId", "siteId")(ChooseChallengeSecretSite)
     case "completeChallenge" => idInt(value, path, "amount")(CompleteChallenge)
@@ -164,9 +155,6 @@ private[protocol] object CommandIntentDecoders {
     _ <- exact(o, Set("kind", "replace"), p); k <- string(o, "kind", p)
     replacement <- field(o, "replace", p).flatMap { case ujson.Null => Right(None); case x => card(x, s"$p.replace").map(Some(_)) }
   } yield Placement(k, replacement) }
-  private def forge(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
-    _ <- exact(o, Set("siteId", "denizenId", "resource"), p); s <- string(o, "siteId", p); d <- string(o, "denizenId", p); r <- string(o, "resource", p)
-  } yield ForgeAssignment(s, d, r) }
   private def allocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("siteId", "count"), p); s <- string(o, "siteId", p); c <- field(o, "count", p).flatMap(integer(_, s"$p.count"))
   } yield CampaignForceAllocation(s, c) }

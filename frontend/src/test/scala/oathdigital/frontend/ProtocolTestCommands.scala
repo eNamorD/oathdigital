@@ -41,8 +41,6 @@ private[frontend] object GameCommand {
   def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))
   def Trade(actor: String, target: oathdigital.frontend.EconomyTarget, resource: String) = Intent.Trade(oathdigital.protocol.EconomyTarget(target.kind, target.id), resource)
   def BeginSearch(actor: String, source: String, region: Option[String]) = Intent.BeginSearch(SearchSource(source, region))
-  def BeginForge(actor: String) = Intent.BeginForge
-  def CompleteForge(actor: String, id: String, values: Vector[(ForgeTarget, String)]) = Intent.CompleteForge(id, values.map { case (v,r) => ForgeAssignment(v.siteId, v.denizenId, r) })
   def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
   def ChooseChallengeSecretSite(actor: String, id: String, site: String) = Intent.ChooseChallengeSecretSite(id, site)
   def CompleteChallenge(actor: String, id: String, amount: Int) = Intent.CompleteChallenge(id, amount)

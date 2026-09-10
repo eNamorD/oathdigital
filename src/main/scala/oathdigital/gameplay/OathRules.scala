@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand, Forge, ForgeCommand,
+  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand,
   Search, SearchCommand, Travel,
   TravelCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
@@ -115,19 +115,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         SearchPowers.recordPlayHooks(catalog, transition, ready, complete.playerId,
           complete.kept, complete.placement)
       case _ => Right(transition)
-    }
-
-  def handle(state: OathState, command: ForgeCommand)
-      : Either[OathViolation, OathTransition] =
-    (command match {
-      case begin: ForgeCommand.Begin => withFallback(state, begin.playerId,
-        MajorActionKind.Forge)(Forge.handle(catalog, state, command))
-      case _ => Forge.handle(catalog, state, command)
-    }).flatMap { transition =>
-      command match {
-        case _: ForgeCommand.Complete => completeAction(transition)
-        case _ => Right(transition)
-      }
     }
 
   def handle(state: OathState, command: ChallengeCommand)
@@ -252,8 +239,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
-      case event: ForgeStarted => Forge.evolve(catalog, state, event)
-      case event: ForgeCompleted => Forge.evolve(catalog, state, event)
       case event: BannerChallengeStarted => Challenge.evolve(catalog, state, event)
       case event: BannerRibbonChoiceMade => Challenge.evolve(catalog, state, event)
       case event: BannerChallengeCompleted => Challenge.evolve(catalog, state, event)

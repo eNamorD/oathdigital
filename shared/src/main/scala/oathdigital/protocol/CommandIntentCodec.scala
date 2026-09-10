@@ -20,9 +20,6 @@ private[protocol] object CommandIntentCodec {
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
       "region" -> source.region.map(ujson.Str(_)).getOrElse(ujson.Null))
-    case BeginForge => tagged("beginForge")
-    case CompleteForge(id, assignments) => tagged("completeForge", "decisionId" -> id,
-      "assignments" -> ujson.Arr.from(assignments.map(forge)))
     case BeginChallenge(banner) => tagged("beginChallenge", "banner" -> banner)
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
@@ -68,7 +65,6 @@ private[protocol] object CommandIntentCodec {
   private def card(v: CardRef) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
   private def place(v: Placement) = ujson.Obj("kind" -> v.kind,
     "replace" -> v.replace.map(card).getOrElse(ujson.Null))
-  private def forge(v: ForgeAssignment) = ujson.Obj("siteId" -> v.siteId, "denizenId" -> v.denizenId, "resource" -> v.resource)
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
   private def restAllocation(v: RestFavorAllocation) = ujson.Obj(
     "source" -> ujson.Obj("kind" -> v.source.kind,

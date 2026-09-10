@@ -58,7 +58,6 @@ private[frontend] object ModifierWorkflow {
   def action(command: GameIntent): Option[(String, Map[String, String])] = command match {
     case GameIntent.BeginSearch(source) => Some("search" ->
       (Map("source" -> source.source) ++ source.region.map("region" -> _)))
-    case GameIntent.BeginForge => Some("forge" -> Map.empty)
     // Every action registered on the walker offers its modifiers through
     // `StartWalker`; an unregistered key must NOT be swept in, since the
     // server would reject the preview for an action it does not know.

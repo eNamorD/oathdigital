@@ -92,7 +92,7 @@ private[application] final class PendingProcedureProjector(
     }
 
   /** Forge's assignment prompt, projected off the WALKER's parked decision
-    * (batch-1 Task 3) rather than the legacy `PendingProcedure.Forge` this
+    * (batch-1 Task 3) rather than the deleted `PendingProcedure.Forge` this
     * read before the cutover.
     *
     * `walkerDecision` is passed in rather than recomputed: it is already
@@ -109,21 +109,6 @@ private[application] final class PendingProcedureProjector(
     * is exactly the drift R14 exists to prevent.
     */
   private def forgeProjection(context: ScopedProjectionContext,
-      walkerDecision: Option[WalkerDecisionProjection]) =
-    walkerForgeProjection(context, walkerDecision).orElse(
-      // The legacy `ForgeCommand` path is still live for exactly one commit
-      // (batch-1 Task 3 lands the wiring and the deletion separately, R23);
-      // this arm goes with `PendingProcedure.Forge` itself.
-      context.current.pending.collect {
-        case f: PendingProcedure.Forge if context.viewer.contains(f.actor) =>
-          ForgeProjection(f.decision.value, f.actor.value, f.cost.favor,
-            f.cost.secrets, f.eligibleTargets.map(target =>
-              ForgeAssignmentTargetProjection(target.siteId.value,
-                target.denizenId.value,
-                presentation.denizenLabel(target.denizenId))))
-      })
-
-  private def walkerForgeProjection(context: ScopedProjectionContext,
       walkerDecision: Option[WalkerDecisionProjection]) = for {
     decision <- walkerDecision
     if decision.action == ActionRef.Forge.key &&
@@ -374,8 +359,6 @@ private[application] final class PendingProcedureProjector(
     else context.current.pending match {
       case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"
       case Some(_: PendingProcedure.Search) => "search-waiting"
-      case Some(_: PendingProcedure.Forge) if forge.nonEmpty => "forge-assignment"
-      case Some(_: PendingProcedure.Forge) => "forge-waiting"
       case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"
       case Some(_: PendingProcedure.Challenge) => "challenge-waiting"
       case Some(_: PendingProcedure.Campaign)

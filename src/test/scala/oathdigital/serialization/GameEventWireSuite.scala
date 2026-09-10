@@ -14,13 +14,14 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
   Sequence, StackPosition, Swap, Take}
-import oathdigital.gameplay.walker.{DeltaMeaning, OwnerQuery, WalkerCtx,
-  WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, OwnerQuery,
+  WalkerCtx, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.DecisionPayload.RecoverRelicPayload
+import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
+  RecoverRelicPayload}
 
 class GameEventWireSuite extends munit.FunSuite {
   test("ignored-rule diagnostics round trip durable source timing and reason") {
@@ -138,23 +139,30 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("v8 Forge events round trip exact targets resources and relic top") {
+  test("a walker Forge assignment answer round trips its exact targets and " +
+      "resources, on the step and on the park") {
+    // Replaces the deleted `v8 Forge events` test one layer down: the
+    // assignment fact now rides a walker `ChoicePayload` and the parked
+    // `answered` vector rather than a `ForgeCompleted` event, and both go
+    // through `WalkerEventCodec.encodeDecisionPayload`, whose Forge branch
+    // batch-1 Task 3 added.
+    val player = PlayerId("red")
     val site = SiteId("site:forge")
-    val targets = Vector("1", "2", "3").map(id =>
-      SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
-    val assignments = targets.zip(Vector(ForgeResource.Favor,
-      ForgeResource.Secret, ForgeResource.Favor)).map {
-        case (target, resource) => ForgeResourceAssignment(target, resource) }
+    val payload = ForgeAssignmentPayload(Vector("1", "2", "3")
+      .map(id => SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
+      .zip(Vector(ForgeResource.Favor, ForgeResource.Secret,
+        ForgeResource.Favor))
+      .map { case (target, resource) =>
+        ForgeResourceAssignment(target, resource) })
+    val answered = Answered("forge.assignment", payload)
     val events = Vector[OathEvent](
-      OathEvent.ForgeStarted(PlayerId("red"), DecisionId("forge-8"), site,
-        targets, Tokens(2, 1), 1),
-      OathEvent.ForgeCompleted(PlayerId("red"), DecisionId("forge-8"), site,
-        assignments, RelicId("relic:top")))
+      WalkerStepRecorded(player, "1",
+        ChoicePayload("forge.assignment", payload), Vector.empty, Vector.empty),
+      WalkerParked(player, ActionRef.Forge, Vector("2"), Vector(answered),
+        Vector.empty))
     val encoded = GameEventWire.encodeStream("forge", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector(1, 1))
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 

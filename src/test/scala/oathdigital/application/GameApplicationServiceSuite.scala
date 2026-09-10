@@ -810,7 +810,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.ResolveWalker(actor, TreeDecision(
         ForgeProcedure.assignmentDecisionId, ForgeAssignmentPayload(
           assignments.map(_.copy(resource = ForgeResource.Secret))))),
-      GameCommand.BeginForge(actor)
+      GameCommand.BeginRest(actor)
     ).foreach(command => assert(service.handle(gameId, started.nextSequence,
       command).isLeft, s"$command must be rejected while Forge is parked"))
     assertEquals(repository.load(gameId).toOption.flatten.get.records,
@@ -824,7 +824,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     val Ready(after) = finished.state: @unchecked
 
-    // The same final state the legacy `ForgeCommand` path produced: three
+    // The same final state the deleted legacy path produced: three
     // denizens each carrying exactly one resource, the relic facedown in the
     // actor's play area, the deck advanced by one, one Supply spent in total,
     // and nothing pending on either mechanism.
@@ -861,76 +861,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       projector.projectPublic(gameId, replayed)).contains(relic.value))
   }
 
-  test("Forge persists private pending and completed state and prepares relic once") {
-    val repository = new InMemoryEventStreamRepository
-    var prepared = 0
-    val relicPort = new RelicDrawPort {
-      def prepare(ready: ReadyGame) = {
-        prepared += 1
-        ready.game.current.commonCards.relicDeck.headOption
-          .toRight(oathdigital.gameplay.OathViolation.ForgeUnavailable("empty"))
-      }
-    }
-    val dice = new CampaignDicePort {
-      def rollAttack(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
-      def rollDefense(count: Int) = Vector.fill(count)(DefenseDieFace.Blank)
-    }
-    val service = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val gameId = "game-forge-persistence"
-    val (accepted, actor, forgeSite) = forgeReadyGame(service, gameId)
-    val begun = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginForge(actor)).fold(error => fail(error.toString), identity)
-    val reloadedService = new GameApplicationService(catalog, repository,
-      relicDrawPort = relicPort, campaignDicePort = dice)
-    val pendingLoaded = reloadedService.load(gameId).toOption.flatten.get
-    assertEquals(pendingLoaded.state, begun.state)
-    val Ready(forgeReady) = pendingLoaded.state: @unchecked
-    val pending = forgeReady.game.current.pending.get.asInstanceOf[PendingProcedure.Forge]
-    val other = forgeReady.game.current.players.find(_.player != actor).get.player
-    val projector = new GameProjector(catalog)
-    assert(projector.project(gameId, pendingLoaded, actor).forge.nonEmpty)
-    assertEquals(projector.project(gameId, pendingLoaded, other).forge, None)
-    assertEquals(projector.projectPublic(gameId, pendingLoaded).forge, None)
-    val resources = Vector.fill(pending.cost.favor)(ForgeResource.Favor) ++
-      Vector.fill(pending.cost.secrets)(ForgeResource.Secret)
-    val assignments = pending.eligibleTargets.zip(resources).map {
-      case (target, resource) => ForgeResourceAssignment(target, resource) }
-    val beforeRejected = repository.load(gameId).toOption.flatten.get.records
-    Vector[GameCommand](
-      GameCommand.CompleteForge(actor, DecisionId("stale"), assignments),
-      GameCommand.CompleteForge(other, pending.decision, assignments),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.updated(1, assignments.head)),
-      GameCommand.CompleteForge(actor, pending.decision,
-        assignments.map(_.copy(resource = ForgeResource.Secret)))
-    ).foreach(command => assert(reloadedService.handle(gameId,
-      begun.nextSequence, command).isLeft))
-    assertEquals(prepared, 0)
-    assertEquals(repository.load(gameId).toOption.flatten.get.records, beforeRejected)
-    val relic = forgeReady.game.current.commonCards.relicDeck.head
-    val completed = reloadedService.handle(gameId, begun.nextSequence,
-      GameCommand.CompleteForge(actor, pending.decision, assignments)).toOption.get
-    assertEquals(prepared, 1)
-    val completedLoaded = new GameApplicationService(catalog, repository)
-      .load(gameId).toOption.flatten.get
-    assertEquals(completedLoaded.state, completed.state)
-    val otherJson = GameHttpWire.encodeProjection(
-      projector.project(gameId, completedLoaded, other))
-    val publicJson = GameHttpWire.encodeProjection(
-      projector.projectPublic(gameId, completedLoaded))
-    assert(!otherJson.contains(relic.value))
-    assert(!publicJson.contains(relic.value))
-  }
   /** Drives a real, journalled game to the point where `p2` can start a
     * Forge: a ruled site with a printed Forge cost, exactly three empty
     * faceup denizens on it, supply in hand and a non-empty relic deck.
     *
-    * Extracted (batch-1 Task 3) so the walker end-to-end Forge and the
-    * legacy `ForgeCommand` one assert their final states against the SAME
-    * board reached by the SAME commands -- an equivalence a second
-    * hand-built fixture could only approximate. Returns the accepted
-    * position to start from, the actor, and the Forge site.
+    * Extracted (batch-1 Task 3) so the walker end-to-end Forge asserted its
+    * final state against the SAME board, reached by the SAME commands, that
+    * the deleted legacy `ForgeCommand` test asserted its own against -- an
+    * equivalence a second hand-built fixture could only approximate. It
+    * outlives that test because the board it builds (a conquered site with
+    * three searched-in denizens) is not cheap to state any other way.
+    * Returns the accepted position to start from, the actor, and the site.
     */
   private def forgeReadyGame(service: GameApplicationService, gameId: String)
       : (GameAccepted, PlayerId, SiteId) = {

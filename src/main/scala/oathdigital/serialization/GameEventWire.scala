@@ -44,8 +44,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val LeagueTreatyResolvedType = "gameplay.league-treaty-resolved"
   val LeagueTreatyDeclinedType = "gameplay.league-treaty-declined"
   val RestCompletedType = "gameplay.rest-completed"
-  val ForgeStartedType = "gameplay.forge-started"
-  val ForgeCompletedType = "gameplay.forge-completed"
   val BannerChallengeStartedType = "gameplay.banner-challenge-started"
   val BannerRibbonChoiceMadeType = "gameplay.banner-ribbon-choice-made"
   val BannerChallengeCompletedType = "gameplay.banner-challenge-completed"

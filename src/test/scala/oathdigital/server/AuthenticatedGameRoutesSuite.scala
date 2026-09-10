@@ -180,20 +180,30 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
       assertEquals(get(client, base + "?playerId=p2", Some(p2User.value))
         .statusCode(), 400)
 
+      // Forge is a walker action (batch-1 Task 3), so the three guarantees
+      // this block always made are asserted on `startWalker`/`resolveWalker`
+      // instead of the deleted `beginForge`/`completeForge` intents: the
+      // actor is derived from the session and never carried on the wire, a
+      // spoofed one is rejected outright, and no unknown field rides an
+      // assignment payload.
       val actorDerivedForge = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginForge"))))
+          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
+            "modifiers" -> ujson.Arr()))))
       assertEquals(actorDerivedForge.statusCode(), 422, actorDerivedForge.body())
       val spoofedForgeActor = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "beginForge", "playerId" -> "p3"))))
+          "intent" -> ujson.Obj("type" -> "startWalker", "action" -> "forge",
+            "modifiers" -> ujson.Arr(), "playerId" -> "p3"))))
       assertEquals(spoofedForgeActor.statusCode(), 400)
       val spoofedRelic = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
-          "intent" -> ujson.Obj("type" -> "completeForge",
-            "decisionId" -> "forge-1", "assignments" -> ujson.Arr(),
-            "relicId" -> "relic:spoofed"))))
-      assertEquals(spoofedRelic.statusCode(), 400)
+          "intent" -> ujson.Obj("type" -> "resolveWalker",
+            "decisionId" -> "forge.assignment",
+            "payload" -> ujson.Obj("kind" -> "forge-assignment",
+              "assignments" -> ujson.Arr(),
+              "relicId" -> "relic:spoofed")))))
+      assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
       val actorDerivedChallenge = post(client, base + "/commands", p2User.value,
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
           "intent" -> ujson.Obj("type" -> "beginChallenge",

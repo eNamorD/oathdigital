@@ -40,12 +40,11 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Vector("travel", "campaign", "campaign", "muster", "trade", "trade", "search"))
     val commands = Vector[GameIntent](
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
-      GameIntent.BeginForge,
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "forge", "recover", "forge", "search"))
+      Vector("search", "recover", "forge", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
     // An UNREGISTERED walker action must not be swept into the same
@@ -173,8 +172,10 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     val (submitted, outerModifiers) = ModifierWorkflow.submission(
-      GameIntent.BeginForge, Vector(invocation))
-    assertEquals(submitted, GameIntent.BeginForge)
+      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
+      Vector(invocation))
+    assertEquals(submitted,
+      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)))
     assertEquals(outerModifiers, Vector(invocation))
   }
 }

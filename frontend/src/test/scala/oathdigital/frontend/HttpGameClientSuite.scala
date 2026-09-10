@@ -5,7 +5,8 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionPayloadWire, GameIntent, MajorActionPreviewRequest, ModifierInvocation}
+  DecisionPayloadWire, ForgeAssignment, GameIntent, MajorActionPreviewRequest,
+  ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
   test("production client previews and submits the same ordered modifiers") {
@@ -174,11 +175,17 @@ class HttpGameClientSuite extends FunSuite {
     assert(take.contains("\"relicId\":\"relic:R1\""))
   }
   test("Forge commands encode stable assignment targets without relic identity") {
+    // Forge is a walker action (batch-1 Task 3): the start is a
+    // `StartWalker` and the assignment answer a `ResolveWalker`, so the same
+    // two guarantees this test always made -- the denizen target rides the
+    // wire, the forged relic never does -- are asserted on those.
     val target = ForgeTarget("site:a", "denizen:1", "One")
-    assert(GameJson.encodeCommand(20, GameCommand.BeginForge("red"))
-      .contains("\"type\":\"beginForge\""))
-    val completed = GameJson.encodeCommand(21, GameCommand.CompleteForge(
-      "red", "forge-20", Vector(target -> "favor")))
+    assert(GameJson.encodeCommand(20,
+      GameCommand.StartWalker("red", "forge")).contains("\"action\":\"forge\""))
+    val completed = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
+      "red", "forge.assignment", DecisionPayloadWire.ForgeAssignmentWire(
+        Vector(ForgeAssignment(target.siteId, target.denizenId, "favor")))))
+    assert(completed.contains("\"kind\":\"forge-assignment\""))
     assert(completed.contains("\"denizenId\":\"denizen:1\""))
     assert(!completed.contains("relicId"))
   }
