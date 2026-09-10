@@ -151,13 +151,14 @@ The terrain powers become `ContributingPower`s before Travel's tree exists, so t
 Each terrain site power becomes its own contribution class, grouped in one file:
 
 - **Mountain** and **Island**: a `Transform` at `PowerWindow.TravelCost` that increases the pay node's `AdjustSupply` amount by 1 and 2 respectively, applicable only when the power's site is the destination.
-- **Coast**: a `Transform` at the same window that *replaces* the amount with 1, applicable only on a coast route (this power's site is the source, the source is coastal, the destination is coastal or an island). It declares `priority` above the adds so a replace lands last, and `shouldIgnore(other)` drops the destination-side adds — this is the named-ignore that `SuppressionRegistry` expresses today, now stated on the power that owns the rule.
+- **Coast**: a `Transform` at the same window that *replaces* the amount with 1, applicable only on a coast route (this power's site is the source, the source is coastal, the destination is coastal or an island). It uses `shouldIgnore(other)` to drop destination-side adds — the single load-bearing mechanism that `SuppressionRegistry` expresses today, now stated on the power that owns the rule. It declares no priority.
 - **Narrow Pass**: a `Restriction` at `PowerWindow.TravelActionEligibility` returning `OathViolation.TravelPassBlocked` — the typed violation directly, which retires `TravelPassBlockedCodec`'s encode/decode round-trip through a reason string.
 
 **How a windowed node presents its children, which decides the shape of every transform here** (found by Task 2). A `Transform` receives the hooked node's children vector. For a `PrimitiveOperation` that vector is `Vector(theLeafItself)` — a leaf's `children` is a self-reference — so a transform hooked on a windowed *leaf* can only replace that leaf wholesale, and cannot see inside a `BuildOps` closure at all. For a composite it is the real children.
 
 Therefore Travel's cost node is `Sequence(AdjustSupply, Move)` carrying
-`PowerWindow.TravelCost`, **not** a `BuildOps` wrapping an `AdjustSupply`.
+`PowerWindow.TravelCost`, wrapped by `TravelActionEligibility`, **not** a
+`BuildOps` wrapping an `AdjustSupply`.
 The walker executes the plain delta leaf directly, and each terrain transform
 receives both `AdjustSupply(actor, -base)` and its sibling destination `Move`.
 It rewrites the amount honestly, without reconstructing base-cost computation
@@ -165,7 +166,7 @@ inside a replacement closure.
 
 Only four `Operation` cases carry a `window` at all — `ModifyDicePool`, `Decide`, `BuildOps` and `Sequence` — so a delta that needs to be hookable is made hookable by the composite it sits in, not by itself.
 
-The route facts each `applicable` needs (which site is source, which is destination) come from `ctx.state` and the hooked operation. The actor's pawn site is the source and the destination rides the windowed `Sequence` as its sibling `Move`. **R30:** `PowerCtx` carries that generic hooked `operation`, populated at every gather call, so applicability and named ignore can inspect its route without the collector or walker knowing Travel. `PowerCtx` remains catalog-free; static catalog data stays on a catalog-parameterized contribution factory such as `CatacombsContribution.forCatalog`.
+The route facts each `applicable` needs (which site is source, which is destination) come from `ctx.state` and the hooked operation. The actor's pawn site is the source and the destination rides the windowed `Sequence` as its sibling `Move`. **CR1 (controller ruling):** `PowerCtx` carries that generic hooked `operation`, populated at every gather call, so applicability and named ignore can inspect its route without the collector or walker knowing Travel. `PowerCtx` remains catalog-free; static catalog data stays on a catalog-parameterized contribution factory such as `CatacombsContribution.forCatalog`.
 
 - [ ] **Step 1: failing tests** in `TravelSitePowersSuite` driving `ContributionCollector.gather` directly, one per parity case the retired `TravelCostWindow.fold` implements: ordinary route to a mountain (+1), to an island (+2), coast route (replaced with 1), coast route where the destination also has an add (the add is ignored, not stacked), non-coast route from a coastal site (no replace), and a pass crossing regions (blocked) versus a coast route past a pass (allowed). Expected FAIL: the powers do not exist.
 - [ ] **Step 2: implement** the powers and register them in `WalkerPowerCatalog.default`.
