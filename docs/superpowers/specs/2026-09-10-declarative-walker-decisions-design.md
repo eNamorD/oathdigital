@@ -26,48 +26,104 @@ walker's actor as the resolver.
 
 ## Decision model
 
-Replace the marker and validation closure with concrete legal options:
+Replace the marker and validation closure with a declarative query:
 
 ```scala
 final case class Decide(
     decisionId: String,
     owner: PlayerId,
-    options: Vector[DecisionOption],
+    query: DecisionQuery,
     window: Option[PowerWindow] = None
 )
 
-final case class DecisionOption(
-    payload: DecisionPayload,
-    targets: Vector[DecisionTarget]
+sealed trait DecisionQuery
+```
+
+The names reflect their roles:
+
+- `DecisionQuery` is the complete question and selection contract carried by
+  `Decide`;
+- `DecisionOption` is a selectable button or game object;
+- `DecisionAnswer` replaces `DecisionPayload` as the answer submitted and
+  recorded after satisfying the query.
+
+`DecisionQuery` initially has two forms:
+
+```scala
+object DecisionQuery {
+  final case class ChooseOne(
+      choices: Vector[DecisionChoice]
+  ) extends DecisionQuery
+
+  final case class Partition(
+      sections: Vector[DecisionSection],
+      arrangements: Vector[DecisionArrangement]
+  ) extends DecisionQuery
+}
+
+final case class DecisionChoice(
+    answer: DecisionAnswer,
+    option: DecisionOption
+)
+
+final case class DecisionSection(
+    key: String,
+    label: String,
+    required: Int
+)
+
+final case class DecisionArrangement(
+    answer: DecisionAnswer,
+    placements: Vector[DecisionPlacement]
+)
+
+final case class DecisionPlacement(
+    option: DecisionOption,
+    sectionKey: String
 )
 ```
 
-`payload` is the complete answer recorded by `WalkerStepRecorded` when the
-option is selected. `targets` describes the game objects involved in that
-answer so a generic projector can present or highlight them. A command-like
-choice uses a button target.
+`ChooseOne` maps each selectable option directly to its complete answer.
+`Partition` describes named sections, their exact required counts, and every
+legal complete arrangement. The arrangement answer is recorded verbatim.
+Intermediate dragging remains frontend-local state.
 
-`DecisionTarget` is model-safe, presentation-neutral data with stable
+`DecisionOption` is model-safe, presentation-neutral data with stable
 identities:
 
 ```scala
-sealed trait DecisionTarget
-object DecisionTarget {
-  final case class Button(key: String) extends DecisionTarget
-  final case class Player(id: PlayerId) extends DecisionTarget
-  final case class Site(id: SiteId) extends DecisionTarget
-  final case class Denizen(site: SiteId, id: DenizenId) extends DecisionTarget
-  final case class Relic(location: Location, id: RelicId) extends DecisionTarget
-  final case class Deck(id: CardDeck) extends DecisionTarget
+sealed trait DecisionOption
+object DecisionOption {
+  final case class Button(key: String, label: String) extends DecisionOption
+  final case class Player(id: PlayerId) extends DecisionOption
+  final case class Site(id: SiteId) extends DecisionOption
+  final case class Denizen(id: DenizenId) extends DecisionOption
+  final case class Relic(id: RelicId) extends DecisionOption
+  final case class Vision(id: VisionId) extends DecisionOption
+  final case class Deck(id: CardDeck) extends DecisionOption
 }
 ```
 
-Only variants required by migrated production decisions need to be introduced
-initially: `Button`, `Denizen`, and `Relic`. Further variants are added when a
-real decision needs them.
+Only variants required by migrated production decisions need behavior in this
+change: `Button`, `Denizen`, and `Relic`; `Vision` is added and covered as a
+supported projection target. Further variants are added when a real decision
+needs them.
 
-An option is the complete legal answer, not one intermediate UI click. This
-keeps the walker generic and makes legality a simple membership check.
+Denizen, Relic, and Vision IDs identify physical cards globally. Their option
+does not carry a site, player, or other location. The projector locates the ID
+in authoritative state to produce visible details, and the frontend highlights
+the matching stable ID wherever it is rendered. Location is a legality fact
+used while constructing a query, not part of card identity. Owner-private
+projection and existing card-knowledge rules continue to govern disclosure.
+
+An option is one selectable button or game object. A `DecisionChoice` or
+`DecisionArrangement` associates the complete legal answer with those options,
+keeping the walker generic and answer legality a membership check.
+
+Rename the Scala model family and its concrete cases from `DecisionPayload` to
+`DecisionAnswer`, including `Answered.answer` and corresponding command/wire
+DTO type names. Persisted JSON field names and existing answer kind tags remain
+unchanged, so recorded games require no migration.
 
 ## Resolution semantics
 
@@ -75,14 +131,16 @@ When resolving a parked `Decide`, `ProcedureWalker`:
 
 1. Rebuilds and power-transforms the tree as it does today.
 2. Confirms `decide.owner == pending.actor`.
-3. Requires exactly one `decide.options` entry whose payload equals the
-   submitted payload.
-4. Records that payload unchanged.
+3. Requires exactly one complete choice or arrangement whose answer equals the
+   submitted answer.
+4. Records that answer unchanged.
 
-An empty option list is invalid for a parked `Decide`; action trees must omit
-the node when no answer is required. Duplicate payloads are invalid because
-they make target metadata ambiguous. These structural checks return typed
-`InvalidEventOrder` violations rather than throwing.
+An empty query is invalid for a parked `Decide`; action trees must omit the
+node when no answer is required. Duplicate answers are invalid because they
+make option metadata ambiguous. Partition sections must have unique keys and
+non-negative required counts; every arrangement must place every option once,
+use only declared sections, and meet every required count. These checks return
+typed `InvalidEventOrder` violations rather than throwing.
 
 Because the tree is rebuilt against authoritative state for projection and
 resolution, removed or altered options reject stale commands automatically.
@@ -92,35 +150,42 @@ No decision-specific validation closure remains.
 
 `WalkerDecisionProjector` projects the options found on the transformed parked
 `Decide`; it does not branch on action or decision IDs to rediscover choices.
-Each projected option contains:
+The projection mirrors the query shape. Each projected option contains:
 
-- the existing wire representation of its complete `DecisionPayload`;
-- ordered projected targets with stable keys, kinds, labels, and appropriate
-  visible details.
+- the existing wire representation of its complete `DecisionAnswer` where the
+  query associates an answer with it;
+- a stable kind and ID plus display details resolved from authoritative state.
 
-The shared walker decision DTO replaces `relicCandidates` with generic
-`options`. Roll-only fields and Recover roll feedback remain unchanged in this
-change because they are not decision-option discovery.
+A projected partition also contains ordered section keys, labels, required
+counts, and its complete legal arrangements. The wire representation never
+asks the frontend to reconstruct legality.
+
+The shared walker decision DTO replaces `relicCandidates` with a generic
+projected query. Roll-only fields and Recover roll feedback remain unchanged
+in this change because they are not decision-option discovery.
 
 Hidden information remains protected by the owner-private walker projection.
-Target presentation uses the existing `GamePresentationProjector`; operation
-and model layers carry no UI labels.
+Card and board-object presentation uses the existing
+`GamePresentationProjector`. Button labels and partition section labels are
+declarative prompt copy carried by the query; game-object names and details do
+not enter gameplay or model code.
 
 The frontend may retain action-specific renderers. Their inputs, however,
 must come exclusively from projected decision options. Renderer code may
-interpret a known payload shape to provide a richer interaction, but it may
+interpret a known answer shape to provide a richer interaction, but it may
 not independently calculate legal candidates.
 
 ## Recover migration
 
 The Continue/Stop decision contains two options:
 
-- `RecoverChoicePayload(Continue)` targeting `Button("continue")`;
-- `RecoverChoicePayload(Stop)` targeting `Button("stop")`.
+- `RecoverChoiceAnswer(Continue)` paired with
+  `Button("continue", "Continue")`;
+- `RecoverChoiceAnswer(Stop)` paired with `Button("stop", "Stop")`.
 
 The success decision contains one option per live facedown site relic:
 
-- `RecoverRelicPayload(relicId)` targeting that site relic.
+- `RecoverRelicAnswer(relicId)` paired with `Relic(relicId)`.
 
 If no relic exists, the procedure omits the relic `Decide` and finishes as a
 legal wasted action, preserving the current ruling.
@@ -132,44 +197,49 @@ from the generic options.
 
 ## Forge migration
 
-Forge has exactly three eligible denizens and a printed cost totaling exactly
-three resources. Its complete legal answer space is therefore small: at most
-three distinct assignments for a mixed cost, and one when all resources have
-the same type.
+Forge is a `DecisionQuery.Partition`. Its options are the three eligible
+`Denizen` cards. Its sections are `"pay-favor"` and `"pay-secret"`, displayed
+as “Pay Favor” and “Pay Secret”, with required counts taken from the printed
+Forge cost. Every option must be placed in exactly one section.
 
-`ForgeProcedure` enumerates every complete legal
-`ForgeAssignmentPayload` from the live eligible targets and printed resource
-multiset. It filters assignments that require more favor from a suit bank than
-is currently available. Each option targets its three denizens in canonical
-target order.
+`ForgeProcedure` enumerates every complete legal arrangement from the live
+eligible targets and printed resource multiset. Each arrangement carries its
+corresponding `ForgeAssignmentAnswer`, with assignments in canonical target
+order. With three targets there are at most three arrangements for a mixed
+cost and one when all resources have the same type.
 
-This replaces `validateAssignment`. It does not introduce a generic
-multi-selection language or payload factory.
+Suit-bank availability does not filter the decision query. Whether or how suit
+banks constrain the eventual resource placement is explicitly deferred to a
+separate rules discussion after this specification is approved.
 
-The generic projector emits all complete legal Forge options. The existing
-Forge assignment UI derives:
+This replaces `validateAssignment`. It does not introduce a universal form
+language or answer factory.
 
-- the three denizen rows from the union of option targets;
-- allowed resource assignments from `ForgeAssignmentPayload`s;
-- confirmation eligibility from exact membership in the projected options.
+The generic projector emits the two sections, the denizen options, and all
+complete arrangements. The frontend initializes the denizens between those
+sections, allows drag/drop or accessible move controls, and enables confirmation
+only when the placement matches a projected arrangement. It submits that
+arrangement's answer verbatim.
 
-Changing a row must remain possible only when at least one projected complete
-option matches the resulting partial or complete assignment. The submitted
-payload is one of the projected complete options verbatim.
+Reuse the existing Keep/Discard interaction by extracting a generic two-section
+partition state and renderer. `CardDecisionState` and Forge each adapt their
+own projected data into it. Search/setup retain their existing semantics,
+resolution stage, labels, and ordering behavior; Forge supplies “Pay Favor” and
+“Pay Secret” labels, exact counts, and no ordering requirement. Do not route
+Forge through `PendingCardDecisionProjection` or make walker queries depend on
+Search/setup concepts.
 
-`PendingProcedureProjector.forgeProjection` must stop calling
-`ForgeProcedure.eligibleTargets` or `printedCost` for decision legality.
-Forge-specific display state may be derived from the projected payloads and
-targets, or the dedicated `ForgeProjection` may be removed if the generic
-walker projection fully replaces it. Prefer deletion when it does not force
-unrelated UI restructuring.
+Delete `PendingProcedureProjector.forgeProjection`, `ForgeProjection`, and
+`ForgeAssignmentTargetProjection`; the generic walker partition projection
+replaces them. Forge-specific frontend rendering derives its state from that
+partition without independently calling gameplay rules.
 
 ## Power transformations
 
 Powers continue to transform `Operation` trees. A power affecting decision
-choices transforms the `Decide` node's `options` before both walking and
-projection. It may add, remove, or replace options, but resulting options must
-have unique payloads and valid target metadata.
+choices transforms the `Decide` node's `query` before both walking and
+projection. It may add, remove, or replace choices, sections, arrangements, or
+options, but the resulting query must satisfy its structural invariants.
 
 This design deliberately does not add a separate projection hook for powers.
 The transformed executable decision is the projection source.
@@ -186,8 +256,8 @@ and viewer scoping; reintroducing a query object alone is insufficient.
 
 ## Failure handling
 
-- Unknown submitted payload: typed decision-option mismatch.
-- Duplicate option payloads: typed malformed-tree rejection.
+- Unknown submitted answer: typed decision-option mismatch.
+- Duplicate answers: typed malformed-tree rejection.
 - Empty parked decision: typed malformed-tree rejection.
 - Owner differing from walker actor: `WrongPlayer` or the existing equivalent.
 - Target identity that cannot be presented: omit the entire malformed decision
@@ -199,20 +269,20 @@ and viewer scoping; reintroducing a query object alone is insufficient.
 
 Add or update tests proving:
 
-1. Generic `Decide` accepts exactly its option payloads.
-2. Duplicate and empty options reject deterministically.
+1. Generic `Decide` accepts exactly the answers declared by its query.
+2. Duplicate answers and malformed/empty queries reject deterministically.
 3. Concrete owner enforcement replaces `OwnerQuery` behavior.
 4. A synthetic power that adds/removes an option changes projection and
    resolution identically.
 5. Recover projects and accepts Continue, Stop, and live relic options solely
    from its transformed `Decide`.
 6. Empty-site Recover finishes without parking.
-7. Forge enumerates every valid complete assignment and excludes unaffordable
-   suit-bank assignments.
-8. Forge UI derives rows and confirmation from projected options and submits
-   an option payload verbatim.
+7. Forge enumerates every printed-cost arrangement without consulting suit-bank
+   availability.
+8. Forge UI reuses the generic partition interaction, derives confirmation from
+   projected arrangements, and submits an arrangement answer verbatim.
 9. Stale Recover and Forge options reject after authoritative state changes.
-10. Event codec and replay preserve selected payloads unchanged.
+10. Event codec and replay preserve selected answers unchanged.
 11. Backend, frontend runtime, Scala.js link, and architecture checks pass.
 
 ## Non-goals
