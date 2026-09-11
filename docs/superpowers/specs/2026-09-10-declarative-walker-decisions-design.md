@@ -63,7 +63,7 @@ object DecisionQuery {
 
 final case class DecisionChoice(
     answer: DecisionAnswer,
-    options: Vector[DecisionOption]
+    option: DecisionOption
 )
 
 final case class DecisionSection(
@@ -78,9 +78,10 @@ final case class DecisionPlacement(
 )
 ```
 
-`ChooseOne` maps one or more options to a complete answer. Most choices have
-one option; the vector also supports one answer represented by a group of game
-objects without changing the query model.
+`ChooseOne` maps each independently selectable option to one complete answer.
+If a future rule needs a predefined group to behave as one selectable thing,
+it requires an explicit composite option rather than ambiguous multi-option
+choice semantics.
 
 `Partition` describes named sections, their minimum required counts, and the
 options to distribute. Its answer is generic:
@@ -125,8 +126,8 @@ used while constructing a query, not part of card identity. Owner-private
 projection and existing card-knowledge rules continue to govern disclosure.
 
 An option is one selectable button or game object. `DecisionChoice` associates
-a complete answer with one or more options. `PartitionAnswer` assigns each
-option to a section. Both remain declarative and generically validatable.
+a complete answer with one option. `PartitionAnswer` assigns each option to a
+section. Both remain declarative and generically validatable.
 
 Rename the Scala model family and its concrete cases from `DecisionPayload` to
 `DecisionAnswer`, including `Answered.answer` and corresponding command/wire
@@ -145,8 +146,8 @@ When resolving a parked `Decide`, `ProcedureWalker`:
 4. Records that answer unchanged.
 
 An empty query is invalid for a parked `Decide`; action trees must omit the
-node when no answer is required. `ChooseOne` answers must be unique and each
-choice must contain at least one unique option. Partition sections must have
+node when no answer is required. `ChooseOne` answers and options must each be
+unique. Partition sections must have
 unique keys and non-negative minimum counts; partition options must be unique;
 an answer must place every option exactly once, use only declared sections,
 and meet every minimum. These checks return typed `InvalidEventOrder`
