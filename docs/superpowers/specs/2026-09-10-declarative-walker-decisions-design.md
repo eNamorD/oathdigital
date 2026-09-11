@@ -165,13 +165,32 @@ When resolving a parked `Decide`, `ProcedureWalker`:
    against its options, sections, and minimum counts.
 4. Records that answer unchanged.
 
-An empty query is invalid for a parked `Decide`; action trees must omit the
-node when no answer is required. `ChooseOne` option references must be unique.
-Partition sections must have
-unique keys and non-negative minimum counts; partition options must be unique;
-an answer must place every option exactly once, use only declared sections,
-and meet every minimum. These checks return typed `InvalidEventOrder`
-violations rather than throwing.
+A declared query is checked for two properties, which are different in kind.
+
+It must be answerable. An empty query is invalid for a parked `Decide`;
+action trees must omit the node when no answer is required. `ChooseOne`
+option references must be unique. Partition sections must have unique keys
+and non-negative minimum counts; partition options must be unique; and the
+minima must not together demand more placements than there are options, since
+two sections each requiring two of three options rejects every possible
+answer. An answer must place every option exactly once, use only declared
+sections, and meet every minimum.
+
+It must also be worth asking. A game must not park and prompt a player for an
+answer that is already determined, so a partition must declare at least two
+sections and no single section may demand every option. Those two rules are
+exactly the forced shapes rather than an approximation of them: given
+satisfiable minima and two or more sections, a partition has exactly one legal
+answer if and only if some section's minimum equals the option count. An
+action whose query collapses to a forced shape against live state must omit
+the node and apply the determined placement itself.
+
+A `ChooseOne` with a single option is deliberately legal. A lone button is a
+consent step rather than a choice — the player is being asked to act, not to
+pick — and the node is also where a power window hangs.
+
+These checks return typed `InvalidEventOrder` violations rather than
+throwing.
 
 Because the tree is rebuilt against authoritative state for projection and
 resolution, removed or altered options reject stale commands automatically.
@@ -230,6 +249,14 @@ as “Pay Favor” and “Pay Secret”, with `minRequired` counts taken from th
 printed Forge cost. Every option must be placed in exactly one section. Since
 the two minima sum to all three options, Forge's minimum constraints produce
 the exact printed resource split.
+
+Forge declares that decision only when both minima are non-zero. Four of the
+seven forgeable sites print a cost of three of one resource — Ancient City and
+Golden Valley at three favor, Standing Stones and Steppe at three secrets —
+and there one section would demand every option, which is a forced query and
+invalid above. At those sites Forge omits the `Decide` node entirely and its
+trailing operation applies the determined split. This changes behaviour: Forge
+currently prompts at those sites for an answer the player cannot get wrong.
 
 `ForgeProcedure` declares the live eligible targets and printed resource
 minima; it does not enumerate assignments. Its trailing operation translates
