@@ -6,8 +6,8 @@ import oathdigital.gameplay.powerresolver.PowerWindow
   *
   * An operation exposes its immediate children; a tree's leaves are
   * [[PrimitiveOperation]]s, which expose themselves as their only child so the
-  * whole action tree shares one accessor. `window` is the hook point for later
-  * power wiring; `None` means engine-internal.
+  * whole action tree shares one accessor. `window` is the hook point for powers
+  * to wire their effects on the tree; `None` means engine-internal.
   *
   * NOTE: this root trait is deliberately not `sealed`. Scala 2.13 requires
   * every subclass of a sealed type to live in the same source file, and the

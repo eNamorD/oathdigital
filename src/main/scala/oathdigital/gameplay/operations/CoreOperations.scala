@@ -444,7 +444,7 @@ final case class Take(piece: Piece, player: PlayerId,
 }
 
 // ---------------------------------------------------------------------------
-// Walker leaves and composites (procedure-walker slice, Task 2).
+// Walker leaves and composites.
 //
 // These cases MUST live in this file: CoreOperation/PrimitiveOperation are
 // sealed and Scala 2.13 requires sealed subclasses in the same source file
@@ -461,8 +461,7 @@ final case class Take(piece: Piece, player: PlayerId,
 // ---------------------------------------------------------------------------
 
 /** Adds `delta` dice to a named pool's count in state. `window` makes the
-  * node hookable exactly like `Decide` (Task 4: Recover's head `ModifyDicePool`
-  * carries `RecoverBeforeFirstRoll`).
+  * node hookable exactly like `Decide`.
   */
 final case class ModifyDicePool(pool: PoolKey, delta: Int,
     override val window: Option[PowerWindow] = None)
@@ -484,15 +483,13 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
 final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
 
 /** Parks a walker until the owning player resolves the open decision.
-  * `payload` is an open, power-extensible description of the choice (D2 —
-  * the concrete answer rides the resolve command as an [[Answered]]);
+  * `payload` is an open, power-extensible description of the choice;
   * `owner` resolves who decides at walk/resume time; `validate` (when
   * present) is a semantic legality check the walker runs against the resolved
-  * answer before recording it (Task 5 ruling 5.3). `window` makes the
+  * answer before recording it. `window` makes the
   * decision hookable: the walker folds the gathered transforms over
   * `Vector(this)` before walking it, so a power may insert operations around
-  * the decision or replace it (decision 7 — the first leaf to take up this
-  * file's own "Roll and Decide are the future window-hook candidates" note).
+  * the decision or replace it.
   */
 final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
     decisionId: String,
@@ -504,7 +501,7 @@ final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever
   * `CoreOperation`s come back, recording them in the node's
-  * `WalkerStepRecorded.ops` (Task 5 ruling 5.4).
+  * `WalkerStepRecorded.ops`.
   *
   * The closure lives in the action tree, which is derived per command and
   * never persisted, so it may close over anything reachable at build time
@@ -528,8 +525,7 @@ final case class Repeat(guard: (ReadyGame, PendingTree) => Boolean,
 
 /** A composite whose children are chosen AT WALK TIME: the walker evaluates
   * `select(state, pending)` when it reaches the node and walks the returned
-  * operations in order (Task 5 ruling 5.5 — the Recover tree uses it to walk
-  * the success-only relic decision or stop silently).
+  * operations in order.
   *
   * `children` is statically empty because the selection is dynamic, so
   * `Operation.flatten(Branch(...))` is empty and a Branch must never sit on
@@ -549,9 +545,9 @@ final case class Sequence(override val children: Vector[Operation],
     override val window: Option[PowerWindow] = None) extends CoreOperation
 
 object Sequence {
-  /** Vararg builder so action trees read `Sequence(a, b)` (the Task 3
-    * brief's test syntax) instead of wrapping a vector by hand.
-    */
+  /** Vararg builder so action trees read `Sequence(a, b)`
+   *  instead of wrapping a vector by hand.
+   */
   def apply(first: Operation, rest: Operation*): Sequence =
     new Sequence(first +: rest.toVector)
 }
