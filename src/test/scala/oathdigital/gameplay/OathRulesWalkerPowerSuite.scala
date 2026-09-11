@@ -71,9 +71,11 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     */
   private def hookedTree(actor: PlayerId): Operation = {
     def decide(id: String) = Decide(
-      answer = ProcedureWalkerSuite.TestDecisionAnswer(id),
-      owner = ProcedureWalkerSuite.TestOwner(actor),
-      decisionId = id)
+      decisionId = id,
+      owner = actor,
+      query = DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(ProcedureWalkerSuite.continueOption,
+          "Continue"))))
     Sequence(ProcedureWalkerSuite.WindowedNode(window, Vector(
       decide(RecoverProcedure.choiceDecisionId),
       decide(RecoverProcedure.relicDecisionId))))
@@ -116,7 +118,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
 
     // Control: the resume is legal from this parked state.
     val resumed = rules(actor, WalkerPowers.empty)
@@ -152,7 +154,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
 
     // The intruder is rejected with WrongPlayer -- a `Left` carries no
     // transition, so nothing is appended to the actor's parked action.
@@ -225,7 +227,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     // Without ruling I's fix, `walkerResumeContext` would fold this command
     // with an EMPTY modifiers vector: the AdjustSupply would no longer be
     // prepended, the folded vector would shift back by one, and this resume
@@ -289,7 +291,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     val afterFirst = rulesInstance.resolveWalker(started.state, actor,
         firstAnswer) match {
       case Right(transition) => transition
@@ -300,7 +302,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atSecondPark.game.current.walkerModifiers, Vector(powerId))
 
     val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
-      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     val finished = rulesInstance.resolveWalker(afterFirst.state, actor,
         secondAnswer) match {
       case Right(transition) => transition

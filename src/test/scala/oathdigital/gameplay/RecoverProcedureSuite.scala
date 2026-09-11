@@ -10,8 +10,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionAnswer.{RecoverChoice,
-  RecoverChoiceAnswer, RecoverRelicAnswer}
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
 
@@ -149,7 +148,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // 3. Take the facedown site relic: tree ends; the relic is moved facedown
     //    into the play area.
     val answer = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicAnswer(relic.id))
+      ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)))
     val (finalState, resolveSteps) =
       ProcedureWalker.resolve(stateAtRelic, tree, relicPark, answer,
       noPowers) match {
@@ -191,7 +190,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(steps(2).ops, Vector.empty[CoreOperation])
     assertEquals(steps(3).payload,
       ChoicePayload(RecoverProcedure.relicDecisionId,
-        RecoverRelicAnswer(relic.id)))
+        ChooseOneAnswer(DecisionOptionRef.Relic(relic.id))))
     assertEquals(steps(3).ops, Vector.empty[CoreOperation])
     assertEquals(steps(4).payload, WalkerStepPayload.DeltaRecorded(
       RelicAcquired(actor.player, relic.id, siteId)))
@@ -222,7 +221,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     // Continue -> fresh pass parks at the second Roll.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoiceAnswer(RecoverChoice.Continue))
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")))
     val (rollPark2, continueEvents) = expectParked(
       ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
         noPowers),
@@ -230,7 +229,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(continueEvents.size, 2)
     assertEquals(continueEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
-        RecoverChoiceAnswer(RecoverChoice.Continue)))
+        ChooseOneAnswer(DecisionOptionRef.Button("continue"))))
     assertEquals(continueEvents(1).asInstanceOf[WalkerStepRecorded].ops,
       Vector[CoreOperation](AdjustSupply(actor.player, -1)))
     val stateAtRoll2 = applyRecorded(stateAtChoice, continueEvents)
@@ -243,7 +242,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(supplyOf(stateAtRelic, actor.player), SupplyTrack.Maximum - 2)
 
     val answer = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicAnswer(relic.id))
+      ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)))
     val finalState = ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
       answer, noPowers) match {
       case Right(WalkerOutcome.Finished(treeless, _)) => treeless
@@ -281,7 +280,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
 
     val stop = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoiceAnswer(RecoverChoice.Stop))
+      ChooseOneAnswer(DecisionOptionRef.Button("stop")))
     val (finalState, stopEvents) = ProcedureWalker.resolve(stateAtChoice, tree,
       choicePark, stop, noPowers) match {
       case Right(WalkerOutcome.Finished(treeless, events)) =>
@@ -302,7 +301,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(stopEvents.size, 1)
     assertEquals(stopEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
-        RecoverChoiceAnswer(RecoverChoice.Stop)))
+        ChooseOneAnswer(DecisionOptionRef.Button("stop"))))
     assertEquals(stopEvents.head.asInstanceOf[WalkerStepRecorded].ops,
       Vector.empty[CoreOperation])
   }
@@ -326,7 +325,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // Continue re-enters the loop, whose payment now precedes its Roll.
     // OperationPipeline rejects that payment before another roll is recorded.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoiceAnswer(RecoverChoice.Continue))
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")))
     ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
       noPowers) match {
       case Left(violation: OathViolation.CoreOperationRejected) =>
@@ -361,13 +360,18 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
 
     val wrong = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicAnswer(RelicId("no-such-relic")))
+      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("no-such-relic"))))
+    // The relic is rejected because the rebuilt query, built from the live
+    // site, never offered it -- not because a Recover-specific closure
+    // checked the site a second time.
     ProcedureWalker.resolve(stateAtRelic, tree, relicPark, wrong,
       noPowers) match {
-      case Left(violation: OathViolation.RecoverOutcomeMismatch) =>
-        assert(violation.detail.contains("not a facedown relic at the site"),
-          s"violation detail '${violation.detail}' should mention the site " +
-            "relic requirement")
+      case Left(violation: OathViolation.InvalidEventOrder) =>
+        assert(violation.detail.contains(
+          s"decision ${RecoverProcedure.relicDecisionId} does not offer the " +
+            "selected option"),
+          s"violation detail '${violation.detail}' should name the decision " +
+            "and the undeclared option")
       case other => fail(s"expected a wrong-relic rejection, got $other")
     }
   }
@@ -420,6 +424,120 @@ class RecoverProcedureSuite extends munit.FunSuite
       case _ => node.children.flatMap(allNodes(_, state, actor))
     }
     node +: nested
+  }
+
+  // -------------------------------------------------------------------------
+  // The two declared queries: what the client is offered IS what the walker
+  // accepts, because they are the same expression.
+  // -------------------------------------------------------------------------
+
+  test("the continue/stop decision declares exactly two labelled buttons") {
+    val (ready, actor, _, _, _) = recoverable
+    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
+
+    val (rollPark, setupEvents) = expectParked(
+      ProcedureWalker.advance(ready, tree, None, noPowers),
+      Vector("1", "0", "1"))
+    val stateAtRoll = applyRecorded(ready, setupEvents)
+    val (choicePark, rollEvents) = expectParked(
+      ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
+      Vector("1", "0", "2", "0"))
+    val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
+
+    val decide = ProcedureWalker.parkedDecide(stateAtChoice, tree, choicePark,
+      noPowers).getOrElse(fail("expected the park to resolve to a Decide"))
+    assertEquals(decide.decisionId, RecoverProcedure.choiceDecisionId)
+    assertEquals(decide.owner, actor.player)
+    assertEquals(decide.query, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(DecisionOptionRef.Button("continue"), "Continue"),
+      DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop"))))
+  }
+
+  test("the relic decision declares one option per live facedown relic, and " +
+      "nothing else at the site") {
+    val (base, actor, siteId, relic, _) = recoverable
+    // A second facedown relic, plus a faceup one and a relic at another site,
+    // so the query has something to exclude rather than trivially matching.
+    val second = RelicState(base.game.current.commonCards.relicDeck.head,
+      Orientation.FaceDown, Tokens.empty)
+    val faceUp = RelicState(base.game.current.commonCards.relicDeck(1),
+      Orientation.FaceUp, Tokens.empty)
+    val site = base.game.current.map.sites(siteId)
+    val ready = base.copy(game = base.game.copy(current =
+      base.game.current.copy(
+        commonCards = base.game.current.commonCards.copy(
+          relicDeck = base.game.current.commonCards.relicDeck.drop(2)),
+        map = base.game.current.map.copy(sites =
+          base.game.current.map.sites.updated(siteId,
+            site.copy(relics = Vector(relic, second, faceUp)))))))
+
+    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
+    val (rollPark, setupEvents) = expectParked(
+      ProcedureWalker.advance(ready, tree, None, noPowers),
+      Vector("1", "0", "1"))
+    val stateAtRoll = applyRecorded(ready, setupEvents)
+    val (relicPark, rollEvents) = expectParked(
+      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
+      Vector("2", "0"))
+    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+
+    val decide = ProcedureWalker.parkedDecide(stateAtRelic, tree, relicPark,
+      noPowers).getOrElse(fail("expected the park to resolve to a Decide"))
+    assertEquals(decide.query, DecisionQuery.ChooseOne(Vector(relic.id,
+      second.id).map(id =>
+      DecisionOption.Relic(DecisionOptionRef.Relic(id)))))
+
+    // And the walker accepts exactly those two, the faceup relic included in
+    // neither direction.
+    Vector(relic.id, second.id).foreach { id =>
+      assert(ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
+        Answered(RecoverProcedure.relicDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Relic(id))), noPowers).isRight,
+        s"$id is offered and must be accepted")
+    }
+    assert(ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
+      Answered(RecoverProcedure.relicDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Relic(faceUp.id))), noPowers).isLeft,
+      "a faceup relic is not offered and must not be accepted")
+  }
+
+  test("a continue answer submitted after the roll already succeeded is " +
+      "rejected because the rebuilt tree no longer declares that node") {
+    // This is what replaced Recover's deleted `validateChoice` closure: the
+    // `Branch` omits the continue/stop node once the recovery has succeeded,
+    // so a stale answer finds no matching `Decide` to resume at and is
+    // rejected before any query is consulted.
+    val (ready, actor, _, _, _) = recoverable
+    val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
+
+    val (rollPark, setupEvents) = expectParked(
+      ProcedureWalker.advance(ready, tree, None, noPowers),
+      Vector("1", "0", "1"))
+    val stateAtRoll = applyRecorded(ready, setupEvents)
+
+    // The roll succeeds, so the walk parks at the RELIC decision instead.
+    val (relicPark, rollEvents) = expectParked(
+      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
+      Vector("2", "0"))
+    val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
+
+    val stale = Answered(RecoverProcedure.choiceDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")))
+    ProcedureWalker.resolve(stateAtRelic, tree, relicPark, stale,
+      noPowers) match {
+      case Left(violation: OathViolation.InvalidEventOrder) =>
+        assert(violation.detail.contains(
+          RecoverProcedure.choiceDecisionId) &&
+          violation.detail.contains(RecoverProcedure.relicDecisionId),
+          s"violation detail '${violation.detail}' should name both the " +
+            "submitted decision and the one actually parked")
+      case other => fail(s"expected a stale-choice rejection, got $other")
+    }
+
+    // Resuming at the choice node's own former path fails too: the rebuilt
+    // tree selects no child there at all.
+    assert(ProcedureWalker.resolve(stateAtRelic, tree,
+      relicPark.copy(at = Vector("1", "0", "2", "0")), stale, noPowers).isLeft)
   }
 
   test("the tree windows exactly its root, its pool-opening node, and its " +

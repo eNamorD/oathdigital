@@ -73,7 +73,6 @@ final case class SearchSource(source: String, region: Option[String])
 final case class WorldCard(kind: String, id: String)
 final case class CardRef(kind: String, id: String)
 final case class Placement(kind: String, replace: Option[CardRef])
-final case class ForgeAssignment(siteId: String, denizenId: String, resource: String)
 final case class CampaignForceAllocation(siteId: String, count: Int)
 final case class RestFavorSource(kind: String, siteId: String, sourceId: String)
 final case class RestFavorAllocation(source: RestFavorSource, amount: Int)
@@ -125,26 +124,29 @@ object DecisionResolution {
       placement: Placement) extends DecisionResolution
 }
 
-/** Wire form of the engine's open `DecisionAnswer` trait, bounded to the
-  * payloads the registered walker actions declare -- Recover's two and
-  * Forge's assignment. An action or power that adds a walker decision
-  * widens this family the same way it widens `DecisionAnswer` itself --
-  * the engine stays generic over both.
+/** Wire form of a walker decision answer, generic over the engine's
+  * `DecisionQuery` shapes rather than over any action's own vocabulary.
+  *
+  * Every option is named by the kind/id pair the engine's option references
+  * carry, so neither case here knows that Recover or Forge exists, and a new
+  * walker action adds no case. Both fields stay opaque strings until the
+  * application mapping boundary resolves them, exactly like every other
+  * identifier in this protocol.
   */
 sealed trait DecisionAnswerWire extends Product with Serializable
 object DecisionAnswerWire {
-  /** `choice` is `"continue"` or `"stop"`; validated at the application
-    * mapping boundary, not here, matching every other enum-shaped field in
-    * this protocol (e.g. `TakeWealth`'s `resource`).
+  /** Answers a choose-one decision with the single option selected. */
+  final case class ChooseOneWire(optionKind: String, optionId: String)
+      extends DecisionAnswerWire
+
+  /** Answers a partition decision: every offered option, each placed in one
+    * declared section.
     */
-  final case class RecoverChoiceWire(choice: String) extends DecisionAnswerWire
-  final case class RecoverRelicWire(relicId: String) extends DecisionAnswerWire
-  /** Answers Forge's `"forge.assignment"` decision. Reuses the
-    * [[ForgeAssignment]] row the (now walker-driven) Forge assignment has
-    * always ridden on, so there is one wire spelling of "this denizen gets
-    * this resource" rather than two; `resource` is validated at the
-    * application mapping boundary, like every other enum-shaped field here.
-    */
-  final case class ForgeAssignmentWire(assignments: Vector[ForgeAssignment])
+  final case class PartitionWire(placements: Vector[DecisionPlacementWire])
       extends DecisionAnswerWire
 }
+
+/** One option placed in one section of a [[DecisionAnswerWire.PartitionWire]].
+  */
+final case class DecisionPlacementWire(optionKind: String, optionId: String,
+    sectionKey: String)

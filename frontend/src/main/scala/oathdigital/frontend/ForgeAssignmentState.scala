@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{DecisionAnswerWire, ForgeAssignment,
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   GameIntent => GameCommand}
 
 private[frontend] final case class ForgeAssignmentState(
@@ -17,18 +17,18 @@ private[frontend] final case class ForgeAssignmentState(
     assignments.count(_ == "favor") == forge.favor &&
     assignments.count(_ == "secret") == forge.secrets
 
-  /** Forge is a walker action (batch-1 Task 3), so a confirmed assignment
-    * answers its parked `"forge.assignment"` decision through
-    * `ResolveWalker` -- `forge.decisionId` is that decision's id, projected
-    * by the server from the walker's own parked position, not a
-    * per-command `DecisionId` the way the deleted `CompleteForge` intent's
-    * was.
+  /** Forge's decision is a partition: every offered denizen is placed in
+    * either the favor section or the secret section. This state's per-target
+    * `"favor"`/`"secret"` choice is exactly that placement, so the command is
+    * a direct translation rather than a second vocabulary. The site id the
+    * old wire row carried is dropped: a denizen names itself.
     */
   def command(playerId: String): Option[GameCommand.ResolveWalker] =
     Option.when(canConfirm)(GameCommand.ResolveWalker(forge.decisionId,
-      DecisionAnswerWire.ForgeAssignmentWire(
+      DecisionAnswerWire.PartitionWire(
         forge.targets.zip(assignments).map { case (target, resource) =>
-          ForgeAssignment(target.siteId, target.denizenId, resource)
+          DecisionPlacementWire("denizen", target.denizenId,
+            if (resource == "favor") "pay-favor" else "pay-secret")
         })))
 }
 

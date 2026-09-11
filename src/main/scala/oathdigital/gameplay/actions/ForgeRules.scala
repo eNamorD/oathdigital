@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.operations.{Cost, Costs, Location}
 
 object ForgeRules {
   /** The complete pre-release component corpus was audited against CR p.25 / NF
@@ -35,6 +36,15 @@ object ForgeRules {
         _ <- Either.cond(cost.favor + cost.secrets == 3, (), ForgeUnavailable("printed Forge cost must contain three resources"))
         _ <- Either.cond(player.board.supply.supply >= 1, (), InsufficientSupply(1, player.board.supply.supply))
         _ <- Either.cond(game.current.commonCards.relicDeck.nonEmpty, (), ForgeUnavailable("relic deck is empty"))
+        // The actor funds the printed cost from their own play area, so this
+        // gate is what stops a Forge that spends Supply, walks to its last
+        // node and fails there with nothing recoverable. It plans the whole
+        // cost onto one of the three empty denizens: the resources are split
+        // across all three at execution time, but affordability is a total
+        // over the actor's own favor and secrets either way.
+        _ <- Costs.plan(ready, player.player,
+          Location.OnCard(empty.head.denizenId),
+          Cost(favor = cost.favor, secret = cost.secrets))
       } yield empty -> cost
     }
   }

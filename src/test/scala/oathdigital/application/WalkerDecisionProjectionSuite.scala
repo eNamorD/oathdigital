@@ -270,12 +270,12 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(roundTripped.walkerDecision, ownerDecision)
 
     // Every candidate the projection offers is one the engine actually
-    // accepts at resolve time -- guards against the candidate set silently
-    // diverging from `RecoverProcedure`'s own `validateRelic`.
+    // accepts at resolve time -- guards against the projected candidate set
+    // diverging from the option set the declared query accepts.
     val chosen = RelicId(expectedCandidates.head.cardId)
     val resolved = service.handle("walker-projection-relic", rolled.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        DecisionAnswer.RecoverRelicAnswer(chosen))))
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Relic(chosen)))))
     assert(resolved.isRight, s"expected a projected candidate relic to be " +
       s"accepted by the engine, got $resolved")
   }

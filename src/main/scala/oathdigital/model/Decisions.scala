@@ -33,18 +33,75 @@ package oathdigital.model
   * at, because location is a legality fact used while BUILDING a query, not
   * part of a card's identity.
   */
-sealed trait DecisionOptionRef extends Product with Serializable
+sealed trait DecisionOptionRef extends Product with Serializable {
+  /** Which of the seven variants this is, as a stable wire string. */
+  def kind: String
+
+  /** The variant's identity as a stable wire string, paired with [[kind]].
+    *
+    * A reference travels off-process three ways — in a submitted answer, in
+    * a journalled answer, and (from Task 4) in a projected option — and all
+    * three spell it as this pair. The spelling lives here, next to the cases
+    * it names, so those three code paths cannot drift into three
+    * independently written tables of the same seven strings; that drift is
+    * the failure mode this whole vocabulary exists to remove.
+    */
+  def wireId: String
+}
 object DecisionOptionRef {
   /** A choice with no game object behind it, keyed by a stable string
     * (e.g. `"continue"`, `"stop"`).
     */
-  final case class Button(key: String) extends DecisionOptionRef
-  final case class Player(id: PlayerId) extends DecisionOptionRef
-  final case class Site(id: SiteId) extends DecisionOptionRef
-  final case class Denizen(id: DenizenId) extends DecisionOptionRef
-  final case class Relic(id: RelicId) extends DecisionOptionRef
-  final case class Vision(id: VisionId) extends DecisionOptionRef
-  final case class Deck(id: CardDeck) extends DecisionOptionRef
+  final case class Button(key: String) extends DecisionOptionRef {
+    val kind: String = "button"
+    def wireId: String = key
+  }
+  final case class Player(id: PlayerId) extends DecisionOptionRef {
+    val kind: String = "player"
+    def wireId: String = id.value
+  }
+  final case class Site(id: SiteId) extends DecisionOptionRef {
+    val kind: String = "site"
+    def wireId: String = id.value
+  }
+  final case class Denizen(id: DenizenId) extends DecisionOptionRef {
+    val kind: String = "denizen"
+    def wireId: String = id.value
+  }
+  final case class Relic(id: RelicId) extends DecisionOptionRef {
+    val kind: String = "relic"
+    def wireId: String = id.value
+  }
+  final case class Vision(id: VisionId) extends DecisionOptionRef {
+    val kind: String = "vision"
+    def wireId: String = id.value
+  }
+  final case class Deck(id: CardDeck) extends DecisionOptionRef {
+    val kind: String = "deck"
+    def wireId: String = id.key
+  }
+
+  /** Safe parse of the [[DecisionOptionRef.kind]]/[[DecisionOptionRef.wireId]]
+    * pair from untrusted input: `None` for an unknown kind or an id that
+    * variant cannot carry, never a thrown `require`.
+    *
+    * Total over the seven variants, and the exact inverse of the two
+    * accessors above — a new variant that forgets this method fails to
+    * compile, because the match below is exhaustive over nothing and the
+    * accessors are abstract.
+    */
+  def fromWire(kind: String, wireId: String): Option[DecisionOptionRef] =
+    if (wireId.trim.isEmpty) None
+    else kind match {
+      case "button" => Some(Button(wireId))
+      case "player" => Some(Player(PlayerId(wireId)))
+      case "site" => Some(Site(SiteId(wireId)))
+      case "denizen" => Some(Denizen(DenizenId(wireId)))
+      case "relic" => Some(Relic(RelicId(wireId)))
+      case "vision" => Some(Vision(VisionId(wireId)))
+      case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
+      case _ => None
+    }
 }
 
 /** One selectable option on a decision: its stable reference, plus whatever
@@ -105,7 +162,7 @@ object DecisionQuery {
 final case class DecisionPlacement(option: DecisionOptionRef,
     sectionKey: String)
 
-/** Open decision answer carried by a walker `Decide` leaf and stored in
+/** What a player submitted for a walker `Decide` leaf, stored in
   * `PendingTree.answered`.
   *
   * The answer must be MODEL-safe: answered decisions are persisted on
@@ -114,12 +171,19 @@ final case class DecisionPlacement(option: DecisionOptionRef,
   * family and every concrete case live in the model, never importing
   * gameplay.
   *
-  * Deliberately NOT sealed: a power or action may declare its own answer
-  * case wherever it lives (the same-file-sealed restriction on the family
-  * root is why the root stays open). The generic cases below are the ones
-  * the engine validates against a [[DecisionQuery]].
+  * SEALED, and this reversed an earlier decision, so the reason matters.
+  * The family used to be open so a power could declare its own answer case.
+  * That freedom is now unreachable: [[DecisionQuery]] is sealed, and
+  * `DecisionQueries.accepts` is total over it and rejects anything that is
+  * not one of the two cases below. A third case could therefore be
+  * constructed but never recorded — while every encoder over the family had
+  * to carry a runtime throw for a case the walker cannot produce. Sealing
+  * turns that structural fact into a compile-time one: the journal codec's
+  * match is exhaustive with no fallthrough, and a genuinely new answer shape
+  * is a change to this file, to the query it answers, and to the validator,
+  * which is where such a change belongs.
   */
-trait DecisionAnswer extends Product with Serializable
+sealed trait DecisionAnswer extends Product with Serializable
 
 object DecisionAnswer {
   /** Answer to a [[DecisionQuery.ChooseOne]]: the one option reference the
@@ -133,41 +197,4 @@ object DecisionAnswer {
     */
   final case class PartitionAnswer(placements: Vector[DecisionPlacement])
       extends DecisionAnswer
-
-  /** Recover per-roll choice, resolved at the `"recover.choice"` decision:
-    * continue rolling (another 1-supply payment) or stop and abandon without
-    * a relic
-    * (Stop is only legal while the recovery has not yet succeeded).
-    */
-  sealed trait RecoverChoice extends Product with Serializable
-  object RecoverChoice {
-    case object Continue extends RecoverChoice
-    case object Stop extends RecoverChoice
-  }
-
-  /** Answer to the per-roll choice decision. */
-  final case class RecoverChoiceAnswer(choice: RecoverChoice)
-      extends DecisionAnswer
-
-  /** Answer to the success-only `"recover.relic"` decision: which facedown
-    * relic at the site the actor takes into their play area facedown.
-    */
-  final case class RecoverRelicAnswer(relicId: RelicId)
-      extends DecisionAnswer
-
-  /** Answer to the `"forge.assignment"` decision: which of the site's three
-    * empty denizens receives each of the printed Forge cost's three
-    * resources.
-    *
-    * Placed and shaped like [[RecoverRelicAnswer]] (Task 2 ruling R13):
-    * plain model data next to the family root, carrying only the choice the
-    * player made. [[ForgeResourceAssignment]] is already model data (it is
-    * what the legacy `ForgeCommand.Complete` carried), so this case reuses it
-    * rather than inventing a second spelling of the same fact. The forged
-    * relic is deliberately NOT a field: it is the authoritative relic-deck
-    * top, read off state when the trailing operation node runs (ruling R12),
-    * so there is no free choice here to record.
-    */
-  final case class ForgeAssignmentAnswer(
-      assignments: Vector[ForgeResourceAssignment]) extends DecisionAnswer
 }

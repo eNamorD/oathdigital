@@ -200,8 +200,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
         ujson.write(ujson.Obj("expectedNextSequence" -> 1,
           "intent" -> ujson.Obj("type" -> "resolveWalker",
             "decisionId" -> "forge.assignment",
-            "payload" -> ujson.Obj("kind" -> "forge-assignment",
-              "assignments" -> ujson.Arr(),
+            "payload" -> ujson.Obj("kind" -> "partition",
+              "placements" -> ujson.Arr(),
               "relicId" -> "relic:spoofed")))))
       assertEquals(spoofedRelic.statusCode(), 400, spoofedRelic.body())
       val actorDerivedChallenge = post(client, base + "/commands", p2User.value,

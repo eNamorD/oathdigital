@@ -109,7 +109,6 @@ object OathViolation {
   final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedForgeState(reason: String) extends OathViolation
   final case class ForgeUnavailable(detail: String) extends OathViolation
-  final case class ForgeOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedBannerState(reason: String) extends OathViolation
   final case class ChallengeUnavailable(detail: String) extends OathViolation
   final case class ChallengeDecisionMismatch(expected: DecisionId, actual: DecisionId)

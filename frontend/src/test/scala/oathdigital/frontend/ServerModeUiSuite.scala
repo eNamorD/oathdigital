@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
-import oathdigital.protocol.{DecisionAnswerWire, ForgeAssignment}
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
 
 class ServerModeUiSuite extends FunSuite {
   test("secret summaries lead with available over total and explain unavailable tokens") {
@@ -72,13 +72,14 @@ class ServerModeUiSuite extends FunSuite {
     val initial = ForgeAssignmentState.reconcile(None, context, Some(forge)).get
     assertEquals(initial.assignments, Vector("favor", "favor", "secret"))
     assert(initial.canConfirm)
-    // Forge is a walker action: a confirmed assignment answers its parked
-    // decision through `ResolveWalker`, carrying the same `ForgeAssignment`
-    // rows the deleted `CompleteForge` intent carried.
+    // Forge's decision is a partition, so a confirmed assignment answers it
+    // as one placement per offered denizen. The site id the old wire row
+    // carried is gone: a denizen names itself.
     assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
-      "red", "forge-9", DecisionAnswerWire.ForgeAssignmentWire(
+      "red", "forge-9", DecisionAnswerWire.PartitionWire(
         targets.zip(initial.assignments).map { case (target, resource) =>
-          ForgeAssignment(target.siteId, target.denizenId, resource) }))))
+          DecisionPlacementWire("denizen", target.denizenId,
+            if (resource == "favor") "pay-favor" else "pay-secret") }))))
     val invalid = initial.choose(2, "favor")
     assert(!invalid.canConfirm)
     assertEquals(invalid.command("red"), None)
@@ -375,10 +376,10 @@ class ServerModeUiSuite extends FunSuite {
       Some(ServerUiSupport.RecoverWalkerStep.Choice))
     assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "continue"),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionAnswerWire.RecoverChoiceWire("continue")))
+        DecisionAnswerWire.ChooseOneWire("button", "continue")))
     assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "stop"),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionAnswerWire.RecoverChoiceWire("stop")))
+        DecisionAnswerWire.ChooseOneWire("button", "stop")))
   }
 
   test("the parked Recover relic decision offers one control per projected " +
@@ -391,10 +392,10 @@ class ServerModeUiSuite extends FunSuite {
       Some(ServerUiSupport.RecoverWalkerStep.Relic(Vector(bronze, silver))))
     assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, bronze.cardId),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionAnswerWire.RecoverRelicWire("relic-1")))
+        DecisionAnswerWire.ChooseOneWire("relic", "relic-1")))
     assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, silver.cardId),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionAnswerWire.RecoverRelicWire("relic-2")))
+        DecisionAnswerWire.ChooseOneWire("relic", "relic-2")))
   }
 
   test("an unrecognized parked walker decision renders no Recover control") {

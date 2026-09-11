@@ -3,14 +3,13 @@ package oathdigital.gameplay.actions.recover
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathLifecycle, OathViolation,
   ReadyGame}
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.model.DecisionAnswer.{RecoverChoice,
-  RecoverChoiceAnswer, RecoverRelicAnswer}
-import oathdigital.model.{Answered, DecisionAnswer, Orientation, PendingTree,
-  PlayerId, PoolKey, RelicState, SiteId}
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
+import oathdigital.model.{Answered, DecisionOption, DecisionOptionRef,
+  DecisionQuery, Orientation, PendingTree, PlayerId, PoolKey, RelicState,
+  SiteId}
 
 /** Declared Recover procedure tree for the [[oathdigital.gameplay.walker.ProcedureWalker]]}.
   *
@@ -41,8 +40,10 @@ import oathdigital.model.{Answered, DecisionAnswer, Orientation, PendingTree,
   *    of the "recover" pool (the walker accumulates roll outcomes per pool)
   *    reaching `RecoverRules.difficulty(catalog, site)`; site = the actor's
   *    pawn site. Thus a Doubler on a later roll multiplies earlier shields.
-  *  - A FAILED roll parks the continue/stop choice: Continue rolls again
-  *    (validated: not-yet-successful), Stop abandons with no relic.
+  *  - A FAILED roll parks the continue/stop choice: Continue rolls again,
+  *    Stop abandons with no relic. The choice is only reachable while the
+  *    recovery has not yet succeeded, because the `Branch` carrying it
+  *    declares nothing once it has.
   *  - A successful roll parks a relic decision only when a facedown relic is
   *    available. Otherwise Recover finishes as a legal wasted action.
   *
@@ -74,15 +75,13 @@ object RecoverProcedure {
   def actorSite(state: ReadyGame, actor: PlayerId): Option[SiteId] =
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
-  /** The facedown relics at the actor's current site -- exactly the set
-    * `validateRelic` (below) accepts an answer against, read live off
-    * `state.game.current.map.sites` rather than off the tree's closed-over
-    * `siteId` or its inert placeholder marker (see `tree`'s doc comment).
-    * The application-layer projector calls this SAME method to build the
-    * candidate list a client is offered, so the projected candidates and
-    * the set the resolver accepts cannot drift apart: there is exactly one
-    * definition of "the actor's recoverable relics", not two expressions
-    * that merely happen to agree today.
+  /** The facedown relics at the actor's current site -- exactly the options
+    * the relic decision declares, read live off `state.game.current.map.sites`
+    * rather than off the tree's closed-over `siteId`. The application-layer
+    * projector projects that declared query, so the candidates a client is
+    * offered and the set the resolver accepts cannot drift apart: there is
+    * exactly one definition of "the actor's recoverable relics", not two
+    * expressions that merely happen to agree today.
     */
   def actorFacedownRelics(state: ReadyGame, actor: PlayerId)
       : Vector[RelicState] =
@@ -118,56 +117,35 @@ object RecoverProcedure {
 
     def succeeded(ready: ReadyGame): Boolean = scoreOf(ready) >= difficulty
 
+    // The two buttons the continue/stop decision offers, declared once: the
+    // query the player is shown, the set the walker accepts an answer from,
+    // and the `Repeat` guard below all read these same two references.
+    val continueOption = DecisionOptionRef.Button("continue")
+    val stopOption = DecisionOptionRef.Button("stop")
+
     def stopped(pending: PendingTree): Boolean =
       pending.answered.lastOption.exists {
-        case Answered(_, RecoverChoiceAnswer(RecoverChoice.Stop)) => true
+        case Answered(_, ChooseOneAnswer(selected)) => selected == stopOption
         case _ => false
       }
 
-    def validateChoice(ready: ReadyGame, pending: PendingTree,
-        answer: DecisionAnswer): Either[OathViolation, Unit] =
-      answer match {
-        case RecoverChoiceAnswer(RecoverChoice.Continue) =>
-          if (succeeded(ready)) Left(OathViolation.RecoverOutcomeMismatch(
-            "Recover already succeeded"))
-          else Right(())
-        case RecoverChoiceAnswer(RecoverChoice.Stop) =>
-          if (succeeded(ready)) Left(OathViolation.RecoverOutcomeMismatch(
-            "a successful Recover cannot be stopped"))
-          else Right(())
-        case other => Left(OathViolation.InvalidEventOrder(
-          s"$choiceDecisionId received an unexpected answer: $other"))
-      }
-
-    // Reads `actorFacedownRelics(ready, actor)` -- the actor's LIVE pawn
-    // site, re-derived from `ready` on every call -- rather than this
-    // closure's own `siteId` (frozen at tree-build/rebuild time). This is
-    // the same method the projector calls to build the candidate list a
-    // client is offered: one shared definition of
-    // "the actor's recoverable relics" instead of two independently
-    // written expressions that could silently diverge if a future power
-    // let Recover target a site other than the actor's pawn site.
-    def validateRelic(ready: ReadyGame, pending: PendingTree,
-        answer: DecisionAnswer): Either[OathViolation, Unit] =
-      answer match {
-        case RecoverRelicAnswer(relicId) =>
-          if (actorFacedownRelics(ready, actor).exists(_.id == relicId))
-            Right(())
-          else Left(OathViolation.RecoverOutcomeMismatch(
-            "chosen relic is not a facedown relic at the site"))
-        case other => Left(OathViolation.InvalidEventOrder(
-          s"$relicDecisionId received an unexpected answer: $other"))
-      }
-
+    // No `validate` closure guards this node, and that is not a lost check.
+    // Its whole body rejected a continue-or-stop answer once the recovery had
+    // already succeeded -- and the `Branch` carrying this node already omits
+    // it in exactly that case, so on a rebuilt tree a stale choice answer
+    // finds no matching `Decide` to resume at and is rejected before any
+    // query is consulted.
     val choiceDecide = Decide(
-      answer = RecoverChoiceAnswer(RecoverChoice.Continue),
-      owner = RecoverProcedure.ActiveOwner,
       decisionId = choiceDecisionId,
-      validate = Some(validateChoice))
+      owner = actor,
+      query = DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(continueOption, "Continue"),
+        DecisionOption.Button(stopOption, "Stop"))))
 
     val moveRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
-        case Some(Answered(_, RecoverRelicAnswer(relicId))) =>
+        case Some(Answered(_, ChooseOneAnswer(
+            DecisionOptionRef.Relic(relicId)))) =>
           Right(Vector[CoreOperation](Move(
             Piece.Card(relicId),
             PositionedLocation(Location.Site(siteId)),
@@ -189,14 +167,24 @@ object RecoverProcedure {
       (ready, pending) => !succeeded(ready) && !stopped(pending)
 
     // Empty-site success is legal and finishes without a decision.
+    //
+    // The relic query is built from `actorFacedownRelics(ready, actor)` --
+    // the actor's LIVE pawn site, re-derived from `ready` on every command --
+    // rather than from this closure's own `siteId`, which froze at
+    // build/rebuild time. That one method is also what the projector reads to
+    // offer a client its candidates, so the offered set and the accepted set
+    // are the SAME expression rather than two that agree only by convention.
+    // A relic that left the site between the park and the answer is simply
+    // absent from the rebuilt query, so the answer naming it is rejected.
     val afterLoop = Branch((ready, _) => {
       val relics = actorFacedownRelics(ready, actor)
       if (succeeded(ready) && relics.nonEmpty)
         Vector(Decide(
-          answer = RecoverRelicAnswer(relics.head.id),
-          owner = RecoverProcedure.ActiveOwner,
           decisionId = relicDecisionId,
-          validate = Some(validateRelic)), moveRelic)
+          owner = actor,
+          query = DecisionQuery.ChooseOne(relics.map(relic =>
+            DecisionOption.Relic(DecisionOptionRef.Relic(relic.id))))),
+          moveRelic)
       else Vector.empty
     })
 
@@ -206,13 +194,5 @@ object RecoverProcedure {
       Repeat(repeatGuard, body),
       afterLoop
     ).copy(window = Some(PowerWindow.RecoverActionEligibility))
-  }
-
-  /** Recover decisions are resolved by the active player (Recover is an Act
-    * action of the active player in this slice).
-    */
-  private object ActiveOwner extends OwnerQuery {
-    def owner(ctx: WalkerCtx): Option[PlayerId] =
-      Some(ctx.ready.game.current.turn.activePlayer)
   }
 }

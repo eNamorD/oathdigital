@@ -14,14 +14,13 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
   Sequence, StackPosition, Swap, Take}
-import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, OwnerQuery,
-  WalkerCtx, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
+  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer,
-  RecoverRelicAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
   test("ignored-rule diagnostics round trip durable source timing and reason") {
@@ -139,31 +138,69 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("a walker Forge assignment answer round trips its exact targets and " +
-      "resources, on the step and on the park") {
-    // Replaces the deleted `v8 Forge events` test one layer down: the
-    // assignment fact now rides a walker `ChoicePayload` and the parked
-    // `answered` vector rather than a `ForgeCompleted` event, and both go
-    // through `WalkerEventCodec.encodeDecisionAnswer`, whose Forge branch
-    // batch-1 Task 3 added.
+  test("both generic walker decision answers round trip on the step and on " +
+      "the park") {
+    // The answer fact rides a walker `ChoicePayload` and the parked
+    // `answered` vector, so both directions of `DecisionAnswerCodec` are
+    // reached by any journalled walker action.
     val player = PlayerId("red")
-    val site = SiteId("site:forge")
-    val payload = ForgeAssignmentAnswer(Vector("1", "2", "3")
-      .map(id => SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
-      .zip(Vector(ForgeResource.Favor, ForgeResource.Secret,
-        ForgeResource.Favor))
-      .map { case (target, resource) =>
-        ForgeResourceAssignment(target, resource) })
-    val answered = Answered("forge.assignment", payload)
+    val partition = PartitionAnswer(Vector("1", "2", "3")
+      .map(id => DecisionOptionRef.Denizen(DenizenId(s"denizen:$id")))
+      .zip(Vector("pay-favor", "pay-secret", "pay-favor"))
+      .map { case (option, section) => DecisionPlacement(option, section) })
+    val chooseOne = ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("R01")))
+    val answered = Vector(Answered("forge.assignment", partition),
+      Answered("recover.relic", chooseOne))
     val events = Vector[OathEvent](
       WalkerStepRecorded(player, "1",
-        ChoicePayload("forge.assignment", payload), Vector.empty, Vector.empty),
-      WalkerParked(player, ActionRef.Forge, Vector("2"), Vector(answered),
+        ChoicePayload("forge.assignment", partition), Vector.empty,
+        Vector.empty),
+      WalkerStepRecorded(player, "2",
+        ChoicePayload("recover.relic", chooseOne), Vector.empty, Vector.empty),
+      WalkerParked(player, ActionRef.Forge, Vector("2"), answered,
         Vector.empty))
     val encoded = GameEventWire.encodeStream("forge", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
+  test("every option reference kind round trips through a recorded answer") {
+    val player = PlayerId("red")
+    val refs = Vector[DecisionOptionRef](
+      DecisionOptionRef.Button("continue"),
+      DecisionOptionRef.Player(PlayerId("blue")),
+      DecisionOptionRef.Site(SiteId("site:s1")),
+      DecisionOptionRef.Denizen(DenizenId("denizen:d1")),
+      DecisionOptionRef.Relic(RelicId("R01")),
+      DecisionOptionRef.Vision(VisionId("vision:v1")),
+      DecisionOptionRef.Deck(CardDeck.Relic))
+    val events = refs.zipWithIndex.map { case (ref, index) =>
+      WalkerStepRecorded(player, index.toString,
+        ChoicePayload("d", ChooseOneAnswer(ref)), Vector.empty,
+        Vector.empty): OathEvent }
+    val encoded = GameEventWire.encodeStream("refs", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+  }
+
+  test("a journalled answer carrying a deleted legacy tag is rejected with a " +
+      "typed decode failure") {
+    val player = PlayerId("red")
+    val event: OathEvent = WalkerStepRecorded(player, "1",
+      ChoicePayload("recover.choice",
+        ChooseOneAnswer(DecisionOptionRef.Button("continue"))),
+      Vector.empty, Vector.empty)
+    val encoded = GameEventWire.encodeStream("legacy", catalogRef,
+      Vector(RecordedEvent(0L, event))).toOption.get
+    Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
+      val mutated = ujson.read(encoded).arr
+      mutated.head("payload")("step")("payload")("kind") = tag
+      assert(GameEventWire.decodeStream(ujson.write(mutated)).isLeft,
+        s"a '$tag' answer must not decode")
+    }
   }
 
   test("Campaign Raid targets have stable canonical keys and round trip") {
@@ -558,9 +595,9 @@ class GameEventWireSuite extends munit.FunSuite {
     // unwrapped into a typed `WireError` -- not an exception escaping the
     // append path.
     val player = PlayerId("red")
-    val noOwner = new OwnerQuery { def owner(ctx: WalkerCtx): Option[PlayerId] = None }
     val nodes: Vector[CoreOperation] = Vector(
-      Decide(RecoverRelicAnswer(RelicId("r")), noOwner, "recover.relic"),
+      Decide("recover.relic", player, DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("r")))))),
       BuildOps((_, _) => Right(Vector.empty)),
       Repeat((_, _) => false, AdjustSupply(player, 1)),
       Branch((_, _) => Vector.empty),

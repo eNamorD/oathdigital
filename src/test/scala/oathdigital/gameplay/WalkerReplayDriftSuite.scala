@@ -11,8 +11,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker,
   WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.model.DecisionAnswer.{RecoverChoice, RecoverChoiceAnswer,
-  RecoverRelicAnswer}
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 
 /** Task 8 step 3: the replay-drift check.
@@ -277,7 +276,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicAnswer(relic.id)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
@@ -294,11 +293,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoiceAnswer(
-            RecoverChoice.Continue))),
+          ChooseOneAnswer(DecisionOptionRef.Button("continue")))),
         RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicAnswer(relic.id)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -312,8 +310,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoiceAnswer(
-            RecoverChoice.Stop)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Button("stop"))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -330,7 +327,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(fixture.ready, fixture.actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicAnswer(fixture.topRelic)))), catacombsPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic))))), catacombsPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(fixture.site).relics,

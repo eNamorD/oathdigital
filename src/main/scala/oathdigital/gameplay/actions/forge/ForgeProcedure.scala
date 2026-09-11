@@ -4,12 +4,11 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.model.DecisionAnswer.ForgeAssignmentAnswer
-import oathdigital.model.{Answered, CardDeck, DecisionAnswer, DenizenId,
-  DenizenState, ForgeResource, ForgeResourceAssignment, Orientation,
-  PendingTree, PlayerId, PlayerState, SiteDenizenTarget, SiteId, Suit, Tokens}
+import oathdigital.model.DecisionAnswer.PartitionAnswer
+import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef,
+  DecisionQuery, DecisionSection, DenizenId, DenizenState, Orientation,
+  PendingTree, PlayerId, PlayerState, SiteDenizenTarget, SiteId, Tokens}
 
 /** Declared Forge procedure tree for the walker (batch 1, Task 2).
   *
@@ -19,8 +18,8 @@ import oathdigital.model.{Answered, CardDeck, DecisionAnswer, DenizenId,
   * {{{
   * Sequence(                                  // window = ForgeActionEligibility
   *   BuildOps(AdjustSupply(actor, -1)),       // window = ForgeCost
-  *   Decide("forge.assignment"),              // validate = assignment legality
-  *   BuildOps(one favor/secret move per assignment,
+  *   Branch(-> Decide("forge.assignment")),   // mixed printed cost only
+  *   BuildOps(one PayCost per placed resource,
   *            Play(relic-deck top -> play area, FaceDown)))
   * }}}
   *
@@ -52,18 +51,22 @@ import oathdigital.model.{Answered, CardDeck, DecisionAnswer, DenizenId,
   *    when there is none.
   *  - **Eligible targets are read live off `ready`** by [[eligibleTargets]]
   *    (ruling R14), never off this tree's closure, exactly as
-  *    `RecoverProcedure.actorFacedownRelics` is. The application-layer
-  *    projector builds a client's candidate list from that SAME method the
-  *    `Decide`'s `validate` accepts answers against, so the offered set and
-  *    the accepted set have one definition rather than two expressions that
-  *    agree today and diverge the first time a power moves a denizen.
+  *    `RecoverProcedure.actorFacedownRelics` is. They are what the declared
+  *    query offers, and the projector projects that query, so the offered set
+  *    and the accepted set have one definition rather than two expressions
+  *    that agree today and diverge the first time a power moves a denizen.
   *
-  * `build`/`rebuild` take the [[ExecutableCatalog]] for the same reason
-  * `RecoverProcedure` does (the printed cost and each denizen's suit are
-  * static catalog data), and the tree closes over the catalog itself rather
-  * than a derived scalar: the suit of a target is only knowable once the
-  * target is known, and targets are read live. That is the precedent
-  * `CatacombsContribution` already set for catalog-dependent walker code.
+  * **Who pays.** The actor funds the printed cost from their own play area:
+  * each placed resource is a `PayCost` out of `Location.PlayArea(actor)` onto
+  * the chosen denizen. The suit banks are not consulted, which reverses the
+  * pre-walker behaviour of drawing favor from the target denizen's own suit
+  * bank. `ForgeRules.validate` gates affordability up front, because a Forge
+  * that starts with the player unable to pay spends Supply and then fails at
+  * its last node.
+  *
+  * `build`/`rebuild` take the [[ExecutableCatalog]] to read the site's printed
+  * cost; nothing else about the catalog reaches the tree, which closes over
+  * the actor and that cost alone.
   */
 object ForgeProcedure {
   val assignmentDecisionId: String = "forge.assignment"
@@ -79,11 +82,11 @@ object ForgeProcedure {
     state.game.current.players.find(_.player == actor).flatMap(_.pawnSite)
 
   /** The empty faceup denizens at the actor's CURRENT pawn site, as assignment
-    * targets: exactly the set [[assignmentDecisionId]]'s validate accepts an
-    * answer against, and exactly the set the projector offers a client (Task
-    * 3). Read live off `state.game.current.map.sites` on every call, never off
-    * a tree closure -- an edifice, a facedown denizen, or a denizen already
-    * carrying a token is not a target.
+    * targets: exactly the options the assignment decision declares, and so
+    * exactly the set a client is offered. Read live off
+    * `state.game.current.map.sites` on every call, never off a tree closure --
+    * an edifice, a facedown denizen, or a denizen already carrying a token is
+    * not a target.
     */
   def eligibleTargets(state: ReadyGame,
       actor: PlayerId): Vector[SiteDenizenTarget] =
@@ -103,7 +106,7 @@ object ForgeProcedure {
     player <- actorState(state, actor)
     siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(actor))
     facts <- ForgeRules.validate(catalog, state, player, siteId)
-  } yield tree(catalog, actor, facts._2)
+  } yield tree(actor, facts._2)
 
   /** Rebuilds the same command-local tree for an already-started Forge.
     *
@@ -113,14 +116,14 @@ object ForgeProcedure {
     * requires supply >= 1 and would therefore strand a legally started Forge
     * with no way to answer it -- the walker's worst failure mode. Only what
     * resuming genuinely requires runs here: the actor's site, and the printed
-    * cost the decision validates an answer against.
+    * cost the decision's section minima come from.
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
       actor: PlayerId): Either[OathViolation, Operation] = for {
     siteId <- actorSite(state, actor).toRight(
       OathViolation.PawnSiteMissing(actor))
     cost <- printedCost(catalog, siteId)
-  } yield tree(catalog, actor, cost)
+  } yield tree(actor, cost)
 
   private def actorState(state: ReadyGame,
       actor: PlayerId): Either[OathViolation, PlayerState] =
@@ -130,101 +133,128 @@ object ForgeProcedure {
   /** The site's printed Forge cost, worded exactly as `ForgeRules.validate`
     * words the same rejection so a resume and a start fail alike.
     *
-    * Public for the same reason [[eligibleTargets]] is (Task 3): the
-    * application-layer projector tells the client how many favor and how
-    * many secrets its answer must name, and that number must be the one
-    * this tree's `validate` accepts an answer against -- one definition,
-    * not a second read of `forgeRequirements` at the projector.
+    * Public for the same reason [[eligibleTargets]] is: it is the source of
+    * both section minima, which is what tells a client how many favor and how
+    * many secrets its answer must name -- one definition, not a second read
+    * of `forgeRequirements` at the projector.
     */
   def printedCost(catalog: ExecutableCatalog,
       siteId: SiteId): Either[OathViolation, Tokens] =
     catalog.sites.find(_.id == siteId).flatMap(_.forgeRequirements)
       .toRight(OathViolation.ForgeUnavailable("site has no printed Forge cost"))
 
-  private def suitOf(catalog: ExecutableCatalog,
-      denizen: DenizenId): Either[OathViolation, Suit] =
-    catalog.denizens.find(_.id.value == denizen.value)
-      .flatMap(definition => Suit.all.find(_.key == definition.suit.value))
-      .toRight(OathViolation.ForgeOutcomeMismatch(
-        s"no catalog suit for ${denizen.value}"))
-
-  /** One move per assignment, in assignment order: favor comes out of the
-    * target denizen's own suit bank, secrets out of the shared bank. Mirrors
-    * legacy `Forge.completionOperations` minus its trailing relic play, which
-    * the caller appends from live state.
+  /** The two sections a Forge assignment spreads its targets across. Stable
+    * keys: a recorded [[oathdigital.model.DecisionPlacement]] names one of
+    * these, and the trailing operation node reads the resource back out of it.
     */
-  private def assignmentOperations(catalog: ExecutableCatalog,
-      assignments: Vector[ForgeResourceAssignment])
-      : Either[OathViolation, Vector[CoreOperation]] =
-    assignments.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
-      Right(Vector.empty)) { case (result, assignment) =>
-      val onCard = PositionedLocation(
-        Location.OnCard(assignment.target.denizenId))
-      for {
-        operations <- result
-        operation <- assignment.resource match {
-          case ForgeResource.Favor =>
-            suitOf(catalog, assignment.target.denizenId).map(suit => Move(
-              Piece.Favor(1),
-              PositionedLocation(Location.FavorBank(suit)), onCard))
-          case ForgeResource.Secret => Right(Move(Piece.Secrets(1),
-            PositionedLocation(Location.SharedBank), onCard))
-        }
-      } yield operations :+ operation
-    }
+  val favorSectionKey: String = "pay-favor"
+  val secretSectionKey: String = "pay-secret"
 
-  /** The tree closes only over command-stable data (the actor, the printed
-    * cost, and the catalog the cost and suits are read from), so the walker
-    * re-derives an identical tree every command (spec decision S1).
+  /** Whether a printed cost leaves the player an actual decision to make.
+    *
+    * Four of the seven forgeable sites print three of a single resource, and
+    * at those sites one section demands every eligible target: there is
+    * exactly one legal answer, so prompting for it asks the player to
+    * rubber-stamp a foregone conclusion. `DecisionQueries.wellFormed` rejects
+    * such a query outright, which makes this a hard constraint rather than a
+    * courtesy -- a Forge that parked there could never be answered at all.
+    *
+    * A single-resource Forge therefore declares no decision node, and its
+    * trailing operation node applies the determined split itself. This is a
+    * deliberate behaviour change: the pre-walker Forge parked and prompted at
+    * those four sites.
     */
-  private def tree(catalog: ExecutableCatalog, actor: PlayerId,
-      cost: Tokens): Operation = {
-    val expectedResources: Vector[ForgeResource] =
-      Vector.fill(cost.favor)(ForgeResource.Favor) ++
-        Vector.fill(cost.secrets)(ForgeResource.Secret)
+  def parks(cost: Tokens): Boolean = cost.favor > 0 && cost.secrets > 0
 
-    /** How much favor each suit bank must cover for this answer. */
-    def favorBySuit(assignments: Vector[ForgeResourceAssignment])
-        : Either[OathViolation, Map[Suit, Int]] =
-      assignments.filter(_.resource == ForgeResource.Favor)
-        .foldLeft[Either[OathViolation, Map[Suit, Int]]](Right(Map.empty)) {
-          case (result, assignment) => for {
-            counts <- result
-            suit <- suitOf(catalog, assignment.target.denizenId)
-          } yield counts.updated(suit, counts.getOrElse(suit, 0) + 1)
-        }
+  /** The tree closes only over command-stable data (the actor and the printed
+    * cost), so the walker re-derives an identical tree every command (spec
+    * decision S1). Everything state-dependent -- which denizens are eligible,
+    * which relic is on top of the deck -- is read off `ready` when the node
+    * it belongs to runs.
+    */
+  private def tree(actor: PlayerId, cost: Tokens): Operation = {
+    val total = cost.favor + cost.secrets
 
-    // Legacy `Forge.validateCompletion`'s body, with its eligible-target set
-    // read live off `ready` (ruling R14) instead of off the pending
-    // procedure's frozen `eligibleTargets` field.
-    def validateAssignment(ready: ReadyGame, pending: PendingTree,
-        answer: DecisionAnswer): Either[OathViolation, Unit] = answer match {
-      case ForgeAssignmentAnswer(assignments) =>
-        val targets = assignments.map(_.target)
+    val sections = Vector(
+      DecisionSection(favorSectionKey, "Pay Favor", cost.favor),
+      DecisionSection(secretSectionKey, "Pay Secret", cost.secrets))
+
+    // A `Branch`, not a bare `Decide`, because the options are the eligible
+    // targets read LIVE off `ready` (ruling R14) -- the same method the
+    // projector reads, so the offered set and the accepted set are one
+    // expression. A denizen that gained a token since the park is simply
+    // absent from the rebuilt query, and an answer naming it is rejected by
+    // the generic validator without this action stating a rule of its own.
+    val assignmentDecide = Branch((ready, _) => Vector(Decide(
+      decisionId = assignmentDecisionId,
+      owner = actor,
+      query = DecisionQuery.Partition(sections,
+        eligibleTargets(ready, actor).map(target =>
+          DecisionOption.Denizen(
+            DecisionOptionRef.Denizen(target.denizenId)))))))
+
+    // The actor funds the payment from their own play area, and the suit
+    // banks are never consulted. `PayCost` is what states that: its placed
+    // portions move out of `Location.PlayArea(actor)` onto the named card,
+    // and `OperationPipeline` validates the whole batch atomically.
+    def payment(denizen: DenizenId,
+        sectionKey: String): Either[OathViolation, CoreOperation] =
+      sectionKey match {
+        case `favorSectionKey` =>
+          Right(PayCost(actor, Location.OnCard(denizen), Cost(favor = 1)))
+        case `secretSectionKey` =>
+          Right(PayCost(actor, Location.OnCard(denizen), Cost(secret = 1)))
+        case other => Left(OathViolation.InvalidEventOrder(
+          s"$assignmentDecisionId has no section '$other'"))
+      }
+
+    def payments(denizens: Vector[(DenizenId, String)])
+        : Either[OathViolation, Vector[CoreOperation]] =
+      denizens.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
+        Right(Vector.empty)) { case (result, (denizen, sectionKey)) =>
         for {
-          _ <- Either.cond(
-            assignments.size == 3 && targets.distinct.size == 3, (),
-            OathViolation.ForgeOutcomeMismatch(
-              "assign exactly one resource to each of three distinct denizens"))
-          _ <- Either.cond(
-            targets.toSet == eligibleTargets(ready, actor).toSet, (),
-            OathViolation.ForgeOutcomeMismatch(
-              "assignment targets are stale or ineligible"))
-          _ <- Either.cond(assignments.map(_.resource).sortBy(_.key) ==
-            expectedResources.sortBy(_.key), (),
-            OathViolation.ForgeOutcomeMismatch(
-              "assignments do not match the printed Forge resources"))
-          needed <- favorBySuit(assignments)
-          _ <- needed.toVector.foldLeft[Either[OathViolation, Unit]](
-            Right(())) { case (result, (suit, amount)) =>
-            result.flatMap(_ => Either.cond(
-              ready.banks.favor.getOrElse(suit, 0) >= amount, (),
-              OathViolation.ForgeUnavailable(
-                s"$suit favor bank lacks $amount favor")))
-          }
-        } yield ()
-      case other => Left(OathViolation.InvalidEventOrder(
-        s"$assignmentDecisionId received an unexpected answer: $other"))
+          operations <- result
+          operation <- payment(denizen, sectionKey)
+        } yield operations :+ operation
+      }
+
+    /** The answered split, for a site whose printed cost names both
+      * resources. The generic validator has already checked that every
+      * declared option is placed exactly once in a declared section, so the
+      * two rejections below are contract failures, not bad submissions.
+      */
+    def answeredPayments(pending: PendingTree)
+        : Either[OathViolation, Vector[CoreOperation]] =
+      pending.answered.lastOption match {
+        case Some(Answered(_, PartitionAnswer(placements))) =>
+          placements.foldLeft[Either[OathViolation,
+              Vector[(DenizenId, String)]]](Right(Vector.empty)) {
+            case (result, placement) => for {
+              rows <- result
+              denizen <- placement.option match {
+                case DecisionOptionRef.Denizen(id) => Right(id)
+                case other => Left(OathViolation.InvalidEventOrder(
+                  s"$assignmentDecisionId placed a non-denizen option $other"))
+              }
+            } yield rows :+ (denizen -> placement.sectionKey)
+          }.flatMap(payments)
+        case _ => Left(OathViolation.InvalidEventOrder(
+          "no Forge assignment answer is recorded"))
+      }
+
+    /** The determined split, for a site printing three of one resource:
+      * every eligible target takes that resource, so there is nothing to
+      * read out of an answer and no answer was ever asked for.
+      */
+    def determinedPayments(ready: ReadyGame)
+        : Either[OathViolation, Vector[CoreOperation]] = {
+      val targets = eligibleTargets(ready, actor)
+      val sectionKey =
+        if (cost.favor > 0) favorSectionKey else secretSectionKey
+      if (targets.size != total) Left(OathViolation.ForgeUnavailable(
+        s"site offers ${targets.size} Forge targets but the printed cost " +
+          s"needs $total"))
+      else payments(targets.map(_.denizenId -> sectionKey))
     }
 
     // `AdjustSupply` carries no window of its own, so the payment is a
@@ -233,36 +263,19 @@ object ForgeProcedure {
       AdjustSupply(actor, -supplyCost))),
       window = Some(PowerWindow.ForgeCost))
 
-    // The payload here only type-tags the choice; the concrete answer rides
-    // `resolve`. An empty vector is an inert marker no legal answer can equal
-    // (a legal answer names exactly three assignments), so nothing downstream
-    // can mistake the marker for a recorded decision.
-    val assignmentDecide = Decide(
-      answer = ForgeAssignmentAnswer(Vector.empty),
-      owner = ForgeProcedure.ActiveOwner,
-      decisionId = assignmentDecisionId,
-      validate = Some(validateAssignment))
+    val forgeRelic = BuildOps((ready, pending) => for {
+      placed <- if (parks(cost)) answeredPayments(pending)
+        else determinedPayments(ready)
+      relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(
+        OathViolation.ForgeUnavailable("relic deck is empty"))
+    } yield placed :+ Play(relic,
+      PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
+      Location.PlayArea(actor), Orientation.FaceDown))
 
-    val forgeRelic = BuildOps((ready, pending) =>
-      pending.answered.lastOption match {
-        case Some(Answered(_, ForgeAssignmentAnswer(assignments))) => for {
-          moves <- assignmentOperations(catalog, assignments)
-          relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(
-            OathViolation.ForgeUnavailable("relic deck is empty"))
-        } yield moves :+ Play(relic,
-          PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
-          Location.PlayArea(actor), Orientation.FaceDown)
-        case _ => Left(OathViolation.InvalidEventOrder(
-          "no Forge assignment answer is recorded"))
-      })
+    val nodes: Vector[Operation] =
+      if (parks(cost)) Vector(paySupply, assignmentDecide, forgeRelic)
+      else Vector(paySupply, forgeRelic)
 
-    Sequence(paySupply, assignmentDecide, forgeRelic)
-      .copy(window = Some(PowerWindow.ForgeActionEligibility))
-  }
-
-  /** Forge is an Act action of the active player in this slice. */
-  private object ActiveOwner extends OwnerQuery {
-    def owner(ctx: WalkerCtx): Option[PlayerId] =
-      Some(ctx.ready.game.current.turn.activePlayer)
+    Sequence(nodes).copy(window = Some(PowerWindow.ForgeActionEligibility))
   }
 }

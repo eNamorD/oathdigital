@@ -595,15 +595,19 @@ private[frontend] object ServerUiSupport {
       case _ => None
     }
 
+  /** Recover's continue/stop buttons are declared by the engine as button
+    * options keyed `"continue"` and `"stop"` -- the same two strings this
+    * renderer already spoke.
+    */
   private[frontend] def resolveRecoverChoiceCommand(decision: WalkerDecisionState,
       choice: String): GameCommand.ResolveWalker =
     GameCommand.ResolveWalker(decision.decisionId,
-      DecisionAnswerWire.RecoverChoiceWire(choice))
+      DecisionAnswerWire.ChooseOneWire("button", choice))
 
   private[frontend] def resolveRecoverRelicCommand(decision: WalkerDecisionState,
       relicId: String): GameCommand.ResolveWalker =
     GameCommand.ResolveWalker(decision.decisionId,
-      DecisionAnswerWire.RecoverRelicWire(relicId))
+      DecisionAnswerWire.ChooseOneWire("relic", relicId))
 
   /** Renders the parked Recover's accumulated roll feedback (I5) -- the
     * dice faces rolled so far, the derived score, and the site's Recover

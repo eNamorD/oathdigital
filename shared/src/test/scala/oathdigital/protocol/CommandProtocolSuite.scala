@@ -40,15 +40,27 @@ class CommandProtocolSuite extends munit.FunSuite {
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
-    ResolveWalker("recover.choice", DecisionAnswerWire.RecoverChoiceWire("continue")),
-    ResolveWalker("recover.choice", DecisionAnswerWire.RecoverChoiceWire("stop")),
-    ResolveWalker("recover.relic", DecisionAnswerWire.RecoverRelicWire("relic-1")),
+    ResolveWalker("recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "continue")),
+    ResolveWalker("recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "stop")),
+    ResolveWalker("recover.relic",
+      DecisionAnswerWire.ChooseOneWire("relic", "relic-1")),
     StartWalker("forge", Vector.empty),
-    ResolveWalker("forge.assignment", DecisionAnswerWire.ForgeAssignmentWire(
-      Vector(ForgeAssignment("site:a", "d1", "favor"),
-        ForgeAssignment("site:a", "d2", "favor"),
-        ForgeAssignment("site:a", "d3", "secret"))))
+    ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(
+      Vector(DecisionPlacementWire("denizen", "d1", "pay-favor"),
+        DecisionPlacementWire("denizen", "d2", "pay-favor"),
+        DecisionPlacementWire("denizen", "d3", "pay-secret"))))
   )
+
+  test("a walker answer carrying a deleted legacy tag is rejected") {
+    val legacy = ujson.Obj("kind" -> "recover-choice", "choice" -> "continue")
+    Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
+      val payload = legacy.value.toMap.updated("kind", ujson.Str(tag))
+      assert(CommandNestedCodecs.decodeDecisionAnswerWire(
+        ujson.Obj.from(payload), "$.payload").isLeft, tag)
+    }
+  }
 
   test("every actorless command intent round trips through the shared codec") {
     examples.zipWithIndex.foreach { case (intent, index) =>
@@ -110,17 +122,16 @@ class CommandProtocolSuite extends munit.FunSuite {
     assert(failure.message.contains("unknown decision answer"))
   }
 
-  test("a Forge assignment payload naming one denizen twice is rejected at " +
-      "its exact path") {
-    val row = """{"siteId":"site:a","denizenId":"d1","resource":"favor"}"""
+  test("a partition payload placing one option twice is rejected at its " +
+      "exact path") {
+    val row = """{"optionKind":"denizen","optionId":"d1","sectionKey":"pay-favor"}"""
     val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
-      s""""decisionId":"forge.assignment","payload":{"kind":"forge-assignment",""" +
-      s""""assignments":[$row,$row]}}}"""
+      s""""decisionId":"forge.assignment","payload":{"kind":"partition",""" +
+      s""""placements":[$row,$row]}}}"""
     val failure = ActorlessCommandCodec.decode(json).left.toOption.get
-    assertEquals(failure.path, "$.intent.payload.assignments")
-    // The engine rejects a duplicated target too (`ForgeProcedure`'s
-    // `Decide.validate`); catching it here keeps the transport's own
-    // duplicate rule the same shape as `completeForge`'s was.
+    assertEquals(failure.path, "$.intent.payload.placements")
+    // The engine rejects a duplicated placement too (`DecisionQueries`);
+    // catching it at the transport keeps the two rules the same shape.
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
   }
 

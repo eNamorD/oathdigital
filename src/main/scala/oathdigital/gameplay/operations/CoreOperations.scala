@@ -2,7 +2,6 @@ package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.walker.OwnerQuery
 import oathdigital.model._
 
 /** Core operations occurring in a game of Oath.
@@ -474,19 +473,27 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
 /** Removes `pool` from the rollPools state map. */
 final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
 
-/** Parks a walker until the owning player resolves the open decision.
-  * `payload` is an open, power-extensible description of the choice;
-  * `owner` resolves who decides at walk/resume time; `validate` (when
-  * present) is a semantic legality check the walker runs against the resolved
-  * answer before recording it. `window` makes the
-  * decision hookable: the walker folds the gathered transforms over
-  * `Vector(this)` before walking it, so a power may insert operations around
-  * the decision or replace it.
+/** Parks a walker until `owner` resolves the decision `query` states.
+  *
+  * `query` is the single source of both halves of the contract: the walker
+  * accepts exactly the answers it declares (via `DecisionQueries`), and the
+  * projector offers exactly the options it declares. There is deliberately
+  * no `validate` closure beside it — a legality fact that is not expressible
+  * as an option set is a fact the client could never have been shown, so it
+  * belongs in how the tree BUILDS the query, not in a second check the
+  * projector cannot read. An option that authoritative state no longer
+  * supports is simply absent from the query the next command rebuilds.
+  *
+  * `owner` is a concrete player rather than a resolver: the tree is rebuilt
+  * against live state on every command, so whatever would have been computed
+  * at resume time can be computed at build time instead.
+  *
+  * `window` makes the decision hookable: the walker folds the gathered
+  * transforms over `Vector(this)` before walking it, so a power may insert
+  * operations around the decision, or replace its query.
   */
-final case class Decide(answer: DecisionAnswer, owner: OwnerQuery,
-    decisionId: String,
-    validate: Option[(ReadyGame, PendingTree, DecisionAnswer) =>
-      Either[OathViolation, Unit]] = None,
+final case class Decide(decisionId: String, owner: PlayerId,
+    query: DecisionQuery,
     override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 

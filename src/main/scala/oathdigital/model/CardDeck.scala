@@ -8,10 +8,20 @@ package oathdigital.model
   * nothing else: same four case objects, same names, same JSON and wire
   * strings.
   */
-sealed trait CardDeck extends Product with Serializable
+sealed trait CardDeck extends Product with Serializable {
+  /** Stable wire spelling, frozen: it is the `Location.Deck` journal tag and
+    * the identity half of a `DecisionOptionRef.Deck` on the command wire.
+    */
+  def key: String
+}
 object CardDeck {
-  case object World extends CardDeck
-  case object Relic extends CardDeck
-  case object Edifice extends CardDeck
-  case object Legacy extends CardDeck
+  case object World extends CardDeck { val key = "world" }
+  case object Relic extends CardDeck { val key = "relic" }
+  case object Edifice extends CardDeck { val key = "edifice" }
+  case object Legacy extends CardDeck { val key = "legacy" }
+
+  val all: Vector[CardDeck] = Vector(World, Relic, Edifice, Legacy)
+
+  /** Safe parse for untrusted (wire) input, mirroring `Suit.all.find`. */
+  def fromKey(value: String): Option[CardDeck] = all.find(_.key == value)
 }

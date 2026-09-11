@@ -3,8 +3,7 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
   WakeResource}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer, RecoverChoice,
-  RecoverChoiceAnswer, RecoverRelicAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -112,11 +111,6 @@ object GameIntentMapper {
     case "regional-discard" => value.region.flatMap(k => Region.all.find(_.key == k)).map(oathdigital.model.SearchSource.RegionalDiscard).toRight(GameIntentMappingFailure("$.intent.region", "unknown or missing region"))
     case v => invalid("$.intent.source", v, "search source")
   }
-  private def forge(value: ForgeAssignment): Result[ForgeResourceAssignment] = value.resource match {
-    case "favor" => Right(ForgeResourceAssignment(SiteDenizenTarget(SiteId(value.siteId), DenizenId(value.denizenId)), ForgeResource.Favor))
-    case "secret" => Right(ForgeResourceAssignment(SiteDenizenTarget(SiteId(value.siteId), DenizenId(value.denizenId)), ForgeResource.Secret))
-    case v => invalid("$.intent.assignments.resource", v, "forge resource")
-  }
   private def restAllocation(value: RestFavorAllocation): Result[FavorAllocation] = {
     val site = SiteId(value.source.siteId)
     val source = value.source.kind match {
@@ -176,21 +170,28 @@ object GameIntentMapper {
   private def powerId(value: String, index: Int): Result[PowerId] =
     PowerId.fromValue(value).toRight(GameIntentMappingFailure(
       s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
+  /** The kind/id pair back to the engine's option reference. Total over the
+    * seven declared variants, and deliberately not a table written here:
+    * `DecisionOptionRef.fromWire` is the same function the journal codec
+    * decodes with, so a client's answer and a replayed one resolve a given
+    * pair identically or not at all.
+    */
+  private def optionRef(kind: String, id: String,
+      path: String): Result[DecisionOptionRef] =
+    DecisionOptionRef.fromWire(kind, id).toRight(GameIntentMappingFailure(path,
+      s"unknown decision option '$kind/$id'"))
+
+  /** Names no action and no decision id: a walker answer is generic over the
+    * query shapes the engine declares, and the engine checks it against the
+    * query the parked node actually carries.
+    */
   private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match {
-    case DecisionAnswerWire.RecoverChoiceWire(choice) => choice match {
-      case "continue" => Right(RecoverChoiceAnswer(RecoverChoice.Continue))
-      case "stop" => Right(RecoverChoiceAnswer(RecoverChoice.Stop))
-      case v => invalid("$.intent.payload.choice", v, "Recover choice")
-    }
-    case DecisionAnswerWire.RecoverRelicWire(relicId) =>
-      RelicId.fromValue(relicId).map(RecoverRelicAnswer).toRight(
-        GameIntentMappingFailure("$.intent.payload.relicId",
-          s"invalid relic id '$relicId'"))
-    // Reuses `forge` above -- the same `ForgeAssignment` row decode the
-    // (deleted) legacy `CompleteForge` intent used, so the walker answer
-    // and the legacy command never had two spellings of one fact.
-    case DecisionAnswerWire.ForgeAssignmentWire(assignments) =>
-      traverse(assignments)(forge).map(ForgeAssignmentAnswer)
+    case DecisionAnswerWire.ChooseOneWire(kind, id) =>
+      optionRef(kind, id, "$.intent.payload.option").map(ChooseOneAnswer)
+    case DecisionAnswerWire.PartitionWire(placements) =>
+      traverse(placements)(row => optionRef(row.optionKind, row.optionId,
+        "$.intent.payload.placements.option").map(
+          DecisionPlacement(_, row.sectionKey))).map(PartitionAnswer)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

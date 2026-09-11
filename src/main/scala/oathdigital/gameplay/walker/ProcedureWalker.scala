@@ -227,11 +227,16 @@ object ProcedureWalker {
 
       case WalkerCompleted(actor, action) => for {
         _ <- validateActor(actor)
+        // No active action means the walk never parked: a tree that
+        // declares no Decide and no Roll runs to the end inside the command
+        // that started it, so nothing set `walkerAction` (Forge at a
+        // single-resource site is exactly that). The completion still names
+        // the action, and the clear below is a no-op either way.
         _ <- ready.game.current.walkerAction match {
           case Some(existing) => Either.cond(existing == action, (),
             OathViolation.InvalidEventOrder(
               s"walker completion ${action.key} does not match ${existing.key}"))
-          case None => invalid("walker completion has no active walker action")
+          case None => Right(())
         }
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
@@ -690,27 +695,26 @@ object ProcedureWalker {
   }
 
   /** Validates a resolved answer against the parked Decide and records its
-    * step: the owner must resolve to the acting player, and the node's
-    * optional `validate` must accept the payload; on success `answer` is
-    * appended to `answered` and ONE [[WalkerStepRecorded]] carrying a
-    * [[ChoicePayload]] (ops empty — the answer is a state write into
-    * `pending.answered`) is appended.
+    * step: the node's owner must be the acting player, the node's query must
+    * be answerable at all, and that query must accept the submitted answer.
+    * On success `answer` is appended to `answered` and ONE
+    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
+    * answer is a state write into `pending.answered`) is appended.
+    *
+    * Both checks are generic and read no game state (see [[DecisionQueries]]),
+    * so the walker learns nothing here about which action parked: a legality
+    * fact that used to live in a per-node `validate` closure now lives in the
+    * declared option set, which is also what the projector offers.
     */
   private def answerDecide(decide: Decide, ctx: WalkCtx,
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
-    val parkTree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.actor)
     for {
-      _ <- decide.owner.owner(WalkerCtx(ctx.state)) match {
-        case None => Left(OathViolation.InvalidEventOrder(
-          s"decision ${decide.decisionId} at ${path.mkString(".")} has no " +
-            "resolving owner"))
-        case Some(owner) => Either.cond(owner == ctx.actor, (),
-          OathViolation.WrongPlayer(owner, ctx.actor))
-      }
-      _ <- decide.validate.fold[Either[OathViolation, Unit]](
-        Right(()))(_(ctx.state, parkTree, answer.answer))
+      _ <- Either.cond(decide.owner == ctx.actor, (),
+        OathViolation.WrongPlayer(decide.owner, ctx.actor))
+      _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
+      _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
+        answer.answer)
     } yield {
       val nodeId =
         if (path.isEmpty) leafLabel(decide) else path.mkString(".")

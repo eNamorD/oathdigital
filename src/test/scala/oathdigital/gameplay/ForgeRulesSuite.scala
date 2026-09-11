@@ -15,7 +15,7 @@ import oathdigital.catalog.CatalogPower
   * lives in `ForgeProcedureSuite` (the tree, its decision's validate and the
   * completion's operations) and in `GameApplicationServiceSuite`'s
   * end-to-end walker Forge (the supply spend, the owner-private prompt, the
-  * relic play, the suit-bank draws and the rejections).
+  * relic play, the player-funded payments and the rejections).
   */
 class ForgeRulesSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -56,6 +56,44 @@ class ForgeRulesSuite extends munit.FunSuite {
     assert(validate(site.copy(denizens = site.denizens.drop(1))).isLeft)
     assert(validate(site, supply = 0).left.toOption.get.isInstanceOf[InsufficientSupply])
     assert(validate(site, deck = Vector.empty).isLeft)
+  }
+
+  test("the actor must be able to fund the printed cost from their own play " +
+      "area before any Supply is spent") {
+    val (ready, actor, siteId, _, _) = forgeable
+    val cost = catalog.sites.find(_.id == siteId).get.forgeRequirements.get
+
+    def withResources(favor: Int, secrets: Int) = {
+      val p = actor.copy(board = actor.board.copy(favor = favor,
+        faceUpSecrets = secrets))
+      val r = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+        players = ready.game.current.players.map(x =>
+          if (x.player == actor.player) p else x))))
+      ForgeRules.validate(catalog, r, p, siteId)
+    }
+
+    assert(withResources(cost.favor, cost.secrets).isRight,
+      "exactly enough of each resource is affordable")
+
+    // A Forge that starts unable to pay would spend Supply, walk to its last
+    // node and fail there with nothing recoverable, so the gate is a start
+    // gate rather than a completion check.
+    if (cost.favor > 0)
+      assert(withResources(cost.favor - 1, cost.secrets).left.toOption.get
+        .isInstanceOf[InsufficientFavor])
+    if (cost.secrets > 0)
+      assert(withResources(cost.favor, cost.secrets - 1).left.toOption.get
+        .isInstanceOf[InsufficientSecrets])
+
+    // Facedown secrets are not spendable, so they do not fund a Forge.
+    val hidden = actor.copy(board = actor.board.copy(favor = cost.favor,
+      faceUpSecrets = 0, faceDownSecrets = cost.secrets + 3))
+    if (cost.secrets > 0) {
+      val r = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+        players = ready.game.current.players.map(x =>
+          if (x.player == actor.player) hidden else x))))
+      assert(ForgeRules.validate(catalog, r, hidden, siteId).isLeft)
+    }
   }
 
   test("unknown active handler outside the audited vocabulary blocks safely") {
