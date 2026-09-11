@@ -1,23 +1,23 @@
 package oathdigital.model
 
-/** Open decision payload carried by a walker `Decide` leaf and stored in
+/** Open decision answer carried by a walker `Decide` leaf and stored in
   * `PendingTree.answered`.
   *
-  * The payload must be MODEL-safe: answered decisions are persisted on
+  * The answer must be MODEL-safe: answered decisions are persisted on
   * `CurrentGameState.walkerPending` between commands (the legacy
-  * `PendingProcedure` precedent stores model payloads the same way), so the
+  * `PendingProcedure` precedent stores model answers the same way), so the
   * family and every concrete case live in the model, never importing
-  * gameplay. Concrete payloads are declared next to the action they belong to
+  * gameplay. Concrete answers are declared next to the action they belong to
   * (or in this file when they are plain data); the engine stays generic over
-  * payloads.
+  * answers.
   *
-  * Deliberately NOT sealed here: a power or action declares its own payload
+  * Deliberately NOT sealed here: a power or action declares its own answer
   * case wherever it lives (same-file-sealed restriction on the family root is
   * why the root stays open).
   */
-trait DecisionPayload extends Product with Serializable
+trait DecisionAnswer extends Product with Serializable
 
-object DecisionPayload {
+object DecisionAnswer {
   /** Recover per-roll choice, resolved at the `"recover.choice"` decision:
     * continue rolling (another 1-supply payment) or stop and abandon without
     * a relic
@@ -30,20 +30,20 @@ object DecisionPayload {
   }
 
   /** Answer to the per-roll choice decision. */
-  final case class RecoverChoicePayload(choice: RecoverChoice)
-      extends DecisionPayload
+  final case class RecoverChoiceAnswer(choice: RecoverChoice)
+      extends DecisionAnswer
 
   /** Answer to the success-only `"recover.relic"` decision: which facedown
     * relic at the site the actor takes into their play area facedown.
     */
-  final case class RecoverRelicPayload(relicId: RelicId)
-      extends DecisionPayload
+  final case class RecoverRelicAnswer(relicId: RelicId)
+      extends DecisionAnswer
 
   /** Answer to the `"forge.assignment"` decision: which of the site's three
     * empty denizens receives each of the printed Forge cost's three
     * resources.
     *
-    * Placed and shaped like [[RecoverRelicPayload]] (Task 2 ruling R13):
+    * Placed and shaped like [[RecoverRelicAnswer]] (Task 2 ruling R13):
     * plain model data next to the family root, carrying only the choice the
     * player made. [[ForgeResourceAssignment]] is already model data (it is
     * what the legacy `ForgeCommand.Complete` carried), so this case reuses it
@@ -52,6 +52,6 @@ object DecisionPayload {
     * top, read off state when the trailing operation node runs (ruling R12),
     * so there is no free choice here to record.
     */
-  final case class ForgeAssignmentPayload(
-      assignments: Vector[ForgeResourceAssignment]) extends DecisionPayload
+  final case class ForgeAssignmentAnswer(
+      assignments: Vector[ForgeResourceAssignment]) extends DecisionAnswer
 }

@@ -4,10 +4,10 @@ import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
   TreeDecision}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model._
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{RecoverChoice, RecoverChoiceAnswer,
+  RecoverRelicAnswer}
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionPayloadWire, GameIntent}
+  DecisionAnswerWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
@@ -74,22 +74,22 @@ class GameHttpWireSuite extends munit.FunSuite {
       Right(GameCommand.RollWalker(PlayerId("actor-1"), PoolKey("recover.pool"))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("continue"))),
+        DecisionAnswerWire.RecoverChoiceWire("continue"))),
       Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
         TreeDecision("recover.choice",
-          RecoverChoicePayload(RecoverChoice.Continue)))))
+          RecoverChoiceAnswer(RecoverChoice.Continue)))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("stop"))),
+        DecisionAnswerWire.RecoverChoiceWire("stop"))),
       Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
         TreeDecision("recover.choice",
-          RecoverChoicePayload(RecoverChoice.Stop)))))
+          RecoverChoiceAnswer(RecoverChoice.Stop)))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-1"))),
+        DecisionAnswerWire.RecoverRelicWire("relic-1"))),
       Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
         TreeDecision("recover.relic",
-          RecoverRelicPayload(RelicId("relic-1"))))))
+          RecoverRelicAnswer(RelicId("relic-1"))))))
   }
 
   test("an unknown walker action string is rejected without throwing") {
@@ -113,7 +113,7 @@ class GameHttpWireSuite extends munit.FunSuite {
   test("an unknown Recover choice value is rejected without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("teleport"))).left.toOption.get
+        DecisionAnswerWire.RecoverChoiceWire("teleport"))).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.choice")
   }
 
@@ -121,7 +121,7 @@ class GameHttpWireSuite extends munit.FunSuite {
       "IllegalArgumentException escaping the mapper (finding I7)") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.relic",
-        DecisionPayloadWire.RecoverRelicWire(""))).left.toOption.get
+        DecisionAnswerWire.RecoverRelicWire(""))).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.relicId")
   }
 

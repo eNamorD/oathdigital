@@ -10,8 +10,8 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{RecoverChoice,
+  RecoverChoiceAnswer, RecoverRelicAnswer}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
 
@@ -149,7 +149,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // 3. Take the facedown site relic: tree ends; the relic is moved facedown
     //    into the play area.
     val answer = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicPayload(relic.id))
+      RecoverRelicAnswer(relic.id))
     val (finalState, resolveSteps) =
       ProcedureWalker.resolve(stateAtRelic, tree, relicPark, answer,
       noPowers) match {
@@ -191,7 +191,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(steps(2).ops, Vector.empty[CoreOperation])
     assertEquals(steps(3).payload,
       ChoicePayload(RecoverProcedure.relicDecisionId,
-        RecoverRelicPayload(relic.id)))
+        RecoverRelicAnswer(relic.id)))
     assertEquals(steps(3).ops, Vector.empty[CoreOperation])
     assertEquals(steps(4).payload, WalkerStepPayload.DeltaRecorded(
       RelicAcquired(actor.player, relic.id, siteId)))
@@ -222,7 +222,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     // Continue -> fresh pass parks at the second Roll.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoicePayload(RecoverChoice.Continue))
+      RecoverChoiceAnswer(RecoverChoice.Continue))
     val (rollPark2, continueEvents) = expectParked(
       ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
         noPowers),
@@ -230,7 +230,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(continueEvents.size, 2)
     assertEquals(continueEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue)))
+        RecoverChoiceAnswer(RecoverChoice.Continue)))
     assertEquals(continueEvents(1).asInstanceOf[WalkerStepRecorded].ops,
       Vector[CoreOperation](AdjustSupply(actor.player, -1)))
     val stateAtRoll2 = applyRecorded(stateAtChoice, continueEvents)
@@ -243,7 +243,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(supplyOf(stateAtRelic, actor.player), SupplyTrack.Maximum - 2)
 
     val answer = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicPayload(relic.id))
+      RecoverRelicAnswer(relic.id))
     val finalState = ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
       answer, noPowers) match {
       case Right(WalkerOutcome.Finished(treeless, _)) => treeless
@@ -281,7 +281,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
 
     val stop = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoicePayload(RecoverChoice.Stop))
+      RecoverChoiceAnswer(RecoverChoice.Stop))
     val (finalState, stopEvents) = ProcedureWalker.resolve(stateAtChoice, tree,
       choicePark, stop, noPowers) match {
       case Right(WalkerOutcome.Finished(treeless, events)) =>
@@ -302,7 +302,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(stopEvents.size, 1)
     assertEquals(stopEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Stop)))
+        RecoverChoiceAnswer(RecoverChoice.Stop)))
     assertEquals(stopEvents.head.asInstanceOf[WalkerStepRecorded].ops,
       Vector.empty[CoreOperation])
   }
@@ -326,7 +326,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     // Continue re-enters the loop, whose payment now precedes its Roll.
     // OperationPipeline rejects that payment before another roll is recorded.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
-      RecoverChoicePayload(RecoverChoice.Continue))
+      RecoverChoiceAnswer(RecoverChoice.Continue))
     ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
       noPowers) match {
       case Left(violation: OathViolation.CoreOperationRejected) =>
@@ -361,7 +361,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
 
     val wrong = Answered(RecoverProcedure.relicDecisionId,
-      RecoverRelicPayload(RelicId("no-such-relic")))
+      RecoverRelicAnswer(RelicId("no-such-relic")))
     ProcedureWalker.resolve(stateAtRelic, tree, relicPark, wrong,
       noPowers) match {
       case Left(violation: OathViolation.RecoverOutcomeMismatch) =>

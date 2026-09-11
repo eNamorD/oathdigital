@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
-import oathdigital.protocol.{DecisionPayloadWire, ForgeAssignment}
+import oathdigital.protocol.{DecisionAnswerWire, ForgeAssignment}
 
 class ServerModeUiSuite extends FunSuite {
   test("secret summaries lead with available over total and explain unavailable tokens") {
@@ -76,7 +76,7 @@ class ServerModeUiSuite extends FunSuite {
     // decision through `ResolveWalker`, carrying the same `ForgeAssignment`
     // rows the deleted `CompleteForge` intent carried.
     assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
-      "red", "forge-9", DecisionPayloadWire.ForgeAssignmentWire(
+      "red", "forge-9", DecisionAnswerWire.ForgeAssignmentWire(
         targets.zip(initial.assignments).map { case (target, resource) =>
           ForgeAssignment(target.siteId, target.denizenId, resource) }))))
     val invalid = initial.choose(2, "favor")
@@ -375,10 +375,10 @@ class ServerModeUiSuite extends FunSuite {
       Some(ServerUiSupport.RecoverWalkerStep.Choice))
     assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "continue"),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("continue")))
+        DecisionAnswerWire.RecoverChoiceWire("continue")))
     assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "stop"),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("stop")))
+        DecisionAnswerWire.RecoverChoiceWire("stop")))
   }
 
   test("the parked Recover relic decision offers one control per projected " +
@@ -391,10 +391,10 @@ class ServerModeUiSuite extends FunSuite {
       Some(ServerUiSupport.RecoverWalkerStep.Relic(Vector(bronze, silver))))
     assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, bronze.cardId),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-1")))
+        DecisionAnswerWire.RecoverRelicWire("relic-1")))
     assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, silver.cardId),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-2")))
+        DecisionAnswerWire.RecoverRelicWire("relic-2")))
   }
 
   test("an unrecognized parked walker decision renders no Recover control") {

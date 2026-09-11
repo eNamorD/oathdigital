@@ -238,7 +238,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       ActionRef.Recover.key, RecoverProcedure.relicDecisionId, "decide",
       relicCandidates = expectedCandidates,
       rollOutcome = Some(afterSuccessfulRoll))))
-    // The marker relic the tree's `Decide.payload` closes over is never the
+    // The marker relic the tree's `Decide.answer` closes over is never the
     // thing surfaced: assert on the actual site relics, not a hardcoded
     // single id, so this would fail if the projector ever fell back to
     // echoing the payload instead of re-reading live site state.
@@ -275,7 +275,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val chosen = RelicId(expectedCandidates.head.cardId)
     val resolved = service.handle("walker-projection-relic", rolled.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        DecisionPayload.RecoverRelicPayload(chosen))))
+        DecisionAnswer.RecoverRelicAnswer(chosen))))
     assert(resolved.isRight, s"expected a projected candidate relic to be " +
       s"accepted by the engine, got $resolved")
   }

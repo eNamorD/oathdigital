@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{ActionRef, Answered, DecisionPayload, DieFace,
+import oathdigital.model.{ActionRef, Answered, DecisionAnswer, DieFace,
   PlayerId, PoolKey, PowerId, RelicId, SiteId}
 
 /** Payload of one recorded walker step (Task 3).
@@ -39,7 +39,7 @@ object WalkerStepPayload {
   * (the walker rebuilds `answered` from these events at replay), not an
   * operation batch.
   */
-final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
+final case class ChoicePayload(decisionId: String, answer: DecisionAnswer)
     extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is

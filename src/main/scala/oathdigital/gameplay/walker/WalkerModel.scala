@@ -6,16 +6,16 @@ import oathdigital.model.PlayerId
 // Walker/leaf vocabulary that references the gameplay layer (spec decision
 // S1). Kept OUT of `oathdigital.model`: model stores only the pending pointer
 // (PendingTree) and must not import gameplay, while these types are consumed
-// by the Task 2 Decide leaf, the Task 3 walker, and Task 5 action payloads.
+// by the Task 2 Decide leaf, the Task 3 walker, and Task 5 action answers.
 //
-// `DecisionPayload` used to live here (Task 2); Task 5 ruling 5.1 moved it to
+// `DecisionAnswer` used to live here (Task 2); Task 5 ruling 5.1 moved it to
 // `oathdigital.model` because answered decisions are persisted on
 // `CurrentGameState.walkerPending` between commands and must stay model-safe
-// (see `model/DecisionPayload.scala`).
+// (see `model/Decisions.scala`).
 
 /** Resolves which player owns a pending walker decision at walk/resume time.
   *
-  * Open for the same reason as `DecisionPayload`: concrete owners (acting
+  * Open for the same reason as `DecisionAnswer`: concrete owners (acting
   * player, a banner holder, ...) are declared by the action trees that need
   * them.
   */

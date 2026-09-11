@@ -12,7 +12,7 @@ import oathdigital.model.TestGameFixtures._
 
 object ProcedureWalkerSuite {
   /** Test-only open payload (D2: powers define their own payloads later). */
-  final case class TestDecisionPayload(decision: String) extends DecisionPayload
+  final case class TestDecisionAnswer(decision: String) extends DecisionAnswer
   final case class TestOwner(actor: PlayerId) extends OwnerQuery {
     def owner(ctx: WalkerCtx): Option[PlayerId] = Some(actor)
   }
@@ -78,7 +78,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   private val noPowers: WalkerPowers = WalkerPowers.empty
 
   private val decide: Decide = Decide(
-    payload = ProcedureWalkerSuite.TestDecisionPayload("continue-or-stop"),
+    answer = ProcedureWalkerSuite.TestDecisionAnswer("continue-or-stop"),
     owner = ProcedureWalkerSuite.TestOwner(actor),
     decisionId = "recover.choice")
 
@@ -163,7 +163,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     }
 
     val answer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
@@ -203,7 +203,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // The caller folds the Parked events to obtain the state at the park.
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     ProcedureWalker.resolve(parkedState, tree, parked, answer,
         noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
@@ -265,7 +265,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     }
 
     val answer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
@@ -279,7 +279,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   test("plain advance re-parks a repeated Decide even when an older pass " +
       "answered the same decision ID") {
     val olderAnswer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     val pending = PendingTree(Vector("0", "0", "0"), Vector(olderAnswer), actor)
     val tree: Operation = Sequence(Repeat(
       (_: ReadyGame, _: PendingTree) => true,
@@ -602,7 +602,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // position still addresses the Decide.
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
@@ -645,7 +645,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      ProcedureWalkerSuite.TestDecisionAnswer("continue"))
     ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
       case Right(WalkerOutcome.Finished(_, events)) =>
         // The leaf's own window gathers `outer` a second time and `inner` for

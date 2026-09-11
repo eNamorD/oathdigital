@@ -52,25 +52,25 @@ private[protocol] object CommandNestedCodecs {
     * Recover payloads (`"recover-choice"` / `"recover-relic"`); an unknown
     * kind fails with the same typed `InvalidValue`, never an exception.
     */
-  def encodeDecisionPayloadWire(value: DecisionPayloadWire): ujson.Obj = value match {
-    case DecisionPayloadWire.RecoverChoiceWire(choice) =>
+  def encodeDecisionAnswerWire(value: DecisionAnswerWire): ujson.Obj = value match {
+    case DecisionAnswerWire.RecoverChoiceWire(choice) =>
       ujson.Obj("kind" -> "recover-choice", "choice" -> choice)
-    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
+    case DecisionAnswerWire.RecoverRelicWire(relicId) =>
       ujson.Obj("kind" -> "recover-relic", "relicId" -> relicId)
-    case DecisionPayloadWire.ForgeAssignmentWire(assignments) =>
+    case DecisionAnswerWire.ForgeAssignmentWire(assignments) =>
       ujson.Obj("kind" -> "forge-assignment",
         "assignments" -> ujson.Arr.from(assignments.map(row => ujson.Obj(
           "siteId" -> row.siteId, "denizenId" -> row.denizenId,
           "resource" -> row.resource))))
   }
 
-  def decodeDecisionPayloadWire(value: ujson.Value, path: String)
-      : Either[ProtocolDecodeFailure, DecisionPayloadWire] = obj(value, path).flatMap { root =>
+  def decodeDecisionAnswerWire(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionAnswerWire] = obj(value, path).flatMap { root =>
     string(root, "kind", path).flatMap {
       case "recover-choice" => exact(root, Set("kind", "choice"), path)
-        .flatMap(_ => string(root, "choice", path)).map(DecisionPayloadWire.RecoverChoiceWire)
+        .flatMap(_ => string(root, "choice", path)).map(DecisionAnswerWire.RecoverChoiceWire)
       case "recover-relic" => exact(root, Set("kind", "relicId"), path)
-        .flatMap(_ => string(root, "relicId", path)).map(DecisionPayloadWire.RecoverRelicWire)
+        .flatMap(_ => string(root, "relicId", path)).map(DecisionAnswerWire.RecoverRelicWire)
       case "forge-assignment" => for {
         _ <- exact(root, Set("kind", "assignments"), path)
         raw <- field(root, "assignments", path).flatMap(array(_, s"$path.assignments"))
@@ -78,8 +78,8 @@ private[protocol] object CommandNestedCodecs {
           decodeForgeAssignment(v, s"$path.assignments[$i]") }
         _ <- noDuplicates(rows.map(row => s"${row.siteId}/${row.denizenId}"),
           s"$path.assignments")
-      } yield DecisionPayloadWire.ForgeAssignmentWire(rows)
-      case kind => Left(InvalidValue(s"$path.kind", s"unknown decision payload '$kind'"))
+      } yield DecisionAnswerWire.ForgeAssignmentWire(rows)
+      case kind => Left(InvalidValue(s"$path.kind", s"unknown decision answer '$kind'"))
     }}
 
   private def decodeForgeAssignment(value: ujson.Value, path: String)

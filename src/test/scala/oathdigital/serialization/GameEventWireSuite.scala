@@ -20,8 +20,8 @@ import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer,
+  RecoverRelicAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
   test("ignored-rule diagnostics round trip durable source timing and reason") {
@@ -144,11 +144,11 @@ class GameEventWireSuite extends munit.FunSuite {
     // Replaces the deleted `v8 Forge events` test one layer down: the
     // assignment fact now rides a walker `ChoicePayload` and the parked
     // `answered` vector rather than a `ForgeCompleted` event, and both go
-    // through `WalkerEventCodec.encodeDecisionPayload`, whose Forge branch
+    // through `WalkerEventCodec.encodeDecisionAnswer`, whose Forge branch
     // batch-1 Task 3 added.
     val player = PlayerId("red")
     val site = SiteId("site:forge")
-    val payload = ForgeAssignmentPayload(Vector("1", "2", "3")
+    val payload = ForgeAssignmentAnswer(Vector("1", "2", "3")
       .map(id => SiteDenizenTarget(site, DenizenId(s"denizen:$id")))
       .zip(Vector(ForgeResource.Favor, ForgeResource.Secret,
         ForgeResource.Favor))
@@ -560,7 +560,7 @@ class GameEventWireSuite extends munit.FunSuite {
     val player = PlayerId("red")
     val noOwner = new OwnerQuery { def owner(ctx: WalkerCtx): Option[PlayerId] = None }
     val nodes: Vector[CoreOperation] = Vector(
-      Decide(RecoverRelicPayload(RelicId("r")), noOwner, "recover.relic"),
+      Decide(RecoverRelicAnswer(RelicId("r")), noOwner, "recover.relic"),
       BuildOps((_, _) => Right(Vector.empty)),
       Repeat((_, _) => false, AdjustSupply(player, 1)),
       Branch((_, _) => Vector.empty),

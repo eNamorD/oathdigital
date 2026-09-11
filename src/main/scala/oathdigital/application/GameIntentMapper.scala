@@ -3,8 +3,8 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
   WakeResource}
 import oathdigital.model._
-import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload, RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer, RecoverChoice,
+  RecoverChoiceAnswer, RecoverRelicAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -61,7 +61,7 @@ object GameIntentMapper {
         ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
       } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
-      case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
+      case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
     }
   }
@@ -176,21 +176,21 @@ object GameIntentMapper {
   private def powerId(value: String, index: Int): Result[PowerId] =
     PowerId.fromValue(value).toRight(GameIntentMappingFailure(
       s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
-  private def decisionPayload(value: DecisionPayloadWire): Result[DecisionPayload] = value match {
-    case DecisionPayloadWire.RecoverChoiceWire(choice) => choice match {
-      case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
-      case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
+  private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match {
+    case DecisionAnswerWire.RecoverChoiceWire(choice) => choice match {
+      case "continue" => Right(RecoverChoiceAnswer(RecoverChoice.Continue))
+      case "stop" => Right(RecoverChoiceAnswer(RecoverChoice.Stop))
       case v => invalid("$.intent.payload.choice", v, "Recover choice")
     }
-    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
-      RelicId.fromValue(relicId).map(RecoverRelicPayload).toRight(
+    case DecisionAnswerWire.RecoverRelicWire(relicId) =>
+      RelicId.fromValue(relicId).map(RecoverRelicAnswer).toRight(
         GameIntentMappingFailure("$.intent.payload.relicId",
           s"invalid relic id '$relicId'"))
     // Reuses `forge` above -- the same `ForgeAssignment` row decode the
     // (deleted) legacy `CompleteForge` intent used, so the walker answer
     // and the legacy command never had two spellings of one fact.
-    case DecisionPayloadWire.ForgeAssignmentWire(assignments) =>
-      traverse(assignments)(forge).map(ForgeAssignmentPayload)
+    case DecisionAnswerWire.ForgeAssignmentWire(assignments) =>
+      traverse(assignments)(forge).map(ForgeAssignmentAnswer)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

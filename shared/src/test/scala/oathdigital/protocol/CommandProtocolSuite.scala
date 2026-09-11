@@ -40,11 +40,11 @@ class CommandProtocolSuite extends munit.FunSuite {
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
-    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("continue")),
-    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")),
-    ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1")),
+    ResolveWalker("recover.choice", DecisionAnswerWire.RecoverChoiceWire("continue")),
+    ResolveWalker("recover.choice", DecisionAnswerWire.RecoverChoiceWire("stop")),
+    ResolveWalker("recover.relic", DecisionAnswerWire.RecoverRelicWire("relic-1")),
     StartWalker("forge", Vector.empty),
-    ResolveWalker("forge.assignment", DecisionPayloadWire.ForgeAssignmentWire(
+    ResolveWalker("forge.assignment", DecisionAnswerWire.ForgeAssignmentWire(
       Vector(ForgeAssignment("site:a", "d1", "favor"),
         ForgeAssignment("site:a", "d2", "favor"),
         ForgeAssignment("site:a", "d3", "secret"))))
@@ -107,7 +107,7 @@ class CommandProtocolSuite extends munit.FunSuite {
     val failure = ActorlessCommandCodec.decode(json).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.kind")
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
-    assert(failure.message.contains("unknown decision payload"))
+    assert(failure.message.contains("unknown decision answer"))
   }
 
   test("a Forge assignment payload naming one denizen twice is rejected at " +

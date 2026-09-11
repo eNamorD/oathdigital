@@ -300,7 +300,7 @@ object ProcedureWalker {
     * mismatched decision id, or any other position rejects with an
     * `OathViolation`). Semantics: check the node's `owner` resolves to the
     * acting player, run the node's optional `validate(state, pending,
-    * payload)` against `answer.payload` when present, append ONE
+    * answer)` against the submitted answer when present, append ONE
     * [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
     * answer is a state write into `pending.answered`, not a delta batch), add
     * `answer` to `answered`, then continue auto-walking from the node after
@@ -710,7 +710,7 @@ object ProcedureWalker {
           OathViolation.WrongPlayer(owner, ctx.actor))
       }
       _ <- decide.validate.fold[Either[OathViolation, Unit]](
-        Right(()))(_(ctx.state, parkTree, answer.payload))
+        Right(()))(_(ctx.state, parkTree, answer.answer))
     } yield {
       val nodeId =
         if (path.isEmpty) leafLabel(decide) else path.mkString(".")
@@ -719,7 +719,7 @@ object ProcedureWalker {
         events = ctx.events :+ WalkerStepRecorded(
           actor = ctx.actor,
           nodeId = nodeId,
-          payload = ChoicePayload(answer.decisionId, answer.payload),
+          payload = ChoicePayload(answer.decisionId, answer.answer),
           ops = Vector.empty,
           contributions = contributions))
     }

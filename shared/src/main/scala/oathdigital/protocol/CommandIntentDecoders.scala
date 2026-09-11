@@ -127,7 +127,7 @@ private[protocol] object CommandIntentDecoders {
       _ <- exact(value, Set("type", "decisionId", "payload"), path)
       id <- string(value, "decisionId", path)
       payload <- field(value, "payload", path).flatMap(
-        CommandNestedCodecs.decodeDecisionPayloadWire(_, s"$path.payload"))
+        CommandNestedCodecs.decodeDecisionAnswerWire(_, s"$path.payload"))
     } yield ResolveWalker(id, payload)
     case other => Left(InvalidValue(s"$path.type", s"unknown intent type '$other'"))
   }

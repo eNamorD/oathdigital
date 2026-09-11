@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{DecisionPayloadWire, ForgeAssignment,
+import oathdigital.protocol.{DecisionAnswerWire, ForgeAssignment,
   GameIntent => GameCommand}
 
 private[frontend] final case class ForgeAssignmentState(
@@ -26,7 +26,7 @@ private[frontend] final case class ForgeAssignmentState(
     */
   def command(playerId: String): Option[GameCommand.ResolveWalker] =
     Option.when(canConfirm)(GameCommand.ResolveWalker(forge.decisionId,
-      DecisionPayloadWire.ForgeAssignmentWire(
+      DecisionAnswerWire.ForgeAssignmentWire(
         forge.targets.zip(assignments).map { case (target, resource) =>
           ForgeAssignment(target.siteId, target.denizenId, resource)
         })))

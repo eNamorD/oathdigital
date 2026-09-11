@@ -13,8 +13,8 @@ import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
-  RecoverChoice, RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer,
+  RecoverChoice, RecoverChoiceAnswer, RecoverRelicAnswer}
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts.
@@ -83,12 +83,12 @@ private[serialization] trait WalkerEventCodec {
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
     "decisionId" -> answered.decisionId,
-    "payload" -> encodeDecisionPayload(answered.payload))
+    "payload" -> encodeDecisionAnswer(answered.answer))
 
   private def decodeAnswered(value: ujson.Value,
       path: String): Either[WireError, Answered] = for {
-    payload <- decodeDecisionPayload(value("payload"), s"$path.payload")
-  } yield Answered(value("decisionId").str, payload)
+    answer <- decodeDecisionAnswer(value("payload"), s"$path.payload")
+  } yield Answered(value("decisionId").str, answer)
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match {
@@ -96,7 +96,7 @@ private[serialization] trait WalkerEventCodec {
         ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
       case ChoicePayload(decisionId, answer) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
-        "payload" -> encodeDecisionPayload(answer))
+        "payload" -> encodeDecisionAnswer(answer))
       case RollPayload(pool, faces) => ujson.Obj(
         "kind" -> "roll", "pool" -> pool.value,
         "faces" -> ujson.Arr.from(faces.map {
@@ -113,7 +113,7 @@ private[serialization] trait WalkerEventCodec {
     value("kind").str match {
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
         .map(WalkerStepPayload.DeltaRecorded)
-      case "choice" => decodeDecisionPayload(value("payload"), s"$path.payload")
+      case "choice" => decodeDecisionAnswer(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
         decodeDefenseFace(face.str, s"$path.faces"))
@@ -157,44 +157,44 @@ private[serialization] trait WalkerEventCodec {
       s"unknown walker delta meaning '$other'"))
   }
 
-  private def encodeDecisionPayload(payload: DecisionPayload): ujson.Value =
-    payload match {
-      case RecoverChoicePayload(choice) => ujson.Obj(
+  private def encodeDecisionAnswer(answer: DecisionAnswer): ujson.Value =
+    answer match {
+      case RecoverChoiceAnswer(choice) => ujson.Obj(
         "kind" -> "recover-choice",
         "choice" -> (choice match {
           case RecoverChoice.Continue => "continue"
           case RecoverChoice.Stop => "stop"
         }))
-      case RecoverRelicPayload(relic) => ujson.Obj(
+      case RecoverRelicAnswer(relic) => ujson.Obj(
         "kind" -> "recover-relic", "relicId" -> relic.value)
       // Batch-1 Task 3, Step 2c: without this the FIRST journalled Forge
       // hits the throw below (proven by mutation, not by review).
-      case ForgeAssignmentPayload(assignments) => ujson.Obj(
+      case ForgeAssignmentAnswer(assignments) => ujson.Obj(
         "kind" -> "forge-assignment",
         "assignments" -> ujson.Arr.from(assignments.map(assignment =>
           ujson.Obj("siteId" -> assignment.target.siteId.value,
             "denizenId" -> assignment.target.denizenId.value,
             "resource" -> assignment.resource.key))))
-      // R19: still a throw. `DecisionPayload` is open by design (spec
+      // R19: still a throw. `DecisionAnswer` is open by design (spec
       // decision 11), so no exhaustiveness check can make a missing branch
       // a compile error; the fix is the typed `WireError` the decode side
       // already returns, carried to Task 8 rather than folded into the
       // commit that deletes an action's legacy path.
       case other => throw new IllegalArgumentException(
-        s"unsupported walker decision payload $other")
+        s"unsupported walker decision answer $other")
     }
 
-  private def decodeDecisionPayload(value: ujson.Value,
-      path: String): Either[WireError, DecisionPayload] =
+  private def decodeDecisionAnswer(value: ujson.Value,
+      path: String): Either[WireError, DecisionAnswer] =
     value("kind").str match {
       case "recover-choice" => value("choice").str match {
-        case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
-        case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
+        case "continue" => Right(RecoverChoiceAnswer(RecoverChoice.Continue))
+        case "stop" => Right(RecoverChoiceAnswer(RecoverChoice.Stop))
         case other => Left(InvalidValue(s"$path.choice",
           s"unknown Recover choice '$other'"))
       }
       case "recover-relic" =>
-        Right(RecoverRelicPayload(RelicId(value("relicId").str)))
+        Right(RecoverRelicAnswer(RelicId(value("relicId").str)))
       case "forge-assignment" =>
         traverse(value("assignments").arr.toVector) { entry =>
           (entry("resource").str match {
@@ -205,9 +205,9 @@ private[serialization] trait WalkerEventCodec {
           }).map(resource => ForgeResourceAssignment(SiteDenizenTarget(
             SiteId(entry("siteId").str), DenizenId(entry("denizenId").str)),
             resource))
-        }.map(ForgeAssignmentPayload)
+        }.map(ForgeAssignmentAnswer)
       case other => Left(InvalidValue(s"$path.kind",
-        s"unknown walker decision payload '$other'"))
+        s"unknown walker decision answer '$other'"))
     }
 
   private def encodeOperation(operation: CoreOperation): ujson.Value =

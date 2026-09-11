@@ -598,12 +598,12 @@ private[frontend] object ServerUiSupport {
   private[frontend] def resolveRecoverChoiceCommand(decision: WalkerDecisionState,
       choice: String): GameCommand.ResolveWalker =
     GameCommand.ResolveWalker(decision.decisionId,
-      DecisionPayloadWire.RecoverChoiceWire(choice))
+      DecisionAnswerWire.RecoverChoiceWire(choice))
 
   private[frontend] def resolveRecoverRelicCommand(decision: WalkerDecisionState,
       relicId: String): GameCommand.ResolveWalker =
     GameCommand.ResolveWalker(decision.decisionId,
-      DecisionPayloadWire.RecoverRelicWire(relicId))
+      DecisionAnswerWire.RecoverRelicWire(relicId))
 
   /** Renders the parked Recover's accumulated roll feedback (I5) -- the
     * dice faces rolled so far, the derived score, and the site's Recover

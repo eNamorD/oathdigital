@@ -9,7 +9,7 @@ import oathdigital.model.TestGameFixtures._
 
 object WalkerStateSuite {
   /** Test-only open payload (D2: powers define their own payloads later). */
-  final case class TestDecisionPayload(decision: String) extends DecisionPayload
+  final case class TestDecisionAnswer(decision: String) extends DecisionAnswer
   final case class TestOwner(actor: PlayerId) extends OwnerQuery {
     def owner(ctx: WalkerCtx): Option[PlayerId] = Some(actor)
   }
@@ -21,7 +21,7 @@ object WalkerStateSuite {
 class WalkerStateSuite extends munit.FunSuite {
   private val actor = playerId
   private val decide = Decide(
-    payload = WalkerStateSuite.TestDecisionPayload("continue-or-stop"),
+    answer = WalkerStateSuite.TestDecisionAnswer("continue-or-stop"),
     owner = WalkerStateSuite.TestOwner(actor),
     decisionId = "recover.choice")
 
@@ -42,7 +42,7 @@ class WalkerStateSuite extends munit.FunSuite {
     // is derived per command and the walker ctx rebuilt from state, so nothing
     // gameplay-typed is stored here.
     val answered = Answered("recover.choice",
-      WalkerStateSuite.TestDecisionPayload("continue"))
+      WalkerStateSuite.TestDecisionAnswer("continue"))
     val tree = PendingTree(
       at = Vector("recover.roll"),
       answered = Vector(answered),

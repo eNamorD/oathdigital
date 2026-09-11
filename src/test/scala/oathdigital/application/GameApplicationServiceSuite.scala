@@ -19,8 +19,8 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{ForgeAssignmentPayload,
-  RecoverChoice, RecoverChoicePayload, RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ForgeAssignmentAnswer,
+  RecoverChoice, RecoverChoiceAnswer, RecoverRelicAnswer}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
@@ -131,7 +131,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
 
     val finished = walkerService.handle("walker-recover", rolled.nextSequence,
         GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic)))).toOption.get
+          RecoverRelicAnswer(relic)))).toOption.get
     val Ready(afterWalker) = finished.state: @unchecked
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
@@ -249,13 +249,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       DecisionId(RecoverProcedure.choiceDecisionId)))
     val continued = service.handle("walker-continue", failed.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+        RecoverChoiceAnswer(RecoverChoice.Continue)))).toOption.get
     assertEquals(continued.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)))
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue))))
+        RecoverChoiceAnswer(RecoverChoice.Continue))))
     assertEquals(ready.game.current.walkerAction, Some(ActionRef.Recover))
     assertEquals(new GameApplicationService(catalog, repository)
       .load("walker-continue").toOption.flatten.get.state, continued.state)
@@ -335,7 +335,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val walkerContinued = walkerService.handle("walker-cross-roll-doubler",
       walkerFirstReloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.choiceDecisionId,
-        RecoverChoicePayload(RecoverChoice.Continue)))).toOption.get
+        RecoverChoiceAnswer(RecoverChoice.Continue)))).toOption.get
     val walkerSecond = walkerService.handle("walker-cross-roll-doubler",
       walkerContinued.nextSequence,
       GameCommand.RollWalker(actor, RecoverProcedure.recoverPool)).toOption.get
@@ -358,7 +358,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val walkerFinished = walkerService.handle("walker-cross-roll-doubler",
       walkerSecondReloaded.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        RecoverRelicPayload(walkerRelic)))).toOption.get
+        RecoverRelicAnswer(walkerRelic)))).toOption.get
     val Ready(walkerFinal) = walkerFinished.state: @unchecked
     val actorState = walkerFinal.game.current.players.find(
       _.player == actor).get
@@ -429,7 +429,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val relic = atRelic.game.current.map.sites(siteId).relics.head.id
     val emptied = service.handle(gameId, rolled.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        RecoverRelicPayload(relic)))).toOption.get
+        RecoverRelicAnswer(relic)))).toOption.get
     val played = service.handle(gameId, emptied.nextSequence,
       GameCommand.ResolveFacedownAdviser(actor, catacombsId,
         Some(SearchPlacement.Site(None)))).toOption.get
@@ -505,7 +505,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val recovered = atRelic.game.current.map.sites(siteId).relics.head.id
     val finished = service.handle(gameId, rolled.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
-        RecoverRelicPayload(recovered)))).toOption.get
+        RecoverRelicAnswer(recovered)))).toOption.get
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(new GameApplicationService(catalog, repository).load(gameId)
       .toOption.flatten.get.state, finished.state)
@@ -733,9 +733,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   // Batch-1 Task 3, P1 + P2: Forge runs end to end on the generic walker,
   // through `StartWalker`/`ResolveWalker` alone, and its journal replays to
   // the same state. P2 is what proves Step 2c's codec branches: the answer's
-  // `ForgeAssignmentPayload` rides both a `WalkerStepRecorded` ChoicePayload
-  // and the `WalkerParked` fact, so `encodeDecisionPayload` is reached on
-  // append and `decodeDecisionPayload` on every reload -- P1 alone would not
+  // `ForgeAssignmentAnswer` rides both a `WalkerStepRecorded` ChoicePayload
+  // and the `WalkerParked` fact, so `encodeDecisionAnswer` is reached on
+  // append and `decodeDecisionAnswer` on every reload -- P1 alone would not
   // necessarily touch either.
   // ---------------------------------------------------------------------------
 
@@ -800,15 +800,15 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val beforeRejected = repository.load(gameId).toOption.flatten.get.records
     Vector[GameCommand](
       GameCommand.ResolveWalker(actor, TreeDecision("forge.stale",
-        ForgeAssignmentPayload(assignments))),
+        ForgeAssignmentAnswer(assignments))),
       GameCommand.ResolveWalker(other, TreeDecision(
         ForgeProcedure.assignmentDecisionId,
-        ForgeAssignmentPayload(assignments))),
+        ForgeAssignmentAnswer(assignments))),
       GameCommand.ResolveWalker(actor, TreeDecision(
         ForgeProcedure.assignmentDecisionId,
-        ForgeAssignmentPayload(assignments.updated(1, assignments.head)))),
+        ForgeAssignmentAnswer(assignments.updated(1, assignments.head)))),
       GameCommand.ResolveWalker(actor, TreeDecision(
-        ForgeProcedure.assignmentDecisionId, ForgeAssignmentPayload(
+        ForgeProcedure.assignmentDecisionId, ForgeAssignmentAnswer(
           assignments.map(_.copy(resource = ForgeResource.Secret))))),
       GameCommand.BeginRest(actor)
     ).foreach(command => assert(service.handle(gameId, started.nextSequence,
@@ -819,7 +819,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val finished = service.handle(gameId, started.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(
         ForgeProcedure.assignmentDecisionId,
-        ForgeAssignmentPayload(assignments))))
+        ForgeAssignmentAnswer(assignments))))
       .fold(error => fail(s"walker Forge answer rejected: $error"), identity)
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     val Ready(after) = finished.state: @unchecked

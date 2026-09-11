@@ -49,7 +49,7 @@ private[protocol] object CommandIntentCodec {
       "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))))
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
-      "payload" -> CommandNestedCodecs.encodeDecisionPayloadWire(payload))
+      "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
   }
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =

@@ -7,9 +7,9 @@ import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathLifecycle, OathViolation,
   ReadyGame}
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
-import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
+import oathdigital.model.DecisionAnswer.{RecoverChoice,
+  RecoverChoiceAnswer, RecoverRelicAnswer}
+import oathdigital.model.{Answered, DecisionAnswer, Orientation, PendingTree,
   PlayerId, PoolKey, RelicState, SiteId}
 
 /** Declared Recover procedure tree for the [[oathdigital.gameplay.walker.ProcedureWalker]]}.
@@ -120,23 +120,23 @@ object RecoverProcedure {
 
     def stopped(pending: PendingTree): Boolean =
       pending.answered.lastOption.exists {
-        case Answered(_, RecoverChoicePayload(RecoverChoice.Stop)) => true
+        case Answered(_, RecoverChoiceAnswer(RecoverChoice.Stop)) => true
         case _ => false
       }
 
     def validateChoice(ready: ReadyGame, pending: PendingTree,
-        payload: DecisionPayload): Either[OathViolation, Unit] =
-      payload match {
-        case RecoverChoicePayload(RecoverChoice.Continue) =>
+        answer: DecisionAnswer): Either[OathViolation, Unit] =
+      answer match {
+        case RecoverChoiceAnswer(RecoverChoice.Continue) =>
           if (succeeded(ready)) Left(OathViolation.RecoverOutcomeMismatch(
             "Recover already succeeded"))
           else Right(())
-        case RecoverChoicePayload(RecoverChoice.Stop) =>
+        case RecoverChoiceAnswer(RecoverChoice.Stop) =>
           if (succeeded(ready)) Left(OathViolation.RecoverOutcomeMismatch(
             "a successful Recover cannot be stopped"))
           else Right(())
         case other => Left(OathViolation.InvalidEventOrder(
-          s"$choiceDecisionId received an unexpected payload: $other"))
+          s"$choiceDecisionId received an unexpected answer: $other"))
       }
 
     // Reads `actorFacedownRelics(ready, actor)` -- the actor's LIVE pawn
@@ -148,26 +148,26 @@ object RecoverProcedure {
     // written expressions that could silently diverge if a future power
     // let Recover target a site other than the actor's pawn site.
     def validateRelic(ready: ReadyGame, pending: PendingTree,
-        payload: DecisionPayload): Either[OathViolation, Unit] =
-      payload match {
-        case RecoverRelicPayload(relicId) =>
+        answer: DecisionAnswer): Either[OathViolation, Unit] =
+      answer match {
+        case RecoverRelicAnswer(relicId) =>
           if (actorFacedownRelics(ready, actor).exists(_.id == relicId))
             Right(())
           else Left(OathViolation.RecoverOutcomeMismatch(
             "chosen relic is not a facedown relic at the site"))
         case other => Left(OathViolation.InvalidEventOrder(
-          s"$relicDecisionId received an unexpected payload: $other"))
+          s"$relicDecisionId received an unexpected answer: $other"))
       }
 
     val choiceDecide = Decide(
-      payload = RecoverChoicePayload(RecoverChoice.Continue),
+      answer = RecoverChoiceAnswer(RecoverChoice.Continue),
       owner = RecoverProcedure.ActiveOwner,
       decisionId = choiceDecisionId,
       validate = Some(validateChoice))
 
     val moveRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
-        case Some(Answered(_, RecoverRelicPayload(relicId))) =>
+        case Some(Answered(_, RecoverRelicAnswer(relicId))) =>
           Right(Vector[CoreOperation](Move(
             Piece.Card(relicId),
             PositionedLocation(Location.Site(siteId)),
@@ -193,7 +193,7 @@ object RecoverProcedure {
       val relics = actorFacedownRelics(ready, actor)
       if (succeeded(ready) && relics.nonEmpty)
         Vector(Decide(
-          payload = RecoverRelicPayload(relics.head.id),
+          answer = RecoverRelicAnswer(relics.head.id),
           owner = RecoverProcedure.ActiveOwner,
           decisionId = relicDecisionId,
           validate = Some(validateRelic)), moveRelic)

@@ -9,7 +9,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker, WalkerCtx,
   WalkerOutcome, WalkerPowers, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.model.DecisionPayload.ForgeAssignmentPayload
+import oathdigital.model.DecisionAnswer.ForgeAssignmentAnswer
 import oathdigital.model._
 
 /** Task 2: the declared Forge tree reproduces the legacy `Forge.handle`/
@@ -106,7 +106,7 @@ class ForgeProcedureSuite extends munit.FunSuite
 
   private def answerOf(assignments: Vector[ForgeResourceAssignment]): Answered =
     Answered(ForgeProcedure.assignmentDecisionId,
-      ForgeAssignmentPayload(assignments))
+      ForgeAssignmentAnswer(assignments))
 
   private def rejects(result: Either[OathViolation, Operation]): OathViolation =
     result match {
@@ -380,7 +380,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(steps.map(_.nodeId), Vector("1", "2"))
     assertEquals(steps.head.payload,
       ChoicePayload(ForgeProcedure.assignmentDecisionId,
-        ForgeAssignmentPayload(legal)): WalkerStepPayload)
+        ForgeAssignmentAnswer(legal)): WalkerStepPayload)
     assertEquals(steps.head.ops, Vector.empty[CoreOperation])
     assertEquals(steps(1).ops, expected)
 

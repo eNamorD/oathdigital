@@ -6,8 +6,8 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.model.DecisionPayload.ForgeAssignmentPayload
-import oathdigital.model.{Answered, DecisionPayload, DenizenId, DenizenState,
+import oathdigital.model.DecisionAnswer.ForgeAssignmentAnswer
+import oathdigital.model.{Answered, DecisionAnswer, DenizenId, DenizenState,
   ForgeResource, ForgeResourceAssignment, Orientation, PendingTree, PlayerId,
   PlayerState, SiteDenizenTarget, SiteId, Suit, Tokens}
 
@@ -198,8 +198,8 @@ object ForgeProcedure {
     // read live off `ready` (ruling R14) instead of off the pending
     // procedure's frozen `eligibleTargets` field.
     def validateAssignment(ready: ReadyGame, pending: PendingTree,
-        payload: DecisionPayload): Either[OathViolation, Unit] = payload match {
-      case ForgeAssignmentPayload(assignments) =>
+        answer: DecisionAnswer): Either[OathViolation, Unit] = answer match {
+      case ForgeAssignmentAnswer(assignments) =>
         val targets = assignments.map(_.target)
         for {
           _ <- Either.cond(
@@ -224,7 +224,7 @@ object ForgeProcedure {
           }
         } yield ()
       case other => Left(OathViolation.InvalidEventOrder(
-        s"$assignmentDecisionId received an unexpected payload: $other"))
+        s"$assignmentDecisionId received an unexpected answer: $other"))
     }
 
     // `AdjustSupply` carries no window of its own, so the payment is a
@@ -238,14 +238,14 @@ object ForgeProcedure {
     // (a legal answer names exactly three assignments), so nothing downstream
     // can mistake the marker for a recorded decision.
     val assignmentDecide = Decide(
-      payload = ForgeAssignmentPayload(Vector.empty),
+      answer = ForgeAssignmentAnswer(Vector.empty),
       owner = ForgeProcedure.ActiveOwner,
       decisionId = assignmentDecisionId,
       validate = Some(validateAssignment))
 
     val forgeRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
-        case Some(Answered(_, ForgeAssignmentPayload(assignments))) => for {
+        case Some(Answered(_, ForgeAssignmentAnswer(assignments))) => for {
           moves <- assignmentOperations(catalog, assignments)
           relic <- ready.game.current.commonCards.relicDeck.headOption.toRight(
             OathViolation.ForgeUnavailable("relic deck is empty"))

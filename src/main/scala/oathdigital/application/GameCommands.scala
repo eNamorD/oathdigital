@@ -121,7 +121,7 @@ final case class StartPayload(actor: PlayerId,
     modifiers: Vector[PowerId] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */
-final case class TreeDecision(decisionId: String, payload: DecisionPayload)
+final case class TreeDecision(decisionId: String, answer: DecisionAnswer)
 
 sealed trait CardDecisionResolution extends Product with Serializable
 object CardDecisionResolution {

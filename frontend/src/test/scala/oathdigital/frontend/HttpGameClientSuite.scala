@@ -5,7 +5,7 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionPayloadWire, ForgeAssignment, GameIntent, MajorActionPreviewRequest,
+  DecisionAnswerWire, ForgeAssignment, GameIntent, MajorActionPreviewRequest,
   ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
@@ -166,11 +166,11 @@ class HttpGameClientSuite extends FunSuite {
     assert(GameJson.encodeCommand(21, GameCommand.RollWalker("red", "recover"))
       .contains("\"type\":\"rollWalker\""))
     val choice = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
-      "red", "recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")))
+      "red", "recover.choice", DecisionAnswerWire.RecoverChoiceWire("stop")))
     assert(choice.contains("\"decisionId\":\"recover.choice\""))
     assert(choice.contains("\"kind\":\"recover-choice\""))
     val take = GameJson.encodeCommand(22, GameCommand.ResolveWalker(
-      "red", "recover.relic", DecisionPayloadWire.RecoverRelicWire("relic:R1")))
+      "red", "recover.relic", DecisionAnswerWire.RecoverRelicWire("relic:R1")))
     assert(take.contains("\"kind\":\"recover-relic\""))
     assert(take.contains("\"relicId\":\"relic:R1\""))
   }
@@ -183,7 +183,7 @@ class HttpGameClientSuite extends FunSuite {
     assert(GameJson.encodeCommand(20,
       GameCommand.StartWalker("red", "forge")).contains("\"action\":\"forge\""))
     val completed = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
-      "red", "forge.assignment", DecisionPayloadWire.ForgeAssignmentWire(
+      "red", "forge.assignment", DecisionAnswerWire.ForgeAssignmentWire(
         Vector(ForgeAssignment(target.siteId, target.denizenId, "favor")))))
     assert(completed.contains("\"kind\":\"forge-assignment\""))
     assert(completed.contains("\"denizenId\":\"denizen:1\""))

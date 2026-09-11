@@ -491,9 +491,9 @@ final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
   * `Vector(this)` before walking it, so a power may insert operations around
   * the decision or replace it.
   */
-final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
+final case class Decide(answer: DecisionAnswer, owner: OwnerQuery,
     decisionId: String,
-    validate: Option[(ReadyGame, PendingTree, DecisionPayload) =>
+    validate: Option[(ReadyGame, PendingTree, DecisionAnswer) =>
       Either[OathViolation, Unit]] = None,
     override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation

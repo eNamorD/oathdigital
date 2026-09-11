@@ -58,7 +58,7 @@ private[frontend] object GameCommand {
   def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
     Intent.StartWalker(action, modifiers)
   def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
-  def ResolveWalker(actor: String, id: String, payload: DecisionPayloadWire) =
+  def ResolveWalker(actor: String, id: String, payload: DecisionAnswerWire) =
     Intent.ResolveWalker(id, payload)
 }
 
