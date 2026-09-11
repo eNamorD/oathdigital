@@ -95,19 +95,21 @@ Declared tree, mirroring `Forge.handle`/`Forge.evolve`'s observable flow:
 ```
 Sequence(                                      // window = ForgeActionEligibility
   BuildOps(AdjustSupply(actor, -1)),           // window = ForgeCost
-  Decide("forge.assignment"),                  // validate = assignment legality
-  BuildOps(favor/secret moves onto the three denizens,
-           Play(relic, relicDeck top -> play area, FaceDown)))
+  Decide("forge.assignment",                   // declarative Partition query
+    sections = Pay Favor / Pay Secret,
+    options = the three eligible denizens),
+  BuildOps(PayCost(actor, each assigned denizen),
+           optional Play(relicDeck top -> play area, FaceDown)))
 ```
 
-Start gates are `ForgeRules.validate`: exile-only unaltered foundations, audited catalog, actor rules their pawn site, printed Forge cost present and totalling three resources, exactly three empty faceup denizens at the site, supply ≥ 1, relic deck non-empty. `rebuild` re-derives the same tree and does **not** re-run supply ≥ 1, matching `RecoverProcedure.rebuild`'s rule that a start-only gate never re-gates a resume.
+Start gates are `ForgeRules.validate`: exile-only unaltered foundations, audited catalog, actor rules their pawn site, printed Forge cost present and totalling three resources, exactly three empty faceup denizens at the site, and the actor can afford the printed favor/secret total. Supply and relic availability are deliberately not start gates. The first `AdjustSupply` is validated by `OperationPipeline` before the walker can park, so zero Supply rejects without starting a pending procedure. An empty relic deck is legal: the player still spends Supply and pays the printed resources, but the trailing `BuildOps` has no relic `Play` to emit.
 
-The `Decide`'s `validate` is `Forge.validateCompletion`'s body: exactly three assignments to three distinct targets, targets equal to the eligible set, resources matching the printed cost, and each suit's favor bank able to cover its demand. Read the eligible targets live off `ready` rather than off the tree's closure, the way `RecoverProcedure.actorFacedownRelics` does, so the projector's candidate list and the set the resolver accepts have one definition.
+The `Decide` uses the declarative `DecisionQuery.Partition` contract from `docs/superpowers/specs/2026-09-10-declarative-walker-decisions-design.md`: the printed favor/secret amounts become the two section minima and the three live empty faceup denizens become its options. The generic walker validates that every option is assigned exactly once and both minima are met. The trailing `BuildOps` converts each placement into `PayCost(actor, Location.OnCard(denizen), Cost(favor = 1))` or its secret equivalent. Those resources come from the actor's play area; Forge never consults suit banks. `OperationPipeline` validates the concrete payments atomically again at resolution.
 
-The relic id is the authoritative relic-deck top and is **not** closed over by the tree. Nor does it ride the answer, and nor does a port produce it: `RelicDrawPort.authoritative` is `ready.game.current.commonCards.relicDeck.headOption` — a pure state read wearing a port's clothes — and the legacy completion validates that the recorded relic *is* the deck top, so there is no free choice to prepare. The trailing `BuildOps` reads the top off `ready` at execution time. That is one fewer payload field, one fewer port call, and it makes the port deletable at Task 3. Replay is unaffected either way: it applies the recorded `Play` op.
+The relic id is the authoritative relic-deck top and is **not** closed over by the tree. Nor does it ride the answer or come from a randomness port. The trailing `BuildOps` reads `headOption` at execution time and emits `Play` only when a top relic exists. Replay records and reapplies that optional `Play` exactly.
 
-- [ ] **Step 1: failing tests** in `ForgeProcedureSuite` against the first-game fixture: (a) `build` rejects each start gate above, one test per gate, asserting the exact `OathViolation`; (b) a successful `build` produces a tree whose root window is `ForgeActionEligibility` and whose first leaf is the `ForgeCost`-windowed supply payment; (c) walking to the park stops at `"forge.assignment"` with the actor as owner; (d) an assignment answer that names a stale target is rejected by the `Decide`'s validate; (e) a legal answer produces exactly the favor/secret moves plus the `Play`, and no other op. Expected FAIL: `ForgeProcedure` does not exist.
-- [ ] **Step 2: implement** `ForgeProcedure` with `build`, `rebuild`, `assignmentDecisionId`, and an `eligibleTargets(ready, actor)` reader the projector will share.
+- [ ] **Step 1: failing tests** in `ForgeProcedureSuite`: (a) `build` rejects every semantic start gate, including not ruling the pawn site and insufficient aggregate player favor/secrets; (b) zero Supply passes `build` but the first `AdjustSupply` is rejected before any park; (c) an empty relic deck passes `build`, the complete action still pays Supply/resources, and no `Play` is emitted; (d) a successful build has the tree above; (e) the partition query exposes exactly the three live denizens and printed minima; (f) stale/malformed partition answers reject generically; (g) a legal answer produces exactly three player-funded `PayCost`s plus an optional top-relic `Play`.
+- [ ] **Step 2: implement** `ForgeProcedure` against the declarative decision contract, with aggregate affordability at the start gate and authoritative operation validation at execution.
 - [ ] **Step 3:** re-run the focused suite; expected PASS.
 - [ ] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`.
 - [ ] **Step 5: commit** `feat(walker): declare the Forge procedure tree`.
