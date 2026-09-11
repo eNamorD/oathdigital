@@ -201,14 +201,46 @@ windowed leaf receives only that leaf and cannot reach inside it, while this
 composite hands over both real children. The outer eligibility `Sequence` wraps
 that complete cost node, so the Narrow Pass restriction sees the same route.
 
-The base cost is the printed region-to-region table from `TravelRules.cost`, with the `TravelCostWindow.fold` call removed — terrain is now Task 4's transforms folding over this node. The destination rides the `StartWalker` command, so the entry's `build` receives it; `Recover` derives its site from state and needs no such parameter, so this is the first action to need a start argument. Carry it the way `eligibilityRelaxed` is carried — as plain data on the entry's `build` — rather than teaching the walker about destinations.
+The base cost is the printed region-to-region table from `TravelRules.cost`, with the `TravelCostWindow.fold` call removed — terrain is now Task 4's transforms folding over this node. The destination rides the `StartWalker` command, so the registry entry's fresh-start builder receives a typed Travel start argument; Recover and Forge need no start argument. Resume needs none because Travel's flat tree cannot park. The walker dispatches opaque registered start arguments and does not gain destination-specific logic.
+
+**Destination selection remains outside the tree.** Travel does not gain a
+`Decide`: choosing a destination is the parameter that selects a complete,
+atomic Travel tree, not a persisted interruption inside that tree. This avoids
+pending Travel state, cancel semantics, and a route-less eligibility window.
+
+Projection obtains authoritative costs by simulating one candidate tree per
+in-play destination other than the actor's source. For each destination it:
+
+1. runs the same semantic build used by `StartWalker` (Act actor, pawn source,
+   distinct in-play destination, and region-derived printed base cost);
+2. selects the same automatic and player-selected `WalkerPowers` as command
+   execution;
+3. evaluates `ProcedureWalker.restrictionViolations` on the complete route;
+4. calls `ProcedureWalker.advance` against immutable state without persisting
+   its returned events;
+5. accepts only a `Finished` outcome and reads the final negative
+   `AdjustSupply` from its recorded transformed operations.
+
+That shared candidate evaluator returns `(destination, finalSupplyCost)` and is
+used by both the initial legal-action projection (automatic powers) and the
+major-action preview after its selected modifiers have been validated. The
+preview response, not a second `TravelRules.legalDestinations` calculation,
+supplies the target costs the frontend shows. `StartWalker` rebuilds and walks
+the same candidate with the chosen destination and modifiers. A restricted,
+malformed, or unaffordable candidate is omitted; a forged direct command is
+rejected by the same path with no events appended.
+
+Base Travel does not validate player role, Foundation faces, or Supply.
+Role/Foundation state is unrelated to the printed action. Supply sufficiency
+is owned by the transformed `AdjustSupply` and `OperationValidator`; because
+the tree is flat, failure leaves neither pawn movement nor pending state.
 
 Task 1b's finding, which shapes this: the resume path passes no extra data to `buildWalker`, so anything threaded into a `starting` build must be re-derivable from state on resume or persisted the way `walkerModifiers` already is. Travel's flat tree may never park, in which case this is moot — establish that first rather than building persistence for a resume that cannot happen.
 
 Deleting `CostContribution` and `SuppressionRegistry` is the point of this task, not a bonus. If either still has a live reference after the port, the reconciliation is incomplete: say so rather than leaving both vocabularies alive.
 
-- [ ] **Step 1: failing test** — end-to-end Travel through `GameApplicationService` on `StartWalker` alone, asserting the pawn moved and the exact supply spent, for a plain route, a mountain route, and a coast route. Plus: an insufficient-supply start is rejected before any event is appended, and a pass-blocked route is rejected by the restriction. Plus replay parity.
-- [ ] **Step 2: implement** `TravelProcedure` and the registry entry.
+- [ ] **Step 1: failing tests** — (a) candidate simulation and `StartWalker` produce the same final cost for plain, Mountain, Island, Coast, and Coast-suppresses-add routes; (b) Narrow Pass removes the projected candidate and rejects a forged command; (c) zero Supply is not a semantic build gate but operation simulation omits the unaffordable destination and direct execution appends no event or pawn move; (d) role and Foundation changes do not gate Travel; (e) initial projection uses automatic powers and modifier preview uses the exact selected power vector; (f) end-to-end Travel remains one atomic `StartWalker`, with replay parity and no parked state.
+- [ ] **Step 2: implement** `TravelProcedure`, its registry start argument, and one shared candidate evaluator that dry-runs the declared tree for projection/preview without persisting events.
 - [ ] **Step 3: delete** the legacy path and the typed-cost vocabulary in the same commit; port or delete each legacy Travel test.
 - [ ] **Step 4:** `grep -rn "CostContribution\|SuppressionRegistry\|TravelCostWindow\|TravelCommand\|Traveled" src frontend` returns nothing.
 - [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
