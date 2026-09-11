@@ -52,7 +52,7 @@ The names reflect their roles:
 ```scala
 object DecisionQuery {
   final case class ChooseOne(
-      choices: Vector[DecisionChoice]
+      options: Vector[DecisionOption]
   ) extends DecisionQuery
 
   final case class Partition(
@@ -61,11 +61,6 @@ object DecisionQuery {
   ) extends DecisionQuery
 }
 
-final case class DecisionChoice(
-    answer: DecisionAnswer,
-    option: DecisionOption
-)
-
 final case class DecisionSection(
     key: String,
     label: String,
@@ -73,15 +68,22 @@ final case class DecisionSection(
 )
 
 final case class DecisionPlacement(
-    option: DecisionOption,
+    option: DecisionOptionRef,
     sectionKey: String
 )
 ```
 
-`ChooseOne` maps each independently selectable option to one complete answer.
-If a future rule needs a predefined group to behave as one selectable thing,
-it requires an explicit composite option rather than ambiguous multi-option
-choice semantics.
+`ChooseOne` exposes independently selectable options. Its answer is generic:
+
+```scala
+final case class ChooseOneAnswer(
+    selected: DecisionOptionRef
+) extends DecisionAnswer
+```
+
+The selected reference must identify exactly one declared option. If a future
+rule needs a predefined group to behave as one selectable thing, it requires
+an explicit composite option rather than ambiguous multi-option semantics.
 
 `Partition` describes named sections, their minimum required counts, and the
 options to distribute. Its answer is generic:
@@ -92,24 +94,40 @@ final case class PartitionAnswer(
 ) extends DecisionAnswer
 ```
 
-Each declared option must appear exactly once in the answer, in one declared
-section. Each section must receive at least `minRequired` options. The answer
-records placements in option order; intermediate dragging remains
+Each declared option reference must appear exactly once in the answer, in one
+declared section. Each section must receive at least `minRequired` options. The
+answer records placements in option order; intermediate dragging remains
 frontend-local state.
 
 `DecisionOption` is model-safe, presentation-neutral data with stable
-identities:
+identities. Its `ref` excludes display text and is what answers persist:
 
 ```scala
-sealed trait DecisionOption
+sealed trait DecisionOptionRef
+object DecisionOptionRef {
+  final case class Button(key: String) extends DecisionOptionRef
+  final case class Player(id: PlayerId) extends DecisionOptionRef
+  final case class Site(id: SiteId) extends DecisionOptionRef
+  final case class Denizen(id: DenizenId) extends DecisionOptionRef
+  final case class Relic(id: RelicId) extends DecisionOptionRef
+  final case class Vision(id: VisionId) extends DecisionOptionRef
+  final case class Deck(id: CardDeck) extends DecisionOptionRef
+}
+
+sealed trait DecisionOption {
+  def ref: DecisionOptionRef
+}
 object DecisionOption {
-  final case class Button(key: String, label: String) extends DecisionOption
-  final case class Player(id: PlayerId) extends DecisionOption
-  final case class Site(id: SiteId) extends DecisionOption
-  final case class Denizen(id: DenizenId) extends DecisionOption
-  final case class Relic(id: RelicId) extends DecisionOption
-  final case class Vision(id: VisionId) extends DecisionOption
-  final case class Deck(id: CardDeck) extends DecisionOption
+  final case class Button(
+      ref: DecisionOptionRef.Button,
+      label: String
+  ) extends DecisionOption
+  final case class Player(ref: DecisionOptionRef.Player) extends DecisionOption
+  final case class Site(ref: DecisionOptionRef.Site) extends DecisionOption
+  final case class Denizen(ref: DecisionOptionRef.Denizen) extends DecisionOption
+  final case class Relic(ref: DecisionOptionRef.Relic) extends DecisionOption
+  final case class Vision(ref: DecisionOptionRef.Vision) extends DecisionOption
+  final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
 }
 ```
 
@@ -125,14 +143,15 @@ the matching stable ID wherever it is rendered. Location is a legality fact
 used while constructing a query, not part of card identity. Owner-private
 projection and existing card-knowledge rules continue to govern disclosure.
 
-An option is one selectable button or game object. `DecisionChoice` associates
-a complete answer with one option. `PartitionAnswer` assigns each option to a
+An option is one selectable button or game object. `ChooseOneAnswer` selects
+one option reference. `PartitionAnswer` assigns each option reference to a
 section. Both remain declarative and generically validatable.
 
-Rename the Scala model family and its concrete cases from `DecisionPayload` to
-`DecisionAnswer`, including `Answered.answer` and corresponding command/wire
-DTO type names. Persisted JSON field names and existing answer kind tags remain
-unchanged, so recorded games require no migration.
+Rename the Scala model family from `DecisionPayload` to `DecisionAnswer`,
+including `Answered.answer` and corresponding command/wire DTO type names. New
+events use generic choose-one and partition answer tags. Decoders continue to
+accept the existing Recover and Forge tags and translate them to generic
+answers, so recorded games require no data migration.
 
 ## Resolution semantics
 
@@ -140,14 +159,14 @@ When resolving a parked `Decide`, `ProcedureWalker`:
 
 1. Rebuilds and power-transforms the tree as it does today.
 2. Confirms `decide.owner == pending.actor`.
-3. For `ChooseOne`, requires exactly one choice whose answer equals the
-   submitted answer. For `Partition`, validates the submitted
-   `PartitionAnswer` against its options, sections, and minimum counts.
+3. For `ChooseOne`, validates the submitted `ChooseOneAnswer` reference against
+   its options. For `Partition`, validates the submitted `PartitionAnswer`
+   against its options, sections, and minimum counts.
 4. Records that answer unchanged.
 
 An empty query is invalid for a parked `Decide`; action trees must omit the
-node when no answer is required. `ChooseOne` answers and options must each be
-unique. Partition sections must have
+node when no answer is required. `ChooseOne` option references must be unique.
+Partition sections must have
 unique keys and non-negative minimum counts; partition options must be unique;
 an answer must place every option exactly once, use only declared sections,
 and meet every minimum. These checks return typed `InvalidEventOrder`
@@ -161,11 +180,8 @@ No decision-specific validation closure remains.
 
 `WalkerDecisionProjector` projects the options found on the transformed parked
 `Decide`; it does not branch on action or decision IDs to rediscover choices.
-The projection mirrors the query shape. Each projected option contains:
-
-- the existing wire representation of its complete `DecisionAnswer` where the
-  query associates an answer with it;
-- a stable kind and ID plus display details resolved from authoritative state.
+The projection mirrors the query shape. Each projected option contains its
+stable reference plus display details resolved from authoritative state.
 
 A projected partition also contains ordered section keys, labels, minimum
 counts, and options. The frontend produces a generic partition answer; it does
@@ -190,13 +206,12 @@ not independently calculate legal candidates.
 
 The Continue/Stop decision contains two options:
 
-- `RecoverChoiceAnswer(Continue)` paired with
-  `Button("continue", "Continue")`;
-- `RecoverChoiceAnswer(Stop)` paired with `Button("stop", "Stop")`.
+- `Button(ButtonRef("continue"), "Continue")`;
+- `Button(ButtonRef("stop"), "Stop")`.
 
 The success decision contains one option per live facedown site relic:
 
-- `RecoverRelicAnswer(relicId)` paired with `Relic(relicId)`.
+- `Relic(RelicRef(relicId))`.
 
 If no relic exists, the procedure omits the relic `Decide` and finishes as a
 legal wasted action, preserving the current ruling.
