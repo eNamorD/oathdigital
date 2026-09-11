@@ -148,10 +148,11 @@ one option reference. `PartitionAnswer` assigns each option reference to a
 section. Both remain declarative and generically validatable.
 
 Rename the Scala model family from `DecisionPayload` to `DecisionAnswer`,
-including `Answered.answer` and corresponding command/wire DTO type names. New
-events use generic choose-one and partition answer tags. Decoders continue to
-accept the existing Recover and Forge tags and translate them to generic
-answers, so recorded games require no data migration.
+including `Answered.answer` and corresponding command/wire DTO type names.
+Events use generic choose-one and partition answer tags. The alpha keeps no
+recorded games worth preserving, so the existing Recover and Forge answer tags
+are deleted rather than translated, and recorded fixtures are rewritten to the
+generic tags.
 
 ## Resolution semantics
 
