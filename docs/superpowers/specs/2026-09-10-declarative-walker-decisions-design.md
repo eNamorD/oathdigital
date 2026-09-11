@@ -217,12 +217,11 @@ the exact printed resource split.
 
 `ForgeProcedure` declares the live eligible targets and printed resource
 minima; it does not enumerate assignments. Its trailing operation translates
-the generic `PartitionAnswer` section keys into favor or secret placement for
-the corresponding denizens.
-
-Suit-bank availability does not filter the decision query. Whether or how suit
-banks constrain the eventual resource placement is explicitly deferred to a
-separate rules discussion after this specification is approved.
+each `PartitionAnswer` placement into a `PayCost` from the actor onto the
+corresponding denizen: `"pay-favor"` becomes `Cost(favor = 1)` and
+`"pay-secret"` becomes `Cost(secret = 1)`. `OperationPipeline` therefore
+validates the player's resources generically and applies all payments
+atomically. Suit banks are not consulted by Forge.
 
 This replaces `validateAssignment`. It does not introduce a universal form
 language or answer factory.
@@ -288,8 +287,9 @@ Add or update tests proving:
 5. Recover projects and accepts Continue, Stop, and live relic options solely
    from its transformed `Decide`.
 6. Empty-site Recover finishes without parking.
-7. Forge declares its options and printed-cost minima without consulting
-   suit-bank availability or enumerating complete arrangements.
+7. Forge declares its options and printed-cost minima without consulting suit
+   banks or enumerating complete arrangements, and resolves placements as
+   player-funded `PayCost` operations.
 8. Forge UI reuses the generic partition interaction, derives confirmation from
    projected minima, and submits a generic partition answer.
 9. Stale Recover and Forge options reject after authoritative state changes.
