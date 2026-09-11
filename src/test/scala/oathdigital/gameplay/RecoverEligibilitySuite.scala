@@ -2,20 +2,15 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
-/** Covers `LegalActionProjector.recoverEligible` (Task 9b I2): the rewritten
-  * `beginRecover` gate that replaced `RecoverPowerIntegration.validatePotential`
-  * with `ContributionCollector.gather(...).transforms.nonEmpty` over
-  * `WalkerPowerCatalog.default(catalog).powers`. The legacy `RecoverSuite`
-  * held the only tests of this property ("ordinary Act projects Recover and
-  * Rest as additive legal controls", "Catacombs enables empty-site Recover
-  * then enters the ordinary roll") and both were deleted with the file this
-  * task removed; these three tests restore the property on the rewritten
-  * gate rather than the deleted one.
+/** Covers `LegalActionProjector.recoverEligible`: projection delegates to the
+  * same Recover procedure builder as command execution, and relic availability
+  * does not gate the action.
   */
 class RecoverEligibilitySuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -51,7 +46,7 @@ class RecoverEligibilitySuite extends munit.FunSuite {
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site)))))
 
-    assert(RecoverRules.validate(catalog, ready, active, siteId).isRight)
+    assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
   }
 
@@ -74,15 +69,11 @@ class RecoverEligibilitySuite extends munit.FunSuite {
       map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site)))))
 
-    // The site has no facedown relic, so the base rule alone must NOT already
-    // offer Recover here -- proves the assertion below exercises the
-    // Catacombs gather path, not `RecoverRules.validate`'s own relic check.
-    assert(RecoverRules.validate(catalog, ready, active, siteId).isLeft)
-    assert(RecoverRules.validatePotential(catalog, ready, active, siteId).isRight)
+    assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
   }
 
-  test("beginRecover is withheld when neither a relic nor Catacombs applies") {
+  test("beginRecover is offered without a relic or Catacombs") {
     val (base, active, siteId) = baseReady
     val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
       _.id.value == "denizen.catacombs")).get.id.value)
@@ -96,8 +87,6 @@ class RecoverEligibilitySuite extends munit.FunSuite {
         base.game.current.map.sites.updated(siteId, site)))))
 
     assert(ready.game.current.map.sites(siteId).relics.isEmpty)
-    assert(RecoverRules.validate(catalog, ready, active, siteId).isLeft)
-    assert(RecoverRules.validatePotential(catalog, ready, active, siteId).isRight)
-    assert(!legalControls(ready, active.player).contains("beginRecover"))
+    assert(legalControls(ready, active.player).contains("beginRecover"))
   }
 }

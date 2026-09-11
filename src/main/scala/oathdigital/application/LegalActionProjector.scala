@@ -1,14 +1,14 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathRules, WakeResource}
+import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.phases.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules,
+  Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
   VisionRules, Visions}
+import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.phases.Rest
-import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -17,12 +17,6 @@ private[application] final class LegalActionProjector(
     presentation: GamePresentationProjector,
     walkerDecisions: WalkerDecisionProjector
 ) {
-  /** Held once per projector instance (itself a server-lifetime singleton --
-    * see `GameProjector`) rather than recomputed on every `project` call: a
-    * full denizen scan for the walker power catalog on every request was I6's
-    * second half.
-    */
-  private val walkerPowerCatalog = WalkerPowerCatalog.default(catalog)
   def project(context: ScopedProjectionContext): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
@@ -96,8 +90,8 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site =>
-            recoverEligible(context, active, site)))("beginRecover"),
+          Option.when(active.pawnSite.exists(_ =>
+            recoverEligible(context, active)))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
           Option.when(ChallengeRules.legal(catalog, context.ready,
@@ -137,23 +131,13 @@ private[application] final class LegalActionProjector(
     }
   }
 
-  /** Whether `active` can legally start Recover at `siteId` right now: either
-    * a facedown relic already sits at the site (`RecoverRules.validate`), or
-    * some applicable walker power -- Catacombs today -- declares a Transform
-    * at `RecoverActionEligibility` and could supply one once selected as a
-    * `StartWalker` modifier. Shares `OathRules.eligibilityRelaxed` (I6) with
-    * `OathRules.startWalker`'s own gate, but calls it with every catalog
-    * power rather than only the ones a command has already selected, since
-    * the player has not chosen a modifier yet at this "should the button
-    * show" question -- see that method's doc for why the two sets differ.
+  /** Whether `active` can start Recover at their current site. Relic
+    * availability is deliberately irrelevant: a successful empty-site
+    * Recover is a legal wasted action.
     */
   private def recoverEligible(context: ScopedProjectionContext,
-      active: PlayerState, siteId: SiteId): Boolean =
-    RecoverRules.validate(catalog, context.ready, active, siteId).isRight ||
-      (RecoverRules.validatePotential(catalog, context.ready, active,
-        siteId).isRight && OathRules.eligibilityRelaxed(context.ready,
-        active.player, ActionRef.Recover, walkerPowerCatalog.powers)
-        .getOrElse(false))
+      active: PlayerState): Boolean =
+    RecoverProcedure.build(catalog, context.ready, active.player).isRight
 
   /** While a generic-walker action is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command

@@ -18,20 +18,8 @@ import oathdigital.model.{ActionRef, DecisionId, PlayerId}
   * here instead: registering a second action is one entry, and an action
   * absent from it produces `Left(OathViolation.InvalidEventOrder(...))`.
   *
-  * `build` and `rebuild` stay two methods rather than a `starting: Boolean`
-  * flag threaded through one, because they are not simply "the same call
-  * with a flag": `OathRules.startWalker` computes `eligibilityRelaxed`
-  * itself, BEFORE any tree exists, by gathering `ContributingPower`s
-  * against the `RecoverActionEligibility` window (ruling B/C -- see
-  * `OathRules.eligibilityGathered`'s doc). That gathering needs the power
-  * catalog and a `PowerCtx`, machinery this registry -- and the action
-  * modules it dispatches to -- has no reason to import. So `build` accepts
-  * the already-computed boolean as a plain flag (mirroring
-  * `RecoverProcedure.build`'s own parameter), rather than recomputing the
-  * eligibility decision here or pushing the power-gathering into the action
-  * module. `rebuild` never re-runs start gates at all, so it carries no such
-  * flag -- resuming an already-started action must not re-decide
-  * eligibility.
+  * `build` and `rebuild` stay separate because a fresh start runs action
+  * gates while resume reconstructs an already-started tree without them.
   */
 object WalkerActionRegistry {
 
@@ -83,24 +71,13 @@ object WalkerActionRegistry {
     * returns empty and `validateModifiers` rejects every id. Inventing a
     * `WakeModifierSelection` case purely to keep this field total would put a
     * window in the audited vocabulary that no rulebook clause backs.
-    *
-    * `eligibilityWindow` (batch-1 Task 3, Step 2b) is the [[PowerWindow]]
-    * `OathRules.eligibilityRelaxed` gathers at to decide whether this
-    * action's base start gate relaxes -- previously the bare
-    * `PowerWindow.RecoverActionEligibility` literal in that method, which
-    * every `startWalker` reaches. Inert only while no power is applicable
-    * there; with a second registered action it would gather EVERY action's
-    * start at Recover's window. `Option` for the same reason
-    * `modifierWindow` is: `None` means no power can relax this action's
-    * start gate, so `eligibilityRelaxed` is false without gathering.
     */
   private[gameplay] final case class Entry(
       fallbackKind: MajorActionKind,
       rollDecisionId: Option[String],
       modifierWindow: Option[PowerWindow],
-      eligibilityWindow: Option[PowerWindow],
       continuationFor: (String, PlayerId, DecisionId) => Option[OathContinue],
-      build: (ExecutableCatalog, ReadyGame, PlayerId, Boolean) =>
+      build: (ExecutableCatalog, ReadyGame, PlayerId) =>
         Either[OathViolation, Operation],
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId) =>
         Either[OathViolation, Operation])
@@ -126,7 +103,6 @@ object WalkerActionRegistry {
       fallbackKind = MajorActionKind.Recover,
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = Some(PowerWindow.RecoverModifierSelection),
-      eligibilityWindow = Some(PowerWindow.RecoverActionEligibility),
       continuationFor = (decisionId, actor, decision) => decisionId match {
         case RecoverProcedure.rollDecisionId =>
           Some(OathContinue.AwaitingRecoverRoll(actor, decision))
@@ -136,43 +112,29 @@ object WalkerActionRegistry {
           Some(OathContinue.AwaitingRecoverRoll(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor, eligibilityRelaxed) =>
-        RecoverProcedure.build(catalog, state, actor, eligibilityRelaxed),
+      build = (catalog, state, actor) =>
+        RecoverProcedure.build(catalog, state, actor),
       rebuild = (catalog, state, actor) =>
         RecoverProcedure.rebuild(catalog, state, actor)),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
-      * `None` (R18). `build` discards the `eligibilityRelaxed` flag: unlike
-      * Recover's "a facedown relic is already at the site", none of
-      * `ForgeRules.validate`'s gates is a gate a power is allowed to relax
-      * -- they are the facts that make a started Forge answerable at all
-      * (three empty denizens, a printed cost that fits them, a relic on the
-      * deck). A future power that does relax one relaxes it here, in the
-      * entry, not by widening the flag's meaning.
+      * `None` (R18).
       */
     ActionRef.Forge -> Entry(
       fallbackKind = MajorActionKind.Forge,
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ForgeModifierSelection),
-      eligibilityWindow = Some(PowerWindow.ForgeActionEligibility),
       continuationFor = (decisionId, actor, decision) => decisionId match {
         case ForgeProcedure.assignmentDecisionId =>
           Some(OathContinue.AwaitingForgeAssignment(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor, _) =>
+      build = (catalog, state, actor) =>
         ForgeProcedure.build(catalog, state, actor),
       rebuild = (catalog, state, actor) =>
         ForgeProcedure.rebuild(catalog, state, actor)))
 
-  /** Builds `action`'s tree for a fresh start: the action's full start
-    * gates run, relaxed only as far as `eligibilityRelaxed` (computed by
-    * the caller) allows.
-    *
-    * `eligibilityRelaxed` carries no default: the sole production caller
-    * (`OathRules.declaredWalkerTree`) already passes it explicitly, and a
-    * default here would let a future action wiring forget the flag and
-    * silently get `false` instead of a compile error.
+  /** Builds `action`'s tree for a fresh start: the action's start gates run.
     *
     * `registrations` defaults to the production `entries` map, so every
     * production call site is unaffected; [[WalkerActionRegistrySuite]]
@@ -181,11 +143,11 @@ object WalkerActionRegistry {
     * `lookup` as an extracted stand-in.
     */
   def build(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, eligibilityRelaxed: Boolean,
+      actor: PlayerId,
       registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
     lookup(action, registrations).flatMap(
-      _.build(catalog, state, actor, eligibilityRelaxed))
+      _.build(catalog, state, actor))
 
   /** Rebuilds `action`'s tree to resume an already-started walker position.
     * Start-only gates do not re-run.
@@ -232,18 +194,6 @@ object WalkerActionRegistry {
     lookup(action, registrations).flatMap(_.rollDecisionId.toRight(
       OathViolation.InvalidEventOrder(
         s"walker action ${action.key} declares no roll decision id")))
-
-  /** `action`'s eligibility-relaxation [[PowerWindow]], or `None` when no
-    * power may relax this action's start gate -- see `Entry`'s doc.
-    * `OathRules.eligibilityRelaxed` reads this instead of naming
-    * `PowerWindow.RecoverActionEligibility`.
-    *
-    * `registrations` defaults to the production map -- see `build`'s doc.
-    */
-  def eligibilityWindow(action: ActionRef,
-      registrations: Map[ActionRef, Entry] = entries)
-      : Either[OathViolation, Option[PowerWindow]] =
-    lookup(action, registrations).map(_.eligibilityWindow)
 
   /** `action`'s modifier-selection [[PowerWindow]], or `None` when the action
     * offers no player-selected powers at all -- see `Entry`'s doc.

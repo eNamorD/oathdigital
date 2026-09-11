@@ -5,8 +5,6 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
-import oathdigital.gameplay.powerresolver.{ContributionCollector, PowerCtx,
-  PowerWindow}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
@@ -226,25 +224,6 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     }
   }
 
-  /** Mirrors `OathRules.eligibilityGathered` (ruling C/B): whether `powers`
-    * gathers a `Transform` at `RecoverActionEligibility`, which is what lets
-    * `RecoverProcedure.build`'s start-only facedown-relic gate relax. This
-    * suite drives `ProcedureWalker`/`RecoverProcedure.build` directly, one
-    * layer below `OathRules`, so it needs the same one-line policy `OathRules`
-    * applies before calling `build` -- not a second implementation of any
-    * walker or gather mechanics, just the same production `PowerWindow`
-    * lookup `OathRules.startWalker` performs, applied identically to both the
-    * live and replay tracks.
-    */
-  private def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean = {
-    val window = PowerWindow.RecoverActionEligibility
-    ContributionCollector.gather(window, powers.powers,
-      power => PowerCtx(ready, actor, power.source, window, Vector.empty,
-        Sequence(Vector.empty, Some(window))))
-      .transforms.nonEmpty
-  }
-
   /** Drives `script` to completion. At every command it independently
     * rebuilds the tree from, and re-walks, the replay-reconstructed state
     * (never the live state, never a tree cached from an earlier command) and
@@ -260,8 +239,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       val resume = remaining.head
 
       val liveTree =
-        if (starting) RecoverProcedure.build(catalog, liveState, actor,
-          relaxEligibility = eligibilityRelaxed(liveState, actor, powers))
+        if (starting) RecoverProcedure.build(catalog, liveState, actor)
           .toOption.get
         else RecoverProcedure.rebuild(catalog, liveState, actor).toOption.get
       val liveOutcome = runResume(resume, liveState, liveTree, livePending,
@@ -269,8 +247,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
       val Ready(replayReady) = replayState: @unchecked
       val replayTree =
-        if (starting) RecoverProcedure.build(catalog, replayReady, actor,
-          relaxEligibility = eligibilityRelaxed(replayReady, actor, powers))
+        if (starting) RecoverProcedure.build(catalog, replayReady, actor)
           .toOption.get
         else RecoverProcedure.rebuild(catalog, replayReady, actor).toOption.get
       val replayPending = replayReady.game.current.walkerPending

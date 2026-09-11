@@ -14,9 +14,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
-import oathdigital.gameplay.operations.{Operation, Sequence}
-import oathdigital.gameplay.powerresolver.{ContributingPower,
-  ContributionCollector, PowerCtx}
+import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
   WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
 import oathdigital.gameplay._
@@ -382,14 +380,11 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 }
 
 object OathRules {
-  /** How a walker command derives the action tree it walks. `starting`
-    * distinguishes a fresh `startWalker` (the action's full start gates) from
-    * a resume (rebuild only). `eligibilityRelaxed` (Task 5, ruling B) carries
-    * `startWalker`'s relaxed-eligibility decision through to a `starting`
-    * build; a resume ignores it (its rebuild never re-runs the start gates).
+  /** How a walker command derives its action tree. `starting` distinguishes
+    * a fresh start, which runs action gates, from resume reconstruction.
     */
   type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
-    Boolean, Boolean) => Either[OathViolation, Operation]
+    Boolean) => Either[OathViolation, Operation]
 
   /** Production tree source: every registered action declares its own tree
     * via [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) --
@@ -398,65 +393,9 @@ object OathRules {
     * `MatchError`.
     */
   val declaredWalkerTree: WalkerTreeSource =
-    (catalog, action, ready, actor, starting, eligibilityRelaxed) =>
-      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
-        eligibilityRelaxed)
+    (catalog, action, ready, actor, starting) =>
+      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor)
       else WalkerActionRegistry.rebuild(action, catalog, ready, actor)
-
-  /** I6: the single relaxed-eligibility rule, shared between the command
-    * (`OathRules.startWalker`, via `eligibilityGathered`) and the projection
-    * layer (`LegalActionProjector.recoverEligible`), so the two never drift
-    * apart the way a hand-copied second implementation eventually will.
-    *
-    * True when SOME applicable power in `powers` declares a `Transform` at
-    * ACTION'S OWN eligibility window, read from
-    * `WalkerActionRegistry.eligibilityWindow(action)` (batch-1 Task 3,
-    * Step 2b) rather than the `PowerWindow.RecoverActionEligibility`
-    * literal this method used to name. Every `startWalker` reaches here, so
-    * with a second registered action the literal would have gathered
-    * Forge's start at Recover's window -- invisible only for as long as no
-    * power is applicable there. An entry declaring `eligibilityWindow =
-    * None` never relaxes (no gather at all); an action absent from
-    * `registrations` is a `Left`, since "registers no window" and "is not
-    * registered" are different facts and only the first is a rule -- the
-    * same split `offerableWalkerPowers` makes one window over.
-    *
-    * A `Restriction` at this window never grants
-    * eligibility on its own -- it can only reject the action for an
-    * unrelated reason, and its mere presence must not be read as "eligible"
-    * (that reading previously let a power that *forbids* Recover also
-    * *enable* it).
-    *
-    * This method's contract is only the window and the Transform-presence
-    * check; it takes no position on WHICH powers `powers` should contain --
-    * that choice is deliberately the caller's, and the two production
-    * callers deliberately choose different sets. `startWalker` passes the
-    * command's SELECTED powers (`WalkerPowers.selected`, already narrowed to
-    * the modifiers this command chose) because it is deciding whether THIS
-    * command may proceed. `recoverEligible` passes the FULL catalog because
-    * it answers a different question -- "could some power relax this if the
-    * player chose it as a modifier" -- asked before any modifier has been
-    * picked, so the Recover button can appear on a relic-less site whose
-    * only eligibility-granting power has not been selected yet, even
-    * though the eventual `StartWalker` command still must select the power
-    * to actually use it.
-    *
-    * NOTE: this checks the *presence* of a Transform, not its *effect*. A
-    * future power whose Transform at this window does not actually supply a
-    * relic would still relax the gate. Known limitation, worth revisiting
-    * once a second power hooks this window.
-    */
-  def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId, action: ActionRef,
-      powers: Vector[ContributingPower],
-      registrations: Map[ActionRef, WalkerActionRegistry.Entry] =
-        WalkerActionRegistry.entries): Either[OathViolation, Boolean] =
-    WalkerActionRegistry.eligibilityWindow(action, registrations).map {
-      case None => false
-      case Some(window) => ContributionCollector.gather(window, powers,
-        power => PowerCtx(ready, actor, power.source, window, Vector.empty,
-          Sequence(Vector.empty, Some(window))))
-        .transforms.nonEmpty
-    }
 }
 
 private[gameplay] object GameStateUpdates {

@@ -39,7 +39,7 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
   test("build rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
     val result = WalkerActionRegistry.build(ActionRef.Recover, catalog = null,
-      state = state, actor = actor, eligibilityRelaxed = false,
+      state = state, actor = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))
@@ -108,34 +108,15 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
         "no walker action registered for recover")))
   }
 
-  /** Batch-1 Task 3, Step 2b: the eligibility window is registry data
-    * alongside `modifierWindow`. Each registered action declares its own;
-    * `OathRules.eligibilityRelaxed` reads it instead of naming
-    * `RecoverActionEligibility`.
-    */
-  test("eligibilityWindow reads the registered entry, and an unregistered " +
-      "action is a typed Left") {
-    assertEquals(WalkerActionRegistry.eligibilityWindow(ActionRef.Recover),
-      Right(Some(PowerWindow.RecoverActionEligibility)))
-    assertEquals(WalkerActionRegistry.eligibilityWindow(ActionRef.Forge),
-      Right(Some(PowerWindow.ForgeActionEligibility)))
-    assertEquals(
-      WalkerActionRegistry.eligibilityWindow(ActionRef.Recover, unregistered),
-      Left(OathViolation.InvalidEventOrder(
-        "no walker action registered for recover")))
-  }
-
   /** The Forge entry's own facts, asserted as a whole rather than left to
     * whichever end-to-end test happens to exercise them: a wrong
     * `fallbackKind` or `modifierWindow` here is a silent misrouting, not a
     * failure.
     */
-  test("the Forge entry declares Forge's own kind, windows and continuation") {
+  test("the Forge entry declares Forge's own kind, modifier window and continuation") {
     val entry = WalkerActionRegistry.entries(ActionRef.Forge)
     assertEquals(entry.fallbackKind, MajorActionKind.Forge)
     assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
-    assertEquals(entry.eligibilityWindow,
-      Some(PowerWindow.ForgeActionEligibility))
     assertEquals(entry.rollDecisionId, None)
     val actor = PlayerId("p1")
     val decision = DecisionId("forge-1")

@@ -92,6 +92,22 @@ class RecoverProcedureSuite extends munit.FunSuite
   private val highRoll: Vector[DieFace] =
     Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields)
 
+  test("Recover eligibility ignores player role and altered Foundations") {
+    val (base, actor, _, _, _) = recoverable
+    val campaign = base.game.campaign
+    val lineage = campaign.lineages(actor.lineage)
+    val altered = FoundationState(FoundationFace.Altered,
+      Set(LegacyId("legacy:recover-unrelated")))
+    val ready = base.copy(game = base.game.copy(campaign = campaign.copy(
+      lineages = campaign.lineages.updated(actor.lineage,
+        lineage.copy(role = Role.Chancellor)),
+      foundations = campaign.foundations.map { case (number, _) =>
+        number -> altered
+      })))
+
+    assert(RecoverProcedure.build(catalog, ready, actor.player).isRight)
+  }
+
   private def expectParked(outcome: Either[OathViolation, WalkerOutcome],
       at: Vector[String]): (PendingTree, Vector[OathEvent]) =
     outcome match {
@@ -110,14 +126,14 @@ class RecoverProcedureSuite extends munit.FunSuite
     // 1. Fresh walk: auto pool setup, then park at the first Roll.
     val (rollPark, setupEvents) = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "0"))
+      Vector("1", "0", "1"))
     assertEquals(rollPark.answered, Vector.empty[Answered])
     // The head ModifyDicePool carries `RecoverBeforeFirstRoll` (Task 4): a
     // windowed leaf's folded vector is walked as its own children (ruling G),
     // so an unchanged fold still records the leaf one level deeper than an
     // unwindowed leaf would sit -- "0.0", not "0".
     assertEquals(setupEvents.map(_.asInstanceOf[WalkerStepRecorded].nodeId),
-      Vector("0.0"))
+      Vector("0.0", "1.0.0"))
     val stateAtRoll = applyRecorded(ready, setupEvents)
 
     // 2. A two-shield roll reaches any difficulty <= 4: park at the
@@ -167,12 +183,12 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(steps(0).ops,
       Vector[CoreOperation](ModifyDicePool(pool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll))))
-    assert(steps(1).payload.isInstanceOf[RollPayload])
-    assertEquals(steps(1).ops, Vector.empty[CoreOperation])
-    assertEquals(steps(2).payload, WalkerStepPayload.DeltaRecorded(
+    assertEquals(steps(1).payload, WalkerStepPayload.DeltaRecorded(
       SupplySpent(actor.player, 1)))
-    assertEquals(steps(2).ops,
+    assertEquals(steps(1).ops,
       Vector[CoreOperation](AdjustSupply(actor.player, -1)))
+    assert(steps(2).payload.isInstanceOf[RollPayload])
+    assertEquals(steps(2).ops, Vector.empty[CoreOperation])
     assertEquals(steps(3).payload,
       ChoicePayload(RecoverProcedure.relicDecisionId,
         RecoverRelicPayload(relic.id)))
@@ -194,7 +210,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     val (rollPark1, setupEvents) = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "0"))
+      Vector("1", "0", "1"))
     val stateAtRoll1 = applyRecorded(ready, setupEvents)
 
     // First roll fails (score 0 < difficulty): parks the choice decision.
@@ -210,11 +226,13 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (rollPark2, continueEvents) = expectParked(
       ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
         noPowers),
-      Vector("1", "0", "0"))
-    assertEquals(continueEvents.size, 1)
+      Vector("1", "0", "1"))
+    assertEquals(continueEvents.size, 2)
     assertEquals(continueEvents.head.asInstanceOf[WalkerStepRecorded].payload,
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         RecoverChoicePayload(RecoverChoice.Continue)))
+    assertEquals(continueEvents(1).asInstanceOf[WalkerStepRecorded].ops,
+      Vector[CoreOperation](AdjustSupply(actor.player, -1)))
     val stateAtRoll2 = applyRecorded(stateAtChoice, continueEvents)
 
     // Second roll succeeds cumulatively: parks the relic decision.
@@ -255,7 +273,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     val (rollPark, setupEvents) = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "0"))
+      Vector("1", "0", "1"))
     val stateAtRoll = applyRecorded(ready, setupEvents)
     val (choicePark, rollEvents) = expectParked(
       ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
@@ -289,15 +307,15 @@ class RecoverProcedureSuite extends munit.FunSuite
       Vector.empty[CoreOperation])
   }
 
-  test("insufficient supply rejects Continue before another roll, and a " +
-      "supply-zero start is rejected at build") {
+  test("OperationPipeline rejects an unpaid next roll and a supply-zero " +
+      "initial roll") {
     val (ready, actor, siteId, _, _) = recoverable
     val poor = withSupply(ready, actor.player, 1)
     val tree = RecoverProcedure.build(catalog, poor, actor.player).toOption.get
 
     val (rollPark, setupEvents) = expectParked(
       ProcedureWalker.advance(poor, tree, None, noPowers),
-      Vector("1", "0", "0"))
+      Vector("1", "0", "1"))
     val stateAtRoll = applyRecorded(poor, setupEvents)
     val (choicePark, rollEvents) = expectParked(
       ProcedureWalker.roll(stateAtRoll, tree, rollPark, lowRoll, noPowers),
@@ -305,23 +323,25 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtChoice = applyRecorded(stateAtRoll, rollEvents)
     assertEquals(supplyOf(stateAtChoice, actor.player), 0)
 
-    // Continue would roll again but the actor cannot pay for another roll:
-    // rejected before any roll is recorded.
+    // Continue re-enters the loop, whose payment now precedes its Roll.
+    // OperationPipeline rejects that payment before another roll is recorded.
     val continue = Answered(RecoverProcedure.choiceDecisionId,
       RecoverChoicePayload(RecoverChoice.Continue))
     ProcedureWalker.resolve(stateAtChoice, tree, choicePark, continue,
       noPowers) match {
-      case Left(violation: OathViolation.InsufficientSupply) =>
-        assertEquals(violation.required, 1)
-        assertEquals(violation.available, 0)
+      case Left(violation: OathViolation.CoreOperationRejected) =>
+        assertEquals(violation.code, "insufficient-supply")
+        assert(violation.detail.contains("1 exceeds the 0 available"))
       case other => fail(s"expected an InsufficientSupply rejection, got $other")
     }
 
-    // Starting the action with no supply at all is rejected up front, exactly
-    // like legacy Recover's first-roll check.
+    // Build owns only Recover semantics, so zero supply still builds. The
+    // generic operation pipeline rejects the first payment before Roll.
     val broke = withSupply(ready, actor.player, 0)
-    assert(RecoverProcedure.build(catalog, broke, actor.player)
-      .left.toOption.get.isInstanceOf[OathViolation.InsufficientSupply])
+    val brokeTree = RecoverProcedure.build(catalog, broke, actor.player)
+      .toOption.get
+    assert(ProcedureWalker.advance(broke, brokeTree, None, noPowers)
+      .left.toOption.get.isInstanceOf[OathViolation.CoreOperationRejected])
     assert(RecoverProcedure.rebuild(catalog, broke, actor.player).isRight,
       "resume derivation must preserve the legal Stop exit at zero supply")
   }
@@ -333,7 +353,7 @@ class RecoverProcedureSuite extends munit.FunSuite
 
     val (rollPark, setupEvents) = expectParked(
       ProcedureWalker.advance(ready, tree, None, noPowers),
-      Vector("1", "0", "0"))
+      Vector("1", "0", "1"))
     val stateAtRoll = applyRecorded(ready, setupEvents)
     val (relicPark, rollEvents) = expectParked(
       ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers),
@@ -352,8 +372,8 @@ class RecoverProcedureSuite extends munit.FunSuite
     }
   }
 
-  test("build rejects a site with no facedown relic instead of building a " +
-      "tree that deadlocks after success") {
+  test("a successful Recover with no facedown relic finishes without a " +
+      "relic decision") {
     val (ready, actor, siteId, _, _) = recoverable
     val reliclessSite =
       ready.game.current.map.sites(siteId).copy(relics = Vector.empty)
@@ -361,14 +381,26 @@ class RecoverProcedureSuite extends munit.FunSuite
       ready.game.current.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(siteId, reliclessSite)))))
 
-    RecoverProcedure.build(catalog, relicless, actor.player) match {
-      case Left(violation: OathViolation.RecoverUnavailable) =>
-        assert(violation.detail.contains("no facedown relic"),
-          s"violation detail '${violation.detail}' should mention the " +
-            "missing facedown relic")
-      case other =>
-        fail(s"expected a relic-less Recover start rejection, got $other")
-    }
+    val tree = RecoverProcedure.build(catalog, relicless, actor.player)
+      .toOption.get
+    val (rollPark, setupEvents) = expectParked(
+      ProcedureWalker.advance(relicless, tree, None, noPowers),
+      Vector("1", "0", "1"))
+    val stateAtRoll = applyRecorded(relicless, setupEvents)
+
+    val (finalState, finalEvents) =
+      ProcedureWalker.roll(stateAtRoll, tree, rollPark, highRoll, noPowers) match {
+        case Right(WalkerOutcome.Finished(treeless, events)) =>
+          (treeless, events)
+        case other => fail(s"expected relic-less Recover to finish, got $other")
+      }
+
+    assertEquals(finalEvents.collect {
+      case step: WalkerStepRecorded if step.payload.isInstanceOf[ChoicePayload] =>
+        step
+    }, Vector.empty)
+    assertEquals(RecoverProcedure.actorFacedownRelics(finalState, actor.player),
+      Vector.empty)
   }
 
   /** Every node reachable from `node`, including `node` itself: a `Branch`
@@ -421,7 +453,6 @@ class RecoverProcedureSuite extends munit.FunSuite
     assert(windowed.exists(_.isInstanceOf[ModifyDicePool]),
       "the head ModifyDicePool must carry RecoverBeforeFirstRoll")
     assert(windowed.count(_.isInstanceOf[BuildOps]) == 1,
-      "exactly the relic-moving BuildOps must carry RecoverAfterRelic -- " +
-        "the supply-pay BuildOps in the roll body stays unwindowed")
+      "exactly the relic-moving BuildOps must carry RecoverAfterRelic")
   }
 }

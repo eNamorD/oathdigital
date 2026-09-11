@@ -76,22 +76,18 @@ class CatacombsContributionSuite extends munit.FunSuite {
     // The inserted node shifts every later index by one: the first Roll parks
     // at "2.0.0" instead of the bare tree's "1.0.0".
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("2", "0", "0")))
+      Some(Vector("2", "0", "1")))
     assertEquals(after.game.current.walkerModifiers, Vector(catacombsId))
   }
 
-  test("without the Catacombs modifier the same relic-less start is rejected") {
+  test("without the Catacombs modifier the same relic-less start remains legal") {
     val fixture = reliclessSite(setup)
-    rules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-        fixture.actor) match {
-      case Left(violation: OathViolation.RecoverUnavailable) =>
-        assert(violation.detail.contains("no facedown relic"),
-          s"violation detail '${violation.detail}' should mention the " +
-            "missing facedown relic")
-      case other =>
-        fail(s"expected the unmodified relic-less start to be rejected, " +
-          s"got $other")
-    }
+    val transition = started(fixture, Vector.empty)
+    val Ready(after) = transition.state: @unchecked
+    assertEquals(after.game.current.walkerPending.map(_.at),
+      Some(Vector("1", "0", "1")))
+    assertEquals(after.game.current.map.sites(fixture.site).relics,
+      Vector.empty)
   }
 
   test("a site that already holds a facedown relic starts with no modifier " +
@@ -100,17 +96,18 @@ class CatacombsContributionSuite extends munit.FunSuite {
     val transition = started(fixture, Vector.empty)
     val recorded = steps(transition.events)
 
-    assertEquals(recorded.map(_.nodeId), Vector("0.0"))
+    assertEquals(recorded.map(_.nodeId), Vector("0.0", "1.0.0"))
     assertEquals(recorded.flatMap(_.contributions), Vector.empty[PowerId])
     assertEquals(recorded.flatMap(_.ops), Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
-        window = Some(PowerWindow.RecoverBeforeFirstRoll))))
+        window = Some(PowerWindow.RecoverBeforeFirstRoll)),
+      AdjustSupply(fixture.actor, -1)))
 
     val Ready(after) = transition.state: @unchecked
     assertEquals(after.game.current.commonCards.relicDeck,
       fixture.ready.game.current.commonCards.relicDeck)
     assertEquals(after.game.current.walkerPending.map(_.at),
-      Some(Vector("1", "0", "0")))
+      Some(Vector("1", "0", "1")))
   }
 
   test("the Catacombs fold survives its own effect: a resume after the last " +
@@ -125,7 +122,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(parked.game.current.players.find(_.player == fixture.actor)
       .get.board.faceUpSecrets, 0)
     val parkedAt = parked.game.current.walkerPending.map(_.at)
-    assertEquals(parkedAt, Some(Vector("2", "0", "0")))
+    assertEquals(parkedAt, Some(Vector("2", "0", "1")))
 
     val rolled = rules.rollWalkerPrepared(transition.state, fixture.actor,
       RecoverProcedure.recoverPool)(count => Right(
@@ -143,9 +140,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(rollStep.ops, Vector.empty[CoreOperation])
   }
 
-  test("a Restriction-only power at RecoverActionEligibility does not relax " +
-      "the relic gate (finding I2: presence of a Transform is required, " +
-      "not any contribution)") {
+  test("a Restriction-only power does not make relic-less Recover illegal") {
     val fixture = reliclessSite(setup)
     val restrictionOnly = new ContributingPower {
       def id: PowerId = PowerId("test.restriction-only")
@@ -156,16 +151,8 @@ class CatacombsContributionSuite extends munit.FunSuite {
     }
     val restrictedRules = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers(Vector(restrictionOnly)))
-    restrictedRules.startWalker(Ready(fixture.ready), ActionRef.Recover,
-        fixture.actor) match {
-      case Left(violation: OathViolation.RecoverUnavailable) =>
-        assert(violation.detail.contains("no facedown relic"),
-          s"a Restriction-only power must not relax the relic gate; got " +
-            s"'${violation.detail}'")
-      case other =>
-        fail(s"expected the relic gate to stay closed for a Restriction-" +
-          s"only power, got $other")
-    }
+    assert(restrictedRules.startWalker(Ready(fixture.ready), ActionRef.Recover,
+      fixture.actor).isRight)
   }
 
   test("Catacombs is rejected when the site's relic slot is already full " +
@@ -211,11 +198,7 @@ object CatacombsContributionSuite {
   def relicSite(setup: FirstGameSetupRules): Fixture =
     fixture(setup, secrets = 2, placeRelic = true)
 
-  /** The site filled to its relic-slot capacity with FACE-UP relics only:
-    * `gateFacedownRelic` still calls this relic-less (no facedown relic
-    * present), so Catacombs' Transform still fires -- but there is no empty
-    * slot left, and `place`'s capacity guard must reject it (finding I1).
-    */
+  /** Site filled to relic-slot capacity; Catacombs must reject placement. */
   def fullRelicSite(setup: FirstGameSetupRules): Fixture =
     fixture(setup, secrets = 2, placeRelic = false, fillCapacity = true)
 
