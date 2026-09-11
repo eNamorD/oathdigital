@@ -1,7 +1,7 @@
 package oathdigital.model
 
 /** Open decision payload carried by a walker `Decide` leaf and stored in
-  * `PendingTree.answered` (Task 5 ruling 5.1).
+  * `PendingTree.answered`.
   *
   * The payload must be MODEL-safe: answered decisions are persisted on
   * `CurrentGameState.walkerPending` between commands (the legacy
@@ -9,7 +9,7 @@ package oathdigital.model
   * family and every concrete case live in the model, never importing
   * gameplay. Concrete payloads are declared next to the action they belong to
   * (or in this file when they are plain data); the engine stays generic over
-  * payloads (spec decision D2).
+  * payloads.
   *
   * Deliberately NOT sealed here: a power or action declares its own payload
   * case wherever it lives (same-file-sealed restriction on the family root is
@@ -20,8 +20,8 @@ trait DecisionPayload extends Product with Serializable
 object DecisionPayload {
   /** Recover per-roll choice, resolved at the `"recover.choice"` decision:
     * continue rolling (another 1-supply payment) or stop and abandon without
-    * a relic (Recover legacy semantics: Stop is only legal while the recovery
-    * has not yet succeeded).
+    * a relic
+    * (Stop is only legal while the recovery has not yet succeeded).
     */
   sealed trait RecoverChoice extends Product with Serializable
   object RecoverChoice {

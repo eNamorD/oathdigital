@@ -12,10 +12,7 @@ import oathdigital.model.DecisionPayload.{RecoverChoice,
 import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   PlayerId, PoolKey, RelicState, SiteId}
 
-/** Declared Recover procedure tree for the walker (Task 5).
-  *
-  * Reproduces the legacy `Recover.handle`/`Recover.evolve` observable flow on
-  * the generic walker:
+/** Declared Recover procedure tree for the [[oathdigital.gameplay.walker.ProcedureWalker]]}.
   *
   * {{{
   * Sequence(                                // window = RecoverActionEligibility
@@ -32,21 +29,14 @@ import oathdigital.model.{Answered, DecisionPayload, Orientation, PendingTree,
   *     else Vector.empty))                  // stopped: ends with no relic
   * }}}
   *
-  * Task 4 windows (reusing `PowerModel.scala`'s existing vocabulary, no power
-  * ported yet -- `OathRules.walkerPowers` legitimately offers none until
-  * Task 5): the whole tree's root carries `RecoverActionEligibility`
-  * (eligibility-shaped restrictions/relaxations gather here); the head
-  * `ModifyDicePool` -- the first node the walker ever executes -- carries
-  * `RecoverBeforeFirstRoll`; the `BuildOps` that moves the chosen relic
-  * carries `RecoverAfterRelic`. `RecoverModifierSelection` is not a tree node:
-  * it is the window a player-selected power is offered at, answered by
-  * `StartWalker`'s `modifiers` rather than by anything in this tree (see
-  * `OathRules.startWalker`/`walkerPowers`). No other node in this tree
-  * carries a window.
+  * Descriptions of PowerWindows:
+  * `RecoverActionEligibility` - At the start of the action, for checking prerequisites
+  * `RecoverBeforeFirstRoll` - Before the very first roll
+  * `RecoverAfterRelic` - After the relic is chosen
   *
-  * Semantics (ruling 5.5 + legacy parity):
+  * Semantics:
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
-  *    `ModifyDicePool`) and costs 1 supply, debited by the body `BuildOps`.
+  *    `ModifyDicePool`) and costs 1 supply, debited by `AdjustSupply`.
   *  - Success = `DefenseDieFace.score` over the combined faces from every roll
   *    of the "recover" pool (the walker accumulates roll outcomes per pool)
   *    reaching `RecoverRules.difficulty(catalog, site)`; site = the actor's
@@ -153,7 +143,7 @@ object RecoverProcedure {
     // site, re-derived from `ready` on every call -- rather than this
     // closure's own `siteId` (frozen at tree-build/rebuild time). This is
     // the same method the projector calls to build the candidate list a
-    // client is offered (Task 7a finding I1): one shared definition of
+    // client is offered: one shared definition of
     // "the actor's recoverable relics" instead of two independently
     // written expressions that could silently diverge if a future power
     // let Recover target a site other than the actor's pawn site.
