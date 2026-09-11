@@ -7,9 +7,9 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.model.DecisionAnswer.ForgeAssignmentAnswer
-import oathdigital.model.{Answered, DecisionAnswer, DenizenId, DenizenState,
-  ForgeResource, ForgeResourceAssignment, Orientation, PendingTree, PlayerId,
-  PlayerState, SiteDenizenTarget, SiteId, Suit, Tokens}
+import oathdigital.model.{Answered, CardDeck, DecisionAnswer, DenizenId,
+  DenizenState, ForgeResource, ForgeResourceAssignment, Orientation,
+  PendingTree, PlayerId, PlayerState, SiteDenizenTarget, SiteId, Suit, Tokens}
 
 /** Declared Forge procedure tree for the walker (batch 1, Task 2).
   *

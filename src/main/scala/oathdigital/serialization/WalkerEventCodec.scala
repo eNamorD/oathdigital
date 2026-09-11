@@ -4,7 +4,7 @@ import scala.util.control.NonFatal
 
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathEvent}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
-  BuryableCard, Bury, CardDeck, ClearDicePool, CoreOperation, Cost, Decide,
+  BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,

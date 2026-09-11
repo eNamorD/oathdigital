@@ -75,14 +75,6 @@ object SecretSide {
   case object FaceDown extends SecretSide
 }
 
-sealed trait CardDeck extends Product with Serializable
-object CardDeck {
-  case object World extends CardDeck
-  case object Relic extends CardDeck
-  case object Edifice extends CardDeck
-  case object Legacy extends CardDeck
-}
-
 sealed trait StackPosition extends Product with Serializable
 object StackPosition {
   case object Unspecified extends StackPosition

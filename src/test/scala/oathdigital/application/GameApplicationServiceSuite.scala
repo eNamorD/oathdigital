@@ -9,7 +9,7 @@ import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{AdjustSupply, CardDeck, CoreOperation,
+import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
   Cost, Location, ModifyDicePool, Move, PayCost, Piece, PositionedLocation,
   StackPosition}
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
