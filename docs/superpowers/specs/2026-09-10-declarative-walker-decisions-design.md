@@ -57,24 +57,19 @@ object DecisionQuery {
 
   final case class Partition(
       sections: Vector[DecisionSection],
-      arrangements: Vector[DecisionArrangement]
+      options: Vector[DecisionOption]
   ) extends DecisionQuery
 }
 
 final case class DecisionChoice(
     answer: DecisionAnswer,
-    option: DecisionOption
+    options: Vector[DecisionOption]
 )
 
 final case class DecisionSection(
     key: String,
     label: String,
-    required: Int
-)
-
-final case class DecisionArrangement(
-    answer: DecisionAnswer,
-    placements: Vector[DecisionPlacement]
+    minRequired: Int
 )
 
 final case class DecisionPlacement(
@@ -83,10 +78,23 @@ final case class DecisionPlacement(
 )
 ```
 
-`ChooseOne` maps each selectable option directly to its complete answer.
-`Partition` describes named sections, their exact required counts, and every
-legal complete arrangement. The arrangement answer is recorded verbatim.
-Intermediate dragging remains frontend-local state.
+`ChooseOne` maps one or more options to a complete answer. Most choices have
+one option; the vector also supports one answer represented by a group of game
+objects without changing the query model.
+
+`Partition` describes named sections, their minimum required counts, and the
+options to distribute. Its answer is generic:
+
+```scala
+final case class PartitionAnswer(
+    placements: Vector[DecisionPlacement]
+) extends DecisionAnswer
+```
+
+Each declared option must appear exactly once in the answer, in one declared
+section. Each section must receive at least `minRequired` options. The answer
+records placements in option order; intermediate dragging remains
+frontend-local state.
 
 `DecisionOption` is model-safe, presentation-neutral data with stable
 identities:
@@ -116,9 +124,9 @@ the matching stable ID wherever it is rendered. Location is a legality fact
 used while constructing a query, not part of card identity. Owner-private
 projection and existing card-knowledge rules continue to govern disclosure.
 
-An option is one selectable button or game object. A `DecisionChoice` or
-`DecisionArrangement` associates the complete legal answer with those options,
-keeping the walker generic and answer legality a membership check.
+An option is one selectable button or game object. `DecisionChoice` associates
+a complete answer with one or more options. `PartitionAnswer` assigns each
+option to a section. Both remain declarative and generically validatable.
 
 Rename the Scala model family and its concrete cases from `DecisionPayload` to
 `DecisionAnswer`, including `Answered.answer` and corresponding command/wire
@@ -131,16 +139,18 @@ When resolving a parked `Decide`, `ProcedureWalker`:
 
 1. Rebuilds and power-transforms the tree as it does today.
 2. Confirms `decide.owner == pending.actor`.
-3. Requires exactly one complete choice or arrangement whose answer equals the
-   submitted answer.
+3. For `ChooseOne`, requires exactly one choice whose answer equals the
+   submitted answer. For `Partition`, validates the submitted
+   `PartitionAnswer` against its options, sections, and minimum counts.
 4. Records that answer unchanged.
 
 An empty query is invalid for a parked `Decide`; action trees must omit the
-node when no answer is required. Duplicate answers are invalid because they
-make option metadata ambiguous. Partition sections must have unique keys and
-non-negative required counts; every arrangement must place every option once,
-use only declared sections, and meet every required count. These checks return
-typed `InvalidEventOrder` violations rather than throwing.
+node when no answer is required. `ChooseOne` answers must be unique and each
+choice must contain at least one unique option. Partition sections must have
+unique keys and non-negative minimum counts; partition options must be unique;
+an answer must place every option exactly once, use only declared sections,
+and meet every minimum. These checks return typed `InvalidEventOrder`
+violations rather than throwing.
 
 Because the tree is rebuilt against authoritative state for projection and
 resolution, removed or altered options reject stale commands automatically.
@@ -156,9 +166,9 @@ The projection mirrors the query shape. Each projected option contains:
   query associates an answer with it;
 - a stable kind and ID plus display details resolved from authoritative state.
 
-A projected partition also contains ordered section keys, labels, required
-counts, and its complete legal arrangements. The wire representation never
-asks the frontend to reconstruct legality.
+A projected partition also contains ordered section keys, labels, minimum
+counts, and options. The frontend produces a generic partition answer; it does
+not reconstruct action-specific legality.
 
 The shared walker decision DTO replaces `relicCandidates` with a generic
 projected query. Roll-only fields and Recover roll feedback remain unchanged
@@ -199,14 +209,15 @@ from the generic options.
 
 Forge is a `DecisionQuery.Partition`. Its options are the three eligible
 `Denizen` cards. Its sections are `"pay-favor"` and `"pay-secret"`, displayed
-as “Pay Favor” and “Pay Secret”, with required counts taken from the printed
-Forge cost. Every option must be placed in exactly one section.
+as “Pay Favor” and “Pay Secret”, with `minRequired` counts taken from the
+printed Forge cost. Every option must be placed in exactly one section. Since
+the two minima sum to all three options, Forge's minimum constraints produce
+the exact printed resource split.
 
-`ForgeProcedure` enumerates every complete legal arrangement from the live
-eligible targets and printed resource multiset. Each arrangement carries its
-corresponding `ForgeAssignmentAnswer`, with assignments in canonical target
-order. With three targets there are at most three arrangements for a mixed
-cost and one when all resources have the same type.
+`ForgeProcedure` declares the live eligible targets and printed resource
+minima; it does not enumerate assignments. Its trailing operation translates
+the generic `PartitionAnswer` section keys into favor or secret placement for
+the corresponding denizens.
 
 Suit-bank availability does not filter the decision query. Whether or how suit
 banks constrain the eventual resource placement is explicitly deferred to a
@@ -215,11 +226,10 @@ separate rules discussion after this specification is approved.
 This replaces `validateAssignment`. It does not introduce a universal form
 language or answer factory.
 
-The generic projector emits the two sections, the denizen options, and all
-complete arrangements. The frontend initializes the denizens between those
-sections, allows drag/drop or accessible move controls, and enables confirmation
-only when the placement matches a projected arrangement. It submits that
-arrangement's answer verbatim.
+The generic projector emits the two sections and denizen options. The frontend
+initializes the denizens between those sections, allows drag/drop or accessible
+move controls, and enables confirmation only when every option is assigned and
+the projected minima are met. It submits a generic `PartitionAnswer`.
 
 Reuse the existing Keep/Discard interaction by extracting a generic two-section
 partition state and renderer. `CardDecisionState` and Forge each adapt their
@@ -238,8 +248,8 @@ partition without independently calling gameplay rules.
 
 Powers continue to transform `Operation` trees. A power affecting decision
 choices transforms the `Decide` node's `query` before both walking and
-projection. It may add, remove, or replace choices, sections, arrangements, or
-options, but the resulting query must satisfy its structural invariants.
+projection. It may add, remove, or replace choices, sections, or options, but
+the resulting query must satisfy its structural invariants.
 
 This design deliberately does not add a separate projection hook for powers.
 The transformed executable decision is the projection source.
@@ -277,10 +287,10 @@ Add or update tests proving:
 5. Recover projects and accepts Continue, Stop, and live relic options solely
    from its transformed `Decide`.
 6. Empty-site Recover finishes without parking.
-7. Forge enumerates every printed-cost arrangement without consulting suit-bank
-   availability.
+7. Forge declares its options and printed-cost minima without consulting
+   suit-bank availability or enumerating complete arrangements.
 8. Forge UI reuses the generic partition interaction, derives confirmation from
-   projected arrangements, and submits an arrangement answer verbatim.
+   projected minima, and submits a generic partition answer.
 9. Stale Recover and Forge options reject after authoritative state changes.
 10. Event codec and replay preserve selected answers unchanged.
 11. Backend, frontend runtime, Scala.js link, and architecture checks pass.
