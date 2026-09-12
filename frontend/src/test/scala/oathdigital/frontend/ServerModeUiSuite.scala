@@ -435,12 +435,15 @@ class ServerModeUiSuite extends FunSuite {
       "sharing its \"decide\" kind") {
     val continueOption = DecisionOptionState("button", "continue", "Continue")
     val stopOption = DecisionOptionState("button", "stop", "Stop")
+    val choiceQuery = DecisionQueryState("choose-one",
+      Vector(continueOption, stopOption), heading = Some("Recover"))
     val choice = WalkerDecisionState("recover", "recover.choice", "decide",
-      query = Some(DecisionQueryState("choose-one",
-        Vector(continueOption, stopOption))))
+      query = Some(choiceQuery))
+    // Task 5b: the step carries the whole query, not just its options, so
+    // the panel reads the heading the action declared from the same place
+    // it reads what to offer.
     assertEquals(WalkerPanelSupport.recoverWalkerStep(choice),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(
-        Vector(continueOption, stopOption))))
+      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(choiceQuery)))
     assertEquals(
       WalkerPanelSupport.resolveChooseOneCommand(choice, continueOption),
       GameCommand.ResolveWalker("red", "recover.choice",
@@ -450,9 +453,11 @@ class ServerModeUiSuite extends FunSuite {
         DecisionAnswerWire.ChooseOneWire("button", "stop")))
     // A power that drops an option drops the control with it: the step
     // carries whatever the projection offered, never a fixed pair.
-    assertEquals(WalkerPanelSupport.recoverWalkerStep(choice.copy(
-      query = Some(DecisionQueryState("choose-one", Vector(stopOption))))),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(Vector(stopOption))))
+    val stopOnly = DecisionQueryState("choose-one", Vector(stopOption),
+      heading = Some("Recover"))
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(
+      choice.copy(query = Some(stopOnly))),
+      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(stopOnly)))
   }
 
   test("the parked Recover relic decision offers one control per projected " +
@@ -461,10 +466,12 @@ class ServerModeUiSuite extends FunSuite {
       Some(CardDetails("relic-1", "relic", "Bronze Idol")))
     val silver = DecisionOptionState("relic", "relic-2", "Silver Idol",
       Some(CardDetails("relic-2", "relic", "Silver Idol")))
+    val relicQuery = DecisionQueryState("choose-one", Vector(bronze, silver),
+      heading = Some("Take a relic"))
     val relic = WalkerDecisionState("recover", "recover.relic", "decide",
-      query = Some(DecisionQueryState("choose-one", Vector(bronze, silver))))
+      query = Some(relicQuery))
     assertEquals(WalkerPanelSupport.recoverWalkerStep(relic),
-      Some(WalkerPanelSupport.RecoverWalkerStep.Relic(Vector(bronze, silver))))
+      Some(WalkerPanelSupport.RecoverWalkerStep.Relic(relicQuery)))
     assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, bronze),
       GameCommand.ResolveWalker("red", "recover.relic",
         DecisionAnswerWire.ChooseOneWire("relic", "relic-1")))

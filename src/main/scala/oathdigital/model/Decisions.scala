@@ -14,11 +14,11 @@ package oathdigital.model
 // answered is worth more than the symmetry of separating them. Do not
 // "restore" the split.
 //
-// The cost, stated plainly: a button's label and a section's label are
-// prompt copy, and they live here. Game-object names do not. A relic's name
-// and a denizen's title are resolved by `GamePresentationProjector` from an
-// option's reference at projection time and never enter a query, an answer
-// or a validator.
+// The cost, stated plainly: a button's label, a section's label and the two
+// strings a panel titles itself with are prompt copy, and they live here.
+// Game-object names do not. A relic's name and a denizen's title are
+// resolved by `GamePresentationProjector` from an option's reference at
+// projection time and never enter a query, an answer or a validator.
 //
 // The generic validator is the one piece that is NOT here: it returns typed
 // `OathViolation`s, which the model may not name, so it lives in
@@ -144,17 +144,44 @@ final case class DecisionSection(key: String, label: String, minRequired: Int)
   * what lets one generic validator and one generic projector serve every
   * action. A new shape is a change to this file and to both of them.
   */
-sealed trait DecisionQuery extends Product with Serializable
+sealed trait DecisionQuery extends Product with Serializable {
+  /** What the panel asking this question calls itself, authored by the
+    * action that declared the decision.
+    *
+    * On the trait because every shape has a frame to title. Optional
+    * because a decision may have nothing worth saying above its options,
+    * and a client that is handed no heading falls back to generic copy of
+    * its own rather than being given one from here.
+    *
+    * The action is the only place that knows what to call its own question,
+    * which is the same reason a button carries its label — and the
+    * alternative, already tried and deleted, was a frontend helper
+    * branching on the action name to title a panel whose interaction was
+    * otherwise entirely generic.
+    *
+    * Copy NEVER affects legality. `DecisionQueries` reads options and
+    * sections and never this, which is what lets a prompt be rewritten —
+    * by an author or by a power — without invalidating a single recorded
+    * answer.
+    */
+  def heading: Option[String]
+}
 object DecisionQuery {
   /** Pick exactly one of `options`. */
-  final case class ChooseOne(options: Vector[DecisionOption])
-      extends DecisionQuery
+  final case class ChooseOne(options: Vector[DecisionOption],
+      heading: Option[String] = None) extends DecisionQuery
 
   /** Spread every option across the declared sections, respecting each
     * section's minimum.
+    *
+    * @param confirmLabel what the control that submits the arrangement is
+    *   called. On this shape alone, and the asymmetry is the point: a
+    *   choose-one answer submits the moment an option is clicked, so there
+    *   is no confirm step to name and a field for one would mean nothing.
     */
   final case class Partition(sections: Vector[DecisionSection],
-      options: Vector[DecisionOption]) extends DecisionQuery
+      options: Vector[DecisionOption], heading: Option[String] = None,
+      confirmLabel: Option[String] = None) extends DecisionQuery
 }
 
 /** One option assigned to one section in a [[DecisionAnswer.PartitionAnswer]].

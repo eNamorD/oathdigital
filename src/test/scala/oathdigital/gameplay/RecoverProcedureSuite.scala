@@ -450,7 +450,8 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(decide.owner, actor.player)
     assertEquals(decide.query, DecisionQuery.ChooseOne(Vector(
       DecisionOption.Button(DecisionOptionRef.Button("continue"), "Continue"),
-      DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop"))))
+      DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop")),
+      heading = Some("Recover")))
   }
 
   test("the relic decision declares one option per live facedown relic, and " +
@@ -485,7 +486,8 @@ class RecoverProcedureSuite extends munit.FunSuite
       noPowers).getOrElse(fail("expected the park to resolve to a Decide"))
     assertEquals(decide.query, DecisionQuery.ChooseOne(Vector(relic.id,
       second.id).map(id =>
-      DecisionOption.Relic(DecisionOptionRef.Relic(id)))))
+      DecisionOption.Relic(DecisionOptionRef.Relic(id))),
+      heading = Some("Take a relic")))
 
     // And the walker accepts exactly those two, the faceup relic included in
     // neither direction.

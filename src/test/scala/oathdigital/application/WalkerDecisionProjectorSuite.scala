@@ -282,4 +282,24 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assert(projected.options.forall(_.card.exists(!_.hidden)))
     assert(projected.options.forall(_.label.nonEmpty))
   }
+
+  /** Task 5b: panel copy is OPTIONAL, and the absent case has to project as
+    * absent rather than as an invented default.
+    *
+    * Every production query declares its copy now, so the only way to park
+    * on one that does not is the substituted tree above -- which is also
+    * the shape any future action gets for free on the day it declares a
+    * decision and says nothing about what to call it. The generic strings
+    * a panel falls back to are the frontend's business
+    * (`WalkerPanelSupport.decisionHeading`); nothing here supplies one.
+    */
+  test("a query declaring no panel copy projects both fields as absent") {
+    val (context, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val present = relicAtActorSite(context, actor)
+    val query = projects(context, actor, Vector(
+      DecisionOption.Relic(DecisionOptionRef.Relic(present)))).getOrElse(
+        fail("a present relic option must project"))
+    assertEquals(query.heading, None)
+    assertEquals(query.confirmLabel, None)
+  }
 }

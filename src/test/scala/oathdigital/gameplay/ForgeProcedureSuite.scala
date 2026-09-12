@@ -301,8 +301,11 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(decide.decisionId, ForgeProcedure.assignmentDecisionId)
     assertEquals(decide.owner, f.actor.player)
 
-    val DecisionQuery.Partition(sections, options) =
+    val DecisionQuery.Partition(sections, options, heading, confirmLabel) =
       decide.query: @unchecked
+    // Task 5b: the panel's own copy, declared beside the sections it frames.
+    assertEquals(heading, Some("Forge a relic"))
+    assertEquals(confirmLabel, Some("Complete Forge"))
     assertEquals(sections, Vector(
       DecisionSection(ForgeProcedure.favorSectionKey, "Pay Favor", f.cost.favor),
       DecisionSection(ForgeProcedure.secretSectionKey, "Pay Secret",

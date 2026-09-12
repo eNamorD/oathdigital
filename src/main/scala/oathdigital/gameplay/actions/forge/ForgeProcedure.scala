@@ -191,7 +191,13 @@ object ForgeProcedure {
       query = DecisionQuery.Partition(sections,
         eligibleTargets(ready, actor).map(target =>
           DecisionOption.Denizen(
-            DecisionOptionRef.Denizen(target.denizenId)))))))
+            DecisionOptionRef.Denizen(target.denizenId))),
+        // The panel's own copy, declared where the sections are declared
+        // (plan ruling R4). Before this the frontend read `action ==
+        // "forge"` to title a panel whose interaction was already generic,
+        // which put the last action-shaped string in the engine's client.
+        heading = Some("Forge a relic"),
+        confirmLabel = Some("Complete Forge")))))
 
     // The actor funds the payment from their own play area, and the suit
     // banks are never consulted. `PayCost` is what states that: its placed

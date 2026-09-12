@@ -44,23 +44,28 @@ private[frontend] object WalkerPanelSupport {
 
   private[frontend] sealed trait RecoverWalkerStep
   private[frontend] object RecoverWalkerStep {
+    /** A Roll park asks nothing, so it has no query behind it -- and that is
+      * why its heading is the one Recover string still written here.
+      */
     final case class Roll(pool: String) extends RecoverWalkerStep
-    /** The projected button options, in declared order. */
-    final case class Choice(options: Vector[DecisionOptionState])
+    /** The projected continue/stop query: its options in declared order,
+      * and (Task 5b) the heading the action declared above them.
+      */
+    final case class Choice(query: DecisionQueryState)
         extends RecoverWalkerStep
-    /** The projected relic options, in declared order. */
-    final case class Relic(options: Vector[DecisionOptionState])
+    /** The projected relic query, the same way. */
+    final case class Relic(query: DecisionQueryState)
         extends RecoverWalkerStep
   }
 
-  /** A decide park's projected choose-one options, or `None` when the
+  /** A decide park's projected choose-one query, or `None` when the
     * projection carries no query -- which the engine does on purpose when an
     * option could not be presented. Rendering nothing is then correct: there
     * is no answer the client could safely build.
     */
-  private[frontend] def chooseOneOptions(decision: WalkerDecisionState)
-      : Option[Vector[DecisionOptionState]] =
-    decision.query.filter(_.form == "choose-one").map(_.options)
+  private[frontend] def chooseOneQuery(decision: WalkerDecisionState)
+      : Option[DecisionQueryState] =
+    decision.query.filter(_.form == "choose-one")
 
   private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
       : Option[RecoverWalkerStep] =
@@ -68,9 +73,9 @@ private[frontend] object WalkerPanelSupport {
     else decision.kind match {
       case "roll" => decision.pool.map(RecoverWalkerStep.Roll)
       case "decide" if decision.decisionId == recoverChoiceDecisionId =>
-        chooseOneOptions(decision).map(RecoverWalkerStep.Choice)
+        chooseOneQuery(decision).map(RecoverWalkerStep.Choice)
       case "decide" if decision.decisionId == recoverRelicDecisionId =>
-        chooseOneOptions(decision).map(RecoverWalkerStep.Relic)
+        chooseOneQuery(decision).map(RecoverWalkerStep.Relic)
       case _ => None
     }
 
@@ -113,21 +118,26 @@ private[frontend] object WalkerPanelSupport {
         .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
         .foreach {
       case (decision, RecoverWalkerStep.Roll(pool)) =>
+        // The one heading still written here. A Roll park is not a `Decide`
+        // -- it asks no question, carries a synthetic decision id and has no
+        // query behind it -- so there is nothing to read a title from, and
+        // inventing a query for a node that asks nothing would be worse
+        // than this literal.
         panel.appendChild(text("h2", "", "Recover"))
         rollFeedback(decision, panel)
         val roll = button("Roll", "recover-roll")
         roll.disabled = !canControl
         roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
         panel.appendChild(roll)
-      case (decision, RecoverWalkerStep.Choice(options)) =>
-        panel.appendChild(text("h2", "", "Recover"))
+      case (decision, RecoverWalkerStep.Choice(query)) =>
+        panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
         val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
         // One control per PROJECTED option, so a power that drops Continue
         // or adds a third choice changes this panel with no edit here. The
         // two known keys keep their richer copy and the supply gate; any
         // other option falls back to the query's own declared label.
-        options.foreach { option =>
+        query.options.foreach { option =>
           val spendsSupply = option.id == continueOptionKey
           val (label, className) =
             if (spendsSupply) ("Spend 1 Supply for two dice", "recover-add")
@@ -139,10 +149,10 @@ private[frontend] object WalkerPanelSupport {
             resolveChooseOneCommand(decision, option))
           panel.appendChild(control)
         }
-      case (decision, RecoverWalkerStep.Relic(options)) =>
-        panel.appendChild(text("h2", "", "Take a relic"))
+      case (decision, RecoverWalkerStep.Relic(query)) =>
+        panel.appendChild(text("h2", "", decisionHeading(query)))
         rollFeedback(decision, panel)
-        options.foreach { option =>
+        query.options.foreach { option =>
           val choose = button(s"Take ${option.label} facedown",
             "recover-relic-choice")
           choose.disabled = !canControl
@@ -158,20 +168,27 @@ private[frontend] object WalkerPanelSupport {
     decision.rollOutcome.foreach(outcome => panel.appendChild(
       text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
 
-  /** The heading and confirm copy for a parked partition decision.
+  /** What a parked decision's panel calls itself, and what the control that
+    * submits a partition is called.
     *
-    * Prompt copy for the panel itself, which a query does not carry: it
-    * declares labels for its buttons and its sections, not for the frame
-    * around them. So the panel names the action the same way the Recover
-    * panel does, and falls back to generic copy for any other action that
-    * declares a partition -- the interaction below is what had to stop
-    * being Forge-specific, not the title above it.
+    * Task 5b: both come off the query. They used to branch on
+    * `decision.action` to produce Forge's copy, which was the last
+    * action-shaped string in a panel whose interaction had already stopped
+    * being Forge-specific -- so the panel recognised the decisions it had
+    * been written for and had nothing to say about any other. Now the
+    * action that declares the question declares what to call it, and these
+    * two read it the same way every other projected field is read.
+    *
+    * The fallbacks are the whole of what this layer still authors: generic
+    * copy for a query that declares none, so a panel is untitled rather
+    * than unusable. Never action-specific copy, and never a lookup table
+    * that would grow one entry per action.
     */
-  private[frontend] def partitionHeading(action: String): String =
-    if (action == "forge") "Forge a relic" else "Resolve decision"
+  private[frontend] def decisionHeading(query: DecisionQueryState): String =
+    query.heading.getOrElse("Resolve decision")
 
-  private[frontend] def partitionConfirmLabel(action: String): String =
-    if (action == "forge") "Complete Forge" else "Confirm"
+  private[frontend] def partitionConfirmLabel(query: DecisionQueryState)
+      : String = query.confirmLabel.getOrElse("Confirm")
 
   /** The instruction line, assembled from the query's own sections. */
   private[frontend] def partitionInstruction(query: DecisionQueryState): String =
@@ -196,7 +213,7 @@ private[frontend] object WalkerPanelSupport {
         .flatMap(decision => decision.query.filter(_.form == "partition")
           .map(decision -> _))
         .foreach { case (decision, query) =>
-      panel.appendChild(text("h2", "", partitionHeading(decision.action)))
+      panel.appendChild(text("h2", "", decisionHeading(query)))
       panel.appendChild(text("p", "partition-instruction",
         partitionInstruction(query)))
       ui.currentWalkerPartition.filter(_.decisionId == decision.decisionId)
@@ -205,7 +222,7 @@ private[frontend] object WalkerPanelSupport {
         query.sections.foreach(section =>
           zones.appendChild(partitionZone(section, query, draft, ui)))
         panel.appendChild(zones)
-        val confirm = button(partitionConfirmLabel(decision.action),
+        val confirm = button(partitionConfirmLabel(query),
           "partition-confirm")
         confirm.disabled = !canControl || !draft.canConfirm
         confirm.onclick = _ =>

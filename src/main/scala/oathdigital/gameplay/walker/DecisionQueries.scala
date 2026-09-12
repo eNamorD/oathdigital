@@ -21,8 +21,12 @@ import oathdigital.model.{DecisionAnswer, DecisionOptionRef, DecisionQuery}
   * is simply absent from the query and the answer naming it is rejected
   * below.
   *
-  * Labels never appear in either function. A power may restate a prompt
-  * without changing what is submittable.
+  * Prompt copy never appears in either function — not an option's label,
+  * not a section's, and not the heading or confirm label a query titles its
+  * panel with. Every match below discards those fields explicitly. An
+  * author or a power may restate a prompt without changing what is
+  * submittable, which is the whole reason an answer records references
+  * rather than options.
   *
   * Neither function throws; a malformed query and a mismatched answer are
   * both `InvalidEventOrder` naming the decision.
@@ -58,7 +62,7 @@ object DecisionQueries {
     */
   def wellFormed(decisionId: String,
       query: DecisionQuery): Either[OathViolation, Unit] = query match {
-    case DecisionQuery.ChooseOne(options) =>
+    case DecisionQuery.ChooseOne(options, _) =>
       val refs = options.map(_.ref)
       for {
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
@@ -66,7 +70,7 @@ object DecisionQueries {
           "declares duplicate options")
       } yield ()
 
-    case DecisionQuery.Partition(sections, options) =>
+    case DecisionQuery.Partition(sections, options, _, _) =>
       val refs = options.map(_.ref)
       val keys = sections.map(_.key)
       for {
@@ -103,7 +107,7 @@ object DecisionQueries {
     */
   def accepts(decisionId: String, query: DecisionQuery,
       answer: DecisionAnswer): Either[OathViolation, Unit] = query match {
-    case DecisionQuery.ChooseOne(options) => answer match {
+    case DecisionQuery.ChooseOne(options, _) => answer match {
       case DecisionAnswer.ChooseOneAnswer(selected) =>
         require(options.map(_.ref).contains(selected), decisionId,
           "does not offer the selected option")
@@ -111,7 +115,7 @@ object DecisionQueries {
         reject(decisionId, "expects a single-choice answer")
     }
 
-    case DecisionQuery.Partition(sections, options) => answer match {
+    case DecisionQuery.Partition(sections, options, _, _) => answer match {
       case DecisionAnswer.PartitionAnswer(placements) =>
         acceptsPartition(decisionId, sections.map(s => s.key -> s).toMap,
           options.map(_.ref), placements)

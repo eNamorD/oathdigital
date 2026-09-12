@@ -17,11 +17,17 @@ import scala.scalajs.js
   * `dom.document` exists here at all.
   */
 class PartitionPanelRenderSuite extends munit.FunSuite {
+  /** Task 5b: the heading and the confirm label are the query's own, the
+    * way `ForgeProcedure` now declares them -- the panel no longer reads
+    * `decision.action` to decide what to call itself.
+    */
   private val query = DecisionQueryState("partition",
     Vector("1", "2", "3").map(id =>
       DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
     Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
-      DecisionSectionState("pay-secret", "Pay Secret", 1)))
+      DecisionSectionState("pay-secret", "Pay Secret", 1)),
+    heading = Some("Forge a relic"),
+    confirmLabel = Some("Complete Forge"))
 
   private val parked =
     WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
@@ -169,6 +175,36 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
         DecisionPlacementWire("denizen", "denizen:1", "pay-secret"),
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
         DecisionPlacementWire("denizen", "denizen:3", "pay-favor"))))))
+  }
+
+  /** The copy is read from the query and from nowhere else, so these two
+    * cases are the whole of Task 5b at the DOM.
+    *
+    * The first proves the panel renders what the query declares rather than
+    * what it recognises: the action stays `"forge"` and the copy changes,
+    * which the deleted `action == "forge"` branch could not have done. The
+    * second proves the generic fallback, which is what any decision that
+    * declares no copy gets -- the panel must still be usable, just
+    * untitled.
+    */
+  test("the panel titles itself from the query, not from the action") {
+    val retitled = query.copy(heading = Some("Pay for the relic"),
+      confirmLabel = Some("Pay"))
+    val panel = render(opened(),
+      decision = Some(parked.copy(query = Some(retitled))))
+    assertEquals(one(panel, "h2").textContent, "Pay for the relic")
+    assertEquals(confirm(panel).textContent, "Pay")
+  }
+
+  test("a partition query declaring no copy falls back to generic copy") {
+    val bare = query.copy(heading = None, confirmLabel = None)
+    val panel = render(opened(),
+      decision = Some(parked.copy(query = Some(bare))))
+    assertEquals(one(panel, "h2").textContent, "Resolve decision")
+    assertEquals(confirm(panel).textContent, "Confirm")
+    // Untitled, not unusable: the zones and the options are still there.
+    assertEquals(all(panel, ".partition-zone").size, 2)
+    assertEquals(all(panel, ".decision-option").size, 3)
   }
 
   test("a park with no partition query renders no controls at all") {

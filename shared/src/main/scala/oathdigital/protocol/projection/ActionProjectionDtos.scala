@@ -109,11 +109,26 @@ final case class PendingCardDecisionProjection(
   * a `PartitionWire` of placements is built from the same kind-and-id pair
   * each option carries, so embedding an answer would duplicate the identity
   * and couple these DTOs to the command protocol for nothing.
+  *
+  * `heading` and `confirmLabel` (Task 5b) are the panel's own prompt copy,
+  * passed through from the query the action declared -- the frame around the
+  * options, where an option's `label` is the copy on the option itself. Both
+  * are optional, and a client that is handed neither falls back to generic
+  * copy of its own; nothing on the server supplies a default. A choose-one
+  * query never carries a `confirmLabel`, because it submits on the click and
+  * has no confirm step to name.
+  *
+  * This is two optional strings, not the start of a form language: no
+  * layout, no conditionals, no per-option copy beyond the label an option
+  * already carries. A third piece of panel copy is a reason to ask what the
+  * panel is really missing.
   */
 final case class DecisionQueryProjection(
     form: String,
     options: Vector[DecisionOptionProjection],
-    sections: Vector[DecisionSectionProjection] = Vector.empty)
+    sections: Vector[DecisionSectionProjection] = Vector.empty,
+    heading: Option[String] = None,
+    confirmLabel: Option[String] = None)
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a

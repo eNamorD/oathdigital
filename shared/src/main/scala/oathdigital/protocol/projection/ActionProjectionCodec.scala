@@ -207,11 +207,14 @@ private[projection] object ActionProjectionCodec {
       "card" -> option(row.card)(encodeCard))),
     "sections" -> encoded(value.sections)(section => ujson.Obj(
       "key" -> section.key, "label" -> section.label,
-      "minRequired" -> section.minRequired)))
+      "minRequired" -> section.minRequired)),
+    "heading" -> stringOption(value.heading),
+    "confirmLabel" -> stringOption(value.confirmLabel))
   def decodeDecisionQuery(raw: ujson.Value, path: String)
       : Result[DecisionQueryProjection] = for {
     value <- obj(raw, path)
-    _ <- exact(value, Set("form", "options", "sections"), path)
+    _ <- exact(value, Set("form", "options", "sections", "heading",
+      "confirmLabel"), path)
     form <- string(value, "form", path)
     optionRaws <- array(value, "options", path)
     options <- traverse(optionRaws, s"$path.options") { (raw, child) => for {
@@ -228,7 +231,10 @@ private[projection] object ActionProjectionCodec {
       key <- string(row, "key", child); label <- string(row, "label", child)
       minimum <- int(row, "minRequired", child)
     } yield DecisionSectionProjection(key, label, minimum) }
-  } yield DecisionQueryProjection(form, options, sections)
+    heading <- optionalString(value, "heading", path)
+    confirmLabel <- optionalString(value, "confirmLabel", path)
+  } yield DecisionQueryProjection(form, options, sections, heading,
+    confirmLabel)
 
   def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
     "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,

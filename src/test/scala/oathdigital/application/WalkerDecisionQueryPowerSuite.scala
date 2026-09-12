@@ -62,7 +62,8 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
       owner = actor,
       query = DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(continueOption, "Continue"),
-        DecisionOption.Button(stopOption, "Stop")))))))
+        DecisionOption.Button(stopOption, "Stop")),
+        heading = Some("Recover"))))))
 
   /** A power that rewrites the option list of whatever choose-one decision
     * it is handed, and nothing else. Two instances below add an option and
@@ -70,22 +71,33 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     * needed to select them.
     */
   private def rewriting(id: String)(
-      change: Vector[DecisionOption] => Vector[DecisionOption]) =
+      change: DecisionQuery.ChooseOne => DecisionQuery.ChooseOne) =
     WalkerPowers(Vector(ProcedureWalkerSuite.TestTransformPower(PowerId(id),
       window, (_, ops) => ops.map {
         case decide: Decide => decide.query match {
-          case DecisionQuery.ChooseOne(options) =>
-            decide.copy(query = DecisionQuery.ChooseOne(change(options)))
+          case query: DecisionQuery.ChooseOne =>
+            decide.copy(query = change(query))
           case _ => decide
         }
         case other => other
       })))
 
-  private val adding = rewriting("test.adds-an-option")(
-    _ :+ DecisionOption.Button(extraOption, "Extra"))
+  private val adding = rewriting("test.adds-an-option")(query =>
+    query.copy(options = query.options :+
+      DecisionOption.Button(extraOption, "Extra")))
 
-  private val removing = rewriting("test.removes-an-option")(
-    _.filterNot(_.ref == continueOption))
+  private val removing = rewriting("test.removes-an-option")(query =>
+    query.copy(options = query.options.filterNot(_.ref == continueOption)))
+
+  /** Task 5b: the same transform seam, applied to the decision's panel copy
+    * rather than to its options. A heading is authored by the action and
+    * carried on the query, so a power rewrites it exactly the way it
+    * rewrites an option -- one edit, and both the prompt and the option set
+    * travel together.
+    */
+  private val retitling = rewriting("test.retitles-the-decision")(query =>
+    query.copy(options = query.options.filterNot(_.ref == continueOption),
+      heading = Some("Abandon the attempt")))
 
   private def rules(actor: PlayerId, powers: WalkerPowers): OathRules =
     new OathRules(catalog, walkerPowerCatalog = powers,
@@ -114,6 +126,16 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     projector(actor, powers)
       .project(ScopedProjectionContext(ready, Some(actor)))
       .flatMap(_.query).map(_.options.map(_.id)).getOrElse(
+        fail("the parked actor must be offered the decision"))
+  }
+
+  /** The heading the projector offers at the park, if any. */
+  private def titled(state: oathdigital.gameplay.OathState, actor: PlayerId,
+      powers: WalkerPowers): Option[String] = {
+    val Ready(ready) = state: @unchecked
+    projector(actor, powers)
+      .project(ScopedProjectionContext(ready, Some(actor)))
+      .flatMap(_.query).map(_.heading).getOrElse(
         fail("the parked actor must be offered the decision"))
   }
 
@@ -171,5 +193,24 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assertEquals(offered(state, actor, removing), Vector("stop"))
     assert(answering(state, actor, adding, continueOption).isRight,
       "the walker accepts an option the mismatched projection dropped")
+  }
+
+  test("a power that rewrites a decision's heading changes what is " +
+      "projected, in the same edit that moves its options") {
+    val (ready, actor) = actable
+    assertEquals(titled(parked(ready, actor, WalkerPowers.empty), actor,
+      WalkerPowers.empty), Some("Recover"),
+      "the tree's own declared heading is what an unpowered park projects")
+
+    val state = parked(ready, actor, retitling)
+    assertEquals(titled(state, actor, retitling),
+      Some("Abandon the attempt"))
+    // The one edit moved both: the option the power dropped is gone from
+    // the projection and from what the walker accepts, and the prompt above
+    // them is the power's. Copy still decides nothing -- the surviving
+    // option is answerable under either title.
+    assertEquals(offered(state, actor, retitling), Vector("stop"))
+    assert(answering(state, actor, retitling, continueOption).isLeft)
+    assert(answering(state, actor, retitling, stopOption).isRight)
   }
 }

@@ -140,7 +140,12 @@ object RecoverProcedure {
       owner = actor,
       query = DecisionQuery.ChooseOne(Vector(
         DecisionOption.Button(continueOption, "Continue"),
-        DecisionOption.Button(stopOption, "Stop"))))
+        DecisionOption.Button(stopOption, "Stop")),
+        // The panel's title, declared here with the button copy it frames
+        // (plan ruling R4). The Roll park above it keeps a frontend literal
+        // instead: a `Roll` node asks nothing, so it has no query to carry
+        // a heading on.
+        heading = Some("Recover")))
 
     val moveRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
@@ -183,7 +188,8 @@ object RecoverProcedure {
           decisionId = relicDecisionId,
           owner = actor,
           query = DecisionQuery.ChooseOne(relics.map(relic =>
-            DecisionOption.Relic(DecisionOptionRef.Relic(relic.id))))),
+            DecisionOption.Relic(DecisionOptionRef.Relic(relic.id))),
+            heading = Some("Take a relic"))),
           moveRelic)
       else Vector.empty
     })

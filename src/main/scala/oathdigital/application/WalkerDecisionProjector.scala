@@ -120,13 +120,20 @@ private[application] final class WalkerDecisionProjector(
       val projected = options.flatMap(optionProjection(ready, viewer, index, _))
       Option.when(projected.size == options.size)(projected)
     }
+    // The panel copy rides through untouched, exactly as the options do:
+    // it is the action's own declaration, and the projector's whole job
+    // here is to describe the transformed query rather than to author
+    // anything. A query that declares none projects none, and the client
+    // supplies its own generic fallback.
     query match {
-      case DecisionQuery.ChooseOne(options) =>
-        described(options).map(DecisionQueryProjection("choose-one", _))
-      case DecisionQuery.Partition(sections, options) =>
+      case DecisionQuery.ChooseOne(options, heading) =>
+        described(options).map(DecisionQueryProjection("choose-one", _,
+          heading = heading))
+      case DecisionQuery.Partition(sections, options, heading, confirmLabel) =>
         described(options).map(DecisionQueryProjection("partition", _,
           sections.map(section => DecisionSectionProjection(section.key,
-            section.label, section.minRequired))))
+            section.label, section.minRequired)),
+          heading = heading, confirmLabel = confirmLabel))
     }
   }
 

@@ -294,12 +294,12 @@ Forge declares "Forge a relic" and "Complete Forge" beside the sections it alrea
 
 **Where this stops, and why.** Recover's roll park is a `Roll` node with a synthetic decision id and no `Decide` behind it, so it has no query and its "Recover" heading stays a frontend literal. Say so in the code rather than inventing a query for a node that asks nothing. And `recoverWalkerStep` keeps matching on `decisionId`: that comparison chooses which interaction to render, not what to call it, and this task removes copy from the frontend, not dispatch.
 
-- [ ] **Step 1: failing tests.** (a) `DecisionQuerySuite`: the same answer is accepted against a query whose heading and confirm label differ, proving `accepts` reads neither; (b) `WalkerDecisionProjectionSuite`: Forge projects its declared heading and confirm label, Recover's two decide parks project theirs, and a query declaring neither projects both as absent; (c) `WalkerDecisionQueryPowerSuite`: a power that rewrites a parked decision's heading changes what is projected, in the same edit that moves its options; (d) `ProjectionProtocolSuite`: the projection round-trips with both fields present and with both absent; (e) `ServerModeUiSuite`: the panel shows the declared copy, and a partition query declaring none falls back to the generic strings. Expected FAIL: the query has no copy.
-- [ ] **Step 2: implement** the model fields, the validator's indifference to them, the projection DTO and its codec, and the projector pass-through.
-- [ ] **Step 3: implement** the two declarations (Forge, Recover) and the frontend re-sourcing, deleting the `action == "forge"` branches.
-- [ ] **Step 4:** re-run; expected PASS. `grep -n '"forge"' frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala` returns nothing: no panel names an action to decide what to call itself.
-- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: commit** `feat(walker): let a decision author its own panel copy`.
+- [x] **Step 1: failing tests.** (a) `DecisionQuerySuite`: the same answer is accepted against a query whose heading and confirm label differ, proving `accepts` reads neither; (b) `WalkerDecisionProjectionSuite`: Forge projects its declared heading and confirm label, Recover's two decide parks project theirs, and a query declaring neither projects both as absent; (c) `WalkerDecisionQueryPowerSuite`: a power that rewrites a parked decision's heading changes what is projected, in the same edit that moves its options; (d) `ProjectionProtocolSuite`: the projection round-trips with both fields present and with both absent; (e) `ServerModeUiSuite`: the panel shows the declared copy, and a partition query declaring none falls back to the generic strings. Expected FAIL: the query has no copy.
+- [x] **Step 2: implement** the model fields, the validator's indifference to them, the projection DTO and its codec, and the projector pass-through.
+- [x] **Step 3: implement** the two declarations (Forge, Recover) and the frontend re-sourcing, deleting the `action == "forge"` branches.
+- [x] **Step 4:** re-run; expected PASS. `grep -n '"forge"' frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala` returns nothing: no panel names an action to decide what to call itself.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): let a decision author its own panel copy`.
 
 ---
 

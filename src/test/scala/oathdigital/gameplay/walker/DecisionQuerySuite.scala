@@ -44,6 +44,15 @@ class DecisionQuerySuite extends munit.FunSuite {
     options = Vector(denizenOption("d1"), denizenOption("d2"),
       denizenOption("d3")))
 
+  /** One complete, legal answer to [[partition]], reused wherever a test
+    * needs a placement that is beyond reproach so that the thing under test
+    * is the only variable.
+    */
+  private val legalPlacement = DecisionAnswer.PartitionAnswer(Vector(
+    DecisionPlacement(denizenRef("d1"), "favor"),
+    DecisionPlacement(denizenRef("d2"), "favor"),
+    DecisionPlacement(denizenRef("d3"), "secret")))
+
   private def invalid(detail: String) =
     Left(OathViolation.InvalidEventOrder(detail))
 
@@ -283,5 +292,33 @@ class DecisionQuerySuite extends munit.FunSuite {
     assertEquals(
       accepts(partition, DecisionAnswer.ChooseOneAnswer(denizenRef("d1"))),
       invalid(s"decision $decisionId expects a partition answer"))
+  }
+
+  // (h) Task 5b: panel copy is prompt copy, and neither function reads it.
+
+  test("a choose-one answer is accepted whatever heading the query wears") {
+    val titled = chooseOne.copy(heading = Some("Recover"))
+    val retitled = chooseOne.copy(heading = Some("Press your luck"))
+    assertEquals(wellFormed(titled), wellFormed(retitled))
+    Vector(chooseOne, titled, retitled).foreach { query =>
+      assertEquals(accepts(query, DecisionAnswer.ChooseOneAnswer(continueRef)),
+        Right(()), s"heading ${query.heading} must not change legality")
+      assertEquals(accepts(query, DecisionAnswer.ChooseOneAnswer(relicRef)),
+        invalid(s"decision $decisionId does not offer the selected option"))
+    }
+  }
+
+  test("a partition answer is accepted whatever heading and confirm label " +
+      "the query wears") {
+    val titled = partition.copy(heading = Some("Forge a relic"),
+      confirmLabel = Some("Complete Forge"))
+    val retitled = partition.copy(heading = Some("Pay for the relic"),
+      confirmLabel = Some("Pay"))
+    assertEquals(wellFormed(titled), wellFormed(retitled))
+    Vector(partition, titled, retitled).foreach { query =>
+      assertEquals(accepts(query, legalPlacement), Right(()),
+        s"copy ${query.heading} / ${query.confirmLabel} must not change " +
+          "legality")
+    }
   }
 }

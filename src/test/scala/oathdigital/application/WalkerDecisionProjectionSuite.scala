@@ -9,9 +9,10 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.protocol.projection.{DecisionOptionProjection,
-  DecisionQueryProjection, GameProjectionCodec, WalkerDecisionProjection,
-  WalkerRollOutcomeProjection}
+  DecisionQueryProjection, DecisionSectionProjection, GameProjectionCodec,
+  WalkerDecisionProjection, WalkerRollOutcomeProjection}
 
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
@@ -57,10 +58,18 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
   /** The continue/stop query as `RecoverProcedure` declares it: two button
     * options, in declaration order, carrying the action's own prompt copy.
     * A button has no game object behind it, so it projects no card details.
+    *
+    * Task 5b added the `heading`. It is the panel's own title, authored
+    * where the decision is authored, and it is asserted here rather than
+    * in the frontend because the projector is what has to carry it through
+    * from the transformed query untouched. A partition additionally
+    * declares a `confirmLabel`; a choose-one submits on the click, so there
+    * is no confirm step to name and the field does not exist on that shape.
     */
   private val choiceQuery = DecisionQueryProjection("choose-one", Vector(
     DecisionOptionProjection("button", "continue", "Continue"),
-    DecisionOptionProjection("button", "stop", "Stop")))
+    DecisionOptionProjection("button", "stop", "Stop")),
+    heading = Some("Recover"))
 
   /** The same difficulty `WalkerDecisionProjector.rollOutcome` reads (I5):
     * derived live from `ready`/`catalog` rather than hardcoded, so this
@@ -260,7 +269,8 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       facedownRelics.map(relic => DecisionOptionProjection("relic",
         relic.id.value, presentation.relicLabel(relic.id),
         Some(presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
-          hidden = false)))))
+          hidden = false)))),
+      heading = Some("Take a relic"))
 
     // TwoShields + Doubler = 4 shields, meeting a difficulty <= 4 (I5): the
     // relic park's feedback shows the successful roll that got here.
@@ -353,5 +363,50 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     // longer resolve the recorded park path at all.
     val unwired = new WalkerDecisionProjector(catalog, presentation, WalkerPowers.empty)
     assertEquals(unwired.project(context), None)
+  }
+
+  /** Task 5b: the other query shape, and the only one with a confirm step
+    * to name.
+    *
+    * Forge is driven to a real park through `ForgeWalkerFixture` -- the
+    * same board and the same commands `GameApplicationServiceSuite` runs
+    * its end-to-end Forge against -- rather than through a hand-built
+    * `Decide`, because the fact under test is that copy authored in
+    * `ForgeProcedure` survives the rebuild, the power fold and the
+    * projection untouched. A synthetic query would assert the pass-through
+    * and skip the authoring.
+    */
+  test("a parked Forge projects the heading and the confirm label its " +
+      "procedure declares, beside the sections it already declared") {
+    val (forgeCatalog, started, actor, forgeSite) =
+      ForgeWalkerFixture.parkedForge("walker-projection-forge")
+    val Ready(ready) = started.state: @unchecked
+    val projector = new WalkerDecisionProjector(forgeCatalog,
+      new GamePresentationProjector(forgeCatalog))
+    val decision = projector.project(ScopedProjectionContext(ready,
+      Some(actor))).getOrElse(
+        fail("the parked actor must be offered the Forge decision"))
+    assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
+    val query = decision.query.getOrElse(
+      fail("a parked Forge decision must project its query"))
+
+    assertEquals(query.heading, Some("Forge a relic"))
+    assertEquals(query.confirmLabel, Some("Complete Forge"))
+    // The copy arrives beside the sections, not instead of them: one prompt
+    // frame and the minima it frames, from the same declaration.
+    val printed = forgeCatalog.sites.find(_.id == forgeSite).get
+      .forgeRequirements.get
+    assertEquals(query.sections, Vector(
+      DecisionSectionProjection(ForgeProcedure.favorSectionKey, "Pay Favor",
+        printed.favor),
+      DecisionSectionProjection(ForgeProcedure.secretSectionKey, "Pay Secret",
+        printed.secrets)))
+    assertEquals(query.form, "partition")
+
+    // And it is owner-private like every other field of this projection:
+    // copy is prompt text for the player being asked, not public table talk.
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
+    assertEquals(projector.project(ScopedProjectionContext(ready,
+      Some(other))), None)
   }
 }
