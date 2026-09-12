@@ -46,7 +46,7 @@ The boundary R1 drew does not move. Game-object names still never enter a query:
 - **No journal compatibility.** The alpha holds no recorded games worth preserving, so the `"recover-choice"`, `"recover-relic"` and `"forge-assignment"` answer tags are deleted from both sides of the event codec rather than kept as a decode-only translation, and journal fixtures asserting them are rewritten to the generic `"choose-one"` and `"partition"` tags in the same commit. This is what the spec now says and the constraint batch 1 already works under.
 - Presentation copy never affects legality, per R1. A query carries prompt copy for buttons and sections; game-object names are resolved at projection time by `GamePresentationProjector` from an option's reference, and never enter a query, an answer or a validator.
 - Owner-private projection is unchanged: `WalkerDecisionProjector.project` already gates on `context.viewer.contains(pending.actor)` and every new field inherits that.
-- Per-task gate: `./sbtw "test"` green plus `python3 scripts/check-architecture.py`. Tasks touching `shared/` or `frontend/` additionally run `./sbtw "frontend/test" "frontend/fastLinkJS"`. Task 6 runs the full gate.
+- Per-task gate: `./sbtw "test"` green plus `python3 scripts/check-architecture.py`. Tasks touching `shared/` or `frontend/` additionally run `./sbtw "frontend/test" "frontend/fastLinkJS"`, which since Task 5's Step 7 needs `npm ci` to have installed jsdom. Task 6 runs the full gate.
 - Commit per task with the exact message shown. Work on branch `feat/walker-declarative-decisions` cut from `feat/engine-redesign`.
 
 ---
@@ -248,6 +248,7 @@ With Forge's UI generic, the last consumers of the old Forge answer vocabulary g
 - [x] **Step 4:** re-run; expected PASS. `grep -rnE '\b(ForgeAssignment|ForgeResource)\b' src shared frontend/src` returns nothing.
 - [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
 - [x] **Step 6: commit** `feat(ui): reuse one partition interaction for Forge and card decisions`.
+- [x] **Step 7: the end-to-end case at the DOM.** Review found Step 1's `ServerModeUiSuite` case drove `WalkerPartitionDraft` directly and never rendered a control, so renderer wiring could break while it stayed green. The frontend project had no DOM at all — no `jsEnv`, so every suite ran on bare Node where `dom.document` is undefined, which is why no renderer had ever been tested. The build now runs frontend tests in jsdom (`scalajs-env-jsdom-nodejs` on the build classpath, `Test / jsEnv` in `build.sbt`, `jsdom` pinned in the repo root's `package.json`; `npm ci` before `frontend/test`). A hand-rolled document double was rejected: scalajs-dom captures `dom.document` in a val when its package object initializes, so a fake would depend on suite ordering. `PartitionPanelRenderSuite` then drives the real panel — zones and options read out of the rendered tree, moves made through the accessible button and through a real drop event, the confirm button's disabled state read off the element, and the submitted answer captured from a click. Three mutations confirm it bites: dropping the minima gate on confirm, unwiring the drop handler, and dropping the submission each fail it. Commit `test(ui): drive the partition panel through the DOM under jsdom`.
 
 ---
 

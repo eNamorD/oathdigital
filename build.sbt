@@ -213,6 +213,15 @@ lazy val frontend = (project in file("frontend"))
       "com.lihaoyi" %%% "ujson" % "4.4.3",
       "org.scalameta" %%% "munit" % "1.0.4" % Test
     ),
+    // Frontend tests run in jsdom, not bare Node, so a renderer suite can
+    // drive the DOM the panels actually build: create the controls, click an
+    // accessible move button, read a confirm button's disabled state, and
+    // capture the command a click submits. `dom.document` is a val captured
+    // when scalajs-dom's package object initializes, so the document has to
+    // be real before any test touches it -- a hand-rolled double would
+    // depend on suite ordering. The `jsdom` package is pinned in the repo
+    // root's `package.json`; CI runs `npm ci` before `frontend/test`.
+    Test / jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv(),
     scalacOptions ++= Seq(
       "-deprecation",
       "-feature",
