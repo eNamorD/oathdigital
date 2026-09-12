@@ -163,7 +163,19 @@ That is a **rules change**, not just a restatement: Forge currently moves favor 
 - [x] **Step 3: implement** Recover's two `ChooseOne` queries, its guard and relic-move reads, and delete both closures with the `RecoverChoice` enum and its two answer cases.
 - [x] **Step 4: implement** Forge's `Partition`, its single-resource no-park path, its `PayCost` translation, the `ForgeRules` affordability gate, and the suit-bank deletions with `ForgeOutcomeMismatch`.
 - [x] **Step 5: implement** the wire and mapper changes, then the event codec: the extracted file, the generic encoders, the legacy-tag deletion with its fixture rewrites, and the throw-versus-typed-error decision.
-- [x] **Step 6:** re-run the suites; expected PASS. `grep -rn "OwnerQuery\|WalkerCtx\|RecoverChoice\|RecoverRelicAnswer\|ForgeAssignmentAnswer\|recover-choice\|recover-relic\|forge-assignment" src shared frontend --include=*.scala` returns nothing at all.
+- [x] **Step 6:** re-run the suites; expected PASS. Two sweeps, and both must return nothing. The deleted symbols, word-bounded so they do not match live camel-case identifiers that merely contain them:
+
+  ```bash
+  grep -rnE '\b(OwnerQuery|WalkerCtx|RecoverChoice|RecoverChoiceAnswer|RecoverRelicAnswer|ForgeAssignmentAnswer|RecoverChoiceWire|RecoverRelicWire|ForgeAssignmentWire|ForgeOutcomeMismatch|ForgeAssignment)\b' src shared frontend/src
+  ```
+
+  And the three deleted wire tags, as complete quoted literals, in **production sources only**:
+
+  ```bash
+  grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main
+  ```
+
+  Both narrowings are load-bearing rather than convenient, so do not widen them back. The tag sweep excludes tests because Step 1 **requires** negative tests that name all three deleted tags and assert each is now a typed decode failure — a sweep over tests would contradict the step that demands them. It excludes unquoted matches because `ServerUiSupport` styles its relic button with the CSS class `recover-relic-choice`, which is presentation naming that shares a prefix with a wire tag and is not one. The symbol sweep is word-bounded because the frontend keeps `resolveRecoverChoiceCommand`, a live method whose name contains `RecoverChoice` and which has nothing to do with the deleted enum. A hit in either sweep is a real survivor; expect zero and investigate anything else.
 - [x] **Step 7:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
 - [x] **Step 8: commit** `feat(walker): make decisions declarative and migrate Recover and Forge`.
 
@@ -204,7 +216,7 @@ The synthetic-power test is the whole point of the change and deserves its own s
 - [ ] **Step 1: failing tests.** (a) Recover's relic decision projects one option per live facedown relic with card details, and no `relicCandidates` field exists; (b) Recover's choice decision projects two button options with their declared labels; (c) Forge projects two sections with printed minima and three denizen options; (d) an option whose id is absent from authoritative state suppresses the entire decision projection; (e) the projection round-trips through `GameProjectionCodec`; (f) the new synthetic-power suite's add and remove cases. Expected FAIL: the DTO has no query.
 - [ ] **Step 2: implement** the DTOs, their codec, and the projector rewrite; delete `relicCandidates` and `forgeProjection` with their types.
 - [ ] **Step 3: implement** the frontend re-sourcing for Recover and Forge, with the `ServerUiSupport` extraction.
-- [ ] **Step 4:** re-run; expected PASS. `grep -rn "relicCandidates\|ForgeProjection\|ForgeAssignmentTargetProjection" src shared frontend --include=*.scala` returns nothing.
+- [ ] **Step 4:** re-run; expected PASS. `grep -rnE '\b(relicCandidates|ForgeProjection|ForgeAssignmentTargetProjection)\b' src shared frontend/src` returns nothing. (Scope `frontend/src`, never `frontend`, whose `target/` holds linked JS carrying every symbol you just deleted; and quote any `--include` glob, which zsh expands before grep sees it.)
 - [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
 - [ ] **Step 6: commit** `feat(walker): project decisions from the transformed query`.
 
@@ -229,7 +241,7 @@ With Forge's UI generic, the last consumers of the old Forge answer vocabulary g
 - [ ] **Step 1: failing tests** in `PartitionDecisionStateSuite`: moving an item between sections, a minimum not yet met blocking confirmation, every-option-placed enforced, and the submitted answer naming each option ref exactly once in its section. Plus `CardDecisionStateSuite` regressions proving Search and starting-adviser keep their arrangement rules, ordering, and stage behaviour through the shared state. Plus a `ServerModeUiSuite` case driving Forge end to end through the generic interaction. Expected FAIL: the shared state does not exist.
 - [ ] **Step 2: implement** the extraction, adapt both callers, and delete `ForgeAssignmentState`.
 - [ ] **Step 3: delete** the `ForgeAssignment` wire row with its decoder and the two model types, in this commit.
-- [ ] **Step 4:** re-run; expected PASS. `grep -rn "ForgeAssignment\|ForgeResource" src shared frontend --include=*.scala` returns nothing.
+- [ ] **Step 4:** re-run; expected PASS. `grep -rnE '\b(ForgeAssignment|ForgeResource)\b' src shared frontend/src` returns nothing.
 - [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
 - [ ] **Step 6: commit** `feat(ui): reuse one partition interaction for Forge and card decisions`.
 
@@ -240,7 +252,7 @@ With Forge's UI generic, the last consumers of the old Forge answer vocabulary g
 **Files:** whatever the sweep finds; `docs/superpowers/plans/2026-09-09-walker-batch-1-forge-travel-wake.md`
 
 - [ ] **Step 1: walk the spec's eleven testing obligations** one at a time against the suites that now exist, and name the test that discharges each. An obligation with no test is a gap to close here, not a line to tick.
-- [ ] **Step 2: sweep for survivors.** `grep -rn "OwnerQuery\|WalkerCtx\|DecisionPayload\|relicCandidates\|ForgeProjection\|ForgeAssignment\|ForgeResource\|RecoverChoice" src shared frontend --include=*.scala` returns nothing but `RestPowerDecisionPayload`, and a second sweep for the three legacy answer tag strings returns nothing. No projector names a `decisionId` or an `ActionRef` to decide what to offer.
+- [ ] **Step 2: sweep for survivors.** `grep -rnE '\b(OwnerQuery|WalkerCtx|DecisionPayload|relicCandidates|ForgeProjection|ForgeAssignment|ForgeResource|RecoverChoice)\b' src shared frontend/src` returns nothing but `RestPowerDecisionPayload`, and `grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main` returns nothing. Both are word-bounded and production-scoped for the reasons Task 3's Step 6 records; the legacy tags survive on purpose in the negative decode tests. No projector names a `decisionId` or an `ActionRef` to decide what to offer.
 - [ ] **Step 3: check the caps.** `python3 scripts/check-architecture.py` plus a line-count read of the four files this plan flagged, so the next plan inherits an accurate picture rather than four files silently at 799.
 - [ ] **Step 4: update batch 1.** Its Task 2 text already describes the declarative contract; note in that plan that the contract now exists and that Travel's decision (Task 5) declares a query rather than a `validate` closure.
 - [ ] **Step 5: full gate** `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`.
