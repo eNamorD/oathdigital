@@ -474,6 +474,23 @@ final case class ModifyDicePool(pool: PoolKey, delta: Int,
   */
 final case class RecordPowerUse(power: PowerUseRef) extends PrimitiveOperation
 
+/** Moves the turn into `phase` (batch-1 Task 7).
+  *
+  * A phase change is a state write like any other, so the procedure that
+  * performs one declares it as an operation and replay restores it from the
+  * journal -- the same argument [[RecordPowerUse]] makes. Ending Wake is the
+  * only procedure that declares it today.
+  *
+  * Which phase may follow which is NOT stated here. The phase order is a rule
+  * about the turn, and the turn's procedures are where it is written; an
+  * operation that encoded the order would state the same rule a second time,
+  * in the vocabulary every future power can reach for. The one thing applying
+  * this does reject is entering the phase the turn is already in
+  * (`OperationError.PhaseAlreadyEntered`), which is a doubled or reordered
+  * journal rather than a rule about order.
+  */
+final case class EnterPhase(phase: Phase) extends PrimitiveOperation
+
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
   * state, faces ride the next command.
   */

@@ -5,8 +5,8 @@ import scala.util.control.NonFatal
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathEvent}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
-  Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
-  ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
+  Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
+  Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll, Sacrifice,
   SecretSide, Sequence, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
@@ -176,6 +176,8 @@ private[serialization] trait WalkerEventCodec {
         ujson.Obj("kind" -> "record-power-use",
           "timing" -> encodePowerTiming(timing), "siteId" -> site.value,
           "powerId" -> id.value)
+      case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
+        "phase" -> phase.key)
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -332,6 +334,11 @@ private[serialization] trait WalkerEventCodec {
           RecordPowerUse(PowerUseRef(timing,
             PowerSourceRef.Site(SiteId(value("siteId").str)),
             PowerId(value("powerId").str))))
+      case "enter-phase" =>
+        val key = value("phase").str
+        Phase.fromKey(key).toRight(
+          InvalidValue(s"$path.phase", s"unknown phase '$key'"))
+          .map(EnterPhase.apply)
       case "move" => for {
         piece <- decodePiece(value("piece"), s"$path.piece")
         from <- decodePositionedLocation(value("from"), s"$path.from")

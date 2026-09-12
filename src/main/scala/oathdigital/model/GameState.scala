@@ -57,13 +57,27 @@ final case class CampaignState(
     era: EraState
 )
 
-sealed trait Phase extends Product with Serializable
+/** `key` is the phase's wire spelling, carried here rather than in a codec
+  * because the phase is now a journalled value: `EnterPhase` records a phase
+  * change as a walker operation, so replay has to read one back. Following
+  * [[OathkeeperGoal]]'s shape keeps the spelling next to the case that owns
+  * it instead of in a match a new phase could be added without touching.
+  */
+sealed trait Phase extends Product with Serializable { def key: String }
 object Phase {
-  case object Wake extends Phase
-  case object Act extends Phase
-  case object Rest extends Phase
-  private[oathdigital] case object RoundEnd extends Phase
-  private[oathdigital] case object WarExhaustion extends Phase
+  case object Wake extends Phase { val key = "wake" }
+  case object Act extends Phase { val key = "act" }
+  case object Rest extends Phase { val key = "rest" }
+  private[oathdigital] case object RoundEnd extends Phase {
+    val key = "round-end"
+  }
+  private[oathdigital] case object WarExhaustion extends Phase {
+    val key = "war-exhaustion"
+  }
+
+  val all: Vector[Phase] = Vector(Wake, Act, Rest, RoundEnd, WarExhaustion)
+
+  def fromKey(key: String): Option[Phase] = all.find(_.key == key)
 }
 
 final case class TurnState(

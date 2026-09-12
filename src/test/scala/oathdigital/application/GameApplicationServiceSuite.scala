@@ -1264,11 +1264,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(records.take(8).map(record =>
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
     assertEquals(records.drop(8).map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1))
+      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1, 1))
+    // Ending Wake is a walker procedure too now (batch-1 Task 7), so the
+    // Wake phase journals nothing of its own: the last two records are its
+    // phase-change step and its completion, not a `gameplay.wake-ended`.
     assertEquals(records.drop(8).map(record =>
       ujson.read(record)("eventType").str),
       Vector("walker.step-recorded", "walker.step-recorded",
-        "walker.completed", "gameplay.wake-ended"))
+        "walker.completed", "walker.step-recorded", "walker.completed"))
   }
 
   test("Travel is one atomic walker command and reloads pawn Supply and Act") {

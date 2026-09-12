@@ -371,8 +371,8 @@ class MinorActionsSuite extends munit.FunSuite {
     val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val adviser = setupState.asInstanceOf[Ready].value.game.current.players
       .find(_.player == active).get.advisers.head.id.asInstanceOf[WorldCardId]
-    val act = rules.handle(setupState,
-      oathdigital.gameplay.phases.WakeCommand.EndWake(active)).toOption.get
+    val act = rules.startWalker(setupState, ActionRef.EndWake, active)
+      .toOption.get
     val discarded = rules.handle(act.state,
       MinorActionCommand.DiscardFacedownAdviser(active, adviser)).toOption.get
     val events = setupEvents ++ act.events ++ discarded.events

@@ -302,6 +302,8 @@ private[operations] object OperationStateMutation {
         result.flatMap(adjustDicePool(_, pool, delta))
       case (result, RecordPowerUse(power)) =>
         result.map(recordPowerUse(_, power))
+      case (result, EnterPhase(phase)) =>
+        result.flatMap(enterPhase(_, phase))
       case (result, _) => result
     }
 
@@ -312,6 +314,18 @@ private[operations] object OperationStateMutation {
   private def recordPowerUse(ready: ReadyGame, power: PowerUseRef): ReadyGame =
     updateCurrent(ready)(current => current.copy(turn = current.turn.copy(
       usedPowers = current.turn.usedPowers + power)))
+
+  /** A write, not an advance: which phase may follow which belongs to the
+    * procedure that declared the operation, and is deliberately not restated
+    * here. The one thing this does reject is a transition to the phase the
+    * turn is already in, which is a corrupt or doubled journal rather than a
+    * rule about order.
+    */
+  private def enterPhase(ready: ReadyGame,
+      phase: Phase): Either[OperationError, ReadyGame] =
+    Either.cond(ready.game.current.turn.phase != phase, updateCurrent(ready)(
+      current => current.copy(turn = current.turn.copy(phase = phase))),
+      PhaseAlreadyEntered(phase))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =

@@ -15,7 +15,6 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.FirstGameSetupRules
@@ -38,7 +37,8 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val actor = ready.game.current.turn.activePlayer
     val other = ready.game.current.players.find(_.player != actor).get
     val rules = new OathRules(catalog)
-    val act = rules.handle(setupState, WakeCommand.EndWake(actor)).toOption.get
+    val act = rules.startWalker(setupState,
+      oathdigital.model.ActionRef.EndWake, actor).toOption.get
     val traveled = rules.startWalker(act.state,
       oathdigital.model.ActionRef.Travel, actor, Vector.empty,
       Vector(oathdigital.model.DecisionOptionRef.Site(

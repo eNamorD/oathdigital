@@ -13,7 +13,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
       case _: GamePawnPlaced => PawnPlacedType
       case _: StartingAdviserChosen => AdviserChosenType
       case FirstGameCompleted => FirstGameCompletedType
-      case _: WakeEnded => WakeEndedType
       case _: RestStarted => RestStartedType
       case _: LeagueTreatyDecisionStarted => LeagueTreatyDecisionStartedType
       case _: LeagueTreatyResolved => LeagueTreatyResolvedType
@@ -35,8 +34,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           "adviserId" -> adviserId.value
         )
       case FirstGameCompleted => ujson.Obj()
-      case WakeEnded(playerId) =>
-        ujson.Obj("playerId" -> playerId.value)
       case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
       case value: LeagueTreatyDecisionStarted => ujson.Obj(
         "restActorPlayerId" -> value.restActor.value,
@@ -116,8 +113,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
             )
           )
         case FirstGameCompletedType => Right(FirstGameCompleted)
-        case WakeEndedType =>
-          Right(WakeEnded(PlayerId(payload("playerId").str)))
         case RestStartedType =>
           Right(RestStarted(PlayerId(payload("playerId").str)))
         case LeagueTreatyDecisionStartedType => for {

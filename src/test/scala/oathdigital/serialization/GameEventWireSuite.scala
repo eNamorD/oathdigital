@@ -5,12 +5,13 @@ import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
+import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted,
   OathkeeperChanged}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
-  Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
+  Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
+  Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
   Sequence, StackPosition, Swap, Take}
@@ -340,6 +341,20 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("step")("meaning")("kind").str).toVector,
       Vector("dice-pool-modified", "supply-spent", "relic-acquired"))
+  }
+
+  test("a journalled phase change round-trips the phase it names") {
+    // `EnterPhase` is only ever declared with `Act` today (End Wake is its
+    // one caller), so a codec that ignored the value and decoded `Act`
+    // unconditionally would pass every other test in the tree. Rest is used
+    // here for exactly that reason.
+    val event: OathEvent = WalkerStepRecorded(PlayerId("red"), "0",
+      WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
+        "enter-phase")), Vector(EnterPhase(Phase.Rest)), Vector.empty)
+    val encoded = GameEventWire.encodeEvent("phase", catalogRef, 0L, event)
+      .toOption.get
+    assertEquals(encoded("payload")("ops")(0)("phase").str, "rest")
+    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
   }
 
   test("Catacombs' recorded batch round-trips: a relic move off the top of " +
@@ -872,11 +887,12 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {
     val setupEvents = execute(rules)._2
-    // Any two v3 gameplay events serve; these are what is left in the Wake
-    // phase now that taking wealth is journalled as walker steps (Task 7).
+    // Any two v3 gameplay events serve. They used to be the Wake phase's
+    // own; the Wake phase no longer has any, since both taking wealth and
+    // ending Wake are journalled as walker steps (Task 7).
     val gameplay = Vector(
       OathkeeperChanged(Some(PlayerId("p2"))),
-      WakeEnded(PlayerId("p2"))
+      UsurperFlipped(PlayerId("p2"))
     )
     val events = setupEvents ++ gameplay
     val records = events.zipWithIndex.map { case (event, index) =>
@@ -888,7 +904,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.oathkeeper-changed", "gameplay.wake-ended"))
+      Vector("gameplay.oathkeeper-changed", "gameplay.usurper-flipped"))
     assertEquals(decoded.map(_.event), events)
 
     val wrongVersion = GameEventWire.encodeEvent(

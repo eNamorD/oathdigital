@@ -25,9 +25,10 @@ object MajorActionPreviewCodec {
     // attaches to any `GameIntent` -- this preview covers every major
     // action, and the carrier is deliberately not one of them (see `action`
     // below, encoded separately). It was `BeginForge` until Forge moved
-    // onto the walker and that intent was deleted; `EndWake` is a phase
-    // transition the migration explicitly keeps, so it will not be the
-    // next carrier to disappear.
+    // onto the walker and that intent was deleted. Ending Wake moved onto
+    // the walker too (batch-1 Task 7), but its intent stayed as the client's
+    // spelling for the new procedure, so this carrier survived that move and
+    // does not depend on ending Wake staying a hand-written command.
     val envelope = ActorlessCommandRequest(value.expectedNextSequence,
       GameIntent.EndWake, value.orderedModifiers)
     val encodedModifiers = ujson.read(ActorlessCommandCodec.encode(envelope))

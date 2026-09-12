@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
+import oathdigital.gameplay.phases.RestCommand
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -185,7 +185,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       events ++= accepted.events
     }
     def finishTurn(player: PlayerId): Unit = {
-      accept(rules.handle(state, WakeCommand.EndWake(player)))
+      accept(rules.startWalker(state, ActionRef.EndWake, player))
       accept(rules.handle(state, RestCommand.Begin(player)))
       accept(rules.handle(state, RestCommand.Finish(player)))
     }
@@ -198,7 +198,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       OathkeeperState(Some(holder), TitleSide.Usurper))
     assert(events.contains(UsurperFlipped(holder)))
 
-    accept(rules.handle(state, WakeCommand.EndWake(holder)))
+    accept(rules.startWalker(state, ActionRef.EndWake, holder))
     val holderState = state.asInstanceOf[Ready].value
     val destination = holderState.game.current.map.inPlay.find(
       _ != holderState.game.current.players.find(_.player == holder)

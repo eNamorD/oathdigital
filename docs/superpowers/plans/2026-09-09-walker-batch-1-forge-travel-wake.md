@@ -87,7 +87,7 @@ Task 8, the close-out.**
 | 4 — Travel terrain as contributions | done | `d8d6853`, hardened to `2e4a0a6` |
 | 5 — Travel cutover + vocabulary delete | done | `c70ec1a` |
 | 6 — Take Wealth once-per-turn | done | `654e75a` |
-| 7 — Wake cutover + legacy delete | done | `0139c6c` |
+| 7 — Wake cutover + legacy delete | done | `0139c6c`, completed by `PENDING` |
 | 8 — batch close-out | Step 0 superseded; rest open | — |
 
 Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
@@ -506,6 +506,8 @@ frontend is untouched by this task, so its gate is Task 7's to run.
 - Modify: `ActionRef.scala`, `WalkerActionRegistry.scala`, the projectors, the frontend renderer
 - Delete: `phases/Wake.scala`'s `Wake` object, `phases/TakeWealthRules.scala`, `phases/WakeOperationPolicy.scala`, the `WealthTaken` event with its codec branch and wire type, and `WakeCommand.TakeWealth`
 
+> **Note added while implementing.** The delete list above and the "keep `EndWake`" paragraph below read as contradictory: the object holds nothing but End Wake once Take Wealth leaves. Both were meant, and both hold — see "Ending Wake is a phase transition AND a walker procedure" in the settled notes.
+
 ```
 Sequence(                                          // window = WakeTakeWealth
   BuildOps(Take(Favor(1)|Secrets(1), site -> play area)),
@@ -537,9 +539,9 @@ Task 1 made — and that is a change to make deliberately, not to discover.
 
 - [x] **Step 1: failing test** — end-to-end Take Wealth through `GameApplicationService` on `StartWalker`, asserting the token moved, the `PowerUseRef` recorded, and a second take at the same site rejected. Plus a take during the Act phase rejected. Plus replay parity.
 - [x] **Step 2: implement** the procedure and the registry entry.
-- [x] **Step 3: delete** the legacy path in the same commit; port or delete each legacy Wake test.
-- [x] **Step 4:** `./sbtw "test"` (684), `./sbtw "frontend/test" "frontend/fastLinkJS"` (148), `python3 scripts/check-architecture.py` (196 production files), `git diff --check` clean.
-- [x] **Step 5: commit** `feat(walker): move Take Wealth onto the walker and delete its legacy path` (`0139c6c`).
+- [x] **Step 3: delete** the legacy path in the same commit; port or delete each legacy Wake test. End Wake followed in a second pass, which is what emptied and deleted `phases/Wake.scala`.
+- [x] **Step 4:** `./sbtw "test"` (689), `./sbtw "frontend/test" "frontend/fastLinkJS"` (148), `python3 scripts/check-architecture.py` (196 production files), `git diff --check` clean.
+- [x] **Step 5: commit** `feat(walker): move Take Wealth onto the walker and delete its legacy path` (`0139c6c`) and `feat(walker): move End Wake onto the walker and delete the Wake object` (`PENDING`).
 
 ---
 
@@ -556,13 +558,22 @@ Task 1 made — and that is a change to make deliberately, not to discover.
 2. `walkerTransition`'s Finished branch no longer hardcodes
    `ActActionSelection` and no longer runs `completeAction` unconditionally.
    **The phase did not become registry data.** Review rejected that: the
-   walker and its registry state what an action DOES, and which phase a player
-   is in is neither's business. The continuation is read off the phase the
-   action completed in, in `OathRulesWalker` — the command surface that
-   already owns phase and continuation plumbing — so an action declares
-   nothing and the walker learns nothing. A phase with no walker continuation
-   is a typed rejection rather than a default, so the first action registered
-   in Rest fails loudly instead of silently returning its player to Act.
+   walker and its registry state what a procedure DOES, and which phase a
+   player is in is neither's business. The continuation is read off the phase
+   in `OathRulesWalker` — the command surface that already owns phase and
+   continuation plumbing — so a procedure declares nothing and the walker
+   learns nothing. A phase with no walker continuation is a typed rejection
+   rather than a default, so the first procedure registered in Rest fails
+   loudly instead of silently returning its player to Act.
+
+   Ending Wake (below) then split that single phase read in two, because it
+   is the one procedure whose tree changes the phase mid-walk. The phase it
+   FINISHED in names the continuation — where the player now is. The phase it
+   STARTED in decides the boundary — which phase's procedure just completed.
+   The second read restates what the rest of the engine already does: every
+   legacy `handle` in `OathRules` runs `completeAction` after an Act command
+   (Economy, Search, Challenge, Campaign, Visions, Negotiation, minor
+   actions) and none of the Wake or Rest ones ever did.
 
 **Use limits needed a new generic operation, because replay applies recorded
 operations and nothing else.** The legacy path wrote `usedPowers` in a state
@@ -592,10 +603,43 @@ want. The consequence, stated rather than discovered: a preview asked for the
 Wake kind keeps taking its existing path instead of being answered as this
 action.
 
-**Ending Wake stayed a phase transition, as the plan asked.** It selects
-nothing, costs nothing, declares no operations and gathers no powers. Porting
-it for symmetry would have added an `ActionRef` whose whole procedure is a
-phase write.
+**Ending Wake is a phase transition AND a walker procedure, and `object Wake`
+is gone.** The plan's file list asked for the object's deletion and its prose
+asked for End Wake to stay a phase transition; the first draft of this task
+kept the object to honour the second, which left a two-method legacy state
+machine alive beside the walker for the sake of a classification. Review
+rejected that. Both hold at once: ending Wake is declared as a tree because a
+phase change is a state write and the walker is where a procedure's state
+writes are declared, journalled and replayed — not because ending Wake was
+reclassified as something a player spends a turn on. What follows from it NOT
+being an action is decided where the difference is visible, in the boundary
+read above, and not by a flag on its registry entry.
+
+Its tree is one leaf, `Sequence(EnterPhase(Act))`, under no window: a window
+would invite powers to transform a phase change, and the Wake timing's
+fallback diagnostics already run through the entry's `fallbackKind`, which is
+`MajorActionKind.Wake` — the same kind the deleted object's `withFallback`
+wrapper used, so those diagnostics are recorded exactly as before.
+
+**`EnterPhase(Phase)` is the second new operation, and it rejects a no-op.**
+It takes any phase and states no phase order — that rule belongs to the
+procedures that perform transitions, and an operation encoding it would state
+the same rule twice in the vocabulary every future power can reach for. What
+it does reject is entering the phase the turn is already in
+(`OperationError.PhaseAlreadyEntered`). That is not a rule about order; it is
+what keeps replay checking the phase sequence that the deleted `WakeEnded`
+evolve used to check. Without it a doubled End Wake in the journal would
+replay clean, because a walker step's replay applies its ops and re-runs no
+gates.
+
+**The client's spelling of ending Wake survived; the engine's did not.**
+`GameIntent.EndWake` and `GameCommand.EndWake` are kept deliberately, against
+the precedent Take Wealth set by deleting its intent outright: the transports,
+the frontend's button and some forty test call sites say "end wake", and
+`GameApplicationService` routes that to `startWalker(ActionRef.EndWake, …)` in
+one line. The cost, stated rather than discovered: two spellings can start the
+same procedure. It also kept `MajorActionPreviewCodec`'s borrowed carrier
+intent valid, which the deletion would have broken.
 
 **The tree carries plain operations, not the `BuildOps` pair the plan
 sketched.** The site is the actor's pawn site and the resource is the start
@@ -613,25 +657,38 @@ already taken from this turn out of the offer; a projector that only built the
 tree would keep offering it, and the ported agreement test now covers exactly
 that case.
 
-**Deleted:** `TakeWealthRules`, `WakeOperationPolicy`, `WakeCommand.TakeWealth`
-and its `Wake.handle`/`evolve` halves, the `WealthTaken` event with its codec
-branch and `gameplay.take-wealth` wire type, `GameCommand.TakeWealth`, the
-`takeWealth` authorization helper, `GameIntent.TakeWealth` with its codec and
-decoder, and `RuleQueryContext.TakeWealth`, which lost its only producer.
+**Deleted:** the whole of `phases/Wake.scala` — `object Wake` and the
+`WakeCommand` vocabulary with it — plus `TakeWealthRules`,
+`WakeOperationPolicy`, the `WealthTaken` and `WakeEnded` events with their
+codec branches and `gameplay.take-wealth` / `gameplay.wake-ended` wire types,
+`GameCommand.TakeWealth`, the `takeWealth` authorization helper,
+`GameIntent.TakeWealth` with its codec and decoder, and
+`RuleQueryContext.TakeWealth`, which lost its only producer. The Wake phase
+now journals no event of its own: both of its commands are walker steps.
 `WakeOperationPolicy` needed no replacement: a walker command carries no
 operations, so there is no forged semantic root to reject — the tree is built
 from the actor's own pawn site.
 
-**Proven by mutation, four ways.** Treating a Wake completion as an Act one
-fails three tests including the journal's; dropping the use record from the
-tree fails five; costing the projection from `build` alone instead of the
-simulation fails the agreement test's already-taken case; and dropping the
-timing on the journalled ref fails the reload assertion, which is what proves
-the new operation round-trips rather than merely applying.
+**Proven by mutation, eight ways.** From the Take Wealth half: treating a Wake
+completion as an Act one fails three tests including the journal's; dropping
+the use record from the tree fails five; costing the projection from `build`
+alone instead of the simulation fails the agreement test's already-taken case;
+and dropping the timing on the journalled ref fails the reload assertion,
+which is what proves the new operation round-trips rather than merely
+applying. From the End Wake half: reading the boundary off the phase the
+procedure finished in fails the boundary test; letting `EnterPhase` accept the
+phase the turn is already in fails the corrupt-index test; dropping End Wake's
+start gate fails two; and ignoring the journalled phase key to decode `Act`
+unconditionally fails the round-trip written for exactly that mutation — End
+Wake is `EnterPhase`'s only caller, so without a test that journals a
+different phase, a codec that dropped the value would pass the whole tree.
 
-Gate: 684 root tests, 148 frontend, architecture check over 196 production
-files. `WalkerEventCodec.scala` is at 778 of 800 after its two new branches —
-the file to watch before the next batch adds an operation.
+Gate: 689 root tests, 148 frontend, architecture check over 196 production
+files. `WalkerEventCodec.scala` is at 786 of 800 after its three new branches
+— the file to watch before the next batch adds an operation. The phase's wire
+spelling is a `key` on `Phase` itself rather than a match in that codec, which
+is both the `OathkeeperGoal` shape and what kept those branches to four
+lines.
 
 ---
 

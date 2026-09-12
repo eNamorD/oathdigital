@@ -243,8 +243,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         }
       case _: Mustered | _: Traded =>
         Left(InvalidEventOrder("Economy requires the gameplay evolution"))
-      case _: WakeEnded =>
-        Left(InvalidEventOrder("gameplay event cannot be applied by setup rules"))
       case _: SearchStarted | _: SearchCompleted =>
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: RestStarted | _: RestPowerEvent | _: RestCompleted =>

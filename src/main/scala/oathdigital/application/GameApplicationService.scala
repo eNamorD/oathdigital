@@ -13,7 +13,7 @@ import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
-import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
+import oathdigital.gameplay.phases.RestCommand
 import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
@@ -371,8 +371,11 @@ final class GameApplicationService(
           state,
           FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
         )
+      // Ending Wake is a walker procedure (batch-1 Task 7); the command
+      // survives as the client's spelling for it, so no transport and no
+      // caller had to learn that the engine changed underneath.
       case GameCommand.EndWake(playerId) =>
-        rules.handle(state, WakeCommand.EndWake(playerId))
+        rules.startWalker(state, ActionRef.EndWake, playerId)
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>

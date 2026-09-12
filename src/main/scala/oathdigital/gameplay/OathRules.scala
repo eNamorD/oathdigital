@@ -8,7 +8,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
-import oathdigital.gameplay.phases.{Rest, RestCommand, Wake, WakeCommand,
+import oathdigital.gameplay.phases.{Rest, RestCommand,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
@@ -45,15 +45,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
   private val setup = new FirstGameSetupRules(catalog)
 
   override val initialState: OathState = setup.initialState
-
-  def handle(
-      state: OathState,
-      command: WakeCommand
-  ): Either[OathViolation, OathTransition] =
-    command match {
-      case WakeCommand.EndWake(actor) => withFallback(state, actor,
-        MajorActionKind.Wake)(Wake.handle(state, command))
-    }
 
   def handle(state: OathState, command: EconomyCommand)
       : Either[OathViolation, OathTransition] =
@@ -216,7 +207,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
             InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
         case _ => Left(GameNotStarted)
       }
-      case event: WakeEnded => Wake.evolve(state, event)
       case event: Mustered => Economy.evolve(catalog, state, event)
       case event: Traded => Economy.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)

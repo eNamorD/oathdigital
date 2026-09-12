@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.phases.wake.TakeWealthProcedure
+import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
@@ -194,7 +194,28 @@ object WalkerActionRegistry {
       modifierWindow = None,
       continuationFor = (_, _, _) => None,
       build = TakeWealthProcedure.build,
-      rebuild = TakeWealthProcedure.build))
+      rebuild = TakeWealthProcedure.build),
+
+    /** Batch-1 Task 7, and the first registration that is not an action: it
+      * is the Wake phase's transition to Act. Nothing here marks that
+      * difference, because nothing here needs to -- an entry says how to
+      * build a tree, and ending Wake has one. What follows from it being a
+      * phase transition rather than an action is decided where the
+      * difference is visible: the Act action boundary runs after a procedure
+      * that ran IN Act (`OathRulesWalker.completionIn`), and this one runs in
+      * Wake.
+      *
+      * `fallbackKind` is `MajorActionKind.Wake`, which is the kind the
+      * deleted `Wake` object's `withFallback` wrapper used, so the Wake
+      * timing's ignored-rule diagnostics are recorded exactly as before.
+      */
+    ActionRef.EndWake -> Entry(
+      fallbackKind = MajorActionKind.Wake,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, _, _) => None,
+      build = EndWakeProcedure.build,
+      rebuild = EndWakeProcedure.build))
 
   /** Rejects start selections handed to an action that makes none.
     *
