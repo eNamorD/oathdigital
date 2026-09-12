@@ -336,38 +336,10 @@ private[frontend] object ActionDecisionRenderer {
        }
      }
    }
-   renderRecoverPanel(value, presentation, canControl, panel, ui)
-   value.forge.filter(_ => presentation.showGameplayControls).foreach { forge =>
-     panel.appendChild(text("h2", "", "Forge a relic"))
-     panel.appendChild(text("p", "forge-instruction",
-       s"Assign ${forge.favor} favor and ${forge.secrets} secrets, one resource per denizen."))
-     val confirm = button("Complete Forge", "forge-complete")
-     forge.targets.zipWithIndex.foreach { case (target, index) =>
-       val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-       label.textContent = target.label + " "
-       val select = dom.document.createElement("select").asInstanceOf[dom.html.Select]
-       select.setAttribute("aria-label", s"Resource for ${target.label}")
-       Vector("favor", "secret").foreach { resource =>
-         val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
-         option.value = resource; option.text = resource.capitalize
-         option.selected = currentForgeAssignment.exists(
-           _.assignments(index) == resource)
-         select.appendChild(option)
-       }
-       select.onchange = _ => {
-         currentForgeAssignment = currentForgeAssignment.map(
-           _.choose(index, select.value))
-         confirm.disabled = !canControl ||
-           !currentForgeAssignment.exists(_.canConfirm)
-       }
-       label.appendChild(select); panel.appendChild(label)
-     }
-     confirm.disabled = !canControl ||
-       !currentForgeAssignment.exists(_.canConfirm)
-     confirm.onclick = _ => currentForgeAssignment.flatMap(
-       _.command(currentPlayerId)).foreach(submitCommand)
-     panel.appendChild(confirm)
-   }
+   WalkerPanelSupport.renderRecoverPanel(value, presentation, canControl,
+     panel, ui)
+   WalkerPanelSupport.renderPartitionPanel(value, presentation, canControl,
+     panel, ui)
    value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
      panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
      challengeSiteCommands(challenge, currentPlayerId).foreach { command =>

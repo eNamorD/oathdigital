@@ -183,12 +183,12 @@ class HttpGameClientSuite extends FunSuite {
     // `StartWalker` and the assignment answer a `ResolveWalker`, so the same
     // two guarantees this test always made -- the denizen target rides the
     // wire, the forged relic never does -- are asserted on those.
-    val target = ForgeTarget("site:a", "denizen:1", "One")
+    val target = DecisionOptionState("denizen", "denizen:1", "One")
     assert(GameJson.encodeCommand(20,
       GameCommand.StartWalker("red", "forge")).contains("\"action\":\"forge\""))
     val completed = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
       "red", "forge.assignment", DecisionAnswerWire.PartitionWire(
-        Vector(DecisionPlacementWire("denizen", target.denizenId,
+        Vector(DecisionPlacementWire(target.kind, target.id,
           "pay-favor")))))
     assert(completed.contains("\"kind\":\"partition\""))
     assert(completed.contains("\"optionId\":\"denizen:1\""))

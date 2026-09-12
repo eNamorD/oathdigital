@@ -3,7 +3,6 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules,
   SearchRules}
-import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -15,16 +14,15 @@ private[application] final class PendingProcedureProjector(
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
     val walkerDecision = walkerDecisions.project(context)
-    val forge = forgeProjection(context, walkerDecision)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
     val recipient = oathkeeperRecipient(context)
     val restPower = restPowerProjection(context)
     PendingProjection(
-      phase(context, cardDecision, forge, challenge, campaign,
+      phase(context, cardDecision, challenge, campaign,
         relocation, recipient, walkerDecision),
-      cardDecision, forge, campaign, relocation, recipient, challenge,
+      cardDecision, campaign, relocation, recipient, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -90,36 +88,6 @@ private[application] final class PendingProcedureProjector(
           drawn.map(card => card.value -> groupedResolutions(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
     }
-
-  /** Forge's assignment prompt, projected off the WALKER's parked decision
-    * (batch-1 Task 3) rather than the deleted `PendingProcedure.Forge` this
-    * read before the cutover.
-    *
-    * `walkerDecision` is passed in rather than recomputed: it is already
-    * owner-private (`WalkerDecisionProjector` returns it only to the parked
-    * actor), so gating on it inherits that scoping instead of restating it,
-    * and it names the decision the walker is ACTUALLY parked on -- so this
-    * cannot offer an assignment prompt for a Forge parked somewhere else.
-    *
-    * Both halves of the prompt are read from the single definitions
-    * `ForgeProcedure`'s own `Decide.validate` accepts an answer against
-    * (ruling R14): [[ForgeProcedure.eligibleTargets]] for the three
-    * denizens, live off state, and [[ForgeProcedure.printedCost]] for how
-    * many favor and secrets to spread over them. A second derivation here
-    * is exactly the drift R14 exists to prevent.
-    */
-  private def forgeProjection(context: ScopedProjectionContext,
-      walkerDecision: Option[WalkerDecisionProjection]) = for {
-    decision <- walkerDecision
-    if decision.action == ActionRef.Forge.key &&
-      decision.decisionId == ForgeProcedure.assignmentDecisionId
-    actor <- context.current.walkerPending.map(_.actor)
-    site <- ForgeProcedure.actorSite(context.ready, actor)
-    cost <- ForgeProcedure.printedCost(catalog, site).toOption
-  } yield ForgeProjection(decision.decisionId, actor.value, cost.favor,
-    cost.secrets, ForgeProcedure.eligibleTargets(context.ready, actor).map(
-      target => ForgeAssignmentTargetProjection(target.siteId.value,
-        target.denizenId.value, presentation.denizenLabel(target.denizenId))))
 
   private def challengeProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {
@@ -329,7 +297,7 @@ private[application] final class PendingProcedureProjector(
 
   private def phase(context: ScopedProjectionContext,
       card: Option[PendingCardDecisionProjection],
-      forge: Option[ForgeProjection], challenge: Option[ChallengeProjection],
+      challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
       recipient: Option[OathkeeperRecipientProjection],

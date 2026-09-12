@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.protocol.projection.{BoardTargetRefProjection,
-  SiteForcesProjection}
+  DecisionSectionProjection, SiteForcesProjection}
 
 import java.nio.file.Files
 
@@ -781,12 +781,35 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val projector = new GameProjector(forgeCatalog)
     val owner = projector.project(gameId, parkedLoaded, actor)
     val other = parked.game.current.players.find(_.player != actor).get.player
-    val prompt = owner.forge.getOrElse(
+    // Task 4: the prompt IS the projected query. There is no Forge-shaped
+    // projection any more -- two declared sections carrying the printed
+    // minima, and one denizen option per live eligible target, described
+    // from the same `Decide` the walker is parked on.
+    val decision = owner.walkerDecision.getOrElse(
       fail("the parked actor must be offered the Forge assignment prompt"))
-    assertEquals(prompt.decisionId, ForgeProcedure.assignmentDecisionId)
-    assertEquals(prompt.targets.map(_.siteId).distinct, Vector(forgeSite.value))
-    assertEquals(prompt.targets.size, 3)
-    assertEquals(prompt.favor + prompt.secrets, 3)
+    assertEquals(decision.decisionId, ForgeProcedure.assignmentDecisionId)
+    val prompt = decision.query.getOrElse(
+      fail("a parked Forge decision must project its query"))
+    assertEquals(prompt.form, "partition")
+    val printed = forgeCatalog.sites.find(_.id == forgeSite).get
+      .forgeRequirements.get
+    assertEquals(prompt.sections, Vector(
+      DecisionSectionProjection(ForgeProcedure.favorSectionKey, "Pay Favor",
+        printed.favor),
+      DecisionSectionProjection(ForgeProcedure.secretSectionKey, "Pay Secret",
+        printed.secrets)))
+    assertEquals(prompt.options.size, 3)
+    assertEquals(prompt.options.map(_.kind).distinct, Vector("denizen"))
+    // The options are the live eligible targets at the Forge site, with
+    // their presentation card details -- never a set the projector derived
+    // by consulting `ForgeProcedure` a second time.
+    assertEquals(prompt.options.map(_.id).toSet,
+      ForgeProcedure.eligibleTargets(parked, actor)
+        .map(_.denizenId.value).toSet)
+    assert(prompt.options.forall(_.card.nonEmpty))
+    val favorMinimum = printed.favor
+    val secretMinimum = printed.secrets
+    assertEquals(favorMinimum + secretMinimum, 3)
     assertEquals(owner.phase, "forge-walker-decision")
     assertEquals(owner.legalControls, Vector("resolveWalkerDecision"))
     // Forge has no dice, and its parked decision says so. (This is a
@@ -795,15 +818,17 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // is `None` here for want of a difficulty either way. R18's projector
     // call site is proven in `WalkerDecisionProjectorSuite`.)
     assertEquals(owner.walkerDecision.flatMap(_.rollOutcome), None)
-    assertEquals(projector.project(gameId, parkedLoaded, other).forge, None)
-    assertEquals(projector.projectPublic(gameId, parkedLoaded).forge, None)
+    assertEquals(projector.project(gameId, parkedLoaded, other)
+      .walkerDecision, None)
+    assertEquals(projector.projectPublic(gameId, parkedLoaded)
+      .walkerDecision, None)
 
     // The answer is built from the projected prompt, exactly as the UI
     // builds it: the offered targets, in order, taking the offered counts.
-    val sections = Vector.fill(prompt.favor)(ForgeProcedure.favorSectionKey) ++
-      Vector.fill(prompt.secrets)(ForgeProcedure.secretSectionKey)
-    val placements = prompt.targets.zip(sections).map { case (target, section) =>
-      DecisionPlacement(DecisionOptionRef.Denizen(DenizenId(target.denizenId)),
+    val sections = Vector.fill(favorMinimum)(ForgeProcedure.favorSectionKey) ++
+      Vector.fill(secretMinimum)(ForgeProcedure.secretSectionKey)
+    val placements = prompt.options.zip(sections).map { case (option, section) =>
+      DecisionPlacement(DecisionOptionRef.Denizen(DenizenId(option.id)),
         section) }
 
     val beforeRejected = repository.load(gameId).toOption.flatten.get.records
@@ -854,8 +879,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // of drawing each favor from the target denizen's own suit bank.
     assertEquals(after.banks.favor, banksBefore)
     val actorAfter = after.game.current.players.find(_.player == actor).get
-    assertEquals(actorAfter.board.favor, favorBefore - prompt.favor)
-    assertEquals(actorAfter.board.faceUpSecrets, secretsBefore - prompt.secrets)
+    assertEquals(actorAfter.board.favor, favorBefore - favorMinimum)
+    assertEquals(actorAfter.board.faceUpSecrets,
+      secretsBefore - secretMinimum)
 
     // P2: reconstructing purely from the journal reproduces that state.
     val replayed = new GameApplicationService(forgeCatalog, repository)
@@ -917,7 +943,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(after.game.current.walkerPending.isEmpty)
     assert(after.game.current.walkerAction.isEmpty)
     assertEquals(new GameProjector(catalog).project(gameId,
-      LoadedGame(finished.state, finished.nextSequence), actor).forge, None)
+      LoadedGame(finished.state, finished.nextSequence), actor)
+      .walkerDecision, None)
 
     // And the determined split really was applied, out of the actor's own
     // play area.

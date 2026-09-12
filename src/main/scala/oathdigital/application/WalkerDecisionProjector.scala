@@ -8,10 +8,11 @@ import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
   WalkerPowers}
-import oathdigital.model.{ActionRef, DefenseDieFace, Orientation, PendingTree,
-  PlayerId}
+import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
-  WalkerDecisionProjection, WalkerRollOutcomeProjection}
+  DecisionOptionProjection, DecisionQueryProjection,
+  DecisionSectionProjection, WalkerDecisionProjection,
+  WalkerRollOutcomeProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerAction`, Task 6) into the small owner-private
@@ -76,30 +77,115 @@ private[application] final class WalkerDecisionProjector(
           WalkerDecisionProjection(action.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
             rollOutcome = rollOutcome(ready, pending.actor)))
-      case None => ProcedureWalker.parkedDecide(ready, tree, pending,
-          powers).map { decide =>
-        val candidates = if (decide.decisionId == RecoverProcedure.relicDecisionId)
-          relicCandidates(ready, pending.actor) else Vector.empty
-        WalkerDecisionProjection(action.key, decide.decisionId, "decide",
-          relicCandidates = candidates,
-          rollOutcome = rollOutcome(ready, pending.actor))
-      }
+      // Task 4: no `decisionId` comparison and no candidate discovery.
+      // Whatever the parked `Decide` declares -- after every power
+      // transform, since `parkedDecide` resolves the node through the same
+      // fold the walk applied -- is described verbatim. An action that
+      // changes what it offers changes this projection in the same edit,
+      // and an engine that grew a per-action branch here would be exactly
+      // the drift this replaced.
+      //
+      // `flatMap`, not `map`: an unpresentable option omits the whole
+      // projection (see [[queryProjection]]).
+      case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
+        .flatMap(decide => queryProjection(ready, decide.query).map(query =>
+          WalkerDecisionProjection(action.key, decide.decisionId, "decide",
+            query = Some(query),
+            rollOutcome = rollOutcome(ready, pending.actor))))
     }
 
-  /** The relic Decide's only legal answer is a facedown relic currently at
-    * the actor's site. Rather than re-deriving "the actor's site" and
-    * filtering it independently here, this calls
-    * [[RecoverProcedure.actorFacedownRelics]] -- the exact method
-    * `validateRelic` also calls at resolve time -- so the projected
-    * candidate set and the set the resolver accepts are the SAME live
-    * expression, not two expressions that happen to agree only because
-    * nothing (yet) can move the actor's pawn while a decision is parked.
+  /** Describes a declared query, or `None` when any single option's identity
+    * cannot be presented.
+    *
+    * The all-or-nothing rule is the spec's: a half-described option is a
+    * blank control the client would render and then submit, which is worse
+    * than no prompt at all. Suppressing the whole decision instead makes a
+    * tree that declares a target absent from authoritative state a visible
+    * failure rather than a silently broken button.
+    *
+    * The projector never filters an option it merely dislikes. Staleness is
+    * already handled structurally -- the tree carrying this query was
+    * rebuilt against `ready` on this very command, so an option that no
+    * longer exists is absent from the query and never reaches here. What
+    * remains is the genuine authoring bug, and that suppresses.
     */
-  private def relicCandidates(ready: ReadyGame, actor: PlayerId)
-      : Vector[CardDetailsProjection] =
-    RecoverProcedure.actorFacedownRelics(ready, actor).map(relic =>
-      presentation.cardDetails(relic.id, Some(Orientation.FaceDown),
-        hidden = false))
+  private def queryProjection(ready: ReadyGame, query: DecisionQuery)
+      : Option[DecisionQueryProjection] = {
+    // One index per projection, shared by every option: a Forge partition
+    // asks about three denizens and a Recover pick about every site relic.
+    val index = CardIndex.from(ready.game).toOption
+    def described(options: Vector[DecisionOption])
+        : Option[Vector[DecisionOptionProjection]] = {
+      val projected = options.flatMap(optionProjection(ready, index, _))
+      Option.when(projected.size == options.size)(projected)
+    }
+    query match {
+      case DecisionQuery.ChooseOne(options) =>
+        described(options).map(DecisionQueryProjection("choose-one", _))
+      case DecisionQuery.Partition(sections, options) =>
+        described(options).map(DecisionQueryProjection("partition", _,
+          sections.map(section => DecisionSectionProjection(section.key,
+            section.label, section.minRequired))))
+    }
+  }
+
+  /** One option, as its stable reference plus display detail.
+    *
+    * A button carries the query's own declarative label and nothing else --
+    * it has no game object whose name could be resolved, which is the only
+    * reason the model holds any prompt copy at all. Every other variant is
+    * presented from authoritative state: a card through
+    * [[GamePresentationProjector.cardDetails]], inheriting the disclosure
+    * rules every other card projection already follows, and a player or
+    * site through the same label accessors the rest of this layer uses.
+    * That is what keeps game-object naming out of gameplay: an option
+    * declares a reference, and the name is resolved here.
+    *
+    * `None` means "absent from authoritative state", which the caller turns
+    * into a suppressed decision. A `Deck` is a closed four-case enum and a
+    * button is its own identity, so neither can be absent.
+    */
+  private def optionProjection(ready: ReadyGame, index: Option[CardIndex],
+      option: DecisionOption): Option[DecisionOptionProjection] = {
+    val ref = option.ref
+    def row(label: String, card: Option[CardDetailsProjection] = None) =
+      Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card))
+    option match {
+      case DecisionOption.Button(_, label) => row(label)
+      case DecisionOption.Player(player) =>
+        if (ready.game.current.players.exists(_.player == player.id))
+          row(presentation.safeLabel(player.id.value)) else None
+      case DecisionOption.Site(site) =>
+        if (ready.game.current.map.sites.contains(site.id))
+          row(presentation.siteLabel(site.id)) else None
+      case DecisionOption.Denizen(denizen) => card(index, denizen.id)
+        .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Relic(relic) => card(index, relic.id)
+        .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Vision(vision) => card(index, vision.id)
+        .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Deck(deck) =>
+        row(presentation.safeLabel(deck.id.key))
+    }
+  }
+
+  /** A card option's presentation, or `None` when the card is nowhere in
+    * authoritative state. The orientation comes from the card's own located
+    * state rather than being assumed by the caller, so a facedown site
+    * relic and a faceup denizen each present as what they are.
+    */
+  private def card(index: Option[CardIndex], id: CardId)
+      : Option[CardDetailsProjection] =
+    index.flatMap(_.get(id)).map(located => presentation.cardDetails(id,
+      orientationOf(located.state), hidden = false))
+
+  private def orientationOf(state: Option[CardState]): Option[Orientation] =
+    state match {
+      case Some(DenizenState(_, orientation, _)) => Some(orientation)
+      case Some(VisionState(_, orientation)) => Some(orientation)
+      case Some(RelicState(_, orientation, _)) => Some(orientation)
+      case _ => None
+    }
 
   /** The accumulated roll feedback for `actor`'s parked Recover (I5): the
     * dice faces and derived score `ProcedureWalker` has written into
@@ -114,11 +200,14 @@ private[application] final class WalkerDecisionProjector(
     * Recover (`RecoverProcedure.build` requires both) -- this mirrors that
     * method's own `Option`-returning reads rather than asserting.
     *
-    * Reads `RecoverProcedure`/`RecoverRules` directly, same as
-    * `relicCandidates` above: this projector is already action-specific
-    * (Recover is the only registered action), not a generic walker-wide
-    * concept -- a second action's roll feedback would need its own pool/
-    * site/difficulty story here.
+    * This reads `RecoverProcedure`/`RecoverRules` directly, and since Task 4
+    * replaced the projector's candidate discovery with `query` it is now the
+    * ONLY action-specific expression left in this file. That is deliberate
+    * rather than leftover: roll feedback is Recover's own pool, site and
+    * difficulty story, and a second rolling action would need its own. It is
+    * also why it is worth keeping separate from the decision projection
+    * above, which must stay generic -- a `decisionId` or `ActionRef`
+    * comparison deciding what to OFFER belongs nowhere in this layer.
     */
   private def rollOutcome(ready: ReadyGame, actor: PlayerId)
       : Option[WalkerRollOutcomeProjection] = for {

@@ -213,12 +213,12 @@ There is deliberately **no** wire answer on a projected option. The client alrea
 
 The synthetic-power test is the whole point of the change and deserves its own suite: a fixture `ContributingPower` whose `Transform` adds one option to a parked decision, and another that removes one, asserting that the projected options and the answers the walker accepts move together in both directions. A mutation that transforms the tree for walking but not for projection must fail it.
 
-- [ ] **Step 1: failing tests.** (a) Recover's relic decision projects one option per live facedown relic with card details, and no `relicCandidates` field exists; (b) Recover's choice decision projects two button options with their declared labels; (c) Forge projects two sections with printed minima and three denizen options; (d) an option whose id is absent from authoritative state suppresses the entire decision projection; (e) the projection round-trips through `GameProjectionCodec`; (f) the new synthetic-power suite's add and remove cases. Expected FAIL: the DTO has no query.
-- [ ] **Step 2: implement** the DTOs, their codec, and the projector rewrite; delete `relicCandidates` and `forgeProjection` with their types.
-- [ ] **Step 3: implement** the frontend re-sourcing for Recover and Forge, with the `ServerUiSupport` extraction.
-- [ ] **Step 4:** re-run; expected PASS. `grep -rnE '\b(relicCandidates|ForgeProjection|ForgeAssignmentTargetProjection)\b' src shared frontend/src` returns nothing. (Scope `frontend/src`, never `frontend`, whose `target/` holds linked JS carrying every symbol you just deleted; and quote any `--include` glob, which zsh expands before grep sees it.)
-- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: commit** `feat(walker): project decisions from the transformed query`.
+- [x] **Step 1: failing tests.** (a) Recover's relic decision projects one option per live facedown relic with card details, and no `relicCandidates` field exists; (b) Recover's choice decision projects two button options with their declared labels; (c) Forge projects two sections with printed minima and three denizen options; (d) an option whose id is absent from authoritative state suppresses the entire decision projection; (e) the projection round-trips through `GameProjectionCodec`; (f) the new synthetic-power suite's add and remove cases. Expected FAIL: the DTO has no query.
+- [x] **Step 2: implement** the DTOs, their codec, and the projector rewrite; delete `relicCandidates` and `forgeProjection` with their types.
+- [x] **Step 3: implement** the frontend re-sourcing for Recover and Forge, with the `ServerUiSupport` extraction.
+- [x] **Step 4:** re-run; expected PASS. `grep -rnE '\b(relicCandidates|ForgeProjection|ForgeAssignmentTargetProjection)\b' src shared frontend/src` returns nothing. (Scope `frontend/src`, never `frontend`, whose `target/` holds linked JS carrying every symbol you just deleted; and quote any `--include` glob, which zsh expands before grep sees it.)
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): project decisions from the transformed query`.
 
 ---
 

@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{Operation, Roll, Sequence}
+import oathdigital.gameplay.operations.{Decide, Operation, Roll, Sequence}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{WalkerActionRegistry, WalkerPowers}
@@ -76,5 +76,53 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Forge),
       Left(OathViolation.InvalidEventOrder(
         "walker action forge declares no roll decision id")))
+  }
+
+  /** The spec's presentation-failure rule (Task 4): an option whose identity
+    * cannot be presented suppresses the ENTIRE decision projection rather
+    * than emitting a half-described option a client would render as a blank
+    * button and then submit.
+    *
+    * This needs a parked `Decide` naming a card that is nowhere in
+    * authoritative state, and no production tree can build one -- both
+    * Recover and Forge read their options live off `ready`, which is the
+    * property that makes them safe. So the tree is substituted the same way
+    * and for the same reason the roll test above substitutes one.
+    */
+  private def decideTree(options: Vector[DecisionOption],
+      actor: PlayerId): Operation =
+    Sequence(Decide("test.decide", actor, DecisionQuery.ChooseOne(options)))
+
+  private def projectorFor(tree: Operation) =
+    new WalkerDecisionProjector(catalog,
+      new GamePresentationProjector(catalog), WalkerPowers.empty,
+      (_, _, _, _) => Right(tree))
+
+  test("a declared option whose id is absent from authoritative state " +
+      "suppresses the whole decision projection") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val ready = context.ready
+    val present = ready.game.current.map.sites.values
+      .flatMap(_.relics.map(_.id)).headOption.getOrElse(
+        fail("the fixture board must hold at least one site relic"))
+    val absent = RelicId("relic:not-on-this-board")
+    assert(!CardIndex.from(ready.game).toOption.get.ids.contains(absent),
+      "the fixture must not actually hold the absent relic")
+
+    // Control: the same shape, the same park, with an option the board
+    // really holds -- so the suppression below is the absent id and not the
+    // substituted tree.
+    val live = projectorFor(decideTree(Vector(
+      DecisionOption.Relic(DecisionOptionRef.Relic(present))), actor))
+      .project(context).flatMap(_.query).getOrElse(
+        fail("a present relic option must project"))
+    assertEquals(live.options.map(_.id), Vector(present.value))
+
+    // One unpresentable option among two takes the whole projection with
+    // it: not a one-option query, and not a blank second option.
+    assertEquals(projectorFor(decideTree(Vector(
+      DecisionOption.Relic(DecisionOptionRef.Relic(present)),
+      DecisionOption.Relic(DecisionOptionRef.Relic(absent))), actor))
+      .project(context), None)
   }
 }

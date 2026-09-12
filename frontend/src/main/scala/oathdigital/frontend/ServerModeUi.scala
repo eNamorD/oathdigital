@@ -100,7 +100,7 @@ object ServerModeUi {
           forgeAssignmentState = ForgeAssignmentState.reconcile(
             forgeAssignmentState,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.forge)
+              displayed.nextSequence), displayed.walkerDecision)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))

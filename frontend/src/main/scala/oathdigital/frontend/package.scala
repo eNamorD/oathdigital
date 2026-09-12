@@ -75,10 +75,12 @@ package object frontend {
   }
   type PendingCardDecision = protocol.projection.PendingCardDecisionProjection
   val PendingCardDecision = protocol.projection.PendingCardDecisionProjection
-  type ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
-  val ForgeTarget = protocol.projection.ForgeAssignmentTargetProjection
-  type ForgeState = protocol.projection.ForgeProjection
-  val ForgeState = protocol.projection.ForgeProjection
+  type DecisionQueryState = protocol.projection.DecisionQueryProjection
+  val DecisionQueryState = protocol.projection.DecisionQueryProjection
+  type DecisionOptionState = protocol.projection.DecisionOptionProjection
+  val DecisionOptionState = protocol.projection.DecisionOptionProjection
+  type DecisionSectionState = protocol.projection.DecisionSectionProjection
+  val DecisionSectionState = protocol.projection.DecisionSectionProjection
   type CampaignState = protocol.projection.CampaignProjection
   object CampaignState {
     def apply(decisionId: String, targetSiteIds: Vector[String], force: Int,

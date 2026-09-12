@@ -129,7 +129,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
       legalTrades = legal.trades,
       boardTargetActions = legal.boardTargets,
       pendingCardDecision = pending.cardDecision,
-      forge = pending.forge,
       campaign = pending.campaign,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
