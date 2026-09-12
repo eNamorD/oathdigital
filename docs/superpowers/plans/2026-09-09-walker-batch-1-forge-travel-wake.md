@@ -72,10 +72,11 @@ own framing, which was written expecting Travel to carry a decision.
 
 ---
 
-## Where this plan stands (2026-09-11)
+## Where this plan stands (2026-09-12)
 
-Tasks 1 through 4 are done and their boxes are ticked below, each annotated with
-the commit that closed it. **The batch resumes at Task 5, the Travel cutover.**
+Tasks 1 through 5 are done and their boxes are ticked below, each annotated with
+the commit that closed it. **The batch resumes at Task 6, Take Wealth's
+once-per-turn limit.**
 
 | Task | State | Commits |
 |---|---|---|
@@ -84,13 +85,21 @@ the commit that closed it. **The batch resumes at Task 5, the Travel cutover.**
 | 2 — Forge declares its tree | done | `d46f511`, migrated by `9e078cc` |
 | 3 — Forge cutover + legacy delete | done | `4f209b3`, `b0640e8`, `b49ff11` |
 | 4 — Travel terrain as contributions | done | `d8d6853`, hardened to `2e4a0a6` |
-| 5 — Travel cutover + vocabulary delete | **next** | — |
-| 6 — Take Wealth once-per-turn | not started | — |
+| 5 — Travel cutover + vocabulary delete | done | `c70ec1a` |
+| 6 — Take Wealth once-per-turn | **next** | — |
 | 7 — Wake cutover + legacy delete | not started | — |
 | 8 — batch close-out | Step 0 superseded; rest open | — |
 
 Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
 800-line cap, which the next added line would have broken.
+
+**A correction to Task 3's text below.** Step 2b records moving the eligibility
+window onto `WalkerActionRegistry.Entry`, and it did. A later commit on this
+same branch, `372397c` (`refactor(recover): centralize supply validation`),
+removed the relaxation concept entirely — there is no `eligibilityWindow` field
+and no `eligibilityRelaxed` anywhere in `src/main` today. The box stays ticked
+because the work happened; the field it describes no longer exists, and Tasks 6
+and 7 should not go looking for it.
 
 **Why the branch has thirty commits for four tasks.** After Task 4 the batch
 paused and `docs/superpowers/plans/2026-09-11-declarative-walker-decisions.md`
@@ -101,15 +110,16 @@ deliberately, not as a detour. Task 2's prose and `ForgeProcedure` were both
 rewritten by it, which is why that task's text describes a declarative shape its
 original implementation did not have.
 
-Gate at the time of writing: 671 root tests, 148 frontend, architecture check
-over 196 production files, all green.
+Gate after Task 5: 670 root tests, 148 frontend, architecture check over 196
+production files, all green.
 
-Two caps worth knowing before Task 5 starts, measured rather than assumed:
-`gameplay/walker/ProcedureWalker.scala` is at 794 of 800, and
-`gameplay/actions/Campaign.scala` is at exactly 800. Campaign is out of this
-batch's scope, but Task 5 threads a destination through the walker surface, so
-it should budget an extraction rather than trimming comments to fit — the
-mistake Task 1 made and Task 1b had to undo.
+Caps before Task 6 starts, measured rather than assumed. Task 5 took the
+extraction this note previously warned it would need, so
+`gameplay/walker/ProcedureWalker.scala` now sits at 666 of 800 with its replay
+half in `WalkerReplay.scala` (176). `gameplay/actions/Campaign.scala` is still
+at exactly 800 and still out of this batch's scope. The files Tasks 6 and 7
+actually touch have room: `OathRulesWalker.scala` 362, `OathRules.scala` 396,
+`serialization/WalkerEventCodec.scala` 752.
 
 ---
 
@@ -263,6 +273,8 @@ The route facts each `applicable` needs (which site is source, which is destinat
 
 ### Task 5: Travel cuts over, and the typed-cost vocabulary is deleted
 
+> **Done** at `c70ec1a`. The typed-cost vocabulary is retired and Step 4's grep is clean. **Review changed one thing in the design below:** "a typed Travel start argument" resolved to a vector of `DecisionOptionRef`, not a per-action payload type — a sealed family enumerating actions would have put per-action knowledge in the model and the journal codec, which the global constraints forbid. The prose below still says "typed start argument"; read it as the registry entry's builders receiving the player's start *selection*. See **What Task 5 settled** after the steps.
+
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/travel/TravelProcedure.scala`
 - Modify: `ActionRef.scala`, `WalkerActionRegistry.scala`, `OathRulesWalker.scala`, the projectors, the frontend renderer
@@ -321,12 +333,71 @@ Task 1b's finding, which shapes this: the resume path passes no extra data to `b
 
 Deleting `CostContribution` and `SuppressionRegistry` is the point of this task, not a bonus. If either still has a live reference after the port, the reconciliation is incomplete: say so rather than leaving both vocabularies alive.
 
-- [ ] **Step 1: failing tests** — (a) candidate simulation and `StartWalker` produce the same final cost for plain, Mountain, Island, Coast, and Coast-suppresses-add routes; (b) Narrow Pass removes the projected candidate and rejects a forged command; (c) zero Supply is not a semantic build gate but operation simulation omits the unaffordable destination and direct execution appends no event or pawn move; (d) role and Foundation changes do not gate Travel; (e) initial projection uses automatic powers and modifier preview uses the exact selected power vector; (f) end-to-end Travel remains one atomic `StartWalker`, with replay parity and no parked state.
-- [ ] **Step 2: implement** `TravelProcedure`, its registry start argument, and one shared candidate evaluator that dry-runs the declared tree for projection/preview without persisting events.
-- [ ] **Step 3: delete** the legacy path and the typed-cost vocabulary in the same commit; port or delete each legacy Travel test.
-- [ ] **Step 4:** `grep -rn "CostContribution\|SuppressionRegistry\|TravelCostWindow\|TravelCommand\|Traveled" src frontend` returns nothing.
-- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: commit** `feat(walker): move Travel onto the walker and retire the typed-cost vocabulary`.
+- [x] **Step 1: failing tests** — (a) candidate simulation and `StartWalker` produce the same final cost for plain, Mountain, Island, Coast, and Coast-suppresses-add routes; (b) Narrow Pass removes the projected candidate and rejects a forged command; (c) zero Supply is not a semantic build gate but operation simulation omits the unaffordable destination and direct execution appends no event or pawn move; (d) role and Foundation changes do not gate Travel; (e) initial projection uses automatic powers and modifier preview uses the exact selected power vector; (f) end-to-end Travel remains one atomic `StartWalker`, with replay parity and no parked state.
+- [x] **Step 2: implement** `TravelProcedure`, its registry start argument, and one shared candidate evaluator that dry-runs the declared tree for projection/preview without persisting events.
+- [x] **Step 3: delete** the legacy path and the typed-cost vocabulary in the same commit; port or delete each legacy Travel test.
+- [x] **Step 4:** `grep -rn "CostContribution\|SuppressionRegistry\|TravelCostWindow\|TravelCommand\|Traveled" src frontend` returns nothing.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): move Travel onto the walker and retire the typed-cost vocabulary`.
+
+#### What Task 5 settled (`c70ec1a`)
+
+Task 8 collects these; they are recorded here while the detail is fresh.
+
+**The cost reconciliation, which was the reason Travel is in this batch.**
+`Transform` over a pay node states terrain honestly, and the whole typed-cost
+vocabulary is gone rather than left coexisting: the per-power terrain kind, the
+typed cost fact each kind owned, the window fold that summed them, the global
+suppression registry that expressed the coast route's ignore, and the codec that
+round-tripped the pass's typed violation through a reason string. Step 4's grep
+is clean. Nothing needed a new `Operation` case or a window that did not exist.
+
+**A start argument is `Vector[DecisionOptionRef]`, not a per-action type.** This
+is the second `Entry` shape change of the batch, after `rollDecisionId` became
+`Option`. The first attempt declared a sealed `WalkerStartArgs` with a
+`TravelStart` case, and review rejected it: a sealed family enumerating actions
+puts per-action knowledge in the model and the journal codec, which the global
+constraints forbid, and every later argument-bearing action would have widened
+both. Reusing the reference vocabulary a decision option already names means the
+model, the codec and the walker all handle a vector of game-object references
+and none of them names an action; the journal reuses `DecisionAnswerCodec`'s
+existing spelling rather than adding a second. **The limit, for whoever hits it
+first:** a selection that is not a game-object reference — a warband count, say,
+which Campaign will want — has no spelling yet. Widen that vocabulary; do not
+add a case per action, which is the shape `PendingProcedure` had.
+
+An action that declares no start selection must *reject* one rather than ignore
+it, and that rejection needs its own test. Mutating the guard to accept anything
+left the whole suite green until `WalkerActionRegistrySuite` gained a case for
+it: every other test passes an empty vector, so nothing noticed.
+
+**Travel cannot park, and the destination is persisted anyway.** The plan asked
+to establish the first before building for the second. Established: Travel's
+declared tree has no `Decide` and no `Roll`, so it finishes inside the command
+that starts it. Persisting the selection on `WalkerParked` was nonetheless the
+ruling, so `build` and `rebuild` are the same function for Travel and the first
+action that both parks and selects — Campaign, probably — is a registry entry
+rather than an engine change. Nothing writes a non-empty selection to a
+production journal yet; `GameEventWireSuite` round-trips a synthetic one.
+
+**`PowerCtx` reached everything Task 4's powers needed.** The route came from
+`ctx.operation` plus `ctx.state`, and the end-to-end port confirms it: no field
+was added and no gap was recorded.
+
+**Projection and preview stopped calculating cost a second way.** One evaluator
+dry-runs the declared tree per destination through `WalkerSimulation`. The
+projection costs with automatic powers, the preview re-costs with the exact
+selected vector, and `MajorActionPreviewAccepted` gained a `targets` field to
+carry it, because the projection a route builds beside the preview is costed
+before the player has chosen anything. **Unmeasured:** this replaces arithmetic
+with one tree build and walk per in-play destination on every projection read.
+
+**Two costs worth carrying forward.** `ProcedureWalker` crossed the 800-line
+bound and its replay half moved to `WalkerReplay` — the second extraction this
+batch has needed, after Task 1b. And Task 4's parity table compared each route
+against the legacy fold this task deletes, so those numbers are now literals:
+weaker evidence than Task 4 had, and unavoidable once the oracle is gone. A
+later batch that retires a legacy oracle should expect the same trade.
 
 ---
 
@@ -376,6 +447,18 @@ The entry declares `fallbackKind = MajorActionKind.Wake` and `modifierWindow = N
 2. `walkerTransition`'s Finished branch hardcodes `OathContinue.ActActionSelection` and runs the Act boundary pipeline through `completeAction` for every completed walker action, whatever the phase. The legacy Wake path never called `completeAction` at all — a completed Take Wealth returns to `AwaitingWakeAction`, not to Act action selection. Porting Wake as-is would therefore end the player's Wake phase after one take. Fix this deliberately, and make the continuation registry data if that is what it takes; do not let it become a behaviour change nobody chose.
 
 `WakeCommand.EndWake` is not an action and does not move to the walker; it stays a phase transition. Keep it and say so, rather than porting it for symmetry.
+
+**Found by Task 5, and this task is where it bites.** `OathRulesWalker
+.walkerResumeContext` hard-codes `Phase.Act` (`OathRulesWalker.scala:254`): every
+resume rejects with `WrongPhase` outside Act. `startWalker` does not check phase
+— each action's `build` does — so a Wake-phase action starts fine and only a
+*resume* is blocked. Take Wealth's declared tree is two `BuildOps` with no
+`Decide` and no `Roll`, exactly like Travel's, so it finishes inside the command
+that starts it and never reaches that line. Establish that before changing it:
+if the tree really cannot park, the gate is untouched and the finding is
+recorded for whichever action parks outside Act first. If it can, the phase
+belongs on the registry entry beside `modifierWindow`, by the same argument
+Task 1 made — and that is a change to make deliberately, not to discover.
 
 - [ ] **Step 1: failing test** — end-to-end Take Wealth through `GameApplicationService` on `StartWalker`, asserting the token moved, the `PowerUseRef` recorded, and a second take at the same site rejected. Plus a take during the Act phase rejected. Plus replay parity.
 - [ ] **Step 2: implement** the procedure and the registry entry.
