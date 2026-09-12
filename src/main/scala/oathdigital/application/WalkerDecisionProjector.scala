@@ -88,7 +88,8 @@ private[application] final class WalkerDecisionProjector(
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-        .flatMap(decide => queryProjection(ready, decide.query).map(query =>
+        .flatMap(decide => queryProjection(ready, Some(pending.actor),
+          decide.query).map(query =>
           WalkerDecisionProjection(action.key, decide.decisionId, "decide",
             query = Some(query),
             rollOutcome = rollOutcome(ready, pending.actor))))
@@ -109,14 +110,14 @@ private[application] final class WalkerDecisionProjector(
     * longer exists is absent from the query and never reaches here. What
     * remains is the genuine authoring bug, and that suppresses.
     */
-  private def queryProjection(ready: ReadyGame, query: DecisionQuery)
-      : Option[DecisionQueryProjection] = {
+  private def queryProjection(ready: ReadyGame, viewer: Option[PlayerId],
+      query: DecisionQuery): Option[DecisionQueryProjection] = {
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.
     val index = CardIndex.from(ready.game).toOption
     def described(options: Vector[DecisionOption])
         : Option[Vector[DecisionOptionProjection]] = {
-      val projected = options.flatMap(optionProjection(ready, index, _))
+      val projected = options.flatMap(optionProjection(ready, viewer, index, _))
       Option.when(projected.size == options.size)(projected)
     }
     query match {
@@ -145,7 +146,8 @@ private[application] final class WalkerDecisionProjector(
     * into a suppressed decision. A `Deck` is a closed four-case enum and a
     * button is its own identity, so neither can be absent.
     */
-  private def optionProjection(ready: ReadyGame, index: Option[CardIndex],
+  private def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
+      index: Option[CardIndex],
       option: DecisionOption): Option[DecisionOptionProjection] = {
     val ref = option.ref
     def row(label: String, card: Option[CardDetailsProjection] = None) =
@@ -158,26 +160,50 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.Site(site) =>
         if (ready.game.current.map.sites.contains(site.id))
           row(presentation.siteLabel(site.id)) else None
-      case DecisionOption.Denizen(denizen) => card(index, denizen.id)
-        .flatMap(details => row(details.name, Some(details)))
-      case DecisionOption.Relic(relic) => card(index, relic.id)
-        .flatMap(details => row(details.name, Some(details)))
-      case DecisionOption.Vision(vision) => card(index, vision.id)
-        .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Denizen(denizen) =>
+        card(ready, viewer, index, denizen.id)
+          .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Relic(relic) =>
+        card(ready, viewer, index, relic.id)
+          .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Vision(vision) =>
+        card(ready, viewer, index, vision.id)
+          .flatMap(details => row(details.name, Some(details)))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
     }
   }
 
   /** A card option's presentation, or `None` when the card is nowhere in
-    * authoritative state. The orientation comes from the card's own located
-    * state rather than being assumed by the caller, so a facedown site
-    * relic and a faceup denizen each present as what they are.
+    * authoritative state OR is there but this viewer may not be told which
+    * card it is. The orientation comes from the card's own located state
+    * rather than being assumed by the caller, so a facedown site relic and a
+    * faceup denizen each present as what they are.
+    *
+    * Both rejections are the same failure to the caller -- the decision is
+    * suppressed -- and that is the point. An option cannot be redacted the
+    * way a board slot can: its reference is the card's identity, the client
+    * answers by sending that reference back, and `DecisionOptionProjection`
+    * carries the real id even when its card details are withheld. So
+    * projecting a `hiddenCard` beside a live reference would hide the name
+    * and disclose the identity in the same breath. Offering nothing is the
+    * only honest answer, and it makes the spec's "builders are responsible
+    * for constructing targets that exist in their authoritative state"
+    * enforceable rather than advisory.
+    *
+    * The entitlement question itself is not answered here. It is
+    * [[GamePresentationProjector.identifiesCard]], the same rule
+    * `playerBoards` redacts by, so the walker path inherits the layer's
+    * disclosure handling instead of asserting `hidden = false` over it.
+    * `viewer` is the decision's own owner -- `project` has already gated on
+    * that -- which is why a permissive answer here is still owner-private.
     */
-  private def card(index: Option[CardIndex], id: CardId)
-      : Option[CardDetailsProjection] =
-    index.flatMap(_.get(id)).map(located => presentation.cardDetails(id,
-      orientationOf(located.state), hidden = false))
+  private def card(ready: ReadyGame, viewer: Option[PlayerId],
+      index: Option[CardIndex], id: CardId): Option[CardDetailsProjection] =
+    index.flatMap(_.get(id)).filter(located => presentation.identifiesCard(
+      ready, viewer, id, orientationOf(located.state),
+      located.location.container)).map(located => presentation.cardDetails(id,
+        orientationOf(located.state), hidden = false))
 
   private def orientationOf(state: Option[CardState]): Option[Orientation] =
     state match {
