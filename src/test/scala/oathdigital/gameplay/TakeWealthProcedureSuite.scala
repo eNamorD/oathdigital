@@ -166,12 +166,40 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     }
   }
 
+  test("the start selection spelling is one definition in both directions") {
+    // The literals here are the wire spelling a client must send. `selection`
+    // is what the projection and any future preview build from, `resourceOf`
+    // is what the command reads, and both now read `WakeResource.key` -- so
+    // this is where that key is pinned to the wire, once.
+    assertEquals(TakeWealthProcedure.selection(WakeResource.Favor), favorArg)
+    assertEquals(TakeWealthProcedure.selection(WakeResource.Secret), secretArg)
+    WakeResource.all.foreach { resource =>
+      assertEquals(WakeResource.fromKey(resource.key), Some(resource))
+    }
+  }
+
+  test("the candidates are exactly the resources the command accepts") {
+    // `candidates` is the gameplay-owned answer the projector consumes, so
+    // it is proved against the command directly rather than only through the
+    // projection below.
+    val taken = after(accepted(wake(favor = 2)))
+    Vector(wake(), wake(favor = 0), wake(secrets = 0),
+      wake(sharedEnemy = true), taken).foreach { ready =>
+      assertEquals(TakeWealthProcedure.candidates(catalog, ready,
+        actor(ready), powers),
+        WakeResource.all.filter(resource => take(ready,
+          TakeWealthProcedure.selection(resource)).isRight))
+    }
+  }
+
   test("what the projection offers is what the command accepts") {
     // Ported from `WakeSuite`, and extended with the case the legacy pair
-    // could not drift on but this one could: the projector now answers by
-    // dry-running the declared tree, so a site already taken from this turn
-    // has to disappear from the offer because its restriction rejects the
-    // simulation, not because a second copy of the rule says so.
+    // could not drift on but this one could: the offer is now the procedure's
+    // own `candidates`, so a site already taken from this turn disappears
+    // because its restriction rejects the simulation, not because a second
+    // copy of the rule says so. What this adds over the candidates test above
+    // is the projector's half -- that it consumes them and names them as the
+    // controls a client binds.
     val taken = after(accepted(wake(favor = 2)))
     Vector(wake(), wake(favor = 0), wake(secrets = 0),
       wake(sharedEnemy = true), taken).foreach { ready =>

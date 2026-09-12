@@ -278,8 +278,17 @@ object TradeResource {
   case object Secret extends TradeResource
 }
 
-sealed trait WakeResource extends Product with Serializable
+/** `key` is the resource's spelling in a Take Wealth start selection, which
+  * is the only place the choice crosses a wire. It lives on the case so the
+  * procedure that reads a selection and the one that builds one cannot spell
+  * it differently -- see `TakeWealthProcedure.selection`/`resourceOf`.
+  */
+sealed trait WakeResource extends Product with Serializable { def key: String }
 object WakeResource {
-  case object Favor extends WakeResource
-  case object Secret extends WakeResource
+  case object Favor extends WakeResource { val key = "favor" }
+  case object Secret extends WakeResource { val key = "secret" }
+
+  val all: Vector[WakeResource] = Vector(Favor, Secret)
+
+  def fromKey(key: String): Option[WakeResource] = all.find(_.key == key)
 }

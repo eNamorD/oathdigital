@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
@@ -8,7 +9,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.phases.Rest
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -34,22 +35,27 @@ private[application] final class LegalActionProjector(
     TravelProcedure.candidates(catalog, context.ready, context.active.player,
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
-  /** Whether the viewer could take this resource right now, answered by
-    * dry-running the declared Take Wealth tree rather than by a second copy
-    * of its rules (batch-1 Task 7, the same seam Travel's candidates use).
-    *
-    * The once-per-turn limit is a `Restriction` rather than a build gate, so
-    * a check that only built the tree would keep offering a site already
-    * taken from this turn. `WalkerSimulation` gathers and runs restrictions
-    * exactly as the command does, which is what keeps the offer and the
-    * command from drifting apart.
+  /** The resources the viewer could take right now -- asked of the procedure
+    * that owns Take Wealth, exactly as Travel's destinations are (batch-1
+    * Task 7). This projector assembles no gameplay procedure of its own: it
+    * neither builds a tree, nor spells a start selection, nor runs the
+    * simulation, because each of those would be a second copy of something
+    * the procedure already states.
     */
-  private def takeable(context: ScopedProjectionContext,
-      resource: String): Boolean =
-    TakeWealthProcedure.build(catalog, context.ready, context.active.player,
-      Vector(DecisionOptionRef.Button(resource)))
-      .flatMap(WalkerSimulation.run(_, context.ready, context.active.player,
-        WalkerPowers.selected(walkerPowerCatalog, Vector.empty))).isRight
+  private def takeableResources(context: ScopedProjectionContext)
+      : Vector[WakeResource] =
+    TakeWealthProcedure.candidates(catalog, context.ready,
+      context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  /** The control a resource is offered as. A name the client binds a button
+    * to is presentation, which is why this mapping is here and the question
+    * of whether the resource is takeable at all is not.
+    */
+  private def takeControl(resource: WakeResource): String = resource match {
+    case WakeResource.Favor => "takeFavor"
+    case WakeResource.Secret => "takeSecret"
+  }
 
   def project(context: ScopedProjectionContext): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
@@ -154,10 +160,8 @@ private[application] final class LegalActionProjector(
         ).flatten
         case Phase.Rest => Vector("finishRest")
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
-        case Phase.Wake => active.pawnSite.toVector.flatMap { _ => Vector(
-          Option.when(takeable(context, "favor"))("takeFavor"),
-          Option.when(takeable(context, "secret"))("takeSecret")).flatten
-        } :+ "endWake"
+        case Phase.Wake =>
+          takeableResources(context).map(takeControl) :+ "endWake"
       }
     }
   }

@@ -506,8 +506,6 @@ frontend is untouched by this task, so its gate is Task 7's to run.
 - Modify: `ActionRef.scala`, `WalkerActionRegistry.scala`, the projectors, the frontend renderer
 - Delete: `phases/Wake.scala`'s `Wake` object, `phases/TakeWealthRules.scala`, `phases/WakeOperationPolicy.scala`, the `WealthTaken` event with its codec branch and wire type, and `WakeCommand.TakeWealth`
 
-> **Note added while implementing.** The delete list above and the "keep `EndWake`" paragraph below read as contradictory: the object holds nothing but End Wake once Take Wealth leaves. Both were meant, and both hold — see "Ending Wake is a phase transition AND a walker procedure" in the settled notes.
-
 ```
 Sequence(                                          // window = WakeTakeWealth
   BuildOps(Take(Favor(1)|Secrets(1), site -> play area)),
@@ -523,7 +521,9 @@ The entry declares `fallbackKind = MajorActionKind.Wake` and `modifierWindow = N
 1. `walkerResumeContext` requires `Phase.Act` and rejects any other phase with `WrongPhase`. The plan's claim that the walker never checks phase is true of `startWalker` and false of resume. It only matters if Take Wealth's tree ever parks — a flat two-leaf tree does not, so establish that before changing anything. If it never parks, say so in the report and leave the check alone.
 2. `walkerTransition`'s Finished branch hardcodes `OathContinue.ActActionSelection` and runs the Act boundary pipeline through `completeAction` for every completed walker action, whatever the phase. The legacy Wake path never called `completeAction` at all — a completed Take Wealth returns to `AwaitingWakeAction`, not to Act action selection. Porting Wake as-is would therefore end the player's Wake phase after one take. Fix this deliberately, and make the continuation registry data if that is what it takes; do not let it become a behaviour change nobody chose.
 
-`WakeCommand.EndWake` is not an action and does not move to the walker; it stays a phase transition. Keep it and say so, rather than porting it for symmetry.
+~~`WakeCommand.EndWake` is not an action and does not move to the walker; it stays a phase transition. Keep it and say so, rather than porting it for symmetry.~~
+
+**Struck during implementation.** This clause contradicted the delete list above, which asks for the `Wake` object — and once Take Wealth leaves, that object holds nothing but End Wake. Its classification was right and the conclusion drawn from it was wrong: ending Wake IS a phase transition, and it is declared as a walker tree anyway, because a phase change is a state write and the walker is where a procedure's state writes are declared, journalled and replayed. What follows from it not being an action is decided in the boundary read, not by keeping it out of the registry. See "Ending Wake is a phase transition AND a walker procedure" in the settled notes.
 
 **Found by Task 5, and this task is where it bites.** `OathRulesWalker
 .walkerResumeContext` hard-codes `Phase.Act` (`OathRulesWalker.scala:254`): every
@@ -649,13 +649,24 @@ to be opaque here; that choice is still right for its other reason — a
 restriction that depends on a tree's shape is one tree edit away from matching
 nothing — and the test comment now says so instead of citing `BuildOps`.
 
-**The Wake projection now dry-runs the declared tree.** `TakeWealthRules`
-was the projector's oracle as well as the command's, so deleting it without
-replacing the seam would have left the offer and the command as two rules
-again. `WalkerSimulation` runs the restrictions, which is what keeps a site
-already taken from this turn out of the offer; a projector that only built the
-tree would keep offering it, and the ported agreement test now covers exactly
-that case.
+**The Wake projection consumes `TakeWealthProcedure.candidates`.**
+`TakeWealthRules` was the projector's oracle as well as the command's, so
+deleting it without replacing the seam would have left the offer and the
+command as two rules again. The first pass replaced it in the wrong layer:
+`LegalActionProjector` built the tree, spelled the start selection and ran
+`WalkerSimulation` itself, which is gameplay assembly living in the
+application layer and a second copy of the button spelling `resourceOf`
+reads. The seam is now the one Travel already had — the procedure owns
+`candidates`, dry-running its own tree per resource, and the projector only
+names the results as controls. `LegalActionProjector` no longer imports
+`WalkerSimulation` at all.
+
+The simulation is what keeps a site already taken from this turn out of the
+offer, since the once-per-turn limit is a `Restriction` rather than a build
+gate; candidates that only built the tree fail both the candidates test and
+the ported agreement test. The resource's wire spelling is now a `key` on
+`WakeResource`, read by `selection` and `resourceOf` alike, so the string a
+client sends and the string the command accepts are one definition.
 
 **Deleted:** the whole of `phases/Wake.scala` — `object Wake` and the
 `WakeCommand` vocabulary with it — plus `TakeWealthRules`,
@@ -669,7 +680,7 @@ now journals no event of its own: both of its commands are walker steps.
 operations, so there is no forged semantic root to reject — the tree is built
 from the actor's own pawn site.
 
-**Proven by mutation, eight ways.** From the Take Wealth half: treating a Wake
+**Proven by mutation, ten ways.** From the Take Wealth half: treating a Wake
 completion as an Act one fails three tests including the journal's; dropping
 the use record from the tree fails five; costing the projection from `build`
 alone instead of the simulation fails the agreement test's already-taken case;
@@ -682,8 +693,11 @@ start gate fails two; and ignoring the journalled phase key to decode `Act`
 unconditionally fails the round-trip written for exactly that mutation — End
 Wake is `EnterPhase`'s only caller, so without a test that journals a
 different phase, a codec that dropped the value would pass the whole tree.
+From the projection seam: candidates that build without simulating fail two,
+and a drifted `WakeResource` key fails four across gameplay, the projection
+and the application journal.
 
-Gate: 689 root tests, 148 frontend, architecture check over 196 production
+Gate: 691 root tests, 148 frontend, architecture check over 196 production
 files. `WalkerEventCodec.scala` is at 786 of 800 after its three new branches
 — the file to watch before the next batch adds an operation. The phase's wire
 spelling is a `key` on `Phase` itself rather than a match in that codec, which
