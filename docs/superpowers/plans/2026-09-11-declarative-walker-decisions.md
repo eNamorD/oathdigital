@@ -32,6 +32,10 @@ On the apparent contradiction between the spec carrying labels on the query and 
 
 **R3 — the generic validator lives in gameplay, not in `ProcedureWalker`** *(tentatively approved)*. It returns typed `OathViolation`s, which the model may not name, so it cannot sit in the model beside the data it validates. And `ProcedureWalker.scala` is at 790 of the 800-line cap, so it cannot sit there either. It goes in a `DecisionQueries` object beside `DecisionQuery`, and the walker's `answerDecide` shrinks to an owner comparison plus one call. The thing to check at review is the boundary this draws: `DecisionQueries` never reads `ReadyGame`, so it cannot express state-dependent legality even by accident. Staleness is handled structurally instead, because the tree carrying the query is rebuilt against authoritative state on every command and an option that no longer exists is simply absent from the query. Adding a state parameter here would reintroduce the per-decision legality closure this change exists to delete.
 
+**R4 — panel copy joins button and section copy on the query** *(added at Task 5b, widening R1)*. R1 admitted a button's label and a section's label into the model and named that cost plainly. Task 5b adds two more optional strings of the same kind: the heading a panel shows above a question and the label on the control that submits a partition. The reason is the one R1 already gave — the action authoring the decision is the only place that knows what to call it — and Task 5 supplied the evidence, because the alternative was a frontend helper branching on `action == "forge"` to title a panel whose interaction had just stopped being Forge-specific.
+
+The boundary R1 drew does not move. Game-object names still never enter a query: a relic's name and a denizen's title are resolved by `GamePresentationProjector` from an option's reference at projection time. What travels on a query is copy the action wrote, and nothing a projector could have looked up. And copy still never affects legality — `DecisionQueries.accepts` reads options and sections, never labels, which is what lets a prompt be rewritten without invalidating a single recorded answer.
+
 ---
 
 ## Global Constraints
@@ -247,6 +251,57 @@ With Forge's UI generic, the last consumers of the old Forge answer vocabulary g
 
 ---
 
+### Task 5b: a decision authors its own panel copy
+
+**Files:**
+- Modify: `model/Decisions.scala`, `gameplay/actions/forge/ForgeProcedure.scala`, `gameplay/actions/recover/RecoverProcedure.scala`, `application/WalkerDecisionProjector.scala`, `shared/.../protocol/projection/ActionProjectionDtos.scala`, `shared/.../protocol/projection/ActionProjectionCodec.scala`, `frontend/.../WalkerPanelSupport.scala`
+- Test: `DecisionQuerySuite`, `WalkerDecisionProjectionSuite`, `WalkerDecisionQueryPowerSuite`, `ProjectionProtocolSuite`, `ServerModeUiSuite`
+
+Task 5 made the partition interaction generic and left exactly one thing behind: `WalkerPanelSupport.partitionHeading` and `partitionConfirmLabel` still branch on `action == "forge"` to produce "Forge a relic" and "Complete Forge". They were written that way because a query declares copy for its buttons and its sections but not for the frame around them, so the panel had nowhere else to read a title from. That is the last action-shaped string in a panel whose interaction no longer has any, and the fix is the one R1 already settled for buttons and sections: the action authors the copy, the query carries it, the projector passes it through (R4).
+
+`DecisionQuery` gains optional copy, defaulted to absent so no existing authoring site changes:
+
+```scala
+sealed trait DecisionQuery extends Product with Serializable {
+  def heading: Option[String]
+}
+object DecisionQuery {
+  final case class ChooseOne(options: Vector[DecisionOption],
+      heading: Option[String] = None) extends DecisionQuery
+  final case class Partition(sections: Vector[DecisionSection],
+      options: Vector[DecisionOption], heading: Option[String] = None,
+      confirmLabel: Option[String] = None) extends DecisionQuery
+}
+```
+
+`heading` is on the trait because every shape has a frame to title. `confirmLabel` is on `Partition` alone, and the asymmetry is the point rather than an oversight: a choose-one answer submits the moment an option is clicked, so there is no confirm step to name, and putting the field on both shapes would add a field that means nothing for one of them.
+
+**This is two optional strings, not the start of a form language.** No layout, no conditionals, no per-option copy beyond the button label `DecisionOption.Button` already carries. The non-goal above still stands, and a third piece of panel copy is a reason to ask what the panel is really missing, not to add a third field by reflex.
+
+Two facts that keep this cheaper than it looks. **Queries are not persisted** — only answers are, per the non-goal — so `WalkerEventCodec` does not change and no journal fixture moves. And **copy never affects legality**: `DecisionQueries.accepts` must not read either field, which Step 1 makes a test rather than a comment, because the whole reason an answer records references and not options is that a relabelled prompt leaves every recorded answer valid.
+
+`DecisionQueryProjection` gains `heading` and `confirmLabel` as trailing optional fields, so every existing construction of it keeps compiling, and `WalkerDecisionProjector` passes both through from the transformed query exactly as it passes the options. The frontend's two helpers then take the projected query rather than the action name, falling back to generic copy for a query that declares none:
+
+```scala
+def partitionHeading(query: DecisionQueryState): String =
+  query.heading.getOrElse("Resolve decision")
+def partitionConfirmLabel(query: DecisionQueryState): String =
+  query.confirmLabel.getOrElse("Confirm")
+```
+
+Forge declares "Forge a relic" and "Complete Forge" beside the sections it already declares. Recover declares "Recover" on its continue/stop decision and "Take a relic" on its relic decision, and `renderRecoverPanel` reads them the same way.
+
+**Where this stops, and why.** Recover's roll park is a `Roll` node with a synthetic decision id and no `Decide` behind it, so it has no query and its "Recover" heading stays a frontend literal. Say so in the code rather than inventing a query for a node that asks nothing. And `recoverWalkerStep` keeps matching on `decisionId`: that comparison chooses which interaction to render, not what to call it, and this task removes copy from the frontend, not dispatch.
+
+- [ ] **Step 1: failing tests.** (a) `DecisionQuerySuite`: the same answer is accepted against a query whose heading and confirm label differ, proving `accepts` reads neither; (b) `WalkerDecisionProjectionSuite`: Forge projects its declared heading and confirm label, Recover's two decide parks project theirs, and a query declaring neither projects both as absent; (c) `WalkerDecisionQueryPowerSuite`: a power that rewrites a parked decision's heading changes what is projected, in the same edit that moves its options; (d) `ProjectionProtocolSuite`: the projection round-trips with both fields present and with both absent; (e) `ServerModeUiSuite`: the panel shows the declared copy, and a partition query declaring none falls back to the generic strings. Expected FAIL: the query has no copy.
+- [ ] **Step 2: implement** the model fields, the validator's indifference to them, the projection DTO and its codec, and the projector pass-through.
+- [ ] **Step 3: implement** the two declarations (Forge, Recover) and the frontend re-sourcing, deleting the `action == "forge"` branches.
+- [ ] **Step 4:** re-run; expected PASS. `grep -n '"forge"' frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala` returns nothing: no panel names an action to decide what to call itself.
+- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [ ] **Step 6: commit** `feat(walker): let a decision author its own panel copy`.
+
+---
+
 ### Task 6: close-out
 
 **Files:** whatever the sweep finds; `docs/superpowers/plans/2026-09-09-walker-batch-1-forge-travel-wake.md`
@@ -264,7 +319,7 @@ With Forge's UI generic, the last consumers of the old Forge answer vocabulary g
 
 - A universal form or workflow description language. Two query shapes, added to when a real decision needs a third.
 - Persisting decision options or queries in game state or events. Only answers persist, and an answer carries refs, never labels.
-- Moving game-object presentation into gameplay or model code. Prompt copy on a query is the one admitted exception, per R1.
+- Moving game-object presentation into gameplay or model code. Prompt copy on a query is the one admitted exception, per R1 and R4 — and it stays two optional strings for the panel plus the button and section labels, never a form or layout language.
 - Off-turn walker decision ownership. `Decide.owner` is concrete and equals the pending actor; supporting anything else needs its own redesign of pending-state ownership, authorization, continuation and viewer scoping.
 - Generalizing Recover's roll feedback, which is not decision-option discovery.
 - Batch 1's neighbouring amendments: the exhausted-relic-deck Forge outcome and Travel's powered-candidate simulation.
