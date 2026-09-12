@@ -53,7 +53,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     command match {
       case WakeCommand.EndWake(actor) => withFallback(state, actor,
         MajorActionKind.Wake)(Wake.handle(state, command))
-      case _ => Wake.handle(state, command)
     }
 
   def handle(state: OathState, command: EconomyCommand)
@@ -217,7 +216,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
             InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
         case _ => Left(GameNotStarted)
       }
-      case event: WealthTaken => Wake.evolve(state, event)
       case event: WakeEnded => Wake.evolve(state, event)
       case event: Mustered => Economy.evolve(catalog, state, event)
       case event: Traded => Economy.evolve(catalog, state, event)

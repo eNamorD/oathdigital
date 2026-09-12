@@ -315,8 +315,12 @@ class HttpGameClientSuite extends FunSuite {
       9L,
       GameCommand.EndWake("red-exile")
     )
-    assert(wealth.contains("\"type\":\"takeWealth\""))
-    assert(wealth.contains("\"resource\":\"favor\""))
+    // Take Wealth is a walker start with the resource as its selection
+    // (batch-1 Task 7); the wire says only that it is a button called favor.
+    assert(wealth.contains("\"type\":\"startWalker\""))
+    assert(wealth.contains("\"action\":\"take-wealth\""))
+    assert(wealth.contains("\"optionKind\":\"button\""))
+    assert(wealth.contains("\"optionId\":\"favor\""))
     assert(end.contains("\"type\":\"endWake\""))
 
     val json = projectionJson(

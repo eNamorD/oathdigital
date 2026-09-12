@@ -64,9 +64,6 @@ final case class AuthorizedPlayer private (
   def chooseAdviser(adviserId: DenizenId): GameCommand =
     GameCommand.ChooseAdviser(access.playerId, adviserId)
 
-  def takeWealth(resource: oathdigital.gameplay.WakeResource): GameCommand =
-    GameCommand.TakeWealth(access.playerId, resource)
-
   def endWake: GameCommand =
     GameCommand.EndWake(access.playerId)
 

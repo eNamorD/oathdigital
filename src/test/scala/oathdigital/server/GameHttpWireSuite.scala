@@ -32,8 +32,8 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("one mapper binds the transport-selected actor") {
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
-      GameIntent.TakeWealth("favor")),
-      Right(GameCommand.TakeWealth(PlayerId("dev-selected"), WakeResource.Favor)))
+      GameIntent.PlacePawn("site:a")),
+      Right(GameCommand.PlacePawn(PlayerId("dev-selected"), SiteId("site:a"))))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
     val rest = GameIntent.ResolveRestPower("rest-1", Vector(
@@ -49,7 +49,8 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("domain conversion rejects unknown protocol identifiers without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.TakeWealth("injected-resource")).left.toOption.get
+      GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "d1"),
+        "injected-resource")).left.toOption.get
     assertEquals(failure.path, "$.intent.resource")
   }
 

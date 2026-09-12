@@ -7,7 +7,6 @@ sealed trait GameIntent extends Product with Serializable
 
 object GameIntent {
   final case class PlacePawn(siteId: String) extends GameIntent
-  final case class TakeWealth(resource: String) extends GameIntent
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent

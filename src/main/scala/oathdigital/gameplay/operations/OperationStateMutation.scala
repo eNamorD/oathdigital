@@ -300,8 +300,18 @@ private[operations] object OperationStateMutation {
         result.flatMap(adjustSupply(_, player, amount))
       case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(adjustDicePool(_, pool, delta))
+      case (result, RecordPowerUse(power)) =>
+        result.map(recordPowerUse(_, power))
       case (result, _) => result
     }
+
+  /** A set add, so recording a use the turn already holds changes nothing.
+    * The turn's used-power set is cleared wholesale when the turn advances,
+    * which is why nothing here has to expire anything.
+    */
+  private def recordPowerUse(ready: ReadyGame, power: PowerUseRef): ReadyGame =
+    updateCurrent(ready)(current => current.copy(turn = current.turn.copy(
+      usedPowers = current.turn.usedPowers + power)))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =

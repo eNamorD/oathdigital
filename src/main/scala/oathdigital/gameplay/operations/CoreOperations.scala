@@ -458,6 +458,22 @@ final case class ModifyDicePool(pool: PoolKey, delta: Int,
     override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
+/** Records one use-limited power instance as used for the current turn, by
+  * adding `power` to `TurnState.usedPowers` (batch-1 Task 7).
+  *
+  * The write side of a use limit has to be an operation rather than a state
+  * callback beside one, because replay applies recorded operations and
+  * nothing else: a limit written any other way would be absent from a
+  * reloaded game and the same site could be used again. The read side is a
+  * power's own restriction, so nothing here knows which power this is.
+  *
+  * Adding a `PowerUseRef` the turn already holds is a no-op rather than a
+  * rejection, matching the set semantics of the field it writes. Whether a
+  * second use is legal at all is a question for whoever declared the limit,
+  * asked before the walk; this operation only records the answer.
+  */
+final case class RecordPowerUse(power: PowerUseRef) extends PrimitiveOperation
+
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
   * state, faces ride the next command.
   */

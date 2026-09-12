@@ -6,7 +6,6 @@ private[protocol] object CommandIntentCodec {
 
   def encode(intent: GameIntent): ujson.Obj = intent match {
     case PlacePawn(site) => tagged("placePawn", "siteId" -> site)
-    case TakeWealth(resource) => tagged("takeWealth", "resource" -> resource)
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")

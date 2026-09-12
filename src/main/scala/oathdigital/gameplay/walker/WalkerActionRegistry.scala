@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
@@ -175,7 +176,25 @@ object WalkerActionRegistry {
       modifierWindow = Some(PowerWindow.TravelModifierSelection),
       continuationFor = (_, _, _) => None,
       build = TravelProcedure.build,
-      rebuild = TravelProcedure.build))
+      rebuild = TravelProcedure.build),
+
+    /** Batch-1 Task 7, and the first entry for an action outside the Act
+      * phase. Nothing here says so: the phase is a gate inside
+      * `TakeWealthProcedure.build` and a fact about the state the completed
+      * action leaves behind, neither of which this registry carries.
+      *
+      * `modifierWindow` is `None` -- Take Wealth offers no player-selected
+      * powers, which is the case Task 1 made the field optional for. Its tree
+      * has no `Roll` and no `Decide`, so `rollDecisionId` is `None` and
+      * `continuationFor` is never consulted.
+      */
+    ActionRef.TakeWealth -> Entry(
+      fallbackKind = MajorActionKind.Wake,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, _, _) => None,
+      build = TakeWealthProcedure.build,
+      rebuild = TakeWealthProcedure.build))
 
   /** Rejects start selections handed to an action that makes none.
     *

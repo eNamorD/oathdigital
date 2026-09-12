@@ -8,7 +8,6 @@ private[protocol] object CommandIntentDecoders {
   def decode(kind: String, value: ujson.Obj, path: String)
       : Either[ProtocolDecodeFailure, GameIntent] = kind match {
     case "placePawn" => one(value, path, "siteId")(PlacePawn)
-    case "takeWealth" => one(value, path, "resource")(TakeWealth)
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)

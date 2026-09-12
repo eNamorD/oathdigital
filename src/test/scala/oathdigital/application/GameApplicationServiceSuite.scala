@@ -700,7 +700,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(setupReady) = accepted.state: @unchecked
     val actor = setupReady.game.current.turn.activePlayer
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.TakeWealth(actor, WakeResource.Favor)).toOption.get
+      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("favor"))))).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
@@ -1227,19 +1228,24 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val siteId = ready.game.current.players.find(_.player == active)
       .flatMap(_.pawnSite).get
     val site = ready.game.current.map.sites(siteId)
-    val resource =
-      if (site.tokens.favor > 0) WakeResource.Favor else WakeResource.Secret
+    val resource = if (site.tokens.favor > 0) "favor" else "secret"
 
-    val wealth = service.handle(
-      "game-wake",
-      setup.nextSequence,
-      GameCommand.TakeWealth(active, resource)
-    ).toOption.get
-    assertEquals(wealth.nextSequence, 9L)
+    val wealth = service.handle("game-wake", setup.nextSequence,
+      GameCommand.StartWalker(ActionRef.TakeWealth, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Button(resource))))).toOption.get
+    // Take Wealth is one atomic walker command (batch-1 Task 7): the single
+    // legacy event became the walker's three -- the resource move, the use
+    // record, and the completion -- so the next free position moves by three.
+    assertEquals(wealth.nextSequence, 11L)
     assertEquals(
       service.handle("game-wake", 8L, GameCommand.EndWake(active)),
-      Left(GameApplicationError.StaleClientPosition(8L, 9L))
+      Left(GameApplicationError.StaleClientPosition(8L, 11L))
     )
+    val Ready(afterTake) = wealth.state: @unchecked
+    // The phase did not end with the action: a completed Wake action returns
+    // its player to Wake, and the limit it recorded survives the reload below.
+    assertEquals(afterTake.game.current.turn.phase, Phase.Wake)
+    assertEquals(wealth.continue, OathContinue.AwaitingWakeAction(active))
     val ended = service.handle(
       "game-wake",
       wealth.nextSequence,
@@ -1251,14 +1257,18 @@ class GameApplicationServiceSuite extends munit.FunSuite {
 
     assertEquals(reloaded.state, ended.state)
     assertEquals(after.game.current.turn.phase, Phase.Act)
+    assert(after.game.current.turn.usedPowers.contains(
+      oathdigital.gameplay.powers.wake.TakeWealthLimit.useRef(siteId)),
+      "the replayed journal must restore the use limit it recorded")
     val records = repository.load("game-wake").toOption.flatten.get.records
     assertEquals(records.take(8).map(record =>
       ujson.read(record)("formatVersion").num.toInt).distinct, Vector(1))
     assertEquals(records.drop(8).map(record =>
-      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1))
+      ujson.read(record)("formatVersion").num.toInt), Vector(1, 1, 1, 1))
     assertEquals(records.drop(8).map(record =>
       ujson.read(record)("eventType").str),
-      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+      Vector("walker.step-recorded", "walker.step-recorded",
+        "walker.completed", "gameplay.wake-ended"))
   }
 
   test("Travel is one atomic walker command and reloads pawn Supply and Act") {

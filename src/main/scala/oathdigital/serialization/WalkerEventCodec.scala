@@ -7,8 +7,8 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
-  PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
-  Sequence, StackPosition, Swap, Take}
+  PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll, Sacrifice,
+  SecretSide, Sequence, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
@@ -169,6 +169,13 @@ private[serialization] trait WalkerEventCodec {
       case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
         "delta" -> delta)
+      // A use limit is journalled as the ref it records, not as the power
+      // that asked for it: replay adds the same ref to the same turn without
+      // gathering anything.
+      case RecordPowerUse(PowerUseRef(timing, PowerSourceRef.Site(site), id)) =>
+        ujson.Obj("kind" -> "record-power-use",
+          "timing" -> encodePowerTiming(timing), "siteId" -> site.value,
+          "powerId" -> id.value)
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -298,6 +305,20 @@ private[serialization] trait WalkerEventCodec {
           "the non-sealed Operation type, never a recorded delta"))
     }
 
+  private def encodePowerTiming(timing: PowerTiming): String = timing match {
+    case PowerTiming.Wake => "wake"
+    case PowerTiming.Act => "act"
+    case PowerTiming.Rest => "rest"
+  }
+
+  private def decodePowerTiming(value: String,
+      path: String): Either[WireError, PowerTiming] = value match {
+    case "wake" => Right(PowerTiming.Wake)
+    case "act" => Right(PowerTiming.Act)
+    case "rest" => Right(PowerTiming.Rest)
+    case other => Left(InvalidValue(path, s"unknown power timing '$other'"))
+  }
+
   private def decodeOperation(value: ujson.Value,
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
@@ -306,6 +327,11 @@ private[serialization] trait WalkerEventCodec {
       case "modify-dice-pool" =>
         decodeSignedInt(value("delta"), s"$path.delta")
           .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
+      case "record-power-use" =>
+        decodePowerTiming(value("timing").str, s"$path.timing").map(timing =>
+          RecordPowerUse(PowerUseRef(timing,
+            PowerSourceRef.Site(SiteId(value("siteId").str)),
+            PowerId(value("powerId").str))))
       case "move" => for {
         piece <- decodePiece(value("piece"), s"$path.piece")
         from <- decodePositionedLocation(value("from"), s"$path.from")

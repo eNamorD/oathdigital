@@ -43,11 +43,6 @@ object OathEvent {
       adviserId: DenizenId
   ) extends OathEvent
   case object FirstGameCompleted extends OathEvent
-  final case class WealthTaken(
-      playerId: PlayerId,
-      siteId: SiteId,
-      resource: WakeResource
-  ) extends OathEvent
   final case class WakeEnded(playerId: PlayerId) extends OathEvent
   final case class Mustered(
       playerId: PlayerId,

@@ -284,7 +284,7 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] final case class TakeWealthAction(
       label: String,
-      command: GameCommand.TakeWealth
+      command: GameCommand
   )
 
   private[frontend] final case class ViewerPresentation(
@@ -567,21 +567,26 @@ private[frontend] object ServerUiSupport {
       amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
         decision.decisionId, amount))
 
+  private def takeWealth(resource: String): GameCommand =
+    GameCommand.StartWalker("take-wealth", Vector.empty,
+      Vector(WalkerStartArgWire("button", resource)))
+
   private[frontend] def takeWealthActions(
       value: GameProjection,
       playerId: String
   ): Vector[TakeWealthAction] =
     if (value.phase != "wake" ||
         !viewerPresentation(value, playerId).showGameplayControls) Vector.empty
+    // Take Wealth moved onto the generic walker (batch-1 Task 7), so the
+    // resource the player picks rides `StartWalker`'s start selection as the
+    // button it is -- a choice with no game object behind it -- instead of a
+    // `TakeWealth` intent of its own. The legal-control keys are unchanged:
+    // the server still decides which of the two it offers.
     else Vector(
       "takeFavor" -> TakeWealthAction(
-        "Take Wealth: 1 favor",
-        GameCommand.TakeWealth("favor")
-      ),
+        "Take Wealth: 1 favor", takeWealth("favor")),
       "takeSecret" -> TakeWealthAction(
-        "Take Wealth: 1 secret",
-        GameCommand.TakeWealth("secret")
-      )
+        "Take Wealth: 1 secret", takeWealth("secret"))
     ).collect {
       case (legalControl, action)
           if value.legalControls.contains(legalControl) => action

@@ -371,8 +371,6 @@ final class GameApplicationService(
           state,
           FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
         )
-      case GameCommand.TakeWealth(playerId, resource) =>
-        rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
       case GameCommand.EndWake(playerId) =>
         rules.handle(state, WakeCommand.EndWake(playerId))
       case GameCommand.Muster(playerId, target) =>

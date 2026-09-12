@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource, WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource}
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 import oathdigital.model._
 
@@ -27,8 +27,6 @@ object GameCommand {
       extends GameCommand
   /** Internal setup adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
-      extends GameCommand
-  final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
       extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
   final case class Muster(playerId: PlayerId, target: EconomyTargetRef)

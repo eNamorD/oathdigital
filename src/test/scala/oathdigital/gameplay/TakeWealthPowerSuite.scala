@@ -2,7 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.operations.{Location, Operation, Piece, Sequence,
   Take}
-import oathdigital.gameplay.phases.Wake
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
@@ -16,10 +15,13 @@ import oathdigital.model._
   * which is what keeps that tracking outside the walker: no engine code learns
   * a "power was used" concept and no field joins `PowerCtx`.
   *
-  * The site comes from the actor's pawn site, exactly as the legacy
-  * `TakeWealthRules` derives it, and NOT from the tree: Task 7's declared tree
-  * wraps the take in `BuildOps`, so no concrete `Take` is visible at the
-  * command entry where restrictions run.
+  * The site comes from the actor's pawn site, the way the retired
+  * `TakeWealthRules` derived it, and deliberately NOT from the tree the
+  * restriction is handed. Task 7's tree does turn out to carry a concrete
+  * `Take` naming the site, so reading it would work today; it is not read
+  * because a restriction that depends on a tree's shape is one tree edit away
+  * from matching nothing, and a restriction that matches nothing is
+  * indistinguishable from a correct one in every green assertion.
   */
 class TakeWealthPowerSuite extends munit.FunSuite {
   private val catalog = FirstGameSetupFixture.catalog
@@ -114,12 +116,13 @@ class TakeWealthPowerSuite extends munit.FunSuite {
       takeNode(site), PowerWindow.TravelCost), None)
   }
 
-  test("the use ref matches the one the legacy path records") {
-    // The read side here and the write side Task 7 declares must name the
-    // same `PowerUseRef` or the limit never fires. While the legacy Wake
-    // object survives it is the oracle for that spelling; when Task 7 deletes
-    // it, this assertion becomes the literal ref and keeps pinning it.
-    assertEquals(TakeWealthLimit.useRef(site), Wake.takeWealthPower(site))
+  test("the use ref is the one the procedure records") {
+    // The read side here and the write side `TakeWealthProcedure` declares
+    // must name the same `PowerUseRef` or the limit never fires. Task 6
+    // pinned this against the legacy `Wake.takeWealthPower`; Task 7 deleted
+    // that object, so the literal is what is left to pin it -- and the
+    // procedure builds its own record through `useRef`, never a second
+    // literal, which is what keeps the two sides from drifting.
     assertEquals(TakeWealthLimit.useRef(site), PowerUseRef(PowerTiming.Wake,
       PowerSourceRef.Site(site), PowerId("site.take-wealth")))
   }

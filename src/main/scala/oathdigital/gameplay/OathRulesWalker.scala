@@ -306,8 +306,44 @@ private[gameplay] trait OathRulesWalker {
 
     case WalkerOutcome.Finished(treeless, steps) =>
       val actor = treeless.game.current.turn.activePlayer
-      GameplayTransition(state, steps :+ WalkerCompleted(actor, action),
-        OathContinue.ActActionSelection(actor))(evolve).flatMap(completeAction)
+      completionIn(treeless.game.current.turn.phase, actor).flatMap {
+        completed => GameplayTransition(state,
+          steps :+ WalkerCompleted(actor, action), completed.continue)(evolve)
+          .flatMap(transition =>
+            if (completed.runsActionBoundary) completeAction(transition)
+            else Right(transition))
+      }
+  }
+
+  /** What a completed walker action hands back, and whether the Act action
+    * boundary runs after it (batch-1 Task 7).
+    *
+    * Read off the phase the action completed in, and deliberately not
+    * declared by the action or carried on its registry entry: the walker and
+    * its registry state what an action DOES, and which phase a player is in
+    * is neither the walker's business nor an action's. Every walker action
+    * before Take Wealth ran in Act, so this was an `ActActionSelection`
+    * literal with an unconditional `completeAction` after it; a Wake action
+    * ported under that literal would have ended the player's Wake phase after
+    * one take and run the Act boundary's bandit refill and state-based
+    * evaluation in the middle of Wake.
+    *
+    * A phase with no walker continuation is a typed rejection rather than a
+    * default, because a default here is exactly the kind of behaviour nobody
+    * chooses: the first action registered in Rest should fail loudly and be
+    * given its continuation, not silently return its player to Act.
+    */
+  private final case class WalkerCompletion(continue: OathContinue,
+      runsActionBoundary: Boolean)
+
+  private def completionIn(phase: Phase, actor: PlayerId)
+      : Either[OathViolation, WalkerCompletion] = phase match {
+    case Phase.Act => Right(WalkerCompletion(
+      OathContinue.ActActionSelection(actor), runsActionBoundary = true))
+    case Phase.Wake => Right(WalkerCompletion(
+      OathContinue.AwaitingWakeAction(actor), runsActionBoundary = false))
+    case other => Left(InvalidEventOrder("a walker action completed in the " +
+      s"${other.productPrefix} phase, which has no walker continuation"))
   }
 
   /** Folds `evolve` over `events` in order, threading state — the same

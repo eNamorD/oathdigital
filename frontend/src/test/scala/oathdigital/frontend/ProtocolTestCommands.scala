@@ -8,7 +8,11 @@ import oathdigital.protocol.{GameIntent => Intent, _}
   */
 private[frontend] object GameCommand {
   def PlacePawn(actor: String, site: String) = Intent.PlacePawn(site)
-  def TakeWealth(actor: String, resource: String) = Intent.TakeWealth(resource)
+  // Take Wealth starts on the generic walker (batch-1 Task 7): the resource
+  // rides the start selection as a button, not an intent of its own.
+  def TakeWealth(actor: String, resource: String) =
+    Intent.StartWalker("take-wealth", Vector.empty,
+      Vector(WalkerStartArgWire("button", resource)))
   def EndWake(actor: String) = Intent.EndWake
   def BeginRest(actor: String) = Intent.BeginRest
   def FinishRest(actor: String) = Intent.FinishRest

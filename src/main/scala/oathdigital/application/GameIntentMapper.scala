@@ -1,7 +1,7 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
-  WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef,
+  TradeResource}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
@@ -16,7 +16,6 @@ object GameIntentMapper {
     val actor = AuthorizedPlayer.forPlayer(actorId)
     intent match {
       case Intent.PlacePawn(site) => Right(actor.placePawn(SiteId(site)))
-      case Intent.TakeWealth(resource) => wake(resource).map(actor.takeWealth)
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
@@ -102,7 +101,6 @@ object GameIntentMapper {
   }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
-  private def wake(value: String): Result[WakeResource] = value match { case "favor" => Right(WakeResource.Favor); case "secret" => Right(WakeResource.Secret); case v => invalid("$.intent.resource", v, "wake resource") }
   private def trade(value: String): Result[TradeResource] = value match { case "favor" => Right(TradeResource.Favor); case "secret" => Right(TradeResource.Secret); case v => invalid("$.intent.resource", v, "trade resource") }
   private def banner(value: String): Result[Banner] = Banner.fromKey(value).toRight(GameIntentMappingFailure("$.intent.banner", s"unknown banner '$value'"))
   private def economy(value: EconomyTarget): Result[EconomyTargetRef] = value.kind match { case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(value.id))); case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(value.id))); case v => invalid("$.intent.target.kind", v, "economy target") }

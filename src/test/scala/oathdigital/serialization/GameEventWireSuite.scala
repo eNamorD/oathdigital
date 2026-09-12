@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted,
-  WealthTaken}
+  OathkeeperChanged}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
@@ -872,8 +872,10 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {
     val setupEvents = execute(rules)._2
+    // Any two v3 gameplay events serve; these are what is left in the Wake
+    // phase now that taking wealth is journalled as walker steps (Task 7).
     val gameplay = Vector(
-      WealthTaken(PlayerId("p2"), sites.head, WakeResource.Favor),
+      OathkeeperChanged(Some(PlayerId("p2"))),
       WakeEnded(PlayerId("p2"))
     )
     val events = setupEvents ++ gameplay
@@ -886,7 +888,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.take-wealth", "gameplay.wake-ended"))
+      Vector("gameplay.oathkeeper-changed", "gameplay.wake-ended"))
     assertEquals(decoded.map(_.event), events)
 
     val wrongVersion = GameEventWire.encodeEvent(

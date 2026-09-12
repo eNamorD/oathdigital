@@ -107,13 +107,6 @@ object RuleQueryContext {
       window: CampaignTimingWindow
   ) extends RuleQueryContext
 
-  final case class TakeWealth(
-      ready: ReadyGame,
-      player: PlayerState,
-      siteId: SiteId,
-      resource: WakeResource
-  ) extends RuleQueryContext
-
   final case class Negotiation(ready: ReadyGame, participant: PlayerState,
       site: SiteId, participants: Vector[PlayerId]) extends RuleQueryContext
 }
