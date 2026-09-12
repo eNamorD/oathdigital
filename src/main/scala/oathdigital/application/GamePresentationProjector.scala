@@ -243,6 +243,9 @@ private[application] final class GamePresentationProjector(
     *  - A player's facedown cards are named to their owner, or to a viewer
     *    whose recorded `knowledge` covers them -- the same two conditions
     *    [[playerBoards]] applied inline before this method.
+    *  - A player's temporary hand is named to that player and to nobody
+    *    else. It is drawn-but-unresolved cards, not a board slot, and it is
+    *    the one player area with no orientation to reason about.
     *  - Everything else -- decks, discards, the reliquary, set-aside relics,
     *    the dispossessed pile, suited reserves, atlas sites -- is never
     *    identified. A card in a deck has no orientation at all, so it must be
@@ -250,16 +253,27 @@ private[application] final class GamePresentationProjector(
     */
   def identifiesCard(ready: ReadyGame, viewer: Option[PlayerId], id: CardId,
       orientation: Option[Orientation], container: CardContainer): Boolean = {
-    val facedown = orientation.contains(Orientation.FaceDown)
+    // Known-faceup, never merely "not facedown". A card whose container
+    // holds no state at all -- a deck, a discard, a temporary hand -- has NO
+    // orientation, and reading that absence as public is how such a card
+    // would slip through a clause meant for a board slot.
+    val faceup = orientation.contains(Orientation.FaceUp)
     container match {
       case CardContainer.Site(_, SiteCardArea.Denizens) => true
       case CardContainer.Site(site, SiteCardArea.Relics) =>
-        !facedown || viewer.exists(player =>
+        faceup || viewer.exists(player =>
           ready.knowledge.siteRelics.getOrElse(player, Map.empty)
             .getOrElse(site, Vector.empty).contains(id) ||
             pawnSiteOf(ready, player).contains(site))
+      // A temporary hand is the cards a player has drawn and not yet
+      // resolved. It is private to them outright -- `PendingProcedureProjector`
+      // projects a Search hand only to the drawing actor -- and its cards
+      // carry no orientation to reason about, so ownership is the whole
+      // rule and there is no faceup case to fall through to.
+      case CardContainer.Player(owner, PlayerCardArea.Hand) =>
+        viewer.contains(owner)
       case CardContainer.Player(owner, area) =>
-        !facedown || viewer.exists(player => player == owner ||
+        faceup || viewer.exists(player => player == owner ||
           knownToViewer(ready, player, id, area))
       case _ => false
     }
@@ -268,6 +282,10 @@ private[application] final class GamePresentationProjector(
   private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
     ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
 
+  /** Recorded knowledge for the areas that have any: relics by
+    * `heldRelics`, world cards by `advisers`. `Hand` never reaches here --
+    * [[identifiesCard]] settles it on ownership alone.
+    */
   private def knownToViewer(ready: ReadyGame, player: PlayerId, id: CardId,
       area: PlayerCardArea): Boolean = area match {
     case PlayerCardArea.Relics =>

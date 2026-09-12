@@ -180,6 +180,56 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     * relics Recover offers sit at the acting player's own site, and the
     * denizens Forge offers are faceup.
     */
+  /** A temporary hand is the one player area whose cards carry no state,
+    * so `orientationOf` reports no orientation for them. A disclosure rule
+    * phrased as "not facedown" therefore reads that absence as public and
+    * hands every drawn card to any viewer -- the same trap a deck card
+    * falls into, in an area that otherwise looks like a board slot.
+    * `identifiesCard` settles a hand on ownership alone, and these are its
+    * two controls.
+    *
+    * The card is MOVED out of the world deck rather than copied into a
+    * hand: `CardIndex.from` rejects a duplicate outright, which would leave
+    * the projector with no index and suppress the decision for the wrong
+    * reason, passing the non-owner case while proving nothing.
+    */
+  private def withHand(context: ScopedProjectionContext, holder: PlayerId)
+      : (ScopedProjectionContext, WorldCardId) = {
+    val current = context.ready.game.current
+    val drawn = current.commonCards.worldDeck.headOption.getOrElse(
+      fail("the fixture must leave a card on the world deck"))
+    val moved = current.copy(
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck.drop(1)),
+      temporaryHands = current.temporaryHands.updated(holder, Vector(drawn)))
+    val ready = context.ready.copy(game = context.ready.game.copy(current = moved))
+    assert(CardIndex.from(ready.game).isRight,
+      "moving the card must leave the index consistent, not duplicated")
+    (context.copy(ready = ready), drawn)
+  }
+
+  test("a temporary hand is identifiable only to the player holding it") {
+    val (base, actor) = parked(ActionRef.Recover, Some(facedownRelicSite))
+    val other = base.ready.game.current.players.map(_.player)
+      .find(_ != actor).get
+
+    // The decision's owner drew it: the option projects with its name.
+    val (own, ownCard) = withHand(base, actor)
+    val projected = projects(own, actor, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(
+        DenizenId(ownCard.value))))).getOrElse(
+          fail("a card in the decision owner's own hand must project"))
+    assertEquals(projected.options.map(_.id), Vector(ownCard.value))
+    assert(projected.options.forall(_.card.exists(!_.hidden)))
+
+    // Another player drew it: same card, same container, same absent
+    // orientation -- and the whole decision is suppressed.
+    val (others, othersCard) = withHand(base, other)
+    assertEquals(projects(others, actor, Vector(
+      DecisionOption.Denizen(DecisionOptionRef.Denizen(
+        DenizenId(othersCard.value))))), None)
+  }
+
   test("a card the decision's owner may not identify suppresses the " +
       "projection, even though the card is really in play") {
     val (context, actor) = parked(ActionRef.Recover,
