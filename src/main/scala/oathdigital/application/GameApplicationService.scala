@@ -6,7 +6,8 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand, EconomyCommand, SearchCommand, TravelCommand}
+  ChallengeCommand, EconomyCommand, SearchCommand}
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -15,6 +16,7 @@ import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
 import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
+import oathdigital.protocol.PreviewTarget
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
   FirstGameSetupRules
@@ -32,9 +34,15 @@ final case class LoadedGame(
     state: OathState,
     nextSequence: Long
 )
+/** `targets` (batch-1 Task 5) is the walker-action targets costed against the
+  * modifiers THIS preview selected, rather than against the automatic set the
+  * projection is built from. Empty for an action whose targets the projection
+  * already carries, and for a walker action that has none.
+  */
 final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     options: Vector[OrderedRuleInvocation],
-    ignored: Vector[IgnoredRuleDiagnostic])
+    ignored: Vector[IgnoredRuleDiagnostic],
+    targets: Vector[PreviewTarget] = Vector.empty)
 
 sealed trait GameApplicationError extends Product with Serializable
 object GameApplicationError {
@@ -127,7 +135,8 @@ final class GameApplicationService(
               .left.map(CommandRejected)
             options = offerable.map(power =>
               OrderedRuleInvocation(power.source, power.id.value))
-            accepted <- acceptPreview(loaded, options, selected, Vector.empty)
+            accepted <- acceptPreview(loaded, options, selected, Vector.empty,
+              walkerTargets(actionRef, ready, actor, selected))
           } yield accepted
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
@@ -146,7 +155,7 @@ final class GameApplicationService(
     * are walker-driven, so this needs no per-action `MajorActionKind` match
     * of its own. `MajorActionKind` and `ActionRef` share their key strings by
     * convention (see `GameIntentMapper.actionRef`, which bridges the same
-    * way from the wire intent), so a legacy-only kind like `Travel` simply
+    * way from the wire intent), so a legacy-only kind like `Muster` simply
     * has no matching `ActionRef` and falls through to the `None` branch.
     */
   private def walkerAction(action: MajorActionKind): Option[ActionRef] =
@@ -159,13 +168,44 @@ final class GameApplicationService(
   private def acceptPreview(loaded: LoadedGame,
       options: Vector[OrderedRuleInvocation],
       selected: Vector[OrderedRuleInvocation],
-      ignored: Vector[IgnoredRuleDiagnostic])
+      ignored: Vector[IgnoredRuleDiagnostic],
+      // By name: `targets` costs the action against `selected`, which is only
+      // known to name real powers once this gate has accepted it. A rejected
+      // preview must not evaluate it at all -- `PowerId` refuses to be built
+      // from an unknown id, so costing an unvalidated selection throws rather
+      // than rejecting.
+      targets: => Vector[PreviewTarget] = Vector.empty)
       : Either[GameApplicationError, MajorActionPreviewAccepted] =
     Either.cond(selected.distinct.size == selected.size &&
       selected.forall(options.contains),
-      MajorActionPreviewAccepted(loaded, options, ignored),
+      MajorActionPreviewAccepted(loaded, options, ignored, targets),
       CommandRejected(OathViolation.InvalidModifierInvocation(
         "preview contains a duplicate or unavailable modifier")))
+
+  /** A walker action's targets, costed with the powers this preview actually
+    * selected (batch-1 Task 5).
+    *
+    * The projection a route builds beside this is costed with automatic
+    * powers alone, because it is built before the player has chosen anything.
+    * Once they have, the number shown beside a destination has to reflect
+    * that choice, so the preview asks the same evaluator again with the
+    * selected vector. The match is one line per action that has targets at
+    * all, in the application layer beside the command dispatch that already
+    * names each action -- it is not a rule, and no engine code learns it.
+    */
+  private def walkerTargets(action: ActionRef,
+      ready: oathdigital.gameplay.ReadyGame,
+      actor: PlayerId, selected: Vector[OrderedRuleInvocation])
+      : Vector[PreviewTarget] = action match {
+    case ActionRef.Travel =>
+      val powers = rules.walkerPowers(ready, actor,
+        selected.map(invocation => PowerId(invocation.handlerId)))
+      TravelProcedure.candidates(catalog, ready, actor, powers).map {
+        case (site, cost) =>
+          PreviewTarget(s"site:${site.value}", cost, "Travel destination")
+      }
+    case _ => Vector.empty
+  }
 
   def handle(
       gameId: String,
@@ -312,7 +352,8 @@ final class GameApplicationService(
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.StartWalker(action, start) =>
-        rules.startWalker(state, action, start.actor, start.modifiers)
+        rules.startWalker(state, action, start.actor, start.modifiers,
+          start.startArgs)
       case GameCommand.ResolveWalker(actor, treeDecision) =>
         rules.resolveWalker(state, actor, Answered(treeDecision.decisionId,
           treeDecision.answer))
@@ -334,8 +375,6 @@ final class GameApplicationService(
         rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
       case GameCommand.EndWake(playerId) =>
         rules.handle(state, WakeCommand.EndWake(playerId))
-      case GameCommand.Travel(playerId, destination) =>
-        rules.handle(state, TravelCommand.Travel(playerId, destination))
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>
@@ -463,7 +502,6 @@ final class GameApplicationService(
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
     command match {
-      case GameCommand.Travel(actor, _) => Some(actor -> MajorActionKind.Travel)
       case GameCommand.Muster(actor, _) => Some(actor -> MajorActionKind.Muster)
       case GameCommand.Trade(actor, _, _) => Some(actor -> MajorActionKind.Trade)
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)

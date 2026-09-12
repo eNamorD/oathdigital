@@ -3,11 +3,12 @@ package oathdigital.gameplay.walker
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
-import oathdigital.model.{ActionRef, DecisionId, PlayerId}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, PlayerId}
 
 /** The one place an action registers its walker tree-building functions
   * (Task 8). Before this, `OathRules.buildWalker` and
@@ -71,16 +72,43 @@ object WalkerActionRegistry {
     * returns empty and `validateModifiers` rejects every id. Inventing a
     * `WakeModifierSelection` case purely to keep this field total would put a
     * window in the audited vocabulary that no rulebook clause backs.
+    *
+    * `build`/`rebuild` receive the player's start selections (batch-1 Task
+    * 5): what they chose before the walk began, for an action whose tree
+    * cannot be built without it. Recover and Forge derive their whole tree
+    * from the actor's pawn site and select nothing, so they take an empty
+    * vector and reject anything else; Travel cannot name a route without one.
+    *
+    * They are `DecisionOptionRef`s -- the same game-object vocabulary a
+    * decision option names, already spelled for the wire once in
+    * `DecisionOptionRef.kind`/`wireId` -- and NOT a per-action payload type.
+    * That is deliberate and is the constraint this batch is held to: nothing
+    * outside the declaring action may learn what an action's start selection
+    * means, so the model, the journal codec and the walker all handle a
+    * vector of references and none of them names an action. Interpreting the
+    * vector -- "exactly one site, and it is the destination" -- is the
+    * action's own job, in its `build`, where a wrong shape is a typed
+    * rejection.
+    *
+    * The limit worth stating: a selection that is not a game-object reference
+    * (a warband count, say) has no spelling here. The first action that needs
+    * one widens this vocabulary rather than growing a case per action, which
+    * is the shape `PendingProcedure` had and this migration exists to end.
+    *
+    * `rebuild` receives the selections `startWalker` was given, read back from
+    * the durable `CurrentGameState.walkerStartArgs`, for the same reason
+    * `walkerModifiers` is carried: a resumed command must rebuild the tree the
+    * start built, and a selection is not re-derivable from state.
     */
   private[gameplay] final case class Entry(
       fallbackKind: MajorActionKind,
       rollDecisionId: Option[String],
       modifierWindow: Option[PowerWindow],
       continuationFor: (String, PlayerId, DecisionId) => Option[OathContinue],
-      build: (ExecutableCatalog, ReadyGame, PlayerId) =>
-        Either[OathViolation, Operation],
-      rebuild: (ExecutableCatalog, ReadyGame, PlayerId) =>
-        Either[OathViolation, Operation])
+      build: (ExecutableCatalog, ReadyGame, PlayerId,
+        Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
+      rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
+        Vector[DecisionOptionRef]) => Either[OathViolation, Operation])
 
   /** `private[gameplay]`, not `private`: [[WalkerActionRegistrySuite]] asserts
     * this map's keys cover `ActionRef.all` (catching a registered action
@@ -112,10 +140,10 @@ object WalkerActionRegistry {
           Some(OathContinue.AwaitingRecoverRoll(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor) =>
-        RecoverProcedure.build(catalog, state, actor),
-      rebuild = (catalog, state, actor) =>
-        RecoverProcedure.rebuild(catalog, state, actor)),
+      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.build(catalog, state, actor)),
+      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, actor))),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
       * `None` (R18).
@@ -129,10 +157,36 @@ object WalkerActionRegistry {
           Some(OathContinue.AwaitingForgeAssignment(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor) =>
-        ForgeProcedure.build(catalog, state, actor),
-      rebuild = (catalog, state, actor) =>
-        ForgeProcedure.rebuild(catalog, state, actor)))
+      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.build(catalog, state, actor)),
+      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, actor))),
+
+    /** Batch-1 Task 5. Travel has no `Roll` and no `Decide`: its tree is a
+      * pay node and a pawn move, so it runs to the end inside the command
+      * that starts it and `continuationFor` is never consulted. It is the
+      * first action to declare a start argument, and `build` and `rebuild`
+      * are the same function because every gate Travel has is a fact about
+      * the route rather than a start-only cost.
+      */
+    ActionRef.Travel -> Entry(
+      fallbackKind = MajorActionKind.Travel,
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.TravelModifierSelection),
+      continuationFor = (_, _, _) => None,
+      build = TravelProcedure.build,
+      rebuild = TravelProcedure.build))
+
+  /** Rejects start selections handed to an action that makes none.
+    *
+    * Silently ignoring them would let a client attach a Travel destination to
+    * a Recover and have the command succeed as though it had not.
+    */
+  private def noStartArgs(action: ActionRef, args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
+    OathViolation.InvalidEventOrder(
+      s"walker action ${action.key} takes no start selection, got " +
+        args.map(_.kind).mkString(", ")))
 
   /** Builds `action`'s tree for a fresh start: the action's start gates run.
     *
@@ -143,11 +197,11 @@ object WalkerActionRegistry {
     * `lookup` as an extracted stand-in.
     */
   def build(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId,
+      actor: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
       registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
     lookup(action, registrations).flatMap(
-      _.build(catalog, state, actor))
+      _.build(catalog, state, actor, args))
 
   /** Rebuilds `action`'s tree to resume an already-started walker position.
     * Start-only gates do not re-run.
@@ -156,9 +210,11 @@ object WalkerActionRegistry {
     * `build`'s doc for why.
     */
   def rebuild(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, registrations: Map[ActionRef, Entry] = entries)
+      actor: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
+      registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(action, registrations).flatMap(_.rebuild(catalog, state, actor))
+    lookup(action, registrations).flatMap(
+      _.rebuild(catalog, state, actor, args))
 
   private def lookup(action: ActionRef,
       registrations: Map[ActionRef, Entry]): Either[OathViolation, Entry] =

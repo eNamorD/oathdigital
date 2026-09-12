@@ -5,7 +5,8 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
-import oathdigital.model.{ActionRef, DecisionId, PlayerId}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, PlayerId,
+  SiteId}
 
 /** Task 8: `WalkerActionRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -125,5 +126,53 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
       Right(Some(OathContinue.AwaitingForgeAssignment(actor, decision))))
     assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Forge,
       "recover.relic", actor, decision), Right(None))
+  }
+
+  /** The Travel entry's own facts, asserted as a whole for the same reason
+    * Forge's are. Travel is the only entry whose builders take a start
+    * selection, and the only one whose `rebuild` is its `build`: every gate
+    * Travel has is a fact about the route, so a resume must re-check exactly
+    * what a start checked.
+    */
+  test("the Travel entry declares Travel's own kind and no park of any shape") {
+    val entry = WalkerActionRegistry.entries(ActionRef.Travel)
+    assertEquals(entry.fallbackKind, MajorActionKind.Travel)
+    assertEquals(entry.modifierWindow, Some(PowerWindow.TravelModifierSelection))
+    assertEquals(entry.rollDecisionId, None)
+    // A flat tree parks nowhere, so no decision id of any spelling maps to a
+    // continuation.
+    Vector("travel", "walker.travel.roll", "recover.relic").foreach { id =>
+      assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Travel, id,
+        PlayerId("p1"), DecisionId("d1")), Right(None))
+    }
+  }
+
+  /** An action that selects nothing at its start must REJECT a selection, not
+    * ignore one.
+    *
+    * Ignoring it is the silent failure: a client that attached a destination
+    * to a Recover would get a Recover that succeeded as though it had not,
+    * and no assertion anywhere else in the suite would notice, because every
+    * other test passes an empty vector. This one passes a real reference and
+    * pins the rejection, so weakening the guard to accept anything fails
+    * here.
+    */
+  test("an action declaring no start selection rejects one rather than " +
+      "ignoring it") {
+    val selection = Vector[DecisionOptionRef](
+      DecisionOptionRef.Site(SiteId("site:somewhere")))
+    Vector(ActionRef.Recover, ActionRef.Forge).foreach { action =>
+      Vector(
+        WalkerActionRegistry.build(action, null, state, actor, selection),
+        WalkerActionRegistry.rebuild(action, null, state, actor, selection)
+      ).foreach { result =>
+        // The message, not just the failure: `state` is null here, so ANY
+        // builder that read state would also fail, and asserting only
+        // `isLeft` would pass for a guard that had been removed entirely.
+        // Naming the selection is what proves this rejection is the guard.
+        assertEquals(result, Left(OathViolation.InvalidEventOrder(
+          s"walker action ${action.key} takes no start selection, got site")))
+      }
+    }
   }
 }

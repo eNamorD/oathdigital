@@ -8,7 +8,7 @@ class CommandProtocolSuite extends munit.FunSuite {
     ResolveRestPower("rest-1", Vector(RestFavorAllocation(
       RestFavorSource("relic-slot", "site:a", "0"), 2)), "hearth"),
     DeclineRestPower("rest-1"),
-    Travel("site:b"), Muster(EconomyTarget("denizen", "d1")),
+    Muster(EconomyTarget("denizen", "d1")),
     Trade(EconomyTarget("edifice", "e1"), "secret"),
     BeginSearch(SearchSource("world", None)),
     BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
@@ -92,9 +92,13 @@ class CommandProtocolSuite extends munit.FunSuite {
 
   test("malformed fields and structural duplicates retain exact paths") {
     assertEquals(ActorlessCommandCodec.decode("{").left.toOption.get.path, "$")
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""
+    // Travel's destination moved onto `StartWalker`'s start selection
+    // (batch-1 Task 5), so the path a malformed one reports moved with it --
+    // still exact, and now indexed because a selection is a list.
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
+      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(ActorlessCommandCodec.decode(missing).left.toOption.get.path,
-      "$.intent.destinationSiteId")
+      "$.intent.startArgs[0].optionId")
     val duplicate = """{"expectedNextSequence":0,"intent":{"type":"beginNegotiation","participantPlayerIds":["p2","p2"]}}"""
     assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
       "$.intent.participantPlayerIds")
@@ -104,7 +108,8 @@ class CommandProtocolSuite extends munit.FunSuite {
     val modifiers = Vector(
       ModifierInvocation("adviser", "d2", None, "denizen.second"),
       ModifierInvocation("site-card", "d1", Some("s1"), "denizen.first"))
-    val request = ActorlessCommandRequest(9, Travel("s2"), modifiers)
+    val request = ActorlessCommandRequest(9, StartWalker("travel",
+      Vector.empty, Vector(WalkerStartArgWire("site", "s2"))), modifiers)
     assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
       Right(request))
     val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,

@@ -83,7 +83,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
   private def rules(actor: PlayerId, powers: WalkerPowers): OathRules =
     new OathRules(catalog, walkerPowerCatalog = powers,
-      walkerTree = (_, _, _, _, _) => Right(hookedTree(actor)))
+      walkerTree = (_, _, _, _, _, _) => Right(hookedTree(actor)))
 
   private def forbidding: WalkerPowers = WalkerPowers(Vector(
     ProcedureWalkerSuite.TestRestrictionPower(PowerId("test.forbid"), window,
@@ -374,9 +374,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = modifierWindow,
       continuationFor = (_, _, _) => None,
-      build = (_, _, _) =>
+      build = (_, _, _, _) =>
         Left(OathViolation.InvalidEventOrder("build is not exercised here")),
-      rebuild = (_, _, _) =>
+      rebuild = (_, _, _, _) =>
         Left(OathViolation.InvalidEventOrder("rebuild is not exercised here")))
 
   private def registered(modifierWindow: Option[PowerWindow])
@@ -480,7 +480,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
     val rulesInstance = new OathRules(catalog,
       walkerPowerCatalog = WalkerPowers.empty,
-      walkerTree = (_, _, _, _, _) => Right(rollTree))
+      walkerTree = (_, _, _, _, _, _) => Right(rollTree))
 
     // Control: the identical tree under Recover, whose entry DOES declare a
     // roll decision id, parks and is handed that id's continuation.

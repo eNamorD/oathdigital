@@ -9,7 +9,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   import WireError._
 
   protected final val actionDiscriminator: PartialFunction[OathEvent, String] = {
-      case _: Traveled => TraveledType
       case _: Mustered => MusteredType
       case _: Traded => TradedType
       case _: SearchStarted => SearchStartedType
@@ -34,13 +33,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   }
 
   protected final val actionEncoder: PartialFunction[OathEvent, ujson.Value] = {
-      case Traveled(playerId, source, destination, supplySpent) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "sourceSiteId" -> source.value,
-          "destinationSiteId" -> destination.value,
-          "supplySpent" -> supplySpent
-        )
       case Mustered(playerId, site, target, suit, spent, gained) =>
         ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
           "target" -> encodeCardRef(target.id), "suit" -> suit.key,
@@ -150,18 +142,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   protected final def actionDecode(eventType: String, payload: ujson.Value,
       path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] = {
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] = {
-        case TraveledType =>
-          val spent = payload("supplySpent").num
-          if (!spent.isFinite || spent != Math.rint(spent) || spent < 0 ||
-              spent > Int.MaxValue)
-            Left(InvalidValue(s"$path.supplySpent",
-              "must be a non-negative integer"))
-          else Right(Traveled(
-            PlayerId(payload("playerId").str),
-            SiteId(payload("sourceSiteId").str),
-            SiteId(payload("destinationSiteId").str),
-            spent.toInt
-          ))
         case MusteredType => for {
           target <- decodeEconomyTarget(payload("target"), s"$path.target")
           suit <- decodeSuit(payload("suit").str, s"$path.suit")

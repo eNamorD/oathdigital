@@ -42,10 +42,15 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),
+      // Travel joined the walker at batch-1 Task 5. It is the first action
+      // that is both walker-registered and board-targeted, so it reaches this
+      // path carrying a destination its two predecessors have no equivalent
+      // of -- and it must still be offered its modifiers, not skipped.
+      GameIntent.StartWalker("travel", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:a"))),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "recover", "forge", "search"))
-    assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
+      Vector("search", "recover", "forge", "travel", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
     // An UNREGISTERED walker action must not be swept into the same
     // modifier-offering path: only the keys the engine registers on the

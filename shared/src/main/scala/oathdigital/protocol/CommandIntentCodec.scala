@@ -15,7 +15,6 @@ private[protocol] object CommandIntentCodec {
       "allocations" -> ujson.Arr.from(allocations.map(restAllocation)),
       "destinationBank" -> bank)
     case DeclineRestPower(id) => tagged("declineRestPower", "decisionId" -> id)
-    case Travel(site) => tagged("travel", "destinationSiteId" -> site)
     case Muster(target) => tagged("muster", "target" -> economy(target))
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
@@ -45,8 +44,11 @@ private[protocol] object CommandIntentCodec {
     case RelocateCampaignRaidPawn(id, site) => tagged("relocateCampaignRaidPawn", "decisionId" -> id, "destinationSiteId" -> site)
     case ChooseOathkeeperRecipient(id, recipient) => tagged("chooseOathkeeperRecipient", "decisionId" -> id, "recipientPlayerId" -> recipient)
     case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
-    case StartWalker(action, modifiers) => tagged("startWalker", "action" -> action,
-      "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))))
+    case StartWalker(action, modifiers, startArgs) =>
+      tagged("startWalker", "action" -> action,
+        "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))),
+        "startArgs" -> ujson.Arr.from(startArgs.map(
+          CommandNestedCodecs.encodeStartArgWire)))
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
       "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))

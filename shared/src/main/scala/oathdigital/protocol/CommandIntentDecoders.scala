@@ -26,7 +26,6 @@ private[protocol] object CommandIntentDecoders {
       bank <- string(value, "destinationBank", path)
     } yield ResolveRestPower(id, allocations, bank)
     case "declineRestPower" => decision(value, path)(DeclineRestPower)
-    case "travel" => one(value, path, "destinationSiteId")(Travel)
     case "muster" => nested(value, path, "target")(economy).map(Muster)
     case "trade" => for {
       _ <- exact(value, Set("type", "target", "resource"), path)
@@ -118,10 +117,17 @@ private[protocol] object CommandIntentDecoders {
       resolution <- field(value, "resolution", path).flatMap(CommandNestedCodecs.decodeDecision(_, s"$path.resolution"))
     } yield ResolveCardDecision(id, resolution)
     case "startWalker" => for {
-      _ <- exact(value, Set("type", "action", "modifiers"), path)
+      _ <- exact(value, Set("type", "action", "modifiers", "startArgs"), path)
       action <- string(value, "action", path)
       modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
-    } yield StartWalker(action, modifiers)
+      // Optional and empty by default: every walker action but Travel
+      // selects nothing before it starts.
+      startArgs <- value.value.get("startArgs") match {
+        case None => Right(Vector.empty[WalkerStartArgWire])
+        case Some(args) => CommandNestedCodecs.decodeStartArgsWire(args,
+          s"$path.startArgs")
+      }
+    } yield StartWalker(action, modifiers, startArgs)
     case "rollWalker" => one(value, path, "pool")(RollWalker)
     case "resolveWalker" => for {
       _ <- exact(value, Set("type", "decisionId", "payload"), path)

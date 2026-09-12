@@ -15,7 +15,6 @@ import akka.http.scaladsl.model.{HttpRequest => AkkaRequest}
 import oathdigital.application._
 import oathdigital.application.MembershipRole._
 import oathdigital.gameplay.OathRules
-import oathdigital.gameplay.actions.TravelCommand
 import oathdigital.gameplay.phases.WakeCommand
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
@@ -40,8 +39,10 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val other = ready.game.current.players.find(_.player != actor).get
     val rules = new OathRules(catalog)
     val act = rules.handle(setupState, WakeCommand.EndWake(actor)).toOption.get
-    val traveled = rules.handle(act.state, TravelCommand.Travel(
-      actor, other.pawnSite.get)).toOption.get
+    val traveled = rules.startWalker(act.state,
+      oathdigital.model.ActionRef.Travel, actor, Vector.empty,
+      Vector(oathdigital.model.DecisionOptionRef.Site(
+        other.pawnSite.get))).toOption.get
     val allEvents = setupEvents ++ act.events ++ traveled.events
     repository.seed(gameId, allEvents.zipWithIndex.map { case (event, index) =>
       ujson.write(GameEventWire.encodeEvent(gameId, catalog.ref, index.toLong, event)

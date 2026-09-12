@@ -82,7 +82,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     */
   private def projector = new WalkerDecisionProjector(catalog,
     new GamePresentationProjector(catalog), WalkerPowers.empty,
-    (_, _, _, _) => Right(rollTree))
+    (_, _, _, _, _) => Right(rollTree))
 
   test("a Roll park under an action declaring no roll decision id projects " +
       "nothing, rather than a projection naming a sentinel") {
@@ -124,7 +124,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
   private def projectorFor(tree: Operation) =
     new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers.empty,
-      (_, _, _, _) => Right(tree))
+      (_, _, _, _, _) => Right(tree))
 
   /** Whether the tree below projects at all, for the given options. */
   private def projects(context: ScopedProjectionContext, actor: PlayerId,

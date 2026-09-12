@@ -150,9 +150,10 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("malformed actorless requests retain typed paths") {
     assertEquals(GameHttpWire.decodeCommand("{").left.toOption.get.path, "$")
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
+      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(GameHttpWire.decodeCommand(missing).left.toOption.get.path,
-      "$.intent.destinationSiteId")
+      "$.intent.startArgs[0].optionId")
   }
 
   test("development bootstrap remains configuration-only") {

@@ -54,14 +54,16 @@ private[application] final class WalkerDecisionProjector(
       pending <- context.current.walkerPending
       action <- context.current.walkerAction
       if context.viewer.contains(pending.actor)
-      tree <- rebuild(context.ready, action, pending.actor).toOption
+      tree <- rebuild(context.ready, action, pending.actor,
+        context.current.walkerStartArgs).toOption
       powers = WalkerPowers.selected(walkerPowerCatalog,
         context.current.walkerModifiers)
       projection <- parked(action, tree, context.ready, pending, powers)
     } yield projection
 
-  private def rebuild(ready: ReadyGame, action: ActionRef, actor: PlayerId) =
-    rebuildTree(catalog, action, ready, actor)
+  private def rebuild(ready: ReadyGame, action: ActionRef, actor: PlayerId,
+      args: Vector[DecisionOptionRef]) =
+    rebuildTree(catalog, action, ready, actor, args)
 
   private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
       pending: PendingTree, powers: WalkerPowers)
@@ -287,9 +289,9 @@ private[application] object WalkerDecisionProjector {
     * cannot also substitute the answer under test.
     */
   type TreeSource =
-    (ExecutableCatalog, ActionRef, ReadyGame, PlayerId) =>
-      Either[OathViolation, Operation]
+    (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
+      Vector[DecisionOptionRef]) => Either[OathViolation, Operation]
 
-  val declaredTree: TreeSource = (catalog, action, ready, actor) =>
-    WalkerActionRegistry.rebuild(action, catalog, ready, actor)
+  val declaredTree: TreeSource = (catalog, action, ready, actor, args) =>
+    WalkerActionRegistry.rebuild(action, catalog, ready, actor, args)
 }

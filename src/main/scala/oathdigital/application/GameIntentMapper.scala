@@ -25,7 +25,6 @@ object GameIntentMapper {
         destination <- suit(bank, "$.intent.destinationBank")
       } yield actor.resolveRestPower(DecisionId(id), allocations, destination)
       case Intent.DeclineRestPower(id) => Right(actor.declineRestPower(DecisionId(id)))
-      case Intent.Travel(site) => Right(actor.travel(SiteId(site)))
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
@@ -55,10 +54,11 @@ object GameIntentMapper {
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
-      case Intent.StartWalker(value, modifiers) => for {
+      case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)
         ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
-      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
+        args <- traverse(startArgs.zipWithIndex)((walkerStartArg _).tupled)
+      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
       case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
@@ -164,6 +164,16 @@ object GameIntentMapper {
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
   }
+  /** One wire start selection to the engine's own reference, through the SAME
+    * `DecisionOptionRef.fromWire` a walker answer is decoded with (see
+    * `optionRef`). Whether the action accepts this reference at all is not
+    * asked here: that is the registered action's own question, answered when
+    * it builds its tree.
+    */
+  private def walkerStartArg(value: WalkerStartArgWire, index: Int)
+      : Result[DecisionOptionRef] = optionRef(value.optionKind, value.optionId,
+    s"$$.intent.startArgs[$index]")
+
   private def actionRef(value: String): Result[ActionRef] =
     ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
       s"unknown action '$value'"))

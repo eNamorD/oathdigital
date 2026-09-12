@@ -33,7 +33,7 @@ private[frontend] object ModifierWorkflow {
     * `None`, which is the safe answer -- the server rejects a preview for
     * an action it does not recognise.
     */
-  private val walkerActions: Set[String] = Set("recover", "forge")
+  private val walkerActions: Set[String] = Set("recover", "forge", "travel")
 
   private val targetedActions = Map(
     "travel" -> ("travel" -> Map.empty[String, String]),
@@ -61,7 +61,7 @@ private[frontend] object ModifierWorkflow {
     // Every action registered on the walker offers its modifiers through
     // `StartWalker`; an unregistered key must NOT be swept in, since the
     // server would reject the preview for an action it does not know.
-    case GameIntent.StartWalker(action, _) if walkerActions(action) =>
+    case GameIntent.StartWalker(action, _, _) if walkerActions(action) =>
       Some(action -> Map.empty)
     case GameIntent.ResolveFacedownAdviser(_, _) =>
       Some("search" -> Map("procedure" -> "facedown-adviser"))
@@ -83,8 +83,15 @@ private[frontend] object ModifierWorkflow {
     */
   def submission(command: GameIntent, invocations: Vector[ModifierInvocation])
       : (GameIntent, Vector[ModifierInvocation]) = command match {
-    case GameIntent.StartWalker(action, _) =>
-      GameIntent.StartWalker(action, invocations.map(_.handlerId)) -> Vector.empty
+    // The start argument survives the fold untouched: an action that is both
+    // walker-registered and board-targeted (Travel, batch-1 Task 5) picks its
+    // target in the stage AFTER modifier ordering, so by the time this runs
+    // the destination is already on the intent and only the modifiers are
+    // missing. Rebuilding the intent without it would submit a Travel with no
+    // route.
+    case GameIntent.StartWalker(action, _, startArgs) =>
+      GameIntent.StartWalker(action, invocations.map(_.handlerId),
+        startArgs) -> Vector.empty
     case other => other -> invocations
   }
 

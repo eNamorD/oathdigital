@@ -15,7 +15,6 @@ object GameIntent {
       allocations: Vector[RestFavorAllocation], destinationBank: String)
       extends GameIntent
   final case class DeclineRestPower(decisionId: String) extends GameIntent
-  final case class Travel(destinationSiteId: String) extends GameIntent
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
@@ -56,9 +55,16 @@ object GameIntent {
     * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
     * player-selected power ids chosen before the walk begins -- validated
     * engine-side against the audited catalog, never interpreted here.
+    *
+    * `startArgs` is what the player selected before the action started, for
+    * an action whose tree needs it. Empty for every action that derives its
+    * whole tree from the actor's pawn site, which is Recover and Forge;
+    * Travel carries its destination here, which is why there is no longer a
+    * `Travel` intent of its own. The engine rejects a selection an action did
+    * not ask for.
     */
-  final case class StartWalker(action: String, modifiers: Vector[String])
-      extends GameIntent
+  final case class StartWalker(action: String, modifiers: Vector[String],
+      startArgs: Vector[WalkerStartArgWire] = Vector.empty) extends GameIntent
   /** Answers the currently parked Roll node for `pool`. Carries no die
     * faces: those are generated application-side once the parked pool is
     * validated against this command.
@@ -67,6 +73,16 @@ object GameIntent {
   final case class ResolveWalker(decisionId: String,
       payload: DecisionAnswerWire) extends GameIntent
 }
+
+/** One game-object reference in a walker action's start selection, spelled
+  * exactly as a decision answer spells one: a kind and an id, decoded by the
+  * same `DecisionOptionRef.fromWire` the engine decodes an answer with.
+  *
+  * Deliberately NOT a case per action. The protocol has no business knowing
+  * that a Travel start names a destination -- only the action itself does,
+  * and it checks the shape when it builds its tree.
+  */
+final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
 final case class EconomyTarget(kind: String, id: String)
 final case class SearchSource(source: String, region: Option[String])

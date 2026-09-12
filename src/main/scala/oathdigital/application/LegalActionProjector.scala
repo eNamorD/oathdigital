@@ -5,9 +5,11 @@ import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.phases.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, SearchRules, TravelRules,
-  VisionRules, Visions}
+  Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.gameplay.phases.Rest
 import oathdigital.model._
 import oathdigital.protocol.projection._
@@ -17,6 +19,22 @@ private[application] final class LegalActionProjector(
     presentation: GamePresentationProjector,
     walkerDecisions: WalkerDecisionProjector
 ) {
+  /** The automatic walker powers a Travel candidate is costed against
+    * (batch-1 Task 5) -- the same full catalog `OathRules` is constructed
+    * with, selected down to the automatic set because a projection is built
+    * before the viewer has chosen any modifier. The major-action preview
+    * re-costs the same candidates with what they then selected.
+    */
+  private val walkerPowerCatalog = WalkerPowerCatalog.default(catalog)
+
+  /** Travel destinations and what each would actually cost, obtained by
+    * dry-running the declared Travel tree per destination rather than by a
+    * second cost calculation beside it -- see `TravelProcedure.candidates`.
+    */
+  private def travelCandidates(context: ScopedProjectionContext) =
+    TravelProcedure.candidates(catalog, context.ready, context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
   def project(context: ScopedProjectionContext): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
@@ -26,8 +44,7 @@ private[application] final class LegalActionProjector(
       context.current.walkerPending.isEmpty
     LegalProjection(
       controls(context, minor),
-      if (ordinaryAct) TravelRules.legalDestinations(catalog, context.ready,
-        context.active).map { case (site, cost) =>
+      if (ordinaryAct) travelCandidates(context).map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       } else Vector.empty,
       if (ordinaryAct) legalSearch(context) else Vector.empty,
@@ -197,7 +214,7 @@ private[application] final class LegalActionProjector(
 
   private def boardTargetActions(context: ScopedProjectionContext) = {
     val ready = context.ready; val player = context.active
-    val travel = TravelRules.legalDestinations(catalog, ready, player).map {
+    val travel = travelCandidates(context).map {
       case (site, cost) => BoardTargetCandidateProjection(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))

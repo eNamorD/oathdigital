@@ -6,7 +6,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded, WakeEnded,
-  RestCompleted, RestStarted, SearchCompleted, SearchStarted, Traveled,
+  RestCompleted, RestStarted, SearchCompleted, SearchStarted,
   WealthTaken}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
@@ -158,7 +158,12 @@ class GameEventWireSuite extends munit.FunSuite {
       WalkerStepRecorded(player, "2",
         ChoicePayload("recover.relic", chooseOne), Vector.empty, Vector.empty),
       WalkerParked(player, ActionRef.Forge, Vector("2"), answered,
-        Vector.empty))
+        Vector.empty, Vector.empty),
+      // Batch-1 Task 5: the only action that makes a start selection does not
+      // park, so this park is synthetic -- it exists to round-trip the field,
+      // which no production journal exercises yet.
+      WalkerParked(player, ActionRef.Travel, Vector("0"), Vector.empty,
+        Vector.empty, Vector(DecisionOptionRef.Site(SiteId("site:dest")))))
     val encoded = GameEventWire.encodeStream("forge", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
@@ -888,34 +893,6 @@ class GameEventWireSuite extends munit.FunSuite {
       "mixed", catalogRef, 8L, gameplay.head).toOption.get
     wrongVersion("formatVersion") = 2
     assert(GameEventWire.decode(wrongVersion).isLeft)
-  }
-
-  test("v3 traveled has exact discriminator payload and mixed compatibility") {
-    val event = Traveled(
-      PlayerId("p2"), SiteId("source"), SiteId("destination"), 3)
-    val encoded = GameEventWire.encodeEvent(
-      "travel", catalogRef, 10L, event).toOption.get
-    assertEquals(encoded("formatVersion").num.toInt, 1)
-    assertEquals(encoded("eventType").str, "gameplay.traveled")
-    assertEquals(encoded("payload")("sourceSiteId").str, "source")
-    assertEquals(encoded("payload")("destinationSiteId").str, "destination")
-    assertEquals(encoded("payload")("supplySpent").num.toInt, 3)
-    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
-
-    val events = execute(rules)._2 ++ Vector(
-      WakeEnded(PlayerId("p2")), event)
-    val records = events.zipWithIndex.map { case (value, index) =>
-      RecordedEvent(index.toLong, value)
-    }
-    val decoded = GameEventWire.decodeStream(
-      GameEventWire.encodeStream("travel", catalogRef, records)
-        .toOption.get).toOption.get
-    assertEquals(decoded.map(_.formatVersion).takeRight(2), Vector(1, 1))
-    assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.wake-ended", "gameplay.traveled"))
-
-    encoded("payload")("supplySpent") = -1
-    assert(GameEventWire.decode(encoded).isLeft)
   }
 
   test("current state-based Oathkeeper and Usurper events round trip") {

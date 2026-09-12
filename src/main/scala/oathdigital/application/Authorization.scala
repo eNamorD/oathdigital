@@ -79,9 +79,6 @@ final case class AuthorizedPlayer private (
   def declineRestPower(decision: DecisionId): GameCommand =
     GameCommand.DeclineRestPower(access.playerId, decision)
 
-  def travel(destination: SiteId): GameCommand =
-    GameCommand.Travel(access.playerId, destination)
-
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 

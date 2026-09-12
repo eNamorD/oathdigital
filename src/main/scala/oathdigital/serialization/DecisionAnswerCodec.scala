@@ -51,10 +51,16 @@ private[serialization] object DecisionAnswerCodec {
         s"unknown walker decision answer '$other'"))
     }
 
-  private def encodeRef(ref: DecisionOptionRef): ujson.Value =
+  /** `private[serialization]`, not `private`: [[WalkerEventCodec]] writes the
+    * start selections on a `WalkerParked` with this same pair, so the journal
+    * has ONE spelling of an option reference rather than two that agree by
+    * convention -- the drift `DecisionOptionRef.wireId`'s own doc exists to
+    * prevent.
+    */
+  private[serialization] def encodeRef(ref: DecisionOptionRef): ujson.Value =
     ujson.Obj("kind" -> ref.kind, "id" -> ref.wireId)
 
-  private def decodeRef(value: ujson.Value,
+  private[serialization] def decodeRef(value: ujson.Value,
       path: String): Either[WireError, DecisionOptionRef] = {
     val kind = value("kind").str
     val id = value("id").str

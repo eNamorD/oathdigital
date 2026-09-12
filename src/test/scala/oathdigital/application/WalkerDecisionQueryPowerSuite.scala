@@ -101,11 +101,11 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
 
   private def rules(actor: PlayerId, powers: WalkerPowers): OathRules =
     new OathRules(catalog, walkerPowerCatalog = powers,
-      walkerTree = (_, _, _, _, _) => Right(tree(actor)))
+      walkerTree = (_, _, _, _, _, _) => Right(tree(actor)))
 
   private def projector(actor: PlayerId, powers: WalkerPowers) =
     new WalkerDecisionProjector(catalog, presentation, powers,
-      (_, _, _, _) => Right(tree(actor)))
+      (_, _, _, _, _) => Right(tree(actor)))
 
   /** Starts the walker under `powers` and returns the parked state. */
   private def parked(ready: ReadyGame, actor: PlayerId,

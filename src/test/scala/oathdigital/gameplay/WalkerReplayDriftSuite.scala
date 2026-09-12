@@ -210,7 +210,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val fact: WalkerEvent = outcome match {
       case WalkerOutcome.Parked(pending, _) =>
         WalkerParked(actor, ActionRef.Recover, pending.at, pending.answered,
-          Vector.empty)
+          Vector.empty, Vector.empty)
       case WalkerOutcome.Finished(_, _) =>
         WalkerCompleted(actor, ActionRef.Recover)
     }

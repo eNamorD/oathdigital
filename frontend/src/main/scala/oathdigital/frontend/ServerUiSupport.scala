@@ -480,8 +480,15 @@ private[frontend] object ServerUiSupport {
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.PlacePawn(site))
+      // Travel moved onto the generic walker (batch-1 Task 5), so the
+      // destination the player just picked rides `StartWalker`'s start
+      // selection instead of a `Travel` intent of its own -- as a plain site
+      // reference, which is all the wire says about it. Modifiers are folded
+      // into this same intent by `ModifierWorkflow.submission`, which is why
+      // they are empty here.
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.Travel(site))
+        Some(GameCommand.StartWalker("travel", Vector.empty,
+          Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
       case ("campaign-conquest", sites) if sites.nonEmpty &&
           sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
         Some(GameCommand.BeginCampaignConquest(sites.collect {

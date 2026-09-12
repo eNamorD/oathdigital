@@ -241,8 +241,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
-      case _: Traveled =>
-        Left(InvalidEventOrder("Travel requires the gameplay evolution"))
       case _: Mustered | _: Traded =>
         Left(InvalidEventOrder("Economy requires the gameplay evolution"))
       case _: WealthTaken | _: WakeEnded =>

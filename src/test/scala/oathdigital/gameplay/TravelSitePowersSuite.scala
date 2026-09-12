@@ -4,8 +4,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, Location, Move, Operation,
   Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.powers.travel.{TravelCostLegality, TravelCostWindow,
-  TravelSitePowers}
+import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.model._
 
@@ -76,21 +75,29 @@ class TravelSitePowersSuite extends munit.FunSuite {
       .getOrElse(fail("terrain transform removed payment"))
   }
 
-  test("terrain transforms match legacy TravelCostWindow across route parity table") {
+  /** The parity table, as numbers rather than as a call.
+    *
+    * Task 4 asserted each of these against the legacy terrain fold while that
+    * fold was still alive, which is what proved the transforms reproduce it.
+    * Task 5 deleted the fold, so what survives that proof is its result: these
+    * are the exact values the legacy path returned for these routes, and a
+    * transform that stops reproducing one fails here. Keeping a call to
+    * something that no longer exists was never an option; keeping the numbers
+    * it produced is the whole point of having run the comparison.
+    */
+  test("terrain transforms reproduce the retired terrain fold's parity table") {
     val routes = Vector(
-      (plain, mountain, 2),
-      (plain, island, 2),
-      (plain, otherPlain, 2),
-      (coast, site(".rocky-coast.coast"), 2),
-      (coast, island, 2),
-      (coast, plain, 2)
-    )
+      (plain, mountain, 2, 3),                        // Mountain adds 1
+      (plain, island, 2, 4),                          // Island adds 2
+      (plain, otherPlain, 2, 2),                      // no terrain
+      (coast, site(".rocky-coast.coast"), 2, 1),      // coast route replaces
+      (coast, island, 2, 1),                          // coast route beats +2
+      (coast, plain, 2, 2)                            // coastal source, plain
+    )                                                 // destination: no replace
 
-    routes.foreach { case (source, destination, base) =>
-      val ready = readyAt(source)
-      assertEquals(transformedCost(ready, source, destination, base),
-        TravelCostWindow.fold(catalog, ready, source, destination, base),
-        s"new transform cost must match legacy route $source -> $destination")
+    routes.foreach { case (source, destination, base, expected) =>
+      assertEquals(transformedCost(readyAt(source), source, destination, base),
+        expected, s"route $source -> $destination")
     }
   }
 
@@ -179,8 +186,6 @@ class TravelSitePowersSuite extends munit.FunSuite {
           player = PlayerId("duplicate-lineage")))))
 
     Vector(unknownReady, duplicateReady).foreach { ready =>
-      assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
-        TravelCostLegality.blocked(catalog, ready, actor, plain, destination))
       assertEquals(passViolation(ready, eligibilityTree(plain, destination)),
         Some(OathViolation.TravelPassBlocked(pass, destination)))
     }

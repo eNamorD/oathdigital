@@ -109,7 +109,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       DecisionId(RecoverProcedure.rollDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
-      GameCommand.Travel(actor, recoverPlan.orderedSites(1))) match {
+      GameCommand.Muster(actor, EconomyTargetRef.Denizen(
+        DenizenId("any-denizen")))) match {
       case Left(GameApplicationError.CommandRejected(
           _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"legacy command should be blocked by walker park: $other")
@@ -1260,7 +1261,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Vector("gameplay.take-wealth", "gameplay.wake-ended"))
   }
 
-  test("Travel appends one v3 event and reloads pawn Supply and Act") {
+  test("Travel is one atomic walker command and reloads pawn Supply and Act") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-travel")
@@ -1274,21 +1275,32 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       !before.pawnSite.contains(_)).getOrElse(
         inAct.game.current.map.provinces.head)
     val traveled = service.handle("game-travel", ended.nextSequence,
-      GameCommand.Travel(active, destination)).toOption.get
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Site(destination))))
+      ).toOption.get
     val loaded = new GameApplicationService(catalog, repository)
       .load("game-travel").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
     val moved = after.game.current.players.find(_.player == active).get
 
     assertEquals(loaded.state, traveled.state)
-    assertEquals(loaded.nextSequence, ended.nextSequence + 1)
     assertEquals(moved.pawnSite, Some(destination))
     assert(moved.board.supply.supply < before.board.supply.supply)
     assertEquals(after.game.current.turn.phase, Phase.Act)
-    val last = ujson.read(repository.load("game-travel").toOption.flatten.get
-      .records.last)
-    assertEquals(last("formatVersion").num.toInt, 1)
-    assertEquals(last("eventType").str, "gameplay.traveled")
+    // The single legacy travel event became the walker's own three: the pay
+    // node, the pawn move, and the completion boundary. That is the whole
+    // observable shape change of the port -- the state each side reaches is
+    // identical, which is what the assertions above pin.
+    assertEquals(loaded.nextSequence, ended.nextSequence + 3)
+    assertEquals(traveled.events.map(_.productPrefix),
+      Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
+    // Nothing parked: a flat tree finishes inside the command that started it.
+    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(after.game.current.walkerAction, None)
+    val types = repository.load("game-travel").toOption.flatten.get.records
+      .takeRight(3).map(ujson.read(_)("eventType").str)
+    assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
+      "walker.completed"))
   }
 
   test("ruined edifice Economy target persists and replays with its kind") {
@@ -1908,7 +1920,9 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       val act = service.handle(gameId, setup.nextSequence,
         GameCommand.EndWake(actor)).toOption.get
       val traveled = service.handle(gameId, act.nextSequence,
-        GameCommand.Travel(actor, other.pawnSite.get)).toOption.get
+        GameCommand.StartWalker(ActionRef.Travel, StartPayload(actor,
+          Vector.empty, Vector(DecisionOptionRef.Site(
+            other.pawnSite.get))))).toOption.get
       val started = service.handle(gameId, traveled.nextSequence,
         GameCommand.BeginNegotiation(actor, Vector(other.player))).toOption.get
       val decision = started.state.asInstanceOf[Ready].value.game.current.pending.get

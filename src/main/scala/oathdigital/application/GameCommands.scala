@@ -31,8 +31,6 @@ object GameCommand {
   final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
       extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
-  final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
-      extends GameCommand
   final case class Muster(playerId: PlayerId, target: EconomyTargetRef)
       extends GameCommand
   final case class Trade(playerId: PlayerId, target: EconomyTargetRef,
@@ -117,8 +115,17 @@ object GameCommand {
   * which is every walker Recover today; `OathRules.startWalker` validates
   * every id against the audited catalog before walking.
   */
+/** `startArgs` (batch-1 Task 5) is what the player selected before the
+  * action started, for an action whose tree needs it -- Travel's destination
+  * is the only one today. They are the same `DecisionOptionRef`s a decision
+  * option names, and the command layer does not interpret them:
+  * `OathRules.startWalker` hands them to the registered action's own builder,
+  * which rejects a shape it did not ask for. Empty is every Recover and every
+  * Forge.
+  */
 final case class StartPayload(actor: PlayerId,
-    modifiers: Vector[PowerId] = Vector.empty)
+    modifiers: Vector[PowerId] = Vector.empty,
+    startArgs: Vector[DecisionOptionRef] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */
 final case class TreeDecision(decisionId: String, answer: DecisionAnswer)

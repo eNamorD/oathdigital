@@ -4,8 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand,
-  Search, SearchCommand, Travel,
-  TravelCommand}
+  Search, SearchCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
@@ -55,15 +54,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case WakeCommand.EndWake(actor) => withFallback(state, actor,
         MajorActionKind.Wake)(Wake.handle(state, command))
       case _ => Wake.handle(state, command)
-    }
-
-  def handle(
-      state: OathState,
-      command: TravelCommand
-  ): Either[OathViolation, OathTransition] =
-    command match { case TravelCommand.Travel(actor, _) =>
-      withFallback(state, actor, MajorActionKind.Travel)(
-        Travel.handle(catalog, state, command)).flatMap(completeAction _)
     }
 
   def handle(state: OathState, command: EconomyCommand)
@@ -229,7 +219,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       }
       case event: WealthTaken => Wake.evolve(state, event)
       case event: WakeEnded => Wake.evolve(state, event)
-      case event: Traveled => Travel.evolve(catalog, state, event)
       case event: Mustered => Economy.evolve(catalog, state, event)
       case event: Traded => Economy.evolve(catalog, state, event)
       case event: SearchStarted => Search.evolve(catalog, state, event)
@@ -384,7 +373,7 @@ object OathRules {
     * a fresh start, which runs action gates, from resume reconstruction.
     */
   type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
-    Boolean) => Either[OathViolation, Operation]
+    Vector[DecisionOptionRef], Boolean) => Either[OathViolation, Operation]
 
   /** Production tree source: every registered action declares its own tree
     * via [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) --
@@ -393,9 +382,10 @@ object OathRules {
     * `MatchError`.
     */
   val declaredWalkerTree: WalkerTreeSource =
-    (catalog, action, ready, actor, starting) =>
-      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor)
-      else WalkerActionRegistry.rebuild(action, catalog, ready, actor)
+    (catalog, action, ready, actor, args, starting) =>
+      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
+        args)
+      else WalkerActionRegistry.rebuild(action, catalog, ready, actor, args)
 }
 
 private[gameplay] object GameStateUpdates {

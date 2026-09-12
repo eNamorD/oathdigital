@@ -138,7 +138,21 @@ final case class CurrentGameState(
     // PendingTree for the same reason as `walkerAction`: replay restores it
     // from the durable `WalkerParked` fact rather than re-deriving it, and
     // `WalkerCompleted` clears it alongside `walkerPending`/`walkerAction`.
-    walkerModifiers: Vector[PowerId] = Vector.empty
+    walkerModifiers: Vector[PowerId] = Vector.empty,
+    // What the player selected when the walker action started, for an action
+    // whose tree cannot be built without it (batch-1 Task 5) -- Travel's
+    // destination is the only one today. They are `DecisionOptionRef`s, the
+    // same game-object vocabulary a decision option names, so nothing outside
+    // the action that declared them learns what they mean: empty is "this
+    // action declares none", and the action itself rejects a shape it did not
+    // ask for.
+    //
+    // Durable for exactly the reason `walkerModifiers` is: a resumed command
+    // rebuilds the tree the start built, and a selection -- unlike a pawn
+    // site -- cannot be re-derived from state. Restored by replay from the
+    // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
+    // walker-owned scratch fields.
+    walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty
 )
 
 final case class OathGame(

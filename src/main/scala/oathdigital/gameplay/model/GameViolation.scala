@@ -40,12 +40,6 @@ object OathViolation {
       extends OathViolation
   final case class InsufficientSupply(required: Int, available: Int)
       extends OathViolation
-  final case class TravelSourceMismatch(expected: SiteId, actual: SiteId)
-      extends OathViolation
-  final case class TravelCostMismatch(expected: Int, actual: Int)
-      extends OathViolation
-  final case class UnsupportedTravelState(reason: String)
-      extends OathViolation
   final case class UnsupportedEconomyState(reason: String)
       extends OathViolation
   final case class EconomyCardUnavailable(siteId: SiteId, cardId: CardId)

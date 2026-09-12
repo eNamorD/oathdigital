@@ -54,6 +54,25 @@ private[protocol] object CommandNestedCodecs {
     * same typed `InvalidValue` every other discriminator here does, never an
     * exception.
     */
+  /** The same `optionKind`/`optionId` pair a decision answer travels as, so a
+    * start selection and an answer naming the same site are spelled the same
+    * way on the wire.
+    */
+  def encodeStartArgWire(value: WalkerStartArgWire): ujson.Obj = ujson.Obj(
+    "optionKind" -> value.optionKind, "optionId" -> value.optionId)
+
+  def decodeStartArgsWire(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, Vector[WalkerStartArgWire]] =
+    array(value, path).flatMap(values => traverse(values.zipWithIndex) {
+      case (entry, index) =>
+        val entryPath = s"$path[$index]"
+        obj(entry, entryPath).flatMap { root => for {
+          _ <- exact(root, Set("optionKind", "optionId"), entryPath)
+          kind <- string(root, "optionKind", entryPath)
+          id <- string(root, "optionId", entryPath)
+        } yield WalkerStartArgWire(kind, id) }
+    })
+
   def encodeDecisionAnswerWire(value: DecisionAnswerWire): ujson.Obj = value match {
     case DecisionAnswerWire.ChooseOneWire(kind, id) =>
       ujson.Obj("kind" -> "choose-one", "optionKind" -> kind, "optionId" -> id)

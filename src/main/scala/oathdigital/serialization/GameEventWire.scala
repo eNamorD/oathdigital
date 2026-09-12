@@ -33,7 +33,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val TakeWealthType = "gameplay.take-wealth"
   val WakeEndedType = "gameplay.wake-ended"
   val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
-  val TraveledType = "gameplay.traveled"
   val MusteredType = "gameplay.mustered"
   val TradedType = "gameplay.traded"
   val SearchStartedType = "gameplay.search-started"

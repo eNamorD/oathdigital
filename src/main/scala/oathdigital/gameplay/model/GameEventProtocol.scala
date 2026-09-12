@@ -49,12 +49,6 @@ object OathEvent {
       resource: WakeResource
   ) extends OathEvent
   final case class WakeEnded(playerId: PlayerId) extends OathEvent
-  final case class Traveled(
-      playerId: PlayerId,
-      sourceSiteId: SiteId,
-      destinationSiteId: SiteId,
-      supplySpent: Int
-  ) extends OathEvent
   final case class Mustered(
       playerId: PlayerId,
       siteId: SiteId,

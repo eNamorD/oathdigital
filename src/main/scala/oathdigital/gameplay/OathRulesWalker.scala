@@ -47,7 +47,8 @@ private[gameplay] trait OathRulesWalker {
     * (currently empty) automatic set.
     */
   def startWalker(state: OathState, action: ActionRef, actor: PlayerId,
-      modifiers: Vector[PowerId] = Vector.empty)
+      modifiers: Vector[PowerId] = Vector.empty,
+      startArgs: Vector[DecisionOptionRef] = Vector.empty)
       : Either[OathViolation, OathTransition] =
     state match {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
@@ -58,12 +59,13 @@ private[gameplay] trait OathRulesWalker {
           for {
             _ <- validateModifiers(ready, actor, action, modifiers)
             powers = walkerPowers(ready, actor, modifiers)
-            tree <- buildWalker(action, ready, actor, starting = true)
+            tree <- buildWalker(action, ready, actor, startArgs,
+              starting = true)
             _ <- checkRestrictions(tree, powers, ready, actor)
             outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
               powers))
             transition <- walkerTransition(state, ready, action, tree, outcome,
-              powers, modifiers)
+              powers, modifiers, startArgs)
           } yield transition
         })
       case _ => Left(GameNotStarted)
@@ -181,10 +183,11 @@ private[gameplay] trait OathRulesWalker {
     */
   def resolveWalker(state: OathState, actor: PlayerId,
       answer: Answered): Either[OathViolation, OathTransition] =
-    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
-      walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
-        powers)).flatMap(walkerTransition(state, ready, action, tree, _,
-          powers, modifiers))
+    resumeWalker(state, actor) {
+      case (ready, action, tree, pending, powers, modifiers, startArgs) =>
+        walkerCall(ProcedureWalker.resolve(ready, tree, pending, answer,
+          powers)).flatMap(walkerTransition(state, ready, action, tree, _,
+            powers, modifiers, startArgs))
     }
 
   /** Validates and derives the action tree once, then asks the application for
@@ -195,7 +198,8 @@ private[gameplay] trait OathRulesWalker {
   def rollWalkerPrepared(state: OathState, actor: PlayerId, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
       : Either[OathViolation, OathTransition] =
-    resumeWalker(state, actor) { case (ready, action, tree, pending, powers, modifiers) =>
+    resumeWalker(state, actor) {
+      case (ready, action, tree, pending, powers, modifiers, startArgs) =>
       for {
         parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
           powers).toRight(InvalidEventOrder(
@@ -206,17 +210,17 @@ private[gameplay] trait OathRulesWalker {
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
           powers))
         transition <- walkerTransition(state, ready, action, tree, outcome,
-          powers, modifiers)
+          powers, modifiers, startArgs)
       } yield transition
     }
 
   private def resumeWalker(state: OathState, actor: PlayerId)(run: (ReadyGame,
-      ActionRef, Operation, PendingTree, WalkerPowers, Vector[PowerId]) =>
-      Either[OathViolation, OathTransition])
+      ActionRef, Operation, PendingTree, WalkerPowers, Vector[PowerId],
+      Vector[DecisionOptionRef]) => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
     walkerResumeContext(state, actor).flatMap {
-      case (ready, action, tree, pending, powers, modifiers) =>
-        run(ready, action, tree, pending, powers, modifiers)
+      case (ready, action, tree, pending, powers, modifiers, startArgs) =>
+        run(ready, action, tree, pending, powers, modifiers, startArgs)
     }
 
   /** `modifiers` (fix-round ruling I) is read from the durable
@@ -236,7 +240,7 @@ private[gameplay] trait OathRulesWalker {
   private def walkerResumeContext(state: OathState, actor: PlayerId)
       : Either[OathViolation,
       (ReadyGame, ActionRef, Operation, PendingTree, WalkerPowers,
-        Vector[PowerId])] =
+        Vector[PowerId], Vector[DecisionOptionRef])] =
     state match {
     case Ready(ready) => for {
       action <- ready.game.current.walkerAction.toRight(
@@ -251,18 +255,21 @@ private[gameplay] trait OathRulesWalker {
         WrongPhase(Phase.Act, ready.game.current.turn.phase))
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
-      tree <- buildWalker(action, ready, pending.actor, starting = false)
+      startArgs = ready.game.current.walkerStartArgs
+      tree <- buildWalker(action, ready, pending.actor, startArgs,
+        starting = false)
       modifiers = ready.game.current.walkerModifiers
       powers = walkerPowers(ready, pending.actor, modifiers)
       _ <- checkRestrictions(tree, powers, ready, pending.actor)
-    } yield (ready, action, tree, pending, powers, modifiers)
+    } yield (ready, action, tree, pending, powers, modifiers, startArgs)
     case _ => Left(GameNotStarted)
   }
 
   private def buildWalker(action: ActionRef, ready: ReadyGame,
-      actor: PlayerId, starting: Boolean)
+      actor: PlayerId, startArgs: Vector[DecisionOptionRef],
+      starting: Boolean)
       : Either[OathViolation, Operation] =
-    walkerTree(catalog, action, ready, actor, starting)
+    walkerTree(catalog, action, ready, actor, startArgs, starting)
 
   private def walkerCall[A](result: => Either[OathViolation, A])
       : Either[OathViolation, A] =
@@ -274,11 +281,12 @@ private[gameplay] trait OathRulesWalker {
 
   private def walkerTransition(state: OathState, ready: ReadyGame,
       action: ActionRef, tree: Operation, outcome: WalkerOutcome,
-      powers: WalkerPowers, modifiers: Vector[PowerId])
+      powers: WalkerPowers, modifiers: Vector[PowerId],
+      startArgs: Vector[DecisionOptionRef])
       : Either[OathViolation, OathTransition] = outcome match {
     case WalkerOutcome.Parked(pending, steps) =>
       val fact = WalkerParked(pending.actor, action, pending.at,
-        pending.answered, modifiers)
+        pending.answered, modifiers, startArgs)
       // The park's continuation prompt can depend on a Branch selecting its
       // children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so `continue` must be derived

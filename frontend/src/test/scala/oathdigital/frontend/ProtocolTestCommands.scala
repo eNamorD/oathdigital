@@ -16,7 +16,10 @@ private[frontend] object GameCommand {
       allocations: Vector[RestFavorAllocation], bank: String) =
     Intent.ResolveRestPower(id, allocations, bank)
   def DeclineRestPower(actor: String, id: String) = Intent.DeclineRestPower(id)
-  def Travel(actor: String, site: String) = Intent.Travel(site)
+  // Travel starts on the generic walker (batch-1 Task 5): its destination
+  // rides the start selection, not an intent of its own.
+  def Travel(actor: String, site: String) = Intent.StartWalker("travel",
+    Vector.empty, Vector(WalkerStartArgWire("site", site)))
   def CampaignConquest(actor: String, site: String, count: Int) = Intent.BeginCampaignConquest(Vector(site), count)
   def CampaignConquest(actor: String, sites: Vector[String], count: Int) = Intent.BeginCampaignConquest(sites, count)
   def CampaignRaid(actor: String, targets: Vector[BoardTargetRef], count: Int) = Intent.BeginCampaignRaid(targets.map {

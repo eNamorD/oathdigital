@@ -346,8 +346,10 @@ class HttpGameClientSuite extends FunSuite {
   test("Travel encodes destination and decodes authoritative legal costs") {
     val command = GameJson.encodeCommand(10L,
       GameCommand.Travel("red-exile", "site:b"))
-    assert(command.contains("\"type\":\"travel\""))
-    assert(command.contains("\"destinationSiteId\":\"site:b\""))
+    assert(command.contains("\"type\":\"startWalker\""))
+    assert(command.contains("\"action\":\"travel\""))
+    assert(command.contains("\"optionKind\":\"site\""))
+    assert(command.contains("\"optionId\":\"site:b\""))
     val json = projectionJson(sequence = 10, choices = false).replace(
       "\"pendingCardDecision\":null",
       "\"pendingCardDecision\":null,\"legalTravelDestinations\":[" +
