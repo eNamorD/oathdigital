@@ -75,8 +75,8 @@ own framing, which was written expecting Travel to carry a decision.
 ## Where this plan stands (2026-09-12)
 
 Tasks 1 through 5 are done and their boxes are ticked below, each annotated with
-the commit that closed it. **The batch resumes at Task 6, Take Wealth's
-once-per-turn limit.**
+the commit that closed it, and Task 6 followed. **The batch resumes at Task 7,
+the Wake cutover.**
 
 | Task | State | Commits |
 |---|---|---|
@@ -86,8 +86,8 @@ once-per-turn limit.**
 | 3 — Forge cutover + legacy delete | done | `4f209b3`, `b0640e8`, `b49ff11` |
 | 4 — Travel terrain as contributions | done | `d8d6853`, hardened to `2e4a0a6` |
 | 5 — Travel cutover + vocabulary delete | done | `c70ec1a` |
-| 6 — Take Wealth once-per-turn | **next** | — |
-| 7 — Wake cutover + legacy delete | not started | — |
+| 6 — Take Wealth once-per-turn | done | `654e75a` |
+| 7 — Wake cutover + legacy delete | **next** | — |
 | 8 — batch close-out | Step 0 superseded; rest open | — |
 
 Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
@@ -416,11 +416,86 @@ Attempt, in this order, and stop at the first that works:
 
 The write side — appending the `PowerUseRef` after a successful take — stays engine state, written by the tree's own `BuildOps`, not by a power. A contribution returns operations; it does not mutate turn state.
 
-- [ ] **Step 1: failing tests**: the restriction allows the first take at a site, blocks the second at the same site in the same turn with `PowerAlreadyUsed`, allows a take at a *different* site in the same turn, and allows the same site again after the turn advances. Drive them through `ContributionCollector.gather` plus the restriction, not through the full action.
-- [ ] **Step 2: implement** attempt 1, or stop and report.
-- [ ] **Step 3:** re-run; expected PASS.
-- [ ] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`.
-- [ ] **Step 5: commit** `feat(powers): state Take Wealth's once-per-turn limit as a restriction`.
+- [x] **Step 1: failing tests**: the restriction allows the first take at a site, blocks the second at the same site in the same turn with `PowerAlreadyUsed`, allows a take at a *different* site in the same turn, and allows the same site again after the turn advances. Drive them through `ContributionCollector.gather` plus the restriction, not through the full action.
+- [x] **Step 2: implement** attempt 1, or stop and report. Attempt 1 held; nothing was escalated.
+- [x] **Step 3:** re-run; expected PASS. Eight cases pass, and each of the two mutations below fails one.
+- [x] **Step 4:** `./sbtw "test"` (678 passing) and `python3 scripts/check-architecture.py` (197 production files). `git diff --check` clean. Frontend is untouched, so its gate is not this task's.
+- [x] **Step 5: commit** `feat(powers): state Take Wealth's once-per-turn limit as a restriction` (`654e75a`).
+
+---
+
+#### What Task 6 settled (`654e75a`)
+
+**Attempt 1 held, so the spec's standing decision survives contact.** The limit
+is a `Restriction` at `PowerWindow.WakeTakeWealth` reading
+`TurnState.usedPowers` through the `ReadyGame` every contribution already sees.
+No field joined `PowerCtx`, the walker learned no "power was used" concept, and
+no engine file changed. Attempt 2's escalation was not reached, so the spec
+needs no amendment on this point — Task 8 can record that as settled rather
+than as a question.
+
+**The site comes from the actor's pawn site, not from the tree.** Travel's
+powers read their route out of `ctx.operation`, and the same shape was
+available here — flatten the tree, collect the `Take` whose source is a site.
+It was rejected because Task 7's declared tree builds its take at execution
+inside `BuildOps`, and restrictions run at command entry, before any of that:
+a tree-reading restriction would have matched nothing, returned no violation
+and been indistinguishable from a correct one in every green assertion. That is
+Task 4's vacuity trap with the sign flipped, and reading state closes it. The
+cost is stated for whoever hits it: the rule now names the pawn's site rather
+than the take's, so a future take-at-a-distance power would read the wrong one.
+
+**One power object, not one per site.** Per-site scope is already in the ref:
+`PowerUseRef` carries `PowerSourceRef.Site`, so a second take where the pawn
+stands is blocked while a take at another site the same turn is not. Per-site
+instances would buy the same behaviour for a fabricated `PowerId` per site —
+`ContributionCollector` keys powers by id, so instances sharing one id would
+resolve a restriction's context to another site's instance, and the per-site id
+would then be what `usedPowers` records. The source is `RuleSourceRef.GameRule`:
+taking wealth is a standing Wake-phase option, not a power printed on a site.
+
+**The `PowerUseRef` spelling lives on the power, and Task 7's write side imports
+it.** A read side and a write side that spelled the ref differently would leave
+the limit permanently silent, and only an end-to-end test would notice. The
+suite pins the spelling twice: against `Wake.takeWealthPower` while the legacy
+object still exists, and against the literal. **Task 7 must delete the first
+assertion with the legacy object and keep the second** — and build its
+`usedPowers` write through `TakeWealthLimit.useRef`, never a second literal.
+
+**Registered in `WalkerPowerCatalog.default` now, inert until Task 7.**
+Discovery keeps only powers hooking the window being gathered, and nothing
+declares `WakeTakeWealth` yet, so no current gather sees it. The catalog audit
+fingerprint covers the executable catalog's handler inventory, not this vector,
+so it is untouched. The power carries no catalog id at all, which is a first
+for this seam: there is nothing to look up and nothing to omit.
+
+**An architecture guard was misfiring and is now narrowed.** "Procedure power
+inventories use named Power objects, not raw ID tables" rejects any
+`*Powers.scala` under `powers/` containing `Map(` or `Set(`. Every
+`ContributingPower` declares `contributions: Map[PowerWindow, Vector[
+Contribution]]`, so the guard reads an ordinary field of the walker seam as the
+smell it hunts. It was already being paid for silently: `TravelSitePowers.scala`
+spells its contribution map `Map.empty.updated(...)` for no reason but this
+scan. The guard now skips files declaring a `ContributingPower`, by what they
+declare rather than by filename, and asserts it still covers at least five
+files so the exemption cannot quietly empty it. Proven both ways: a `Map(` added
+to `ActionPowers.scala` still fails it. **Available cleanup, deliberately not
+taken here:** `TravelSitePowers.scala` can drop its workaround, which is Task 5's
+file and not this task's to churn.
+
+**Mutation evidence, since a restriction that matches nothing looks identical to
+an absent one.** Making the used-set check unconditional (`filter(_ => false)`)
+fails the same-site block and the turn-advance precondition. Replacing the pawn
+site with a constant fails the different-site case. Both were run and reverted.
+
+**Reachability, stated rather than assumed.** "A different site the same turn"
+is a property of the rule, not a scenario Wake can reach today: nothing moves a
+pawn during the Wake phase. The test fixes the rule's shape before an action
+that moves one exists.
+
+Sizes for Task 7's budget: the power is 54 lines, its suite 131. Gate after
+Task 6: 678 root tests, architecture check over 197 production files. The
+frontend is untouched by this task, so its gate is Task 7's to run.
 
 ---
 
