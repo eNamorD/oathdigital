@@ -87,7 +87,7 @@ Task 8, the close-out.**
 | 4 — Travel terrain as contributions | done | `d8d6853`, hardened to `2e4a0a6` |
 | 5 — Travel cutover + vocabulary delete | done | `c70ec1a` |
 | 6 — Take Wealth once-per-turn | done | `654e75a` |
-| 7 — Wake cutover + legacy delete | done | `0139c6c`, completed by `PENDING` |
+| 7 — Wake cutover + legacy delete | done | `0139c6c`, completed by `e314210` |
 | 8 — batch close-out | Step 0 superseded; rest open | — |
 
 Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
@@ -541,7 +541,7 @@ Task 1 made — and that is a change to make deliberately, not to discover.
 - [x] **Step 2: implement** the procedure and the registry entry.
 - [x] **Step 3: delete** the legacy path in the same commit; port or delete each legacy Wake test. End Wake followed in a second pass, which is what emptied and deleted `phases/Wake.scala`.
 - [x] **Step 4:** `./sbtw "test"` (689), `./sbtw "frontend/test" "frontend/fastLinkJS"` (148), `python3 scripts/check-architecture.py` (196 production files), `git diff --check` clean.
-- [x] **Step 5: commit** `feat(walker): move Take Wealth onto the walker and delete its legacy path` (`0139c6c`) and `feat(walker): move End Wake onto the walker and delete the Wake object` (`PENDING`).
+- [x] **Step 5: commit** `feat(walker): move Take Wealth onto the walker and delete its legacy path` (`0139c6c`) and `feat(walker): move End Wake onto the walker and delete the Wake object` (`e314210`).
 
 ---
 
