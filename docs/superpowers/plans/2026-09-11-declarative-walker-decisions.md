@@ -307,12 +307,129 @@ Forge declares "Forge a relic" and "Complete Forge" beside the sections it alrea
 
 **Files:** whatever the sweep finds; `docs/superpowers/plans/2026-09-09-walker-batch-1-forge-travel-wake.md`
 
-- [ ] **Step 1: walk the spec's eleven testing obligations** one at a time against the suites that now exist, and name the test that discharges each. An obligation with no test is a gap to close here, not a line to tick.
-- [ ] **Step 2: sweep for survivors.** `grep -rnE '\b(OwnerQuery|WalkerCtx|DecisionPayload|relicCandidates|ForgeProjection|ForgeAssignment|ForgeResource|RecoverChoice)\b' src shared frontend/src` returns nothing but `RestPowerDecisionPayload`, and `grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main` returns nothing. Both are word-bounded and production-scoped for the reasons Task 3's Step 6 records; the legacy tags survive on purpose in the negative decode tests. No projector names a `decisionId` or an `ActionRef` to decide what to offer.
-- [ ] **Step 3: check the caps.** `python3 scripts/check-architecture.py` plus a line-count read of the four files this plan flagged, so the next plan inherits an accurate picture rather than four files silently at 799.
-- [ ] **Step 4: update batch 1.** Its Task 2 text already describes the declarative contract; note in that plan that the contract now exists and that Travel's decision (Task 5) declares a query rather than a `validate` closure.
-- [ ] **Step 5: full gate** `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: ledger.** Record how the open judgement calls were settled: whether `DecisionAnswer` ended up sealed and `encodeDecisionAnswer` exhaustive rather than throwing; and whether any migrated decision needed legality the query could not state. Then commit `docs(plan): close out declarative walker decisions`.
+- [x] **Step 1: walk the spec's eleven testing obligations** one at a time against the suites that now exist, and name the test that discharges each. An obligation with no test is a gap to close here, not a line to tick. All eleven are discharged; the mapping is in the close-out ledger below.
+- [x] **Step 2: sweep for survivors.** `grep -rnE '\b(OwnerQuery|WalkerCtx|DecisionPayload|relicCandidates|ForgeProjection|ForgeAssignment|ForgeResource|RecoverChoice)\b' src shared frontend/src` returns nothing, and `grep -rn '"recover-choice"\|"recover-relic"\|"forge-assignment"' src/main shared/src/main frontend/src/main` returns exactly one benign CSS class. Both are word-bounded and production-scoped for the reasons Task 3's Step 6 records; the legacy tags survive on purpose in the negative decode tests. No projector names a `decisionId` or an `ActionRef` to decide what to offer. Two corrections to this step's own expectations are recorded in the ledger.
+- [x] **Step 3: check the caps.** `python3 scripts/check-architecture.py` plus a line-count read of the four files this plan flagged, so the next plan inherits an accurate picture rather than four files silently at 799. Counts are in the ledger.
+- [x] **Step 4: update batch 1.** Its Task 2 text already describes the declarative contract; note in that plan that the contract now exists. This step's own premise about Travel was wrong and is corrected in the ledger: batch 1's Task 5 gives Travel a flat tree with no `Decide` at all, so the contract binds the next action that parks, not Travel.
+- [x] **Step 5: full gate** `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`. Both green. Task 6 changed no production code, so this is the same tree Task 5b's gate passed.
+- [x] **Step 6: ledger.** Record how the open judgement calls were settled: whether `DecisionAnswer` ended up sealed and `encodeDecisionAnswer` exhaustive rather than throwing; and whether any migrated decision needed legality the query could not state. Then commit `docs(plan): close out declarative walker decisions`.
+
+---
+
+## Close-out ledger
+
+Written at Task 6. Everything below describes the tree at `d012696` plus this
+commit; Task 6 changed no production code.
+
+### The eleven testing obligations
+
+Each spec obligation and the test that discharges it. No obligation was left
+without one, so nothing was added here.
+
+| # | Obligation | Discharged by |
+|---|---|---|
+| 1 | Generic `Decide` accepts exactly the answers its query declares | `DecisionQuerySuite` "accepts every option it declares" / "rejects a reference it does not declare"; `ProcedureWalkerSuite` "a Decide accepts exactly its declared options" |
+| 2 | Duplicate answers and malformed or empty queries reject deterministically | `DecisionQuerySuite`, eleven malformed-query cases plus the two duplicate-placement cases; `ProcedureWalkerSuite` "a malformed query is rejected as a contract failure" |
+| 3 | Concrete owner enforcement replaces `OwnerQuery` behaviour | `ProcedureWalkerSuite` "a Decide answered by anyone but the pending actor is rejected"; `ForgeProcedureSuite` P4 "an answer from a player who is not the parked actor is rejected" |
+| 4 | A synthetic power that adds or removes an option changes projection and resolution identically | `WalkerDecisionQueryPowerSuite`, all five tests — including the negative one where a transform applied to the walk but not the projection makes the two disagree |
+| 5 | Recover projects and accepts Continue, Stop and live relic options solely from its transformed `Decide` | `RecoverProcedureSuite` "the continue/stop decision declares exactly two labelled buttons" and "the relic decision declares one option per live facedown relic, and nothing else at the site"; `WalkerDecisionProjectionSuite` |
+| 6 | Empty-site Recover finishes without parking | `RecoverProcedureSuite` "a successful Recover with no facedown relic finishes without a relic decision" |
+| 7 | Forge declares options and printed-cost minima without consulting suit banks or enumerating arrangements, and resolves placements as player-funded `PayCost` | `ForgeProcedureSuite` P3 "parks at forge.assignment, owned by the actor, declaring both sections with their printed minima", P6 "a legal answer finishes the walk with three player-funded" payments, and P6 "the section a target is placed in decides which resource it" costs |
+| 8 | Forge UI reuses the generic partition interaction, derives confirmation from projected minima, submits a generic partition answer | `PartitionPanelRenderSuite` "confirmation is refused until every projected minimum is met" and "clicking confirm submits every option in the zone it was left in"; `PartitionDecisionStateSuite` "a draft below a projected minimum refuses to answer at all"; `ServerModeUiSuite` "Forge is answered by moving projected options between projected" zones |
+| 9 | Stale Recover and Forge options reject after authoritative state changes | `RecoverProcedureSuite` "resolving the relic decision with a relic not facedown at the site is rejected" and "a continue answer submitted after the roll already succeeded is rejected"; `ForgeProcedureSuite` P4 "rejects stale, duplicate, incomplete" answers and P4/R14 "the decision reads its eligible targets live" |
+| 10 | Event codec and replay preserve selected answers unchanged | `GameEventWireSuite` "both generic walker decision answers round trip" and "every option reference kind round trips through a recorded answer"; `WalkerReplayDriftSuite` (four Recover walks); `GameApplicationServiceSuite` "walker Recover persists every park and replays to the same final state" and "walker Forge completes through StartWalker/ResolveWalker alone and replays to the same final state" |
+| 11 | Backend, frontend runtime, Scala.js link and architecture checks pass | `./sbtw "test" "frontend/test" "frontend/fastLinkJS"` and `python3 scripts/check-architecture.py`, both green |
+
+**The one asymmetry worth naming, since it is not a gap.** Obligation 10 is
+carried for Recover by an independent ops re-derivation (`WalkerReplayDriftSuite`
+replays recorded events, rebuilds a fresh tree from replayed state, re-walks it
+and diffs the operations) and for Forge only by final-state equality after an
+app-service replay. That is the coverage the drift suite claims for itself — it
+is scoped to the Recover corpus by its own doc comment — and the partition
+answer's codec round trip is proven separately. A Forge drift check is a
+reasonable thing for a later batch to add, not a hole this plan opened.
+
+### Sweep results, and two corrections to Step 2's own expectations
+
+The word-bounded symbol sweep returns nothing at all. Step 2 predicted it would
+return `RestPowerDecisionPayload`; it cannot, because `\bDecisionPayload\b`
+does not match inside that identifier — the preceding `r` is a word character.
+The expectation was wrong, not the result.
+
+The legacy-tag sweep returns exactly one production hit, and it is a false
+positive left in place deliberately:
+`frontend/src/main/scala/oathdigital/frontend/WalkerPanelSupport.scala:145`
+uses `"recover-choice"` as the **CSS class** on the fallback button a Recover
+choice option gets when it is neither Continue nor Stop. It is not a JSON
+answer tag, no stylesheet or test reads it, and the three deleted tags survive
+nowhere else in production. Recorded rather than renamed: a later plan
+inheriting this sweep should expect the one hit and check what it is, not
+assume the grep is clean.
+
+No projector names a `decisionId` or an `ActionRef` to decide what to offer.
+`WalkerDecisionProjector` passes an `ActionRef` through to rebuild the tree and
+to key the projection, and matches on neither.
+
+### Line counts at close-out
+
+The four files this plan flagged, measured rather than assumed:
+
+| File | Planned as | Now |
+|---|---|---|
+| `gameplay/walker/ProcedureWalker.scala` | 790 | 794 |
+| `serialization/WalkerEventCodec.scala` | 795 | 731 |
+| `frontend/ServerUiSupport.scala` | 795 | 685 |
+| `frontend/ActionDecisionRenderer.scala` | 774 | 746 |
+
+Task 3's codec extraction and Task 5's frontend work bought real headroom in
+three of the four. `ProcedureWalker.scala` went the other way: R3 predicted
+`answerDecide` would shrink to an owner comparison plus one call, and the file
+still grew by four lines, leaving six of headroom. No extraction was spent
+here, because Task 6 adds no engine lines and widening a close-out task into a
+refactor would need its own review. The next plan that touches the walker
+should budget one first.
+
+Also for the next plan, though outside this one's scope:
+`gameplay/actions/Campaign.scala` sits at exactly 800.
+
+### How the open judgement calls were settled
+
+**`DecisionAnswer` is sealed and its encoder is exhaustive.** Task 3's
+extraction moved the answer codec into
+`serialization/DecisionAnswerCodec.scala`, and `encode` now matches both
+concrete cases and throws on nothing. This settles the question batch-1's Task
+3 flagged and deferred, and it settles it the way the batch-1 SDD ledger argued
+for: `encodePayloadSafe` used to swallow the throw, so a missing branch made an
+action silently unplayable *after* its cost was spent. With both answers
+generic over `DecisionOptionRef`, the family is closed by construction — a new
+query shape reuses the two answers rather than adding a third.
+
+**No migrated decision needed legality the query could not state.** Neither
+`RecoverProcedure` nor `ForgeProcedure` retains a `validate` closure on a
+`Decide` node. Every staleness case that used to need one is handled
+structurally, exactly as R3 predicted: Recover's stale Continue is rejected
+because the rebuilt `Branch` no longer declares that node once the roll has
+succeeded, and Recover's relic options and Forge's denizen options are read
+live from authoritative state at rebuild, so an option that no longer exists is
+simply absent from the query.
+
+One boundary is worth stating precisely, because it looks like a counterexample
+and is not. Recover's "Spend 1 Supply for two dice" button is gated on the
+player actually holding supply, and the query cannot say that — `DecisionQueries`
+never reads `ReadyGame`. That gate is not decision legality. The frontend
+disables the control as a courtesy, and the authority is `OperationPipeline`,
+which rejects the `AdjustSupply` at execution (`RecoverProcedureSuite`
+"OperationPipeline rejects an unpaid next roll and a supply-zero" continue). A
+query states which options exist; an operation states whether the chosen one
+can be paid for. Keeping those separate is what R3 was protecting.
+
+### Divergence from the plan's own setup
+
+The work landed on branch `feat/walker-batch-1` in the
+`.claude/worktrees/walker-batch-1` worktree, not on the
+`feat/walker-declarative-decisions` branch the Global Constraints name. The
+commits are contiguous from `88ad015` to this one and the ordering relative to
+batch 1's Task 5 is unchanged, so this is a bookkeeping difference only.
 
 ---
 

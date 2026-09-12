@@ -41,7 +41,81 @@ Deliberately excluded from batch 1: Campaign (800 lines, the most likely to need
 
 ---
 
+## The declarative decision contract has landed (added 2026-09-11)
+
+`docs/superpowers/plans/2026-09-11-declarative-walker-decisions.md` is complete.
+Everything Task 2's text above describes in the declarative vocabulary now
+exists in shipped code, so that text and `ForgeProcedure` no longer disagree:
+`DecisionQuery`, `DecisionOption`, `DecisionOptionRef`, `DecisionSection`,
+`DecisionPlacement` and both `DecisionAnswer` cases live in
+`model/Decisions.scala`, and one generic validator in `DecisionQueries`
+replaces every per-action `validate` closure that used to guard a `Decide`.
+Forge's assignment decision is a real `DecisionQuery.Partition` and Recover's
+two decisions are `ChooseOne` queries.
+
+**What this means for the tasks still open.** Any action that declares a
+`Decide` from here on states a query and writes no validation closure — the
+walker validates the answer generically and `WalkerDecisionProjector` projects
+the same transformed query, so what is legal and what is offered can no longer
+drift apart. Prompt copy for a heading, a confirm control, a button or a
+section is authored on the query by the action that asks the question; game-
+object names are still resolved by `GamePresentationProjector` from an option's
+reference and never enter a query.
+
+**Travel is not affected.** Task 5 below gives Travel a flat tree with no
+`Decide` at all — destination selection is the parameter that selects a
+complete tree, not a persisted interruption inside one — so there is no
+closure there to replace and no query to declare. The contract binds the next
+action that actually parks. That correction supersedes the declarative plan's
+own framing, which was written expecting Travel to carry a decision.
+
+
+---
+
+## Where this plan stands (2026-09-11)
+
+Tasks 1 through 4 are done and their boxes are ticked below, each annotated with
+the commit that closed it. **The batch resumes at Task 5, the Travel cutover.**
+
+| Task | State | Commits |
+|---|---|---|
+| 1 — per-action modifier window | done | `f9fa243` |
+| 1b — extract the walker surface | done | `9f0f16c` |
+| 2 — Forge declares its tree | done | `d46f511`, migrated by `9e078cc` |
+| 3 — Forge cutover + legacy delete | done | `4f209b3`, `b0640e8`, `b49ff11` |
+| 4 — Travel terrain as contributions | done | `d8d6853`, hardened to `2e4a0a6` |
+| 5 — Travel cutover + vocabulary delete | **next** | — |
+| 6 — Take Wealth once-per-turn | not started | — |
+| 7 — Wake cutover + legacy delete | not started | — |
+| 8 — batch close-out | Step 0 superseded; rest open | — |
+
+Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
+800-line cap, which the next added line would have broken.
+
+**Why the branch has thirty commits for four tasks.** After Task 4 the batch
+paused and `docs/superpowers/plans/2026-09-11-declarative-walker-decisions.md`
+ran to completion on this same branch. That plan replaced every per-action
+`validate` closure on a `Decide` with a declared `DecisionQuery`, which changed
+the contract Tasks 5 through 7 must write against — so it ran before them
+deliberately, not as a detour. Task 2's prose and `ForgeProcedure` were both
+rewritten by it, which is why that task's text describes a declarative shape its
+original implementation did not have.
+
+Gate at the time of writing: 671 root tests, 148 frontend, architecture check
+over 196 production files, all green.
+
+Two caps worth knowing before Task 5 starts, measured rather than assumed:
+`gameplay/walker/ProcedureWalker.scala` is at 794 of 800, and
+`gameplay/actions/Campaign.scala` is at exactly 800. Campaign is out of this
+batch's scope, but Task 5 threads a destination through the walker surface, so
+it should budget an extraction rather than trimming comments to fit — the
+mistake Task 1 made and Task 1b had to undo.
+
+---
+
 ### Task 1: The modifier-selection window becomes per-action
+
+> **Done** at `f9fa243`. The registry entry owns the window; `modifierWindow` is `Option` because not every action has one. Proven by mutation: restoring the hardcoded window fails the two window-dependent tests and leaves the `None` case passing.
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerActionRegistry.scala`, `src/main/scala/oathdigital/gameplay/OathRules.scala`, `src/main/scala/oathdigital/application/GameApplicationService.scala`
@@ -54,15 +128,17 @@ Deliberately excluded from batch 1: Campaign (800 lines, the most likely to need
 - `OathRules.offerableWalkerPowers(ready, actor, action)` and `validateModifiers(ready, actor, action, modifiers)` take the `ActionRef` and read the window from the registry. Neither names a window literal.
 - `GameApplicationService.preview` already resolves the `ActionRef` at `walkerAction(action)` and discards it as `case Some(_)`. Bind it and pass it through.
 
-- [ ] **Step 1: failing tests** in `WalkerActionRegistrySuite`: (a) register a second `Entry` in a test-local `registrations` map declaring a *different* modifier window, and assert `offerableWalkerPowers` returns a different set for it than for Recover — a fixture `PlayerSelected` power applicable only at the second window is offered for the second action and not for Recover; (b) an entry declaring `None` offers nothing and rejects every modifier id. Expected FAIL: the accessor does not exist and both calls consult Recover's window.
-- [ ] **Step 2: implement** the four bullets above. No behaviour change for Recover.
-- [ ] **Step 3:** re-run the focused suite; expected PASS. Confirm the existing Recover modifier tests still pass untouched.
-- [ ] **Step 4:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
-- [ ] **Step 5: commit** `refactor(walker): let each registered action own its modifier window`.
+- [x] **Step 1: failing tests** in `WalkerActionRegistrySuite`: (a) register a second `Entry` in a test-local `registrations` map declaring a *different* modifier window, and assert `offerableWalkerPowers` returns a different set for it than for Recover — a fixture `PlayerSelected` power applicable only at the second window is offered for the second action and not for Recover; (b) an entry declaring `None` offers nothing and rejects every modifier id. Expected FAIL: the accessor does not exist and both calls consult Recover's window.
+- [x] **Step 2: implement** the four bullets above. No behaviour change for Recover.
+- [x] **Step 3:** re-run the focused suite; expected PASS. Confirm the existing Recover modifier tests still pass untouched.
+- [x] **Step 4:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
+- [x] **Step 5: commit** `refactor(walker): let each registered action own its modifier window`.
 
 ---
 
 ### Task 1b: Extract the walker command surface out of `OathRules`
+
+> **Done** at `9f0f16c`. Verified a pure move byte-for-byte — the extracted block compares identically against the new file but for the trait's closing brace. `OathRules.scala` 800 → 466, `OathRulesWalker.scala` 374. No test file was edited, which was the acceptance criterion.
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`
@@ -76,15 +152,17 @@ The walker command surface is already contiguous: `startWalker` at line 131 thro
 
 The mechanism is the implementer's call — a trait `OathRulesWalker` that `OathRules` mixes in is the cheapest thing that keeps `catalog` and `walkerPowerCatalog` reachable and every call site unchanged, but a collaborator class taking those two as constructor arguments is equally acceptable if it reads better. What is not acceptable is changing what any of these methods does.
 
-- [ ] **Step 1:** move the block. No signature changes, no behaviour changes, no doc-comment rewrites beyond what the move mechanically requires. Public methods stay public; `validateModifiers` keeps the `private[gameplay]` visibility Task 1 gave it.
-- [ ] **Step 2:** the proof of a pure move is that **not one test file is edited**. Run `./sbtw "test"` and confirm 587 passing with `git status` showing no change under `src/test/`. If a test needs editing, the move was not pure — stop and report what forced it.
-- [ ] **Step 3:** `python3 scripts/check-architecture.py`, and record both files' line counts in the report. `OathRules.scala` should land far enough below 800 that Tasks 3, 5 and 7 have room; if it does not, say so, because that means the extraction was too small to solve the problem it exists for.
-- [ ] **Step 4:** `./sbtw "frontend/test" "frontend/fastLinkJS"` and `git diff --check`.
-- [ ] **Step 5: commit** `refactor(walker): extract the walker command surface from OathRules`.
+- [x] **Step 1:** move the block. No signature changes, no behaviour changes, no doc-comment rewrites beyond what the move mechanically requires. Public methods stay public; `validateModifiers` keeps the `private[gameplay]` visibility Task 1 gave it.
+- [x] **Step 2:** the proof of a pure move is that **not one test file is edited**. Run `./sbtw "test"` and confirm 587 passing with `git status` showing no change under `src/test/`. If a test needs editing, the move was not pure — stop and report what forced it.
+- [x] **Step 3:** `python3 scripts/check-architecture.py`, and record both files' line counts in the report. `OathRules.scala` should land far enough below 800 that Tasks 3, 5 and 7 have room; if it does not, say so, because that means the extraction was too small to solve the problem it exists for.
+- [x] **Step 4:** `./sbtw "frontend/test" "frontend/fastLinkJS"` and `git diff --check`.
+- [x] **Step 5: commit** `refactor(walker): extract the walker command surface from OathRules`.
 
 ---
 
 ### Task 2: Forge declares its tree
+
+> **Done** at `d46f511`, later migrated to the declarative contract by `9e078cc`. **This task answered the batch's central question: the recipe generalises.** No engine change, no new `Operation` case, no new window. The prose above was rewritten afterwards to describe the declarative shape Forge now has.
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/forge/ForgeProcedure.scala`
@@ -108,15 +186,17 @@ The `Decide` uses the declarative `DecisionQuery.Partition` contract from `docs/
 
 The relic id is the authoritative relic-deck top and is **not** closed over by the tree. Nor does it ride the answer or come from a randomness port. The trailing `BuildOps` reads `headOption` at execution time and emits `Play` only when a top relic exists. Replay records and reapplies that optional `Play` exactly.
 
-- [ ] **Step 1: failing tests** in `ForgeProcedureSuite`: (a) `build` rejects every semantic start gate, including not ruling the pawn site and insufficient aggregate player favor/secrets; (b) zero Supply passes `build` but the first `AdjustSupply` is rejected before any park; (c) an empty relic deck passes `build`, the complete action still pays Supply/resources, and no `Play` is emitted; (d) a successful build has the tree above; (e) the partition query exposes exactly the three live denizens and printed minima; (f) stale/malformed partition answers reject generically; (g) a legal answer produces exactly three player-funded `PayCost`s plus an optional top-relic `Play`.
-- [ ] **Step 2: implement** `ForgeProcedure` against the declarative decision contract, with aggregate affordability at the start gate and authoritative operation validation at execution.
-- [ ] **Step 3:** re-run the focused suite; expected PASS.
-- [ ] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`.
-- [ ] **Step 5: commit** `feat(walker): declare the Forge procedure tree`.
+- [x] **Step 1: failing tests** in `ForgeProcedureSuite`: (a) `build` rejects every semantic start gate, including not ruling the pawn site and insufficient aggregate player favor/secrets; (b) zero Supply passes `build` but the first `AdjustSupply` is rejected before any park; (c) an empty relic deck passes `build`, the complete action still pays Supply/resources, and no `Play` is emitted; (d) a successful build has the tree above; (e) the partition query exposes exactly the three live denizens and printed minima; (f) stale/malformed partition answers reject generically; (g) a legal answer produces exactly three player-funded `PayCost`s plus an optional top-relic `Play`.
+- [x] **Step 2: implement** `ForgeProcedure` against the declarative decision contract, with aggregate affordability at the start gate and authoritative operation validation at execution.
+- [x] **Step 3:** re-run the focused suite; expected PASS.
+- [x] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`.
+- [x] **Step 5: commit** `feat(walker): declare the Forge procedure tree`.
 
 ---
 
 ### Task 3: Forge cuts over and its legacy path is deleted
+
+> **Done** at `4f209b3` → `b0640e8` → `b49ff11`, in the three-commit split R23 allowed. Step 2b (the eligibility window) and Step 2c (the codec branch) both landed here. Two accepted deviations: `OathContinue.AwaitingForgeAssignment` survives because the registry entry's own `continuationFor` returns it, exactly as Recover's continuations survived its cutover; and the per-command decision id became a constant, which is the walker's established model rather than a Forge regression.
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/ActionRef.scala`, `WalkerActionRegistry.scala`, `OathRulesWalker.scala`, `OathRules.scala`, `WalkerDecisionProjector.scala`, `GameIntentMapper.scala`, `LegalActionProjector.scala`, `PendingProcedureProjector.scala`, `GameApplicationService.scala`, `frontend/.../ActionDecisionRenderer.scala`
@@ -128,20 +208,22 @@ Note (from Task 1b): the walker command surface now lives in `OathRulesWalker.sc
 
 `Entry.rollDecisionId` is currently a bare `String` because Recover has a roll. Forge does not. Make it `Option[String]` rather than inventing an unreachable sentinel id: `OathRules.parkedContinue` and `WalkerDecisionProjector` both consult it, and a `None` there must produce a typed rejection, not a silent match against a string no tree ever uses.
 
-- [ ] **Step 1: failing test** — an end-to-end Forge through `GameApplicationService` using only `StartWalker`/`ResolveWalker`, asserting the same final state the legacy `ForgeCommand` path produced (three denizens each carrying their resource, relic facedown in the play area, 1 supply spent, no pending). Plus a replay assertion: reconstructing from the journal reproduces that state. Expected FAIL: `ActionRef.Forge` does not exist.
-- [ ] **Step 2: implement** the registry entry, the `Option[String]` roll-id change with its two call sites, and the projector/mapper wiring.
-- [ ] **Step 2b: the eligibility window becomes per-action too.** `OathRules.eligibilityRelaxed` names `PowerWindow.RecoverActionEligibility` as a literal — the same shape Task 1 removed from the modifier window, one window over, found by Task 1b. It is reached by every `startWalker`, so registering Forge makes a second action gather at Recover's eligibility window. It is inert only while no power is applicable there, and Task 4 registers real powers. Move the window onto `WalkerActionRegistry.Entry` beside `modifierWindow`, with the same `Option` treatment and the same `registrations` override, and update the projector call site. Prove it the way Task 1 was proven: a fixture power applicable only at another action's eligibility window relaxes for that action and not for Recover, and a mutation restoring the literal fails that test.
-- [ ] **Step 2c: the walker event codec has no branch for the Forge assignment payload** (found by Task 2). `WalkerEventCodec.encodeDecisionPayload` matches the two Recover payloads and then *throws* `IllegalArgumentException`; the decode side returns a typed `Left`. So the first journalled Forge throws, and no test in Task 2 could catch it because nothing there reaches the codec. Add both branches. Note the file is at 771 of the 800-line cap, so budget for that the way Task 1b had to. Two further things while you are in there, both judgement calls to make explicitly rather than by default: whether the encode side should return a typed error like its decode counterpart instead of throwing, and whether an exhaustive match would have made this a compile error rather than a runtime one.
-- [ ] **Step 3: delete** the legacy path in the same commit, and delete or port each legacy Forge test to the walker path. A test asserting a deleted event's codec round-trip is deleted with the event. `OathViolation.ForgeDecisionMismatch` loses its only producer with the legacy path — the walker checks actor, phase and decision id generically — so it goes too.
-- [ ] **Step 4:** re-run; expected PASS. `grep -rn "ForgeCommand\|ForgeStarted\|ForgeCompleted\|PendingProcedure.Forge" src frontend` returns nothing outside the journal fixtures being deleted.
-- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: commit** `feat(walker): move Forge onto the walker and delete its legacy path`.
+- [x] **Step 1: failing test** — an end-to-end Forge through `GameApplicationService` using only `StartWalker`/`ResolveWalker`, asserting the same final state the legacy `ForgeCommand` path produced (three denizens each carrying their resource, relic facedown in the play area, 1 supply spent, no pending). Plus a replay assertion: reconstructing from the journal reproduces that state. Expected FAIL: `ActionRef.Forge` does not exist.
+- [x] **Step 2: implement** the registry entry, the `Option[String]` roll-id change with its two call sites, and the projector/mapper wiring.
+- [x] **Step 2b: the eligibility window becomes per-action too.** `OathRules.eligibilityRelaxed` names `PowerWindow.RecoverActionEligibility` as a literal — the same shape Task 1 removed from the modifier window, one window over, found by Task 1b. It is reached by every `startWalker`, so registering Forge makes a second action gather at Recover's eligibility window. It is inert only while no power is applicable there, and Task 4 registers real powers. Move the window onto `WalkerActionRegistry.Entry` beside `modifierWindow`, with the same `Option` treatment and the same `registrations` override, and update the projector call site. Prove it the way Task 1 was proven: a fixture power applicable only at another action's eligibility window relaxes for that action and not for Recover, and a mutation restoring the literal fails that test.
+- [x] **Step 2c: the walker event codec has no branch for the Forge assignment payload** (found by Task 2). `WalkerEventCodec.encodeDecisionPayload` matches the two Recover payloads and then *throws* `IllegalArgumentException`; the decode side returns a typed `Left`. So the first journalled Forge throws, and no test in Task 2 could catch it because nothing there reaches the codec. Add both branches. Note the file is at 771 of the 800-line cap, so budget for that the way Task 1b had to. Two further things while you are in there, both judgement calls to make explicitly rather than by default: whether the encode side should return a typed error like its decode counterpart instead of throwing, and whether an exhaustive match would have made this a compile error rather than a runtime one.
+- [x] **Step 3: delete** the legacy path in the same commit, and delete or port each legacy Forge test to the walker path. A test asserting a deleted event's codec round-trip is deleted with the event. `OathViolation.ForgeDecisionMismatch` loses its only producer with the legacy path — the walker checks actor, phase and decision id generically — so it goes too.
+- [x] **Step 4:** re-run; expected PASS. `grep -rn "ForgeCommand\|ForgeStarted\|ForgeCompleted\|PendingProcedure.Forge" src frontend` returns nothing outside the journal fixtures being deleted.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(walker): move Forge onto the walker and delete its legacy path`.
 
 **Report before Task 4.** Forge is the recipe proof. If porting it needed anything the plan did not anticipate — an engine change, a new `Operation` case, a window that did not exist — say so plainly in the ledger before Travel starts, because Travel and Wake were scoped assuming the recipe holds.
 
 ---
 
 ### Task 4: Travel's terrain costs become transforms
+
+> **Done** at `d8d6853`, hardened over two review rounds to `2e4a0a6`. **CR1 superseded R29 in one respect:** `PowerCtx` now carries the generic hooked `operation`, so a power can inspect the route without the collector or walker knowing Travel. The prose above already reflects that, and R28 resolved to a single mechanism — Coast declares no priority and `shouldIgnore` does the work.
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/travel/TravelSitePowers.scala`
@@ -170,12 +252,12 @@ Only four `Operation` cases carry a `window` at all — `ModifyDicePool`, `Decid
 
 The route facts each `applicable` needs (which site is source, which is destination) come from `ctx.state` and the hooked operation. The actor's pawn site is the source and the destination rides the windowed `Sequence` as its sibling `Move`. **CR1 (controller ruling):** `PowerCtx` carries that generic hooked `operation`, populated at every gather call, so applicability and named ignore can inspect its route without the collector or walker knowing Travel. `PowerCtx` remains catalog-free; static catalog data stays on a catalog-parameterized contribution factory such as `CatacombsContribution.forCatalog`.
 
-- [ ] **Step 1: failing tests** in `TravelSitePowersSuite` driving `ContributionCollector.gather` directly, one per parity case the retired `TravelCostWindow.fold` implements: ordinary route to a mountain (+1), to an island (+2), coast route (replaced with 1), coast route where the destination also has an add (the add is ignored, not stacked), non-coast route from a coastal site (no replace), and a pass crossing regions (blocked) versus a coast route past a pass (allowed). Expected FAIL: the powers do not exist.
-- [ ] **Step 2: implement** the powers and register them in `WalkerPowerCatalog.default`.
-- [ ] **Step 3:** re-run; expected PASS. Confirm each case's number matches what `TravelCostWindow.fold` returns for the same route today — parity is the acceptance criterion, not plausibility.
-- [ ] **Step 3b: prove each transform actually fires.** A transform whose pattern match hits nothing returns its input unchanged and is indistinguishable from an absent power in every assertion about a *route*, because the base cost still comes back. So for each terrain kind, assert the cost differs from the base cost with that power absent, and additionally mutate one transform's match so it hits nothing and quote the resulting failure. This is the vacuity trap this task is most likely to fall into, and a green suite is not evidence against it.
-- [ ] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`. The architecture suite must still find no engine source naming any of these powers.
-- [ ] **Step 5: commit** `feat(powers): state Travel terrain costs as walker contributions`.
+- [x] **Step 1: failing tests** in `TravelSitePowersSuite` driving `ContributionCollector.gather` directly, one per parity case the retired `TravelCostWindow.fold` implements: ordinary route to a mountain (+1), to an island (+2), coast route (replaced with 1), coast route where the destination also has an add (the add is ignored, not stacked), non-coast route from a coastal site (no replace), and a pass crossing regions (blocked) versus a coast route past a pass (allowed). Expected FAIL: the powers do not exist.
+- [x] **Step 2: implement** the powers and register them in `WalkerPowerCatalog.default`.
+- [x] **Step 3:** re-run; expected PASS. Confirm each case's number matches what `TravelCostWindow.fold` returns for the same route today — parity is the acceptance criterion, not plausibility.
+- [x] **Step 3b: prove each transform actually fires.** A transform whose pattern match hits nothing returns its input unchanged and is indistinguishable from an absent power in every assertion about a *route*, because the base cost still comes back. So for each terrain kind, assert the cost differs from the base cost with that power absent, and additionally mutate one transform's match so it hits nothing and quote the resulting failure. This is the vacuity trap this task is most likely to fall into, and a green suite is not evidence against it.
+- [x] **Step 4:** `./sbtw "test"` and `python3 scripts/check-architecture.py`. The architecture suite must still find no engine source naming any of these powers.
+- [x] **Step 5: commit** `feat(powers): state Travel terrain costs as walker contributions`.
 
 ---
 
@@ -327,7 +409,7 @@ swallows the throw, so a missing branch makes an action silently unplayable
 795 of the 800-line cap**, so this needs a Task-1b-style extraction FIRST, as
 its own commit, not folded into the conversion.
 
-- [ ] **Step 0:** extract from `WalkerEventCodec.scala` until it has real
+- [x] **Step 0: already done, by another plan.** The declarative-decisions plan's Task 3 (`9e078cc`) extracted `serialization/DecisionAnswerCodec.scala` and made its `encode` exhaustive over a sealed `DecisionAnswer`, so the throw this step existed to remove is gone and `WalkerEventCodec.scala` sits at 731 lines. Nothing remains here. As originally written: extract from `WalkerEventCodec.scala` until it has real
   headroom, as a pure move proven by no test file being edited — the same
   acceptance criterion Task 1b used. Then convert the encode side to a typed
   error, as its own commit.
