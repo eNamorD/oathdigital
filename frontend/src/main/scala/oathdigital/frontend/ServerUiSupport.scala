@@ -15,8 +15,8 @@ private[frontend] trait ServerUiView {
   def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit
   def currentCampaignPlacement: Option[CampaignPlacementState]
   def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit
-  def currentForgeAssignment: Option[ForgeAssignmentState]
-  def currentForgeAssignment_=(value: Option[ForgeAssignmentState]): Unit
+  def currentWalkerPartition: Option[WalkerPartitionDraft]
+  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]

@@ -64,11 +64,11 @@ class ServerModeUiSuite extends FunSuite {
         ("site-relic", "R3", Some("site:broken-peaks"))))
   }
 
-  /** Task 4: Forge's draft answer is built from the PROJECTED partition
-    * query -- two sections carrying their own labels and minima, three
-    * denizen options carrying their own references. Nothing below states
-    * Forge's printed cost, and nothing names a resource: the section keys
-    * are whatever the engine declared.
+  /** Task 5: Forge is driven end to end through the shared two-zone
+    * interaction. The sections carrying their own labels and minima, the
+    * denizen options carrying their own references, and the answer is
+    * assembled by generic code -- nothing below states Forge's printed
+    * cost, and nothing names a resource.
     */
   private val forgeQuery = DecisionQueryState("partition",
     Vector("1", "2", "3").map(id =>
@@ -79,62 +79,78 @@ class ServerModeUiSuite extends FunSuite {
   private val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
     query = Some(forgeQuery))
 
-  test("Forge assignment state enforces projected minima and resets stale " +
-      "context") {
+  private def forgeItem(index: Int): String =
+    WalkerPartitionDraft.itemId(forgeQuery.options(index))
+
+  test("Forge is answered by moving projected options between projected " +
+      "sections") {
     val context = BoardSelectionContext("game", "red", 9)
-    val initial = ForgeAssignmentState.reconcile(None, context,
+    val initial = WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked)).get
     // The opening draft fills each section to its projected minimum, in
     // declared order.
-    assertEquals(initial.assignments,
-      Vector("pay-favor", "pay-favor", "pay-secret"))
+    assertEquals(initial.optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 1", "Denizen 2"))
+    assertEquals(initial.optionsIn("pay-secret").map(_.label),
+      Vector("Denizen 3"))
     assert(initial.canConfirm)
     // A confirmed draft answers the decision as one placement per offered
     // option, naming the option's own kind and id.
     assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
       "red", "forge-9", DecisionAnswerWire.PartitionWire(
-        forgeQuery.options.zip(initial.assignments).map {
-          case (option, sectionKey) =>
+        Vector("pay-favor", "pay-favor", "pay-secret").zipWithIndex.map {
+          case (sectionKey, index) =>
+            val option = forgeQuery.options(index)
             DecisionPlacementWire(option.kind, option.id, sectionKey) }))))
-    // A third option in the favor section leaves the secret section below
-    // its projected minimum, so confirmation is refused.
-    val invalid = initial.choose(2, "pay-favor")
+    // Dragging the third option into the favor zone leaves the secret zone
+    // below its projected minimum, so confirmation is refused.
+    val invalid = initial.move(forgeItem(2), "pay-favor")
     assert(!invalid.canConfirm)
     assertEquals(invalid.command("red"), None)
-    val repaired = invalid.choose(0, "pay-secret")
+    val repaired = invalid.move(forgeItem(0), "pay-secret")
     assert(repaired.canConfirm)
-    assertEquals(repaired.assignments.count(_ == "pay-favor") ->
-      repaired.assignments.count(_ == "pay-secret"), 2 -> 1)
+    assertEquals(repaired.optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 2", "Denizen 3"))
+    assertEquals(repaired.optionsIn("pay-secret").map(_.label),
+      Vector("Denizen 1"))
     // A section the query never declared is ignored rather than recorded.
-    assertEquals(repaired.choose(0, "pay-nothing"), repaired)
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
-      Some(forgeParked)), Some(repaired))
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired),
-      context.copy(sequence = 10), Some(forgeParked)).get.assignments,
-      initial.assignments)
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
-      Some(forgeParked.copy(decisionId = "forge-new"))).get.assignments,
-      initial.assignments)
+    assertEquals(repaired.move(forgeItem(0), "pay-nothing"), repaired)
+  }
+
+  test("a Forge draft is dropped whenever the question changes") {
+    val context = BoardSelectionContext("game", "red", 9)
+    val initial = WalkerPartitionDraft.reconcile(None, context,
+      Some(forgeParked)).get
+    val moved = initial.move(forgeItem(2), "pay-favor")
+      .move(forgeItem(0), "pay-secret")
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(forgeParked)), Some(moved))
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved),
+      context.copy(sequence = 10), Some(forgeParked)).get.partition,
+      initial.partition)
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(forgeParked.copy(decisionId = "forge-new"))).get.partition,
+      initial.partition)
     // A power that changes the option set asks a different question, so the
     // draft assembled against the old one is dropped.
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
       Some(forgeParked.copy(query = Some(forgeQuery.copy(
-        options = forgeQuery.options.drop(1)))))).get.assignments,
-      Vector("pay-favor", "pay-favor"))
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context, None),
+        options = forgeQuery.options.drop(1)))))).get
+        .optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 2", "Denizen 3"))
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context, None),
       None)
   }
 
-  test("a parked walker decision that is not a partition drives no Forge " +
-      "assignment draft") {
+  test("a parked walker decision that is not a partition drives no draft") {
     val context = BoardSelectionContext("game", "red", 9)
     // A choose-one park, and a park whose query was suppressed because an
     // option could not be presented: neither is an answerable partition.
-    assertEquals(ForgeAssignmentState.reconcile(None, context, Some(
+    assertEquals(WalkerPartitionDraft.reconcile(None, context, Some(
       WalkerDecisionState("recover", "recover.choice", "decide",
         query = Some(DecisionQueryState("choose-one", Vector(
           DecisionOptionState("button", "stop", "Stop"))))))), None)
-    assertEquals(ForgeAssignmentState.reconcile(None, context,
+    assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked.copy(query = None))), None)
   }
   test("selection actions map only authorized single target shapes to commands") {

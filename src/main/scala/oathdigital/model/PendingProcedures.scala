@@ -128,14 +128,6 @@ object RestPowerDecisionPayload {
   }
 }
 
-sealed trait ForgeResource extends Product with Serializable { def key: String }
-object ForgeResource {
-  case object Favor extends ForgeResource { val key = "favor" }
-  case object Secret extends ForgeResource { val key = "secret" }
-}
-final case class ForgeResourceAssignment(
-    target: SiteDenizenTarget, resource: ForgeResource)
-
 final case class CampaignForceAllocation(site: SiteId, count: Int) {
   require(count >= 0, "Campaign allocation must be non-negative")
 }

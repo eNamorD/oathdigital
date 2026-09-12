@@ -238,12 +238,12 @@ Confirmation is enabled only when every option is placed and every projected min
 
 With Forge's UI generic, the last consumers of the old Forge answer vocabulary go: the `ForgeAssignment` protocol row and the model's `ForgeResource`/`ForgeResourceAssignment`. `SiteDenizenTarget` stays — `ForgeRules` and `LeagueTreatyPower` still use it.
 
-- [ ] **Step 1: failing tests** in `PartitionDecisionStateSuite`: moving an item between sections, a minimum not yet met blocking confirmation, every-option-placed enforced, and the submitted answer naming each option ref exactly once in its section. Plus `CardDecisionStateSuite` regressions proving Search and starting-adviser keep their arrangement rules, ordering, and stage behaviour through the shared state. Plus a `ServerModeUiSuite` case driving Forge end to end through the generic interaction. Expected FAIL: the shared state does not exist.
-- [ ] **Step 2: implement** the extraction, adapt both callers, and delete `ForgeAssignmentState`.
-- [ ] **Step 3: delete** the `ForgeAssignment` wire row with its decoder and the two model types, in this commit.
-- [ ] **Step 4:** re-run; expected PASS. `grep -rnE '\b(ForgeAssignment|ForgeResource)\b' src shared frontend/src` returns nothing.
-- [ ] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
-- [ ] **Step 6: commit** `feat(ui): reuse one partition interaction for Forge and card decisions`.
+- [x] **Step 1: failing tests** in `PartitionDecisionStateSuite`: moving an item between sections, a minimum not yet met blocking confirmation, every-option-placed enforced, and the submitted answer naming each option ref exactly once in its section. Plus `CardDecisionStateSuite` regressions proving Search and starting-adviser keep their arrangement rules, ordering, and stage behaviour through the shared state. Plus a `ServerModeUiSuite` case driving Forge end to end through the generic interaction. Expected FAIL: the shared state does not exist.
+- [x] **Step 2: implement** the extraction, adapt both callers, and delete `ForgeAssignmentState`.
+- [x] **Step 3: delete** the `ForgeAssignment` wire row with its decoder and the two model types, in this commit. The wire row and its decoder were already gone (Task 3 removed them when `DecisionAnswerWire` became generic); only `ForgeResource` and `ForgeResourceAssignment` remained, and neither had a reader left.
+- [x] **Step 4:** re-run; expected PASS. `grep -rnE '\b(ForgeAssignment|ForgeResource)\b' src shared frontend/src` returns nothing.
+- [x] **Step 5:** `./sbtw "test"`, `./sbtw "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`.
+- [x] **Step 6: commit** `feat(ui): reuse one partition interaction for Forge and card decisions`.
 
 ---
 

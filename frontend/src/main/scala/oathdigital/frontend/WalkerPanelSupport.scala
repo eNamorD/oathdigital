@@ -17,7 +17,7 @@ import org.scalajs.dom
   * independent judgement about who is eligible.
   */
 private[frontend] object WalkerPanelSupport {
-  import ServerUiSupport.{ViewerPresentation, button, text}
+  import ServerUiSupport.{ViewerPresentation, button, element, text}
 
   /** Which control the panel should render for a parked walker decision.
     * `WalkerDecisionState.kind` alone cannot tell the two "decide" parks
@@ -158,26 +158,36 @@ private[frontend] object WalkerPanelSupport {
     decision.rollOutcome.foreach(outcome => panel.appendChild(
       text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
 
-  /** The heading for a parked partition decision.
+  /** The heading and confirm copy for a parked partition decision.
     *
-    * Forge is the only action declaring one today, and "Forge a relic" is
-    * its copy rather than the query's -- a query carries prompt copy for
-    * its buttons and sections, not for the panel. Task 5 replaces this
-    * whole panel with the shared two-zone interaction; this is the one
-    * action-named string that survives until then.
+    * Prompt copy for the panel itself, which a query does not carry: it
+    * declares labels for its buttons and its sections, not for the frame
+    * around them. So the panel names the action the same way the Recover
+    * panel does, and falls back to generic copy for any other action that
+    * declares a partition -- the interaction below is what had to stop
+    * being Forge-specific, not the title above it.
     */
   private[frontend] def partitionHeading(action: String): String =
     if (action == "forge") "Forge a relic" else "Resolve decision"
 
-  /** Renders a parked partition decision: one control per projected option,
-    * choosing among the projected sections, confirmable only when the
-    * projected minima are met.
+  private[frontend] def partitionConfirmLabel(action: String): String =
+    if (action == "forge") "Complete Forge" else "Confirm"
+
+  /** The instruction line, assembled from the query's own sections. */
+  private[frontend] def partitionInstruction(query: DecisionQueryState): String =
+    s"Assign every option: ${query.sections.map(section =>
+      s"${section.label} (${section.minRequired})").mkString(", ")}."
+
+  /** Renders a parked partition decision as the shared two-zone
+    * interaction: one zone per projected section, holding the options the
+    * player has put there, each movable by drag or by an accessible button
+    * naming the section it would move to.
     *
-    * The instruction line and every dropdown label come from the query's
-    * own sections, so nothing here knows Forge's printed cost. Moved out of
-    * `ActionDecisionRenderer.actionsPanel` alongside the Recover panel, and
-    * keeping Forge's current dropdown-per-option interaction for one more
-    * task.
+    * Every label and every minimum comes from the query, and confirmation
+    * is `PartitionDecisionState.canConfirm` -- so nothing here knows Forge's
+    * printed cost, and a power that adds or removes an option changes this
+    * panel with no edit. This is the same interaction Keep/Discard runs,
+    * borrowed rather than reimplemented.
     */
   private[frontend] def renderPartitionPanel(value: GameProjection,
       presentation: ViewerPresentation, canControl: Boolean,
@@ -187,38 +197,77 @@ private[frontend] object WalkerPanelSupport {
           .map(decision -> _))
         .foreach { case (decision, query) =>
       panel.appendChild(text("h2", "", partitionHeading(decision.action)))
-      panel.appendChild(text("p", "forge-instruction",
-        s"Assign every option: ${query.sections.map(section =>
-          s"${section.label} (${section.minRequired})").mkString(", ")}."))
-      val confirm = button("Complete Forge", "forge-complete")
-      def refreshConfirm(): Unit =
-        confirm.disabled = !canControl ||
-          !ui.currentForgeAssignment.exists(_.canConfirm)
-      query.options.zipWithIndex.foreach { case (option, index) =>
-        val label = dom.document.createElement("label")
-          .asInstanceOf[dom.html.Label]
-        label.textContent = option.label + " "
-        val select = dom.document.createElement("select")
-          .asInstanceOf[dom.html.Select]
-        select.setAttribute("aria-label", s"Section for ${option.label}")
-        query.sections.foreach { section =>
-          val choice = dom.document.createElement("option")
-            .asInstanceOf[dom.html.Option]
-          choice.value = section.key; choice.text = section.label
-          choice.selected = ui.currentForgeAssignment.exists(
-            _.assignments.lift(index).contains(section.key))
-          select.appendChild(choice)
-        }
-        select.onchange = _ => {
-          ui.currentForgeAssignment = ui.currentForgeAssignment.map(
-            _.choose(index, select.value))
-          refreshConfirm()
-        }
-        label.appendChild(select); panel.appendChild(label)
+      panel.appendChild(text("p", "partition-instruction",
+        partitionInstruction(query)))
+      ui.currentWalkerPartition.filter(_.decisionId == decision.decisionId)
+          .foreach { draft =>
+        val zones = element("div", "decision-zones partition-zones")
+        query.sections.foreach(section =>
+          zones.appendChild(partitionZone(section, query, draft, ui)))
+        panel.appendChild(zones)
+        val confirm = button(partitionConfirmLabel(decision.action),
+          "partition-confirm")
+        confirm.disabled = !canControl || !draft.canConfirm
+        confirm.onclick = _ =>
+          draft.command(ui.currentPlayerId).foreach(ui.submitCommand)
+        panel.appendChild(confirm)
       }
-      refreshConfirm()
-      confirm.onclick = _ => ui.currentForgeAssignment.flatMap(
-        _.command(ui.currentPlayerId)).foreach(ui.submitCommand)
-      panel.appendChild(confirm)
     }
+
+  private def partitionZone(section: DecisionSectionState,
+      query: DecisionQueryState, draft: WalkerPartitionDraft,
+      ui: ServerUiView): dom.Element = {
+    val zone = element("section", "decision-zone partition-zone")
+    zone.setAttribute("data-section-key", section.key)
+    zone.appendChild(text("h3", "", section.label))
+    zone.appendChild(text("p", "decision-zone-helper",
+      s"At least ${section.minRequired}."))
+    draft.optionsIn(section.key).foreach(option =>
+      zone.appendChild(partitionOption(option, section, query, draft, ui)))
+    zone.addEventListener("dragover",
+      (event: dom.Event) => event.preventDefault())
+    zone.addEventListener("drop", (event: dom.Event) => {
+      event.preventDefault()
+      moveOption(draft, event.asInstanceOf[dom.DragEvent].dataTransfer
+        .getData("text/plain"), section.key, ui)
+    })
+    zone
+  }
+
+  private def partitionOption(option: DecisionOptionState,
+      section: DecisionSectionState, query: DecisionQueryState,
+      draft: WalkerPartitionDraft, ui: ServerUiView): dom.Element = {
+    val item = WalkerPartitionDraft.itemId(option)
+    val node = element("article", "decision-option")
+    node.setAttribute("tabindex", "0")
+    node.setAttribute("draggable", "true")
+    node.setAttribute("data-option-id", item)
+    node.setAttribute("aria-label", option.label)
+    node.appendChild(option.card.fold(
+      text("span", "option-summary", option.label))(
+      ServerUiSupport.cardDetailsPopover))
+    node.addEventListener("dragstart", (event: dom.Event) =>
+      event.asInstanceOf[dom.DragEvent].dataTransfer
+        .setData("text/plain", item))
+    // The keyboard-reachable counterpart to the drag: one button per other
+    // section, naming where it would move the option to.
+    query.sections.filterNot(_.key == section.key).foreach { destination =>
+      val label = s"Move ${option.label} to ${destination.label}"
+      val move = button(destination.label, "move-option")
+      move.setAttribute("aria-label", label)
+      move.setAttribute("title", label)
+      move.onclick = _ => moveOption(draft, item, destination.key, ui)
+      node.appendChild(move)
+    }
+    node
+  }
+
+  private def moveOption(draft: WalkerPartitionDraft, item: String,
+      sectionKey: String, ui: ServerUiView): Unit = {
+    val moved = draft.move(item, sectionKey)
+    if (moved != draft) {
+      ui.currentWalkerPartition = Some(moved)
+      ui.rerender()
+    }
+  }
 }
