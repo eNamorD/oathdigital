@@ -240,7 +240,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       val tree: Operation = Sequence(node, adjust)
       val (pending, _) = parkAtDecide(tree)
       assertEquals(ProcedureWalker.resolve(ready, tree, pending,
-        Answered(node.decisionId, ChooseOneAnswer(continueOption), actor), noPowers),
+        Answered(node.decisionId, ChooseOneAnswer(continueOption), actor),
+        noPowers),
         Left(OathViolation.InvalidEventOrder(
           s"decision recover.choice $detail")):
           Either[OathViolation, WalkerOutcome])
@@ -274,7 +275,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     def answer(sections: Vector[String]): Answered = Answered("split",
       DecisionAnswer.PartitionAnswer(options.zip(sections).map {
-        case (option, section) => DecisionPlacement(option.ref, section) }), actor)
+        case (option, section) => DecisionPlacement(option.ref, section)
+      }), actor)
 
     assert(ProcedureWalker.resolve(ready, tree, pending,
       answer(Vector("left", "left", "right")), noPowers).isRight)

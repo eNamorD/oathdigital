@@ -117,7 +117,8 @@ class ForgeProcedureSuite extends munit.FunSuite
 
   private def answerOf(placements: Vector[DecisionPlacement], by: PlayerId)
       : Answered =
-    Answered(ForgeProcedure.assignmentDecisionId, PartitionAnswer(placements), by)
+    Answered(ForgeProcedure.assignmentDecisionId,
+      PartitionAnswer(placements), by)
 
   /** The `PayCost` a placement in `section` onto `denizen` must produce: out
     * of the ACTOR'S own play area, never a suit bank.

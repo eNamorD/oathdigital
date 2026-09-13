@@ -158,9 +158,9 @@ object ProcedureWalker {
       faces: Vector[DieFace], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, state.game.current.turn.activePlayer,
-      pending.answered, powers), Vector.empty, Some(pending.at),
-      RollResume(faces), WalkerHooks.none)
+    walk(action, WalkCtx(base, Vector.empty,
+      state.game.current.turn.activePlayer, pending.answered, powers),
+      Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
   }
 
@@ -171,8 +171,8 @@ object ProcedureWalker {
     * `Decide` whose `decisionId` equals `answer.decisionId` (a Roll park, a
     * mismatched decision id, or any other position rejects with an
     * `OathViolation`). Semantics: check the answer's submitter against the
-    * node's `owner`, validate the submitted answer against its query, append ONE
-    * [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
+    * node's `owner`, validate the submitted answer against its query, append
+    * ONE [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
     * answer is a state write into `pending.answered`, not a delta batch), add
     * `answer` to `answered`, then continue auto-walking from the node after
     * the Decide exactly like `advance` (so `resolve` may park again at the
@@ -182,9 +182,10 @@ object ProcedureWalker {
       answer: Answered, powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, state.game.current.turn.activePlayer,
-      pending.answered, powers), Vector.empty, Some(pending.at),
-      AnswerResume(answer), WalkerHooks.none).map(toOutcome)
+    walk(action, WalkCtx(base, Vector.empty,
+      state.game.current.turn.activePlayer, pending.answered, powers),
+      Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
+      .map(toOutcome)
   }
 
   /** Collects every restriction violation from every windowed node in `tree`

@@ -147,26 +147,28 @@ private[walker] object WalkerPowerGather {
     */
   private def foldedChildrenAt(state: ReadyGame, pending: PendingTree,
       powers: WalkerPowers, node: Operation, path: Vector[String],
-      gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) =
+      gathered: Set[PowerWindow]): (Vector[Operation], Set[PowerWindow]) = {
+    val activePlayer = state.game.current.turn.activePlayer
     node match {
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
         val (folded, _) = applyWindow(branch.window, branch, state,
-          state.game.current.turn.activePlayer, powers, path, selected)
+          activePlayer, powers, path, selected)
         (folded, gathered)
       case leaf: PrimitiveOperation =>
         leaf.window match {
           case Some(w) if !gathered.contains(w) =>
             val (folded, _) = applyWindow(Some(w), leaf, state,
-              state.game.current.turn.activePlayer, powers, path, Vector(leaf))
+              activePlayer, powers, path, Vector(leaf))
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
         }
       case composite =>
         val (folded, _) = applyWindow(composite.window, composite, state,
-          state.game.current.turn.activePlayer, powers, path, composite.children)
+          activePlayer, powers, path, composite.children)
         (folded, gathered)
     }
+  }
 }
 
 /** Power attribution and re-entry guard threaded DOWN one walk branch (unlike

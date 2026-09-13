@@ -147,7 +147,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption), actor)
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
+      actor)
 
     // Control: the resume is legal from this parked state.
     val resumed = rules(actor, WalkerPowers.empty)
@@ -184,7 +185,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption), actor)
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
+      actor)
 
     // The intruder is rejected with WrongPlayer -- a `Left` carries no
     // transition, so nothing is appended to the actor's parked action.
@@ -222,6 +224,26 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       Left(OathViolation.WrongPlayer(fixture.actor, intruder)))
   }
 
+  test("a non-active player's RollWalker is rejected before the tree is " +
+      "rebuilt, so a restriction cannot mask the wrong player") {
+    val (ready, actor) = actable
+    val intruder = ready.game.current.players.map(_.player)
+      .find(_ != actor).get
+    val started = rules(actor, WalkerPowers.empty)
+      .startWalker(Ready(ready), ActionRef.Recover, actor) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the unrestricted start to run, got $other")
+    }
+
+    // `forbidding` rejects the rebuilt tree, so only a requester check that
+    // runs before the rebuild can answer WrongPlayer here.
+    assertEquals(
+      rules(actor, forbidding).rollWalkerPrepared(started.state, intruder,
+        RecoverProcedure.recoverPool)(_ =>
+          fail("an intruder's roll must never prepare faces")),
+      Left(OathViolation.WrongPlayer(actor, intruder)))
+  }
+
   // -------------------------------------------------------------------------
   // Fix-round ruling I: a player-selected `StartWalker` modifier must persist
   // across a resume -- `walkerResumeContext` reads
@@ -257,7 +279,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption), actor)
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
+      actor)
     // Without ruling I's fix, `walkerResumeContext` would fold this command
     // with an EMPTY modifiers vector: the AdjustSupply would no longer be
     // prepended, the folded vector would shift back by one, and this resume
@@ -322,7 +345,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
-      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption), actor)
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
+      actor)
     val afterFirst = rulesInstance.resolveWalker(started.state, actor,
         firstAnswer.decisionId, firstAnswer.answer) match {
       case Right(transition) => transition
@@ -333,7 +357,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atSecondPark.game.current.walkerModifiers, Vector(powerId))
 
     val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
-      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption), actor)
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
+      actor)
     val finished = rulesInstance.resolveWalker(afterFirst.state, actor,
         secondAnswer.decisionId, secondAnswer.answer) match {
       case Right(transition) => transition

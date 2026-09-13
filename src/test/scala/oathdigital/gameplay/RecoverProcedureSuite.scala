@@ -360,7 +360,8 @@ class RecoverProcedureSuite extends munit.FunSuite
     val stateAtRelic = applyRecorded(stateAtRoll, rollEvents)
 
     val wrong = Answered(RecoverProcedure.relicDecisionId,
-      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("no-such-relic"))), actor.player)
+      ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("no-such-relic"))),
+      actor.player)
     // The relic is rejected because the rebuilt query, built from the live
     // site, never offered it -- not because a Recover-specific closure
     // checked the site a second time.
@@ -494,12 +495,14 @@ class RecoverProcedureSuite extends munit.FunSuite
     Vector(relic.id, second.id).foreach { id =>
       assert(ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
         Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(id)), actor.player), noPowers).isRight,
+          ChooseOneAnswer(DecisionOptionRef.Relic(id)), actor.player),
+        noPowers).isRight,
         s"$id is offered and must be accepted")
     }
     assert(ProcedureWalker.resolve(stateAtRelic, tree, relicPark,
       Answered(RecoverProcedure.relicDecisionId,
-        ChooseOneAnswer(DecisionOptionRef.Relic(faceUp.id)), actor.player), noPowers).isLeft,
+        ChooseOneAnswer(DecisionOptionRef.Relic(faceUp.id)), actor.player),
+      noPowers).isLeft,
       "a faceup relic is not offered and must not be accepted")
   }
 

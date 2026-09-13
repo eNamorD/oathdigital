@@ -276,7 +276,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
@@ -296,7 +297,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
           ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)),
         RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id)), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -310,7 +312,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Button("stop")), actor))),
+      walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -327,7 +330,8 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(fixture.ready, fixture.actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)), fixture.actor))), catacombsPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic)),
+          fixture.actor))), catacombsPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(fixture.site).relics,

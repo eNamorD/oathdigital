@@ -49,24 +49,27 @@ private[application] final class WalkerDecisionProjector(
     this(catalog, presentation, WalkerPowerCatalog.default(catalog))
 
   def project(context: ScopedProjectionContext)
-      : Option[WalkerDecisionProjection] =
+      : Option[WalkerDecisionProjection] = {
+    val activePlayer = context.current.turn.activePlayer
     for {
       pending <- context.current.walkerPending
       action <- context.current.walkerAction
-      if context.viewer.contains(context.current.turn.activePlayer)
-      tree <- rebuild(context.ready, action, context.current.turn.activePlayer,
+      if context.viewer.contains(activePlayer)
+      tree <- rebuild(context.ready, action, activePlayer,
         context.current.walkerStartArgs).toOption
       powers = WalkerPowers.selected(walkerPowerCatalog,
         context.current.walkerModifiers)
-      projection <- parked(action, tree, context.ready, pending, powers)
+      projection <- parked(action, tree, context.ready, pending, powers,
+        activePlayer)
     } yield projection
+  }
 
-  private def rebuild(ready: ReadyGame, action: ActionRef, actor: PlayerId,
-      args: Vector[DecisionOptionRef]) =
-    rebuildTree(catalog, action, ready, actor, args)
+  private def rebuild(ready: ReadyGame, action: ActionRef,
+      activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
+    rebuildTree(catalog, action, ready, activePlayer, args)
 
   private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
-      pending: PendingTree, powers: WalkerPowers)
+      pending: PendingTree, powers: WalkerPowers, activePlayer: PlayerId)
       : Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
       // R18: an action whose entry declares no roll decision id has no
@@ -78,8 +81,7 @@ private[application] final class WalkerDecisionProjector(
         WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
           WalkerDecisionProjection(action.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
-            rollOutcome = rollOutcome(ready,
-              ready.game.current.turn.activePlayer)))
+            rollOutcome = rollOutcome(ready, activePlayer)))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
@@ -91,12 +93,11 @@ private[application] final class WalkerDecisionProjector(
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-        .flatMap(decide => queryProjection(ready,
-          Some(ready.game.current.turn.activePlayer), decide.query).map(query =>
+        .flatMap(decide => queryProjection(ready, Some(activePlayer),
+          decide.query).map(query =>
           WalkerDecisionProjection(action.key, decide.decisionId, "decide",
             query = Some(query),
-            rollOutcome = rollOutcome(ready,
-              ready.game.current.turn.activePlayer))))
+            rollOutcome = rollOutcome(ready, activePlayer))))
     }
 
   /** Describes a declared query, or `None` when any single option's identity

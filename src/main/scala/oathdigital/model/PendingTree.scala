@@ -12,7 +12,8 @@ package oathdigital.model
   *   equals the parked `Decide`'s owner. Journalled so log lines can name who
   *   chose from the payload alone; replay does not re-derive the owner.
   */
-final case class Answered(decisionId: String, answer: DecisionAnswer, by: PlayerId)
+final case class Answered(decisionId: String, answer: DecisionAnswer,
+    by: PlayerId)
 
 /** Parked walker position recorded in game state while an action awaits a
   * decision or roll (spec decision S1).

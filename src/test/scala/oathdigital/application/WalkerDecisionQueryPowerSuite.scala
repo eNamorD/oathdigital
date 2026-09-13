@@ -142,8 +142,9 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
   private def answering(state: oathdigital.gameplay.OathState,
       actor: PlayerId, powers: WalkerPowers,
       selected: DecisionOptionRef) =
-    rules(actor, powers).resolveWalker(state, actor, RecoverProcedure.choiceDecisionId,
-        DecisionAnswer.ChooseOneAnswer(selected))
+    rules(actor, powers).resolveWalker(state, actor,
+      RecoverProcedure.choiceDecisionId,
+      DecisionAnswer.ChooseOneAnswer(selected))
 
   test("with no power the projected options and the accepted answers are " +
       "the two the tree declares") {

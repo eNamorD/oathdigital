@@ -54,13 +54,12 @@ private[gameplay] trait OathRulesWalker {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
           ready.game.current.walkerAction.nonEmpty =>
         Left(InvalidEventOrder("a walker action is already pending"))
-      case Ready(ready) => WalkerActionRegistry.fallbackKind(action)
-        .flatMap(kind => withFallback(state,
-          ready.game.current.turn.activePlayer, kind) {
+      case Ready(ready) =>
+        val activePlayer = ready.game.current.turn.activePlayer
+        WalkerActionRegistry.fallbackKind(action)
+          .flatMap(kind => withFallback(state, activePlayer, kind) {
           for {
-            _ <- Either.cond(requester == ready.game.current.turn.activePlayer,
-              (), WrongPlayer(ready.game.current.turn.activePlayer, requester))
-            activePlayer = ready.game.current.turn.activePlayer
+            _ <- requireActivePlayer(ready, requester)
             _ <- validateModifiers(ready, activePlayer, action, modifiers)
             powers = walkerPowers(ready, activePlayer, modifiers)
             tree <- buildWalker(action, ready, activePlayer, startArgs,
@@ -197,16 +196,19 @@ private[gameplay] trait OathRulesWalker {
   /** Validates and derives the action tree once, then asks the application for
     * exactly the parked pool's authoritative number of faces.
     *
-    * `requester` is bound by the transport and must be the active player.
+    * `requester` is bound by the transport and must be the active player. A
+    * roll park is always the active player's, so that check needs no tree and
+    * runs before the rebuild, whose own failures (a restriction, a moved
+    * position) would otherwise answer an intruder first.
     */
   def rollWalkerPrepared(state: OathState, requester: PlayerId, pool: PoolKey)(
       prepareFaces: Int => Either[OathViolation, Vector[DieFace]])
-      : Either[OathViolation, OathTransition] =
-    resumeWalker(state) {
+      : Either[OathViolation, OathTransition] = (state match {
+      case Ready(ready) => requireActivePlayer(ready, requester)
+      case _ => Right(())
+    }).flatMap(_ => resumeWalker(state) {
       case (ready, action, tree, pending, powers, modifiers, startArgs) =>
       for {
-        _ <- Either.cond(requester == ready.game.current.turn.activePlayer, (),
-          WrongPlayer(ready.game.current.turn.activePlayer, requester))
         parked <- walkerCall(ProcedureWalker.parkedRoll(ready, tree, pending,
           powers).toRight(InvalidEventOrder(
             "current walker position is not a Roll park")))
@@ -218,7 +220,18 @@ private[gameplay] trait OathRulesWalker {
         transition <- walkerTransition(state, ready, action, tree, outcome,
           powers, modifiers, startArgs)
       } yield transition
-    }
+    })
+
+  /** Rejects a requester who is not the active player. Starting a procedure
+    * and rolling at its park are the active player's alone, so neither check
+    * needs the tree.
+    */
+  private def requireActivePlayer(ready: ReadyGame, requester: PlayerId)
+      : Either[OathViolation, Unit] = {
+    val activePlayer = ready.game.current.turn.activePlayer
+    Either.cond(requester == activePlayer, (),
+      WrongPlayer(activePlayer, requester))
+  }
 
   private def resumeWalker(state: OathState)(run: (ReadyGame,
       ActionRef, Operation, PendingTree, WalkerPowers, Vector[PowerId],
@@ -250,13 +263,13 @@ private[gameplay] trait OathRulesWalker {
         WrongPhase(Phase.Act, ready.game.current.turn.phase))
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
+      activePlayer = ready.game.current.turn.activePlayer
       startArgs = ready.game.current.walkerStartArgs
-      tree <- buildWalker(action, ready, ready.game.current.turn.activePlayer,
-        startArgs, starting = false)
+      tree <- buildWalker(action, ready, activePlayer, startArgs,
+        starting = false)
       modifiers = ready.game.current.walkerModifiers
-      powers = walkerPowers(ready, ready.game.current.turn.activePlayer, modifiers)
-      _ <- checkRestrictions(tree, powers, ready,
-        ready.game.current.turn.activePlayer)
+      powers = walkerPowers(ready, activePlayer, modifiers)
+      _ <- checkRestrictions(tree, powers, ready, activePlayer)
     } yield (ready, action, tree, pending, powers, modifiers, startArgs)
     case _ => Left(GameNotStarted)
   }
@@ -301,9 +314,9 @@ private[gameplay] trait OathRulesWalker {
       } yield OathTransition(finalState, steps :+ fact, continue)
 
     case WalkerOutcome.Finished(treeless, steps) =>
-      val actor = treeless.game.current.turn.activePlayer
+      val activePlayer = treeless.game.current.turn.activePlayer
       completionIn(ready.game.current.turn.phase,
-        treeless.game.current.turn.phase, actor).flatMap {
+        treeless.game.current.turn.phase, activePlayer).flatMap {
         completed => GameplayTransition(state,
           steps :+ WalkerCompleted(action), completed.continue)(evolve)
           .flatMap(transition =>

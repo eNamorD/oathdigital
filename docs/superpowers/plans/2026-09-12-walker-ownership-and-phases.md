@@ -295,7 +295,10 @@ final case class PendingTree(at: Vector[String], answered: Vector[Answered])
     ```
     and pass `ready.game.current.turn.activePlayer` wherever `actor` was passed.
   - `resolveWalker(state, requester, decisionId, answer)` builds `Answered(decisionId, answer, by = requester)` inside `resumeWalker` and passes it to `ProcedureWalker.resolve`. The owner check now happens in `answerDecide`.
-  - `rollWalkerPrepared` adds, as its first step inside `resumeWalker`, `_ <- Either.cond(requester == ready.game.current.turn.activePlayer, (), WrongPlayer(ready.game.current.turn.activePlayer, requester))`.
+  - `rollWalkerPrepared` checks `requester == ready.game.current.turn.activePlayer`.
+    - *As implemented (Task 3 review):* the check runs **before** `resumeWalker`, through a private `requireActivePlayer(ready, requester)`. A roll park is always the active player's, so the check needs no tree. Inside `resumeWalker`, a restriction or a moved position would answer an off-turn roll first.
+    - `startWalker` uses the same helper as the first step of its `for`.
+    - `OathRulesWalkerPowerSuite` pins the order: "a non-active player's RollWalker is rejected before the tree is rebuilt".
   - `walkerResumeContext(state)` no longer takes a requester. It deletes `pending.actor == activePlayer` and `actor == pending.actor`, and **keeps** the `Phase.Act` gate (Task 5 removes it). It rebuilds with `turn.activePlayer`.
   - `walkerTransition` writes `WalkerParked(action, pending.at, pending.answered, modifiers, startArgs)` and `WalkerCompleted(action)`.
   - `parkedContinue` passes `ready.game.current.turn.activePlayer` to `continuationFor` (Task 5 passes the awaited player instead).

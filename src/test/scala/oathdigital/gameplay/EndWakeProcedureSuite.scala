@@ -58,7 +58,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       case step: WalkerStepRecorded => step.ops
     }.flatten, Vector[oathdigital.gameplay.operations.CoreOperation](
       EnterPhase(Phase.Act)))
-    assertEquals(accepted.events.last, WalkerCompleted(ActionRef.EndWake): OathEvent)
+    assertEquals(accepted.events.last,
+      WalkerCompleted(ActionRef.EndWake): OathEvent)
     assertEquals(accepted.continue, ActActionSelection(active))
     assertEquals(value.game.current.turn.phase, Phase.Act)
     assertEquals(value.game.current.walkerPending, None)
