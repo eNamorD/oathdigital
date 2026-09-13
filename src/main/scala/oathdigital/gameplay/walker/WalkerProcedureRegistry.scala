@@ -205,9 +205,10 @@ object WalkerProcedureRegistry {
       * since Task 4. Nothing here marks that difference, because nothing
       * here needs to -- an entry says how to build a tree, and ending Wake
       * has one. What follows from it being a phase transition rather than
-      * an action is decided where the difference is visible: the Act action
-      * boundary runs after a procedure that ran IN Act
-      * (`OathRulesWalker.completionIn`), and this one runs in Wake.
+      * an action is decided where the difference is visible: the action
+      * boundary runs only after a completed `ActionRef`, whatever phase it
+      * ran in (`OathRulesWalker.runsActionBoundary`, Task 8) -- End Wake is
+      * a `PhaseTransitionRef`, so it never runs one.
       *
       * `fallbackKind` is `MajorActionKind.Wake`, which is the kind the
       * deleted `Wake` object's `withFallback` wrapper used, so the Wake

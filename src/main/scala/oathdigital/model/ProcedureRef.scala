@@ -20,14 +20,14 @@ sealed trait ProcedureRef extends Product with Serializable {
   */
 sealed trait StartableRef extends ProcedureRef
 
-/** What a player spends as their action, in any phase. The Act action
-  * boundary runs after one of these completes -- see
-  * `OathRulesWalker.completionIn`.
+/** What a player spends as their action, in any phase. The action boundary
+  * runs after one of these completes, whatever phase it ran in -- see
+  * `OathRulesWalker.runsActionBoundary`.
   */
 sealed trait ActionRef extends StartableRef { final def family = "action" }
 
 /** A player-commanded change of phase. These are procedures because a phase
-  * change is a state write, but they are not actions: no Act action boundary
+  * change is a state write, but they are not actions: no action boundary
   * runs after one, whichever phase it lands in.
   */
 sealed trait PhaseTransitionRef extends StartableRef {

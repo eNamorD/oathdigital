@@ -67,7 +67,7 @@ private[gameplay] trait OathRulesWalker {
             _ <- checkRestrictions(tree, powers, ready, activePlayer)
             outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
               powers))
-            transition <- walkerTransition(state, ready, procedure, tree,
+            transition <- walkerTransition(state, procedure, tree,
               outcome, powers, modifiers, startArgs)
           } yield transition
         })
@@ -98,7 +98,7 @@ private[gameplay] trait OathRulesWalker {
             starting = true)
           _ <- checkRestrictions(tree, powers, ready, activePlayer)
           outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers))
-          started <- walkerTransition(transition.state, ready, procedure, tree,
+          started <- walkerTransition(transition.state, procedure, tree,
             outcome, powers, Vector.empty, Vector.empty)
         } yield started.copy(events = transition.events ++ started.events)
       case _ => Right(transition)
@@ -219,7 +219,7 @@ private[gameplay] trait OathRulesWalker {
       case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
         walkerCall(ProcedureWalker.resolve(ready, tree, pending,
           Answered(decisionId, answer, by = requester),
-          powers)).flatMap(walkerTransition(state, ready, procedure, tree, _,
+          powers)).flatMap(walkerTransition(state, procedure, tree, _,
             powers, modifiers, startArgs))
     }
 
@@ -247,7 +247,7 @@ private[gameplay] trait OathRulesWalker {
         faces <- prepareFaces(parked._2)
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
           powers))
-        transition <- walkerTransition(state, ready, procedure, tree, outcome,
+        transition <- walkerTransition(state, procedure, tree, outcome,
           powers, modifiers, startArgs)
       } yield transition
     })
@@ -319,7 +319,7 @@ private[gameplay] trait OathRulesWalker {
         Option(error.getMessage).getOrElse("invalid walker resume position")))
     }
 
-  private def walkerTransition(state: OathState, ready: ReadyGame,
+  private def walkerTransition(state: OathState,
       procedure: ProcedureRef, tree: Operation, outcome: WalkerOutcome,
       powers: WalkerPowers, modifiers: Vector[PowerId],
       startArgs: Vector[DecisionOptionRef])
@@ -330,9 +330,9 @@ private[gameplay] trait OathRulesWalker {
       // The park's continuation prompt can depend on a Branch selecting its
       // children by *live* state (Recover's success-only relic decision
       // checks the just-written roll outcome), so `continue` must be derived
-      // from the state after `steps` land, not from `ready` (this command's
-      // pre-walk snapshot) — a stale-state Branch.select would silently
-      // resolve to the wrong node or none at all.
+      // from the state after `steps` land, not from this command's pre-walk
+      // snapshot — a stale-state Branch.select would silently resolve to the
+      // wrong node or none at all.
       for {
         afterSteps <- foldEvents(state, steps)
         liveReady <- afterSteps match {

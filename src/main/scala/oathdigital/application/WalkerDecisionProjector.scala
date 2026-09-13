@@ -336,9 +336,9 @@ private[application] object WalkerDecisionProjector {
     * a case class nested in a class or trait carries a path-dependent outer
     * type, and scalac's auto-generated `equals`/`canEqual` for it trips
     * "the outer reference in this type test cannot be checked at run time"
-    * (see `OathRulesWalker.WalkerCompletion` for that exact warning, left
-    * as-is there since it predates this task). A case class on a singleton
-    * object carries no such outer instance, so it triggers no warning.
+    * (a case class once nested in the `OathRulesWalker` trait hit exactly
+    * this before Task 8 deleted it). A case class on a singleton object
+    * carries no such outer instance, so it triggers no warning.
     */
   private final case class Parked(procedure: ProcedureRef, tree: Operation,
       pending: PendingTree, powers: WalkerPowers, awaited: PlayerId)
