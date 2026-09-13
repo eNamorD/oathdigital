@@ -74,7 +74,9 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
 
     assertEquals(answer(active, leaders(0)),
       Left(OathViolation.WrongPlayer(holder, active)))
-    assert(answer(holder, holder).isLeft,
+    assertEquals(answer(holder, holder),
+      Left(OathViolation.InvalidEventOrder(
+        "decision oathkeeper.recipient does not offer the selected option")),
       "a player who is not a tied leader is not a legal recipient")
 
     val chosen = answer(holder, leaders(1)).toOption.get

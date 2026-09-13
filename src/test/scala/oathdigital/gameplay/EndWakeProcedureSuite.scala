@@ -9,7 +9,8 @@ import oathdigital.gameplay.operations.{EnterPhase, Sequence}
 import oathdigital.gameplay.phases.wake.EndWakeProcedure
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
+  WalkerStepRecorded}
 import oathdigital.model._
 
 /** Ending the Wake phase, on the generic walker (batch-1 Task 7).
@@ -89,7 +90,10 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     assertEquals(accepted.events.collect { case event: BanditsRefilled =>
       event }, Vector.empty)
     assertEquals(accepted.events.collect {
-      case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => () }, Vector.empty)
+      case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => ()
+      case parked: WalkerParked
+          if parked.procedure == TriggeredProcedureRef.Oathkeeper => ()
+    }, Vector.empty)
   }
 
   test("ending Wake remains legal while another player has a revealed Vision") {

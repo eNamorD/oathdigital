@@ -10,15 +10,16 @@ import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
-  Cost, Location, ModifyDicePool, Move, PayCost, Piece, PositionedLocation,
-  StackPosition}
-import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked,
-  WalkerStepRecorded}
+  Cost, Kill, Location, ModifyDicePool, Move, PayCost, Piece,
+  PositionedLocation, SetOathkeeper, StackPosition}
+import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
+  WalkerParked, WalkerStepRecorded}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
-  RelicAcquired, SupplySpent}
+  OperationApplied, RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
@@ -1315,6 +1316,131 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .takeRight(3).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",
       "walker.completed"))
+  }
+
+  /** Item 10 of the final fix brief: an off-turn Oathkeeper tie, arranged and
+    * resolved entirely through `GameApplicationService`, survives reload on
+    * both sides of the park.
+    *
+    * `FirstGameSetup` places no initial site forces, so every player starts
+    * ruling zero sites; a single synthetic `WalkerStepRecorded` delta step --
+    * seeded as one more record on the same stream the setup commands already
+    * wrote, via the same `GameEventWire.encodeEvent`/`repository.append`
+    * seam the malformed/historical-envelope tests above use to inject
+    * hand-picked records -- gives a title holder and two OTHER players one
+    * ruled site apiece. `WalkerReplay`'s delta branch applies the carried
+    * `SetOathkeeper`/`Move` operations through the same `OperationExecutor`
+    * real gameplay uses, with no pending-walker precondition, so this is a
+    * legitimate use of production machinery rather than a bypass of it. With
+    * exactly three players, the active player is automatically one of the
+    * two tied leaders and the holder is automatically off-turn: no further
+    * arrangement is needed to reach `OathkeeperRules.outcome`'s `Choose`.
+    */
+  test("an off-turn Oathkeeper tie parks through the application service " +
+      "and survives reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-oathkeeper-tie"
+    val setup = execute(service, gameId)
+    val Ready(base) = setup.state: @unchecked
+    val active = base.game.current.turn.activePlayer
+    val players = base.game.current.players.map(_.player)
+    val holder = players.find(_ != active).get
+    val leaders = players.filterNot(_ == holder)
+    val leaderA = leaders(0)
+    val leaderB = leaders(1)
+    val lineageOf = base.game.current.players.map(p => p.player -> p.lineage).toMap
+    val siteA = base.game.current.map.inPlay(0)
+    val siteB = base.game.current.map.inPlay(1)
+
+    // Every site with capacity starts occupied by its printed bandit count
+    // (`FirstGameSetupMaterializer`); clear it first so the exile warband
+    // placed below does not conflict with the resident force kind.
+    def clear(site: SiteId): Vector[CoreOperation] =
+      base.game.current.map.sites(site).forces match {
+        case SiteForces.Occupied(kind, count) => Vector(
+          Kill(Piece.Warbands(kind, count), PositionedLocation(Location.Site(site))))
+        case SiteForces.Empty => Vector.empty
+      }
+
+    val arrange = WalkerStepRecorded("0", DeltaRecorded(
+      OperationApplied(
+        "arrange an off-turn Oathkeeper tie for the reload fixture")),
+      clear(siteA) ++ clear(siteB) ++ Vector(
+        SetOathkeeper(Some(holder)),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaderA)), 1),
+          PositionedLocation(Location.PlayArea(leaderA)),
+          PositionedLocation(Location.Site(siteA))),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaderB)), 1),
+          PositionedLocation(Location.PlayArea(leaderB)),
+          PositionedLocation(Location.Site(siteB)))
+      ), Vector.empty)
+    val record = ujson.write(GameEventWire.encodeEvent(gameId, catalogRef,
+      setup.nextSequence, arrange).toOption.get)
+    repository.append(gameId, ExpectedStream.AtNextSequence(setup.nextSequence),
+      Vector(record))
+
+    val seeded = service.load(gameId).toOption.flatten.get
+    val seededSequence = setup.nextSequence + 1L
+    assertEquals(seeded.nextSequence, seededSequence)
+    val Ready(arranged) = seeded.state: @unchecked
+    assertEquals(arranged.game.current.title,
+      OathkeeperState(Some(holder), TitleSide.Oathkeeper))
+
+    val actEntered = service.handle(gameId, seededSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val Ready(inAct) = actEntered.state: @unchecked
+    val activePlayer = inAct.game.current.players.find(_.player == active).get
+    val destination = inAct.game.current.map.inPlay.find(id =>
+      !activePlayer.pawnSite.contains(id) && id != siteA && id != siteB).get
+
+    // The completion's own triggered park is one append with the action: no
+    // separate command started the Oathkeeper procedure.
+    val parked = service.handle(gameId, actEntered.nextSequence,
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Site(destination))))
+      ).toOption.get
+    assert(parked.events.last match {
+      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
+      case _ => false
+    }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
+    assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
+      holder, DecisionId(OathkeeperProcedure.recipientDecisionId)))
+    assertEquals(parked.nextSequence,
+      actEntered.nextSequence + parked.events.size)
+    assertEquals(
+      repository.load(gameId).toOption.flatten.get.records.size.toLong,
+      parked.nextSequence)
+
+    val reloadedParked = service.load(gameId).toOption.flatten.get
+    assertEquals(reloadedParked.state, parked.state)
+    assertEquals(reloadedParked.nextSequence, parked.nextSequence)
+
+    // The application gate rejects the active player's answer: only the
+    // holder may resolve the recipient decision.
+    assertEquals(
+      service.handle(gameId, parked.nextSequence, GameCommand.ResolveWalker(
+        active, TreeDecision(OathkeeperProcedure.recipientDecisionId,
+          ChooseOneAnswer(DecisionOptionRef.Player(leaderB))))),
+      Left(GameApplicationError.CommandRejected(
+        WrongPlayer(holder, active))))
+
+    val resolved = service.handle(gameId, parked.nextSequence,
+      GameCommand.ResolveWalker(holder, TreeDecision(
+        OathkeeperProcedure.recipientDecisionId,
+        ChooseOneAnswer(DecisionOptionRef.Player(leaderB))))).toOption.get
+    assert(resolved.events.exists {
+      case WalkerStepRecorded(_, ChoicePayload(_, _, by), _, _) => by == holder
+      case _ => false
+    }, "the recorded choice must be answered by the holder")
+    assertEquals(resolved.continue, OathContinue.ActActionSelection(active))
+    val Ready(afterResolved) = resolved.state: @unchecked
+    assertEquals(afterResolved.game.current.title,
+      OathkeeperState(Some(leaderB), TitleSide.Oathkeeper))
+
+    val reloadedResolved = service.load(gameId).toOption.flatten.get
+    assertEquals(reloadedResolved.state, resolved.state)
+    assertEquals(reloadedResolved.nextSequence, resolved.nextSequence)
   }
 
   test("ruined edifice Economy target persists and replays with its kind") {

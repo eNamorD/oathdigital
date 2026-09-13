@@ -115,6 +115,18 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(without))
   }
 
+  /** `WalkerWaitingProjection.heading` is `None` for a Roll park (see its
+    * doc): the populated projection above only covers the Decide case
+    * (`Some("Choose the Oathkeeper")`), so this pins the Roll case's absent
+    * heading round-tripping as faithfully as the present one.
+    */
+  test("walkerWaiting round-trips with an absent heading, for a Roll park") {
+    val rolling = projection.copy(walkerWaiting =
+      Some(WalkerWaitingProjection("blue", heading = None)))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(rolling)),
+      Right(rolling))
+  }
+
   test("projection decoder reports exact nested paths and unexpected fields") {
     val wrong = ujson.read(GameProjectionCodec.encode(projection))
     wrong("world")(0)("sites")(0)("relics")("facedownCount") = "one"
