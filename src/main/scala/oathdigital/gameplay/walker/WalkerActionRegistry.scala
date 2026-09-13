@@ -141,10 +141,10 @@ object WalkerActionRegistry {
           Some(OathContinue.AwaitingRecoverRoll(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
-        args).flatMap(_ => RecoverProcedure.build(catalog, state, actor)),
-      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Recover,
-        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, actor))),
+      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.build(catalog, state, activePlayer)),
+      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Recover,
+        args).flatMap(_ => RecoverProcedure.rebuild(catalog, state, activePlayer))),
 
     /** Batch-1 Task 3. Forge has no `Roll` node, so `rollDecisionId` is
       * `None` (R18).
@@ -158,10 +158,10 @@ object WalkerActionRegistry {
           Some(OathContinue.AwaitingForgeAssignment(actor, decision))
         case _ => None
       },
-      build = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.build(catalog, state, actor)),
-      rebuild = (catalog, state, actor, args) => noStartArgs(ActionRef.Forge,
-        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, actor))),
+      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.build(catalog, state, activePlayer)),
+      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Forge,
+        args).flatMap(_ => ForgeProcedure.rebuild(catalog, state, activePlayer))),
 
     /** Batch-1 Task 5. Travel has no `Roll` and no `Decide`: its tree is a
       * pay node and a pawn move, so it runs to the end inside the command
@@ -237,11 +237,11 @@ object WalkerActionRegistry {
     * `lookup` as an extracted stand-in.
     */
   def build(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
+      activePlayer: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
       registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
     lookup(action, registrations).flatMap(
-      _.build(catalog, state, actor, args))
+      _.build(catalog, state, activePlayer, args))
 
   /** Rebuilds `action`'s tree to resume an already-started walker position.
     * Start-only gates do not re-run.
@@ -250,11 +250,11 @@ object WalkerActionRegistry {
     * `build`'s doc for why.
     */
   def rebuild(action: ActionRef, catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
+      activePlayer: PlayerId, args: Vector[DecisionOptionRef] = Vector.empty,
       registrations: Map[ActionRef, Entry] = entries)
       : Either[OathViolation, Operation] =
     lookup(action, registrations).flatMap(
-      _.rebuild(catalog, state, actor, args))
+      _.rebuild(catalog, state, activePlayer, args))
 
   private def lookup(action: ActionRef,
       registrations: Map[ActionRef, Entry]): Either[OathViolation, Entry] =

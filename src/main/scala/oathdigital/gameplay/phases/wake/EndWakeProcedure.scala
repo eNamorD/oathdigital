@@ -40,9 +40,9 @@ object EndWakeProcedure {
     * so it finishes inside the command that starts it and a resume never
     * reaches this.
     */
-  def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
-    _ <- OathLifecycle.validateReady(OathState.Ready(state), actor)
+    _ <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     _ <- Either.cond(args.isEmpty, (), OathViolation.InvalidEventOrder(
       "ending Wake selects nothing, got " +
         args.map(ref => s"${ref.kind}/${ref.wireId}").mkString(", ")))

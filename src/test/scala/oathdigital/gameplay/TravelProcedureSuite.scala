@@ -275,7 +275,7 @@ class TravelProcedureSuite extends munit.FunSuite {
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
         operations.map {
-          case AdjustSupply(player, amount) if player == ctx.actor =>
+          case AdjustSupply(player, amount) if player == ctx.activePlayer =>
             AdjustSupply(player, amount - 2)
           case other => other
         })))

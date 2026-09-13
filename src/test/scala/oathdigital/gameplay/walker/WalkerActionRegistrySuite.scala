@@ -40,7 +40,7 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
   test("build rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
     val result = WalkerActionRegistry.build(ActionRef.Recover, catalog = null,
-      state = state, actor = actor,
+      state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))
@@ -49,7 +49,7 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
   test("rebuild rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
     val result = WalkerActionRegistry.rebuild(ActionRef.Recover,
-      catalog = null, state = state, actor = actor,
+      catalog = null, state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))

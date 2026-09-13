@@ -48,15 +48,15 @@ object TravelProcedure {
     * about the route, which a resume must re-check exactly as a start does.
     * (Recover and Forge differ because both spend Supply before they park.)
     */
-  def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef])
       : Either[OathViolation, Operation] = for {
-    _ <- OathLifecycle.validateAct(OathState.Ready(state), actor)
+    _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     destination <- destinationOf(args)
-    source <- actorSite(state, actor).toRight(
-      OathViolation.PawnSiteMissing(actor))
+    source <- actorSite(state, activePlayer).toRight(
+      OathViolation.PawnSiteMissing(activePlayer))
     base <- TravelRules.cost(catalog, state, source, destination)
-  } yield tree(actor, source, destination, base)
+  } yield tree(activePlayer, source, destination, base)
 
   /** The destination Travel's start selection names, or a typed rejection.
     *
@@ -110,14 +110,14 @@ object TravelProcedure {
     * selected vector, and a player-selected power therefore changes a
     * projected cost only once it is actually selected.
     */
-  def candidates(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+  def candidates(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       powers: WalkerPowers): Vector[(SiteId, Int)] =
-    actorSite(state, actor).toVector.flatMap { source =>
+    actorSite(state, activePlayer).toVector.flatMap { source =>
       state.game.current.map.inPlay.filter(_ != source).flatMap { destination =>
-        build(catalog, state, actor,
+        build(catalog, state, activePlayer,
           Vector(DecisionOptionRef.Site(destination)))
-          .flatMap(WalkerSimulation.run(_, state, actor, powers))
-          .toOption.flatMap(supplySpent(_, actor)).map(destination -> _)
+          .flatMap(WalkerSimulation.run(_, state, activePlayer, powers))
+          .toOption.flatMap(supplySpent(_, activePlayer)).map(destination -> _)
       }
     }
 

@@ -126,14 +126,14 @@ object ProcedureWalker {
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
-    val actor = pending.fold(state.game.current.turn.activePlayer)(_.actor)
+    val activePlayer = pending.fold(state.game.current.turn.activePlayer)(_.actor)
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
     // running walk must not carry it inside CurrentGameState (dual-pending
     // guard), so clear the stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, actor, answered, powers),
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
   }
 
@@ -194,8 +194,8 @@ object ProcedureWalker {
     * traversal (split out to keep this file under the project's line bound).
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, actor: PlayerId): Vector[OathViolation] =
-    WalkerPowerGather.restrictionViolations(tree, powers, state, actor)
+      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] =
+    WalkerPowerGather.restrictionViolations(tree, powers, state, activePlayer)
 
   /** When `pending` parks on a `Roll` node of `action`, reports the node's
     * `pool` and the face count that node requires (read from
@@ -240,7 +240,7 @@ object ProcedureWalker {
   private final case class WalkCtx(
       state: ReadyGame,
       events: Vector[OathEvent],
-      actor: PlayerId,
+      activePlayer: PlayerId,
       answered: Vector[Answered],
       powers: WalkerPowers
   )
@@ -269,7 +269,7 @@ object ProcedureWalker {
       WalkerOutcome.Finished(finish(ctx), ctx.events)
     case Park(position, ctx) =>
       WalkerOutcome.Parked(PendingTree(at = position,
-        answered = ctx.answered, actor = ctx.actor), ctx.events)
+        answered = ctx.answered, actor = ctx.activePlayer), ctx.events)
   }
 
   private def strip(state: ReadyGame): ReadyGame =
@@ -319,7 +319,7 @@ object ProcedureWalker {
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.actor, ctx.powers, path, children)
+      ctx.activePlayer, ctx.powers, path, children)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
   }
 
@@ -340,7 +340,7 @@ object ProcedureWalker {
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val branchTree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.actor)
+      actor = ctx.activePlayer)
     walkFolded(branch.window, branch, branch.select(ctx.state, branchTree), ctx, path,
       cursor, resume, hooks)
   }
@@ -371,7 +371,7 @@ object ProcedureWalker {
       */
     def passes(current: WalkCtx): Either[OathViolation, Step] = {
       val guardTree = PendingTree(at = path, answered = current.answered,
-        actor = current.actor)
+        actor = current.activePlayer)
       if (!repeat.guard(current.state, guardTree)) Right(Done(current))
       else pass(current, None)
     }
@@ -516,7 +516,7 @@ object ProcedureWalker {
   private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     val tree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.actor)
+      actor = ctx.activePlayer)
     build.build(ctx.state, tree).flatMap { ops =>
       if (ops.isEmpty) Right(ctx)
       else recordBatch(ops, contributions, ctx, path, leafLabel(build))
@@ -540,7 +540,7 @@ object ProcedureWalker {
       ctx.copy(
         state = updated,
         events = ctx.events :+ WalkerStepRecorded(
-          actor = ctx.actor,
+          actor = ctx.activePlayer,
           nodeId = nodeId,
           payload = WalkerStepPayload.DeltaRecorded(deltaMeaning(ops, label)),
           ops = ops,
@@ -576,8 +576,8 @@ object ProcedureWalker {
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     for {
-      _ <- Either.cond(decide.owner == ctx.actor, (),
-        OathViolation.WrongPlayer(decide.owner, ctx.actor))
+      _ <- Either.cond(decide.owner == ctx.activePlayer, (),
+        OathViolation.WrongPlayer(decide.owner, ctx.activePlayer))
       _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
       _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
         answer.answer)
@@ -587,7 +587,7 @@ object ProcedureWalker {
       ctx.copy(
         answered = ctx.answered :+ answer,
         events = ctx.events :+ WalkerStepRecorded(
-          actor = ctx.actor,
+          actor = ctx.activePlayer,
           nodeId = nodeId,
           payload = ChoicePayload(answer.decisionId, answer.answer),
           ops = Vector.empty,
@@ -628,7 +628,7 @@ object ProcedureWalker {
       ctx.copy(
         state = writeRollOutcome(ctx.state, RollOutcome(pool, count, faces,
           skulls = 0, score)),
-        events = ctx.events :+ WalkerStepRecorded(actor = ctx.actor,
+        events = ctx.events :+ WalkerStepRecorded(actor = ctx.activePlayer,
           nodeId = nodeId, payload = RollPayload(pool, faces),
           ops = Vector.empty, contributions = contributions))
     }

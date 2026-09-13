@@ -90,24 +90,24 @@ object RecoverProcedure {
       _.orientation == Orientation.FaceDown))
 
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId)
+      activePlayer: PlayerId)
       : Either[OathViolation, Operation] = for {
     _ <- OathLifecycle.validateAct(oathdigital.gameplay.OathState.Ready(state),
-      actor)
-    siteId <- actorSite(state, actor).toRight(
-      OathViolation.PawnSiteMissing(actor))
+      activePlayer)
+    siteId <- actorSite(state, activePlayer).toRight(
+      OathViolation.PawnSiteMissing(activePlayer))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  } yield tree(actor, siteId, difficulty)
+  } yield tree(activePlayer, siteId, difficulty)
 
   /** Rebuilds the same command-local tree for an already-started Recover. */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] = for {
-    siteId <- actorSite(state, actor).toRight(
-      OathViolation.PawnSiteMissing(actor))
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+    siteId <- actorSite(state, activePlayer).toRight(
+      OathViolation.PawnSiteMissing(activePlayer))
     difficulty <- RecoverRules.difficulty(catalog, siteId).toRight(
       OathViolation.RecoverUnavailable("site has no Recover Difficulty"))
-  } yield tree(actor, siteId, difficulty)
+  } yield tree(activePlayer, siteId, difficulty)
 
   /** Tree closes only over command-stable actor, site, and difficulty. */
   private def tree(actor: PlayerId, siteId: SiteId,

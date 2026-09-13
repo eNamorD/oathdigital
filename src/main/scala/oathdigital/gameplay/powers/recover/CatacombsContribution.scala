@@ -16,14 +16,14 @@ final case class CatacombsContribution private (cardId: DenizenId,
   override def resolution: PowerResolution = PowerResolution.PlayerSelected
   // Stable across the action: card presence, never the relic/secrets spent.
   override def applicable(ctx: PowerCtx): Boolean = ctx.state.game.current
-    .players.find(_.player == ctx.actor).flatMap(_.pawnSite)
+    .players.find(_.player == ctx.activePlayer).flatMap(_.pawnSite)
     .flatMap(ctx.state.game.current.map.sites.get).exists(_.denizens.exists {
       case d: DenizenState => d.id == cardId && d.orientation == Orientation.FaceUp
       case _ => false
     })
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RecoverActionEligibility -> Vector(
-      Transform((ctx, ops) => place(ctx.actor) +: ops)))
+      Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))
   // Mirrors the legacy capacity guard: no generic execution path enforces
   // `relicSlots` for a card Move (PowerOperations.PlaceRelicAtSite:93).
   private def place(actor: PlayerId): Operation = BuildOps((ready, _) => for {

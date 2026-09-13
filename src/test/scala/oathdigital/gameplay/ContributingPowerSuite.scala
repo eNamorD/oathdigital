@@ -49,7 +49,7 @@ class ContributingPowerSuite extends munit.FunSuite {
     }
     val ctx = PowerCtx(
       state = ready,
-      actor = ready.game.current.turn.activePlayer,
+      activePlayer = ready.game.current.turn.activePlayer,
       source = power.source,
       window = PowerWindow.RecoverEligibility,
       nodePath = Vector("root"),

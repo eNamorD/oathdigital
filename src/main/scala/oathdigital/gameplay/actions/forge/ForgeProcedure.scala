@@ -102,11 +102,11 @@ object ForgeProcedure {
 
   /** Fresh start: every gate in `ForgeRules.validate` runs. */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] = for {
-    player <- actorState(state, actor)
-    siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(actor))
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+    player <- actorState(state, activePlayer)
+    siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(activePlayer))
     facts <- ForgeRules.validate(catalog, state, player, siteId)
-  } yield tree(actor, facts._2)
+  } yield tree(activePlayer, facts._2)
 
   /** Rebuilds the same command-local tree for an already-started Forge.
     *
@@ -119,11 +119,11 @@ object ForgeProcedure {
     * cost the decision's section minima come from.
     */
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame,
-      actor: PlayerId): Either[OathViolation, Operation] = for {
-    siteId <- actorSite(state, actor).toRight(
-      OathViolation.PawnSiteMissing(actor))
+      activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+    siteId <- actorSite(state, activePlayer).toRight(
+      OathViolation.PawnSiteMissing(activePlayer))
     cost <- printedCost(catalog, siteId)
-  } yield tree(actor, cost)
+  } yield tree(activePlayer, cost)
 
   private def actorState(state: ReadyGame,
       actor: PlayerId): Either[OathViolation, PlayerState] =

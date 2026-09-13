@@ -32,7 +32,7 @@ final case class MountainSitePower(id: PowerId, site: SiteId)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.actor)(_ - 1))))
+        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ - 1))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
 }
@@ -43,7 +43,7 @@ final case class IslandSitePower(id: PowerId, site: SiteId)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.actor)(_ - 2))))
+        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ - 2))))
   override def applicable(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(_.destination == site)
 }
@@ -54,7 +54,7 @@ final case class CoastSitePower(id: PowerId, site: SiteId,
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map.empty.updated(PowerWindow.TravelCost,
       Vector(Transform((ctx, operations) =>
-        TravelRoute.adjustSupply(operations, ctx.actor)(_ => -1))))
+        TravelRoute.adjustSupply(operations, ctx.activePlayer)(_ => -1))))
   override def applicable(ctx: PowerCtx): Boolean = TravelRoute
     .pawnMove(ctx.operation).exists(route => route.source == site &&
       coastOrIslandSites.contains(route.destination))

@@ -30,7 +30,7 @@ private[walker] object WalkerPowerGather {
     */
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
-      actor: PlayerId, powers: WalkerPowers, path: Vector[String],
+      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
       ops: Vector[Operation]): (Vector[Operation], Vector[PowerId]) =
     window match {
       case None => (ops, Vector.empty)
@@ -38,7 +38,7 @@ private[walker] object WalkerPowerGather {
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
-          PowerCtx(state, actor, power.source, w, path, operation)
+          PowerCtx(state, activePlayer, power.source, w, path, operation)
         val gathered = ContributionCollector.gather(w, powers.powers, ctxFor)
         val folded = gathered.transforms.foldLeft(ops) {
           case (acc, (powerId, transform)) =>
@@ -64,12 +64,12 @@ private[walker] object WalkerPowerGather {
     * at the branch's own path.
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
-      state: ReadyGame, actor: PlayerId): Vector[OathViolation] = {
+      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] = {
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
     def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
         : ContributingPower => PowerCtx =
-      power => PowerCtx(state, actor, power.source, window, path, operation)
+      power => PowerCtx(state, activePlayer, power.source, window, path, operation)
     def windowsIn(node: Operation, path: Vector[String])
         : Vector[(PowerWindow, Vector[String], Operation)] = {
       val own = node.window.map(w => Vector((w, path, node))).getOrElse(Vector.empty)
@@ -82,7 +82,7 @@ private[walker] object WalkerPowerGather {
         // recurse forever, so leaves never contribute nested windows.
         case _: PrimitiveOperation => Vector.empty
         case branch: Branch => descend(branch.select(state,
-          PendingTree(at = path, answered = Vector.empty, actor = actor)))
+          PendingTree(at = path, answered = Vector.empty, actor = activePlayer)))
         case _ => descend(node.children)
       }
       own ++ nested

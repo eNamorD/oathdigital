@@ -10,7 +10,12 @@ import oathdigital.model.{PlayerId, PowerId}
   */
 final case class PowerCtx(
     state: ReadyGame,
-    actor: PlayerId,
+    /** The player whose procedure is running -- the traveller, the recoverer,
+      * the taker. Not the power's activator (only the active player selects
+      * powers) and not a parked decision's owner, which a contribution hooked
+      * on a `Decide` reads from `operation`.
+      */
+    activePlayer: PlayerId,
     source: RuleSourceRef,
     window: PowerWindow,
     nodePath: Vector[String],

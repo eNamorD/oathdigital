@@ -43,20 +43,20 @@ object TakeWealthProcedure {
     * and a resume never reaches this; the pair is kept identical rather than
     * one of them left to guess (Travel's case, for the same reason).
     */
-  def build(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+  def build(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
     // Wake phase, the active player, a live game -- the same gate the legacy
     // Wake command ran, under the name it already had.
-    ready <- OathLifecycle.validateReady(OathState.Ready(state), actor)
+    ready <- OathLifecycle.validateReady(OathState.Ready(state), activePlayer)
     resource <- resourceOf(args)
-    site <- ready.game.current.players.find(_.player == actor)
-      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(actor))
+    site <- ready.game.current.players.find(_.player == activePlayer)
+      .flatMap(_.pawnSite).toRight(OathViolation.PawnSiteMissing(activePlayer))
     tokens <- ready.game.current.map.sites.get(site).map(_.tokens)
       .toRight(OathViolation.SiteNotInPlay(site))
-    _ <- noEnemyPawn(ready, actor, site)
+    _ <- noEnemyPawn(ready, activePlayer, site)
     _ <- Either.cond(available(tokens, resource), (),
       OathViolation.ResourceUnavailable(site, resource))
-  } yield tree(actor, site, resource)
+  } yield tree(activePlayer, site, resource)
 
   /** Every resource the actor could take right now -- the single definition
     * the legal-action projection reads, and the Take Wealth twin of
@@ -79,11 +79,11 @@ object TakeWealthProcedure {
     * `powers` is the vector the caller's own command would use, for the same
     * reason Travel's candidates take one.
     */
-  def candidates(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+  def candidates(catalog: ExecutableCatalog, state: ReadyGame, activePlayer: PlayerId,
       powers: WalkerPowers): Vector[WakeResource] =
     WakeResource.all.filter(resource =>
-      build(catalog, state, actor, selection(resource))
-        .flatMap(WalkerSimulation.run(_, state, actor, powers)).isRight)
+      build(catalog, state, activePlayer, selection(resource))
+        .flatMap(WalkerSimulation.run(_, state, activePlayer, powers)).isRight)
 
   /** The start selection naming `resource`, and the inverse of `resourceOf`.
     *
