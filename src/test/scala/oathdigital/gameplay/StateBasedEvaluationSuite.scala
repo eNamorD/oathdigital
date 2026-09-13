@@ -341,4 +341,24 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     assert(rules.evolve(afterRound, WarExhaustionResolved(player,
       VictoryKind.Visionary, Some(VisionRules.Conquest), Vector.empty)).isLeft)
   }
+
+  test("once the game has a result, every command is refused at the lifecycle gate") {
+    val finished = prepared(Vector.empty).copy(game = prepared(Vector.empty).game
+      .copy(current = prepared(Vector.empty).game.current.copy(
+        result = Some(GameResult(PlayerId("p1"), VictoryKind.Usurper)))))
+    val active = finished.game.current.turn.activePlayer
+    val act = finished.copy(game = finished.game.copy(current =
+      finished.game.current.copy(turn = finished.game.current.turn.copy(
+        phase = Phase.Act))))
+    val destination = act.game.current.map.inPlay.find(_ !=
+      act.game.current.players.find(_.player == active).get.pawnSite.get).get
+    assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, active,
+      Vector.empty, Vector(DecisionOptionRef.Site(destination))), Left(OathViolation.GameEnded))
+    assertEquals(rules.startWalker(Ready(act), ActionRef.Forge, active),
+      Left(OathViolation.GameEnded))
+    val wake = act.copy(game = act.game.copy(current = act.game.current.copy(
+      turn = act.game.current.turn.copy(phase = Phase.Wake))))
+    assertEquals(rules.startWalker(Ready(wake), PhaseTransitionRef.EndWake,
+      active), Left(OathViolation.GameEnded))
+  }
 }

@@ -111,6 +111,21 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     assertEquals(chosen.events.collect { case e: BanditsRefilled => e }, Vector.empty)
   }
 
+  test("a tie found after Take Wealth parks in Wake and returns the player to Wake") {
+    val active = base.game.current.turn.activePlayer
+    val holder = players.find(_ != active).get
+    val leaders = players.filterNot(_ == holder).take(2)
+    val ready = TakeWealthFixture.wakeReady(ruled(base, leaders.map(Some(_)),
+      holder = Some(holder)))
+    val parked = TakeWealthFixture.take(rules, ready).toOption.get
+    assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
+      holder, DecisionId(OathkeeperProcedure.recipientDecisionId)))
+    val chosen = rules.resolveWalker(parked.state, holder,
+      OathkeeperProcedure.recipientDecisionId,
+      ChooseOneAnswer(DecisionOptionRef.Player(leaders(0)))).toOption.get
+    assertEquals(chosen.continue, OathContinue.AwaitingWakeAction(active))
+  }
+
   test("the engine refuses to start a triggered procedure over a pending one") {
     val (ready, _, _, _) = tie
     val parked = travel(ready).toOption.get

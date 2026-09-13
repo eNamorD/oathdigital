@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.{OathViolation, ReadyGame}
+import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef,
   DecisionQuery, DecisionSection, DenizenId, DenizenState, Orientation,
@@ -100,9 +100,14 @@ object ForgeProcedure {
         })
     }
 
-  /** Fresh start: every gate in `ForgeRules.validate` runs. */
+  /** Fresh start: every gate in `ForgeRules.validate` runs, plus the
+    * lifecycle gate every other fresh start checks (`RecoverProcedure`,
+    * `TravelProcedure`) -- `completeAction` no longer stops the boundary at
+    * a finished game itself (Task 8), so every action start must refuse one.
+    */
   def build(catalog: ExecutableCatalog, state: ReadyGame,
       activePlayer: PlayerId): Either[OathViolation, Operation] = for {
+    _ <- OathLifecycle.validateAct(OathState.Ready(state), activePlayer)
     player <- actorState(state, activePlayer)
     siteId <- player.pawnSite.toRight(OathViolation.PawnSiteMissing(activePlayer))
     facts <- ForgeRules.validate(catalog, state, player, siteId)

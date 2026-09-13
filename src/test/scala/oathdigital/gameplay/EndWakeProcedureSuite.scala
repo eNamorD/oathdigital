@@ -67,10 +67,11 @@ class EndWakeProcedureSuite extends munit.FunSuite {
   }
 
   test("ending Wake does not run the Act action boundary") {
-    // The boundary is gated on the phase the procedure STARTED in, so a
-    // procedure that starts in Wake never runs it -- even this one, which
-    // finishes in Act. Bandit refill is the boundary's most visible half, so
-    // the board is set up to make it fire and the first assertion proves it
+    // The boundary runs only after a completed ACTION, decided by the
+    // procedure reference's family (Task 8); End Wake is a phase transition,
+    // not an action, so it never runs one -- whatever phase it starts or
+    // finishes in. Bandit refill is the boundary's most visible half, so the
+    // board is set up to make it fire and the first assertion proves it
     // would; without that, the second passes for the wrong reason.
     val Ready(base) = ready(): @unchecked
     val empty = base.game.current.map.inPlay.find(id =>

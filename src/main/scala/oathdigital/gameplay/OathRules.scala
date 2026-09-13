@@ -256,14 +256,9 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   protected def completeAction(transition: OathTransition)
       : Either[OathViolation, OathTransition] =
-    if (hasResult(transition.state)) Right(transition)
-    else recordBoundaryFallback(transition).flatMap(afterDiagnostics =>
-      appendEvaluation(afterDiagnostics,
-      StateBasedEvaluation.banditRefill(catalog, _)))
-      .flatMap { afterRefill =>
-        if (hasResult(afterRefill.state)) Right(afterRefill)
-        else oathkeeperStep(afterRefill)
-      }
+    recordBoundaryFallback(transition)
+      .flatMap(appendEvaluation(_, StateBasedEvaluation.banditRefill(catalog, _)))
+      .flatMap(oathkeeperStep)
 
   /** The boundary decides only WHETHER the title changes; the triggered
     * procedure performs the change, so every title change is one walker step.
@@ -305,11 +300,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case _ => operation
     }
 
-  private def hasResult(state: OathState): Boolean = state match {
-    case Ready(ready) => ready.game.current.result.nonEmpty
-    case _ => false
-  }
-
   private def enterWake(transition: OathTransition): Either[OathViolation, OathTransition] = {
     def append(current: OathTransition, event: OathEvent) =
       evolve(current.state, event).map(next => current.copy(state = next,
@@ -348,13 +338,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       evaluate: OathState => Either[OathViolation, Option[OathEvent]]) =
     evaluate(transition.state).flatMap {
       case None => Right(transition)
-      case Some(event) => evolve(transition.state, event).map { next =>
-        transition.copy(state = next, events = transition.events :+ event,
-          continue = event match {
-            case UsurperVictory(winner) => OathContinue.GameFinished(winner)
-            case _ => transition.continue
-          })
-      }
+      case Some(event) => evolve(transition.state, event).map(next =>
+        transition.copy(state = next, events = transition.events :+ event))
     }
 }
 

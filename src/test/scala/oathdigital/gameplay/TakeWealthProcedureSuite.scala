@@ -15,31 +15,34 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 
-/** Take Wealth on the generic walker (batch 1, Task 7).
-  *
-  * This is the first registered action that runs in a phase other than Act,
-  * which is the point of porting it: a completed Wake action returns the
-  * player to their Wake phase and does not run the Act action boundary. Those
-  * two facts are asserted here, not inferred.
+/** Take Wealth's board setup and command, extracted from
+  * `TakeWealthProcedureSuite` (batch 1, Task 8) so
+  * `OathkeeperProcedureSuite` can drive the same Wake board its park test
+  * needs, without a second definition of "a Wake board with a takeable
+  * resource" drifting from this one.
   */
-class TakeWealthProcedureSuite extends munit.FunSuite {
-  private val setup = new FirstGameSetupRules(catalog)
-  private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
-  private def rules = new OathRules(catalog, walkerPowerCatalog = powers)
-
-  private val favorArg = Vector[DecisionOptionRef](
+object TakeWealthFixture extends munit.Assertions {
+  val favorArg: Vector[DecisionOptionRef] = Vector(
     DecisionOptionRef.Button("favor"))
-  private val secretArg = Vector[DecisionOptionRef](
+  val secretArg: Vector[DecisionOptionRef] = Vector(
     DecisionOptionRef.Button("secret"))
+
+  private def freshBase: ReadyGame = {
+    val Ready(value) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    value
+  }
 
   /** The active player's pawn site holds `favor`/`secrets`; `sharedEnemy`
     * parks another player's pawn on it. Mirrors `WakeSuite`'s board so the
     * gates this suite asserts are the gates the legacy path asserted.
+    *
+    * `from` is the game to start from, defaulting to a fresh first-game
+    * setup -- `OathkeeperProcedureSuite`'s park test instead starts from a
+    * game already `ruled` for a tie.
     */
-  private def wake(favor: Int = 1, secrets: Int = 1,
+  def wakeReady(from: ReadyGame = freshBase, favor: Int = 1, secrets: Int = 1,
       sharedEnemy: Boolean = false): ReadyGame = {
-    val Ready(value) = execute(setup)._1: @unchecked
-    val current = value.game.current
+    val current = from.game.current
     val actor = current.turn.activePlayer
     val site = current.players.find(_.player == actor).flatMap(_.pawnSite).get
     val players = current.players.map { player =>
@@ -47,11 +50,47 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
         pawnSite = Some(site))
       else player
     }
-    value.copy(game = value.game.copy(current = current.copy(
+    from.copy(game = from.game.copy(current = current.copy(
       players = players,
       map = current.map.copy(sites = current.map.sites.updated(site,
         current.map.sites(site).copy(tokens = Tokens(favor, secrets)))))))
   }
+
+  private def actor(ready: ReadyGame): PlayerId =
+    ready.game.current.turn.activePlayer
+
+  def take(rules: OathRules, ready: ReadyGame,
+      args: Vector[DecisionOptionRef] = favorArg)
+      : Either[OathViolation, OathTransition] =
+    rules.startWalker(Ready(ready), ActionRef.TakeWealth, actor(ready),
+      Vector.empty, args)
+
+  def accepted(rules: OathRules, ready: ReadyGame,
+      args: Vector[DecisionOptionRef] = favorArg): OathTransition =
+    take(rules, ready, args).fold(error => fail(s"take rejected: $error"),
+      identity)
+}
+
+/** Take Wealth on the generic walker (batch 1, Tasks 7-8).
+  *
+  * This is the first registered action that runs in a phase other than Act,
+  * which is the point of porting it: a completed Take Wealth returns the
+  * player to their own Wake phase -- and still runs the action boundary
+  * there, because the boundary follows the completed procedure's family
+  * (Task 8), not the phase it ran in. Both facts are asserted here, not
+  * inferred.
+  */
+class TakeWealthProcedureSuite extends munit.FunSuite {
+  private val powers: WalkerPowers = WalkerPowerCatalog.default(catalog)
+  private def rules = new OathRules(catalog, walkerPowerCatalog = powers)
+
+  private val favorArg = TakeWealthFixture.favorArg
+  private val secretArg = TakeWealthFixture.secretArg
+
+  private def wake(favor: Int = 1, secrets: Int = 1,
+      sharedEnemy: Boolean = false): ReadyGame =
+    TakeWealthFixture.wakeReady(favor = favor, secrets = secrets,
+      sharedEnemy = sharedEnemy)
 
   private def actor(ready: ReadyGame): PlayerId =
     ready.game.current.turn.activePlayer
@@ -64,12 +103,11 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
   private def take(ready: ReadyGame,
       args: Vector[DecisionOptionRef] = favorArg)
       : Either[OathViolation, OathTransition] =
-    rules.startWalker(Ready(ready), ActionRef.TakeWealth, actor(ready),
-      Vector.empty, args)
+    TakeWealthFixture.take(rules, ready, args)
 
   private def accepted(ready: ReadyGame,
       args: Vector[DecisionOptionRef] = favorArg): OathTransition =
-    take(ready, args).fold(error => fail(s"take rejected: $error"), identity)
+    TakeWealthFixture.accepted(rules, ready, args)
 
   private def after(transition: OathTransition): ReadyGame =
     transition.state match {
@@ -104,11 +142,9 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     assertEquals(state.game.current.map.sites(pawnSite(ready)).tokens.secrets, 0)
   }
 
-  test("a completed Wake action does not run the Act action boundary") {
-    // Bandit refill is the boundary's most visible half, so the board is set
-    // up to make it fire: an in-play site with capacity and no forces. The
-    // first assertion proves the boundary WOULD have something to say here,
-    // which is what stops the second from passing vacuously.
+  test("a completed Take Wealth runs the action boundary and stays in Wake") {
+    // An empty site with capacity makes the boundary observable; the
+    // precondition proves it has something to do here.
     val base = wake()
     val empty = base.game.current.map.inPlay.find(id =>
       catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
@@ -117,13 +153,12 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
         base.game.current.map.sites.updated(empty,
           base.game.current.map.sites(empty).copy(
             forces = SiteForces.Empty))))))
-
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(ready))
       .toOption.flatten.nonEmpty,
-      "precondition: the Act boundary would refill bandits in this state")
-    assertEquals(accepted(ready).events.collect {
-      case event: BanditsRefilled => event
-    }, Vector.empty)
+      "precondition: the boundary would refill bandits in this state")
+    val result = accepted(ready)
+    assertEquals(result.events.collect { case event: BanditsRefilled => event }.size, 1)
+    assertEquals(result.continue, AwaitingWakeAction(ready.game.current.turn.activePlayer))
   }
 
   test("a second take at the same site this turn is blocked") {

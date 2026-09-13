@@ -346,56 +346,38 @@ private[gameplay] trait OathRulesWalker {
 
     case WalkerOutcome.Finished(treeless, steps) =>
       val activePlayer = treeless.game.current.turn.activePlayer
-      completionIn(ready.game.current.turn.phase,
-        treeless.game.current.turn.phase, activePlayer).flatMap { completed =>
-        val runsBoundary = completed.runsActionBoundary && (procedure match {
-          case _: TriggeredProcedureRef => false
-          case _: StartableRef => true
-        })
-        GameplayTransition(state,
-          steps :+ WalkerCompleted(procedure), completed.continue)(evolve)
+      continuationIn(treeless.game.current.turn.phase, activePlayer).flatMap {
+        continue => GameplayTransition(state,
+          steps :+ WalkerCompleted(procedure), continue)(evolve)
           .flatMap(transition =>
-            if (runsBoundary) completeAction(transition)
+            if (runsActionBoundary(procedure)) completeAction(transition)
             else Right(transition))
       }
   }
 
-  /** What a completed walker procedure hands back, and whether the Act action
-    * boundary runs after it (batch-1 Task 7).
-    *
-    * Read off the phase, and deliberately not declared by the procedure or
-    * carried on its registry entry: the walker and its registry state what a
-    * procedure DOES, and which phase a player is in is neither's business.
-    * Every walker action before Take Wealth ran in Act, so this was an
-    * `ActActionSelection` literal with an unconditional `completeAction`
-    * after it; a Wake action ported under that literal would have ended the
-    * player's Wake phase after one take and run the Act boundary's bandit
-    * refill and state-based evaluation in the middle of Wake.
-    *
-    * **Two phases, because they answer different questions.** `finishedIn`
-    * is where the player now is, so it names the continuation. `startedIn`
-    * is which phase's procedure just completed, so it decides the boundary:
-    * the Act action boundary follows an Act action, which is exactly what
-    * every legacy `handle` in `OathRules` already does -- Economy, Search,
-    * Challenge, Campaign, Visions, Negotiation and the minor actions run it,
-    * and the Wake and Rest commands never did. The two reads coincide for
-    * every procedure but one. `EndWake` is that one: it starts in Wake and
-    * finishes in Act, so it returns the player to Act action selection
-    * without a boundary firing on a phase transition that moved no piece.
+  /** Whether the action boundary follows a completed procedure. Only an
+    * action runs it, in whatever phase it ran: Take Wealth does, End Wake (a
+    * phase transition) and a triggered procedure do not. Carried by the
+    * reference's family, never by a registry flag and never by the phase --
+    * Take Wealth and End Wake both start in Wake.
+    */
+  private def runsActionBoundary(procedure: ProcedureRef): Boolean =
+    procedure match {
+      case _: ActionRef => true
+      case _: PhaseTransitionRef | _: TriggeredProcedureRef => false
+    }
+
+  /** Where a completed walker procedure returns its player: read off the
+    * phase the procedure finished in, and deliberately not declared by the
+    * procedure or carried on its registry entry -- the walker and its
+    * registry state what a procedure DOES, and which phase a player is in is
+    * neither's business.
     *
     * A phase with no walker continuation is a typed rejection rather than a
     * default, because a default here is exactly the kind of behaviour nobody
     * chooses: the first procedure registered in Rest should fail loudly and
     * be given its continuation, not silently return its player to Act.
     */
-  private final case class WalkerCompletion(continue: OathContinue,
-      runsActionBoundary: Boolean)
-
-  private def completionIn(startedIn: Phase, finishedIn: Phase,
-      actor: PlayerId): Either[OathViolation, WalkerCompletion] =
-    continuationIn(finishedIn, actor).map(WalkerCompletion(_,
-      runsActionBoundary = startedIn == Phase.Act))
-
   private def continuationIn(phase: Phase, actor: PlayerId)
       : Either[OathViolation, OathContinue] = phase match {
     case Phase.Act => Right(OathContinue.ActActionSelection(actor))
