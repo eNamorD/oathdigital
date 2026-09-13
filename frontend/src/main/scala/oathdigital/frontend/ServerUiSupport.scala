@@ -301,6 +301,21 @@ private[frontend] object ServerUiSupport {
     if (value.oathkeeper.exists(_.winnerPlayerId.nonEmpty))
       return ViewerPresentation(showGameplayControls = false,
         waitingForPlayerId = None, waitingForDisplayName = None)
+    // Task 5 fix: a parked walker `Decide`'s owner is projected `walkerDecision`
+    // regardless of whose turn it is, and everyone else is projected
+    // `walkerWaiting` naming that owner (see WalkerDecisionProjector.project/
+    // waiting). Reading `activeParticipantId` below instead of these two
+    // fields would leave an off-turn owner with no panel -- and the active
+    // player waiting on them right back -- since neither side is the other's
+    // active participant.
+    if (value.walkerDecision.nonEmpty)
+      return ViewerPresentation(showGameplayControls = true,
+        waitingForPlayerId = None, waitingForDisplayName = None)
+    if (value.walkerWaiting.nonEmpty)
+      return ViewerPresentation(showGameplayControls = false,
+        waitingForPlayerId = value.walkerWaiting.map(_.playerId),
+        waitingForDisplayName = value.walkerWaiting.map(w =>
+          playerDisplayName(value, w.playerId)))
     if (value.restPower.exists(_.decisionOwnerPlayerId == playerId))
       return ViewerPresentation(showGameplayControls = true,
         waitingForPlayerId = None, waitingForDisplayName = None,

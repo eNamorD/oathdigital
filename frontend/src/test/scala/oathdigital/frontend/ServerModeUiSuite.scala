@@ -629,6 +629,32 @@ class ServerModeUiSuite extends FunSuite {
       Some("Waiting for a Rest power decision."))
   }
 
+  /** Fix round 1: a parked walker `Decide`'s owner is not always the active
+    * participant (Task 5). `walkerDecision` is projected to the owner alone
+    * regardless of whose turn it is, so `viewerPresentation` must grant
+    * controls off that field directly rather than off `activeParticipantId`
+    * -- the bug this guards against left the owner and the active player
+    * each waiting on the other.
+    */
+  test("an off-turn owner of a parked walker decision keeps gameplay controls") {
+    val value = projection(Set.empty, activeParticipantId = "red-exile")
+      .copy(walkerDecision = Some(forgeParked))
+    val owner = ServerUiSupport.viewerPresentation(value, "blue-exile")
+    assert(owner.showGameplayControls)
+    assertEquals(owner.waitingForPlayerId, None)
+    assertEquals(owner.waitingForDisplayName, None)
+  }
+
+  test("the active participant waits for the walker decision's off-turn owner") {
+    val value = projection(Set.empty, activeParticipantId = "red-exile")
+      .copy(walkerWaiting = Some(WalkerWaitingState("blue-exile",
+        Some("Choose the Oathkeeper"))))
+    val active = ServerUiSupport.viewerPresentation(value, "red-exile")
+    assert(!active.showGameplayControls)
+    assertEquals(active.waitingForPlayerId, Some("blue-exile"))
+    assertEquals(active.waitingForDisplayName, Some("Blue Exile"))
+  }
+
   test("inactive Act viewer sees no action-selection controls") {
     val value = projection(Set("beginRest"), phase = "act-action-selection")
       .copy(actionSelectionOpen = true,
