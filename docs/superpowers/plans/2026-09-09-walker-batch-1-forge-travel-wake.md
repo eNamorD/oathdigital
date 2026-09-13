@@ -74,9 +74,9 @@ own framing, which was written expecting Travel to carry a decision.
 
 ## Where this plan stands (2026-09-12)
 
-Tasks 1 through 5 are done and their boxes are ticked below, each annotated with
-the commit that closed it, and Tasks 6 and 7 followed. **The batch resumes at
-Task 8, the close-out.**
+All eight tasks are done and their boxes are ticked below, each annotated with
+the commit that closed it. **Batch 1 is closed.** The next batch's plan starts
+from the spec's Migration status section and Task 8's inventory.
 
 | Task | State | Commits |
 |---|---|---|
@@ -88,7 +88,7 @@ Task 8, the close-out.**
 | 5 — Travel cutover + vocabulary delete | done | `c70ec1a` |
 | 6 — Take Wealth once-per-turn | done | `654e75a` |
 | 7 — Wake cutover + legacy delete | done | `0139c6c`, completed by `e314210`, seam fixed in `870afdd` |
-| 8 — batch close-out | Step 0 superseded; rest open | — |
+| 8 — batch close-out | done | `docs(spec): record what walker batch 1 settled` |
 
 Task 1b was inserted after Task 1 reported `OathRules.scala` at exactly the
 800-line cap, which the next added line would have broken.
@@ -734,7 +734,82 @@ its own commit, not folded into the conversion.
   headroom, as a pure move proven by no test file being edited — the same
   acceptance criterion Task 1b used. Then convert the encode side to a typed
   error, as its own commit.
-- [ ] **Step 1:** write the spec updates above. Correct any spec text this batch falsified rather than appending a note beside it.
-- [ ] **Step 2:** `grep -rn "PendingProcedure" src/main` — list which cases remain and which actions still own them, as the starting inventory for the next batch's plan.
-- [ ] **Step 3:** full gate `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
-- [ ] **Step 4: commit** `docs(spec): record what walker batch 1 settled`.
+- [x] **Step 1:** write the spec updates above. Correct any spec text this batch falsified rather than appending a note beside it.
+- [x] **Step 2:** `grep -rn "PendingProcedure" src/main` — list which cases remain and which actions still own them, as the starting inventory for the next batch's plan.
+- [x] **Step 3:** full gate `./sbtw "test" "frontend/test" "frontend/fastLinkJS"`, `python3 scripts/check-architecture.py`, `git diff --check`.
+- [x] **Step 4: commit** `docs(spec): record what walker batch 1 settled`, after the spec update was reviewed and approved.
+
+#### What Task 8 settled
+
+**Four rulings, taken before any spec text was written.**
+
+1. *"Decision 11" named two different decisions.* The task text meant the
+   inherited rule that use tracking stays state; the spec's locked decision
+   11 was the open `DecisionPayload` trait, which the declarative-decisions
+   plan had already retired on this branch. Both were rewritten in place:
+   locked decision 11 now states the declarative contract and points to its
+   spec, and the use-tracking rule is restated under State with its own name,
+   so the number means one thing.
+2. *The Recover slice checkpoint was replaced, not annotated.* It said step 3
+   had not started, that the preview window was hardcoded, and that
+   `shouldIgnore` takes a `PowerId`, which contradicted the spec's own Powers
+   section. One current **Migration status** section replaces it. Items still
+   true were carried over (registry entry point, the one-`resolution`-per-power
+   limit, the drift suite); items that are out of date were dropped. Git
+   history keeps the checkpoint.
+3. *Use limits are settled; turn-scoped activation is still open.* Wake was
+   chosen to force the activation question, but Take Wealth turned out to be
+   a use limit, which a `Restriction` plus `RecordPowerUse` covers. Nothing in
+   the batch was a power switched on once that lasts the turn, so the
+   `walkerModifiers` gap stays open and waits for a real card, as the original
+   checkpoint recommended.
+4. *The inventory lives in two places.* The spec summarizes it and flags
+   `OathkeeperRecipient` against decision 6. The file-level table below is for
+   the next batch's planner.
+
+**Other spec text this batch (or the declarative plan run inside it) made
+wrong, corrected in place:** the status header; decision 12's pending fields;
+decision 13's command names and the survival of `WithModifiers` and
+`GameIntent.EndWake`; the `Operation` ADT (the `Decide` signature, `BuildOps`,
+the two new operations, which cases carry windows, and that there are no
+per-action root case classes); the `CurrentGameState`/`PendingTree` sketch;
+Walker step 7, which returned every action to Act action selection; the
+expectation that scaffolding windows become `Decide` nodes; and the migration
+plan's step 3/4 status.
+
+**Added, because they are true now and a next batch would otherwise
+rediscover them:** restrictions run before `BuildOps` expands, so they cannot
+see walk-time operations (decision 9); decision ids are constants and
+staleness is `expectedNextSequence`; the resume path's `Phase.Act` gate is
+unreached, not correct; and `WalkerReplayDriftSuite` still covers Recover
+only.
+
+**Starting inventory for the next batch: nine `PendingProcedure` cases.**
+
+| Case | Owner | Files |
+|---|---|---|
+| `Search` | Search | `actions/Search.scala`, `OathLifecycle.scala` |
+| `Campaign` | Campaign | `actions/Campaign.scala`, `CampaignRules.scala`, `CampaignResolution.scala` |
+| `CampaignRaidRelocation` | Campaign (raid) | `actions/Campaign.scala` |
+| `Challenge` | Challenge | `actions/Challenge.scala` |
+| `Negotiation` | Negotiation | `actions/Negotiation.scala` |
+| `Conspiracy` | CardPlay / Visions | `actions/CardPlay.scala`, `actions/Visions.scala`, `OathRules.scala` |
+| `RestPowerDecision` | Rest's power integration | `powers/rest/RestPowerIntegration.scala`, `RestPowerHandler.scala`, `LeagueTreatyPower.scala` |
+| `RestPowerContinuation` | Rest's power integration | `powers/rest/RestPowerIntegration.scala` |
+| `OathkeeperRecipient` | state-based evaluation, no action | `StateBasedEvaluation.scala` |
+
+All paths are under `src/main/scala/oathdigital/gameplay/`; every case is
+also read by `application/PendingProcedureProjector.scala`, and most by
+`LegalActionProjector.scala`. The `CampaignPlan*` types nested in the
+`PendingProcedure` object are Campaign's supporting vocabulary, not cases,
+and they also reach the event protocol and `GameEventJsonSupport`.
+
+Three things the table does not show. Economy (Muster/Trade) and the minor
+actions own no pending case: they are single-command, so they are the cheapest
+remaining ports and teach nothing Travel did not. `CampaignRules` builds a
+throwaway `PendingProcedure.Campaign(DecisionId("bandit-validation"), ...)`
+purely as a validation context, which will need a different home when the
+case goes. And `Campaign.scala` is still at exactly 800 lines.
+
+Gate at close-out, with Task 8 touching docs only: 691 root tests, 148
+frontend, architecture check over 196 production files.
