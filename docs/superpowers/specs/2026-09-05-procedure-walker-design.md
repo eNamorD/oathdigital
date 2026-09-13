@@ -69,15 +69,15 @@ Engine changes stop after the walker lands.
    declared, journalled and replayed. What follows from it not being an action
    (no Act action boundary) is read at completion, not flagged on its
    registration — see Walker.
-   *Resolved by `2026-09-12-walker-ownership-and-phases-design.md` (not yet
-   implemented):* state-based evaluation stays engine-internal and decides
-   *whether* anything happens; when a change may park a player decision, the
-   engine starts a triggered procedure that *performs* it. The Oathkeeper
-   title is the first: every title change becomes that procedure's
-   `SetOathkeeper` step. That design also replaces "read at completion" above:
-   whether the action boundary runs is decided by the completed reference's
-   family (`ActionRef`, `PhaseTransitionRef`, `TriggeredProcedureRef`), and it
-   runs after every action in every phase.
+   *Resolved by `2026-09-12-walker-ownership-and-phases-design.md` (landed,
+   commits `dae427d`, `7ccf57a` and `d5e7e4b`):* state-based evaluation stays
+   engine-internal and decides *whether* anything happens; when a change may
+   park a player decision, the engine starts a triggered procedure that
+   *performs* it. The Oathkeeper title is the first: every title change
+   becomes that procedure's `SetOathkeeper` step. That design also replaces
+   "read at completion" above: whether the action boundary runs is decided by
+   the completed reference's family (`ActionRef`, `PhaseTransitionRef`,
+   `TriggeredProcedureRef`), and it runs after every action in every phase.
 7. **Windows label hookable nodes (W1/H2).** The existing typed `PowerWindow`
    vocabulary remains (keep type safety + audit). Every hookable node carries
    `window: Option[PowerWindow]`. TODO comment left: rename PowerWindows if a
@@ -125,12 +125,12 @@ Engine changes stop after the walker lands.
     `docs/superpowers/specs/2026-09-10-declarative-walker-decisions-design.md`.
 12. **Tree is derived per command (S1).** The engine rebuilds the base action
     tree and re-applies power transforms deterministically on every command;
-    `PendingTree` stores only `at` (stable node-id chain, not child index),
-    `answered` decisions and actor. *(Per
-    `2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented:
-    the actor is no longer stored, since it always equals
-    `turn.activePlayer`; `Answered` gains `by`; `walkerAction` becomes
-    `walkerProcedure: Option[ProcedureRef]`.)* Beside it, and durable for the same
+    `PendingTree` stores only `at` (stable node-id chain, not child index) and
+    `answered` decisions. *(Per `2026-09-12-walker-ownership-and-phases-design.md`,
+    landed in Task 3, commit `02e1357`, and Task 4, commit `266f2fb`:
+    `PendingTree` no longer stores an actor, since it always equals
+    `turn.activePlayer`; `Answered` gains `by: PlayerId`; `walkerAction`
+    becomes `walkerProcedure: Option[ProcedureRef]`.)* Beside it, and durable for the same
     reason, state carries the action (`walkerAction`), the player-selected
     powers (`walkerModifiers`) and the start selections (`walkerStartArgs`):
     none of them is re-derivable from state, and a resume must rebuild the
@@ -143,10 +143,10 @@ Engine changes stop after the walker lands.
     legacy path, and dies with the last of them. A client-facing spelling may
     outlive its engine command as a one-line route to `StartWalker`:
     `GameIntent.EndWake` does this, so two spellings can start the same
-    procedure. *(Per `2026-09-12-walker-ownership-and-phases-design.md`, not
-    yet implemented: `StartWalker` takes a `StartableRef`, an action or a
-    phase transition, so a triggered procedure cannot be started by a
-    client; End Wake becomes a `PhaseTransitionRef`.)*
+    procedure. *(Per `2026-09-12-walker-ownership-and-phases-design.md`,
+    landed in Task 4, commit `266f2fb`: `StartWalker` takes a `StartableRef`,
+    an action or a phase transition, so a triggered procedure cannot be
+    started by a client; End Wake is a `PhaseTransitionRef`.)*
 14. **Migration: vertical slice first, then batch.** Prove the walker on one
     action end-to-end (tree + powers + journal + frontend projection + replay),
     then migrate remaining actions in batches. Old journal compatibility is not
@@ -184,9 +184,10 @@ Leaves (PrimitiveOperation):
   transitions. It does reject entering the phase the turn is already in
   (`OperationError.PhaseAlreadyEntered`), because replay re-runs no gates and
   without this a doubled transition in the journal would replay clean.
-- *Planned by `2026-09-12-walker-ownership-and-phases-design.md` (not yet implemented):* `SetOathkeeper(Option[PlayerId])`,
-  the only writer of the title holder, which resets the side to Oathkeeper
-  and rejects an unchanged holder.
+- *Landed per `2026-09-12-walker-ownership-and-phases-design.md`, Task 6,
+  commit `dae427d`:* `SetOathkeeper(Option[PlayerId])`, the only writer of
+  the title holder, which resets the side to Oathkeeper and rejects an
+  unchanged holder (`OperationError.OathkeeperUnchanged`).
 
 Only four cases carry a `window`: `ModifyDicePool`, `Decide`, `BuildOps` and
 `Sequence`. A delta that must be hookable is made hookable by the `Sequence`
@@ -200,8 +201,9 @@ Composites (CoreOperation): existing concept bundles plus sequence/branch
 helpers (`Sequence`, `Branch`). There are no per-action root case classes. An
 action's root is an ordinary `Sequence` built by that action's procedure object
 (`TravelProcedure`, `ForgeProcedure`, ...) and registered on
-`WalkerActionRegistry` (renamed `WalkerProcedureRegistry`, keyed by
-`ProcedureRef`, by `2026-09-12-walker-ownership-and-phases-design.md`; not yet implemented), so the ADT never learns an
+`WalkerProcedureRegistry` (renamed from `WalkerActionRegistry` and keyed by
+`ProcedureRef`, per `2026-09-12-walker-ownership-and-phases-design.md`,
+Task 4, commit `266f2fb`), so the ADT never learns an
 action's name. A
 `Repeat(guard, body)` composite re-executes `body` until
 `guard(state, pending)` is false (Recover's roll-until-success/stop loop;
@@ -224,12 +226,12 @@ final case class CurrentGameState(
 )
 final case class PendingTree(
   at: Vector[String],          // stable node-id chain
-  answered: Vector[Answered],  // decisions recorded this action
-  actor: PlayerId
+  answered: Vector[Answered]   // decisions recorded this action
 )                              // the tree itself is never stored (decision 12)
-// Per 2026-09-12-walker-ownership-and-phases-design.md (not yet implemented):
-// walkerAction -> walkerProcedure: Option[ProcedureRef]; PendingTree drops
-// actor (always turn.activePlayer); Answered gains `by: PlayerId`.
+// Landed per 2026-09-12-walker-ownership-and-phases-design.md (Task 3, commit
+// 02e1357; Task 4, commit 266f2fb): walkerAction -> walkerProcedure:
+// Option[ProcedureRef]; PendingTree drops actor (always turn.activePlayer);
+// Answered gains `by: PlayerId`.
 final case class DicePoolState(count: Int)
 final case class RollOutcome(pool: PoolKey, count: Int, faces: Vector[DiceFace],
                              skulls: Int, score: Int)
@@ -284,9 +286,10 @@ Per command, the engine:
    registry state what a procedure does, and which phase the player is in is
    neither's business. The reads live in `OathRulesWalker`.
    *Superseded in part by `2026-09-12-walker-ownership-and-phases-design.md`
-   (not yet implemented):* the continuation is still read off the finishing
-   phase, but the started-in-Act rule is replaced. The boundary runs iff the
-   completed reference is an `ActionRef`, in any phase; never after a
+   (landed, Task 8, commit `d5e7e4b`):* the continuation is still read off
+   the finishing phase, but the started-in-Act rule is replaced. The
+   boundary runs iff the completed reference is an `ActionRef`, in any
+   phase (`OathRulesWalker.runsActionBoundary`); never after a
    `PhaseTransitionRef` (End Wake) or a `TriggeredProcedureRef`. Take Wealth
    therefore gains the boundary.
 
@@ -295,15 +298,15 @@ boundary and never lets the engine touch randomness.
 
 **Phase gates.** Starting a walk checks no phase; each procedure's `build`
 gates its own (Take Wealth and End Wake require Wake, the rest require Act).
-Resuming a parked walk currently requires `Phase.Act`
-(`OathRulesWalker.walkerResumeContext`). Every registered procedure outside
-Act finishes inside the command that starts it, so nothing has reached that
-gate yet. The first procedure that parks outside Act has to change it
-deliberately; no test can reach the change before then. *(Per
-`2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented: the
-resume gate is deleted without replacement, since only resume commands are
-accepted while a walker is pending; `startWalker` checks the requester is the
-active player, and a parked `Decide` is authorized for its owner.)*
+*(Per `2026-09-12-walker-ownership-and-phases-design.md`, landed in Task 5,
+commits `4321aae`..`90f4e6a`: resuming a parked walk no longer requires
+`Phase.Act`. `OathRulesWalker.walkerResumeContext` carries no phase gate at
+all, since only resume commands are accepted while a walker is pending, so
+nothing else can move the phase, and the procedure's own `build` already
+passed its phase gate at start. `startWalker` checks the requester is the
+active player (`requireActivePlayer`); a parked `Decide` is authorized for
+its own owner, not necessarily the active player
+(`ProcedureWalker.answerDecide`).)*
 
 **Decision ids are constants, not per-command tokens.** A `Decide`'s id is a
 fixed string per decision (`"forge.assignment"`, `"recover.relic"`), and a
@@ -355,9 +358,10 @@ revisit. Changed while exactly one `ContributingPower` existed, it was one
 line on this trait and one at `ContributionCollector`'s vote step, which
 already held both power objects.
 
-`PowerCtx(state, actor, source, window, nodePath, operation)` (`actor`
-becomes `activePlayer` per `2026-09-12-walker-ownership-and-phases-design.md`; not yet implemented) carries no
-mutable state and no catalog of its own. `operation` is the generic hooked
+`PowerCtx(state, activePlayer, source, window, nodePath, operation)`
+(`actor` renamed to `activePlayer` per
+`2026-09-12-walker-ownership-and-phases-design.md`, Task 2, commit
+`f2c1ab3`) carries no mutable state and no catalog of its own. `operation` is the generic hooked
 operation, so a contribution may inspect its children when applicability needs
 facts carried by the tree (for example Travel's sibling payment and Move).
 A contribution reads game state through `ctx.state` and identifies itself
@@ -380,7 +384,7 @@ object RelicWorship extends Power {
   def source = RuleSourceRef.Adviser(...)   // actual source depends on state
   def contributions = Map(
     PowerWindow.RecoverAfterRelic -> Vector(Transform((ctx, ops) =>
-      ops :+ Delta(GainSupply(ctx.actor, 2))))
+      ops :+ Delta(GainSupply(ctx.activePlayer, 2))))
   )
 }
 ```
@@ -399,11 +403,13 @@ Parked positions and pool state are durable facts, not walker outputs (P1,
 `RollOutcome`/answered are reconstructed from `RollPayload`/`ChoicePayload`
 events and `ModifyDicePool` ops. The walker is never re-run at replay.
 `WalkerParked` also carries the walk's modifiers and start selections, which
-replay restores beside the `PendingTree`. *(Per `2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented:
-walker events carry no actor, `Answered.by` records who answered, a triggered
-procedure's events replay like any other without re-running a gate, and the
+replay restores beside the `PendingTree`. *(Per `2026-09-12-walker-ownership-and-phases-design.md`,
+landed: `WalkerStepRecorded`/`WalkerParked`/`WalkerCompleted` carry no actor
+field (Task 3, commit `02e1357`); `ChoicePayload.by` and `Answered.by` record
+who answered (Task 3, same commit); a triggered procedure's events replay
+like any other, with no gate re-run (Task 7, commit `7ccf57a`); and the
 Oathkeeper title events are replaced by that procedure's `SetOathkeeper`
-step.)*
+step (Task 6, commit `dae427d`, and Task 7, commit `7ccf57a`).)*
 
 A procedure that cannot park (Travel, Take Wealth, End Wake: no `Decide`, no
 `Roll`) journals only its step events and `WalkerCompleted`. Those events are
@@ -445,7 +451,9 @@ actions migrated. They were not; both kept a job:
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel
    and Wake have no legacy path left, and the typed-cost vocabulary is gone.
-   Nine `PendingProcedure` cases remain (see Migration status).
+   Eight `PendingProcedure` cases remain (see Migration status); the ninth,
+   `OathkeeperRecipient`, was ported to the triggered `Oathkeeper` procedure
+   by `2026-09-12-walker-ownership-and-phases-design.md`.
 5. Author MVP power set on the new framework.
 
 Existing phase plans (phases 1-4 under `docs/superpowers/plans/`) describe
@@ -457,12 +465,16 @@ this design and will be replanned.
 - Full gate stays green through migration (`./sbtw "test"
   "frontend/test" "frontend/fastLinkJS"`).
 - Drift suites: recorded ops == recomputed tree ops, in dev/test only.
-  `WalkerReplayDriftSuite` still covers Recover only: three unpowered walks
-  and one Catacombs-modified walk. Batch 1 added no drift case for Forge,
-  Travel or Wake. Each has an end-to-end replay-parity test instead, which
-  checks that the reloaded state matches but not that the recorded operations
-  equal a re-derived walk. Travel's terrain transforms are the obvious next
-  entry, since they are the powered case this batch added.
+  `WalkerReplayDriftSuite` covers Recover (three unpowered walks and one
+  Catacombs-modified walk) and, since
+  `2026-09-12-walker-ownership-and-phases-design.md` landed (Task 7, commit
+  `7ccf57a`), the triggered Oathkeeper procedure: "drift check: an
+  Oathkeeper tie parks for the holder and resolves". Batch 1 added no drift
+  case for Forge, Travel or Wake. Each has an end-to-end replay-parity test
+  instead, which checks that the reloaded state matches but not that the
+  recorded operations equal a re-derived walk. Travel's terrain transforms
+  are the obvious next entry, since they are the powered case that batch
+  added.
 - Power-authoring bar: one class, ≤50 lines, engine untouched. The size half
   is a **design guideline, not an asserted property** (settled 2026-09-09). A
   power needing 55 lines to state its rule honestly should be allowed them,
@@ -532,9 +544,9 @@ is below, and it is the complete list.
   without the collector or walker knowing Travel. Nothing else was missing:
   Take Wealth's limit reached everything through `ctx.state`.
 - **Completion** reads the continuation and the Act boundary off the phase,
-  no longer hardcoding Act (see Walker, step 7). *(`2026-09-12-walker-ownership-and-phases-design.md`, not yet
-  implemented, keeps the continuation read and decides the boundary by
-  reference family instead.)*
+  no longer hardcoding Act (see Walker, step 7). *(`2026-09-12-walker-ownership-and-phases-design.md`,
+  landed, Task 8, commit `d5e7e4b`, keeps the continuation read and decides
+  the boundary by reference family instead.)*
 
 ### Typed cost facts are retired; `Transform` won
 
@@ -606,9 +618,16 @@ decide the shape.
 
 - Two extractions were needed to stay under the 800-line cap:
   `OathRulesWalker` out of `OathRules`, and `WalkerReplay` out of
-  `ProcedureWalker`. `WalkerEventCodec.scala` is at 785 of 800, so it is the
-  file to split before the next batch adds an operation.
-  `actions/Campaign.scala` is at exactly 800.
+  `ProcedureWalker`. Measured 2026-09-13, after
+  `2026-09-12-walker-ownership-and-phases-design.md` landed
+  (`wc -l src/main/scala/oathdigital/serialization/Walker*Codec.scala
+  src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala
+  src/main/scala/oathdigital/gameplay/OathRulesWalker.scala
+  src/main/scala/oathdigital/gameplay/actions/Campaign.scala`):
+  `WalkerEventCodec.scala` 196 (Task 1 split its operation spellings out to
+  `WalkerOperationCodec.scala`, now 623), `ProcedureWalker.scala` 674,
+  `OathRulesWalker.scala` 445, `actions/Campaign.scala` still exactly 800 —
+  the file to split before it grows again.
 - The drift suite did not grow (see Verification).
 - `ActionRef.TakeWealth` keys itself `take-wealth`, the first action key that
   is not also a `MajorActionKind` key. A preview requested for the Wake kind
@@ -619,7 +638,7 @@ decide the shape.
 Step 3: Search, Economy (Muster/Trade), Challenge, Campaign, Negotiation,
 CardPlay, Rest and Visions. Step 5 has not started.
 
-Nine `PendingProcedure` cases remain, and their owners are the starting
+Eight `PendingProcedure` cases remain, and their owners are the starting
 inventory for the next plan (the file-level table is in the batch-1 plan,
 Task 8):
 
@@ -631,10 +650,14 @@ Task 8):
 - `Conspiracy`: CardPlay and Visions.
 - `RestPowerDecision` and `RestPowerContinuation`: Rest's power integration,
   which is itself one of step 4's per-action seams.
-- `OathkeeperRecipient`: state-based evaluation, not an action. It parks a
-  player decision, which decision 6 does not cover. *(Designed as the
-  triggered `Oathkeeper` procedure and the proving slice of `2026-09-12-walker-ownership-and-phases-design.md`, not yet
-  implemented.)*
+
+The ninth case this list once carried, `OathkeeperRecipient` — state-based
+evaluation that parks a player decision, which decision 6 did not cover —
+is gone: `2026-09-12-walker-ownership-and-phases-design.md` landed it as the
+triggered `Oathkeeper` procedure (`TriggeredProcedureRef.Oathkeeper`, Task 7,
+commit `7ccf57a`), the proving slice for off-turn ownership (Task 5, commits
+`4321aae`..`90f4e6a`) and phase-freedom (Task 8, commit `d5e7e4b`) that
+design also delivered.
 
 Economy and the minor actions own no pending case. They are single-command,
 so they are the cheapest ports and the least informative ones.
@@ -648,9 +671,12 @@ so they are the cheapest ports and the least informative ones.
 - Old-journal compatibility (pre-release; replay is forward-only).
 - Turn-scoped power activation: waits for the first real card that needs it
   (see Migration status).
-- Off-turn walker decisions: designed in `2026-09-12-walker-ownership-and-phases-design.md` (not yet implemented), which
-  also records what it leaves open: concurrent multi-owner decisions
-  (Negotiation), new answer kinds, power selection by an off-turn owner, and
-  unanswered off-turn decisions.
+- Off-turn walker decisions: landed per
+  `2026-09-12-walker-ownership-and-phases-design.md` (Task 5, commits
+  `4321aae`..`90f4e6a`) — a parked `Decide` is authorized for its own owner,
+  not necessarily the active player. That design's own still-open items
+  remain open: concurrent multi-owner decisions (Negotiation), new answer
+  kinds, power selection by an off-turn owner, and unanswered off-turn
+  decisions.
 - Start selections that are not an option reference (a warband count):
   waits for the first action that needs one.

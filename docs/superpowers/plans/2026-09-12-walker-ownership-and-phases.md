@@ -69,12 +69,12 @@ The spec's `SetOathkeeper` also becomes its own task (Task 6), because a reviewe
 
 This is a pure move. Its acceptance criterion is the one batch-1 Task 1b used: no test file changes.
 
-- [ ] **Step 1: Record the baseline.**
+- [x] **Step 1: Record the baseline.**
 
 Run: `wc -l src/main/scala/oathdigital/serialization/WalkerEventCodec.scala && ./sbtw "testOnly oathdigital.serialization.GameEventWireSuite"`
 Expected: `785` lines; suite PASS.
 
-- [ ] **Step 2: Move the operation codec.** Create `WalkerOperationCodec.scala` holding, verbatim and in their current order, `encodeOperation` (line 164) through `decodeOrientation` (line 726), plus `decodeSignedInt` (line 738) and `decodeOptionalSignedInt` (line 562) if nothing outside the moved block still calls them. Start the file with:
+- [x] **Step 2: Move the operation codec.** Create `WalkerOperationCodec.scala` holding, verbatim and in their current order, `encodeOperation` (line 164) through `decodeOrientation` (line 726), plus `decodeSignedInt` (line 738) and `decodeOptionalSignedInt` (line 562) if nothing outside the moved block still calls them. Start the file with:
 
 ```scala
 package oathdigital.serialization
@@ -101,22 +101,37 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     this: GameEventJsonSupport =>
 ```
 
-- [ ] **Step 3: Verify it is a pure move.**
+- [x] **Step 3: Verify it is a pure move.**
 
 Run: `./sbtw "test" && git diff --stat -- src/test shared/src/test frontend/src/test && wc -l src/main/scala/oathdigital/serialization/Walker*Codec.scala`
 Expected: all tests PASS; the `git diff --stat` prints nothing; `WalkerEventCodec.scala` is under 250 lines and `WalkerOperationCodec.scala` under 800.
 
-- [ ] **Step 4: Run the architecture check.**
+- [x] **Step 4: Run the architecture check.**
 
 Run: `python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS, no output from `diff --check`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala src/main/scala/oathdigital/serialization/WalkerEventCodec.scala
 git commit -m "refactor(walker): move operation spellings out of the event codec"
 ```
+
+#### What Task 1 settled
+
+Landed as `25a8a69` (base `9e27824`; the implementer's initial commit `a3fa18b`
+was amended in a fix round to address the ruling below). A follow-up,
+user-requested comment-only cleanup moving the operation codec's scaladoc
+beside the code it documents landed separately as `94cf42e`.
+
+Ruling: `decodeSignedInt` stays `protected final` in `WalkerOperationCodec`
+and is inherited by `WalkerEventCodec` — the plan's Step 2 named
+`decodeSignedInt` as one of the three members shared with the event codec
+while also saying "everything else stays `private`," a contradiction the
+user resolved in favor of the shared, non-private modifier; the plan text
+was corrected in the same commit. Fix round 1/5: 1 addressed, 0 left open.
+No other plan defect; review otherwise clean.
 
 ---
 
@@ -134,7 +149,7 @@ git commit -m "refactor(walker): move operation spellings out of the event codec
 
 Mechanical, no behaviour change. Stored copies (`PendingTree.actor`, walker event `actor` fields) are **not** renamed here: Task 3 deletes them.
 
-- [ ] **Step 1: List the sites.**
+- [x] **Step 1: List the sites.**
 
 Run:
 ```bash
@@ -142,7 +157,7 @@ grep -rn "ctx\.actor\|PowerCtx(\|WalkCtx(\|actor = ctx\.actor" --include='*.scal
 grep -rn "actor: PlayerId" --include='*.scala' src/main/scala/oathdigital/gameplay/walker src/main/scala/oathdigital/gameplay/powerresolver src/main/scala/oathdigital/gameplay/powers src/main/scala/oathdigital/gameplay/actions/recover src/main/scala/oathdigital/gameplay/actions/forge src/main/scala/oathdigital/gameplay/actions/travel src/main/scala/oathdigital/gameplay/phases/wake
 ```
 
-- [ ] **Step 2: Rename.** In `PowerCtx`, rename the field to `activePlayer` and document it:
+- [x] **Step 2: Rename.** In `PowerCtx`, rename the field to `activePlayer` and document it:
 
 ```scala
 final case class PowerCtx(
@@ -162,22 +177,28 @@ final case class PowerCtx(
 
 Rename every `ctx.actor` to `ctx.activePlayer`, `WalkCtx.actor` to `WalkCtx.activePlayer`, and the listed `actor: PlayerId` parameters (and their named-argument call sites such as `actor = actor` in `WalkerActionRegistrySuite`) to `activePlayer`. Leave `PendingTree.actor`, `pending.actor`, and the `actor` fields of `WalkerStepRecorded`, `WalkerParked` and `WalkerCompleted` untouched.
 
-- [ ] **Step 3: Compile and test.**
+- [x] **Step 3: Compile and test.**
 
 Run: `./sbtw "test"`
 Expected: PASS with the same test count as Task 1.
 
-- [ ] **Step 4: Verify nothing was missed.**
+- [x] **Step 4: Verify nothing was missed.**
 
 Run: `grep -rn "ctx\.actor" --include='*.scala' src/main src/test`
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A src/main src/test
 git commit -m "refactor(walker): call the procedure's player activePlayer"
 ```
+
+#### What Task 2 settled
+
+Landed as `f2c1ab3`. Mechanical rename, no ruling required and no plan
+defect found; every listed site renamed and the `ctx\.actor` sweep in
+Step 4 came back empty.
 
 ---
 
@@ -207,7 +228,7 @@ git commit -m "refactor(walker): call the procedure's player activePlayer"
 
 Behaviour is unchanged: every owner still equals the active player. What changes is where each identity lives.
 
-- [ ] **Step 1: Write the failing tests** in `OathRulesWalkerPowerSuite`:
+- [x] **Step 1: Write the failing tests** in `OathRulesWalkerPowerSuite`:
 
 ```scala
   test("startWalker rejects a requester who is not the active player before " +
@@ -242,12 +263,12 @@ Behaviour is unchanged: every owner still equals the active player. What changes
 
 Update the existing C1 tests in the same suite to the new `resolveWalker(state, requester, decisionId, answer)` signature. Their expected value, `Left(OathViolation.WrongPlayer(actor, intruder))`, does not change: the owner is still the actor.
 
-- [ ] **Step 2: Run the tests to verify they fail.**
+- [x] **Step 2: Run the tests to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.OathRulesWalkerPowerSuite"`
 Expected: FAIL to compile (`ChoicePayload` has two fields; `resolveWalker` takes an `Answered`).
 
-- [ ] **Step 3: Change the model and events.**
+- [x] **Step 3: Change the model and events.**
 
 `PendingTree.scala`:
 ```scala
@@ -268,7 +289,7 @@ final case class PendingTree(at: Vector[String], answered: Vector[Answered])
 
 `WalkerEvents.scala`: remove `actor` from `WalkerStepRecorded`, `WalkerParked` and `WalkerCompleted`; add `by: PlayerId` as the last field of `ChoicePayload`, documented as "who answered".
 
-- [ ] **Step 4: Change the walker.** In `ProcedureWalker`:
+- [x] **Step 4: Change the walker.** In `ProcedureWalker`:
   - `advance`, `roll`, `resolve` build `WalkCtx(base, Vector.empty, state.game.current.turn.activePlayer, pending.fold(Vector.empty[Answered])(_.answered), powers)`. There is no `pending.actor` to read.
   - `answerDecide` checks the answer's submitter against the rebuilt owner:
 
@@ -281,13 +302,13 @@ final case class PendingTree(at: Vector[String], answered: Vector[Answered])
   - `recordRoll` and the delta step construct `WalkerStepRecorded` without `actor`.
   - Wherever `WalkerOutcome.Parked` builds a `PendingTree`, build `PendingTree(at, answered)`.
 
-- [ ] **Step 5: Change replay.** In `WalkerReplay.applyRecordedReady`:
+- [x] **Step 5: Change replay.** In `WalkerReplay.applyRecordedReady`:
   - Delete `validateActor`. `validateStep` keeps only the node-id check.
   - `validateParkedStep` drops the `pending.actor == step.actor` check.
   - The `ChoicePayload(decisionId, payload, by)` arm appends `Answered(decisionId, payload, by)`.
   - `WalkerParked(action, at, answered, modifiers, startArgs)` restores `PendingTree(at, answered)`. `WalkerCompleted(action)` is otherwise unchanged.
 
-- [ ] **Step 6: Change the command surface.** In `OathRulesWalker`:
+- [x] **Step 6: Change the command surface.** In `OathRulesWalker`:
   - `startWalker(state, action, requester, modifiers, startArgs)`: in the `Ready(ready)` branch's `for`, before `validateModifiers`, add
     ```scala
             _ <- Either.cond(requester == ready.game.current.turn.activePlayer,
@@ -312,31 +333,43 @@ In `GameApplicationService.applyUnblockedCommand`:
 
 In `WalkerDecisionProjector.project`, replace every `pending.actor` with `context.current.turn.activePlayer` and keep the viewer gate against it.
 
-- [ ] **Step 7: Change the codec.** In `WalkerEventCodec`:
+- [x] **Step 7: Change the codec.** In `WalkerEventCodec`:
   - `WalkerStepRecorded`, `WalkerParked` and `WalkerCompleted` stop writing and reading `"actorPlayerId"`.
   - `encodeAnswered` writes `"byPlayerId" -> answered.by.value`, and `decodeAnswered` reads it.
   - `encodeStepPayload`'s `ChoicePayload` arm writes `"byPlayerId"`, and `decodeStepPayload` reads it.
 
-- [ ] **Step 8: Update every other construction site.**
+- [x] **Step 8: Update every other construction site.**
 
 Run: `grep -rn "PendingTree(\|Answered(\|ChoicePayload(\|WalkerStepRecorded(\|WalkerParked(\|WalkerCompleted(\|resolveWalker(" --include='*.scala' src/test`
 
 Give each `Answered`/`ChoicePayload` the player who answers (the actor in every existing test), drop the actor from `PendingTree`, `WalkerStepRecorded`, `WalkerParked` and `WalkerCompleted`, and move `resolveWalker` calls to the new signature. In `GameEventWireSuite`'s "both generic walker decision answers round trip on the step and on the park", keep `player` as the `by` of both answers so the new field round-trips.
 
-- [ ] **Step 9: Run the full suite.**
+- [x] **Step 9: Run the full suite.**
 
 Run: `./sbtw "test"`
 Expected: PASS, including the two new tests.
 
-- [ ] **Step 10: Mutation check.** Temporarily change `answerDecide`'s check to `decide.owner == decide.owner` and run `./sbtw "testOnly oathdigital.gameplay.OathRulesWalkerPowerSuite"`.
+- [x] **Step 10: Mutation check.** Temporarily change `answerDecide`'s check to `decide.owner == decide.owner` and run `./sbtw "testOnly oathdigital.gameplay.OathRulesWalkerPowerSuite"`.
 Expected: FAIL in "a seated non-active player's ResolveWalker against another player's parked decision is rejected". Revert.
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add -A src/main src/test
 git commit -m "feat(walker): stop storing the active player and record who answered"
 ```
+
+#### What Task 3 settled
+
+Landed as `02e1357..877d7e4` (task range `f2c1ab3..877d7e4`; main content
+commit `02e1357` "feat(walker): stop storing the active player and record
+who answered"). Review found an off-turn-roll ordering gap not covered by
+the plan's steps as written: `resolveWalker` could rebuild the tree before
+checking that the answering player was the parked decision's owner. The
+fix, rejecting an off-turn roll before rebuilding the tree, closes out
+this same task as its final commit, `877d7e4` (`fix(walker): reject an
+off-turn roll before rebuilding the tree`). No other plan defect; Steps
+9-10 passed as written.
 
 ---
 
@@ -381,7 +414,7 @@ sealed trait TriggeredProcedureRef extends ProcedureRef {
 
 Behaviour-neutral. The boundary rule is **not** changed here: completion still reads the phases (Task 8 changes it).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
 
 In `ActionValuesSuite`:
 ```scala
@@ -435,12 +468,12 @@ In `GameEventWireSuite`, add:
 
 In `EndWakeProcedureSuite`, change the completion assertion to `WalkerCompleted(PhaseTransitionRef.EndWake)`.
 
-- [ ] **Step 2: Run them to verify they fail.**
+- [x] **Step 2: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.model.ActionValuesSuite"`
 Expected: FAIL to compile (`PhaseTransitionRef` not found).
 
-- [ ] **Step 3: Implement the references.** `git mv` the file and write `ProcedureRef.scala` with the hierarchy above:
+- [x] **Step 3: Implement the references.** `git mv` the file and write `ProcedureRef.scala` with the hierarchy above:
 
 ```scala
 object ActionRef {
@@ -471,7 +504,7 @@ object ProcedureRef {
 
 Carry over the existing doc comment on `ActionRef.all` about key bridging to `MajorActionKind`, and add a class doc per family taken from the spec's "Procedure references" bullets.
 
-- [ ] **Step 4: Re-key the registry.** `git mv` both registry files. Rename the object to `WalkerProcedureRegistry`, key `entries` by `ProcedureRef`, make `fallbackKind` optional, and move End Wake's key to `PhaseTransitionRef.EndWake`:
+- [x] **Step 4: Re-key the registry.** `git mv` both registry files. Rename the object to `WalkerProcedureRegistry`, key `entries` by `ProcedureRef`, make `fallbackKind` optional, and move End Wake's key to `PhaseTransitionRef.EndWake`:
 
 ```scala
   def fallbackKind(procedure: StartableRef)
@@ -483,7 +516,7 @@ Carry over the existing doc comment on `ActionRef.all` about key bridging to `Ma
 
 Wrap every existing `fallbackKind = MajorActionKind.X` in `Some(...)`. Keep `lookup`'s message as `s"no walker action registered for ${procedure.key}"` so the existing registry-suite messages stay valid.
 
-- [ ] **Step 5: Thread the type through.**
+- [x] **Step 5: Thread the type through.**
   - `CurrentGameState.walkerAction` → `walkerProcedure: Option[ProcedureRef]`, and every reader and writer (`OathRulesWalker.startWalker`'s pending check, `walkerResumeContext`, `WalkerReplay`, `WalkerDecisionProjector.project`).
   - `WalkerParked`/`WalkerCompleted` field `action` → `procedure`.
   - `OathRules.WalkerTreeSource` and `declaredWalkerTree` take a `ProcedureRef`; `WalkerDecisionProjector.TreeSource` and `declaredTree` likewise.
@@ -492,7 +525,7 @@ Wrap every existing `fallbackKind = MajorActionKind.X` in `Some(...)`. Keep `loo
   - `GameCommand.StartWalker(procedure: StartableRef, start)`; `GameIntentMapper` resolves the intent's key with `StartableRef.fromKey`, rejecting an unknown key with the same `IntentError` it uses today.
   - `GameApplicationService`: `GameCommand.EndWake(playerId)` routes to `rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)`; `walkerAction(action: MajorActionKind)` keeps returning `Option[ActionRef]` via `ActionRef.fromKey`, and `isRegistered` accepts it as a `ProcedureRef`.
 
-- [ ] **Step 6: Change the codec's spelling.** In `WalkerEventCodec`, replace `decodeAction` with:
+- [x] **Step 6: Change the codec's spelling.** In `WalkerEventCodec`, replace `decodeAction` with:
 
 ```scala
   private def encodeProcedure(procedure: ProcedureRef): ujson.Value =
@@ -509,23 +542,32 @@ Wrap every existing `fallbackKind = MajorActionKind.X` in `Some(...)`. Keep `loo
 
 `WalkerParked` and `WalkerCompleted` write `"procedure" -> encodeProcedure(procedure)` in place of `"action"`, and decode it with `decodeProcedure(payload("procedure"), s"$path.procedure")`.
 
-- [ ] **Step 7: Update the remaining sites.**
+- [x] **Step 7: Update the remaining sites.**
 
 Run: `grep -rn "ActionRef.EndWake\|walkerAction\|WalkerActionRegistry\|decodeAction\|\"action\"" --include='*.scala' src/main src/test shared/src frontend/src`
 
 Fix each: `ActionRef.EndWake` → `PhaseTransitionRef.EndWake`; `walkerAction` → `walkerProcedure`; `WalkerActionRegistry` → `WalkerProcedureRegistry`. The frontend and shared intent `StartWalker(action: String, …)` keep their wire field name: a key is unique across families, so the intent needs no family tag.
 
-- [ ] **Step 8: Run the gates.**
+- [x] **Step 8: Run the gates.**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A src shared frontend
 git commit -m "feat(walker): name procedures by family, with End Wake as a phase transition"
 ```
+
+#### What Task 4 settled
+
+Landed as `266f2fb`. No plan defect and no review ruling; during its own
+TDD process the implementer found and fixed two bugs in its own RED-phase
+test text before GREEN (a tamper-string whitespace mismatch, and a stale
+raw-journal assertion expecting the deleted `"action":"recover"` shape
+instead of `"procedure":{"family":"action","key":"recover"}`) — both
+self-caught, neither a plan or production defect.
 
 ---
 
@@ -547,7 +589,7 @@ git commit -m "feat(walker): name procedures by family, with End Wake as a phase
   - `shared`: `final case class WalkerWaitingProjection(playerId: String, heading: Option[String] = None)`; `GameProjection.walkerWaiting: Option[WalkerWaitingProjection] = None`.
   - `frontend`: `type WalkerWaitingState = protocol.projection.WalkerWaitingProjection`; `WalkerPanelSupport.waitingNotice(value: GameProjection): Option[String]`.
 
-- [ ] **Step 1: Write the failing engine tests** in `OathRulesWalkerPowerSuite`:
+- [x] **Step 1: Write the failing engine tests** in `OathRulesWalkerPowerSuite`:
 
 ```scala
   /** A single decision owned by `owner`, which need not be the active player. */
@@ -605,12 +647,12 @@ git commit -m "feat(walker): name procedures by family, with End Wake as a phase
   }
 ```
 
-- [ ] **Step 2: Run them to verify they fail.**
+- [x] **Step 2: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.OathRulesWalkerPowerSuite"`
 Expected: FAIL. The off-turn test gets `WrongPlayer` at the start continuation or the answer. The Wake test gets `Left(WrongPhase(Act, Wake))`. The Rest test already passes and stays as a guard.
 
-- [ ] **Step 3: Implement the engine half.**
+- [x] **Step 3: Implement the engine half.**
 
 In `ProcedureWalker`:
 ```scala
@@ -644,12 +686,12 @@ In `parkedContinue`, compute the awaited player once and pass it to `continuatio
             decisionId)))
 ```
 
-- [ ] **Step 4: Run the engine tests.**
+- [x] **Step 4: Run the engine tests.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.OathRulesWalkerPowerSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing projection tests** in `WalkerDecisionProjectorSuite`. Add a helper parking a `Decide` owned by another player, using the suite's existing `TreeSource` seam:
+- [x] **Step 5: Write the failing projection tests** in `WalkerDecisionProjectorSuite`. Add a helper parking a `Decide` owned by another player, using the suite's existing `TreeSource` seam:
 
 ```scala
   private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
@@ -695,12 +737,12 @@ In `WalkerDecisionQueryPowerSuite`, add a test that a synthetic `Transform` powe
       })
 ```
 
-- [ ] **Step 6: Run them to verify they fail.**
+- [x] **Step 6: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.application.WalkerDecisionProjectorSuite oathdigital.application.WalkerDecisionQueryPowerSuite"`
 Expected: FAIL to compile (`waiting`, `WalkerWaitingProjection` not found).
 
-- [ ] **Step 7: Implement the projection.**
+- [x] **Step 7: Implement the projection.**
 
 In `shared/.../ActionProjectionDtos.scala`:
 ```scala
@@ -760,7 +802,7 @@ Rename the existing private `parked` method's viewer argument to `awaited` and u
 
 In `ProjectionProtocolSuite`, add `walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper")))` to the populated `projection` value, so the existing round-trip test covers it.
 
-- [ ] **Step 8: Write the failing frontend test** in `ServerModeUiSuite`. Build the smallest `GameProjection` the suite's existing Forge tests build, and add:
+- [x] **Step 8: Write the failing frontend test** in `ServerModeUiSuite`. Build the smallest `GameProjection` the suite's existing Forge tests build, and add:
 
 ```scala
   test("a parked walker waiting on another player names them and the question") {
@@ -777,7 +819,7 @@ In `ProjectionProtocolSuite`, add `walkerWaiting = Some(WalkerWaitingProjection(
 
 `forgeProjection` stands for whatever value the suite's "Forge is answered by moving projected options between projected sections" test builds; reuse it rather than building a new one.
 
-- [ ] **Step 9: Implement the frontend.** In `package.scala`, add the `WalkerWaitingState` type and value aliases beside `WalkerDecisionState`. In `WalkerPanelSupport`:
+- [x] **Step 9: Implement the frontend.** In `package.scala`, add the `WalkerWaitingState` type and value aliases beside `WalkerDecisionState`. In `WalkerPanelSupport`:
 
 ```scala
   /** The public line shown to everyone a parked walker is not waiting on. */
@@ -797,20 +839,32 @@ In `ProjectionProtocolSuite`, add `walkerWaiting = Some(WalkerWaitingProjection(
 
 In `ActionDecisionRenderer`, call `WalkerPanelSupport.renderWaitingNotice(value, panel)` directly after `renderPartitionPanel`.
 
-- [ ] **Step 10: Run the gates.**
+- [x] **Step 10: Run the gates.**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS.
 
-- [ ] **Step 11: Mutation check.** Temporarily make `awaitedPlayer` return `Some(state.game.current.turn.activePlayer)` unconditionally. Run the two application suites and `OathRulesWalkerPowerSuite`.
+- [x] **Step 11: Mutation check.** Temporarily make `awaitedPlayer` return `Some(state.game.current.turn.activePlayer)` unconditionally. Run the two application suites and `OathRulesWalkerPowerSuite`.
 Expected: FAIL in the off-turn tests of all three. Revert.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add -A src shared frontend
 git commit -m "feat(walker): authorize and project a parked decision by its owner in any phase"
 ```
+
+#### What Task 5 settled
+
+Landed as `4321aae..90f4e6a` (task range `266f2fb..90f4e6a`; main content
+commit `4321aae`). The plan's Files list omitted
+`frontend/src/main/scala/oathdigital/frontend/ServerUiSupport.scala`;
+review found the off-turn owner's parked decision was not being surfaced
+with working controls to that owner, and the fix landed in the same
+task's closing commit,
+`90f4e6a` (`fix(frontend): give a parked walker decision's owner the
+controls, and name who others wait for`), which also names, for every
+other seated player, whom the game is waiting on. No other plan defect.
 
 ---
 
@@ -826,7 +880,7 @@ git commit -m "feat(walker): authorize and project a parked decision by its owne
 **Interfaces:**
 - Produces: `final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperation`; `OperationError.OathkeeperUnchanged(holder: Option[PlayerId])` with `code = "oathkeeper-unchanged"`.
 
-- [ ] **Step 1: Write the failing tests** in `OperationStateMutationSuite` (add the imports the file lacks):
+- [x] **Step 1: Write the failing tests** in `OperationStateMutationSuite` (add the imports the file lacks):
 
 ```scala
   private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame = {
@@ -863,12 +917,12 @@ Use the player ids the setup fixture actually seats if `PlayerId("p1")`/`"p2"` f
 
 In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the walker codec", add `SetOathkeeper(Some(PlayerId("red")))` and `SetOathkeeper(None)` to the operation list.
 
-- [ ] **Step 2: Run them to verify they fail.**
+- [x] **Step 2: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite"`
 Expected: FAIL to compile (`SetOathkeeper` not found).
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
 `CoreOperations.scala`, after `EnterPhase`:
 ```scala
@@ -927,22 +981,31 @@ and in `decodeOperation`:
 
 If the compiler reports a non-exhaustive match on `PrimitiveOperation` elsewhere (`OperationShadow`, `OperationStateAdapter`, `OperationValidator`), add `SetOathkeeper` beside `EnterPhase` in that match.
 
-- [ ] **Step 4: Run the tests.**
+- [x] **Step 4: Run the tests.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite oathdigital.serialization.GameEventWireSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Full suite and architecture check.**
+- [x] **Step 5: Full suite and architecture check.**
 
 Run: `./sbtw "test" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A src
 git commit -m "feat(operations): set the Oathkeeper title with one generic operation"
 ```
+
+#### What Task 6 settled
+
+Landed as `dae427d`. Review found 0 Critical/Important issues and no plan
+defect; frontend/shared gates were not rerun for this task because the
+diff touched only the root project. Open observation (not a bug, not
+fixed here): `OperationStateMutationSuite`'s `titled` fixture uses
+unseated `PlayerId`s — harmless, since `SetOathkeeper` performs no seat
+check by spec.
 
 ---
 
@@ -970,7 +1033,7 @@ git commit -m "feat(operations): set the Oathkeeper title with one generic opera
   - `OathRulesWalker.startTriggered(transition: OathTransition, procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition]`, `private[gameplay]`.
   - `WalkerPanelSupport.chooseOneStep(decision: WalkerDecisionState): Option[DecisionQueryState]`.
 
-- [ ] **Step 1: Create the fixture.** Move `StateBasedEvaluationSuite.prepared`'s body into a reusable helper that works on any ready game, and make `StateBasedEvaluationSuite.prepared` delegate to it:
+- [x] **Step 1: Create the fixture.** Move `StateBasedEvaluationSuite.prepared`'s body into a reusable helper that works on any ready game, and make `StateBasedEvaluationSuite.prepared` delegate to it:
 
 ```scala
 package oathdigital.gameplay.oathkeeper
@@ -1014,7 +1077,7 @@ object OathkeeperFixture {
 }
 ```
 
-- [ ] **Step 2: Write the failing outcome tests** in `OathkeeperRulesSuite`:
+- [x] **Step 2: Write the failing outcome tests** in `OathkeeperRulesSuite`:
 
 ```scala
 package oathdigital.gameplay.oathkeeper
@@ -1063,12 +1126,12 @@ class OathkeeperRulesSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 3: Run them to verify they fail.**
+- [x] **Step 3: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.oathkeeper.OathkeeperRulesSuite"`
 Expected: FAIL to compile (`OathkeeperRules` not found).
 
-- [ ] **Step 4: Implement the outcome.** Create `OathkeeperRules.scala`, moving `qualifyingPlayers` and `leadersWithPositiveCount` from `StateBasedEvaluation.scala:299-332` verbatim (their only caller is `afterAction`, which Step 9 deletes):
+- [x] **Step 4: Implement the outcome.** Create `OathkeeperRules.scala`, moving `qualifyingPlayers` and `leadersWithPositiveCount` from `StateBasedEvaluation.scala:299-332` verbatim (their only caller is `afterAction`, which Step 9 deletes):
 
 ```scala
 package oathdigital.gameplay.oathkeeper
@@ -1113,7 +1176,7 @@ object OathkeeperRules {
 Run: `./sbtw "testOnly oathdigital.gameplay.oathkeeper.OathkeeperRulesSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing procedure tests** in `OathkeeperProcedureSuite`:
+- [x] **Step 5: Write the failing procedure tests** in `OathkeeperProcedureSuite`:
 
 ```scala
 package oathdigital.gameplay.oathkeeper
@@ -1263,12 +1326,12 @@ In `ActionValuesSuite`, extend "procedure references form three families" with t
 
 In `EconomySuite`, add a test that the legacy Muster path starts the procedure within the same command: build the ready game with the suite's `act()` fixture, apply `OathkeeperFixture.ruled(_, Vector(Some(<a non-active player>)))`, run the same `rules.handle(Ready(...), EconomyCommand.Muster(...))` call the test at `EconomySuite.scala:73` makes, and assert the transition's events end with `WalkerCompleted(TriggeredProcedureRef.Oathkeeper)` and the title moved to that player.
 
-- [ ] **Step 6: Run them to verify they fail.**
+- [x] **Step 6: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.oathkeeper.OathkeeperProcedureSuite"`
 Expected: FAIL to compile (`OathkeeperProcedure`, `TriggeredProcedureRef.Oathkeeper`, `startTriggered` not found).
 
-- [ ] **Step 7: Implement the procedure and its registration.**
+- [x] **Step 7: Implement the procedure and its registration.**
 
 `ProcedureRef.scala`:
 ```scala
@@ -1398,7 +1461,7 @@ In `walkerTransition`'s `Finished` branch, until Task 8 replaces the rule, exclu
 ```
 and use `runsBoundary` where `completed.runsActionBoundary` was read.
 
-- [ ] **Step 8: Replace the boundary's Oathkeeper step.** In `OathRules.completeAction`, replace `appendEvaluation(afterRefill, StateBasedEvaluation.afterAction)` with `oathkeeperStep(afterRefill)`:
+- [x] **Step 8: Replace the boundary's Oathkeeper step.** In `OathRules.completeAction`, replace `appendEvaluation(afterRefill, StateBasedEvaluation.afterAction)` with `oathkeeperStep(afterRefill)`:
 
 ```scala
   /** The boundary decides only WHETHER the title changes; the triggered
@@ -1417,7 +1480,7 @@ and use `runsBoundary` where `completed.runsActionBoundary` was read.
 
 Make `StateBasedEvaluation.supported` `private[gameplay]` so the gate `afterAction` ran first is still run. In `appendEvaluation`, delete the `OathkeeperRecipientChoiceStarted` arm; the `UsurperVictory` arm stays until Task 8.
 
-- [ ] **Step 9: Delete the legacy path.** Delete:
+- [x] **Step 9: Delete the legacy path.** Delete:
   - `StateBasedEvaluation.afterAction`, `chooseRecipient`, and the evolve cases for `OathkeeperChanged`, `OathkeeperRecipientChoiceStarted` and `OathkeeperRecipientChosen`;
   - the three events in `gameplay/model/GameEventProtocol.scala` and their `OathRules.evolve` routes (lines 252-256);
   - their codec branches and wire types in `serialization/EndingEventCodec.scala` and `GameEventWire.scala`;
@@ -1432,13 +1495,13 @@ Keep `OathContinue.AwaitingOathkeeperRecipient`; the registry entry produces it.
 Run: `grep -rn "OathkeeperChanged\|OathkeeperRecipientChoiceStarted\|OathkeeperRecipientChosen\|ChooseOathkeeperRecipient\|chooseOathkeeperRecipient\|OathkeeperRecipientProjection\|PendingProcedure.OathkeeperRecipient\|afterAction\|oathkeeperRecipient" --include='*.scala' src shared frontend`
 Expected, after the edits: matches only in tests that Step 10 ports, and no match in `src/main`, `shared/src/main` or `frontend/src/main`. `FirstGameSetup.scala` appears in the pre-edit list; if its matches are the `AwaitingOathkeeperRecipient` continuation, keep them.
 
-- [ ] **Step 10: Port the remaining tests.**
+- [x] **Step 10: Port the remaining tests.**
   - `StateBasedEvaluationSuite`: make `prepared` delegate to `OathkeeperFixture.ruled`. Delete "F7 retains a highest tied holder but does not invent an initial tie winner" and "F7 records and resolves a displaced-holder tie choice"; `OathkeeperRulesSuite` and `OathkeeperProcedureSuite` now cover both. In "first-game Supremacy qualification transfers at a completed action boundary", replace `assertEquals(accepted.events.last, OathkeeperChanged(Some(PlayerId("p2"))))` with `assertEquals(accepted.events.last, WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)`.
   - `EndWakeProcedureSuite`, "ending Wake does not run the Act action boundary": replace the `OathkeeperChanged` collect with `accepted.events.collect { case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => () }` expected empty.
   - `GameEventWireSuite`: delete the legacy Oathkeeper events from "current state-based Oathkeeper and Usurper events round trip" and the fixture near line 894, keeping the Usurper events; remove the deleted imports.
   - `CampaignSuite`, `GameApplicationServiceSuite`, `HttpGameClientSuite`, `ProtocolTestCommands`: remove whichever deleted symbol each names (Step 9's grep lists them).
 
-- [ ] **Step 11: Project the recipient choice for the frontend.**
+- [x] **Step 11: Project the recipient choice for the frontend.**
 
 In `WalkerDecisionProjectorSuite`, add a test parking the Oathkeeper tree on a tie (`OathkeeperFixture.ruled` with `walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper)`, `walkerPending = Some(PendingTree(Vector("0"), Vector.empty))`, and the production `declaredTree`) asserting that the holder's projection has `query.map(_.options.map(_.kind))` equal to `Some(Vector("player", "player"))` with the leaders' ids, and a spectator's `waiting` equals `Some(WalkerWaitingProjection(holder.value, Some("Choose the Oathkeeper")))`.
 
@@ -1497,7 +1560,7 @@ In `WalkerPanelSupport`:
 
 In `ActionDecisionRenderer`, call `WalkerPanelSupport.renderChooseOnePanel(value, presentation, canControl, panel, ui)` after `renderRecoverPanel`.
 
-- [ ] **Step 12: Add the drift case.** In `WalkerReplayDriftSuite`, give `assertNoDrift` two parameters with defaults that keep every existing call unchanged, `procedure: ProcedureRef = ActionRef.Recover` and `tree: (ReadyGame, Boolean) => Operation = (state, starting) => if (starting) RecoverProcedure.build(catalog, state, state.game.current.turn.activePlayer).toOption.get else RecoverProcedure.rebuild(catalog, state, state.game.current.turn.activePlayer).toOption.get`. Use `tree` where it builds `liveTree`, and use `procedure` wherever it constructs a `WalkerParked` or `WalkerCompleted`. Then add:
+- [x] **Step 12: Add the drift case.** In `WalkerReplayDriftSuite`, give `assertNoDrift` two parameters with defaults that keep every existing call unchanged, `procedure: ProcedureRef = ActionRef.Recover` and `tree: (ReadyGame, Boolean) => Operation = (state, starting) => if (starting) RecoverProcedure.build(catalog, state, state.game.current.turn.activePlayer).toOption.get else RecoverProcedure.rebuild(catalog, state, state.game.current.turn.activePlayer).toOption.get`. Use `tree` where it builds `liveTree`, and use `procedure` wherever it constructs a `WalkerParked` or `WalkerCompleted`. Then add:
 
 ```scala
   test("drift check: an Oathkeeper tie parks for the holder and resolves") {
@@ -1526,22 +1589,72 @@ In `ActionDecisionRenderer`, call `WalkerPanelSupport.renderChooseOnePanel(value
 
 Update the suite's doc comment, which says the corpus is Recover only, to name this case.
 
-- [ ] **Step 13: Run the gates.**
+- [x] **Step 13: Run the gates.**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS.
 
-- [ ] **Step 14: Mutation checks.** Each must fail at least one test; revert after each.
+- [x] **Step 14: Mutation checks.** Each must fail at least one test; revert after each.
   1. Swap `outcome`'s first two `case` arms. Expected FAIL: "a holder who still leads keeps the title, even when tied".
   2. In `walkerTransition`, let `TriggeredProcedureRef` run the boundary (`case _: TriggeredProcedureRef => true`). Expected FAIL: "completing the Oathkeeper procedure runs no action boundary".
   3. Give the recipient `Decide` `owner = activePlayer`. Expected FAIL: "a tie parks for the holder…".
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add -A src shared frontend
 git commit -m "feat(walker): change the Oathkeeper title through one triggered procedure"
 ```
+
+#### What Task 7 settled
+
+Landed as `7ccf57a`. The plan's Files list omitted
+`src/main/scala/oathdigital/gameplay/FirstGameSetup.scala`, which still
+pattern-matched on the deleted `OathkeeperChanged`/`OathkeeperRecipient*`
+events; fixed within this same commit by matching
+`case _: UsurperFlipped | _: UsurperVictory =>` instead.
+
+Two rulings extended the plan's own test list rather than changing
+production code: R-P1 — Step 11's projector test also asserts that a
+`DecisionOption.Player` naming an unseated player omits the whole
+decision (and the waiting projection), which the spec's Testing section
+requires but no existing test pinned. R-P2 — the "refuses to start a
+triggered procedure over a pending one" test also covers a legacy
+`PendingProcedure` pending with no walker tree, per the spec's Failure
+handling section, not only a walker-pending case as the plan's steps
+named.
+
+Open observations (not bugs, not fixed here): no test replays a legacy
+action plus a triggered Oathkeeper change as one journalled command;
+`EndWakeProcedureSuite`'s Oathkeeper assertion matches only
+`WalkerCompleted(Oathkeeper)` and would pass even if a tie wrongly
+started `WalkerParked`; `WalkerReplayDriftSuite`'s `assertNoDrift`/`go`
+keep an unused `actor` parameter; `OathkeeperProcedureSuite` pins only
+`isLeft` for a non-candidate recipient rather than the specific
+violation.
+
+**Task 9 Step 4 — legacy boundary call-site verification.** Every
+`completeAction` call site in `OathRules.handle` that lacks its own
+`pending.isEmpty` guard (Vision `PlayConspiracy`, Negotiation `Accept`,
+and Campaign `Sacrifice` already guard inline and are out of this scope)
+was traced to confirm the boundary never runs with `pending` set. Result:
+clean — no bug found at any site.
+
+| Site | File:line (call + evidence) | Result |
+|---|---|---|
+| Economy `Muster` | `OathRules.scala:55`; `Economy.scala` never references `pending` and is entered through `OathLifecycle.validateAct` (`Economy.scala:145`) | Safe — `pending` untouched, guaranteed empty by `validateAct` |
+| Economy `Trade` | `OathRules.scala:58`; same as `Muster` | Safe — same reasoning |
+| Search `Complete` | `OathRules.scala:85`; guarded above by `OathRules.scala:72-85`, which intercepts an awaiting-target Conspiracy and routes to `AwaitingConspiracyDecision` instead of `completeAction`; the remaining path runs `CardPlay.update` (`CardPlay.scala:328-333`), which sets `pending = None` whenever `endSearchPending` (`fromSearch(Origin.Search) = true`, `CardPlay.scala:80-82,113`) | Safe — either intercepted earlier, or cleared by `CardPlay.update` |
+| Challenge `Complete` | `OathRules.scala:107`; `BannerChallengeCompleted` evolves via `applyCompletion`, which sets `pending = None` (`Challenge.scala:272,311`) | Safe — cleared before the boundary |
+| Challenge `PlaceResource` | `OathRules.scala:107` (shared match arm); `BannerResourcePlaced` evolve never touches `pending`; entry gated by `validateAct` | Safe — untouched, guaranteed empty |
+| MinorActions (all 5 commands) | `OathRules.scala:120`; every handler and evolve is `validateAct`-gated (`MinorActions.scala:51,60,68,76,86,116,128,138,151,165`); `pending` is never referenced in the file; the two commands using `CardPlay.resolve` pass `Origin.FacedownAdviser`, whose `endSearchPending = false` and `startConspiracy = None` always (`CardPlay.scala:80-82`) | Safe — untouched throughout |
+| Vision `Reveal` | `OathRules.scala:130`; `VisionRevealed` evolve (`Visions.scala:128-145`) never touches `pending`; gated by `validateAct` (`Visions.scala:129`) | Safe — untouched, guaranteed empty |
+| Negotiation `Decline` | `OathRules.scala:141`; `NegotiationDeclined` evolve explicitly sets `pending = None` (`Negotiation.scala:115-117`) | Safe — cleared before the boundary |
+| Campaign `Place` | `OathRules.scala:159` (shared match arm); `CampaignConquered` evolves via `applyConquest`, which sets `pending = None` (`Campaign.scala:665,710`) | Safe — cleared before the boundary |
+| Campaign `RelocateRaidPawn` | `OathRules.scala:159` (shared match arm); the transition folds two events — `CampaignRaided`'s evolve (`applyRaid`, `Campaign.scala:722,787`) sets `pending = Some(relocation)`, but the same transition's second event, `CampaignRaidPawnRelocated` (`Campaign.scala:427-444`), clears it back to `pending = None` before `completeAction` runs | Safe — set then cleared within the same folded transition |
+
+No site can reach the action boundary with `pending` set; nothing here
+requires a production-code change.
 
 ---
 
@@ -1556,7 +1669,7 @@ git commit -m "feat(walker): change the Oathkeeper title through one triggered p
 - Consumes: Task 4's families, Task 7's triggered procedure.
 - Produces: the rule "`completeAction` runs iff the completed procedure is an `ActionRef`", with no phase input.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
 
 In `TakeWealthProcedureSuite`, replace "a completed Wake action does not run the Act action boundary" with:
 
@@ -1628,12 +1741,12 @@ Use a seated player id in `GameResult` if the fixture's players are not `p1`.
 
 In `EndWakeProcedureSuite`, rewrite the comment on "ending Wake does not run the Act action boundary" to say the boundary runs only after an action, and End Wake is a phase transition. Its assertions do not change.
 
-- [ ] **Step 2: Run them to verify they fail.**
+- [x] **Step 2: Run them to verify they fail.**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.TakeWealthProcedureSuite oathdigital.gameplay.oathkeeper.OathkeeperProcedureSuite"`
 Expected: FAIL: zero `BanditsRefilled` after Take Wealth, and no park after it.
 
-- [ ] **Step 3: Decide the boundary by family.** In `OathRulesWalker`, replace `WalkerCompletion` and `completionIn` with:
+- [x] **Step 3: Decide the boundary by family.** In `OathRulesWalker`, replace `WalkerCompletion` and `completionIn` with:
 
 ```scala
   /** Whether the action boundary follows a completed procedure. Only an
@@ -1664,7 +1777,7 @@ In `walkerTransition`'s `Finished` branch:
 
 Delete Task 7's interim `runsBoundary` expression and the long doc block on the old two-phase rule; keep `continuationIn` and its doc.
 
-- [ ] **Step 4: Delete the unreachable guards.** In `OathRules`:
+- [x] **Step 4: Delete the unreachable guards.** In `OathRules`:
 
 ```scala
   protected def completeAction(transition: OathTransition)
@@ -1686,22 +1799,62 @@ Delete `hasResult` if nothing else calls it (`grep -n "hasResult" src/main/scala
     }
 ```
 
-- [ ] **Step 5: Run the gates.**
+- [x] **Step 5: Run the gates.**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS.
 
-- [ ] **Step 6: Mutation checks.** Revert after each.
+- [x] **Step 6: Mutation checks.** Revert after each.
   1. Make `runsActionBoundary` return `true` for `TriggeredProcedureRef`. Expected FAIL: "completing the Oathkeeper procedure runs no action boundary".
   2. Make it return `true` for `PhaseTransitionRef`. Expected FAIL: "ending Wake does not run the Act action boundary".
   3. Make it return `false` for `ActionRef`. Expected FAIL: "a completed Take Wealth runs the action boundary and stays in Wake", and the Travel boundary tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A src
 git commit -m "feat(walker): run the action boundary after every action, decided by procedure family"
 ```
+
+#### What Task 8 settled
+
+Landed as `d5e7e4b..4c98292` (task range `7ccf57a..4c98292`; main content
+commit `d5e7e4b`; fix round `4c98292`).
+
+Ruling R-T8a: the plan assumed every action start was already
+lifecycle-gated so that `completeAction`'s `hasResult` guards were
+deletable as unreachable; a preflight check found `ForgeProcedure.build`
+was the one exception (`ForgeRules.validate` checked neither the game
+result, phase, nor a legacy pending procedure). The task adds
+`OathLifecycle.validateAct(Ready(state), activePlayer)` as the first step
+of `ForgeProcedure.build`, matching Recover and Travel, and extends the
+"once the game has a result, every command is refused" test to a Forge
+start expecting `Left(GameEnded)`. Without this, a Forge could have
+started in Wake or over a legacy pending procedure once the `hasResult`
+guards were removed.
+
+Review found stale documentation naming the deleted `completionIn`/
+`OathRulesWalker.WalkerCompletion` symbols and the phase-based boundary
+rule the family rule replaced, at three spots — `WalkerProcedureRegistry
+.scala:~208` (EndWake registration doc), `ProcedureRef.scala:~23-31`
+(`ActionRef`'s doc reworded to name `runsActionBoundary`;
+`PhaseTransitionRef`'s doc dropped its stale "Act" qualifier), and
+`WalkerDecisionProjector.scala:~333-338` (`Parked` case class doc's
+citation of the deleted `WalkerCompletion` symbol reworded) — plus one
+unrelated dead-parameter cleanup (`walkerTransition`'s unused `ready`
+parameter). All fixed in the same fix round, `4c98292`.
+
+Open observation (not fixed here, confirmed still present by direct
+read on 2026-09-13): `ProcedureRef.scala`'s `PhaseTransitionRef.EndWake`
+case-object doc comment (in the `object PhaseTransitionRef` block, not
+the `ActionRef.scala:~23-31` trait docs the fix round corrected) still
+reads "so no Act action boundary runs after it" — the same stale
+phase-qualified framing the fix round removed everywhere else, left
+standing at this one additional location. This is the item the ledger
+records as "Task 8: minor (deferred): ProcedureRef.scala:72-75... still
+says 'no Act action boundary runs after it'"; it is a distinct doc
+comment from the one the fix round addressed and remains open. No other
+plan defect.
 
 ---
 
@@ -1712,18 +1865,37 @@ git commit -m "feat(walker): run the action boundary after every action, decided
 - Modify: `docs/superpowers/specs/2026-09-05-procedure-walker-design.md` (Migration status, Verification)
 - Modify: `docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md` (status line)
 
-- [ ] **Step 1: Record what each task settled.** Under each task in this plan, add a `#### What Task N settled` note with its commit hash, any ruling taken during review, and anything the plan got wrong. Tick completed boxes.
-- [ ] **Step 2: Update the walker spec.** In Migration status, replace "Nine `PendingProcedure` cases remain" with the eight that remain, removing the `OathkeeperRecipient` bullet. Record that ownership, phase freedom and triggered procedures have landed, and remove "(not yet implemented)" from the in-place notes this work fulfilled. In Verification, record that `WalkerReplayDriftSuite` now covers the Oathkeeper tie. Update the per-file line counts in "Costs worth carrying forward" with measured values: `wc -l src/main/scala/oathdigital/serialization/Walker*Codec.scala src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala src/main/scala/oathdigital/gameplay/OathRulesWalker.scala src/main/scala/oathdigital/gameplay/actions/Campaign.scala`.
-- [ ] **Step 3: Mark the design spec implemented.** Add a status line under its title naming the commits.
-- [ ] **Step 4: Verify each legacy boundary call site.** For every `completeAction` call site in `OathRules.handle` that lacks a `pending.isEmpty` guard (Economy, Search complete, Challenge complete and place-resource, minor actions, Vision reveal, Negotiation decline, Campaign place and raid relocation), confirm the handler clears or never sets `pending` before the boundary. Record the result per site in Task 7's settled note. Any site that can reach the boundary with `pending` set is a bug to report, not to paper over.
-- [ ] **Step 5: Full gate.**
+- [x] **Step 1: Record what each task settled.** Under each task in this plan, add a `#### What Task N settled` note with its commit hash, any ruling taken during review, and anything the plan got wrong. Tick completed boxes.
+- [x] **Step 2: Update the walker spec.** In Migration status, replace "Nine `PendingProcedure` cases remain" with the eight that remain, removing the `OathkeeperRecipient` bullet. Record that ownership, phase freedom and triggered procedures have landed, and remove "(not yet implemented)" from the in-place notes this work fulfilled. In Verification, record that `WalkerReplayDriftSuite` now covers the Oathkeeper tie. Update the per-file line counts in "Costs worth carrying forward" with measured values: `wc -l src/main/scala/oathdigital/serialization/Walker*Codec.scala src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala src/main/scala/oathdigital/gameplay/OathRulesWalker.scala src/main/scala/oathdigital/gameplay/actions/Campaign.scala`.
+- [x] **Step 3: Mark the design spec implemented.** Add a status line under its title naming the commits.
+- [x] **Step 4: Verify each legacy boundary call site.** For every `completeAction` call site in `OathRules.handle` that lacks a `pending.isEmpty` guard (Economy, Search complete, Challenge complete and place-resource, minor actions, Vision reveal, Negotiation decline, Campaign place and raid relocation), confirm the handler clears or never sets `pending` before the boundary. Record the result per site in Task 7's settled note. Any site that can reach the boundary with `pending` set is a bug to report, not to paper over.
+- [x] **Step 5: Full gate.**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: PASS. Record the test counts in the settled note.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/superpowers
 git commit -m "docs(spec): record what walker ownership and phases settled"
 ```
+
+#### What Task 9 settled
+
+Landed as this close-out commit, committed atop `4c98292` (docs-only:
+this plan, the two specs; no production code touched). Step 4's per-site
+legacy boundary verification found no bug — recorded in full in Task 7's
+settled note above rather than repeated here, as the brief directs. Step
+5's full gate ran clean at branch head `4c98292` before this commit:
+backend `./sbtw "test"` — 718 passed, 0 failed, 0 errors; frontend
+`frontend/test` — 151 passed, 0 failed, 0 errors; `python3
+scripts/check-architecture.py` — passed, 199 production Scala files;
+`git diff --check` — clean (no whitespace errors), confirmed by the
+chained command's exit code 0. These counts match Task 8's own closing
+counts (718/151), as expected since no test changed between `4c98292` and
+this close-out. No ruling was needed and no plan defect was found in Task
+9 itself; one open observation from Task 8's review carries forward
+unresolved (see Task 8's settled note): `ProcedureRef.scala`'s
+`PhaseTransitionRef.EndWake` case-object doc still names "Act" in its
+boundary description.
