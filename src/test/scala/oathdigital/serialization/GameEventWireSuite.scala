@@ -14,7 +14,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
-  Sequence, StackPosition, Swap, Take}
+  Sequence, SetOathkeeper, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
@@ -581,7 +581,9 @@ class GameEventWireSuite extends munit.FunSuite {
         Location.PlayArea(player)),
       Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense)),
       ModifyRollOutcome(PoolKey("recover"), Some(1), Some(2)),
-      ClearDicePool(PoolKey("recover")))
+      ClearDicePool(PoolKey("recover")),
+      SetOathkeeper(Some(PlayerId("red"))),
+      SetOathkeeper(None))
 
     val events = operations.map(operation => WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("op")),

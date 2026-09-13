@@ -6,7 +6,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll, Sacrifice,
-  SecretSide, Sequence, StackPosition, Swap, Take}
+  SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take}
 import oathdigital.model._
 
 /** Operation spellings for recorded walker steps, split out of
@@ -55,6 +55,9 @@ private[serialization] trait WalkerOperationCodec {
           "powerId" -> id.value)
       case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
         "phase" -> phase.key)
+      case SetOathkeeper(holder) => ujson.Obj("kind" -> "set-oathkeeper",
+        "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p =>
+          ujson.Str(p.value)))
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -216,6 +219,10 @@ private[serialization] trait WalkerOperationCodec {
         Phase.fromKey(key).toRight(
           InvalidValue(s"$path.phase", s"unknown phase '$key'"))
           .map(EnterPhase.apply)
+      case "set-oathkeeper" => Right(SetOathkeeper(value("holderPlayerId") match {
+        case ujson.Null => None
+        case other => Some(PlayerId(other.str))
+      }))
       case "move" => for {
         piece <- decodePiece(value("piece"), s"$path.piece")
         from <- decodePositionedLocation(value("from"), s"$path.from")

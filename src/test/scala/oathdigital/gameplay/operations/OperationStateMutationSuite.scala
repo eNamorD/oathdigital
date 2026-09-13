@@ -2,7 +2,8 @@ package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{MaterialBankState, ReadyGame}
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
+  FirstGameSetupFixture, FirstGameSetupRules, FirstGameSupportState, PlayerColor}
+import oathdigital.gameplay.OathState._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -39,5 +40,35 @@ class OperationStateMutationSuite extends munit.FunSuite {
         faceUpOnly -> OperationSecretPlanner.SecretSplit(1, 0)
       ))
     )
+  }
+
+  private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame = {
+    val Ready(base) = FirstGameSetupFixture.execute(
+      new FirstGameSetupRules(FirstGameSetupFixture.catalog))._1: @unchecked
+    base.copy(game = base.game.copy(current = base.game.current.copy(
+      title = OathkeeperState(holder, side))))
+  }
+  private def set(ready: ReadyGame, holder: Option[PlayerId]) =
+    new OperationExecutor().executeAll(ready, Vector(SetOathkeeper(holder)))
+      .map(_.game.current.title)
+
+  test("SetOathkeeper moves the title and always resets it to the Oathkeeper side") {
+    val p1 = PlayerId("p1"); val p2 = PlayerId("p2")
+    assertEquals(set(titled(None, TitleSide.Oathkeeper), Some(p2)),
+      Right(OathkeeperState(Some(p2), TitleSide.Oathkeeper)))
+    assertEquals(set(titled(Some(p1), TitleSide.Usurper), Some(p2)),
+      Right(OathkeeperState(Some(p2), TitleSide.Oathkeeper)))
+    assertEquals(set(titled(Some(p1), TitleSide.Usurper), None),
+      Right(OathkeeperState(None, TitleSide.Oathkeeper)))
+  }
+
+  test("SetOathkeeper rejects leaving the holder unchanged, whatever the side") {
+    val p1 = PlayerId("p1")
+    Vector(TitleSide.Oathkeeper, TitleSide.Usurper).foreach { side =>
+      assertEquals(set(titled(Some(p1), side), Some(p1)).left.map(_.code),
+        Left("oathkeeper-unchanged"))
+    }
+    assertEquals(set(titled(None, TitleSide.Oathkeeper), None).left.map(_.code),
+      Left("oathkeeper-unchanged"))
   }
 }

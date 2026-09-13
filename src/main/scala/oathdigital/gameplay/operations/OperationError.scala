@@ -112,6 +112,15 @@ object OperationError {
       s"the turn is already in the ${phase.productPrefix} phase"
   }
 
+  /** A title "change" to the player (or bank) already holding it. */
+  final case class OathkeeperUnchanged(holder: Option[PlayerId])
+      extends OperationError {
+    override val code: String = "oathkeeper-unchanged"
+    override val detail: String = holder.fold(
+      "the Oathkeeper title is already in the shared bank")(player =>
+      s"${player.value} already holds the Oathkeeper title")
+  }
+
   final case class InvalidPostState(problems: Vector[DomainProblem])
       extends OperationError {
     override val code: String = "invalid-post-state"

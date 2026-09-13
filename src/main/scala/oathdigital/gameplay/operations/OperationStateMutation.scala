@@ -304,6 +304,8 @@ private[operations] object OperationStateMutation {
         result.map(recordPowerUse(_, power))
       case (result, EnterPhase(phase)) =>
         result.flatMap(enterPhase(_, phase))
+      case (result, SetOathkeeper(holder)) =>
+        result.flatMap(setOathkeeper(_, holder))
       case (result, _) => result
     }
 
@@ -326,6 +328,13 @@ private[operations] object OperationStateMutation {
     Either.cond(ready.game.current.turn.phase != phase, updateCurrent(ready)(
       current => current.copy(turn = current.turn.copy(phase = phase))),
       PhaseAlreadyEntered(phase))
+
+  private def setOathkeeper(ready: ReadyGame,
+      holder: Option[PlayerId]): Either[OperationError, ReadyGame] =
+    Either.cond(ready.game.current.title.holder != holder,
+      updateCurrent(ready)(current => current.copy(
+        title = OathkeeperState(holder, TitleSide.Oathkeeper))),
+      OathkeeperUnchanged(holder))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =

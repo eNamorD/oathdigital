@@ -491,6 +491,17 @@ final case class RecordPowerUse(power: PowerUseRef) extends PrimitiveOperation
   */
 final case class EnterPhase(phase: Phase) extends PrimitiveOperation
 
+/** Sets who holds the Oathkeeper title: a player, or the shared bank (`None`).
+  *
+  * The holder and the side change together: any change of holder puts the
+  * title back on its Oathkeeper side, as every title change in the rules does.
+  * Which holder the title should go to is not decided here; that is
+  * `OathkeeperRules.outcome`. The one thing applying this rejects is leaving
+  * the holder as it is (`OperationError.OathkeeperUnchanged`), which is a
+  * doubled or reordered journal rather than a rule about the title.
+  */
+final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperation
+
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
   * state, faces ride the next command.
   */
