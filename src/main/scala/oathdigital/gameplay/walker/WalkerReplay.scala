@@ -96,15 +96,16 @@ private[walker] object WalkerReplay {
             .left.map(_.toViolation)
         } yield updated
 
-      case WalkerParked(action, at, answered, modifiers, startArgs) => for {
+      case WalkerParked(procedure, at, answered, modifiers, startArgs) => for {
         _ <- Either.cond(at.nonEmpty && at.forall(segment =>
           segment.nonEmpty && segment.forall(_.isDigit)), (),
           OathViolation.InvalidEventOrder("invalid durable walker park path"))
-        _ <- ready.game.current.walkerAction match {
+        _ <- ready.game.current.walkerProcedure match {
           case Some(existing) => for {
-            _ <- Either.cond(existing == action, (),
+            _ <- Either.cond(existing == procedure, (),
               OathViolation.InvalidEventOrder(
-                s"walker action ${action.key} does not match ${existing.key}"))
+                s"walker action ${procedure.key} does not match " +
+                  existing.key))
             _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
               OathViolation.InvalidEventOrder(
                 "durable walker park modifiers do not match the recorded " +
@@ -128,26 +129,27 @@ private[walker] object WalkerReplay {
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
           walkerPending = Some(PendingTree(at, answered)),
-          walkerAction = Some(action),
+          walkerProcedure = Some(procedure),
           walkerModifiers = modifiers,
           walkerStartArgs = startArgs)))
 
-      case WalkerCompleted(action) => for {
-        // No active action means the walk never parked: a tree that
+      case WalkerCompleted(procedure) => for {
+        // No active procedure means the walk never parked: a tree that
         // declares no Decide and no Roll runs to the end inside the command
-        // that started it, so nothing set `walkerAction` (Forge at a
+        // that started it, so nothing set `walkerProcedure` (Forge at a
         // single-resource site is exactly that). The completion still names
-        // the action, and the clear below is a no-op either way.
-        _ <- ready.game.current.walkerAction match {
-          case Some(existing) => Either.cond(existing == action, (),
+        // the procedure, and the clear below is a no-op either way.
+        _ <- ready.game.current.walkerProcedure match {
+          case Some(existing) => Either.cond(existing == procedure, (),
             OathViolation.InvalidEventOrder(
-              s"walker completion ${action.key} does not match ${existing.key}"))
+              s"walker completion ${procedure.key} does not match " +
+                existing.key))
           case None => Right(())
         }
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
           walkerPending = None,
-          walkerAction = None,
+          walkerProcedure = None,
           walkerModifiers = Vector.empty,
           walkerStartArgs = Vector.empty,
           rollPools = Map.empty,

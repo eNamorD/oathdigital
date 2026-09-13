@@ -4,15 +4,15 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.{Decide, Operation, Roll, Sequence}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.walker.{WalkerActionRegistry, WalkerPowers}
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathViolation, ReadyGame}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
-  * `WalkerActionRegistry.rollDecisionId` is a typed `Left` for an action
-  * whose entry declares none (Forge), and `WalkerActionRegistrySuite` pins
+  * `WalkerProcedureRegistry.rollDecisionId` is a typed `Left` for an action
+  * whose entry declares none (Forge), and `WalkerProcedureRegistrySuite` pins
   * that value. This suite proves the OTHER half -- that
   * [[WalkerDecisionProjector]] honours the rejection rather than projecting
   * a decision the client would then send back as a `ResolveWalker` id.
@@ -57,7 +57,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       current = base.game.current.copy(
         players = moved,
         turn = base.game.current.turn.copy(phase = Phase.Act),
-        walkerAction = Some(action),
+        walkerProcedure = Some(action),
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
     (ScopedProjectionContext(ready, Some(actor)), actor)
   }
@@ -101,7 +101,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
 
     // ...and the reason is the accessor's typed rejection, not a rebuild
     // failure or an ownership mismatch: both were satisfied above.
-    assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Forge),
+    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Forge),
       Left(OathViolation.InvalidEventOrder(
         "walker action forge declares no roll decision id")))
   }

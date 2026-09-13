@@ -231,7 +231,7 @@ class RestSuite extends munit.FunSuite {
         Right(began.state))((next, recorded) => next.flatMap(rules.evolve(_, recorded)))
         .toOption.get
       if (player != order.last)
-        state = rules.startWalker(state, ActionRef.EndWake,
+        state = rules.startWalker(state, PhaseTransitionRef.EndWake,
           event.postRestActivePlayerId).toOption.get.state
     }
     val Ready(after) = state: @unchecked

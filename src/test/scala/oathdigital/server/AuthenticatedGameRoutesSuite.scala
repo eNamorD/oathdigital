@@ -38,7 +38,7 @@ class AuthenticatedGameRoutesSuite extends munit.FunSuite {
     val other = ready.game.current.players.find(_.player != actor).get
     val rules = new OathRules(catalog)
     val act = rules.startWalker(setupState,
-      oathdigital.model.ActionRef.EndWake, actor).toOption.get
+      oathdigital.model.PhaseTransitionRef.EndWake, actor).toOption.get
     val traveled = rules.startWalker(act.state,
       oathdigital.model.ActionRef.Travel, actor, Vector.empty,
       Vector(oathdigital.model.DecisionOptionRef.Site(

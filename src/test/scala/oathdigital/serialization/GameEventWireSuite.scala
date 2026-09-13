@@ -16,7 +16,7 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
   Sequence, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
-  WalkerParked, WalkerStepPayload, WalkerStepRecorded}
+  WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
   UsurperVictory, OathkeeperRecipientChoiceStarted,
   OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
@@ -170,6 +170,31 @@ class GameEventWireSuite extends munit.FunSuite {
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
       .toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
+  test("a procedure reference round-trips with its family, and a reference " +
+      "under the wrong family or an unknown family is rejected") {
+    val events = Vector[OathEvent](
+      WalkerParked(PhaseTransitionRef.EndWake, Vector("0"), Vector.empty,
+        Vector.empty, Vector.empty),
+      WalkerCompleted(ActionRef.Travel))
+    val encoded = GameEventWire.encodeStream("families", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index, event) }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
+    assert(ujson.read(encoded).arr.head.toString.contains(
+      "\"family\":\"phase-transition\""))
+
+    Vector("action", "made-up").foreach { family =>
+      // `encodeStream` writes with `indent = 2` (a space after the colon),
+      // unlike the compact re-serialization the assertion above checks --
+      // the tamper has to match the string actually on the wire here.
+      val tampered = encoded.replace("\"family\": \"phase-transition\"",
+        s"""\"family\": \"$family\"""")
+      assert(GameEventWire.decodeStream(tampered).isLeft,
+        s"end-wake under family '$family' must not decode")
+    }
   }
 
   test("every option reference kind round trips through a recorded answer") {

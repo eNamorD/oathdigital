@@ -2,8 +2,9 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{ActionRef, Answered, DecisionAnswer,
-  DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, RelicId, SiteId}
+import oathdigital.model.{Answered, DecisionAnswer,
+  DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, ProcedureRef,
+  RelicId, SiteId}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -77,20 +78,22 @@ final case class WalkerStepRecorded(
 ) extends WalkerEvent
 
 /** Durable state fact written whenever walking stops at a Decide or Roll.
-  * `action` is stored beside pointer-only PendingTree on replay so generic
-  * resume commands can rebuild the correct tree after reload. `modifiers`
-  * (fix-round ruling I) is the player-selected power ids chosen when the
-  * walker action started, carried on every park of this action so replay
-  * restores `CurrentGameState.walkerModifiers` from this fact alone, without
-  * re-running the walker or re-deriving anything. `startArgs` (batch-1 Task
-  * 5) is carried on every park for exactly the same reason: an action whose
-  * tree needs what the player selected at the start cannot rebuild that tree
-  * without it, and a selection -- unlike the actor's pawn site -- is a
-  * choice, not a state read. Empty for the actions that select nothing, which
-  * is every action that parks today.
+  * `procedure` is stored beside pointer-only PendingTree on replay so generic
+  * resume commands can rebuild the correct tree after reload -- one of the
+  * three [[ProcedureRef]] families (Task 4), tagged with its family on the
+  * wire so a decoder rejects a reference read back under the wrong one.
+  * `modifiers` (fix-round ruling I) is the player-selected power ids chosen
+  * when the walker procedure started, carried on every park of this
+  * procedure so replay restores `CurrentGameState.walkerModifiers` from this
+  * fact alone, without re-running the walker or re-deriving anything.
+  * `startArgs` (batch-1 Task 5) is carried on every park for exactly the
+  * same reason: a procedure whose tree needs what the player selected at the
+  * start cannot rebuild that tree without it, and a selection -- unlike the
+  * actor's pawn site -- is a choice, not a state read. Empty for the
+  * procedures that select nothing, which is every one that parks today.
   */
 final case class WalkerParked(
-    action: ActionRef,
+    procedure: ProcedureRef,
     at: Vector[String],
     answered: Vector[Answered],
     modifiers: Vector[PowerId],
@@ -100,5 +103,5 @@ final case class WalkerParked(
 /** Durable action-boundary fact. Replay clears every walker-owned scratch
   * field without deriving or running the operation tree.
   */
-final case class WalkerCompleted(action: ActionRef)
+final case class WalkerCompleted(procedure: ProcedureRef)
     extends WalkerEvent

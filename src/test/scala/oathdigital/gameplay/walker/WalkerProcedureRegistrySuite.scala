@@ -6,24 +6,21 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, PlayerId,
-  SiteId}
+  ProcedureRef, SiteId}
 
-/** Task 8: `WalkerActionRegistry.build`/`rebuild` are the single keyed
+/** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
   * dispatch through, replacing the two hardcoded
   * `case ActionRef.Recover =>` matches. A missing branch there used to be a
   * runtime `MatchError`; here it is a typed `Left`.
   *
-  * `ActionRef` is sealed with exactly one inhabitant today (`Recover`), so
-  * there is no way to construct a genuinely unregistered `ActionRef` from
-  * outside `ActionRef.scala`. Instead, `build`/`rebuild` accept
-  * `registrations` as a parameter defaulting to the production `entries`
-  * map (Task 8 fix round 1) -- every production call site is unaffected,
-  * but this suite overrides it with a map that omits a real,
-  * registered-in-production action to drive THESE public entry points
-  * themselves down the missing-registration branch, rather than testing
-  * the previously-extracted `lookup` helper as a stand-in for them. A
-  * `match` reintroduced inside `build`/`rebuild` that bypassed
+  * `build`/`rebuild` accept `registrations` as a parameter defaulting to the
+  * production `entries` map (Task 8 fix round 1) -- every production call
+  * site is unaffected, but this suite overrides it with a map that omits a
+  * real, registered-in-production procedure to drive THESE public entry
+  * points themselves down the missing-registration branch, rather than
+  * testing the previously-extracted `lookup` helper as a stand-in for them.
+  * A `match` reintroduced inside `build`/`rebuild` that bypassed
   * `registrations`/`lookup` entirely would compile but fail these tests.
   *
   * `catalog`/`state` below are never dereferenced: `registrations = Map.
@@ -31,16 +28,17 @@ import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, PlayerId,
   * is ever invoked, so `null` is safe here and keeps this suite free of
   * full-game fixtures that this failure path has no use for.
   */
-class WalkerActionRegistrySuite extends munit.FunSuite {
+class WalkerProcedureRegistrySuite extends munit.FunSuite {
 
-  private val unregistered = Map.empty[ActionRef, WalkerActionRegistry.Entry]
+  private val unregistered =
+    Map.empty[ProcedureRef, WalkerProcedureRegistry.Entry]
   private val actor = PlayerId("p1")
   private val state: ReadyGame = null
 
   test("build rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
-    val result = WalkerActionRegistry.build(ActionRef.Recover, catalog = null,
-      state = state, activePlayer = actor,
+    val result = WalkerProcedureRegistry.build(ActionRef.Recover,
+      catalog = null, state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))
@@ -48,15 +46,15 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
 
   test("rebuild rejects an action absent from the registrations map with a " +
       "typed Left, not a MatchError") {
-    val result = WalkerActionRegistry.rebuild(ActionRef.Recover,
+    val result = WalkerProcedureRegistry.rebuild(ActionRef.Recover,
       catalog = null, state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
       "no walker action registered for recover")))
   }
 
-  test("the production entries register every known action") {
-    assertEquals(WalkerActionRegistry.entries.keySet, ActionRef.all.toSet)
+  test("the production entries register every procedure reference") {
+    assertEquals(WalkerProcedureRegistry.entries.keySet, ProcedureRef.all.toSet)
   }
 
   /** Batch-1 Task 1: the modifier-selection window is per-action registry
@@ -67,10 +65,10 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
     */
   test("modifierWindow reads the registered entry, and an unregistered " +
       "action is a typed Left") {
-    assertEquals(WalkerActionRegistry.modifierWindow(ActionRef.Recover),
+    assertEquals(WalkerProcedureRegistry.modifierWindow(ActionRef.Recover),
       Right(Some(PowerWindow.RecoverModifierSelection)))
     assertEquals(
-      WalkerActionRegistry.modifierWindow(ActionRef.Recover, unregistered),
+      WalkerProcedureRegistry.modifierWindow(ActionRef.Recover, unregistered),
       Left(OathViolation.InvalidEventOrder(
         "no walker action registered for recover")))
   }
@@ -98,13 +96,13 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
     */
   test("rollDecisionId rejects an action whose entry declares none, and " +
       "still answers for the action that has one") {
-    assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Recover),
+    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Recover),
       Right(RecoverProcedure.rollDecisionId))
-    assertEquals(WalkerActionRegistry.rollDecisionId(ActionRef.Forge),
+    assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Forge),
       Left(OathViolation.InvalidEventOrder(
         "walker action forge declares no roll decision id")))
     assertEquals(
-      WalkerActionRegistry.rollDecisionId(ActionRef.Recover, unregistered),
+      WalkerProcedureRegistry.rollDecisionId(ActionRef.Recover, unregistered),
       Left(OathViolation.InvalidEventOrder(
         "no walker action registered for recover")))
   }
@@ -115,16 +113,16 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
     * failure.
     */
   test("the Forge entry declares Forge's own kind, modifier window and continuation") {
-    val entry = WalkerActionRegistry.entries(ActionRef.Forge)
-    assertEquals(entry.fallbackKind, MajorActionKind.Forge)
+    val entry = WalkerProcedureRegistry.entries(ActionRef.Forge)
+    assertEquals(entry.fallbackKind, Some(MajorActionKind.Forge))
     assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
     assertEquals(entry.rollDecisionId, None)
     val actor = PlayerId("p1")
     val decision = DecisionId("forge-1")
-    assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Forge,
+    assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Forge,
       ForgeProcedure.assignmentDecisionId, actor, decision),
       Right(Some(OathContinue.AwaitingForgeAssignment(actor, decision))))
-    assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Forge,
+    assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Forge,
       "recover.relic", actor, decision), Right(None))
   }
 
@@ -135,14 +133,14 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
     * what a start checked.
     */
   test("the Travel entry declares Travel's own kind and no park of any shape") {
-    val entry = WalkerActionRegistry.entries(ActionRef.Travel)
-    assertEquals(entry.fallbackKind, MajorActionKind.Travel)
+    val entry = WalkerProcedureRegistry.entries(ActionRef.Travel)
+    assertEquals(entry.fallbackKind, Some(MajorActionKind.Travel))
     assertEquals(entry.modifierWindow, Some(PowerWindow.TravelModifierSelection))
     assertEquals(entry.rollDecisionId, None)
     // A flat tree parks nowhere, so no decision id of any spelling maps to a
     // continuation.
     Vector("travel", "walker.travel.roll", "recover.relic").foreach { id =>
-      assertEquals(WalkerActionRegistry.continuationFor(ActionRef.Travel, id,
+      assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Travel, id,
         PlayerId("p1"), DecisionId("d1")), Right(None))
     }
   }
@@ -163,8 +161,8 @@ class WalkerActionRegistrySuite extends munit.FunSuite {
       DecisionOptionRef.Site(SiteId("site:somewhere")))
     Vector(ActionRef.Recover, ActionRef.Forge).foreach { action =>
       Vector(
-        WalkerActionRegistry.build(action, null, state, actor, selection),
-        WalkerActionRegistry.rebuild(action, null, state, actor, selection)
+        WalkerProcedureRegistry.build(action, null, state, actor, selection),
+        WalkerProcedureRegistry.rebuild(action, null, state, actor, selection)
       ).foreach { result =>
         // The message, not just the failure: `state` is null here, so ANY
         // builder that read state would also fail, and asserting only

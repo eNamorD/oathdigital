@@ -14,8 +14,8 @@ import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
-  WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+  WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
@@ -357,23 +357,26 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 }
 
 object OathRules {
-  /** How a walker command derives its action tree. `starting` distinguishes
-    * a fresh start, which runs action gates, from resume reconstruction.
+  /** How a walker command derives its procedure tree. `starting`
+    * distinguishes a fresh start, which runs the procedure's start gates,
+    * from resume reconstruction.
     */
-  type WalkerTreeSource = (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
-    Vector[DecisionOptionRef], Boolean) => Either[OathViolation, Operation]
+  type WalkerTreeSource = (ExecutableCatalog, ProcedureRef, ReadyGame,
+    PlayerId, Vector[DecisionOptionRef], Boolean) => Either[OathViolation,
+    Operation]
 
-  /** Production tree source: every registered action declares its own tree
-    * via [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) --
-    * this is no longer an exhaustive match on [[ActionRef]], so an
-    * unregistered action rejects with a typed `Left` instead of a
+  /** Production tree source: every registered procedure declares its own
+    * tree via [[oathdigital.gameplay.walker.WalkerProcedureRegistry]] (Task
+    * 8) -- this is no longer an exhaustive match on [[ActionRef]], so an
+    * unregistered procedure rejects with a typed `Left` instead of a
     * `MatchError`.
     */
   val declaredWalkerTree: WalkerTreeSource =
-    (catalog, action, ready, actor, args, starting) =>
-      if (starting) WalkerActionRegistry.build(action, catalog, ready, actor,
+    (catalog, procedure, ready, actor, args, starting) =>
+      if (starting) WalkerProcedureRegistry.build(procedure, catalog, ready,
+        actor, args)
+      else WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
         args)
-      else WalkerActionRegistry.rebuild(action, catalog, ready, actor, args)
 }
 
 private[gameplay] object GameStateUpdates {

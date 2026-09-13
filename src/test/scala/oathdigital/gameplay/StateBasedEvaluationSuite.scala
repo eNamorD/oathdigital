@@ -185,7 +185,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       events ++= accepted.events
     }
     def finishTurn(player: PlayerId): Unit = {
-      accept(rules.startWalker(state, ActionRef.EndWake, player))
+      accept(rules.startWalker(state, PhaseTransitionRef.EndWake, player))
       accept(rules.handle(state, RestCommand.Begin(player)))
       accept(rules.handle(state, RestCommand.Finish(player)))
     }
@@ -198,7 +198,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       OathkeeperState(Some(holder), TitleSide.Usurper))
     assert(events.contains(UsurperFlipped(holder)))
 
-    accept(rules.startWalker(state, ActionRef.EndWake, holder))
+    accept(rules.startWalker(state, PhaseTransitionRef.EndWake, holder))
     val holderState = state.asInstanceOf[Ready].value
     val destination = holderState.game.current.map.inPlay.find(
       _ != holderState.game.current.players.find(_.player == holder)

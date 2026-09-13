@@ -13,4 +13,19 @@ class ActionValuesSuite extends munit.FunSuite {
     assertEquals(DefenseDieFace.score(Vector(DefenseDieFace.Blank,
       DefenseDieFace.Doubler)), 0)
   }
+
+  test("procedure references form three families with keys unique across all") {
+    assertEquals(ActionRef.all.map(_.key),
+      Vector("recover", "forge", "travel", "take-wealth"))
+    assertEquals(PhaseTransitionRef.all.map(_.key), Vector("end-wake"))
+    assertEquals(ProcedureRef.all.map(_.key).distinct.size,
+      ProcedureRef.all.size)
+    assertEquals(StartableRef.fromKey("end-wake"),
+      Some(PhaseTransitionRef.EndWake))
+    assertEquals(ActionRef.fromKey("end-wake"), None)
+    assertEquals(ProcedureRef.fromFamilyKey("action", "end-wake"), None)
+    assertEquals(ProcedureRef.fromFamilyKey("phase-transition", "end-wake"),
+      Some(PhaseTransitionRef.EndWake))
+    assertEquals(ProcedureRef.fromFamilyKey("triggered", "recover"), None)
+  }
 }

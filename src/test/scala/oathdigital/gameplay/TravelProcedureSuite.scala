@@ -231,7 +231,7 @@ class TravelProcedureSuite extends munit.FunSuite {
       Vector(DecisionOptionRef.Site(destination))).toOption.get
     val Ready(after) = accepted.state: @unchecked
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(after.game.current.walkerAction, None)
+    assertEquals(after.game.current.walkerProcedure, None)
     assertEquals(accepted.continue, OathContinue.ActActionSelection(
       active(ready).player))
     assertEquals(after.game.current.turn.phase, Phase.Act)

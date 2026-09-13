@@ -7,7 +7,7 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
-  WalkerActionRegistry, WalkerCompleted, WalkerParked, WalkerPowers,
+  WalkerCompleted, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
@@ -330,7 +330,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   }
 
   test("WalkerCompleted clears walkerModifiers along with walkerPending and " +
-      "walkerAction") {
+      "walkerProcedure") {
     val (ready, actor) = actable
     val powerId = PowerId("test.insert-adjust")
     val power = insertingPower(powerId, actor, PowerResolution.PlayerSelected)
@@ -368,7 +368,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     val Ready(afterCompletion) = finished.state: @unchecked
     assertEquals(afterCompletion.game.current.walkerModifiers,
       Vector.empty[PowerId])
-    assert(afterCompletion.game.current.walkerAction.isEmpty)
+    assert(afterCompletion.game.current.walkerProcedure.isEmpty)
     assert(afterCompletion.game.current.walkerPending.isEmpty)
   }
 
@@ -404,16 +404,15 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
   // -------------------------------------------------------------------------
   // Batch-1 Task 1: the modifier-selection window is per-action, read from the
-  // registered `WalkerActionRegistry.Entry`, not the literal
+  // registered `WalkerProcedureRegistry.Entry`, not the literal
   // `PowerWindow.RecoverModifierSelection` both call sites used to name.
   //
-  // `ActionRef` is sealed with exactly one inhabitant, so a second action
-  // cannot be constructed from outside `ActionRef.scala`. These tests use the
-  // same `registrations`-parameter precedent `WalkerActionRegistry.build`/
-  // `rebuild` already set (see `WalkerActionRegistrySuite`'s doc): the
-  // trailing `registrations` map stands in for a second action's entry, so
-  // the behaviour that differs BETWEEN actions is provable while Recover is
-  // still the only registered one. Production call sites pass nothing.
+  // These tests use the same `registrations`-parameter precedent
+  // `WalkerProcedureRegistry.build`/`rebuild` already set (see
+  // `WalkerProcedureRegistrySuite`'s doc): the trailing `registrations` map
+  // stands in for a second action's entry, so the behaviour that differs
+  // BETWEEN actions is provable while Recover is still the only registered
+  // one. Production call sites pass nothing.
   // -------------------------------------------------------------------------
 
   private def windowScoped(id: PowerId, at: PowerWindow): ContributingPower =
@@ -424,9 +423,9 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     * `offerableWalkerPowers`/`validateModifiers` read the window and stop.
     */
   private def entryWindowed(modifierWindow: Option[PowerWindow])
-      : WalkerActionRegistry.Entry =
-    WalkerActionRegistry.Entry(
-      fallbackKind = MajorActionKind.Recover,
+      : WalkerProcedureRegistry.Entry =
+    WalkerProcedureRegistry.Entry(
+      fallbackKind = Some(MajorActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = modifierWindow,
       continuationFor = (_, _, _) => None,
@@ -436,7 +435,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
         Left(OathViolation.InvalidEventOrder("rebuild is not exercised here")))
 
   private def registered(modifierWindow: Option[PowerWindow])
-      : Map[ActionRef, WalkerActionRegistry.Entry] =
+      : Map[ProcedureRef, WalkerProcedureRegistry.Entry] =
     Map(ActionRef.Recover -> entryWindowed(modifierWindow))
 
   private val forgeWindowed = PowerId("test.forge-windowed")
@@ -513,8 +512,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   // -------------------------------------------------------------------------
   // Batch-1 Task 3, ruling R18 (P4), first consulting call site.
   //
-  // `WalkerActionRegistry.rollDecisionId` returns a typed `Left` for an
-  // action whose entry declares none, and `WalkerActionRegistrySuite` pins
+  // `WalkerProcedureRegistry.rollDecisionId` returns a typed `Left` for an
+  // action whose entry declares none, and `WalkerProcedureRegistrySuite` pins
   // that value. What that pin does NOT prove is that anyone honours it: a
   // call site that recovered with `.getOrElse("")` -- or that had been
   // handed a sentinel id instead of an Option in the first place -- would

@@ -28,9 +28,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(action, at, answered, modifiers, startArgs) =>
+    case WalkerParked(procedure, at, answered, modifiers, startArgs) =>
       ujson.Obj(
-        "action" -> action.key,
+        "procedure" -> encodeProcedure(procedure),
         "at" -> stringArray(at),
         "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
         "modifiers" -> stringArray(modifiers.map(_.value)),
@@ -39,8 +39,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         // key at all, and `decodeParked` reads a missing key as empty.
         "startArgs" -> ujson.Arr.from(startArgs.map(
           DecisionAnswerCodec.encodeRef)))
-    case WalkerCompleted(action) => ujson.Obj(
-      "action" -> action.key)
+    case WalkerCompleted(procedure) => ujson.Obj(
+      "procedure" -> encodeProcedure(procedure))
   }
 
   protected final def walkerDecode(eventType: String, payload: ujson.Value,
@@ -50,8 +50,9 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       case WalkerStepRecordedType => decodeStepRecorded(payload, path)
       case WalkerParkedType => decodeParked(payload, path)
       case WalkerCompletedType => for {
-        action <- decodeAction(payload("action").str, s"$path.action")
-      } yield WalkerCompleted(action)
+        procedure <- decodeProcedure(payload("procedure"),
+          s"$path.procedure")
+      } yield WalkerCompleted(procedure)
     }
     decoder.lift(eventType)
   }
@@ -136,10 +137,21 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       s"unknown walker delta meaning '$other'"))
   }
 
-  private def decodeAction(value: String,
-      path: String): Either[WireError, ActionRef] =
-    ActionRef.fromKey(value).toRight(InvalidValue(path,
-      s"unknown walker action '$value'"))
+  /** Wire spelling of a procedure reference (Task 4): a family tag plus its
+    * key, so a decoder can reject a reference read back under the wrong
+    * family (an End Wake key spelled `"action"`) or an unknown family,
+    * rather than resolving on the key alone.
+    */
+  private def encodeProcedure(procedure: ProcedureRef): ujson.Value =
+    ujson.Obj("family" -> procedure.family, "key" -> procedure.key)
+
+  private def decodeProcedure(value: ujson.Value,
+      path: String): Either[WireError, ProcedureRef] = {
+    val family = value("family").str
+    val key = value("key").str
+    ProcedureRef.fromFamilyKey(family, key).toRight(InvalidValue(path,
+      s"unknown walker procedure '$family/$key'"))
+  }
 
   private def decodeStepRecorded(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for {
@@ -156,14 +168,14 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
 
   private def decodeParked(value: ujson.Value,
       path: String): Either[WireError, OathEvent] = try for {
-    action <- decodeAction(value("action").str, s"$path.action")
+    procedure <- decodeProcedure(value("procedure"), s"$path.procedure")
     answered <- traverse(value("answered").arr.zipWithIndex.toVector) {
       case (answer, index) => decodeAnswered(answer,
         s"$path.answered[$index]")
     }
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
     startArgs <- decodeStartArgs(value, s"$path.startArgs")
-  } yield WalkerParked(action,
+  } yield WalkerParked(procedure,
     value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }

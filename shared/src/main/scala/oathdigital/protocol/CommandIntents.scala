@@ -50,7 +50,7 @@ object GameIntent {
       recipientPlayerId: String) extends GameIntent
   final case class ResolveCardDecision(decisionId: String,
       resolution: DecisionResolution) extends GameIntent
-  /** Starts a walker action. `action` is the engine's persisted `ActionRef`
+  /** Starts a walker action. `action` is the engine's persisted `StartableRef`
     * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
     * player-selected power ids chosen before the walk begins -- validated
     * engine-side against the audited catalog, never interpreted here.

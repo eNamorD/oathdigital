@@ -320,7 +320,7 @@ class NegotiationSuite extends munit.FunSuite {
     val actor = original.game.current.turn.activePlayer
     val other = original.game.current.players.find(_.player != actor).get.player
     val destination = original.game.current.players.find(_.player == other).get.pawnSite.get
-    val act = rules.startWalker(setupState, ActionRef.EndWake, actor)
+    val act = rules.startWalker(setupState, PhaseTransitionRef.EndWake, actor)
       .toOption.get
     val traveled = rules.startWalker(act.state, ActionRef.Travel, actor,
       Vector.empty, Vector(DecisionOptionRef.Site(destination))).toOption.get

@@ -152,7 +152,7 @@ final case class DecisionOptionProjection(kind: String, id: String,
 final case class DecisionSectionProjection(key: String, label: String,
     minRequired: Int)
 /** Wire projection of a parked generic-walker decision (Task 6:
-  * `CurrentGameState.walkerPending`/`walkerAction`) -- the walker path's
+  * `CurrentGameState.walkerPending`/`walkerProcedure`) -- the walker path's
   * counterpart to [[PendingCardDecisionProjection]] above, which the walker
   * deliberately never populates.
   *

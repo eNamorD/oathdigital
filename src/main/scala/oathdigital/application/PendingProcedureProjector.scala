@@ -310,18 +310,18 @@ private[application] final class PendingProcedureProjector(
       // its trailing `None` arm — keeping the two pending mechanisms
       // visibly separate instead of interleaving one case among many.
       //
-      // The label is keyed off the parked action's own wire key (Task 8)
-      // instead of a hardcoded "recover-*" literal, so a second action
+      // The label is keyed off the parked procedure's own wire key (Task 8)
+      // instead of a hardcoded "recover-*" literal, so a second procedure
       // parked on the walker reports its own phase rather than borrowing
-      // Recover's. `walkerAction` is always populated alongside
+      // Recover's. `walkerProcedure` is always populated alongside
       // `walkerPending` (both are written by `WalkerParked` and cleared
       // together by `WalkerCompleted`), so the `None` arm below is
       // unreachable in practice; it exists only so this stays total.
-      context.current.walkerAction.fold("walker-waiting") { action =>
+      context.current.walkerProcedure.fold("walker-waiting") { procedure =>
         walkerDecision match {
-          case Some(w) if w.kind == "roll" => s"${action.key}-walker-roll"
-          case Some(_) => s"${action.key}-walker-decision"
-          case None => s"${action.key}-walker-waiting"
+          case Some(w) if w.kind == "roll" => s"${procedure.key}-walker-roll"
+          case Some(_) => s"${procedure.key}-walker-decision"
+          case None => s"${procedure.key}-walker-waiting"
         }
       }
     else context.current.pending match {

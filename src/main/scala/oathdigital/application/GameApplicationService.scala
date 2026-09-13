@@ -9,7 +9,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, SearchCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.WalkerActionRegistry
+import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
@@ -151,15 +151,16 @@ final class GameApplicationService(
 
   /** `action` runs on the generic walker (Task 9a) exactly when its wire key
     * names a registered [[oathdigital.model.ActionRef]] --
-    * `WalkerActionRegistry` stays the single place that knows which actions
-    * are walker-driven, so this needs no per-action `MajorActionKind` match
-    * of its own. `MajorActionKind` and `ActionRef` share their key strings by
-    * convention (see `GameIntentMapper.actionRef`, which bridges the same
-    * way from the wire intent), so a legacy-only kind like `Muster` simply
-    * has no matching `ActionRef` and falls through to the `None` branch.
+    * `WalkerProcedureRegistry` stays the single place that knows which
+    * procedures are walker-driven, so this needs no per-action
+    * `MajorActionKind` match of its own. `MajorActionKind` and `ActionRef`
+    * share their key strings by convention (see `GameIntentMapper.actionRef`,
+    * which bridges the same way from the wire intent), so a legacy-only kind
+    * like `Muster` simply has no matching `ActionRef` and falls through to
+    * the `None` branch.
     */
   private def walkerAction(action: MajorActionKind): Option[ActionRef] =
-    ActionRef.fromKey(action.key).filter(WalkerActionRegistry.isRegistered)
+    ActionRef.fromKey(action.key).filter(WalkerProcedureRegistry.isRegistered)
 
   /** Shared acceptance gate for both preview branches: `selected` must be
     * duplicate-free and a subset of `options`, whichever machinery produced
@@ -351,8 +352,8 @@ final class GameApplicationService(
       }
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
-      case GameCommand.StartWalker(action, start) =>
-        rules.startWalker(state, action, start.actor, start.modifiers,
+      case GameCommand.StartWalker(procedure, start) =>
+        rules.startWalker(state, procedure, start.actor, start.modifiers,
           start.startArgs)
       case GameCommand.ResolveWalker(actor, treeDecision) =>
         rules.resolveWalker(state, actor, treeDecision.decisionId,
@@ -375,7 +376,7 @@ final class GameApplicationService(
       // survives as the client's spelling for it, so no transport and no
       // caller had to learn that the engine changed underneath.
       case GameCommand.EndWake(playerId) =>
-        rules.startWalker(state, ActionRef.EndWake, playerId)
+        rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>

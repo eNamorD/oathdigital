@@ -39,7 +39,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
   }
 
   private def endWake(state: OathState, actor: PlayerId) =
-    rules.startWalker(state, ActionRef.EndWake, actor)
+    rules.startWalker(state, PhaseTransitionRef.EndWake, actor)
 
   private def activePlayer(state: OathState): PlayerId = {
     val Ready(value) = state: @unchecked
@@ -59,11 +59,11 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     }.flatten, Vector[oathdigital.gameplay.operations.CoreOperation](
       EnterPhase(Phase.Act)))
     assertEquals(accepted.events.last,
-      WalkerCompleted(ActionRef.EndWake): OathEvent)
+      WalkerCompleted(PhaseTransitionRef.EndWake): OathEvent)
     assertEquals(accepted.continue, ActActionSelection(active))
     assertEquals(value.game.current.turn.phase, Phase.Act)
     assertEquals(value.game.current.walkerPending, None)
-    assertEquals(value.game.current.walkerAction, None)
+    assertEquals(value.game.current.walkerProcedure, None)
   }
 
   test("ending Wake does not run the Act action boundary") {
@@ -131,7 +131,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
   test("ending Wake selects nothing") {
     val state = ready()
     val active = activePlayer(state)
-    assert(rules.startWalker(state, ActionRef.EndWake, active, Vector.empty,
+    assert(rules.startWalker(state, PhaseTransitionRef.EndWake, active, Vector.empty,
       Vector(DecisionOptionRef.Button("favor"))).isLeft,
       "a start selection handed to End Wake must be rejected")
   }

@@ -6,8 +6,8 @@ import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerActionRegistry,
-  WalkerPowers}
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
+  WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
@@ -15,12 +15,12 @@ import oathdigital.protocol.projection.{CardDetailsProjection,
   WalkerRollOutcomeProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
-  * + `walkerAction`, Task 6) into the small owner-private
+  * + `walkerProcedure`, Task 6) into the small owner-private
   * [[WalkerDecisionProjection]]. The tree rebuild below dispatches through
-  * [[oathdigital.gameplay.walker.WalkerActionRegistry]] (Task 8) -- the same
-  * keyed lookup `OathRules.buildWalker` resumes through -- rather than
-  * matching on [[ActionRef]] itself, so this projector needs no edit when a
-  * second action registers.
+  * [[oathdigital.gameplay.walker.WalkerProcedureRegistry]] (Task 8) -- the
+  * same keyed lookup `OathRules.buildWalker` resumes through -- rather than
+  * matching on [[ProcedureRef]] itself, so this projector needs no edit when
+  * a second procedure registers.
   *
   * Reuses [[ProcedureWalker.parkedRoll]]/[[ProcedureWalker.parkedDecide]] —
   * the same reorder-safe, decisionId-keyed introspection `OathRules`
@@ -53,49 +53,49 @@ private[application] final class WalkerDecisionProjector(
     val activePlayer = context.current.turn.activePlayer
     for {
       pending <- context.current.walkerPending
-      action <- context.current.walkerAction
+      procedure <- context.current.walkerProcedure
       if context.viewer.contains(activePlayer)
-      tree <- rebuild(context.ready, action, activePlayer,
+      tree <- rebuild(context.ready, procedure, activePlayer,
         context.current.walkerStartArgs).toOption
       powers = WalkerPowers.selected(walkerPowerCatalog,
         context.current.walkerModifiers)
-      projection <- parked(action, tree, context.ready, pending, powers,
+      projection <- parked(procedure, tree, context.ready, pending, powers,
         activePlayer)
     } yield projection
   }
 
-  private def rebuild(ready: ReadyGame, action: ActionRef,
+  private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
-    rebuildTree(catalog, action, ready, activePlayer, args)
+    rebuildTree(catalog, procedure, ready, activePlayer, args)
 
-  private def parked(action: ActionRef, tree: Operation, ready: ReadyGame,
-      pending: PendingTree, powers: WalkerPowers, activePlayer: PlayerId)
-      : Option[WalkerDecisionProjection] =
+  private def parked(procedure: ProcedureRef, tree: Operation,
+      ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
+      activePlayer: PlayerId): Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
-      // R18: an action whose entry declares no roll decision id has no
+      // R18: a procedure whose entry declares no roll decision id has no
       // answer to "which id is this Roll park", so the accessor's typed
       // rejection is carried through as "there is nothing to project" --
       // never as a projection naming a sentinel the client would then
       // send back as a `ResolveWalker` decision id.
       case Some((pool, count)) =>
-        WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
-          WalkerDecisionProjection(action.key, rollId, "roll",
+        WalkerProcedureRegistry.rollDecisionId(procedure).toOption.map(
+          rollId => WalkerDecisionProjection(procedure.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
             rollOutcome = rollOutcome(ready, activePlayer)))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
-      // fold the walk applied -- is described verbatim. An action that
+      // fold the walk applied -- is described verbatim. A procedure that
       // changes what it offers changes this projection in the same edit,
-      // and an engine that grew a per-action branch here would be exactly
-      // the drift this replaced.
+      // and an engine that grew a per-procedure branch here would be
+      // exactly the drift this replaced.
       //
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
         .flatMap(decide => queryProjection(ready, Some(activePlayer),
           decide.query).map(query =>
-          WalkerDecisionProjection(action.key, decide.decisionId, "decide",
+          WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
             query = Some(query),
             rollOutcome = rollOutcome(ready, activePlayer))))
     }
@@ -244,7 +244,7 @@ private[application] final class WalkerDecisionProjector(
     * rather than leftover: roll feedback is Recover's own pool, site and
     * difficulty story, and a second rolling action would need its own. It is
     * also why it is worth keeping separate from the decision projection
-    * above, which must stay generic -- a `decisionId` or `ActionRef`
+    * above, which must stay generic -- a `decisionId` or `ProcedureRef`
     * comparison deciding what to OFFER belongs nowhere in this layer.
     */
   private def rollOutcome(ready: ReadyGame, actor: PlayerId)
@@ -288,13 +288,13 @@ private[application] object WalkerDecisionProjector {
     *
     * Note what this seam deliberately does NOT reach. Only the tree comes
     * from here; `parked` still reads the roll decision id from
-    * `WalkerActionRegistry`'s production entries, so substituting a tree
+    * `WalkerProcedureRegistry`'s production entries, so substituting a tree
     * cannot also substitute the answer under test.
     */
   type TreeSource =
-    (ExecutableCatalog, ActionRef, ReadyGame, PlayerId,
+    (ExecutableCatalog, ProcedureRef, ReadyGame, PlayerId,
       Vector[DecisionOptionRef]) => Either[OathViolation, Operation]
 
-  val declaredTree: TreeSource = (catalog, action, ready, actor, args) =>
-    WalkerActionRegistry.rebuild(action, catalog, ready, actor, args)
+  val declaredTree: TreeSource = (catalog, procedure, ready, actor, args) =>
+    WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor, args)
 }

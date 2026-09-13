@@ -89,7 +89,7 @@ class ChallengeSuite extends munit.FunSuite {
     val active = setupState.asInstanceOf[Ready].value.game.current.turn.activePlayer
     val wealth = rules.startWalker(setupState, ActionRef.TakeWealth, active,
       Vector.empty, Vector(DecisionOptionRef.Button("favor"))).toOption.get
-    val act = rules.startWalker(wealth.state, ActionRef.EndWake, active)
+    val act = rules.startWalker(wealth.state, PhaseTransitionRef.EndWake, active)
       .toOption.get
     val started = rules.handle(act.state, ChallengeCommand.Begin(active,
       DecisionId("replay-challenge"), Banner.PeoplesFavor)).toOption.get

@@ -172,9 +172,9 @@ object GameIntentMapper {
       : Result[DecisionOptionRef] = optionRef(value.optionKind, value.optionId,
     s"$$.intent.startArgs[$index]")
 
-  private def actionRef(value: String): Result[ActionRef] =
-    ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
-      s"unknown action '$value'"))
+  private def actionRef(value: String): Result[StartableRef] =
+    StartableRef.fromKey(value).toRight(GameIntentMappingFailure(
+      "$.intent.action", s"unknown action '$value'"))
   private def powerId(value: String, index: Int): Result[PowerId] =
     PowerId.fromValue(value).toRight(GameIntentMappingFailure(
       s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))

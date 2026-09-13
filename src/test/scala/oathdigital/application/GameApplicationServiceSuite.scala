@@ -103,7 +103,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
     val Ready(atRoll) = started.state: @unchecked
     assert(started.events.last.isInstanceOf[WalkerParked])
-    assertEquals(atRoll.game.current.walkerAction, Some(ActionRef.Recover))
+    assertEquals(atRoll.game.current.walkerProcedure, Some(ActionRef.Recover))
     assert(atRoll.game.current.walkerPending.nonEmpty)
     assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
       DecisionId(RecoverProcedure.rollDecisionId)))
@@ -138,7 +138,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(finished.events.exists(_.isInstanceOf[WalkerCompleted]))
     assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
     assert(afterWalker.game.current.walkerPending.isEmpty)
-    assert(afterWalker.game.current.walkerAction.isEmpty)
+    assert(afterWalker.game.current.walkerProcedure.isEmpty)
     assertEquals(afterWalker.game.current.rollPools,
       Map.empty[PoolKey, DicePoolState])
     assertEquals(afterWalker.game.current.rollOutcomes,
@@ -258,11 +258,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)))
-    assertEquals(ready.game.current.walkerAction, Some(ActionRef.Recover))
+    assertEquals(ready.game.current.walkerProcedure, Some(ActionRef.Recover))
     assertEquals(new GameApplicationService(catalog, repository)
       .load("walker-continue").toOption.flatten.get.state, continued.state)
     assert(repository.load("walker-continue").toOption.flatten.get.records
-      .exists(record => record.contains("\"action\":\"recover\"") &&
+      .exists(record => record.contains(
+        "\"procedure\":{\"family\":\"action\",\"key\":\"recover\"}") &&
         record.contains("\"answered\"")))
 
     val failedAgain = service.handle("walker-continue", continued.nextSequence,
@@ -772,7 +773,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(started.continue, OathContinue.AwaitingForgeAssignment(actor,
       DecisionId(ForgeProcedure.assignmentDecisionId)))
     val Ready(parked) = started.state: @unchecked
-    assertEquals(parked.game.current.walkerAction, Some(ActionRef.Forge))
+    assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Forge))
     assert(parked.game.current.pending.isEmpty,
       "the walker path must not populate the legacy pending slot")
     assertEquals(parked.game.current.players.find(_.player == actor).get
@@ -876,7 +877,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .board.supply.supply, supplyBefore - 1)
     assert(after.game.current.pending.isEmpty)
     assert(after.game.current.walkerPending.isEmpty)
-    assert(after.game.current.walkerAction.isEmpty)
+    assert(after.game.current.walkerProcedure.isEmpty)
 
     // The actor funded the whole printed cost out of their own play area,
     // and no suit bank moved at all. This reverses the pre-walker behaviour
@@ -927,7 +928,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(finished.continue, OathContinue.ActActionSelection(actor))
     val Ready(after) = finished.state: @unchecked
     assert(after.game.current.walkerPending.isEmpty)
-    assert(after.game.current.walkerAction.isEmpty)
+    assert(after.game.current.walkerProcedure.isEmpty)
     assertEquals(new GameProjector(catalog).project(gameId,
       LoadedGame(finished.state, finished.nextSequence), actor)
       .walkerDecision, None)
@@ -1309,7 +1310,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
     // Nothing parked: a flat tree finishes inside the command that started it.
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(after.game.current.walkerAction, None)
+    assertEquals(after.game.current.walkerProcedure, None)
     val types = repository.load("game-travel").toOption.flatten.get.records
       .takeRight(3).map(ujson.read(_)("eventType").str)
     assertEquals(types, Vector("walker.step-recorded", "walker.step-recorded",

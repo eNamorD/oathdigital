@@ -93,7 +93,7 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     assertEquals(transition.events.map(_.productPrefix),
       Vector("WalkerStepRecorded", "WalkerStepRecorded", "WalkerCompleted"))
     assertEquals(state.game.current.walkerPending, None)
-    assertEquals(state.game.current.walkerAction, None)
+    assertEquals(state.game.current.walkerProcedure, None)
   }
 
   test("a take moves a face-up secret") {

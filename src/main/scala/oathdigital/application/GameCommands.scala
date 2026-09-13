@@ -9,7 +9,7 @@ object GameCommand {
   final case class WithModifiers(command: GameCommand,
       ordered: Vector[OrderedRuleInvocation]) extends GameCommand
   final case class Begin(plan: FirstGameSetupPlan) extends GameCommand
-  final case class StartWalker(action: ActionRef, start: StartPayload)
+  final case class StartWalker(procedure: StartableRef, start: StartPayload)
       extends GameCommand
   final case class ResolveWalker(actor: PlayerId, treeDecision: TreeDecision)
       extends GameCommand
