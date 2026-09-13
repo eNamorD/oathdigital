@@ -141,7 +141,7 @@ class GameEventWireSuite extends munit.FunSuite {
       "the park") {
     // The answer fact rides a walker `ChoicePayload` and the parked
     // `answered` vector, so both directions of `DecisionAnswerCodec` are
-    // reached by any journalled walker action.
+    // reached by any journalled walker procedure.
     val player = PlayerId("red")
     val partition = PartitionAnswer(Vector("1", "2", "3")
       .map(id => DecisionOptionRef.Denizen(DenizenId(s"denizen:$id")))

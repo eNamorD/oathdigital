@@ -103,7 +103,7 @@ object GameCommand {
 }
 
 /** Generic action-start data. Action-specific starts may widen this family
-  * when another walker action needs more than its actor.
+  * when another walker procedure needs more than its actor.
   *
   * `modifiers` (Task 4) is the ordered list of player-selected power ids the
   * client chose before starting the action -- e.g. answering Recover's

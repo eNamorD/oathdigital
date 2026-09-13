@@ -105,7 +105,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     // failure or an ownership mismatch: both were satisfied above.
     assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Forge),
       Left(OathViolation.InvalidEventOrder(
-        "walker action forge declares no roll decision id")))
+        "walker procedure forge declares no roll decision id")))
   }
 
   /** The spec's presentation-failure rule (Task 4): an option whose identity

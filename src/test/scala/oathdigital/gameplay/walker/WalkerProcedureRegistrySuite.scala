@@ -41,7 +41,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       catalog = null, state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
-      "no walker action registered for recover")))
+      "no walker procedure registered for recover")))
   }
 
   test("rebuild rejects an action absent from the registrations map with a " +
@@ -50,7 +50,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       catalog = null, state = state, activePlayer = actor,
       registrations = unregistered)
     assertEquals(result, Left(OathViolation.InvalidEventOrder(
-      "no walker action registered for recover")))
+      "no walker procedure registered for recover")))
   }
 
   test("the production entries register every procedure reference") {
@@ -70,7 +70,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
     assertEquals(
       WalkerProcedureRegistry.modifierWindow(ActionRef.Recover, unregistered),
       Left(OathViolation.InvalidEventOrder(
-        "no walker action registered for recover")))
+        "no walker procedure registered for recover")))
   }
 
   /** Batch-1 Task 3, ruling R18. `Entry.rollDecisionId` is `Option[String]`
@@ -100,11 +100,11 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       Right(RecoverProcedure.rollDecisionId))
     assertEquals(WalkerProcedureRegistry.rollDecisionId(ActionRef.Forge),
       Left(OathViolation.InvalidEventOrder(
-        "walker action forge declares no roll decision id")))
+        "walker procedure forge declares no roll decision id")))
     assertEquals(
       WalkerProcedureRegistry.rollDecisionId(ActionRef.Recover, unregistered),
       Left(OathViolation.InvalidEventOrder(
-        "no walker action registered for recover")))
+        "no walker procedure registered for recover")))
   }
 
   /** The Forge entry's own facts, asserted as a whole rather than left to
@@ -169,7 +169,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
         // `isLeft` would pass for a guard that had been removed entirely.
         // Naming the selection is what proves this rejection is the guard.
         assertEquals(result, Left(OathViolation.InvalidEventOrder(
-          s"walker action ${action.key} takes no start selection, got site")))
+          s"walker procedure ${action.key} takes no start selection, got site")))
       }
     }
   }

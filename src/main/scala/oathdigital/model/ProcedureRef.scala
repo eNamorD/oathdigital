@@ -69,9 +69,10 @@ object ActionRef {
 }
 
 object PhaseTransitionRef {
-  /** Batch-1 Task 7 moved End Wake here from `ActionRef`: it is the Wake
-    * phase's transition to Act, not something a player spends a turn on, so
-    * no Act action boundary runs after it.
+  /** Batch-1 Task 7 moved End Wake here from `ActionRef`: the action
+    * boundary follows only a completed `ActionRef`, in whatever phase it
+    * ran. End Wake is a phase transition, not something a player spends a
+    * turn on, so it runs none.
     */
   case object EndWake extends PhaseTransitionRef { val key = "end-wake" }
 

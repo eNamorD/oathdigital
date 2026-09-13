@@ -554,7 +554,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(
       rulesInstance.startWalker(Ready(ready), ActionRef.Forge, actor),
       Left(OathViolation.InvalidEventOrder(
-        "walker action forge declares no roll decision id")))
+        "walker procedure forge declares no roll decision id")))
   }
 
   // -------------------------------------------------------------------------

@@ -48,7 +48,7 @@ object GameIntent {
       destinationSiteId: String) extends GameIntent
   final case class ResolveCardDecision(decisionId: String,
       resolution: DecisionResolution) extends GameIntent
-  /** Starts a walker action. `action` is the engine's persisted `StartableRef`
+  /** Starts a walker procedure. `action` is the engine's persisted `StartableRef`
     * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
     * player-selected power ids chosen before the walk begins -- validated
     * engine-side against the audited catalog, never interpreted here.
@@ -71,7 +71,7 @@ object GameIntent {
       payload: DecisionAnswerWire) extends GameIntent
 }
 
-/** One game-object reference in a walker action's start selection, spelled
+/** One game-object reference in a walker procedure's start selection, spelled
   * exactly as a decision answer spells one: a kind and an id, decoded by the
   * same `DecisionOptionRef.fromWire` the engine decodes an answer with.
   *
@@ -142,7 +142,7 @@ object DecisionResolution {
   *
   * Every option is named by the kind/id pair the engine's option references
   * carry, so neither case here knows that Recover or Forge exists, and a new
-  * walker action adds no case. Both fields stay opaque strings until the
+  * walker procedure adds no case. Both fields stay opaque strings until the
   * application mapping boundary resolves them, exactly like every other
   * identifier in this protocol.
   */

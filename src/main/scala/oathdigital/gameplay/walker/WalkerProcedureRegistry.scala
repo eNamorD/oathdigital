@@ -60,8 +60,8 @@ object WalkerProcedureRegistry {
     * produces, keyed by the id string alone (never by tree path, for the
     * same reorder-safety reason `ProcedureWalker.parkedDecide` dispatches
     * on `decisionId`). `None` for an id this procedure does not recognise.
-    * This is the single place `OathRules.parkedContinue` consults, so it
-    * carries no `RecoverProcedure`-specific match of its own.
+    * This is the single place `OathRulesWalker.parkedContinue` consults, so
+    * it carries no `RecoverProcedure`-specific match of its own.
     *
     * `modifierWindow` (batch-1 Task 1) is the [[PowerWindow]] at which a
     * player-selected `ContributingPower` is offered as a `StartWalker`
@@ -246,7 +246,7 @@ object WalkerProcedureRegistry {
   private def noStartArgs(action: ActionRef, args: Vector[DecisionOptionRef])
       : Either[OathViolation, Unit] = Either.cond(args.isEmpty, (),
     OathViolation.InvalidEventOrder(
-      s"walker action ${action.key} takes no start selection, got " +
+      s"walker procedure ${action.key} takes no start selection, got " +
         args.map(_.kind).mkString(", ")))
 
   /** Builds `procedure`'s tree for a fresh start: its start gates run.
@@ -282,7 +282,7 @@ object WalkerProcedureRegistry {
   private def lookup(procedure: ProcedureRef,
       registrations: Map[ProcedureRef, Entry]): Either[OathViolation, Entry] =
     registrations.get(procedure).toRight(OathViolation.InvalidEventOrder(
-      s"no walker action registered for ${procedure.key}"))
+      s"no walker procedure registered for ${procedure.key}"))
 
   /** `procedure`'s [[MajorActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
@@ -321,7 +321,7 @@ object WalkerProcedureRegistry {
       : Either[OathViolation, String] =
     lookup(procedure, registrations).flatMap(_.rollDecisionId.toRight(
       OathViolation.InvalidEventOrder(
-        s"walker action ${procedure.key} declares no roll decision id")))
+        s"walker procedure ${procedure.key} declares no roll decision id")))
 
   /** `procedure`'s modifier-selection [[PowerWindow]], or `None` when it
     * offers no player-selected powers at all -- see `Entry`'s doc.
@@ -337,7 +337,7 @@ object WalkerProcedureRegistry {
     lookup(procedure, registrations).map(_.modifierWindow)
 
   /** `procedure`'s client-facing continuation for `decisionId` (I4) -- see
-    * `Entry`'s doc. `OathRules.parkedContinue` is the sole caller: it
+    * `Entry`'s doc. `OathRulesWalker.parkedContinue` is the sole caller: it
     * reports `None` onward as its own `InvalidEventOrder`, since only it
     * knows the parked-position context worth naming in that message.
     */

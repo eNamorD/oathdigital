@@ -13,7 +13,7 @@ import oathdigital.gameplay.OathViolation._
 
 /** The walker command surface of [[OathRules]], mixed into it.
   *
-  * This is the whole of what a client can do to a walker action --
+  * This is the whole of what a client can do to a walker procedure --
   * `startWalker`, `resolveWalker`, `rollWalkerPrepared` and the power and
   * park plumbing they share -- held in one file so `OathRules` can keep
   * carrying the legacy per-action `handle` methods and the turn/phase
@@ -53,7 +53,7 @@ private[gameplay] trait OathRulesWalker {
     state match {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
           ready.game.current.walkerProcedure.nonEmpty =>
-        Left(InvalidEventOrder("a walker action is already pending"))
+        Left(InvalidEventOrder("a walker procedure is already pending"))
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
         WalkerProcedureRegistry.fallbackKind(procedure)
@@ -81,6 +81,14 @@ private[gameplay] trait OathRulesWalker {
     * typed rejection rather than a nested start. The procedure's events are
     * appended to `transition`, so the action that triggered it and the
     * procedure journal as one command.
+    *
+    * When the triggered procedure finishes without parking, `walkerTransition`
+    * recomputes its continuation with `continuationIn(phase)`, which only
+    * knows `Phase.Act` and `Phase.Wake`. That matches every current
+    * `completeAction` caller today -- all Act-gated with
+    * `ActActionSelection`, or Wake's Take Wealth -- so a triggered procedure
+    * always finishes in one of those two phases. A future trigger fired
+    * outside Act or Wake must extend `continuationIn` first.
     */
   private[gameplay] def startTriggered(transition: OathTransition,
       procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
@@ -286,7 +294,7 @@ private[gameplay] trait OathRulesWalker {
     state match {
     case Ready(ready) => for {
       procedure <- ready.game.current.walkerProcedure.toRight(
-        InvalidEventOrder("no walker action is pending"))
+        InvalidEventOrder("no walker procedure is pending"))
       pending <- ready.game.current.walkerPending.toRight(
         InvalidEventOrder("no walker position is pending"))
       // No phase gate: only resume commands are accepted while a walker is

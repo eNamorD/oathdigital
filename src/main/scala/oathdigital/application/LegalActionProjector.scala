@@ -171,7 +171,7 @@ private[application] final class LegalActionProjector(
       active: PlayerState): Boolean =
     RecoverProcedure.build(catalog, context.ready, active.player).isRight
 
-  /** While a generic-walker action is parked, no other Act control is legal
+  /** While a generic-walker procedure is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command
     * for exactly this reason — see Task 6 command-exclusivity ruling); the
     * only legal controls are answering the parked position itself, visible

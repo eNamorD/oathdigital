@@ -140,20 +140,20 @@ final case class CurrentGameState(
     setAsideRelics: Vector[RelicId] = Vector.empty,
     // Walker (procedure-walker) pending state. Legacy `pending` stays
     // alongside for actions still on the legacy evolve path this slice (dual
-    // pending); walker actions read/write only `walkerPending`.
+    // pending); walker procedures read/write only `walkerPending`.
     walkerPending: Option[PendingTree] = None,
     rollPools: Map[PoolKey, DicePoolState] = Map.empty,
     rollOutcomes: Map[PoolKey, RollOutcome] = Map.empty,
     // Stored beside, not inside, pointer-only PendingTree. Rebuilds the
     // command-local operation tree after reload.
     walkerProcedure: Option[ProcedureRef] = None,
-    // The player-selected power ids chosen when the walker action started
+    // The player-selected power ids chosen when the walker procedure started
     // (fix-round ruling I). Stored beside, not inside, pointer-only
     // PendingTree for the same reason as `walkerProcedure`: replay restores
     // it from the durable `WalkerParked` fact rather than re-deriving it, and
     // `WalkerCompleted` clears it alongside `walkerPending`/`walkerProcedure`.
     walkerModifiers: Vector[PowerId] = Vector.empty,
-    // What the player selected when the walker action started, for an action
+    // What the player selected when the walker procedure started, for an action
     // whose tree cannot be built without it (batch-1 Task 5) -- Travel's
     // destination is the only one today. They are `DecisionOptionRef`s, the
     // same game-object vocabulary a decision option names, so nothing outside

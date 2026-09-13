@@ -104,7 +104,7 @@ private[walker] object WalkerReplay {
           case Some(existing) => for {
             _ <- Either.cond(existing == procedure, (),
               OathViolation.InvalidEventOrder(
-                s"walker action ${procedure.key} does not match " +
+                s"walker procedure ${procedure.key} does not match " +
                   existing.key))
             _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
               OathViolation.InvalidEventOrder(

@@ -118,7 +118,7 @@ private[protocol] object CommandIntentDecoders {
       _ <- exact(value, Set("type", "action", "modifiers", "startArgs"), path)
       action <- string(value, "action", path)
       modifiers <- field(value, "modifiers", path).flatMap(strings(_, s"$path.modifiers"))
-      // Optional and empty by default: every walker action but Travel
+      // Optional and empty by default: every walker procedure but Travel
       // selects nothing before it starts.
       startArgs <- value.value.get("startArgs") match {
         case None => Right(Vector.empty[WalkerStartArgWire])

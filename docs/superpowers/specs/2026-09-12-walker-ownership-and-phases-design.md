@@ -528,6 +528,23 @@ as the active player; swapping `outcome`'s first two rows.
 `python3 scripts/check-architecture.py`, `git diff --check`.
 `BackendArchitectureSuite` stays green without being weakened.
 
+## Settled deviations
+
+Two implementation details differ from earlier wording in this spec; both are
+intentional and neither changes behaviour today:
+
+- **`OathkeeperRules.outcome` takes `ReadyGame`, not `CurrentGameState`.** The
+  Oathkeeper section above describes it as "a pure function over
+  `CurrentGameState`"; the implementation instead takes the whole `ReadyGame`,
+  since `qualifyingPlayers` needs `ready.game.campaign.oathkeeperGoal`
+  alongside `current`.
+- **`WalkerDecisionProjector.rollOutcome` receives the awaited player, not
+  `turn.activePlayer`.** The Projection section above describes Recover's roll
+  feedback as reading `turn.activePlayer`; the implementation instead passes
+  the player `ProcedureWalker.awaitedPlayer` resolves for the parked position.
+  The two are equal for every Roll registered today (a Roll park is always the
+  active player's), so this is a shape change, not a behaviour change.
+
 ## Open items
 
 - **Concurrent multi-owner decisions.** Negotiation accepts answers from a set

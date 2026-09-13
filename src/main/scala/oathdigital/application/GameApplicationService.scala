@@ -323,7 +323,7 @@ final class GameApplicationService(
           if ready.game.current.walkerPending.nonEmpty &&
             !isWalkerResume(command) =>
         Left(OathViolation.InvalidEventOrder(
-          "a walker action is pending; only walker resume commands are legal"))
+          "a walker procedure is pending; only walker resume commands are legal"))
       case _ => applyUnblockedCommand(state, command, nextSequence)
     }
 

@@ -36,7 +36,7 @@ private[gameplay] object OathLifecycle {
         Left(WrongPhase(Phase.Act, current.turn.phase))
       else if (current.walkerPending.nonEmpty)
         Left(InvalidEventOrder(
-          "a walker action is pending; legacy actions are blocked"))
+          "a walker procedure is pending; legacy actions are blocked"))
       else current.pending match {
         case Some(value) => Left(PendingProcedureBlocksAction(value.decision))
         case None => Right(ready)
