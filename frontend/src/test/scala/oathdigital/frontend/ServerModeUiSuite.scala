@@ -933,4 +933,24 @@ class ServerModeUiSuite extends FunSuite {
       ready = ready,
       completed = false
     )
+
+  /** Task 5: a `GameProjection` parked on the Forge decision above, for the
+    * waiting-notice test below. Reuses `forgeParked` -- the same
+    * `WalkerDecisionState` the "Forge is answered by..." test builds and
+    * asserts against -- rather than authoring a second, possibly diverging
+    * walker decision.
+    */
+  private def forgeProjection: GameProjection =
+    projection(Set.empty).copy(walkerDecision = Some(forgeParked))
+
+  test("a parked walker waiting on another player names them and the question") {
+    val waitingOn = forgeProjection.copy(walkerDecision = None,
+      walkerWaiting = Some(WalkerWaitingState(
+        forgeProjection.players.head.playerId, Some("Choose the Oathkeeper"))))
+    assertEquals(WalkerPanelSupport.waitingNotice(waitingOn),
+      Some(s"Waiting for ${forgeProjection.players.head.displayName}: " +
+        "Choose the Oathkeeper"))
+    assertEquals(WalkerPanelSupport.waitingNotice(
+      waitingOn.copy(walkerWaiting = None)), None)
+  }
 }

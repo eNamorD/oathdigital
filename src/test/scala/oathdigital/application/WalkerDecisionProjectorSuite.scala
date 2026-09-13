@@ -8,6 +8,7 @@ import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathViolation, ReadyGame}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
+import oathdigital.protocol.projection.WalkerWaitingProjection
 
 /** Batch-1 Task 3, ruling R18 (P4), second consulting call site.
   *
@@ -301,5 +302,41 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
         fail("a present relic option must project"))
     assertEquals(query.heading, None)
     assertEquals(query.confirmLabel, None)
+  }
+
+  /** Task 5: a parked `Decide` owned by a player other than the active one.
+    * `owner` is who [[WalkerDecisionProjector.project]] must show the
+    * decision to and [[WalkerDecisionProjector.waiting]] must name; `active`
+    * gets only the public waiting projection, same as any spectator.
+    */
+  private def parkedOffTurn: (ReadyGame, PlayerId, PlayerId,
+      WalkerDecisionProjector) = {
+    val Ready(base) = execute(setup)._1: @unchecked
+    val active = base.game.current.turn.activePlayer
+    val owner = base.game.current.players.map(_.player).find(_ != active).get
+    val tree: Operation = Sequence(Decide("test.off-turn", owner,
+      DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
+        DecisionOptionRef.Button("ok"), "OK")), heading = Some("Answer"))))
+    val ready = base.copy(game = base.game.copy(current =
+      base.game.current.copy(
+        turn = base.game.current.turn.copy(phase = Phase.Act),
+        walkerProcedure = Some(ActionRef.Recover),
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
+    val projector = new WalkerDecisionProjector(catalog,
+      new GamePresentationProjector(catalog), WalkerPowers.empty,
+      (_, _, _, _, _) => Right(tree))
+    (ready, active, owner, projector)
+  }
+
+  test("only the awaited player sees the decision; everyone else, the active " +
+      "player and spectators included, sees who is being waited on") {
+    val (ready, active, owner, projector) = parkedOffTurn
+    def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
+    assert(projector.project(ctx(Some(owner))).nonEmpty)
+    assertEquals(projector.project(ctx(Some(active))), None)
+    assertEquals(projector.waiting(ctx(Some(owner))), None)
+    val waiting = Some(WalkerWaitingProjection(owner.value, Some("Answer")))
+    assertEquals(projector.waiting(ctx(Some(active))), waiting)
+    assertEquals(projector.waiting(ctx(None)), waiting)
   }
 }

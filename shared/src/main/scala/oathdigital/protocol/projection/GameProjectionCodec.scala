@@ -19,7 +19,7 @@ object GameProjectionCodec {
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting",
-    "walkerDecision")
+    "walkerDecision", "walkerWaiting")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -97,7 +97,8 @@ object GameProjectionCodec {
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
     "restPower" -> option(value.restPower)(encodeRestPower),
     "restPowerWaiting" -> value.restPowerWaiting,
-    "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision))
+    "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
+    "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -161,12 +162,13 @@ object GameProjectionCodec {
     restPower <- optionalAbsent(value, "restPower", path)(decodeRestPower)
     restWaiting <- boolOr(value, "restPowerWaiting", path, false)
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
+    walkerWaiting <- optionalAbsent(value, "walkerWaiting", path)(decodeWalkerWaiting)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
-    walkerDecision)
+    walkerDecision, walkerWaiting)
 
   private def encodeRestPower(value: RestPowerProjection): ujson.Value = {
     value.payload match {

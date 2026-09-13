@@ -259,8 +259,9 @@ private[gameplay] trait OathRulesWalker {
         InvalidEventOrder("no walker action is pending"))
       pending <- ready.game.current.walkerPending.toRight(
         InvalidEventOrder("no walker position is pending"))
-      _ <- Either.cond(ready.game.current.turn.phase == Phase.Act, (),
-        WrongPhase(Phase.Act, ready.game.current.turn.phase))
+      // No phase gate: only resume commands are accepted while a walker is
+      // pending, so nothing else can change the phase, and the procedure's
+      // own build passed its phase gates at start.
       _ <- Either.cond(ready.game.current.pending.isEmpty, (),
         InvalidEventOrder("legacy pending procedure blocks walker resume"))
       activePlayer = ready.game.current.turn.activePlayer
@@ -401,9 +402,15 @@ private[gameplay] trait OathRulesWalker {
   private def parkedContinue(ready: ReadyGame, tree: Operation,
       pending: PendingTree, powers: WalkerPowers, procedure: ProcedureRef)
       : Either[OathViolation, OathContinue] = {
+    // The awaited player (a Decide's owner, or the active player for a
+    // Roll) names who must answer, so a continuation such as
+    // `AwaitingOathkeeperRecipient(owner, decision)` is issued together with
+    // the same recomputed owner that authorizes the next command.
+    val awaited = ProcedureWalker.awaitedPlayer(ready, tree, pending, powers)
+      .getOrElse(ready.game.current.turn.activePlayer)
     def continuationFor(decisionId: String): Either[OathViolation, OathContinue] =
       WalkerProcedureRegistry.continuationFor(procedure, decisionId,
-        ready.game.current.turn.activePlayer, DecisionId(decisionId))
+        awaited, DecisionId(decisionId))
         .flatMap(_.toRight(InvalidEventOrder(
           "no client continuation is registered for walker decision " +
             decisionId)))

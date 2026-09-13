@@ -87,7 +87,8 @@ class ProjectionProtocolSuite extends munit.FunSuite {
           DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
         heading = Some("Forge a relic"),
         confirmLabel = Some("Complete Forge"))),
-      rollOutcome = Some(WalkerRollOutcomeProjection(Vector("one-shield"), 1, 2)))))
+      rollOutcome = Some(WalkerRollOutcomeProjection(Vector("one-shield"), 1, 2)))),
+    walkerWaiting = Some(WalkerWaitingProjection("blue", Some("Choose the Oathkeeper"))))
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),

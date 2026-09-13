@@ -206,6 +206,12 @@ final case class WalkerRollOutcomeProjection(
     score: Int,
     difficulty: Int
 )
+/** Public: who a parked walker position waits on, and the question's heading
+  * when it has one (`None` for a roll). Every viewer except the awaited
+  * player receives this; the awaited player receives `WalkerDecisionProjection`.
+  */
+final case class WalkerWaitingProjection(playerId: String,
+    heading: Option[String] = None)
 final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
   def banner: String = key

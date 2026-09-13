@@ -145,4 +145,6 @@ package object frontend {
   val WalkerDecisionState = protocol.projection.WalkerDecisionProjection
   type WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
   val WalkerRollOutcomeState = protocol.projection.WalkerRollOutcomeProjection
+  type WalkerWaitingState = protocol.projection.WalkerWaitingProjection
+  val WalkerWaitingState = protocol.projection.WalkerWaitingProjection
 }

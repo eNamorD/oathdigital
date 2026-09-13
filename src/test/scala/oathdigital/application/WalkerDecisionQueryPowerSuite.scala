@@ -213,4 +213,38 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assert(answering(state, actor, retitling, continueOption).isLeft)
     assert(answering(state, actor, retitling, stopOption).isRight)
   }
+
+  /** Task 5: a power that reowns the parked `Decide` moves who may answer it
+    * (the walker), who is projected it (`project`) and who the public
+    * waiting projection names (`waiting`) -- all in the one edit, because
+    * all three read the same transformed node's `owner`.
+    */
+  test("a power that reowns a parked Decide moves who may answer it, who is " +
+      "projected it, and who the waiting projection names") {
+    val (ready, actor) = actable
+    val other = ready.game.current.players.map(_.player).find(_ != actor).get
+    val powers = WalkerPowers(Vector(ProcedureWalkerSuite.TestTransformPower(
+      PowerId("test.reowns"), window, (_, ops) => ops.map {
+        case decide: Decide => decide.copy(owner = other)
+        case op => op
+      })))
+    val state = parked(ready, actor, powers)
+
+    assert(rules(actor, powers).resolveWalker(state, other,
+      RecoverProcedure.choiceDecisionId,
+      DecisionAnswer.ChooseOneAnswer(continueOption)).isRight,
+      "the new owner must be accepted")
+    assertEquals(rules(actor, powers).resolveWalker(state, actor,
+      RecoverProcedure.choiceDecisionId,
+      DecisionAnswer.ChooseOneAnswer(continueOption)),
+      Left(oathdigital.gameplay.OathViolation.WrongPlayer(other, actor)))
+
+    val Ready(readyState) = state: @unchecked
+    assert(projector(actor, powers).project(
+      ScopedProjectionContext(readyState, Some(other))).nonEmpty,
+      "the new owner must be projected the decision")
+    assertEquals(projector(actor, powers).waiting(
+      ScopedProjectionContext(readyState, Some(actor))).map(_.playerId),
+      Some(other.value))
+  }
 }

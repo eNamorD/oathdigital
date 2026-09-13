@@ -41,4 +41,5 @@ final case class GameProjection(
     ,restPower: Option[RestPowerProjection] = None
     ,restPowerWaiting: Boolean = false
     ,walkerDecision: Option[WalkerDecisionProjection] = None
+    ,walkerWaiting: Option[WalkerWaitingProjection] = None
 )

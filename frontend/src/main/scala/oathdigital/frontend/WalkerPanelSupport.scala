@@ -105,6 +105,26 @@ private[frontend] object WalkerPanelSupport {
       s"Rolled ${outcome.faces.mkString(", ")} -- ${outcome.score} shields " +
         s"so far (need ${outcome.difficulty})."
 
+  /** The public line shown to every viewer a parked walker position is NOT
+    * waiting on (Task 5): who it awaits, and the question's heading when it
+    * has one -- `None` for a parked Roll, which asks nothing. `None` here
+    * (no `walkerWaiting` at all) means either nothing is parked or this
+    * viewer IS the one it awaits, in which case `renderRecoverPanel`/
+    * `renderPartitionPanel` above render the decision itself instead.
+    */
+  private[frontend] def waitingNotice(value: GameProjection): Option[String] =
+    value.walkerWaiting.map { waiting =>
+      val name = value.players.find(_.playerId == waiting.playerId)
+        .map(_.displayName).getOrElse(waiting.playerId)
+      waiting.heading.fold(s"Waiting for $name")(heading =>
+        s"Waiting for $name: $heading")
+    }
+
+  private[frontend] def renderWaitingNotice(value: GameProjection,
+      panel: dom.Element): Unit =
+    waitingNotice(value).foreach(notice =>
+      panel.appendChild(text("p", "walker-waiting", notice)))
+
   /** Renders the Recover panel for whichever of the three parks
     * (`recoverWalkerStep`) the walker is at. Shows `rollOutcomeSummary`
     * (I5) above each park's controls, and gates "Spend 1 Supply for two

@@ -12,7 +12,7 @@ import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
   DecisionSectionProjection, WalkerDecisionProjection,
-  WalkerRollOutcomeProjection}
+  WalkerRollOutcomeProjection, WalkerWaitingProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
   * + `walkerProcedure`, Task 6) into the small owner-private
@@ -48,21 +48,49 @@ private[application] final class WalkerDecisionProjector(
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog))
 
-  def project(context: ScopedProjectionContext)
-      : Option[WalkerDecisionProjection] = {
-    val activePlayer = context.current.turn.activePlayer
+  private def parkedPosition(context: ScopedProjectionContext)
+      : Option[WalkerDecisionProjector.Parked] = {
+    import WalkerDecisionProjector.Parked
     for {
       pending <- context.current.walkerPending
       procedure <- context.current.walkerProcedure
-      if context.viewer.contains(activePlayer)
-      tree <- rebuild(context.ready, procedure, activePlayer,
+      tree <- rebuild(context.ready, procedure,
+        context.current.turn.activePlayer,
         context.current.walkerStartArgs).toOption
       powers = WalkerPowers.selected(walkerPowerCatalog,
         context.current.walkerModifiers)
-      projection <- parked(procedure, tree, context.ready, pending, powers,
-        activePlayer)
-    } yield projection
+      awaited <- ProcedureWalker.awaitedPlayer(context.ready, tree, pending,
+        powers)
+    } yield Parked(procedure, tree, pending, powers, awaited)
   }
+
+  /** The full owner-private projection, for the awaited player only. */
+  def project(context: ScopedProjectionContext)
+      : Option[WalkerDecisionProjection] = for {
+    parked <- parkedPosition(context)
+    if context.viewer.contains(parked.awaited)
+    projection <- this.parked(parked.procedure, parked.tree, context.ready,
+      parked.pending, parked.powers, parked.awaited)
+  } yield projection
+
+  /** The public "who is this waiting on" projection, for every viewer
+    * except the awaited player -- Task 5's counterpart to `project`. Built
+    * off the same [[WalkerDecisionProjector.Parked]] position, so a viewer
+    * who is not the awaited player always sees a projection naming exactly
+    * who is.
+    */
+  def waiting(context: ScopedProjectionContext)
+      : Option[WalkerWaitingProjection] = for {
+    parked <- parkedPosition(context)
+    if !context.viewer.contains(parked.awaited)
+    _ <- this.parked(parked.procedure, parked.tree, context.ready,
+      parked.pending, parked.powers, parked.awaited)
+  } yield WalkerWaitingProjection(parked.awaited.value,
+    ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
+      parked.powers).flatMap(decide => decide.query match {
+        case DecisionQuery.ChooseOne(_, heading) => heading
+        case DecisionQuery.Partition(_, _, heading, _) => heading
+      }))
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
@@ -70,7 +98,7 @@ private[application] final class WalkerDecisionProjector(
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
-      activePlayer: PlayerId): Option[WalkerDecisionProjection] =
+      awaited: PlayerId): Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
       // R18: a procedure whose entry declares no roll decision id has no
       // answer to "which id is this Roll park", so the accessor's typed
@@ -81,7 +109,7 @@ private[application] final class WalkerDecisionProjector(
         WalkerProcedureRegistry.rollDecisionId(procedure).toOption.map(
           rollId => WalkerDecisionProjection(procedure.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
-            rollOutcome = rollOutcome(ready, activePlayer)))
+            rollOutcome = rollOutcome(ready, awaited)))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
@@ -93,11 +121,11 @@ private[application] final class WalkerDecisionProjector(
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-        .flatMap(decide => queryProjection(ready, Some(activePlayer),
+        .flatMap(decide => queryProjection(ready, Some(awaited),
           decide.query).map(query =>
           WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
             query = Some(query),
-            rollOutcome = rollOutcome(ready, activePlayer))))
+            rollOutcome = rollOutcome(ready, awaited))))
     }
 
   /** Describes a declared query, or `None` when any single option's identity
@@ -297,4 +325,21 @@ private[application] object WalkerDecisionProjector {
 
   val declaredTree: TreeSource = (catalog, procedure, ready, actor, args) =>
     WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor, args)
+
+  /** A parked position, fully resolved: the rebuilt+power-folded tree, and
+    * `awaited` -- a parked `Decide`'s owner, or the active player for a
+    * `Roll` -- read off it by [[ProcedureWalker.awaitedPlayer]] (Task 5).
+    * `project` and `waiting` share this so the two projections never
+    * recompute the owner differently.
+    *
+    * Lives here, on the companion object, rather than nested in the class:
+    * a case class nested in a class or trait carries a path-dependent outer
+    * type, and scalac's auto-generated `equals`/`canEqual` for it trips
+    * "the outer reference in this type test cannot be checked at run time"
+    * (see `OathRulesWalker.WalkerCompletion` for that exact warning, left
+    * as-is there since it predates this task). A case class on a singleton
+    * object carries no such outer instance, so it triggers no warning.
+    */
+  private final case class Parked(procedure: ProcedureRef, tree: Operation,
+      pending: PendingTree, powers: WalkerPowers, awaited: PlayerId)
 }

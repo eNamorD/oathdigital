@@ -156,7 +156,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(restPower = pending.restPower,
         restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting,
-        walkerDecision = pending.walkerDecision)
+        walkerDecision = pending.walkerDecision,
+        walkerWaiting = pending.walkerWaiting)
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

@@ -195,6 +195,15 @@ private[projection] object ActionProjectionCodec {
   } yield WalkerDecisionProjection(action, decision, kind, pool, count, query,
     rollOutcome)
 
+  def encodeWalkerWaiting(value: WalkerWaitingProjection): ujson.Value = ujson.Obj(
+    "playerId" -> value.playerId, "heading" -> stringOption(value.heading))
+  def decodeWalkerWaiting(raw: ujson.Value, path: String): Result[WalkerWaitingProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("playerId", "heading"), path)
+    playerId <- string(value, "playerId", path)
+    heading <- optionalString(value, "heading", path)
+  } yield WalkerWaitingProjection(playerId, heading)
+
   /** A projected decision query: one `form` string, the options, and the
     * sections a partition declares. An option's `kind`/`id` pair is the
     * same spelling a submitted and a journalled answer use, so this codec

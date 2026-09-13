@@ -36,7 +36,8 @@ private[application] final case class PendingProjection(
     negotiationWaiting: Boolean,
     restPower: Option[RestPowerProjection],
     restPowerWaiting: Boolean,
-    walkerDecision: Option[WalkerDecisionProjection]
+    walkerDecision: Option[WalkerDecisionProjection],
+    walkerWaiting: Option[WalkerWaitingProjection]
 )
 
 // [[WalkerDecisionProjection]] itself now lives on the wire: it is the

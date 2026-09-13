@@ -14,6 +14,7 @@ private[application] final class PendingProcedureProjector(
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
     val walkerDecision = walkerDecisions.project(context)
+    val walkerWaiting = walkerDecisions.waiting(context)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
@@ -32,7 +33,7 @@ private[application] final class PendingProcedureProjector(
         case p: PendingProcedure.RestPowerDecision =>
           !context.viewer.contains(p.current.decisionOwner)
         case _ => false
-      }, walkerDecision)
+      }, walkerDecision, walkerWaiting)
   }
 
   private def restPowerProjection(context: ScopedProjectionContext) =

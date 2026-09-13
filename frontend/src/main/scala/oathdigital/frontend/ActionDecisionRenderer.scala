@@ -340,6 +340,7 @@ private[frontend] object ActionDecisionRenderer {
      panel, ui)
    WalkerPanelSupport.renderPartitionPanel(value, presentation, canControl,
      panel, ui)
+   WalkerPanelSupport.renderWaitingNotice(value, panel)
    value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
      panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
      challengeSiteCommands(challenge, currentPlayerId).foreach { command =>

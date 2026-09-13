@@ -557,4 +557,61 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
         "walker action forge declares no roll decision id")))
   }
 
+  // -------------------------------------------------------------------------
+  // Task 5: off-turn ownership and any-phase resume.
+  // -------------------------------------------------------------------------
+
+  /** A single decision owned by `owner`, which need not be the active player. */
+  private def ownedTree(owner: PlayerId): Operation = Sequence(Decide(
+    decisionId = RecoverProcedure.choiceDecisionId,
+    owner = owner,
+    query = DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(ProcedureWalkerSuite.continueOption, "Continue")))))
+
+  private def ownedRules(owner: PlayerId): OathRules =
+    new OathRules(catalog, walkerTree = (_, _, _, _, _, _) =>
+      Right(ownedTree(owner)))
+
+  private val continue = DecisionAnswer.ChooseOneAnswer(
+    ProcedureWalkerSuite.continueOption)
+
+  test("an off-turn decision is answered by its owner, and the active player " +
+      "is rejected") {
+    val (ready, actor) = actable
+    val owner = ready.game.current.players.map(_.player).find(_ != actor).get
+    val started = ownedRules(owner).startWalker(Ready(ready), ActionRef.Recover,
+      actor).toOption.get
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(owner,
+      DecisionId(RecoverProcedure.choiceDecisionId)))
+    assertEquals(ownedRules(owner).resolveWalker(started.state, actor,
+      RecoverProcedure.choiceDecisionId, continue),
+      Left(OathViolation.WrongPlayer(owner, actor)))
+    val answered = ownedRules(owner).resolveWalker(started.state, owner,
+      RecoverProcedure.choiceDecisionId, continue)
+    assert(answered.isRight, s"the owner's answer must be accepted, got $answered")
+  }
+
+  test("a walker parks and resumes outside the Act phase") {
+    val (act, actor) = actable
+    val wake = act.copy(game = act.game.copy(current = act.game.current.copy(
+      turn = act.game.current.turn.copy(phase = Phase.Wake))))
+    val started = rules(actor, WalkerPowers.empty).startWalker(Ready(wake),
+      ActionRef.Recover, actor).toOption.get
+    assert(started.events.last.isInstanceOf[WalkerParked])
+    val resumed = rules(actor, WalkerPowers.empty).resolveWalker(started.state,
+      actor, RecoverProcedure.choiceDecisionId, continue)
+    assert(resumed.isRight, s"a Wake resume must not be phase-gated, got $resumed")
+  }
+
+  test("a procedure completing in a phase with no walker continuation is " +
+      "still a typed rejection") {
+    val (act, actor) = actable
+    val rest = act.copy(game = act.game.copy(current = act.game.current.copy(
+      turn = act.game.current.turn.copy(phase = Phase.Rest))))
+    val flat = new OathRules(catalog, walkerTree = (_, _, _, _, _, _) =>
+      Right(Sequence(Vector.empty)))
+    assertEquals(flat.startWalker(Ready(rest), ActionRef.Recover, actor),
+      Left(OathViolation.InvalidEventOrder("a walker procedure completed in " +
+        "the Rest phase, which has no walker continuation")))
+  }
 }

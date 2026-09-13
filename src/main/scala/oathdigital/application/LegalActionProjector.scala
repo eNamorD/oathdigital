@@ -178,7 +178,7 @@ private[application] final class LegalActionProjector(
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command
     * for exactly this reason — see Task 6 command-exclusivity ruling); the
     * only legal controls are answering the parked position itself, visible
-    * only to its actor.
+    * only to the player the parked position awaits.
     */
   private def walkerControls(context: ScopedProjectionContext): Vector[String] =
     walkerDecisions.project(context).toVector.map {
