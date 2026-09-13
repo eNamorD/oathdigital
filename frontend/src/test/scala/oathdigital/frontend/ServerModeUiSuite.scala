@@ -493,7 +493,7 @@ class ServerModeUiSuite extends FunSuite {
       WalkerDecisionState("recover", "some.other.decision", "decide")), None)
   }
 
-  test("a parked decision for a walker action other than Recover renders no " +
+  test("a parked decision for a walker procedure other than Recover renders no " +
       "Recover control, even if it happens to reuse a Recover-shaped kind") {
     assertEquals(WalkerPanelSupport.recoverWalkerStep(
       WalkerDecisionState("teleport", "walker.recover.roll", "roll",
