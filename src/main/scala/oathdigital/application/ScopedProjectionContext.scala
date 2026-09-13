@@ -30,7 +30,6 @@ private[application] final case class PendingProjection(
     cardDecision: Option[PendingCardDecisionProjection],
     campaign: Option[CampaignProjection],
     campaignRaidRelocation: Option[CampaignRaidRelocationProjection],
-    oathkeeperRecipient: Option[OathkeeperRecipientProjection],
     challenge: Option[ChallengeProjection],
     negotiation: Option[NegotiationProjection],
     negotiationWaiting: Boolean,

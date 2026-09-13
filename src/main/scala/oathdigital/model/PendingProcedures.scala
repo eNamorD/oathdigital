@@ -380,12 +380,6 @@ object PendingProcedure {
       secretsPlaced: Vector[SiteId] = Vector.empty
   ) extends PendingProcedure
 
-  final case class OathkeeperRecipient(
-      decision: DecisionId,
-      actor: PlayerId,
-      candidates: Vector[PlayerId]
-  ) extends PendingProcedure
-
   final case class Conspiracy(
       decision: DecisionId,
       actor: PlayerId,

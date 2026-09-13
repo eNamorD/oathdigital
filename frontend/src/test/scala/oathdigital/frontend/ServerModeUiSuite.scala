@@ -979,4 +979,19 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(WalkerPanelSupport.waitingNotice(
       waitingOn.copy(walkerWaiting = None)), None)
   }
+  test("a choose-one decision outside Recover is answered from its projected options") {
+    val decision = WalkerDecisionState("oathkeeper", "oathkeeper.recipient",
+      "decide", query = Some(DecisionQueryState("choose-one", Vector(
+        DecisionOptionState("player", "blue", "blue"),
+        DecisionOptionState("player", "yellow", "yellow")),
+        heading = Some("Choose the Oathkeeper"))))
+    assertEquals(WalkerPanelSupport.chooseOneStep(decision).map(_.options.map(_.id)),
+      Some(Vector("blue", "yellow")))
+    assertEquals(WalkerPanelSupport.chooseOneStep(decision.copy(action = "recover")),
+      None)
+    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(decision,
+      decision.query.get.options(1)),
+      GameCommand.ResolveWalker("red", "oathkeeper.recipient",
+        DecisionAnswerWire.ChooseOneWire("player", "yellow")))
+  }
 }

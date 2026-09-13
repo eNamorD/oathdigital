@@ -14,6 +14,7 @@ import oathdigital.catalog.CatalogPower
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{Location, Move => CoreMove, Piece,
   PositionedLocation}
+import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
 
 class CampaignSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -185,8 +186,12 @@ class CampaignSuite extends munit.FunSuite {
     assert(completed.events.drop(2).exists(_.isInstanceOf[BanditsRefilled]),
       "Raid relocation must enter the completed-action boundary")
     assert(completed.events.count(_.isInstanceOf[BanditsRefilled]) <= 1)
-    assert(completed.events.count(e => e.isInstanceOf[OathkeeperChanged] ||
-      e.isInstanceOf[OathkeeperRecipientChoiceStarted]) <= 1)
+    assert(completed.events.count {
+      case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => true
+      case parked: WalkerParked =>
+        parked.procedure == TriggeredProcedureRef.Oathkeeper
+      case _ => false
+    } <= 1)
     val Ready(after) = completed.state: @unchecked
     val nextAttacker = after.game.current.players.find(_.player == attacker.player).get
     val nextDefender = after.game.current.players.find(_.player == defender.player).get

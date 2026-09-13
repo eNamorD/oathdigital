@@ -2,13 +2,15 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperOutcome,
+  OathkeeperRules}
+import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.gameplay.phases.RestCommand
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
 
 class StateBasedEvaluationSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -22,17 +24,9 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       limited: Boolean = true
   ): ReadyGame = {
     val Ready(base) = execute(setup)._1: @unchecked
-    val byPlayer = base.game.current.players.map(p => p.player -> p.lineage).toMap
-    val sites = base.game.current.map.inPlay.zipWithIndex.map { case (id, index) =>
-      val force = owners.lift(index).flatten.fold[SiteForces](
-        SiteForces.Occupied(ForceKind.Bandit, 1))(player =>
-        SiteForces.Occupied(ForceKind.Exile(byPlayer(player)), 1))
-      id -> base.game.current.map.sites(id).copy(forces = force)
-    }.toMap
-    base.copy(game = base.game.copy(current = base.game.current.copy(
-      map = base.game.current.map.copy(sites = sites),
-      title = OathkeeperState(holder, side),
-      tracks = base.game.current.tracks.copy(round = round,
+    val ruled = OathkeeperFixture.ruled(base, owners, holder, side)
+    ruled.copy(game = ruled.game.copy(current = ruled.game.current.copy(
+      tracks = ruled.game.current.tracks.copy(round = round,
         usurperLimited = limited))))
   }
 
@@ -52,56 +46,14 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
 
     assert(accepted.events.head.isInstanceOf[
       oathdigital.gameplay.walker.WalkerStepRecorded])
-    assertEquals(accepted.events.last, OathkeeperChanged(Some(PlayerId("p2"))))
+    assertEquals(accepted.events.last,
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
     val Ready(after) = accepted.state: @unchecked
     assertEquals(after.game.current.title,
       OathkeeperState(Some(PlayerId("p2")), TitleSide.Oathkeeper))
     val replayed = accepted.events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(act)))((state, event) => state.flatMap(rules.evolve(_, event)))
     assertEquals(replayed, Right(accepted.state))
-  }
-
-  test("F7 retains a highest tied holder but does not invent an initial tie winner") {
-    val players = execute(setup)._1.asInstanceOf[Ready].value.game.current.players
-      .map(_.player)
-    val tied = Vector(Some(players(0)), Some(players(1)))
-    assertEquals(StateBasedEvaluation.afterAction(Ready(prepared(tied))), Right(None))
-
-    val retained = prepared(tied, holder = Some(players(0)))
-    assertEquals(StateBasedEvaluation.afterAction(Ready(retained)), Right(None))
-  }
-
-  test("F7 records and resolves a displaced-holder tie choice") {
-    val players = execute(setup)._1.asInstanceOf[Ready].value.game.current.players
-      .map(_.player)
-    val state = prepared(Vector(Some(players(0)), Some(players(1))),
-      holder = Some(players(2)))
-    val started = StateBasedEvaluation.afterAction(Ready(state)).toOption.get.get
-      .asInstanceOf[OathkeeperRecipientChoiceStarted]
-    assertEquals(started.actor, players(2))
-    assertEquals(started.candidates, Vector(players(0), players(1)))
-    val pending = rules.evolve(Ready(state), started).toOption.get
-    val projector = new GameProjector(catalog)
-    assertEquals(projector.project("tie", LoadedGame(pending, 10), players(2))
-      .oathkeeperRecipient.map(_.candidatePlayerIds),
-      Some(started.candidates.map(_.value)))
-    assertEquals(projector.project("tie", LoadedGame(pending, 10), players(0))
-      .oathkeeperRecipient, None)
-    assertEquals(projector.projectPublic("tie", LoadedGame(pending, 10))
-      .oathkeeperRecipient, None)
-    assert(rules.chooseOathkeeperRecipient(pending, players(0), started.decision,
-      players(0)).left.toOption.get.isInstanceOf[WrongPlayer])
-    assert(rules.chooseOathkeeperRecipient(pending, players(2), started.decision,
-      players(2)).isLeft)
-    val chosen = rules.chooseOathkeeperRecipient(pending, players(2),
-      started.decision, players(1)).toOption.get
-    assertEquals(chosen.events,
-      Vector(OathkeeperRecipientChosen(players(2), started.decision, players(1))))
-    val Ready(after) = chosen.state: @unchecked
-    assertEquals(after.game.current.title,
-      OathkeeperState(Some(players(1)), TitleSide.Oathkeeper))
-    assertEquals(after.game.current.pending, None)
-    assertEquals(rules.evolve(pending, chosen.events.head), Right(chosen.state))
   }
 
   test("all four printed goals qualify from their authoritative holdings") {
@@ -138,11 +90,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       }
       val scoped = state.copy(game = state.game.copy(
         campaign = state.game.campaign.copy(oathkeeperGoal = goal)))
-      val event = OathkeeperChanged(Some(expected))
-      assertEquals(StateBasedEvaluation.afterAction(Ready(scoped)),
-        Right(Some(event)), clue(goal))
-      assertEquals(rules.evolve(Ready(scoped), event).map(_.asInstanceOf[Ready]
-        .value.game.current.title.holder), Right(Some(expected)), clue(goal))
+      assertEquals(OathkeeperRules.outcome(scoped),
+        OathkeeperOutcome.Transfer(Some(expected)), clue(goal))
       assertEquals(new GameProjector(catalog).projectPublic("goal",
         LoadedGame(Ready(scoped), 0)).oathkeeper.map(_.goal),
         Some(goal.key), clue(goal))
@@ -155,7 +104,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val protection = base.copy(game = base.game.copy(
       campaign = base.game.campaign.copy(
         oathkeeperGoal = OathkeeperGoal.Protection)))
-    assertEquals(StateBasedEvaluation.afterAction(Ready(protection)), Right(None))
+    assertEquals(OathkeeperRules.outcome(protection), OathkeeperOutcome.NoChange)
 
     val tiedPlayers = players.zipWithIndex.map { case (player, index) =>
       if (index < 2) player.copy(relics = Vector(RelicState(
@@ -165,7 +114,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val tied = protection.copy(game = protection.game.copy(
       current = protection.game.current.copy(players = tiedPlayers,
         title = OathkeeperState(Some(players.head.player), TitleSide.Oathkeeper))))
-    assertEquals(StateBasedEvaluation.afterAction(Ready(tied)), Right(None))
+    assertEquals(OathkeeperRules.outcome(tied), OathkeeperOutcome.NoChange)
   }
 
   test("round four releases limiter and retained Usurper wins next Wake") {

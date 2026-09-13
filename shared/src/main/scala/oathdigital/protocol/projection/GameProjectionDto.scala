@@ -27,8 +27,7 @@ final case class GameProjection(
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
-    oathkeeper: Option[OathkeeperProjection] = None,
-    oathkeeperRecipient: Option[OathkeeperRecipientProjection] = None
+    oathkeeper: Option[OathkeeperProjection] = None
     ,banners: Vector[BannerProjection] = Vector.empty
     ,challenge: Option[ChallengeProjection] = None
     ,minorActions: Option[MinorActionsProjection] = None

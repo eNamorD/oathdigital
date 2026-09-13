@@ -41,7 +41,6 @@ private[protocol] object CommandIntentCodec {
     case ChooseCampaignSacrifice(id, count) => tagged("chooseCampaignSacrifice", "decisionId" -> id, "count" -> count)
     case PlaceCampaignForce(id, allocations) => tagged("placeCampaignForce", "decisionId" -> id, "allocations" -> ujson.Arr.from(allocations.map(allocation)))
     case RelocateCampaignRaidPawn(id, site) => tagged("relocateCampaignRaidPawn", "decisionId" -> id, "destinationSiteId" -> site)
-    case ChooseOathkeeperRecipient(id, recipient) => tagged("chooseOathkeeperRecipient", "decisionId" -> id, "recipientPlayerId" -> recipient)
     case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
     case StartWalker(action, modifiers, startArgs) =>
       tagged("startWalker", "action" -> action,

@@ -109,7 +109,6 @@ private[protocol] object CommandIntentDecoders {
       _ <- noDuplicates(allocations.map(_.siteId), s"$path.allocations")
     } yield PlaceCampaignForce(id, allocations)
     case "relocateCampaignRaidPawn" => two(value, path, "decisionId", "destinationSiteId")(RelocateCampaignRaidPawn)
-    case "chooseOathkeeperRecipient" => two(value, path, "decisionId", "recipientPlayerId")(ChooseOathkeeperRecipient)
     case "resolveCardDecision" => for {
       _ <- exact(value, Set("type", "decisionId", "resolution"), path)
       id <- string(value, "decisionId", path)

@@ -33,7 +33,6 @@ class CommandProtocolSuite extends munit.FunSuite {
     FinishCampaignPlans("cp1"), ChooseCampaignSacrifice("cp1", 1),
     PlaceCampaignForce("cp1", Vector(CampaignForceAllocation("site:a", 2))),
     RelocateCampaignRaidPawn("cp1", "site:c"),
-    ChooseOathkeeperRecipient("o1", "p2"),
     ResolveCardDecision("d1", DecisionResolution.Search(
       WorldCard("vision", "v1"), Vector(WorldCard("denizen", "d2")),
       Placement("adviser-face-down", Some(CardRef("denizen", "d3"))))),

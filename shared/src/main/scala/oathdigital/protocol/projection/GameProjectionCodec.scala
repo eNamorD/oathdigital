@@ -16,7 +16,7 @@ object GameProjectionCodec {
     "legalTravelDestinations", "legalSearchSources", "legalMusters", "legalTrades",
     "boardTargetActions", "pendingCardDecision", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
-    "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
+    "oathkeeper", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting",
     "walkerDecision", "walkerWaiting")
@@ -72,9 +72,6 @@ object GameProjectionCodec {
       "side" -> o.side, "usurperLimited" -> o.usurperLimited,
       "winnerPlayerId" -> stringOption(o.winnerPlayerId),
       "winnerVictoryKind" -> stringOption(o.winnerVictoryKind))),
-    "oathkeeperRecipient" -> option(value.oathkeeperRecipient)(o => ujson.Obj(
-      "decisionId" -> o.decisionId, "actorPlayerId" -> o.actorPlayerId,
-      "candidatePlayerIds" -> encoded(o.candidatePlayerIds)(ujson.Str(_)))),
     "banners" -> encoded(value.banners)(b => ujson.Obj(
       "banner" -> b.key, "face" -> b.face,
       "holderPlayerId" -> stringOption(b.holderPlayerId), "resources" -> b.resources)),
@@ -136,7 +133,6 @@ object GameProjectionCodec {
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
     boards <- traverse(boardRaws, s"$path.playerBoards")(decodeBoard)
     oathkeeper <- optionalAbsent(value, "oathkeeper", path)(decodeOathkeeper)
-    recipient <- optionalAbsent(value, "oathkeeperRecipient", path)(decodeRecipient)
     bannerRaws <- default(value, "banners", path, Vector.empty[ujson.Value])(array)
     banners <- traverse(bannerRaws, s"$path.banners")(decodeBanner)
     challenge <- optionalAbsent(value, "challenge", path)(decodeChallenge)
@@ -166,7 +162,7 @@ object GameProjectionCodec {
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, campaign, relocation,
-    deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
+    deckCount, deckTop, boards, oathkeeper, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
     walkerDecision, walkerWaiting)
 
@@ -261,11 +257,6 @@ object GameProjectionCodec {
     side <- string(v, "side", path); limited <- bool(v, "usurperLimited", path)
     winner <- optionalString(v, "winnerPlayerId", path); kind <- optionalString(v, "winnerVictoryKind", path)
   } yield OathkeeperProjection(goal, holder, side, limited, winner, kind)
-  private def decodeRecipient(raw: ujson.Value, path: String): Result[OathkeeperRecipientProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "candidatePlayerIds"), path)
-    decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)
-    candidates <- strings(v, "candidatePlayerIds", path)
-  } yield OathkeeperRecipientProjection(decision, actor, candidates)
   private def decodeBanner(raw: ujson.Value, path: String): Result[BannerProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("banner", "face", "holderPlayerId", "resources"), path)
     key <- string(v, "banner", path); face <- string(v, "face", path)

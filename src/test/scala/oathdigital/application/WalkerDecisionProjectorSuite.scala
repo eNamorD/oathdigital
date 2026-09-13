@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperProcedure}
 import oathdigital.gameplay.operations.{Decide, Operation, Roll, Sequence}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.FirstGameSetupRules
@@ -338,5 +339,69 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     val waiting = Some(WalkerWaitingProjection(owner.value, Some("Answer")))
     assertEquals(projector.waiting(ctx(Some(active))), waiting)
     assertEquals(projector.waiting(ctx(None)), waiting)
+  }
+
+  /** Task 7: the production Oathkeeper tree parked on a tie. The tree comes
+    * from the default `declaredTree`, so the registry entry, the awaited
+    * player and the Player-option presentation are all the real ones.
+    */
+  private def parkedOathkeeperTie: (ReadyGame, PlayerId, PlayerId,
+      Vector[PlayerId]) = {
+    val base = OathkeeperFixture.base
+    val active = base.game.current.turn.activePlayer
+    val holder = OathkeeperFixture.players.find(_ != active).get
+    val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
+    val ruled = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(base,
+      leaders.map(Some(_)), holder = Some(holder)), Phase.Act)
+    val ready = ruled.copy(game = ruled.game.copy(current =
+      ruled.game.current.copy(
+        walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
+    (ready, active, holder, leaders)
+  }
+
+  test("a parked Oathkeeper tie shows the holder the tied leaders and names " +
+      "the holder to everyone else") {
+    val (ready, active, holder, leaders) = parkedOathkeeperTie
+    def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
+    val projector = new WalkerDecisionProjector(catalog,
+      new GamePresentationProjector(catalog), WalkerPowers.empty)
+    val query = projector.project(ctx(Some(holder))).flatMap(_.query)
+    assertEquals(query.map(_.options.map(_.kind)),
+      Some(Vector("player", "player")))
+    assertEquals(query.map(_.options.map(_.id)), Some(leaders.map(_.value)))
+    assertEquals(projector.project(ctx(Some(active))), None)
+    val waiting = Some(WalkerWaitingProjection(holder.value,
+      Some("Choose the Oathkeeper")))
+    assertEquals(projector.waiting(ctx(Some(active))), waiting)
+    assertEquals(projector.waiting(ctx(None)), waiting)
+  }
+
+  /** Ruling R-P1: a Player option naming nobody seated cannot be presented.
+    * Only the tree is substituted, and within it only one candidate.
+    */
+  test("an Oathkeeper candidate who holds no seat suppresses the projection") {
+    val (ready, _, holder, _) = parkedOathkeeperTie
+    def ctx(viewer: Option[PlayerId]) = ScopedProjectionContext(ready, viewer)
+    val unseated = PlayerId("unseated")
+    assert(!ready.game.current.players.exists(_.player == unseated))
+    val production = OathkeeperProcedure.build(catalog, ready,
+      ready.game.current.turn.activePlayer, Vector.empty)
+      .getOrElse(fail("the tie must build a tree"))
+    val substituted: Operation = production match {
+      case Sequence(children, window) => Sequence(children.map {
+        case decide: Decide => decide.query match {
+          case query: DecisionQuery.ChooseOne => decide.copy(query = query.copy(
+            options = query.options.updated(1,
+              DecisionOption.Player(DecisionOptionRef.Player(unseated)))))
+          case other => fail(s"expected a choose-one query, got $other")
+        }
+        case other => other
+      }, window)
+      case other => fail(s"expected a Sequence, got $other")
+    }
+    val broken = projectorFor(substituted)
+    assertEquals(broken.project(ctx(Some(holder))), None)
+    assertEquals(broken.waiting(ctx(None)), None)
   }
 }

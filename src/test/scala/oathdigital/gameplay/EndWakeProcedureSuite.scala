@@ -87,8 +87,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     val accepted = endWake(state, activePlayer(state)).toOption.get
     assertEquals(accepted.events.collect { case event: BanditsRefilled =>
       event }, Vector.empty)
-    assertEquals(accepted.events.collect { case event: OathkeeperChanged =>
-      event }, Vector.empty)
+    assertEquals(accepted.events.collect {
+      case WalkerCompleted(TriggeredProcedureRef.Oathkeeper) => () }, Vector.empty)
   }
 
   test("ending Wake remains legal while another player has a revealed Vision") {

@@ -80,8 +80,6 @@ object GameCommand {
       allocations: Vector[CampaignForceAllocation]) extends GameCommand
   final case class RelocateCampaignRaidPawn(playerId: PlayerId,
       decision: DecisionId, destinationSiteId: SiteId) extends GameCommand
-  final case class ChooseOathkeeperRecipient(playerId: PlayerId,
-      decision: DecisionId, recipient: PlayerId) extends GameCommand
   /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class CompleteSearch(
       playerId: PlayerId,

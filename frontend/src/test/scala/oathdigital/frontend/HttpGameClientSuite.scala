@@ -144,22 +144,6 @@ class HttpGameClientSuite extends FunSuite {
       Some("red-exile"), "usurper", usurperLimited = false,
       Some("red-exile"), Some("usurper"))))
   }
-  test("scoped Oathkeeper recipient decision decodes and encodes its choice") {
-    val json = projectionJson(sequence = 31, phase = "oathkeeper-recipient",
-      ready = true, choices = false).replace(
-      "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":null,\"oathkeeperRecipient\":{" +
-        "\"decisionId\":\"oath-31\",\"actorPlayerId\":\"red-exile\"," +
-        "\"candidatePlayerIds\":[\"blue-exile\",\"yellow-exile\"]}")
-    assertEquals(GameJson.decodeProjection(json).toOption.get.oathkeeperRecipient,
-      Some(OathkeeperRecipientDecision("oath-31", "red-exile",
-        Vector("blue-exile", "yellow-exile"))))
-    val encoded = GameJson.encodeCommand(31,
-      GameCommand.ChooseOathkeeperRecipient("red-exile", "oath-31",
-        "blue-exile"))
-    assert(encoded.contains("\"type\":\"chooseOathkeeperRecipient\""))
-    assert(encoded.contains("\"recipientPlayerId\":\"blue-exile\""))
-  }
   test("Recover walker commands encode decisions and private relic resolution") {
     assert(GameJson.encodeCommand(20, GameCommand.StartWalker("red", "recover"))
       .contains("\"type\":\"startWalker\""))

@@ -245,9 +245,6 @@ final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String],
     winnerVictoryKind: Option[String] = None)
-final case class OathkeeperRecipientProjection(
-    decisionId: String, actorPlayerId: String,
-    candidatePlayerIds: Vector[String])
 final case class PlayerBoardProjection(
     playerId: String,
     warbands: Int,

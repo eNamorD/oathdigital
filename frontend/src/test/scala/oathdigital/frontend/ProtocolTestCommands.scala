@@ -42,7 +42,6 @@ private[frontend] object GameCommand {
   def ChooseCampaignSacrifice(actor: String, id: String, count: Int) = Intent.ChooseCampaignSacrifice(id, count)
   def PlaceCampaignForce(actor: String, id: String, values: Vector[CampaignPlacement]) = Intent.PlaceCampaignForce(id, values.map(v => CampaignForceAllocation(v.siteId, v.count)))
   def RelocateCampaignRaidPawn(actor: String, id: String, site: String) = Intent.RelocateCampaignRaidPawn(id, site)
-  def ChooseOathkeeperRecipient(actor: String, id: String, recipient: String) = Intent.ChooseOathkeeperRecipient(id, recipient)
   def RevealVision(actor: String, id: String) = Intent.RevealVision(id)
   def PlayConspiracy(actor: String, target: Option[oathdigital.protocol.ConspiracyTarget]) = Intent.PlayConspiracy(target)
   def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))

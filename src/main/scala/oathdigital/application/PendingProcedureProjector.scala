@@ -18,12 +18,11 @@ private[application] final class PendingProcedureProjector(
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
-    val recipient = oathkeeperRecipient(context)
     val restPower = restPowerProjection(context)
     PendingProjection(
       phase(context, cardDecision, challenge, campaign,
-        relocation, recipient, walkerDecision),
-      cardDecision, campaign, relocation, recipient, challenge,
+        relocation, walkerDecision),
+      cardDecision, campaign, relocation, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -201,13 +200,6 @@ private[application] final class PendingProcedureProjector(
         CampaignRaidRelocationProjection(r.decision.value, r.actor.value,
           r.defender.value, r.origin.value, r.legalSites.map(_.value))
     }
-  private def oathkeeperRecipient(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case p: PendingProcedure.OathkeeperRecipient
-          if context.viewer.contains(p.actor) =>
-        OathkeeperRecipientProjection(p.decision.value, p.actor.value,
-          p.candidates.map(_.value))
-    }
 
   private def negotiationProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {
@@ -301,7 +293,6 @@ private[application] final class PendingProcedureProjector(
       challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
-      recipient: Option[OathkeeperRecipientProjection],
       walkerDecision: Option[WalkerDecisionProjection]): String =
     if (context.current.result.nonEmpty) "game-over"
     else if (context.current.walkerPending.nonEmpty)
@@ -340,10 +331,6 @@ private[application] final class PendingProcedureProjector(
         "campaign-raid-relocation"
       case Some(_: PendingProcedure.CampaignRaidRelocation) =>
         "campaign-raid-relocation-waiting"
-      case Some(_: PendingProcedure.OathkeeperRecipient) if recipient.nonEmpty =>
-        "oathkeeper-recipient"
-      case Some(_: PendingProcedure.OathkeeperRecipient) =>
-        "oathkeeper-recipient-waiting"
       case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
           context.viewer.contains(p.actor) => "conspiracy-target"
       case Some(_: PendingProcedure.Conspiracy) => "conspiracy-waiting"

@@ -13,6 +13,7 @@ import oathdigital.gameplay.phases.{Rest, RestCommand,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
+import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
@@ -182,11 +183,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       }
     }
 
-  def chooseOathkeeperRecipient(state: OathState, actor: PlayerId,
-      decision: DecisionId, recipient: PlayerId) =
-    StateBasedEvaluation.chooseRecipient(
-      catalog, state, actor, decision, recipient)
-
   override def evolve(
       state: OathState,
       event: OathEvent
@@ -249,11 +245,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: RestPowerEvent => Rest.evolve(catalog, state, event)
       case event: RestCompleted => Rest.evolve(catalog, state, event)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: OathkeeperChanged => StateBasedEvaluation.evolve(catalog, state, event)
-      case event: OathkeeperRecipientChoiceStarted =>
-        StateBasedEvaluation.evolve(catalog, state, event)
-      case event: OathkeeperRecipientChosen =>
-        StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)
       case event: VisionVictory => StateBasedEvaluation.evolve(catalog, state, event)
@@ -271,8 +262,21 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       StateBasedEvaluation.banditRefill(catalog, _)))
       .flatMap { afterRefill =>
         if (hasResult(afterRefill.state)) Right(afterRefill)
-        else appendEvaluation(afterRefill, StateBasedEvaluation.afterAction)
+        else oathkeeperStep(afterRefill)
       }
+
+  /** The boundary decides only WHETHER the title changes; the triggered
+    * procedure performs the change, so every title change is one walker step.
+    */
+  private def oathkeeperStep(transition: OathTransition)
+      : Either[OathViolation, OathTransition] = transition.state match {
+    case Ready(ready) => StateBasedEvaluation.supported(transition.state)
+      .flatMap(_ => OathkeeperRules.outcome(ready) match {
+        case OathkeeperOutcome.NoChange => Right(transition)
+        case _ => startTriggered(transition, TriggeredProcedureRef.Oathkeeper)
+      })
+    case _ => Right(transition)
+  }
 
   private def recordBoundaryFallback(transition: OathTransition) =
     transition.state match {
@@ -348,8 +352,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         transition.copy(state = next, events = transition.events :+ event,
           continue = event match {
             case UsurperVictory(winner) => OathContinue.GameFinished(winner)
-            case OathkeeperRecipientChoiceStarted(actor, decision, _) =>
-              OathContinue.AwaitingOathkeeperRecipient(actor, decision)
             case _ => transition.continue
           })
       }

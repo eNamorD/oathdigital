@@ -63,11 +63,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val CampaignRaidedType = "gameplay.campaign-raided"
   val CampaignRaidPawnRelocatedType = "gameplay.campaign-raid-pawn-relocated"
   val BanditsRefilledType = "gameplay.bandits-refilled"
-  val OathkeeperChangedType = "gameplay.oathkeeper-changed"
-  val OathkeeperRecipientChoiceStartedType =
-    "gameplay.oathkeeper-recipient-choice-started"
-  val OathkeeperRecipientChosenType =
-    "gameplay.oathkeeper-recipient-chosen"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
   val VisionRevealedType = "gameplay.vision-revealed"

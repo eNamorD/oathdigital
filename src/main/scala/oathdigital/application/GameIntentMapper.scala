@@ -51,7 +51,6 @@ object GameIntentMapper {
       case Intent.ChooseCampaignSacrifice(id, count) => Right(actor.chooseCampaignSacrifice(DecisionId(id), count))
       case Intent.PlaceCampaignForce(id, values) => Right(actor.placeCampaignForce(DecisionId(id), values.map(v => oathdigital.model.CampaignForceAllocation(SiteId(v.siteId), v.count))))
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
-      case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
       case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)

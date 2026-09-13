@@ -74,6 +74,36 @@ private[gameplay] trait OathRulesWalker {
       case _ => Left(GameNotStarted)
     }
 
+  /** Starts a procedure the engine triggers, with no client command
+    * (walker-ownership spec, Triggered procedures).
+    *
+    * Strictly sequential: a walker or legacy procedure already pending is a
+    * typed rejection rather than a nested start. The procedure's events are
+    * appended to `transition`, so the action that triggered it and the
+    * procedure journal as one command.
+    */
+  private[gameplay] def startTriggered(transition: OathTransition,
+      procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
+    transition.state match {
+      case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
+          ready.game.current.walkerProcedure.nonEmpty ||
+          ready.game.current.pending.nonEmpty =>
+        Left(InvalidEventOrder(s"cannot start ${procedure.key}: another " +
+          "procedure is already pending"))
+      case Ready(ready) =>
+        val activePlayer = ready.game.current.turn.activePlayer
+        val powers = walkerPowers(ready, activePlayer, Vector.empty)
+        for {
+          tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
+            starting = true)
+          _ <- checkRestrictions(tree, powers, ready, activePlayer)
+          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers))
+          started <- walkerTransition(transition.state, ready, procedure, tree,
+            outcome, powers, Vector.empty, Vector.empty)
+        } yield started.copy(events = transition.events ++ started.events)
+      case _ => Right(transition)
+    }
+
   /** The single place (Task 4) that turns `walkerPowerCatalog` plus the
     * `modifiers` chosen for THIS command into the vector the walker actually
     * sees. An automatic power (`PowerResolution.Automatic`, the trait
@@ -317,11 +347,15 @@ private[gameplay] trait OathRulesWalker {
     case WalkerOutcome.Finished(treeless, steps) =>
       val activePlayer = treeless.game.current.turn.activePlayer
       completionIn(ready.game.current.turn.phase,
-        treeless.game.current.turn.phase, activePlayer).flatMap {
-        completed => GameplayTransition(state,
+        treeless.game.current.turn.phase, activePlayer).flatMap { completed =>
+        val runsBoundary = completed.runsActionBoundary && (procedure match {
+          case _: TriggeredProcedureRef => false
+          case _: StartableRef => true
+        })
+        GameplayTransition(state,
           steps :+ WalkerCompleted(procedure), completed.continue)(evolve)
           .flatMap(transition =>
-            if (completed.runsActionBoundary) completeAction(transition)
+            if (runsBoundary) completeAction(transition)
             else Right(transition))
       }
   }

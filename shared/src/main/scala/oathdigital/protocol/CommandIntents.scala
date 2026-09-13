@@ -46,8 +46,6 @@ object GameIntent {
       allocations: Vector[CampaignForceAllocation]) extends GameIntent
   final case class RelocateCampaignRaidPawn(decisionId: String,
       destinationSiteId: String) extends GameIntent
-  final case class ChooseOathkeeperRecipient(decisionId: String,
-      recipientPlayerId: String) extends GameIntent
   final case class ResolveCardDecision(decisionId: String,
       resolution: DecisionResolution) extends GameIntent
   /** Starts a walker action. `action` is the engine's persisted `StartableRef`

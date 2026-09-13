@@ -6,8 +6,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
-  RestCompleted, RestStarted, SearchCompleted, SearchStarted,
-  OathkeeperChanged}
+  RestCompleted, RestStarted, SearchCompleted, SearchStarted}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
@@ -17,9 +16,8 @@ import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
   Sequence, SetOathkeeper, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
-import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
-  UsurperVictory, OathkeeperRecipientChoiceStarted,
-  OathkeeperRecipientChosen, RoundEnded, WarExhaustionResolved}
+import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
+  RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 
@@ -918,8 +916,8 @@ class GameEventWireSuite extends munit.FunSuite {
     // own; the Wake phase no longer has any, since both taking wealth and
     // ending Wake are journalled as walker steps (Task 7).
     val gameplay = Vector(
-      OathkeeperChanged(Some(PlayerId("p2"))),
-      UsurperFlipped(PlayerId("p2"))
+      UsurperFlipped(PlayerId("p2")),
+      UsurperVictory(PlayerId("p2"))
     )
     val events = setupEvents ++ gameplay
     val records = events.zipWithIndex.map { case (event, index) =>
@@ -931,7 +929,7 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
     assertEquals(decoded.map(_.eventType).takeRight(2),
-      Vector("gameplay.oathkeeper-changed", "gameplay.usurper-flipped"))
+      Vector("gameplay.usurper-flipped", "gameplay.usurper-victory"))
     assertEquals(decoded.map(_.event), events)
 
     val wrongVersion = GameEventWire.encodeEvent(
@@ -940,26 +938,17 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(GameEventWire.decode(wrongVersion).isLeft)
   }
 
-  test("current state-based Oathkeeper and Usurper events round trip") {
+  test("current state-based Usurper events round trip") {
     val events = Vector[OathEvent](
-      OathkeeperChanged(Some(PlayerId("p2"))),
       UsurperFlipped(PlayerId("p2")),
-      UsurperVictory(PlayerId("p2")),
-      OathkeeperRecipientChoiceStarted(PlayerId("p3"), DecisionId("oath-1"),
-        Vector(PlayerId("p1"), PlayerId("p2"))),
-      OathkeeperRecipientChosen(PlayerId("p3"), DecisionId("oath-1"),
-        PlayerId("p2")))
+      UsurperVictory(PlayerId("p2")))
     val encoded = events.zipWithIndex.map { case (event, index) =>
       GameEventWire.encodeEvent("oath", catalogRef, 20L + index, event)
         .toOption.get
     }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(5)(1))
+    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector.fill(2)(1))
     assertEquals(encoded.map(value => GameEventWire.decode(value).toOption.get.event),
       events)
-    val noHolder = GameEventWire.encodeEvent("oath", catalogRef, 23L,
-      OathkeeperChanged(None)).toOption.get
-    assertEquals(GameEventWire.decode(noHolder).toOption.get.event,
-      OathkeeperChanged(None))
   }
 
   test("setup history preserves every Oathkeeper goal") {

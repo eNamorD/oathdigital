@@ -134,9 +134,6 @@ final case class AuthorizedPlayer private (
   def relocateCampaignRaidPawn(decision: DecisionId,
       destination: SiteId): GameCommand =
     GameCommand.RelocateCampaignRaidPawn(access.playerId, decision, destination)
-  def chooseOathkeeperRecipient(decision: DecisionId,
-      recipient: PlayerId): GameCommand =
-    GameCommand.ChooseOathkeeperRecipient(access.playerId, decision, recipient)
 
   def completeSearch(decision: DecisionId, kept: WorldCardId,
       discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =

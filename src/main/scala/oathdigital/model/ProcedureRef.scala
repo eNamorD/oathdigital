@@ -36,7 +36,7 @@ sealed trait PhaseTransitionRef extends StartableRef {
 
 /** A procedure the engine starts on its own. No command can name one --
   * `StartableRef` excludes this family -- and no boundary runs after one.
-  * Empty until Task 7 registers Oathkeeper.
+  * Oathkeeper (Task 7) is the first: the action boundary starts it.
   */
 sealed trait TriggeredProcedureRef extends ProcedureRef {
   final def family = "triggered"
@@ -79,7 +79,9 @@ object PhaseTransitionRef {
 }
 
 object TriggeredProcedureRef {
-  val all: Vector[TriggeredProcedureRef] = Vector.empty
+  /** Every change of the Oathkeeper title holder at an action boundary. */
+  case object Oathkeeper extends TriggeredProcedureRef { val key = "oathkeeper" }
+  val all: Vector[TriggeredProcedureRef] = Vector(Oathkeeper)
 }
 
 object StartableRef {

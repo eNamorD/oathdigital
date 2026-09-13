@@ -5,12 +5,14 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
-  PhaseTransitionRef, PlayerId, ProcedureRef, StartableRef}
+  PhaseTransitionRef, PlayerId, ProcedureRef, StartableRef,
+  TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
@@ -217,7 +219,23 @@ object WalkerProcedureRegistry {
       modifierWindow = None,
       continuationFor = (_, _, _) => None,
       build = EndWakeProcedure.build,
-      rebuild = EndWakeProcedure.build))
+      rebuild = EndWakeProcedure.build),
+
+    /** The first triggered procedure. It is started by the action boundary,
+      * never by a client, so it has no fallback kind (the boundary recorded
+      * its diagnostics), no modifier window and no start selection.
+      */
+    TriggeredProcedureRef.Oathkeeper -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (decisionId, awaited, decision) => decisionId match {
+        case OathkeeperProcedure.recipientDecisionId =>
+          Some(OathContinue.AwaitingOathkeeperRecipient(awaited, decision))
+        case _ => None
+      },
+      build = OathkeeperProcedure.build,
+      rebuild = OathkeeperProcedure.build))
 
   /** Rejects start selections handed to an action that makes none.
     *

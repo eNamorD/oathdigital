@@ -14,8 +14,8 @@ import oathdigital.application.{
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.{CatalogRef, PlayerId, VictoryKind}
 import oathdigital.serialization.GameEventWire
-import oathdigital.gameplay.OathEvent.{OathkeeperChanged, UsurperFlipped,
-  UsurperVictory, RoundEnded, WarExhaustionResolved}
+import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
+  RoundEnded, WarExhaustionResolved}
 
 class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   implicit private val executionContext: ExecutionContext =
@@ -180,7 +180,6 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
   test("persists and reloads exact Oathkeeper evaluation records") {
     val path = databasePath("oathkeeper-reload")
     val events = Vector(
-      OathkeeperChanged(Some(PlayerId("p2"))),
       UsurperFlipped(PlayerId("p2")),
       UsurperVictory(PlayerId("p2")),
       RoundEnded(8, None),
@@ -192,7 +191,7 @@ class HsqldbEventStreamRepositorySuite extends munit.FunSuite {
     }
     val first = open(path)
     try assertEquals(first.append("oathkeeper", ExpectedStream.MustNotExist,
-      records), Right(RepositoryAppendResult.Appended(0L, 5)))
+      records), Right(RepositoryAppendResult.Appended(0L, 4)))
     finally first.close()
 
     val reloaded = open(path)

@@ -256,13 +256,6 @@ object OathEvent {
       visionId: Option[VisionId],
       randomCandidates: Vector[PlayerId]
   ) extends OathEvent
-  final case class OathkeeperChanged(holder: Option[PlayerId]) extends OathEvent
-  final case class OathkeeperRecipientChoiceStarted(
-      actor: PlayerId, decision: DecisionId, candidates: Vector[PlayerId])
-      extends OathEvent
-  final case class OathkeeperRecipientChosen(
-      actor: PlayerId, decision: DecisionId, recipient: PlayerId)
-      extends OathEvent
   final case class UsurperFlipped(playerId: PlayerId) extends OathEvent
   final case class UsurperVictory(playerId: PlayerId) extends OathEvent
   final case class VisionVictory(playerId: PlayerId, visionId: VisionId)

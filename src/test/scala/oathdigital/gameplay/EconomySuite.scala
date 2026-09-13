@@ -3,6 +3,8 @@ package oathdigital.gameplay
 import oathdigital.protocol.projection.BoardTargetRefProjection
 
 import oathdigital.gameplay.actions.EconomyCommand
+import oathdigital.gameplay.oathkeeper.OathkeeperFixture
+import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -83,6 +85,21 @@ class EconomySuite extends munit.FunSuite {
     assertEquals(player(after).board.warbands, 5)
     assertEquals(after.game.current.map.sites(actor.pawnSite.get).denizens.head.tokens,
       Tokens(1, 0))
+  }
+
+  test("a legacy Muster starts the Oathkeeper procedure within its own command") {
+    val initial = act()
+    val actor = player(initial)
+    val leader = initial.game.current.players.map(_.player)
+      .find(_ != actor.player).get
+    val ready = OathkeeperFixture.ruled(initial, Vector(Some(leader)))
+    val accepted = rules.handle(Ready(ready),
+      EconomyCommand.Muster(actor.player, plainTarget)).toOption.get
+    assertEquals(accepted.events.last,
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
+    val Ready(after) = accepted.state: @unchecked
+    assertEquals(after.game.current.title,
+      OathkeeperState(Some(leader), TitleSide.Oathkeeper))
   }
 
   test("Muster obeys the finite fourteen-warband supply") {

@@ -257,9 +257,7 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("Challenge requires the gameplay evolution"))
-      case _: OathkeeperChanged | _: OathkeeperRecipientChoiceStarted |
-          _: OathkeeperRecipientChosen | _: UsurperFlipped |
-          _: UsurperVictory =>
+      case _: UsurperFlipped | _: UsurperVictory =>
         Left(InvalidEventOrder("state-based checks require gameplay evolution"))
     }
 

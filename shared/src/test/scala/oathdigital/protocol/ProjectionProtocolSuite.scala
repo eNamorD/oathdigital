@@ -52,7 +52,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Some("site:a"), Vector(hidden), Vector(known), None)),
     oathkeeper = Some(OathkeeperProjection("supremacy", Some("red"), "oathkeeper",
       false, None)),
-    oathkeeperRecipient = Some(OathkeeperRecipientProjection("recipient", "red", Vector("blue"))),
     banners = Vector(BannerProjection("peoples-favor", "mob", Some("red"), 2)),
     challenge = Some(ChallengeProjection("challenge", "red", "peoples-favor", Some("blue"),
       1, Vector("site:a"), 0, 1)),

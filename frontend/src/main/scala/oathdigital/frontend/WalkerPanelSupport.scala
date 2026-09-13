@@ -183,6 +183,35 @@ private[frontend] object WalkerPanelSupport {
     }
   }
 
+  /** A choose-one decision no action-specific panel claims. Recover keeps its
+    * own panel for its richer copy; everything else is answered here, from the
+    * projected options alone.
+    */
+  private[frontend] def chooseOneStep(decision: WalkerDecisionState)
+      : Option[DecisionQueryState] =
+    if (decision.action == "recover" || decision.kind != "decide") None
+    else chooseOneQuery(decision)
+
+  private[frontend] def renderChooseOnePanel(value: GameProjection,
+      presentation: ViewerPresentation, canControl: Boolean,
+      panel: dom.Element, ui: ServerUiView): Unit =
+    value.walkerDecision.filter(_ => presentation.showGameplayControls)
+      .flatMap(decision => chooseOneStep(decision).map(decision -> _))
+      .foreach { case (decision, query) =>
+        panel.appendChild(text("h2", "", decisionHeading(query)))
+        query.options.foreach { option =>
+          val label = if (option.kind == "player")
+            value.players.find(_.playerId == option.id).map(_.displayName)
+              .getOrElse(option.label)
+          else option.label
+          val choose = button(label, "walker-choice")
+          choose.disabled = !canControl
+          choose.onclick = _ => ui.submitCommand(
+            resolveChooseOneCommand(decision, option))
+          panel.appendChild(choose)
+        }
+      }
+
   private def rollFeedback(decision: WalkerDecisionState,
       panel: dom.Element): Unit =
     decision.rollOutcome.foreach(outcome => panel.appendChild(

@@ -338,6 +338,8 @@ private[frontend] object ActionDecisionRenderer {
    }
    WalkerPanelSupport.renderRecoverPanel(value, presentation, canControl,
      panel, ui)
+   WalkerPanelSupport.renderChooseOnePanel(value, presentation, canControl,
+     panel, ui)
    WalkerPanelSupport.renderPartitionPanel(value, presentation, canControl,
      panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
@@ -555,21 +557,6 @@ private[frontend] object ActionDecisionRenderer {
        val choose = button(siteLabel(value, site), "campaign-raid-relocation")
        choose.disabled = !canControl
        choose.onclick = _ => submitCommand(command)
-       panel.appendChild(choose)
-     }
-   }
-   value.oathkeeperRecipient.filter(decision =>
-     decision.actorPlayerId == currentPlayerId).foreach { decision =>
-     panel.appendChild(text("h2", "", "Choose the Oathkeeper"))
-     panel.appendChild(text("p", "campaign-instruction",
-       "Choose which tied leader receives the Oathkeeper title."))
-     decision.candidatePlayerIds.foreach { candidate =>
-       val label = value.players.find(_.playerId == candidate)
-         .map(_.displayName).getOrElse(candidate)
-       val choose = button(label, "oathkeeper-recipient-choice")
-       choose.disabled = !canControl
-       choose.onclick = _ => submitCommand(GameCommand.ChooseOathkeeperRecipient(
-         decision.decisionId, candidate))
        panel.appendChild(choose)
      }
    }

@@ -141,7 +141,6 @@ final class GameProjector(catalog: ExecutableCatalog) {
           case TitleSide.Usurper => "usurper"
         }, current.tracks.usurperLimited, current.result.map(_.winner.value),
         current.result.map(_.kind.key))),
-      oathkeeperRecipient = pending.oathkeeperRecipient,
       campaignRaidRelocation = pending.campaignRaidRelocation,
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
       challenge = pending.challenge,

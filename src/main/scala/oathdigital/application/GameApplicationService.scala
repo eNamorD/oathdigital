@@ -462,8 +462,6 @@ final class GameApplicationService(
       case GameCommand.RelocateCampaignRaidPawn(playerId, decision, destination) =>
         rules.handle(state, CampaignCommand.RelocateRaidPawn(
           playerId, decision, destination))
-      case GameCommand.ChooseOathkeeperRecipient(playerId, decision, recipient) =>
-        rules.chooseOathkeeperRecipient(state, playerId, decision, recipient)
       case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
           placement) =>
         rules.handle(state, SearchCommand.Complete(

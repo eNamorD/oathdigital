@@ -104,9 +104,6 @@ private[application] final class LegalActionProjector(
           context.viewer.filter(oathdigital.gameplay.actions.Negotiation
             .canAccept(context.ready, n, _)).map(_ => "acceptNegotiation")
       case Some(_: PendingProcedure.Negotiation) => Vector.empty
-      case Some(p: PendingProcedure.OathkeeperRecipient)
-          if context.viewer.contains(p.actor) => Vector("chooseOathkeeperRecipient")
-      case Some(_: PendingProcedure.OathkeeperRecipient) => Vector.empty
       case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
           context.viewer.contains(p.actor) => Vector("playConspiracy")
       case Some(_: PendingProcedure.Conspiracy) => Vector.empty

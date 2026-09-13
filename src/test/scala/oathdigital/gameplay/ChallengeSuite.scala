@@ -8,6 +8,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.walker.WalkerCompleted
 
 class ChallengeSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
@@ -77,7 +78,8 @@ class ChallengeSuite extends munit.FunSuite {
     assertEquals(after.game.current.banners.peoplesFavor.favor, 3)
     assertEquals(after.game.current.players.find(_.player == actor.player).get.board.favor,
       actor.board.favor - 3)
-    assertEquals(completed.events.last, OathkeeperChanged(Some(actor.player)))
+    assertEquals(completed.events.last,
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper): OathEvent)
     assertEquals(after.game.current.title.holder, Some(actor.player))
   }
 
