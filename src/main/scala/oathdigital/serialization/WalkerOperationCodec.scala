@@ -14,10 +14,30 @@ import oathdigital.model._
   *
   * A pure move: every spelling is byte-identical to the version before the
   * split, which `GameEventWireSuite` pins without being edited.
+  *
+  * `encodeOperation`/`encodePiece` (I8) are total over `CoreOperation`/
+  * `Piece`, exactly like [[encodeLocation]] below (added for the same
+  * reason: a bounded operation set is what let Catacombs' recorded `Move`
+  * out of `Location.Deck` reach an append-time throw with no test to catch
+  * it -- that lesson generalises to every recorded shape, not just
+  * `Location`). The one genuine exception is `encodeOperation`'s five
+  * walker tree-control arms (`Decide`/`BuildOps`/`Repeat`/`Branch`/
+  * `Sequence`): three close over a Scala function value with no data
+  * representation at all, and none of the five can ever legally reach this
+  * method, because `ProcedureWalker` only ever records an
+  * ALREADY-APPLIED delta batch (a leaf's own effect, or a `BuildOps`
+  * closure's *returned* `Vector[CoreOperation]`) -- never one of these
+  * control nodes themselves. Those five arms throw
+  * [[UnencodableOperation]] (a typed [[WireError]] carrier caught by
+  * `GameEventWire.encodePayloadSafe`) instead of falling into a silent
+  * wildcard `case other => throw`, so a NEW `CoreOperation` case fails to
+  * compile here ("match may not be exhaustive") until it is given a real
+  * arm.
   */
 private[serialization] trait WalkerOperationCodec {
     this: GameEventJsonSupport =>
   import WireError._
+
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
       case AdjustSupply(player, amount) => ujson.Obj(
