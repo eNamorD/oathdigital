@@ -159,7 +159,10 @@ generic tags.
 When resolving a parked `Decide`, `ProcedureWalker`:
 
 1. Rebuilds and power-transforms the tree as it does today.
-2. Confirms `decide.owner == pending.actor`.
+2. Confirms `decide.owner == pending.actor`. *Superseded by
+   `2026-09-12-walker-ownership-and-phases-design.md` (not yet implemented):
+   the stored actor is removed, and the walker confirms `decide.owner` equals
+   the requester, so a decision may be owned off-turn.*
 3. For `ChooseOne`, validates the submitted `ChooseOneAnswer` reference against
    its options. For `Partition`, validates the submitted `PartitionAnswer`
    against its options, sections, and minimum counts.
@@ -307,12 +310,22 @@ This does not add off-turn walker decisions. Supporting those later requires
 an explicit redesign of pending-state ownership, authorization, continuation,
 and viewer scoping; reintroducing a query object alone is insufficient.
 
+*That redesign is `2026-09-12-walker-ownership-and-phases-design.md` (not yet
+implemented).* `Decide.owner` stays a concrete `PlayerId` and may name any
+player. The owner is recomputed from the rebuilt, transformed tree on every
+command and never stored: resolution checks it against the requester, the
+continuation names it, and only it receives the private projection, while
+every other viewer receives a public waiting projection.
+
 ## Failure handling
 
 - Unknown submitted answer: typed decision-option mismatch.
 - Duplicate answers: typed malformed-tree rejection.
 - Empty parked decision: typed malformed-tree rejection.
 - Owner differing from walker actor: `WrongPlayer` or the existing equivalent.
+  *(Per `2026-09-12-walker-ownership-and-phases-design.md`, not yet
+  implemented: a requester differing from the rebuilt owner is
+  `WrongPlayer(owner, requester)`.)*
 - Target identity that cannot be presented: omit the entire malformed decision
   projection rather than exposing a partially described option. Procedure and
   power builders remain responsible for constructing targets that exist in
@@ -344,5 +357,6 @@ Add or update tests proving:
 - A universal form or workflow description language.
 - Persisting decision options in game state or events.
 - Moving presentation labels into gameplay/model code.
-- Off-turn walker decision ownership.
+- Off-turn walker decision ownership. *(Designed since in
+  `2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented.)*
 - Generalizing Recover-specific roll feedback in this change.

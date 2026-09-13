@@ -69,9 +69,15 @@ Engine changes stop after the walker lands.
    declared, journalled and replayed. What follows from it not being an action
    (no Act action boundary) is read at completion, not flagged on its
    registration — see Walker.
-   Open: `OathkeeperRecipient` is state-based evaluation that parks a player
-   decision, which fits neither side of this line. The batch that meets it
-   decides.
+   *Resolved by `2026-09-12-walker-ownership-and-phases-design.md` (not yet
+   implemented):* state-based evaluation stays engine-internal and decides
+   *whether* anything happens; when a change may park a player decision, the
+   engine starts a triggered procedure that *performs* it. The Oathkeeper
+   title is the first: every title change becomes that procedure's
+   `SetOathkeeper` step. That design also replaces "read at completion" above:
+   whether the action boundary runs is decided by the completed reference's
+   family (`ActionRef`, `PhaseTransitionRef`, `TriggeredProcedureRef`), and it
+   runs after every action in every phase.
 7. **Windows label hookable nodes (W1/H2).** The existing typed `PowerWindow`
    vocabulary remains (keep type safety + audit). Every hookable node carries
    `window: Option[PowerWindow]`. TODO comment left: rename PowerWindows if a
@@ -120,7 +126,11 @@ Engine changes stop after the walker lands.
 12. **Tree is derived per command (S1).** The engine rebuilds the base action
     tree and re-applies power transforms deterministically on every command;
     `PendingTree` stores only `at` (stable node-id chain, not child index),
-    `answered` decisions and actor. Beside it, and durable for the same
+    `answered` decisions and actor. *(Per
+    `2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented:
+    the actor is no longer stored, since it always equals
+    `turn.activePlayer`; `Answered` gains `by`; `walkerAction` becomes
+    `walkerProcedure: Option[ProcedureRef]`.)* Beside it, and durable for the same
     reason, state carries the action (`walkerAction`), the player-selected
     powers (`walkerModifiers`) and the start selections (`walkerStartArgs`):
     none of them is re-derivable from state, and a resume must rebuild the
@@ -133,7 +143,10 @@ Engine changes stop after the walker lands.
     legacy path, and dies with the last of them. A client-facing spelling may
     outlive its engine command as a one-line route to `StartWalker`:
     `GameIntent.EndWake` does this, so two spellings can start the same
-    procedure.
+    procedure. *(Per `2026-09-12-walker-ownership-and-phases-design.md`, not
+    yet implemented: `StartWalker` takes a `StartableRef`, an action or a
+    phase transition, so a triggered procedure cannot be started by a
+    client; End Wake becomes a `PhaseTransitionRef`.)*
 14. **Migration: vertical slice first, then batch.** Prove the walker on one
     action end-to-end (tree + powers + journal + frontend projection + replay),
     then migrate remaining actions in batches. Old journal compatibility is not
@@ -171,6 +184,9 @@ Leaves (PrimitiveOperation):
   transitions. It does reject entering the phase the turn is already in
   (`OperationError.PhaseAlreadyEntered`), because replay re-runs no gates and
   without this a doubled transition in the journal would replay clean.
+- *Planned by `2026-09-12-walker-ownership-and-phases-design.md` (not yet implemented):* `SetOathkeeper(Option[PlayerId])`,
+  the only writer of the title holder, which resets the side to Oathkeeper
+  and rejects an unchanged holder.
 
 Only four cases carry a `window`: `ModifyDicePool`, `Decide`, `BuildOps` and
 `Sequence`. A delta that must be hookable is made hookable by the `Sequence`
@@ -184,7 +200,9 @@ Composites (CoreOperation): existing concept bundles plus sequence/branch
 helpers (`Sequence`, `Branch`). There are no per-action root case classes. An
 action's root is an ordinary `Sequence` built by that action's procedure object
 (`TravelProcedure`, `ForgeProcedure`, ...) and registered on
-`WalkerActionRegistry`, so the ADT never learns an action's name. A
+`WalkerActionRegistry` (renamed `WalkerProcedureRegistry`, keyed by
+`ProcedureRef`, by `2026-09-12-walker-ownership-and-phases-design.md`; not yet implemented), so the ADT never learns an
+action's name. A
 `Repeat(guard, body)` composite re-executes `body` until
 `guard(state, pending)` is false (Recover's roll-until-success/stop loop;
 Search draw loops). `CoreOperation.primitives` is removed; `children` is the
@@ -209,6 +227,9 @@ final case class PendingTree(
   answered: Vector[Answered],  // decisions recorded this action
   actor: PlayerId
 )                              // the tree itself is never stored (decision 12)
+// Per 2026-09-12-walker-ownership-and-phases-design.md (not yet implemented):
+// walkerAction -> walkerProcedure: Option[ProcedureRef]; PendingTree drops
+// actor (always turn.activePlayer); Answered gains `by: PlayerId`.
 final case class DicePoolState(count: Int)
 final case class RollOutcome(pool: PoolKey, count: Int, faces: Vector[DiceFace],
                              skulls: Int, score: Int)
@@ -262,6 +283,12 @@ Per command, the engine:
    its player back to Act. Neither phase is registry data: the walker and its
    registry state what a procedure does, and which phase the player is in is
    neither's business. The reads live in `OathRulesWalker`.
+   *Superseded in part by `2026-09-12-walker-ownership-and-phases-design.md`
+   (not yet implemented):* the continuation is still read off the finishing
+   phase, but the started-in-Act rule is replaced. The boundary runs iff the
+   completed reference is an `ActionRef`, in any phase; never after a
+   `PhaseTransitionRef` (End Wake) or a `TriggeredProcedureRef`. Take Wealth
+   therefore gains the boundary.
 
 Application layer (game-application-service role) pre-rolls dice at the command
 boundary and never lets the engine touch randomness.
@@ -272,7 +299,11 @@ Resuming a parked walk currently requires `Phase.Act`
 (`OathRulesWalker.walkerResumeContext`). Every registered procedure outside
 Act finishes inside the command that starts it, so nothing has reached that
 gate yet. The first procedure that parks outside Act has to change it
-deliberately; no test can reach the change before then.
+deliberately; no test can reach the change before then. *(Per
+`2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented: the
+resume gate is deleted without replacement, since only resume commands are
+accepted while a walker is pending; `startWalker` checks the requester is the
+active player, and a parked `Decide` is authorized for its owner.)*
 
 **Decision ids are constants, not per-command tokens.** A `Decide`'s id is a
 fixed string per decision (`"forge.assignment"`, `"recover.relic"`), and a
@@ -324,7 +355,8 @@ revisit. Changed while exactly one `ContributingPower` existed, it was one
 line on this trait and one at `ContributionCollector`'s vote step, which
 already held both power objects.
 
-`PowerCtx(state, actor, source, window, nodePath, operation)` carries no
+`PowerCtx(state, actor, source, window, nodePath, operation)` (`actor`
+becomes `activePlayer` per `2026-09-12-walker-ownership-and-phases-design.md`; not yet implemented) carries no
 mutable state and no catalog of its own. `operation` is the generic hooked
 operation, so a contribution may inspect its children when applicability needs
 facts carried by the tree (for example Travel's sibling payment and Move).
@@ -367,7 +399,11 @@ Parked positions and pool state are durable facts, not walker outputs (P1,
 `RollOutcome`/answered are reconstructed from `RollPayload`/`ChoicePayload`
 events and `ModifyDicePool` ops. The walker is never re-run at replay.
 `WalkerParked` also carries the walk's modifiers and start selections, which
-replay restores beside the `PendingTree`.
+replay restores beside the `PendingTree`. *(Per `2026-09-12-walker-ownership-and-phases-design.md`, not yet implemented:
+walker events carry no actor, `Answered.by` records who answered, a triggered
+procedure's events replay like any other without re-running a gate, and the
+Oathkeeper title events are replaced by that procedure's `SetOathkeeper`
+step.)*
 
 A procedure that cannot park (Travel, Take Wealth, End Wake: no `Decide`, no
 `Roll`) journals only its step events and `WalkerCompleted`. Those events are
@@ -496,7 +532,9 @@ is below, and it is the complete list.
   without the collector or walker knowing Travel. Nothing else was missing:
   Take Wealth's limit reached everything through `ctx.state`.
 - **Completion** reads the continuation and the Act boundary off the phase,
-  no longer hardcoding Act (see Walker, step 7).
+  no longer hardcoding Act (see Walker, step 7). *(`2026-09-12-walker-ownership-and-phases-design.md`, not yet
+  implemented, keeps the continuation read and decides the boundary by
+  reference family instead.)*
 
 ### Typed cost facts are retired; `Transform` won
 
@@ -594,7 +632,9 @@ Task 8):
 - `RestPowerDecision` and `RestPowerContinuation`: Rest's power integration,
   which is itself one of step 4's per-action seams.
 - `OathkeeperRecipient`: state-based evaluation, not an action. It parks a
-  player decision, which decision 6 does not cover.
+  player decision, which decision 6 does not cover. *(Designed as the
+  triggered `Oathkeeper` procedure and the proving slice of `2026-09-12-walker-ownership-and-phases-design.md`, not yet
+  implemented.)*
 
 Economy and the minor actions own no pending case. They are single-command,
 so they are the cheapest ports and the least informative ones.
@@ -608,8 +648,9 @@ so they are the cheapest ports and the least informative ones.
 - Old-journal compatibility (pre-release; replay is forward-only).
 - Turn-scoped power activation: waits for the first real card that needs it
   (see Migration status).
-- Off-turn walker decisions: a `Decide` owned by someone other than the
-  walker's actor needs its own redesign of pending ownership, authorization
-  and viewer scoping (declarative-decisions spec, Non-goals).
+- Off-turn walker decisions: designed in `2026-09-12-walker-ownership-and-phases-design.md` (not yet implemented), which
+  also records what it leaves open: concurrent multi-owner decisions
+  (Negotiation), new answer kinds, power selection by an off-turn owner, and
+  unanswered off-turn decisions.
 - Start selections that are not an option reference (a warband count):
   waits for the first action that needs one.
