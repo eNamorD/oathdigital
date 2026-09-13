@@ -65,7 +65,7 @@ The spec's `SetOathkeeper` also becomes its own task (Task 6), because a reviewe
 - Modify: `src/main/scala/oathdigital/serialization/WalkerEventCodec.scala:164-731`
 
 **Interfaces:**
-- Produces: `private[serialization] trait WalkerOperationCodec { this: GameEventJsonSupport => protected final def encodeOperation(operation: CoreOperation): ujson.Value; protected final def decodeOperation(value: ujson.Value, path: String): Either[WireError, CoreOperation] }`, mixed into `WalkerEventCodec`. Task 6 adds `SetOathkeeper`'s spelling here.
+- Produces: `private[serialization] trait WalkerOperationCodec { this: GameEventJsonSupport => protected final def encodeOperation(operation: CoreOperation): ujson.Value; protected final def decodeOperation(value: ujson.Value, path: String): Either[WireError, CoreOperation]; protected final def decodeSignedInt(value: ujson.Value, path: String): Either[WireError, Int] }`, mixed into `WalkerEventCodec`. Task 6 adds `SetOathkeeper`'s spelling here.
 
 This is a pure move. Its acceptance criterion is the one batch-1 Task 1b used: no test file changes.
 
@@ -94,7 +94,7 @@ private[serialization] trait WalkerOperationCodec {
   import WireError._
 ```
 
-Change only the visibility of the two entry points the event codec calls, to `protected final def encodeOperation` and `protected final def decodeOperation`. Everything else stays `private`. In `WalkerEventCodec.scala`, declare:
+Change only the visibility of the three members shared with the event codec, to `protected final def encodeOperation`, `protected final def decodeOperation`, and `protected final def decodeSignedInt`; `decodeSignedInt` is shared because event delta decoding remains outside the moved block and still calls it. Everything else stays `private`. In `WalkerEventCodec.scala`, declare:
 
 ```scala
 private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
