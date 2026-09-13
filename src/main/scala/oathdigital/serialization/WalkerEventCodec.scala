@@ -22,16 +22,14 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
   }
 
   protected final val walkerEncoder: PartialFunction[OathEvent, ujson.Value] = {
-    case WalkerStepRecorded(actor, nodeId, payload, ops, contributions) =>
+    case WalkerStepRecorded(nodeId, payload, ops, contributions) =>
       ujson.Obj(
-        "actorPlayerId" -> actor.value,
         "nodeId" -> nodeId,
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(actor, action, at, answered, modifiers, startArgs) =>
+    case WalkerParked(action, at, answered, modifiers, startArgs) =>
       ujson.Obj(
-        "actorPlayerId" -> actor.value,
         "action" -> action.key,
         "at" -> stringArray(at),
         "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
@@ -41,8 +39,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         // key at all, and `decodeParked` reads a missing key as empty.
         "startArgs" -> ujson.Arr.from(startArgs.map(
           DecisionAnswerCodec.encodeRef)))
-    case WalkerCompleted(actor, action) => ujson.Obj(
-      "actorPlayerId" -> actor.value,
+    case WalkerCompleted(action) => ujson.Obj(
       "action" -> action.key)
   }
 
@@ -54,27 +51,30 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       case WalkerParkedType => decodeParked(payload, path)
       case WalkerCompletedType => for {
         action <- decodeAction(payload("action").str, s"$path.action")
-      } yield WalkerCompleted(PlayerId(payload("actorPlayerId").str), action)
+      } yield WalkerCompleted(action)
     }
     decoder.lift(eventType)
   }
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
     "decisionId" -> answered.decisionId,
-    "payload" -> DecisionAnswerCodec.encode(answered.answer))
+    "payload" -> DecisionAnswerCodec.encode(answered.answer),
+    "byPlayerId" -> answered.by.value)
 
   private def decodeAnswered(value: ujson.Value,
       path: String): Either[WireError, Answered] = for {
     answer <- DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
-  } yield Answered(value("decisionId").str, answer)
+  } yield Answered(value("decisionId").str, answer,
+    PlayerId(value("byPlayerId").str))
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match {
       case WalkerStepPayload.DeltaRecorded(meaning) =>
         ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
-      case ChoicePayload(decisionId, answer) => ujson.Obj(
+      case ChoicePayload(decisionId, answer, by) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
-        "payload" -> DecisionAnswerCodec.encode(answer))
+        "payload" -> DecisionAnswerCodec.encode(answer),
+        "byPlayerId" -> by.value)
       case RollPayload(pool, faces) => ujson.Obj(
         "kind" -> "roll", "pool" -> pool.value,
         "faces" -> ujson.Arr.from(faces.map {
@@ -92,7 +92,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
         .map(WalkerStepPayload.DeltaRecorded)
       case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
-        .map(ChoicePayload(value("decisionId").str, _))
+        .map(ChoicePayload(value("decisionId").str, _,
+          PlayerId(value("byPlayerId").str)))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
         decodeDefenseFace(face.str, s"$path.faces"))
         .map(faces => RollPayload(PoolKey(value("pool").str), faces))
@@ -148,7 +149,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     }
     contributions = value("contributions").arr.toVector.map(id =>
       PowerId(id.str))
-  } yield WalkerStepRecorded(PlayerId(value("actorPlayerId").str),
+  } yield WalkerStepRecorded(
     value("nodeId").str, step, ops, contributions)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker step"))) }
@@ -162,7 +163,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
     }
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
     startArgs <- decodeStartArgs(value, s"$path.startArgs")
-  } yield WalkerParked(PlayerId(value("actorPlayerId").str), action,
+  } yield WalkerParked(action,
     value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }

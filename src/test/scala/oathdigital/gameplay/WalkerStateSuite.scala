@@ -32,15 +32,13 @@ class WalkerStateSuite extends munit.FunSuite {
     assert(baseReady.game.current.walkerPending.isEmpty)
     assert(baseReady.game.current.rollPools.isEmpty)
 
-    // Pending is a pointer only (spec S1): at/answered/actor. The action tree
+    // Pending is a pointer only (spec S1): at/answered. The action tree
     // is derived per command and the walker ctx rebuilt from state, so nothing
     // gameplay-typed is stored here.
     val answered = Answered("recover.choice",
-      ChooseOneAnswer(DecisionOptionRef.Button("continue")))
-    val tree = PendingTree(
-      at = Vector("recover.roll"),
-      answered = Vector(answered),
-      actor = actor)
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)
+    val tree = PendingTree(at = Vector("recover.roll"),
+      answered = Vector(answered))
 
     val ready = baseReady.copy(game = baseReady.game.copy(current =
       baseReady.game.current.copy(
@@ -52,7 +50,8 @@ class WalkerStateSuite extends munit.FunSuite {
       Vector("recover.roll"))
     assertEquals(ready.game.current.walkerPending.get.answered,
       Vector(answered))
-    assertEquals(ready.game.current.walkerPending.get.actor, actor)
+    assertEquals(ready.game.current.walkerPending.get.answered.map(_.by),
+      Vector(actor))
     assertEquals(ready.game.current.rollPools(PoolKey("recover")),
       DicePoolState(2))
   }

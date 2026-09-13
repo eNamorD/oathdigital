@@ -83,7 +83,7 @@ object TakeWealthProcedure {
       powers: WalkerPowers): Vector[WakeResource] =
     WakeResource.all.filter(resource =>
       build(catalog, state, activePlayer, selection(resource))
-        .flatMap(WalkerSimulation.run(_, state, activePlayer, powers)).isRight)
+        .flatMap(WalkerSimulation.run(_, state, powers)).isRight)
 
   /** The start selection naming `resource`, and the inverse of `resourceOf`.
     *

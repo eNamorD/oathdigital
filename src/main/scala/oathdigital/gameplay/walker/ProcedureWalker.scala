@@ -4,7 +4,7 @@ import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
   ReadyGame, WalkerEvent}
 import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
-  OperationExecutor, OperationPipeline, OperationPolicy, Piece,
+  OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerResolution,
   PowerWindow}
@@ -126,7 +126,7 @@ object ProcedureWalker {
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
-    val activePlayer = pending.fold(state.game.current.turn.activePlayer)(_.actor)
+    val activePlayer = state.game.current.turn.activePlayer
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
@@ -158,8 +158,9 @@ object ProcedureWalker {
       faces: Vector[DieFace], powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
-      powers), Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
+    walk(action, WalkCtx(base, Vector.empty, state.game.current.turn.activePlayer,
+      pending.answered, powers), Vector.empty, Some(pending.at),
+      RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
   }
 
@@ -169,9 +170,8 @@ object ProcedureWalker {
     * The resumed node is the leaf addressed by `pending.at` and MUST be a
     * `Decide` whose `decisionId` equals `answer.decisionId` (a Roll park, a
     * mismatched decision id, or any other position rejects with an
-    * `OathViolation`). Semantics: check the node's `owner` resolves to the
-    * acting player, run the node's optional `validate(state, pending,
-    * answer)` against the submitted answer when present, append ONE
+    * `OathViolation`). Semantics: check the answer's submitter against the
+    * node's `owner`, validate the submitted answer against its query, append ONE
     * [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
     * answer is a state write into `pending.answered`, not a delta batch), add
     * `answer` to `answered`, then continue auto-walking from the node after
@@ -182,9 +182,9 @@ object ProcedureWalker {
       answer: Answered, powers: WalkerPowers)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, pending.actor, pending.answered,
-      powers), Vector.empty, Some(pending.at), AnswerResume(answer),
-      WalkerHooks.none).map(toOutcome)
+    walk(action, WalkCtx(base, Vector.empty, state.game.current.turn.activePlayer,
+      pending.answered, powers), Vector.empty, Some(pending.at),
+      AnswerResume(answer), WalkerHooks.none).map(toOutcome)
   }
 
   /** Collects every restriction violation from every windowed node in `tree`
@@ -269,7 +269,7 @@ object ProcedureWalker {
       WalkerOutcome.Finished(finish(ctx), ctx.events)
     case Park(position, ctx) =>
       WalkerOutcome.Parked(PendingTree(at = position,
-        answered = ctx.answered, actor = ctx.activePlayer), ctx.events)
+        answered = ctx.answered), ctx.events)
   }
 
   private def strip(state: ReadyGame): ReadyGame =
@@ -339,8 +339,7 @@ object ProcedureWalker {
   private def walkBranch(branch: Branch, ctx: WalkCtx, path: Vector[String],
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
-    val branchTree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.activePlayer)
+    val branchTree = PendingTree(at = path, answered = ctx.answered)
     walkFolded(branch.window, branch, branch.select(ctx.state, branchTree), ctx, path,
       cursor, resume, hooks)
   }
@@ -370,8 +369,7 @@ object ProcedureWalker {
       * re-applied per pass for the same reason.
       */
     def passes(current: WalkCtx): Either[OathViolation, Step] = {
-      val guardTree = PendingTree(at = path, answered = current.answered,
-        actor = current.activePlayer)
+      val guardTree = PendingTree(at = path, answered = current.answered)
       if (!repeat.guard(current.state, guardTree)) Right(Done(current))
       else pass(current, None)
     }
@@ -515,8 +513,7 @@ object ProcedureWalker {
     */
   private def runBuildOps(build: BuildOps, ctx: WalkCtx, path: Vector[String],
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
-    val tree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.activePlayer)
+    val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
       if (ops.isEmpty) Right(ctx)
       else recordBatch(ops, contributions, ctx, path, leafLabel(build))
@@ -540,7 +537,6 @@ object ProcedureWalker {
       ctx.copy(
         state = updated,
         events = ctx.events :+ WalkerStepRecorded(
-          actor = ctx.activePlayer,
           nodeId = nodeId,
           payload = WalkerStepPayload.DeltaRecorded(deltaMeaning(ops, label)),
           ops = ops,
@@ -561,7 +557,7 @@ object ProcedureWalker {
   }
 
   /** Validates a resolved answer against the parked Decide and records its
-    * step: the node's owner must be the acting player, the node's query must
+    * step: the answer's submitter must be the node's owner, the query must
     * be answerable at all, and that query must accept the submitted answer.
     * On success `answer` is appended to `answered` and ONE
     * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
@@ -576,8 +572,8 @@ object ProcedureWalker {
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     for {
-      _ <- Either.cond(decide.owner == ctx.activePlayer, (),
-        OathViolation.WrongPlayer(decide.owner, ctx.activePlayer))
+      _ <- Either.cond(decide.owner == answer.by, (),
+        OathViolation.WrongPlayer(decide.owner, answer.by))
       _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
       _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
         answer.answer)
@@ -587,9 +583,8 @@ object ProcedureWalker {
       ctx.copy(
         answered = ctx.answered :+ answer,
         events = ctx.events :+ WalkerStepRecorded(
-          actor = ctx.activePlayer,
           nodeId = nodeId,
-          payload = ChoicePayload(answer.decisionId, answer.answer),
+          payload = ChoicePayload(answer.decisionId, answer.answer, answer.by),
           ops = Vector.empty,
           contributions = contributions))
     }
@@ -628,7 +623,7 @@ object ProcedureWalker {
       ctx.copy(
         state = writeRollOutcome(ctx.state, RollOutcome(pool, count, faces,
           skulls = 0, score)),
-        events = ctx.events :+ WalkerStepRecorded(actor = ctx.activePlayer,
+        events = ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId, payload = RollPayload(pool, faces),
           ops = Vector.empty, contributions = contributions))
     }

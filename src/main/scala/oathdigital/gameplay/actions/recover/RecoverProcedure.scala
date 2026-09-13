@@ -125,7 +125,7 @@ object RecoverProcedure {
 
     def stopped(pending: PendingTree): Boolean =
       pending.answered.lastOption.exists {
-        case Answered(_, ChooseOneAnswer(selected)) => selected == stopOption
+        case Answered(_, ChooseOneAnswer(selected), _) => selected == stopOption
         case _ => false
       }
 
@@ -150,7 +150,7 @@ object RecoverProcedure {
     val moveRelic = BuildOps((ready, pending) =>
       pending.answered.lastOption match {
         case Some(Answered(_, ChooseOneAnswer(
-            DecisionOptionRef.Relic(relicId)))) =>
+            DecisionOptionRef.Relic(relicId)), _)) =>
           Right(Vector[CoreOperation](Move(
             Piece.Card(relicId),
             PositionedLocation(Location.Site(siteId)),

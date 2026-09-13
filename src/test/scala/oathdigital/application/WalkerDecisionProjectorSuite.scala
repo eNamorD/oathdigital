@@ -58,7 +58,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
         players = moved,
         turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerAction = Some(action),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty, actor)))))
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
     (ScopedProjectionContext(ready, Some(actor)), actor)
   }
 

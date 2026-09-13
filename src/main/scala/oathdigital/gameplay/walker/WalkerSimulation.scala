@@ -2,7 +2,6 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{CoreOperation, Operation}
 import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.model.PlayerId
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have
@@ -29,9 +28,10 @@ import oathdigital.model.PlayerId
   */
 object WalkerSimulation {
 
-  def run(tree: Operation, state: ReadyGame, actor: PlayerId,
+  def run(tree: Operation, state: ReadyGame,
       powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
-    try ProcedureWalker.restrictionViolations(tree, powers, state, actor)
+    try ProcedureWalker.restrictionViolations(tree, powers, state,
+      state.game.current.turn.activePlayer)
       .headOption.toLeft(())
       .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers))
       .flatMap {

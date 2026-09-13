@@ -1,10 +1,9 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{OathState, OathViolation, ReadyGame, WalkerEvent}
-import oathdigital.gameplay.operations.{OperationExecutor, OperationPipeline,
-  OperationPolicy}
-import oathdigital.model.{Answered, DefenseDieFace, DieFace, PendingTree,
-  PlayerId, RollOutcome}
+import oathdigital.gameplay.operations.OperationExecutor
+import oathdigital.model.{Answered, DefenseDieFace, PendingTree,
+  RollOutcome}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).
@@ -35,24 +34,17 @@ private[walker] object WalkerReplay {
   private def applyRecordedReady(ready: ReadyGame,
       event: WalkerEvent): Either[OathViolation, ReadyGame] = {
     def invalid(detail: String) = Left(OathViolation.InvalidEventOrder(detail))
-    def validateActor(actor: PlayerId): Either[OathViolation, Unit] =
-      Either.cond(actor == ready.game.current.turn.activePlayer, (),
-        OathViolation.WrongPlayer(ready.game.current.turn.activePlayer, actor))
     def validateStep(step: WalkerStepRecorded)
-        : Either[OathViolation, Unit] = for {
-      _ <- validateActor(step.actor)
-      _ <- Either.cond(validNodeId(step.nodeId), (),
+        : Either[OathViolation, Unit] =
+      Either.cond(validNodeId(step.nodeId), (),
         OathViolation.InvalidEventOrder(
           s"invalid walker node id '${step.nodeId}'"))
-    } yield ()
     def validateParkedStep(step: WalkerStepRecorded)
         : Either[OathViolation, PendingTree] = for {
       _ <- validateStep(step)
       pending <- ready.game.current.walkerPending.toRight(
         OathViolation.InvalidEventOrder(
           "walker step requires a durable pending position"))
-      _ <- Either.cond(pending.actor == step.actor, (),
-        OathViolation.WrongPlayer(pending.actor, step.actor))
       _ <- Either.cond(pending.at.mkString(".") == step.nodeId, (),
         OathViolation.InvalidEventOrder(
           s"walker step ${step.nodeId} does not match pending position " +
@@ -63,7 +55,7 @@ private[walker] object WalkerReplay {
       // `contributions` is deliberately unmatched (`_`) below: replay applies
       // `ops` only and must never consult which powers produced them (spec
       // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
-      case step @ WalkerStepRecorded(_, _, RollPayload(pool, faces), ops, _) =>
+      case step @ WalkerStepRecorded(_, RollPayload(pool, faces), ops, _) =>
         for {
           _ <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
@@ -83,18 +75,18 @@ private[walker] object WalkerReplay {
             case face: DefenseDieFace => face
           })))
 
-      case step @ WalkerStepRecorded(_, _,
-          ChoicePayload(decisionId, payload), ops, _) =>
+      case step @ WalkerStepRecorded(_,
+          ChoicePayload(decisionId, payload, by), ops, _) =>
         for {
           pending <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
             "recorded ChoicePayload must not contain operations"))
           answered = pending.copy(answered = pending.answered :+
-            Answered(decisionId, payload))
+            Answered(decisionId, payload, by))
         } yield ready.copy(game = ready.game.copy(current =
           ready.game.current.copy(walkerPending = Some(answered))))
 
-      case step @ WalkerStepRecorded(_, _,
+      case step @ WalkerStepRecorded(_,
           _: WalkerStepPayload.DeltaRecorded, ops, _) =>
         for {
           _ <- validateStep(step)
@@ -104,8 +96,7 @@ private[walker] object WalkerReplay {
             .left.map(_.toViolation)
         } yield updated
 
-      case WalkerParked(actor, action, at, answered, modifiers, startArgs) => for {
-        _ <- validateActor(actor)
+      case WalkerParked(action, at, answered, modifiers, startArgs) => for {
         _ <- Either.cond(at.nonEmpty && at.forall(segment =>
           segment.nonEmpty && segment.forall(_.isDigit)), (),
           OathViolation.InvalidEventOrder("invalid durable walker park path"))
@@ -136,13 +127,12 @@ private[walker] object WalkerReplay {
         }
       } yield ready.copy(game = ready.game.copy(current =
         ready.game.current.copy(
-          walkerPending = Some(PendingTree(at, answered, actor)),
+          walkerPending = Some(PendingTree(at, answered)),
           walkerAction = Some(action),
           walkerModifiers = modifiers,
           walkerStartArgs = startArgs)))
 
-      case WalkerCompleted(actor, action) => for {
-        _ <- validateActor(actor)
+      case WalkerCompleted(action) => for {
         // No active action means the walk never parked: a tree that
         // declares no Decide and no Roll runs to the end inside the command
         // that started it, so nothing set `walkerAction` (Forge at a

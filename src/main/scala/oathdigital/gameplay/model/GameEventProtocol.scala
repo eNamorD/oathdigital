@@ -10,12 +10,9 @@ sealed trait OathEvent extends Product with Serializable
   * Open, not `sealed`: the concrete per-node cases live in
   * `gameplay/walker/WalkerEvents.scala` and later tasks extend per-node
   * payloads from other files, which a sealed root (same-file subclasses only)
-  * would forbid — mirroring the `Operation` root decision in Task 1. The one
-  * shared shape every walker event carries is the acting player.
+  * would forbid — mirroring the `Operation` root decision in Task 1.
   */
-trait WalkerEvent extends OathEvent {
-  def actor: PlayerId
-}
+trait WalkerEvent extends OathEvent
 sealed trait RestPowerEvent extends OathEvent {
   def restActor: PlayerId
   def decision: DecisionId

@@ -115,8 +115,9 @@ class ForgeProcedureSuite extends munit.FunSuite
         DecisionPlacement(DecisionOptionRef.Denizen(target.denizenId), section)
     }
 
-  private def answerOf(placements: Vector[DecisionPlacement]): Answered =
-    Answered(ForgeProcedure.assignmentDecisionId, PartitionAnswer(placements))
+  private def answerOf(placements: Vector[DecisionPlacement], by: PlayerId)
+      : Answered =
+    Answered(ForgeProcedure.assignmentDecisionId, PartitionAnswer(placements), by)
 
   /** The `PayCost` a placement in `section` onto `denizen` must produce: out
     * of the ACTOR'S own play area, never a suit bank.
@@ -167,8 +168,8 @@ class ForgeProcedureSuite extends munit.FunSuite
   private def resolveWith(f: Forgeable, state: ReadyGame, tree: Operation,
       pending: PendingTree, placements: Vector[DecisionPlacement])
       : Either[OathViolation, WalkerOutcome] =
-    ProcedureWalker.resolve(state, tree, pending, answerOf(placements),
-      noPowers)
+    ProcedureWalker.resolve(state, tree, pending,
+      answerOf(placements, f.actor.player), noPowers)
 
   private def rejection(outcome: Either[OathViolation, WalkerOutcome])
       : String = outcome match {
@@ -271,7 +272,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val first = tree.children.head
     assertEquals(first.window, Some(PowerWindow.ForgeCost): Option[PowerWindow])
     assertEquals(first.asInstanceOf[BuildOps].build(f.ready,
-      PendingTree(Vector.empty, Vector.empty, f.actor.player)),
+      PendingTree(Vector.empty, Vector.empty)),
       Right(Vector[CoreOperation](AdjustSupply(f.actor.player, -1))):
         Either[OathViolation, Vector[CoreOperation]])
 
@@ -294,7 +295,6 @@ class ForgeProcedureSuite extends munit.FunSuite
       .toOption.get
     val (pending, atPark, _) = parkAtAssignment(f.ready, tree)
 
-    assertEquals(pending.actor, f.actor.player)
     assertEquals(pending.answered, Vector.empty[Answered])
     val decide = ProcedureWalker.parkedDecide(atPark, tree, pending, noPowers)
       .getOrElse(fail("expected the park to resolve to a Decide"))
@@ -414,7 +414,8 @@ class ForgeProcedureSuite extends munit.FunSuite
     // A choose-one answer to a partition question is rejected on shape.
     assert(rejection(ProcedureWalker.resolve(atPark, tree, pending,
       Answered(ForgeProcedure.assignmentDecisionId,
-        DecisionAnswer.ChooseOneAnswer(legal.head.option)), noPowers))
+        DecisionAnswer.ChooseOneAnswer(legal.head.option), f.actor.player),
+      noPowers))
       .contains("expects a partition answer"))
   }
 
@@ -428,7 +429,7 @@ class ForgeProcedureSuite extends munit.FunSuite
       .find(_.player != f.actor.player).get.player
 
     assertEquals(ProcedureWalker.resolve(atPark, tree,
-      pending.copy(actor = other), answerOf(legalPlacements(f)), noPowers),
+      pending, answerOf(legalPlacements(f), other), noPowers),
       Left(OathViolation.WrongPlayer(f.actor.player, other)):
         Either[OathViolation, WalkerOutcome])
   }
@@ -490,7 +491,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(steps.map(_.nodeId), Vector("1.0", "2"))
     assertEquals(steps.head.payload,
       ChoicePayload(ForgeProcedure.assignmentDecisionId,
-        PartitionAnswer(legal)): WalkerStepPayload)
+        PartitionAnswer(legal), f.actor.player): WalkerStepPayload)
     assertEquals(steps.head.ops, Vector.empty[CoreOperation])
     assertEquals(steps(1).ops, expected)
 

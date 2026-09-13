@@ -116,7 +116,7 @@ object TravelProcedure {
       state.game.current.map.inPlay.filter(_ != source).flatMap { destination =>
         build(catalog, state, activePlayer,
           Vector(DecisionOptionRef.Site(destination)))
-          .flatMap(WalkerSimulation.run(_, state, activePlayer, powers))
+          .flatMap(WalkerSimulation.run(_, state, powers))
           .toOption.flatMap(supplySpent(_, activePlayer)).map(destination -> _)
       }
     }

@@ -143,7 +143,6 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case step: WalkerStepRecorded => step
       case other => fail(s"expected a WalkerStepRecorded, got $other")
     }
-    assertEquals(recorded.map(_.actor), Vector(actor, actor))
     assertEquals(recorded.map(_.nodeId), Vector("0", "1"))
     assertEquals(recorded.map(_.ops), Vector(
       Vector[CoreOperation](move), Vector[CoreOperation](adjust)))
@@ -159,14 +158,13 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       case Right(WalkerOutcome.Parked(pending, events)) =>
         assertEquals(pending.at, Vector("0"))
         assertEquals(pending.answered, Vector.empty[Answered])
-        assertEquals(pending.actor, actor)
         assertEquals(events, Vector.empty[OathEvent])
         pending
       case other => fail(s"expected a park at the Decide, got $other")
     }
 
     val answer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
+      ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
@@ -198,12 +196,12 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     Vector(continueOption, stopOption).foreach { option =>
       assert(ProcedureWalker.resolve(ready, tree, pending,
-        Answered(decide.decisionId, ChooseOneAnswer(option)),
+        Answered(decide.decisionId, ChooseOneAnswer(option), actor),
         noPowers).isRight, s"$option is declared and must be accepted")
     }
 
     val undeclared = Answered(decide.decisionId,
-      ChooseOneAnswer(DecisionOptionRef.Button("teleport")))
+      ChooseOneAnswer(DecisionOptionRef.Button("teleport")), actor)
     assertEquals(ProcedureWalker.resolve(ready, tree, pending, undeclared,
       noPowers),
       Left(OathViolation.InvalidEventOrder(
@@ -216,7 +214,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val (pending, _) = parkAtDecide(tree)
 
     assertEquals(ProcedureWalker.resolve(ready, tree, pending,
-      Answered(decide.decisionId, DecisionAnswer.PartitionAnswer(Vector.empty)),
+      Answered(decide.decisionId,
+        DecisionAnswer.PartitionAnswer(Vector.empty), actor),
       noPowers),
       Left(OathViolation.InvalidEventOrder(
         "decision recover.choice expects a single-choice answer")):
@@ -241,22 +240,23 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       val tree: Operation = Sequence(node, adjust)
       val (pending, _) = parkAtDecide(tree)
       assertEquals(ProcedureWalker.resolve(ready, tree, pending,
-        Answered(node.decisionId, ChooseOneAnswer(continueOption)), noPowers),
+        Answered(node.decisionId, ChooseOneAnswer(continueOption), actor), noPowers),
         Left(OathViolation.InvalidEventOrder(
           s"decision recover.choice $detail")):
           Either[OathViolation, WalkerOutcome])
     }
   }
 
-  test("a Decide answered by anyone but the pending actor is rejected as " +
+  test("a Decide answered by anyone but its owner is rejected as " +
       "the wrong player") {
     val tree: Operation = Sequence(decide, adjust)
     val (pending, _) = parkAtDecide(tree)
     val intruder = PlayerId("intruder")
 
     assertEquals(ProcedureWalker.resolve(ready, tree,
-      pending.copy(actor = intruder),
-      Answered(decide.decisionId, ChooseOneAnswer(continueOption)), noPowers),
+      pending,
+      Answered(decide.decisionId, ChooseOneAnswer(continueOption), intruder),
+      noPowers),
       Left(OathViolation.WrongPlayer(actor, intruder)):
         Either[OathViolation, WalkerOutcome])
   }
@@ -274,7 +274,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     def answer(sections: Vector[String]): Answered = Answered("split",
       DecisionAnswer.PartitionAnswer(options.zip(sections).map {
-        case (option, section) => DecisionPlacement(option.ref, section) }))
+        case (option, section) => DecisionPlacement(option.ref, section) }), actor)
 
     assert(ProcedureWalker.resolve(ready, tree, pending,
       answer(Vector("left", "left", "right")), noPowers).isRight)
@@ -313,7 +313,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // The caller folds the Parked events to obtain the state at the park.
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
+      ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(parkedState, tree, parked, answer,
         noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
@@ -375,7 +375,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     }
 
     val answer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
+      ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(ready, tree, parked, answer, noPowers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 2)
@@ -389,8 +389,8 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   test("plain advance re-parks a repeated Decide even when an older pass " +
       "answered the same decision ID") {
     val olderAnswer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
-    val pending = PendingTree(Vector("0", "0", "0"), Vector(olderAnswer), actor)
+      ChooseOneAnswer(continueOption), actor)
+    val pending = PendingTree(Vector("0", "0", "0"), Vector(olderAnswer))
     val tree: Operation = Sequence(Repeat(
       (_: ReadyGame, _: PendingTree) => true,
       Sequence(decide, adjust)))
@@ -407,7 +407,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   test("Finished clears stored pending trees and dice pools from the resulting state") {
     val dirty = ready.copy(game = ready.game.copy(current =
       ready.game.current.copy(
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty, actor)),
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)),
         rollPools = Map(PoolKey("recover") -> DicePoolState(3)))))
 
     val (finalState, events) = ProcedureWalker.advance(dirty, adjust, None,
@@ -472,7 +472,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val paths = Vector(Vector("not-a-node"), Vector("999999999999999999999"))
 
     paths.foreach { path =>
-      val pending = PendingTree(path, Vector.empty, actor)
+      val pending = PendingTree(path, Vector.empty)
       assertEquals(ProcedureWalker.parkedRoll(parkedState, tree, pending,
         noPowers), None)
       assert(ProcedureWalker.roll(parkedState, tree, pending,
@@ -712,7 +712,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     // position still addresses the Decide.
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
+      ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
       case Right(WalkerOutcome.Finished(finalState, events)) =>
         assertEquals(events.size, 1)
@@ -755,7 +755,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
 
     val parkedState = applyEvents(ready, parkEvents)
     val answer = Answered(decide.decisionId,
-      ChooseOneAnswer(continueOption))
+      ChooseOneAnswer(continueOption), actor)
     ProcedureWalker.resolve(parkedState, tree, parked, answer, powers) match {
       case Right(WalkerOutcome.Finished(_, events)) =>
         // The leaf's own window gathers `outer` a second time and `inner` for

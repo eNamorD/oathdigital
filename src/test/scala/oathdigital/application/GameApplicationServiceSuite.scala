@@ -170,7 +170,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         PositionedLocation(Location.PlayArea(actor)),
         resultingOrientation = Some(Orientation.FaceDown))))
     assertEquals((started.events ++ rolled.events ++ finished.events).collect {
-      case WalkerStepRecorded(_, _, DeltaRecorded(semantic), _, _) => semantic
+      case WalkerStepRecorded(_, DeltaRecorded(semantic), _, _) => semantic
     }, Vector(
       DicePoolModified(RecoverProcedure.recoverPool, 2),
       SupplySpent(actor, 1),
@@ -257,7 +257,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val Ready(ready) = continued.state: @unchecked
     assertEquals(ready.game.current.walkerPending.toVector.flatMap(_.answered),
       Vector(Answered(RecoverProcedure.choiceDecisionId,
-        ChooseOneAnswer(DecisionOptionRef.Button("continue")))))
+        ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor)))
     assertEquals(ready.game.current.walkerAction, Some(ActionRef.Recover))
     assertEquals(new GameApplicationService(catalog, repository)
       .load("walker-continue").toOption.flatten.get.state, continued.state)

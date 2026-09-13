@@ -38,8 +38,11 @@ object WalkerStepPayload {
   * stay empty: appending the answer to `pending.answered` is a state write
   * (the walker rebuilds `answered` from these events at replay), not an
   * operation batch.
+  *
+  * @param by who answered.
   */
-final case class ChoicePayload(decisionId: String, answer: DecisionAnswer)
+final case class ChoicePayload(decisionId: String, answer: DecisionAnswer,
+    by: PlayerId)
     extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
@@ -67,7 +70,6 @@ final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
   * what it recorded).
   */
 final case class WalkerStepRecorded(
-    actor: PlayerId,
     nodeId: String,
     payload: WalkerStepPayload,
     ops: Vector[CoreOperation],
@@ -88,7 +90,6 @@ final case class WalkerStepRecorded(
   * is every action that parks today.
   */
 final case class WalkerParked(
-    actor: PlayerId,
     action: ActionRef,
     at: Vector[String],
     answered: Vector[Answered],
@@ -99,5 +100,5 @@ final case class WalkerParked(
 /** Durable action-boundary fact. Replay clears every walker-owned scratch
   * field without deriving or running the operation tree.
   */
-final case class WalkerCompleted(actor: PlayerId, action: ActionRef)
+final case class WalkerCompleted(action: ActionRef)
     extends WalkerEvent

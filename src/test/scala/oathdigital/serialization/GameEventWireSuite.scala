@@ -150,20 +150,21 @@ class GameEventWireSuite extends munit.FunSuite {
       .zip(Vector("pay-favor", "pay-secret", "pay-favor"))
       .map { case (option, section) => DecisionPlacement(option, section) })
     val chooseOne = ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("R01")))
-    val answered = Vector(Answered("forge.assignment", partition),
-      Answered("recover.relic", chooseOne))
+    val answered = Vector(Answered("forge.assignment", partition, player),
+      Answered("recover.relic", chooseOne, player))
     val events = Vector[OathEvent](
-      WalkerStepRecorded(player, "1",
-        ChoicePayload("forge.assignment", partition), Vector.empty,
+      WalkerStepRecorded("1",
+        ChoicePayload("forge.assignment", partition, player), Vector.empty,
         Vector.empty),
-      WalkerStepRecorded(player, "2",
-        ChoicePayload("recover.relic", chooseOne), Vector.empty, Vector.empty),
-      WalkerParked(player, ActionRef.Forge, Vector("2"), answered,
+      WalkerStepRecorded("2",
+        ChoicePayload("recover.relic", chooseOne, player), Vector.empty,
+        Vector.empty),
+      WalkerParked(ActionRef.Forge, Vector("2"), answered,
         Vector.empty, Vector.empty),
       // Batch-1 Task 5: the only action that makes a start selection does not
       // park, so this park is synthetic -- it exists to round-trip the field,
       // which no production journal exercises yet.
-      WalkerParked(player, ActionRef.Travel, Vector("0"), Vector.empty,
+      WalkerParked(ActionRef.Travel, Vector("0"), Vector.empty,
         Vector.empty, Vector(DecisionOptionRef.Site(SiteId("site:dest")))))
     val encoded = GameEventWire.encodeStream("forge", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
@@ -182,8 +183,8 @@ class GameEventWireSuite extends munit.FunSuite {
       DecisionOptionRef.Vision(VisionId("vision:v1")),
       DecisionOptionRef.Deck(CardDeck.Relic))
     val events = refs.zipWithIndex.map { case (ref, index) =>
-      WalkerStepRecorded(player, index.toString,
-        ChoicePayload("d", ChooseOneAnswer(ref)), Vector.empty,
+      WalkerStepRecorded(index.toString,
+        ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,
         Vector.empty): OathEvent }
     val encoded = GameEventWire.encodeStream("refs", catalogRef,
       events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
@@ -195,9 +196,9 @@ class GameEventWireSuite extends munit.FunSuite {
   test("a journalled answer carrying a deleted legacy tag is rejected with a " +
       "typed decode failure") {
     val player = PlayerId("red")
-    val event: OathEvent = WalkerStepRecorded(player, "1",
+    val event: OathEvent = WalkerStepRecorded("1",
       ChoicePayload("recover.choice",
-        ChooseOneAnswer(DecisionOptionRef.Button("continue"))),
+        ChooseOneAnswer(DecisionOptionRef.Button("continue")), player),
       Vector.empty, Vector.empty)
     val encoded = GameEventWire.encodeStream("legacy", catalogRef,
       Vector(RecordedEvent(0L, event))).toOption.get
@@ -322,13 +323,13 @@ class GameEventWireSuite extends munit.FunSuite {
       PositionedLocation(Location.PlayArea(player)),
       resultingOrientation = Some(Orientation.FaceDown))
     val events = Vector[OathEvent](
-      WalkerStepRecorded(player, "0", WalkerStepPayload.DeltaRecorded(
+      WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.DicePoolModified(pool, 2)),
         Vector(ModifyDicePool(pool, 2)), Vector.empty),
-      WalkerStepRecorded(player, "1.0.1", WalkerStepPayload.DeltaRecorded(
+      WalkerStepRecorded("1.0.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.SupplySpent(player, 1)),
         Vector(AdjustSupply(player, -1)), Vector.empty),
-      WalkerStepRecorded(player, "2.1", WalkerStepPayload.DeltaRecorded(
+      WalkerStepRecorded("2.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
         Vector.empty))
 
@@ -348,7 +349,7 @@ class GameEventWireSuite extends munit.FunSuite {
     // one caller), so a codec that ignored the value and decoded `Act`
     // unconditionally would pass every other test in the tree. Rest is used
     // here for exactly that reason.
-    val event: OathEvent = WalkerStepRecorded(PlayerId("red"), "0",
+    val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
         "enter-phase")), Vector(EnterPhase(Phase.Rest)), Vector.empty)
     val encoded = GameEventWire.encodeEvent("phase", catalogRef, 0L, event)
@@ -368,7 +369,7 @@ class GameEventWireSuite extends munit.FunSuite {
     val relic = RelicId("R1")
     val site = SiteId("site")
     val denizen = DenizenId("catacombs")
-    val event: OathEvent = WalkerStepRecorded(player, "0",
+    val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied(
         "catacombs.place")),
       Vector(
@@ -421,7 +422,7 @@ class GameEventWireSuite extends munit.FunSuite {
       Location.Dispossessed)
     // `PayCost` carries a bare `Location`, so it exercises each variant
     // without the stack-position wrapper or `Move`'s from/to constraints.
-    val events = locations.map(location => WalkerStepRecorded(player, "0",
+    val events = locations.map(location => WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
       Vector(PayCost(player, location, Cost(favor = 1))),
       Vector.empty): OathEvent)
@@ -440,7 +441,7 @@ class GameEventWireSuite extends munit.FunSuite {
   test("an unknown walker location kind, deck or negative cost decodes to a " +
       "typed WireError") {
     val player = PlayerId("red")
-    val event: OathEvent = WalkerStepRecorded(player, "0",
+    val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("pay")),
       Vector(PayCost(player, Location.Deck(CardDeck.Relic), Cost(secret = 1))),
       Vector.empty)
@@ -462,9 +463,8 @@ class GameEventWireSuite extends munit.FunSuite {
   }
 
   test("a WalkerStepRecorded carrying two contribution ids round-trips") {
-    val player = PlayerId("red")
     val pool = PoolKey("recover")
-    val event: OathEvent = WalkerStepRecorded(player, "0",
+    val event: OathEvent = WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.DicePoolModified(pool, 2)),
       Vector(ModifyDicePool(pool, 2)),
       Vector(PowerId("power.one"), PowerId("power.two")))
@@ -484,7 +484,7 @@ class GameEventWireSuite extends munit.FunSuite {
     // A shape this codec doesn't know must fail the append path as a
     // WireError, exactly like an unrecognized value on the decode side.
     case object UnknownStepPayload extends WalkerStepPayload
-    val event = WalkerStepRecorded(PlayerId("red"), "0", UnknownStepPayload,
+    val event = WalkerStepRecorded("0", UnknownStepPayload,
       Vector.empty, Vector.empty)
     GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {
       case Left(_) => ()
@@ -558,7 +558,7 @@ class GameEventWireSuite extends munit.FunSuite {
       ModifyRollOutcome(PoolKey("recover"), Some(1), Some(2)),
       ClearDicePool(PoolKey("recover")))
 
-    val events = operations.map(operation => WalkerStepRecorded(player, "0",
+    val events = operations.map(operation => WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("op")),
       Vector(operation), Vector.empty): OathEvent)
 
@@ -588,7 +588,7 @@ class GameEventWireSuite extends munit.FunSuite {
       Piece.Favor(1),
       Piece.Secrets(2),
       Piece.Warbands(ForceKind.Exile(lineage), 3))
-    val events = pieces.map(piece => WalkerStepRecorded(player, "0",
+    val events = pieces.map(piece => WalkerStepRecorded("0",
       WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("take")),
       Vector(Take(piece, player, Location.SharedBank,
         Location.PlayArea(player))), Vector.empty): OathEvent)
@@ -623,7 +623,7 @@ class GameEventWireSuite extends munit.FunSuite {
       Branch((_, _) => Vector.empty),
       Sequence(Vector(AdjustSupply(player, 1))))
     nodes.foreach { node =>
-      val event: OathEvent = WalkerStepRecorded(player, "0",
+      val event: OathEvent = WalkerStepRecorded("0",
         WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),
         Vector(node), Vector.empty)
       GameEventWire.encodeEvent("walker", catalogRef, 0, event) match {

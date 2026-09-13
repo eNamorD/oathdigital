@@ -82,7 +82,7 @@ private[walker] object WalkerPowerGather {
         // recurse forever, so leaves never contribute nested windows.
         case _: PrimitiveOperation => Vector.empty
         case branch: Branch => descend(branch.select(state,
-          PendingTree(at = path, answered = Vector.empty, actor = activePlayer)))
+          PendingTree(at = path, answered = Vector.empty)))
         case _ => descend(node.children)
       }
       own ++ nested
@@ -151,20 +151,20 @@ private[walker] object WalkerPowerGather {
     node match {
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
-        val (folded, _) = applyWindow(branch.window, branch, state, pending.actor,
-          powers, path, selected)
+        val (folded, _) = applyWindow(branch.window, branch, state,
+          state.game.current.turn.activePlayer, powers, path, selected)
         (folded, gathered)
       case leaf: PrimitiveOperation =>
         leaf.window match {
           case Some(w) if !gathered.contains(w) =>
-            val (folded, _) = applyWindow(Some(w), leaf, state, pending.actor,
-              powers, path, Vector(leaf))
+            val (folded, _) = applyWindow(Some(w), leaf, state,
+              state.game.current.turn.activePlayer, powers, path, Vector(leaf))
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
         }
       case composite =>
-        val (folded, _) = applyWindow(composite.window, composite, state, pending.actor,
-          powers, path, composite.children)
+        val (folded, _) = applyWindow(composite.window, composite, state,
+          state.game.current.turn.activePlayer, powers, path, composite.children)
         (folded, gathered)
     }
 }

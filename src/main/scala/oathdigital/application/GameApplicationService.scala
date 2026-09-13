@@ -355,8 +355,8 @@ final class GameApplicationService(
         rules.startWalker(state, action, start.actor, start.modifiers,
           start.startArgs)
       case GameCommand.ResolveWalker(actor, treeDecision) =>
-        rules.resolveWalker(state, actor, Answered(treeDecision.decisionId,
-          treeDecision.answer))
+        rules.resolveWalker(state, actor, treeDecision.decisionId,
+          treeDecision.answer)
       case GameCommand.RollWalker(actor, pool) =>
         rules.rollWalkerPrepared(state, actor, pool) { count =>
           Either.cond(count == defenseDicePort.diceCount,

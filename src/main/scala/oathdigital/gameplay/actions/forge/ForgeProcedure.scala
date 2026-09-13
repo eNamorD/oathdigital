@@ -232,7 +232,7 @@ object ForgeProcedure {
     def answeredPayments(pending: PendingTree)
         : Either[OathViolation, Vector[CoreOperation]] =
       pending.answered.lastOption match {
-        case Some(Answered(_, PartitionAnswer(placements))) =>
+        case Some(Answered(_, PartitionAnswer(placements), _)) =>
           placements.foldLeft[Either[OathViolation,
               Vector[(DenizenId, String)]]](Right(Vector.empty)) {
             case (result, placement) => for {

@@ -53,8 +53,8 @@ private[application] final class WalkerDecisionProjector(
     for {
       pending <- context.current.walkerPending
       action <- context.current.walkerAction
-      if context.viewer.contains(pending.actor)
-      tree <- rebuild(context.ready, action, pending.actor,
+      if context.viewer.contains(context.current.turn.activePlayer)
+      tree <- rebuild(context.ready, action, context.current.turn.activePlayer,
         context.current.walkerStartArgs).toOption
       powers = WalkerPowers.selected(walkerPowerCatalog,
         context.current.walkerModifiers)
@@ -78,7 +78,8 @@ private[application] final class WalkerDecisionProjector(
         WalkerActionRegistry.rollDecisionId(action).toOption.map(rollId =>
           WalkerDecisionProjection(action.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
-            rollOutcome = rollOutcome(ready, pending.actor)))
+            rollOutcome = rollOutcome(ready,
+              ready.game.current.turn.activePlayer)))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
@@ -90,11 +91,12 @@ private[application] final class WalkerDecisionProjector(
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-        .flatMap(decide => queryProjection(ready, Some(pending.actor),
-          decide.query).map(query =>
+        .flatMap(decide => queryProjection(ready,
+          Some(ready.game.current.turn.activePlayer), decide.query).map(query =>
           WalkerDecisionProjection(action.key, decide.decisionId, "decide",
             query = Some(query),
-            rollOutcome = rollOutcome(ready, pending.actor))))
+            rollOutcome = rollOutcome(ready,
+              ready.game.current.turn.activePlayer))))
     }
 
   /** Describes a declared query, or `None` when any single option's identity
