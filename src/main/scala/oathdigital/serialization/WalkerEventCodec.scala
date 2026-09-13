@@ -4,17 +4,15 @@ import scala.util.control.NonFatal
 
 import oathdigital.gameplay.{DiceKind, DiceSpec, OathEvent}
 import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
-  BuryableCard, Bury, CardDeck, ClearDicePool, CoreOperation, Cost, Decide,
-  Discard, Draw, Exchange, Flip, FlipSecrets, Gain, Give, Kill, Location,
-  ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
-  PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
-  Sequence, StackPosition, Swap, Take}
+  BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
+  Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
+  Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
+  PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll, Sacrifice,
+  SecretSide, Sequence, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionPayload.{RecoverChoice,
-  RecoverChoicePayload, RecoverRelicPayload}
 import oathdigital.model._
 
 /** Wire vocabulary for generic walker journal facts.
@@ -57,12 +55,18 @@ private[serialization] trait WalkerEventCodec {
         "step" -> encodeStepPayload(payload),
         "ops" -> ujson.Arr.from(ops.map(encodeOperation)),
         "contributions" -> stringArray(contributions.map(_.value)))
-    case WalkerParked(actor, action, at, answered, modifiers) => ujson.Obj(
-      "actorPlayerId" -> actor.value,
-      "action" -> action.key,
-      "at" -> stringArray(at),
-      "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
-      "modifiers" -> stringArray(modifiers.map(_.value)))
+    case WalkerParked(actor, action, at, answered, modifiers, startArgs) =>
+      ujson.Obj(
+        "actorPlayerId" -> actor.value,
+        "action" -> action.key,
+        "at" -> stringArray(at),
+        "answered" -> ujson.Arr.from(answered.map(encodeAnswered)),
+        "modifiers" -> stringArray(modifiers.map(_.value)),
+        // Always written, empty for an action that selects nothing, exactly
+        // as `modifiers` is. A park written before batch-1 Task 5 has no such
+        // key at all, and `decodeParked` reads a missing key as empty.
+        "startArgs" -> ujson.Arr.from(startArgs.map(
+          DecisionAnswerCodec.encodeRef)))
     case WalkerCompleted(actor, action) => ujson.Obj(
       "actorPlayerId" -> actor.value,
       "action" -> action.key)
@@ -83,12 +87,12 @@ private[serialization] trait WalkerEventCodec {
 
   private def encodeAnswered(answered: Answered): ujson.Value = ujson.Obj(
     "decisionId" -> answered.decisionId,
-    "payload" -> encodeDecisionPayload(answered.payload))
+    "payload" -> DecisionAnswerCodec.encode(answered.answer))
 
   private def decodeAnswered(value: ujson.Value,
       path: String): Either[WireError, Answered] = for {
-    payload <- decodeDecisionPayload(value("payload"), s"$path.payload")
-  } yield Answered(value("decisionId").str, payload)
+    answer <- DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
+  } yield Answered(value("decisionId").str, answer)
 
   private def encodeStepPayload(payload: WalkerStepPayload): ujson.Value =
     payload match {
@@ -96,7 +100,7 @@ private[serialization] trait WalkerEventCodec {
         ujson.Obj("kind" -> "delta", "meaning" -> encodeDeltaMeaning(meaning))
       case ChoicePayload(decisionId, answer) => ujson.Obj(
         "kind" -> "choice", "decisionId" -> decisionId,
-        "payload" -> encodeDecisionPayload(answer))
+        "payload" -> DecisionAnswerCodec.encode(answer))
       case RollPayload(pool, faces) => ujson.Obj(
         "kind" -> "roll", "pool" -> pool.value,
         "faces" -> ujson.Arr.from(faces.map {
@@ -113,7 +117,7 @@ private[serialization] trait WalkerEventCodec {
     value("kind").str match {
       case "delta" => decodeDeltaMeaning(value("meaning"), s"$path.meaning")
         .map(WalkerStepPayload.DeltaRecorded)
-      case "choice" => decodeDecisionPayload(value("payload"), s"$path.payload")
+      case "choice" => DecisionAnswerCodec.decode(value("payload"), s"$path.payload")
         .map(ChoicePayload(value("decisionId").str, _))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
         decodeDefenseFace(face.str, s"$path.faces"))
@@ -157,35 +161,6 @@ private[serialization] trait WalkerEventCodec {
       s"unknown walker delta meaning '$other'"))
   }
 
-  private def encodeDecisionPayload(payload: DecisionPayload): ujson.Value =
-    payload match {
-      case RecoverChoicePayload(choice) => ujson.Obj(
-        "kind" -> "recover-choice",
-        "choice" -> (choice match {
-          case RecoverChoice.Continue => "continue"
-          case RecoverChoice.Stop => "stop"
-        }))
-      case RecoverRelicPayload(relic) => ujson.Obj(
-        "kind" -> "recover-relic", "relicId" -> relic.value)
-      case other => throw new IllegalArgumentException(
-        s"unsupported walker decision payload $other")
-    }
-
-  private def decodeDecisionPayload(value: ujson.Value,
-      path: String): Either[WireError, DecisionPayload] =
-    value("kind").str match {
-      case "recover-choice" => value("choice").str match {
-        case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
-        case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
-        case other => Left(InvalidValue(s"$path.choice",
-          s"unknown Recover choice '$other'"))
-      }
-      case "recover-relic" =>
-        Right(RecoverRelicPayload(RelicId(value("relicId").str)))
-      case other => Left(InvalidValue(s"$path.kind",
-        s"unknown walker decision payload '$other'"))
-    }
-
   private def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
       case AdjustSupply(player, amount) => ujson.Obj(
@@ -194,6 +169,15 @@ private[serialization] trait WalkerEventCodec {
       case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
         "delta" -> delta)
+      // A use limit is journalled as the ref it records, not as the power
+      // that asked for it: replay adds the same ref to the same turn without
+      // gathering anything.
+      case RecordPowerUse(PowerUseRef(timing, PowerSourceRef.Site(site), id)) =>
+        ujson.Obj("kind" -> "record-power-use",
+          "timing" -> encodePowerTiming(timing), "siteId" -> site.value,
+          "powerId" -> id.value)
+      case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
+        "phase" -> phase.key)
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -323,6 +307,20 @@ private[serialization] trait WalkerEventCodec {
           "the non-sealed Operation type, never a recorded delta"))
     }
 
+  private def encodePowerTiming(timing: PowerTiming): String = timing match {
+    case PowerTiming.Wake => "wake"
+    case PowerTiming.Act => "act"
+    case PowerTiming.Rest => "rest"
+  }
+
+  private def decodePowerTiming(value: String,
+      path: String): Either[WireError, PowerTiming] = value match {
+    case "wake" => Right(PowerTiming.Wake)
+    case "act" => Right(PowerTiming.Act)
+    case "rest" => Right(PowerTiming.Rest)
+    case other => Left(InvalidValue(path, s"unknown power timing '$other'"))
+  }
+
   private def decodeOperation(value: ujson.Value,
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
@@ -331,6 +329,16 @@ private[serialization] trait WalkerEventCodec {
       case "modify-dice-pool" =>
         decodeSignedInt(value("delta"), s"$path.delta")
           .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
+      case "record-power-use" =>
+        decodePowerTiming(value("timing").str, s"$path.timing").map(timing =>
+          RecordPowerUse(PowerUseRef(timing,
+            PowerSourceRef.Site(SiteId(value("siteId").str)),
+            PowerId(value("powerId").str))))
+      case "enter-phase" =>
+        val key = value("phase").str
+        Phase.fromKey(key).toRight(
+          InvalidValue(s"$path.phase", s"unknown phase '$key'"))
+          .map(EnterPhase.apply)
       case "move" => for {
         piece <- decodePiece(value("piece"), s"$path.piece")
         from <- decodePositionedLocation(value("from"), s"$path.from")
@@ -689,21 +697,12 @@ private[serialization] trait WalkerEventCodec {
       s"unknown recorded walker location '$other'"))
   }
 
-  private def encodeCardDeck(value: CardDeck): String = value match {
-    case CardDeck.World => "world"
-    case CardDeck.Relic => "relic"
-    case CardDeck.Edifice => "edifice"
-    case CardDeck.Legacy => "legacy"
-  }
+  private def encodeCardDeck(value: CardDeck): String = value.key
 
   private def decodeCardDeck(value: String,
-      path: String): Either[WireError, CardDeck] = value match {
-    case "world" => Right(CardDeck.World)
-    case "relic" => Right(CardDeck.Relic)
-    case "edifice" => Right(CardDeck.Edifice)
-    case "legacy" => Right(CardDeck.Legacy)
-    case other => Left(InvalidValue(path, s"unknown card deck '$other'"))
-  }
+      path: String): Either[WireError, CardDeck] =
+    CardDeck.fromKey(value).toRight(
+      InvalidValue(path, s"unknown card deck '$value'"))
 
   private def encodeCost(cost: Cost): ujson.Value = ujson.Obj(
     "favor" -> cost.favor, "secret" -> cost.secret,
@@ -764,8 +763,23 @@ private[serialization] trait WalkerEventCodec {
         s"$path.answered[$index]")
     }
     modifiers = value("modifiers").arr.toVector.map(id => PowerId(id.str))
+    startArgs <- decodeStartArgs(value, s"$path.startArgs")
   } yield WalkerParked(PlayerId(value("actorPlayerId").str), action,
-    value("at").arr.toVector.map(_.str), answered, modifiers)
+    value("at").arr.toVector.map(_.str), answered, modifiers, startArgs)
   catch { case NonFatal(error) => Left(InvalidValue(path,
     Option(error.getMessage).getOrElse("invalid walker park"))) }
+
+  /** Start selections are `DecisionOptionRef`s and nothing else, so this
+    * names no action and needs no arm per action -- a future action that
+    * selects a site, a card or a player already round-trips here unchanged.
+    */
+  private def decodeStartArgs(value: ujson.Value, path: String)
+      : Either[WireError, Vector[DecisionOptionRef]] =
+    value.obj.get("startArgs") match {
+      case None => Right(Vector.empty)
+      case Some(args) => traverse(args.arr.zipWithIndex.toVector) {
+        case (ref, index) =>
+          DecisionAnswerCodec.decodeRef(ref, s"$path[$index]")
+      }
+    }
 }

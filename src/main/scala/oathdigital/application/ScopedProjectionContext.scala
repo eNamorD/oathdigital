@@ -28,7 +28,6 @@ private[application] final case class LegalProjection(
 private[application] final case class PendingProjection(
     phase: String,
     cardDecision: Option[PendingCardDecisionProjection],
-    forge: Option[ForgeProjection],
     campaign: Option[CampaignProjection],
     campaignRaidRelocation: Option[CampaignRaidRelocationProjection],
     oathkeeperRecipient: Option[OathkeeperRecipientProjection],

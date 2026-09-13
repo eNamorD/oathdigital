@@ -5,16 +5,13 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
-import oathdigital.gameplay.powerresolver.{ContributionCollector, PowerCtx,
-  PowerWindow}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
   WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 
 /** Task 8 step 3: the replay-drift check.
@@ -213,7 +210,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val fact: WalkerEvent = outcome match {
       case WalkerOutcome.Parked(pending, _) =>
         WalkerParked(actor, ActionRef.Recover, pending.at, pending.answered,
-          Vector.empty)
+          Vector.empty, Vector.empty)
       case WalkerOutcome.Finished(_, _) =>
         WalkerCompleted(actor, ActionRef.Recover)
     }
@@ -224,24 +221,6 @@ class WalkerReplayDriftSuite extends munit.FunSuite
           fail(s"replay-track applyRecorded of $event failed: $violation")
       }
     }
-  }
-
-  /** Mirrors `OathRules.eligibilityGathered` (ruling C/B): whether `powers`
-    * gathers a `Transform` at `RecoverActionEligibility`, which is what lets
-    * `RecoverProcedure.build`'s start-only facedown-relic gate relax. This
-    * suite drives `ProcedureWalker`/`RecoverProcedure.build` directly, one
-    * layer below `OathRules`, so it needs the same one-line policy `OathRules`
-    * applies before calling `build` -- not a second implementation of any
-    * walker or gather mechanics, just the same production `PowerWindow`
-    * lookup `OathRules.startWalker` performs, applied identically to both the
-    * live and replay tracks.
-    */
-  private def eligibilityRelaxed(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): Boolean = {
-    val window = PowerWindow.RecoverActionEligibility
-    ContributionCollector.gather(window, powers.powers,
-      power => PowerCtx(ready, actor, power.source, window, Vector.empty))
-      .transforms.nonEmpty
   }
 
   /** Drives `script` to completion. At every command it independently
@@ -259,8 +238,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       val resume = remaining.head
 
       val liveTree =
-        if (starting) RecoverProcedure.build(catalog, liveState, actor,
-          relaxEligibility = eligibilityRelaxed(liveState, actor, powers))
+        if (starting) RecoverProcedure.build(catalog, liveState, actor)
           .toOption.get
         else RecoverProcedure.rebuild(catalog, liveState, actor).toOption.get
       val liveOutcome = runResume(resume, liveState, liveTree, livePending,
@@ -268,8 +246,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
 
       val Ready(replayReady) = replayState: @unchecked
       val replayTree =
-        if (starting) RecoverProcedure.build(catalog, replayReady, actor,
-          relaxEligibility = eligibilityRelaxed(replayReady, actor, powers))
+        if (starting) RecoverProcedure.build(catalog, replayReady, actor)
           .toOption.get
         else RecoverProcedure.rebuild(catalog, replayReady, actor).toOption.get
       val replayPending = replayReady.game.current.walkerPending
@@ -299,7 +276,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(siteId).relics,
@@ -316,11 +293,10 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoicePayload(
-            RecoverChoice.Continue))),
+          ChooseOneAnswer(DecisionOptionRef.Button("continue")))),
         RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(relic.id)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(relic.id))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -334,8 +310,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(ready, actor,
       Vector(StartWalk, RollResume(lowRoll),
         AnswerResume(Answered(RecoverProcedure.choiceDecisionId,
-          RecoverChoicePayload(
-            RecoverChoice.Stop)))), walkerPowers)
+          ChooseOneAnswer(DecisionOptionRef.Button("stop"))))), walkerPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.players.find(_.player == actor)
@@ -352,7 +327,7 @@ class WalkerReplayDriftSuite extends munit.FunSuite
     val finished = assertNoDrift(fixture.ready, fixture.actor,
       Vector(StartWalk, RollResume(highRoll),
         AnswerResume(Answered(RecoverProcedure.relicDecisionId,
-          RecoverRelicPayload(fixture.topRelic)))), catacombsPowers)
+          ChooseOneAnswer(DecisionOptionRef.Relic(fixture.topRelic))))), catacombsPowers)
     finished match {
       case WalkerOutcome.Finished(treeless, _) =>
         assertEquals(treeless.game.current.map.sites(fixture.site).relics,

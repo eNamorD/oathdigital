@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.phases.{RestCommand, WakeCommand,
+import oathdigital.gameplay.phases.{RestCommand,
   RestCleanupPlan, WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
@@ -231,8 +231,8 @@ class RestSuite extends munit.FunSuite {
         Right(began.state))((next, recorded) => next.flatMap(rules.evolve(_, recorded)))
         .toOption.get
       if (player != order.last)
-        state = rules.handle(state, WakeCommand.EndWake(event.postRestActivePlayerId))
-          .toOption.get.state
+        state = rules.startWalker(state, ActionRef.EndWake,
+          event.postRestActivePlayerId).toOption.get.state
     }
     val Ready(after) = state: @unchecked
     assertEquals(after.game.current.tracks.round, 2)

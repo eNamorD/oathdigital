@@ -8,7 +8,11 @@ import oathdigital.protocol.{GameIntent => Intent, _}
   */
 private[frontend] object GameCommand {
   def PlacePawn(actor: String, site: String) = Intent.PlacePawn(site)
-  def TakeWealth(actor: String, resource: String) = Intent.TakeWealth(resource)
+  // Take Wealth starts on the generic walker (batch-1 Task 7): the resource
+  // rides the start selection as a button, not an intent of its own.
+  def TakeWealth(actor: String, resource: String) =
+    Intent.StartWalker("take-wealth", Vector.empty,
+      Vector(WalkerStartArgWire("button", resource)))
   def EndWake(actor: String) = Intent.EndWake
   def BeginRest(actor: String) = Intent.BeginRest
   def FinishRest(actor: String) = Intent.FinishRest
@@ -16,7 +20,10 @@ private[frontend] object GameCommand {
       allocations: Vector[RestFavorAllocation], bank: String) =
     Intent.ResolveRestPower(id, allocations, bank)
   def DeclineRestPower(actor: String, id: String) = Intent.DeclineRestPower(id)
-  def Travel(actor: String, site: String) = Intent.Travel(site)
+  // Travel starts on the generic walker (batch-1 Task 5): its destination
+  // rides the start selection, not an intent of its own.
+  def Travel(actor: String, site: String) = Intent.StartWalker("travel",
+    Vector.empty, Vector(WalkerStartArgWire("site", site)))
   def CampaignConquest(actor: String, site: String, count: Int) = Intent.BeginCampaignConquest(Vector(site), count)
   def CampaignConquest(actor: String, sites: Vector[String], count: Int) = Intent.BeginCampaignConquest(sites, count)
   def CampaignRaid(actor: String, targets: Vector[BoardTargetRef], count: Int) = Intent.BeginCampaignRaid(targets.map {
@@ -41,8 +48,6 @@ private[frontend] object GameCommand {
   def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))
   def Trade(actor: String, target: oathdigital.frontend.EconomyTarget, resource: String) = Intent.Trade(oathdigital.protocol.EconomyTarget(target.kind, target.id), resource)
   def BeginSearch(actor: String, source: String, region: Option[String]) = Intent.BeginSearch(SearchSource(source, region))
-  def BeginForge(actor: String) = Intent.BeginForge
-  def CompleteForge(actor: String, id: String, values: Vector[(ForgeTarget, String)]) = Intent.CompleteForge(id, values.map { case (v,r) => ForgeAssignment(v.siteId, v.denizenId, r) })
   def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
   def ChooseChallengeSecretSite(actor: String, id: String, site: String) = Intent.ChooseChallengeSecretSite(id, site)
   def CompleteChallenge(actor: String, id: String, amount: Int) = Intent.CompleteChallenge(id, amount)
@@ -60,7 +65,7 @@ private[frontend] object GameCommand {
   def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
     Intent.StartWalker(action, modifiers)
   def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
-  def ResolveWalker(actor: String, id: String, payload: DecisionPayloadWire) =
+  def ResolveWalker(actor: String, id: String, payload: DecisionAnswerWire) =
     Intent.ResolveWalker(id, payload)
 }
 

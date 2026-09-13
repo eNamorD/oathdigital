@@ -98,6 +98,20 @@ object OperationError {
     override val code: String = "restricted-operation"
   }
 
+  /** Entering the phase the turn is already in (batch-1 Task 7).
+    *
+    * A phase change is a transition, so a no-op one is not a harmless repeat
+    * -- it is a journal that recorded the same transition twice, or one
+    * replayed out of order. Rejecting keeps replay checking the phase
+    * sequence the deleted `WakeEnded` evolve used to check, which applying
+    * the write blindly would have given up.
+    */
+  final case class PhaseAlreadyEntered(phase: Phase) extends OperationError {
+    override val code: String = "phase-already-entered"
+    override val detail: String =
+      s"the turn is already in the ${phase.productPrefix} phase"
+  }
+
   final case class InvalidPostState(problems: Vector[DomainProblem])
       extends OperationError {
     override val code: String = "invalid-post-state"

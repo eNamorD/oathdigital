@@ -107,13 +107,6 @@ object RuleQueryContext {
       window: CampaignTimingWindow
   ) extends RuleQueryContext
 
-  final case class TakeWealth(
-      ready: ReadyGame,
-      player: PlayerState,
-      siteId: SiteId,
-      resource: WakeResource
-  ) extends RuleQueryContext
-
   final case class Negotiation(ready: ReadyGame, participant: PlayerState,
       site: SiteId, participants: Vector[PlayerId]) extends RuleQueryContext
 }
@@ -206,7 +199,8 @@ object RuleRegistry {
   * its relevant-handler activations are never registered, so resolving them
   * against this empty registry yields `UnsupportedRelevantRule` exactly as the
   * retired travel handler set did. The travel terrain path itself now runs
-  * through TravelCost window powers (see powers/travel/TravelCostWindow.scala).
+  * through `ContributingPower` transforms at the TravelCost window (see
+  * powers/travel/TravelSitePowers.scala).
   */
 object RuntimeRuleRegistry {
   val default: RuleRegistry = RuleRegistry()

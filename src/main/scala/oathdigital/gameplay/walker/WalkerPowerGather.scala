@@ -28,7 +28,8 @@ private[walker] object WalkerPowerGather {
     * `WalkerStepRecorded` this node's execution produces (Task 3 wiring
     * rules 1-3).
     */
-  def applyWindow(window: Option[PowerWindow], state: ReadyGame,
+  def applyWindow(window: Option[PowerWindow], operation: Operation,
+      state: ReadyGame,
       actor: PlayerId, powers: WalkerPowers, path: Vector[String],
       ops: Vector[Operation]): (Vector[Operation], Vector[PowerId]) =
     window match {
@@ -37,7 +38,7 @@ private[walker] object WalkerPowerGather {
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
-          PowerCtx(state, actor, power.source, w, path)
+          PowerCtx(state, actor, power.source, w, path, operation)
         val gathered = ContributionCollector.gather(w, powers.powers, ctxFor)
         val folded = gathered.transforms.foldLeft(ops) {
           case (acc, (powerId, transform)) =>
@@ -66,12 +67,12 @@ private[walker] object WalkerPowerGather {
       state: ReadyGame, actor: PlayerId): Vector[OathViolation] = {
     val byId: Map[PowerId, ContributingPower] =
       powers.powers.map(power => power.id -> power).toMap
-    def ctxFor(window: PowerWindow, path: Vector[String])
+    def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
         : ContributingPower => PowerCtx =
-      power => PowerCtx(state, actor, power.source, window, path)
+      power => PowerCtx(state, actor, power.source, window, path, operation)
     def windowsIn(node: Operation, path: Vector[String])
-        : Vector[(PowerWindow, Vector[String])] = {
-      val own = node.window.map(w => Vector(w -> path)).getOrElse(Vector.empty)
+        : Vector[(PowerWindow, Vector[String], Operation)] = {
+      val own = node.window.map(w => Vector((w, path, node))).getOrElse(Vector.empty)
       def descend(children: Vector[Operation]) =
         children.zipWithIndex.flatMap { case (child, index) =>
           windowsIn(child, path :+ index.toString) }
@@ -86,11 +87,11 @@ private[walker] object WalkerPowerGather {
       }
       own ++ nested
     }
-    windowsIn(tree, Vector.empty).flatMap { case (window, path) =>
+    windowsIn(tree, Vector.empty).flatMap { case (window, path, operation) =>
       val gathered = ContributionCollector.gather(window, powers.powers,
-        ctxFor(window, path))
+        ctxFor(window, path, operation))
       gathered.restrictions.flatMap { case (powerId, restriction) =>
-        restriction.fn(ctxFor(window, path)(byId(powerId)), tree)
+        restriction.fn(ctxFor(window, path, operation)(byId(powerId)), tree)
       }
     }
   }
@@ -150,19 +151,19 @@ private[walker] object WalkerPowerGather {
     node match {
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
-        val (folded, _) = applyWindow(branch.window, state, pending.actor,
+        val (folded, _) = applyWindow(branch.window, branch, state, pending.actor,
           powers, path, selected)
         (folded, gathered)
       case leaf: PrimitiveOperation =>
         leaf.window match {
           case Some(w) if !gathered.contains(w) =>
-            val (folded, _) = applyWindow(Some(w), state, pending.actor,
+            val (folded, _) = applyWindow(Some(w), leaf, state, pending.actor,
               powers, path, Vector(leaf))
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
         }
       case composite =>
-        val (folded, _) = applyWindow(composite.window, state, pending.actor,
+        val (folded, _) = applyWindow(composite.window, composite, state, pending.actor,
           powers, path, composite.children)
         (folded, gathered)
     }

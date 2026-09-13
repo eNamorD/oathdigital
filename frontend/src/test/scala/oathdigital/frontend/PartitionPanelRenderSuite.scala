@@ -1,0 +1,295 @@
+package oathdigital.frontend
+
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
+  GameIntent => Intent, PreviewModifier}
+import org.scalajs.dom
+import scala.scalajs.js
+
+/** Task 5, at the DOM. `PartitionDecisionStateSuite` proves the interaction
+  * state; this drives the controls the panel actually builds, so renderer
+  * wiring cannot break while a state-level test stays green: the zones and
+  * options are read out of the rendered tree, the moves go through the
+  * accessible button and through a real drop event, the confirm button's
+  * disabled state is read off the element, and the submitted command is
+  * whatever a click on it produced.
+  *
+  * Runs under jsdom (`Test / jsEnv` in `build.sbt`), which is why
+  * `dom.document` exists here at all.
+  */
+class PartitionPanelRenderSuite extends munit.FunSuite {
+  /** Task 5b: the heading and the confirm label are the query's own, the
+    * way `ForgeProcedure` now declares them -- the panel no longer reads
+    * `decision.action` to decide what to call itself.
+    */
+  private val query = DecisionQueryState("partition",
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+    Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
+      DecisionSectionState("pay-secret", "Pay Secret", 1)),
+    heading = Some("Forge a relic"),
+    confirmLabel = Some("Complete Forge"))
+
+  private val parked =
+    WalkerDecisionState("forge", "forge-9", "decide", query = Some(query))
+
+  private def projectionWith(decision: Option[WalkerDecisionState])
+      : GameProjection = GameProjection("game", 9L, "act", Some("red"),
+    Vector.empty, Vector.empty, Vector.empty, Vector.empty, ready = true,
+    completed = false, walkerDecision = decision)
+
+  private val presentation = ServerUiSupport.ViewerPresentation(
+    showGameplayControls = true, None, None)
+
+  /** Renders the panel into a detached container and hands back both, so a
+    * test can read the tree and then re-render it after a click the way the
+    * real `rerender()` would.
+    */
+  private def render(ui: RecordingView, canControl: Boolean = true,
+      decision: Option[WalkerDecisionState] = Some(parked)): dom.Element = {
+    val panel = dom.document.createElement("div")
+    WalkerPanelSupport.renderPartitionPanel(projectionWith(decision),
+      presentation, canControl, panel, ui)
+    panel
+  }
+
+  private def opened(): RecordingView = {
+    val ui = new RecordingView("game", "red")
+    ui.currentWalkerPartition = WalkerPartitionDraft.reconcile(None,
+      BoardSelectionContext("game", "red", 9), Some(parked))
+    ui
+  }
+
+  private def all(root: dom.Element, selector: String): Vector[dom.Element] =
+    root.querySelectorAll(selector).toVector.map(_.asInstanceOf[dom.Element])
+
+  private def one(root: dom.Element, selector: String): dom.Element = {
+    val found = all(root, selector)
+    assertEquals(found.size, 1, s"expected exactly one $selector")
+    found.head
+  }
+
+  private def optionLabelsIn(panel: dom.Element, sectionKey: String)
+      : Vector[String] =
+    all(one(panel, s"""[data-section-key="$sectionKey"]"""),
+      ".decision-option").map(_.getAttribute("aria-label"))
+
+  private def confirm(panel: dom.Element): dom.html.Button =
+    one(panel, ".partition-confirm").asInstanceOf[dom.html.Button]
+
+  private def click(element: dom.Element): Unit =
+    element.asInstanceOf[dom.html.Element].click()
+
+  test("the panel renders one zone per projected section, holding the " +
+      "options placed there") {
+    val panel = render(opened())
+    assertEquals(one(panel, "h2").textContent, "Forge a relic")
+    assertEquals(one(panel, ".partition-instruction").textContent,
+      "Assign every option: Pay Favor (2), Pay Secret (1).")
+    val zones = all(panel, ".partition-zone")
+    assertEquals(zones.map(_.getAttribute("data-section-key")),
+      Vector("pay-favor", "pay-secret"))
+    assertEquals(zones.map(zone => one(zone, "h3").textContent),
+      Vector("Pay Favor", "Pay Secret"))
+    assertEquals(zones.map(zone =>
+      one(zone, ".decision-zone-helper").textContent),
+      Vector("At least 2.", "At least 1."))
+    assertEquals(optionLabelsIn(panel, "pay-favor"),
+      Vector("Denizen 1", "Denizen 2"))
+    assertEquals(optionLabelsIn(panel, "pay-secret"), Vector("Denizen 3"))
+    assertEquals(all(panel, ".decision-option")
+      .map(_.getAttribute("data-option-id")),
+      Vector("denizen:denizen:1", "denizen:denizen:2", "denizen:denizen:3"))
+  }
+
+  test("the accessible move button moves one option to the other zone") {
+    val ui = opened()
+    val panel = render(ui)
+    val move = one(panel,
+      """[data-option-id="denizen:denizen:1"] [aria-label=""" +
+        """"Move Denizen 1 to Pay Secret"]""")
+    assertEquals(move.textContent, "Pay Secret")
+    click(move)
+    assertEquals(ui.rerenders, 1)
+    // The draft the panel will be re-rendered from has actually moved.
+    val moved = render(ui)
+    assertEquals(optionLabelsIn(moved, "pay-favor"), Vector("Denizen 2"))
+    assertEquals(optionLabelsIn(moved, "pay-secret"),
+      Vector("Denizen 3", "Denizen 1"))
+  }
+
+  test("dropping a dragged option on a zone moves it there") {
+    val ui = opened()
+    val panel = render(ui)
+    // Whatever `dragstart` puts on the transfer is exactly what the drop
+    // reads back, so the two halves of the drag are tested together.
+    val dragged = dragStartPayload(one(panel,
+      """[data-option-id="denizen:denizen:3"]"""))
+    assertEquals(dragged, "denizen:denizen:3")
+    drop(one(panel, """[data-section-key="pay-favor"]"""), dragged)
+    assertEquals(ui.rerenders, 1)
+    val moved = render(ui)
+    assertEquals(optionLabelsIn(moved, "pay-favor"),
+      Vector("Denizen 1", "Denizen 2", "Denizen 3"))
+    assertEquals(optionLabelsIn(moved, "pay-secret"), Vector.empty)
+  }
+
+  test("confirmation is refused until every projected minimum is met") {
+    val ui = opened()
+    assert(!confirm(render(ui)).disabled)
+    // Emptying the secret zone leaves it below its projected minimum.
+    drop(one(render(ui), """[data-section-key="pay-favor"]"""),
+      "denizen:denizen:3")
+    val short = render(ui)
+    assert(confirm(short).disabled)
+    click(confirm(short))
+    assertEquals(ui.submitted, Vector.empty)
+    // Putting one back satisfies it again.
+    drop(one(render(ui), """[data-section-key="pay-secret"]"""),
+      "denizen:denizen:1")
+    assert(!confirm(render(ui)).disabled)
+  }
+
+  test("a player who cannot control the game gets a disabled confirm") {
+    val ui = opened()
+    val panel = render(ui, canControl = false)
+    assert(confirm(panel).disabled)
+    click(confirm(panel))
+    assertEquals(ui.submitted, Vector.empty)
+  }
+
+  test("clicking confirm submits every option in the zone it was left in") {
+    val ui = opened()
+    // Swap the first and last options, which keeps both minima met.
+    drop(one(render(ui), """[data-section-key="pay-secret"]"""),
+      "denizen:denizen:1")
+    drop(one(render(ui), """[data-section-key="pay-favor"]"""),
+      "denizen:denizen:3")
+    val arranged = render(ui)
+    assertEquals(optionLabelsIn(arranged, "pay-favor"),
+      Vector("Denizen 2", "Denizen 3"))
+    assertEquals(optionLabelsIn(arranged, "pay-secret"), Vector("Denizen 1"))
+    assertEquals(confirm(arranged).textContent, "Complete Forge")
+    click(confirm(arranged))
+    assertEquals(ui.submitted, Vector(Intent.ResolveWalker("forge-9",
+      DecisionAnswerWire.PartitionWire(Vector(
+        DecisionPlacementWire("denizen", "denizen:1", "pay-secret"),
+        DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
+        DecisionPlacementWire("denizen", "denizen:3", "pay-favor"))))))
+  }
+
+  /** The copy is read from the query and from nowhere else, so these two
+    * cases are the whole of Task 5b at the DOM.
+    *
+    * The first proves the panel renders what the query declares rather than
+    * what it recognises: the action stays `"forge"` and the copy changes,
+    * which the deleted `action == "forge"` branch could not have done. The
+    * second proves the generic fallback, which is what any decision that
+    * declares no copy gets -- the panel must still be usable, just
+    * untitled.
+    */
+  test("the panel titles itself from the query, not from the action") {
+    val retitled = query.copy(heading = Some("Pay for the relic"),
+      confirmLabel = Some("Pay"))
+    val panel = render(opened(),
+      decision = Some(parked.copy(query = Some(retitled))))
+    assertEquals(one(panel, "h2").textContent, "Pay for the relic")
+    assertEquals(confirm(panel).textContent, "Pay")
+  }
+
+  test("a partition query declaring no copy falls back to generic copy") {
+    val bare = query.copy(heading = None, confirmLabel = None)
+    val panel = render(opened(),
+      decision = Some(parked.copy(query = Some(bare))))
+    assertEquals(one(panel, "h2").textContent, "Resolve decision")
+    assertEquals(confirm(panel).textContent, "Confirm")
+    // Untitled, not unusable: the zones and the options are still there.
+    assertEquals(all(panel, ".partition-zone").size, 2)
+    assertEquals(all(panel, ".decision-option").size, 3)
+  }
+
+  test("a park with no partition query renders no controls at all") {
+    val ui = opened()
+    assertEquals(all(render(ui, decision = None), ".partition-zone"),
+      Vector.empty)
+    val suppressed = Some(parked.copy(query = None))
+    assertEquals(all(render(ui, decision = suppressed), ".partition-zone"),
+      Vector.empty)
+    val chooseOne = Some(WalkerDecisionState("recover", "recover.choice",
+      "decide", query = Some(DecisionQueryState("choose-one",
+        Vector(DecisionOptionState("button", "stop", "Stop"))))))
+    assertEquals(all(render(ui, decision = chooseOne), ".partition-zone"),
+      Vector.empty)
+  }
+
+  /** Fires `dragstart` and returns what the handler wrote to the transfer.
+    * jsdom implements neither `DragEvent` nor `DataTransfer`, so the event
+    * carries a recording stand-in for the one property the handler reads.
+    */
+  private def dragStartPayload(node: dom.Element): String = {
+    var written = ""
+    val transfer = js.Dynamic.literal(
+      setData = (_: String, value: String) => written = value,
+      getData = (_: String) => written)
+    node.dispatchEvent(transferEvent("dragstart", transfer))
+    written
+  }
+
+  private def drop(zone: dom.Element, item: String): Unit = {
+    val transfer = js.Dynamic.literal(getData = (_: String) => item)
+    zone.dispatchEvent(transferEvent("drop", transfer))
+  }
+
+  private def transferEvent(name: String, transfer: js.Dynamic): dom.Event = {
+    val event = js.Dynamic.newInstance(js.Dynamic.global.Event)(name,
+      js.Dynamic.literal(bubbles = true, cancelable = true))
+    event.updateDynamic("dataTransfer")(transfer)
+    event.asInstanceOf[dom.Event]
+  }
+}
+
+/** A `ServerUiView` that records what the panel asked of it. Only the four
+  * members a decision panel touches do anything.
+  */
+private final class RecordingView(gameId: String, playerId: String)
+    extends ServerUiView {
+  var partition: Option[WalkerPartitionDraft] = None
+  var submitted: Vector[Intent] = Vector.empty
+  var rerenders: Int = 0
+
+  def currentWalkerPartition: Option[WalkerPartitionDraft] = partition
+  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit =
+    partition = value
+  def rerender(): Unit = rerenders += 1
+  def submitCommand(command: Intent): Unit = submitted :+= command
+
+  def currentGameId: String = gameId
+  def currentPlayerId: String = playerId
+  def displayedProjection: Option[GameProjection] = None
+  val sessionCoordinator: ServerSessionCoordinator =
+    new ServerSessionCoordinator(gameId, playerId)
+  def currentBoardSelection: Option[BoardTargetSelectionState] = None
+  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
+  def currentBoardFormation: Option[BoardTargetFormationState] = None
+  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit = ()
+  def currentCampaignPlacement: Option[CampaignPlacementState] = None
+  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit = ()
+  def currentCardDecision: Option[CardDecisionState] = None
+  def currentCardDecision_=(value: Option[CardDecisionState]): Unit = ()
+  def currentModifierWorkflow: Option[ModifierWorkflow] = None
+  def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
+  def chooseFacedownAdviser(cardId: String): Unit = ()
+  def toggleModifier(value: PreviewModifier): Unit = ()
+  def moveModifier(value: PreviewModifier, delta: Int): Unit = ()
+  def confirmModifiers(): Unit = ()
+  def backFromModifiers(): Unit = ()
+  def cancelModifiers(): Unit = ()
+  def beginTargetedMajorAction(actionKind: String): Unit = ()
+  def backFromTargets(): Unit = ()
+  def cancelTargetAction(): Unit = ()
+  def submitTargetCommand(command: Intent): Unit = ()
+  def canControl: Boolean = true
+  def handleSelection(result: BoardSelectionResult): Unit = ()
+  def loadSession(gameId: String, playerId: String): Unit = ()
+  def reconnectSession(): Unit = ()
+  def createGame(): Unit = ()
+}

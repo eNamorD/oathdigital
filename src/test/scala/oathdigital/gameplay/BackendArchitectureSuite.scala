@@ -397,13 +397,30 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("procedure power inventories use named Power objects, not raw ID tables") {
+    // Aimed at the legacy `Power` inventories (`ActionPowers`, `SearchPowers`,
+    // ...), where a collection literal meant an id table standing in for named
+    // power objects. A `ContributingPower` is not one of those: it declares
+    // `contributions: Map[PowerWindow, Vector[Contribution]]`, so the scan
+    // read an ordinary field of the walker seam as the smell it hunts. That
+    // misfire was already being paid for -- `TravelSitePowers.scala` spells
+    // its contribution map `Map.empty.updated(...)` for no reason but this
+    // guard -- and batch-1 Task 6 would have paid it again. Contribution
+    // files are therefore skipped by what they declare, not by filename.
     val root = Paths.get("src/main/scala/oathdigital/gameplay/powers")
-    val offenders = Files.walk(root).iterator.asScala.filter(path =>
-      path.getFileName.toString.endsWith("Powers.scala") && {
-        val text = Files.readString(path)
-        text.contains("Set(") || text.contains("Map(") ||
-          text.contains("handlerId match")
-      }).map(_.toString).toVector
+    val declaresContribution = "(?:extends|with)\\s+ContributingPower\\b".r
+    val scanned = Files.walk(root).iterator.asScala.filter(path =>
+      path.getFileName.toString.endsWith("Powers.scala") &&
+        declaresContribution.findFirstIn(Files.readString(path)).isEmpty)
+      .toVector
+    // The exemption narrows the guard; it must not empty it. A refactor that
+    // left nothing scanned would pass this test while checking nothing.
+    assert(scanned.size >= 5,
+      s"the inventory scan covers too few files to be meaningful: $scanned")
+    val offenders = scanned.filter { path =>
+      val text = Files.readString(path)
+      text.contains("Set(") || text.contains("Map(") ||
+        text.contains("handlerId match")
+    }.map(_.toString)
     assertEquals(offenders, Vector.empty)
   }
 

@@ -4,10 +4,9 @@ import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
   TreeDecision}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model._
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionPayloadWire, GameIntent}
+  DecisionAnswerWire, DecisionPlacementWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
@@ -33,8 +32,8 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("one mapper binds the transport-selected actor") {
     assertEquals(GameIntentMapper.bind(PlayerId("dev-selected"),
-      GameIntent.TakeWealth("favor")),
-      Right(GameCommand.TakeWealth(PlayerId("dev-selected"), WakeResource.Favor)))
+      GameIntent.PlacePawn("site:a")),
+      Right(GameCommand.PlacePawn(PlayerId("dev-selected"), SiteId("site:a"))))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
     val rest = GameIntent.ResolveRestPower("rest-1", Vector(
@@ -50,7 +49,8 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("domain conversion rejects unknown protocol identifiers without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.TakeWealth("injected-resource")).left.toOption.get
+      GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "d1"),
+        "injected-resource")).left.toOption.get
     assertEquals(failure.path, "$.intent.resource")
   }
 
@@ -74,22 +74,36 @@ class GameHttpWireSuite extends munit.FunSuite {
       Right(GameCommand.RollWalker(PlayerId("actor-1"), PoolKey("recover.pool"))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("continue"))),
+        DecisionAnswerWire.ChooseOneWire("button", "continue"))),
       Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
         TreeDecision("recover.choice",
-          RecoverChoicePayload(RecoverChoice.Continue)))))
-    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
-      GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("stop"))),
-      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
-        TreeDecision("recover.choice",
-          RecoverChoicePayload(RecoverChoice.Stop)))))
+          ChooseOneAnswer(DecisionOptionRef.Button("continue"))))))
     assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
       GameIntent.ResolveWalker("recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-1"))),
+        DecisionAnswerWire.ChooseOneWire("relic", "relic-1"))),
       Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
         TreeDecision("recover.relic",
-          RecoverRelicPayload(RelicId("relic-1"))))))
+          ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("relic-1")))))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("forge.assignment",
+        DecisionAnswerWire.PartitionWire(Vector(
+          DecisionPlacementWire("denizen", "d1", "pay-favor"),
+          DecisionPlacementWire("denizen", "d2", "pay-secret"))))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("forge.assignment", PartitionAnswer(Vector(
+          DecisionPlacement(DecisionOptionRef.Denizen(DenizenId("d1")),
+            "pay-favor"),
+          DecisionPlacement(DecisionOptionRef.Denizen(DenizenId("d2")),
+            "pay-secret")))))))
+
+    // An unknown option kind, and a blank id an identifier would throw on,
+    // are both typed mapping failures rather than exceptions.
+    assert(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("recover.relic",
+        DecisionAnswerWire.ChooseOneWire("warband", "w1"))).isLeft)
+    assert(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("recover.relic",
+        DecisionAnswerWire.ChooseOneWire("relic", "   "))).isLeft)
   }
 
   test("an unknown walker action string is rejected without throwing") {
@@ -110,26 +124,37 @@ class GameHttpWireSuite extends munit.FunSuite {
     assertEquals(failure.path, "$.intent.modifiers[0]")
   }
 
-  test("an unknown Recover choice value is rejected without throwing") {
+  test("an unknown option kind is rejected without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("teleport"))).left.toOption.get
-    assertEquals(failure.path, "$.intent.payload.choice")
+        DecisionAnswerWire.ChooseOneWire("teleport", "x"))).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.option")
   }
 
   test("a blank relic id is rejected with a typed failure, not an " +
       "IllegalArgumentException escaping the mapper (finding I7)") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
       GameIntent.ResolveWalker("recover.relic",
-        DecisionPayloadWire.RecoverRelicWire(""))).left.toOption.get
-    assertEquals(failure.path, "$.intent.payload.relicId")
+        DecisionAnswerWire.ChooseOneWire("relic", ""))).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.option")
+  }
+
+  test("an unplaceable option inside a partition answer is rejected with " +
+      "the placement path, not the choose-one path") {
+    val failure = GameIntentMapper.bind(PlayerId("trusted"),
+      GameIntent.ResolveWalker("forge.assignment",
+        DecisionAnswerWire.PartitionWire(Vector(
+          DecisionPlacementWire("warband", "w1", "pay-favor")))))
+      .left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.placements.option")
   }
 
   test("malformed actorless requests retain typed paths") {
     assertEquals(GameHttpWire.decodeCommand("{").left.toOption.get.path, "$")
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
+      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(GameHttpWire.decodeCommand(missing).left.toOption.get.path,
-      "$.intent.destinationSiteId")
+      "$.intent.startArgs[0].optionId")
   }
 
   test("development bootstrap remains configuration-only") {

@@ -2,7 +2,6 @@ package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.walker.OwnerQuery
 import oathdigital.model._
 
 /** Core operations occurring in a game of Oath.
@@ -73,14 +72,6 @@ sealed trait SecretSide extends Product with Serializable
 object SecretSide {
   case object FaceUp extends SecretSide
   case object FaceDown extends SecretSide
-}
-
-sealed trait CardDeck extends Product with Serializable
-object CardDeck {
-  case object World extends CardDeck
-  case object Relic extends CardDeck
-  case object Edifice extends CardDeck
-  case object Legacy extends CardDeck
 }
 
 sealed trait StackPosition extends Product with Serializable
@@ -467,6 +458,39 @@ final case class ModifyDicePool(pool: PoolKey, delta: Int,
     override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
+/** Records one use-limited power instance as used for the current turn, by
+  * adding `power` to `TurnState.usedPowers` (batch-1 Task 7).
+  *
+  * The write side of a use limit has to be an operation rather than a state
+  * callback beside one, because replay applies recorded operations and
+  * nothing else: a limit written any other way would be absent from a
+  * reloaded game and the same site could be used again. The read side is a
+  * power's own restriction, so nothing here knows which power this is.
+  *
+  * Adding a `PowerUseRef` the turn already holds is a no-op rather than a
+  * rejection, matching the set semantics of the field it writes. Whether a
+  * second use is legal at all is a question for whoever declared the limit,
+  * asked before the walk; this operation only records the answer.
+  */
+final case class RecordPowerUse(power: PowerUseRef) extends PrimitiveOperation
+
+/** Moves the turn into `phase` (batch-1 Task 7).
+  *
+  * A phase change is a state write like any other, so the procedure that
+  * performs one declares it as an operation and replay restores it from the
+  * journal -- the same argument [[RecordPowerUse]] makes. Ending Wake is the
+  * only procedure that declares it today.
+  *
+  * Which phase may follow which is NOT stated here. The phase order is a rule
+  * about the turn, and the turn's procedures are where it is written; an
+  * operation that encoded the order would state the same rule a second time,
+  * in the vocabulary every future power can reach for. The one thing applying
+  * this does reject is entering the phase the turn is already in
+  * (`OperationError.PhaseAlreadyEntered`), which is a doubled or reordered
+  * journal rather than a rule about order.
+  */
+final case class EnterPhase(phase: Phase) extends PrimitiveOperation
+
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
   * state, faces ride the next command.
   */
@@ -482,19 +506,27 @@ final case class ModifyRollOutcome(pool: PoolKey, skulls: Option[Int],
 /** Removes `pool` from the rollPools state map. */
 final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
 
-/** Parks a walker until the owning player resolves the open decision.
-  * `payload` is an open, power-extensible description of the choice;
-  * `owner` resolves who decides at walk/resume time; `validate` (when
-  * present) is a semantic legality check the walker runs against the resolved
-  * answer before recording it. `window` makes the
-  * decision hookable: the walker folds the gathered transforms over
-  * `Vector(this)` before walking it, so a power may insert operations around
-  * the decision or replace it.
+/** Parks a walker until `owner` resolves the decision `query` states.
+  *
+  * `query` is the single source of both halves of the contract: the walker
+  * accepts exactly the answers it declares (via `DecisionQueries`), and the
+  * projector offers exactly the options it declares. There is deliberately
+  * no `validate` closure beside it — a legality fact that is not expressible
+  * as an option set is a fact the client could never have been shown, so it
+  * belongs in how the tree BUILDS the query, not in a second check the
+  * projector cannot read. An option that authoritative state no longer
+  * supports is simply absent from the query the next command rebuilds.
+  *
+  * `owner` is a concrete player rather than a resolver: the tree is rebuilt
+  * against live state on every command, so whatever would have been computed
+  * at resume time can be computed at build time instead.
+  *
+  * `window` makes the decision hookable: the walker folds the gathered
+  * transforms over `Vector(this)` before walking it, so a power may insert
+  * operations around the decision, or replace its query.
   */
-final case class Decide(payload: DecisionPayload, owner: OwnerQuery,
-    decisionId: String,
-    validate: Option[(ReadyGame, PendingTree, DecisionPayload) =>
-      Either[OathViolation, Unit]] = None,
+final case class Decide(decisionId: String, owner: PlayerId,
+    query: DecisionQuery,
     override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 

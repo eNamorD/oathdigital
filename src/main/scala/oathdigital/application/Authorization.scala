@@ -64,9 +64,6 @@ final case class AuthorizedPlayer private (
   def chooseAdviser(adviserId: DenizenId): GameCommand =
     GameCommand.ChooseAdviser(access.playerId, adviserId)
 
-  def takeWealth(resource: oathdigital.gameplay.WakeResource): GameCommand =
-    GameCommand.TakeWealth(access.playerId, resource)
-
   def endWake: GameCommand =
     GameCommand.EndWake(access.playerId)
 
@@ -79,9 +76,6 @@ final case class AuthorizedPlayer private (
   def declineRestPower(decision: DecisionId): GameCommand =
     GameCommand.DeclineRestPower(access.playerId, decision)
 
-  def travel(destination: SiteId): GameCommand =
-    GameCommand.Travel(access.playerId, destination)
-
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 
@@ -91,10 +85,6 @@ final case class AuthorizedPlayer private (
   def beginSearch(source: SearchSource): GameCommand =
     GameCommand.BeginSearch(access.playerId, source)
 
-  def beginForge: GameCommand = GameCommand.BeginForge(access.playerId)
-  def completeForge(decision: DecisionId,
-      assignments: Vector[ForgeResourceAssignment]): GameCommand =
-    GameCommand.CompleteForge(access.playerId, decision, assignments)
   def beginChallenge(banner: Banner): GameCommand =
     GameCommand.BeginChallenge(access.playerId, banner)
   def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =

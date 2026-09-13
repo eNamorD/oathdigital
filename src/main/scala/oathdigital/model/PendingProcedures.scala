@@ -128,14 +128,6 @@ object RestPowerDecisionPayload {
   }
 }
 
-sealed trait ForgeResource extends Product with Serializable { def key: String }
-object ForgeResource {
-  case object Favor extends ForgeResource { val key = "favor" }
-  case object Secret extends ForgeResource { val key = "secret" }
-}
-final case class ForgeResourceAssignment(
-    target: SiteDenizenTarget, resource: ForgeResource)
-
 final case class CampaignForceAllocation(site: SiteId, count: Int) {
   require(count >= 0, "Campaign allocation must be non-negative")
 }
@@ -374,18 +366,6 @@ object PendingProcedure {
       remaining: Vector[RestPowerInvocationRef]
   ) extends PendingProcedure {
     require(remaining.nonEmpty, "Rest power continuation must have remaining hooks")
-  }
-
-  final case class Forge(
-      decision: DecisionId,
-      actor: PlayerId,
-      site: SiteId,
-      eligibleTargets: Vector[SiteDenizenTarget],
-      cost: Tokens,
-      supplySpent: Int
-  ) extends PendingProcedure {
-    require(eligibleTargets.size == 3 && eligibleTargets.distinct.size == 3,
-      "Forge requires exactly three distinct denizen targets")
   }
 
   /** Owner-scoped, replay-stable continuation of the printed banner procedure. */

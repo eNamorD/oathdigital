@@ -1,14 +1,16 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathRules, WakeResource}
+import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.phases.TakeWealthRules
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, RecoverRules, SearchRules, TravelRules,
-  VisionRules, Visions}
-import oathdigital.gameplay.phases.Rest
+  Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
+import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.phases.Rest
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -17,12 +19,44 @@ private[application] final class LegalActionProjector(
     presentation: GamePresentationProjector,
     walkerDecisions: WalkerDecisionProjector
 ) {
-  /** Held once per projector instance (itself a server-lifetime singleton --
-    * see `GameProjector`) rather than recomputed on every `project` call: a
-    * full denizen scan for the walker power catalog on every request was I6's
-    * second half.
+  /** The automatic walker powers a Travel candidate is costed against
+    * (batch-1 Task 5) -- the same full catalog `OathRules` is constructed
+    * with, selected down to the automatic set because a projection is built
+    * before the viewer has chosen any modifier. The major-action preview
+    * re-costs the same candidates with what they then selected.
     */
   private val walkerPowerCatalog = WalkerPowerCatalog.default(catalog)
+
+  /** Travel destinations and what each would actually cost, obtained by
+    * dry-running the declared Travel tree per destination rather than by a
+    * second cost calculation beside it -- see `TravelProcedure.candidates`.
+    */
+  private def travelCandidates(context: ScopedProjectionContext) =
+    TravelProcedure.candidates(catalog, context.ready, context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  /** The resources the viewer could take right now -- asked of the procedure
+    * that owns Take Wealth, exactly as Travel's destinations are (batch-1
+    * Task 7). This projector assembles no gameplay procedure of its own: it
+    * neither builds a tree, nor spells a start selection, nor runs the
+    * simulation, because each of those would be a second copy of something
+    * the procedure already states.
+    */
+  private def takeableResources(context: ScopedProjectionContext)
+      : Vector[WakeResource] =
+    TakeWealthProcedure.candidates(catalog, context.ready,
+      context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  /** The control a resource is offered as. A name the client binds a button
+    * to is presentation, which is why this mapping is here and the question
+    * of whether the resource is takeable at all is not.
+    */
+  private def takeControl(resource: WakeResource): String = resource match {
+    case WakeResource.Favor => "takeFavor"
+    case WakeResource.Secret => "takeSecret"
+  }
+
   def project(context: ScopedProjectionContext): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
@@ -32,8 +66,7 @@ private[application] final class LegalActionProjector(
       context.current.walkerPending.isEmpty
     LegalProjection(
       controls(context, minor),
-      if (ordinaryAct) TravelRules.legalDestinations(catalog, context.ready,
-        context.active).map { case (site, cost) =>
+      if (ordinaryAct) travelCandidates(context).map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       } else Vector.empty,
       if (ordinaryAct) legalSearch(context) else Vector.empty,
@@ -83,7 +116,6 @@ private[application] final class LegalActionProjector(
       case Some(r: PendingProcedure.CampaignRaidRelocation)
           if context.viewer.contains(r.actor) => Vector("relocateCampaignRaidPawn")
       case _ if !context.viewerIsActive => Vector.empty
-      case Some(_: PendingProcedure.Forge) => Vector("completeForge")
       case Some(c: PendingProcedure.Challenge) if context.viewer.contains(c.actor) =>
         if (c.remainingRibbonResources == 0) Vector("completeChallenge")
         else Vector("chooseChallengeSecretSite")
@@ -97,8 +129,8 @@ private[application] final class LegalActionProjector(
         case Phase.Act => Vector(
           Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
-          Option.when(active.pawnSite.exists(site =>
-            recoverEligible(context, active, site)))("beginRecover"),
+          Option.when(active.pawnSite.exists(_ =>
+            recoverEligible(context, active)))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
           Option.when(ChallengeRules.legal(catalog, context.ready,
@@ -128,32 +160,19 @@ private[application] final class LegalActionProjector(
         ).flatten
         case Phase.Rest => Vector("finishRest")
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
-        case Phase.Wake => active.pawnSite.toVector.flatMap { site => Vector(
-          Option.when(TakeWealthRules.validate(context.ready, active, site,
-            WakeResource.Favor).isRight)("takeFavor"),
-          Option.when(TakeWealthRules.validate(context.ready, active, site,
-            WakeResource.Secret).isRight)("takeSecret")).flatten
-        } :+ "endWake"
+        case Phase.Wake =>
+          takeableResources(context).map(takeControl) :+ "endWake"
       }
     }
   }
 
-  /** Whether `active` can legally start Recover at `siteId` right now: either
-    * a facedown relic already sits at the site (`RecoverRules.validate`), or
-    * some applicable walker power -- Catacombs today -- declares a Transform
-    * at `RecoverActionEligibility` and could supply one once selected as a
-    * `StartWalker` modifier. Shares `OathRules.eligibilityRelaxed` (I6) with
-    * `OathRules.startWalker`'s own gate, but calls it with every catalog
-    * power rather than only the ones a command has already selected, since
-    * the player has not chosen a modifier yet at this "should the button
-    * show" question -- see that method's doc for why the two sets differ.
+  /** Whether `active` can start Recover at their current site. Relic
+    * availability is deliberately irrelevant: a successful empty-site
+    * Recover is a legal wasted action.
     */
   private def recoverEligible(context: ScopedProjectionContext,
-      active: PlayerState, siteId: SiteId): Boolean =
-    RecoverRules.validate(catalog, context.ready, active, siteId).isRight ||
-      (RecoverRules.validatePotential(catalog, context.ready, active,
-        siteId).isRight && OathRules.eligibilityRelaxed(context.ready,
-        active.player, walkerPowerCatalog.powers))
+      active: PlayerState): Boolean =
+    RecoverProcedure.build(catalog, context.ready, active.player).isRight
 
   /** While a generic-walker action is parked, no other Act control is legal
     * (`GameApplicationService`/`OathLifecycle` reject every legacy command
@@ -213,7 +232,7 @@ private[application] final class LegalActionProjector(
 
   private def boardTargetActions(context: ScopedProjectionContext) = {
     val ready = context.ready; val player = context.active
-    val travel = TravelRules.legalDestinations(catalog, ready, player).map {
+    val travel = travelCandidates(context).map {
       case (site, cost) => BoardTargetCandidateProjection(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))

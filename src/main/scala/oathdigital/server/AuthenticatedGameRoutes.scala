@@ -101,7 +101,8 @@ final class AuthenticatedGameGateway(
       } yield MajorActionPreviewResponse(accepted.loaded.nextSequence,
         request.action, accepted.options.map(v => PreviewModifier(
           v.source.stableKey, v.handlerId, v.handlerId)),
-        Vector.empty, MajorActionPreviewTargets.from(projection, request)) }
+        Vector.empty, MajorActionPreviewTargets.from(projection, request,
+          accepted.targets)) }
 
   def bootstrap(
       gameId: String,

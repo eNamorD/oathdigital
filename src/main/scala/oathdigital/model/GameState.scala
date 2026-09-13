@@ -57,13 +57,27 @@ final case class CampaignState(
     era: EraState
 )
 
-sealed trait Phase extends Product with Serializable
+/** `key` is the phase's wire spelling, carried here rather than in a codec
+  * because the phase is now a journalled value: `EnterPhase` records a phase
+  * change as a walker operation, so replay has to read one back. Following
+  * [[OathkeeperGoal]]'s shape keeps the spelling next to the case that owns
+  * it instead of in a match a new phase could be added without touching.
+  */
+sealed trait Phase extends Product with Serializable { def key: String }
 object Phase {
-  case object Wake extends Phase
-  case object Act extends Phase
-  case object Rest extends Phase
-  private[oathdigital] case object RoundEnd extends Phase
-  private[oathdigital] case object WarExhaustion extends Phase
+  case object Wake extends Phase { val key = "wake" }
+  case object Act extends Phase { val key = "act" }
+  case object Rest extends Phase { val key = "rest" }
+  private[oathdigital] case object RoundEnd extends Phase {
+    val key = "round-end"
+  }
+  private[oathdigital] case object WarExhaustion extends Phase {
+    val key = "war-exhaustion"
+  }
+
+  val all: Vector[Phase] = Vector(Wake, Act, Rest, RoundEnd, WarExhaustion)
+
+  def fromKey(key: String): Option[Phase] = all.find(_.key == key)
 }
 
 final case class TurnState(
@@ -138,7 +152,21 @@ final case class CurrentGameState(
     // PendingTree for the same reason as `walkerAction`: replay restores it
     // from the durable `WalkerParked` fact rather than re-deriving it, and
     // `WalkerCompleted` clears it alongside `walkerPending`/`walkerAction`.
-    walkerModifiers: Vector[PowerId] = Vector.empty
+    walkerModifiers: Vector[PowerId] = Vector.empty,
+    // What the player selected when the walker action started, for an action
+    // whose tree cannot be built without it (batch-1 Task 5) -- Travel's
+    // destination is the only one today. They are `DecisionOptionRef`s, the
+    // same game-object vocabulary a decision option names, so nothing outside
+    // the action that declared them learns what they mean: empty is "this
+    // action declares none", and the action itself rejects a shape it did not
+    // ask for.
+    //
+    // Durable for exactly the reason `walkerModifiers` is: a resumed command
+    // rebuilds the tree the start built, and a selection -- unlike a pawn
+    // site -- cannot be re-derived from state. Restored by replay from the
+    // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
+    // walker-owned scratch fields.
+    walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty
 )
 
 final case class OathGame(

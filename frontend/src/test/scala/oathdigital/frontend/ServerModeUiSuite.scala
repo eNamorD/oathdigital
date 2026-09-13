@@ -2,7 +2,7 @@ package oathdigital.frontend
 
 import munit.FunSuite
 import oathdigital.presentation._
-import oathdigital.protocol.DecisionPayloadWire
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire}
 
 class ServerModeUiSuite extends FunSuite {
   test("secret summaries lead with available over total and explain unavailable tokens") {
@@ -17,13 +17,13 @@ class ServerModeUiSuite extends FunSuite {
   }
   test("the Recover roll outcome summary shows the target before any roll " +
       "and the accumulated dice and score after") {
-    assertEquals(ServerUiSupport.rollOutcomeSummary(
+    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState(Vector.empty, 0, 4)),
       "Need 4 shields to succeed.")
-    assertEquals(ServerUiSupport.rollOutcomeSummary(
+    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState(Vector("blank", "blank"), 0, 4)),
       "Rolled blank, blank -- 0 shields so far (need 4).")
-    assertEquals(ServerUiSupport.rollOutcomeSummary(
+    assertEquals(WalkerPanelSupport.rollOutcomeSummary(
       WalkerRollOutcomeState(Vector("two-shields", "doubler"), 4, 4)),
       "Rolled two-shields, doubler -- 4 shields so far (need 4).")
   }
@@ -64,32 +64,94 @@ class ServerModeUiSuite extends FunSuite {
         ("site-relic", "R3", Some("site:broken-peaks"))))
   }
 
-  test("Forge assignment state enforces cardinality and resets stale context") {
+  /** Task 5: Forge is driven end to end through the shared two-zone
+    * interaction. The sections carrying their own labels and minima, the
+    * denizen options carrying their own references, and the answer is
+    * assembled by generic code -- nothing below states Forge's printed
+    * cost, and nothing names a resource.
+    */
+  private val forgeQuery = DecisionQueryState("partition",
+    Vector("1", "2", "3").map(id =>
+      DecisionOptionState("denizen", s"denizen:$id", s"Denizen $id")),
+    Vector(DecisionSectionState("pay-favor", "Pay Favor", 2),
+      DecisionSectionState("pay-secret", "Pay Secret", 1)))
+
+  private val forgeParked = WalkerDecisionState("forge", "forge-9", "decide",
+    query = Some(forgeQuery))
+
+  private def forgeItem(index: Int): String =
+    WalkerPartitionDraft.itemId(forgeQuery.options(index))
+
+  test("Forge is answered by moving projected options between projected " +
+      "sections") {
     val context = BoardSelectionContext("game", "red", 9)
-    val targets = Vector("1", "2", "3").map(id =>
-      ForgeTarget("site:a", s"denizen:$id", s"Denizen $id"))
-    val forge = ForgeState("forge-9", "red", 2, 1, targets)
-    val initial = ForgeAssignmentState.reconcile(None, context, Some(forge)).get
-    assertEquals(initial.assignments, Vector("favor", "favor", "secret"))
+    val initial = WalkerPartitionDraft.reconcile(None, context,
+      Some(forgeParked)).get
+    // The opening draft fills each section to its projected minimum, in
+    // declared order.
+    assertEquals(initial.optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 1", "Denizen 2"))
+    assertEquals(initial.optionsIn("pay-secret").map(_.label),
+      Vector("Denizen 3"))
     assert(initial.canConfirm)
-    assertEquals(initial.command("red"), Some(GameCommand.CompleteForge(
-      "red", "forge-9", targets.zip(initial.assignments))))
-    val invalid = initial.choose(2, "favor")
+    // A confirmed draft answers the decision as one placement per offered
+    // option, naming the option's own kind and id.
+    assertEquals(initial.command("red"), Some(GameCommand.ResolveWalker(
+      "red", "forge-9", DecisionAnswerWire.PartitionWire(
+        Vector("pay-favor", "pay-favor", "pay-secret").zipWithIndex.map {
+          case (sectionKey, index) =>
+            val option = forgeQuery.options(index)
+            DecisionPlacementWire(option.kind, option.id, sectionKey) }))))
+    // Dragging the third option into the favor zone leaves the secret zone
+    // below its projected minimum, so confirmation is refused.
+    val invalid = initial.move(forgeItem(2), "pay-favor")
     assert(!invalid.canConfirm)
     assertEquals(invalid.command("red"), None)
-    val repaired = invalid.choose(0, "secret")
+    val repaired = invalid.move(forgeItem(0), "pay-secret")
     assert(repaired.canConfirm)
-    assertEquals(repaired.assignments.count(_ == "favor") ->
-      repaired.assignments.count(_ == "secret"), 2 -> 1)
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
-      Some(forge)), Some(repaired))
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired),
-      context.copy(sequence = 10), Some(forge)).get.assignments,
-      initial.assignments)
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context,
-      Some(forge.copy(decisionId = "forge-new"))).get.assignments,
-      initial.assignments)
-    assertEquals(ForgeAssignmentState.reconcile(Some(repaired), context, None), None)
+    assertEquals(repaired.optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 2", "Denizen 3"))
+    assertEquals(repaired.optionsIn("pay-secret").map(_.label),
+      Vector("Denizen 1"))
+    // A section the query never declared is ignored rather than recorded.
+    assertEquals(repaired.move(forgeItem(0), "pay-nothing"), repaired)
+  }
+
+  test("a Forge draft is dropped whenever the question changes") {
+    val context = BoardSelectionContext("game", "red", 9)
+    val initial = WalkerPartitionDraft.reconcile(None, context,
+      Some(forgeParked)).get
+    val moved = initial.move(forgeItem(2), "pay-favor")
+      .move(forgeItem(0), "pay-secret")
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(forgeParked)), Some(moved))
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved),
+      context.copy(sequence = 10), Some(forgeParked)).get.partition,
+      initial.partition)
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(forgeParked.copy(decisionId = "forge-new"))).get.partition,
+      initial.partition)
+    // A power that changes the option set asks a different question, so the
+    // draft assembled against the old one is dropped.
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context,
+      Some(forgeParked.copy(query = Some(forgeQuery.copy(
+        options = forgeQuery.options.drop(1)))))).get
+        .optionsIn("pay-favor").map(_.label),
+      Vector("Denizen 2", "Denizen 3"))
+    assertEquals(WalkerPartitionDraft.reconcile(Some(moved), context, None),
+      None)
+  }
+
+  test("a parked walker decision that is not a partition drives no draft") {
+    val context = BoardSelectionContext("game", "red", 9)
+    // A choose-one park, and a park whose query was suppressed because an
+    // option could not be presented: neither is an answerable partition.
+    assertEquals(WalkerPartitionDraft.reconcile(None, context, Some(
+      WalkerDecisionState("recover", "recover.choice", "decide",
+        query = Some(DecisionQueryState("choose-one", Vector(
+          DecisionOptionState("button", "stop", "Stop"))))))), None)
+    assertEquals(WalkerPartitionDraft.reconcile(None, context,
+      Some(forgeParked.copy(query = None))), None)
   }
   test("selection actions map only authorized single target shapes to commands") {
     val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
@@ -351,55 +413,89 @@ class ServerModeUiSuite extends FunSuite {
   test("a parked walker roll classifies as a Roll control carrying the projected pool") {
     val roll = WalkerDecisionState("recover", "walker.recover.roll", "roll",
       pool = Some("recover"), count = Some(2))
-    assertEquals(ServerUiSupport.recoverWalkerStep(roll),
-      Some(ServerUiSupport.RecoverWalkerStep.Roll("recover")))
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(roll),
+      Some(WalkerPanelSupport.RecoverWalkerStep.Roll("recover")))
     // No die faces ride the command -- only the projected pool key does.
     assertEquals(GameCommand.RollWalker("red", "recover"),
       oathdigital.protocol.GameIntent.RollWalker("recover"))
   }
 
   test("a roll park with no projected pool renders no control rather than guessing one") {
-    assertEquals(ServerUiSupport.recoverWalkerStep(
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(
       WalkerDecisionState("recover", "walker.recover.roll", "roll")), None)
   }
 
-  test("the parked Recover choice decision resolves Continue and Stop against its " +
-      "own decision id, distinct from the relic park sharing its \"decide\" kind") {
-    val choice = WalkerDecisionState("recover", "recover.choice", "decide")
-    assertEquals(ServerUiSupport.recoverWalkerStep(choice),
-      Some(ServerUiSupport.RecoverWalkerStep.Choice))
-    assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "continue"),
+  /** Task 4: both decide parks take their option set from the projected
+    * query, and one generic command builder serves both -- a projected
+    * option already carries the `kind`/`id` pair a `ChooseOneWire` needs,
+    * so the client never has to know which variant it is holding.
+    */
+  test("the parked Recover choice decision resolves its projected button " +
+      "options against its own decision id, distinct from the relic park " +
+      "sharing its \"decide\" kind") {
+    val continueOption = DecisionOptionState("button", "continue", "Continue")
+    val stopOption = DecisionOptionState("button", "stop", "Stop")
+    val choiceQuery = DecisionQueryState("choose-one",
+      Vector(continueOption, stopOption), heading = Some("Recover"))
+    val choice = WalkerDecisionState("recover", "recover.choice", "decide",
+      query = Some(choiceQuery))
+    // Task 5b: the step carries the whole query, not just its options, so
+    // the panel reads the heading the action declared from the same place
+    // it reads what to offer.
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(choice),
+      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(choiceQuery)))
+    assertEquals(
+      WalkerPanelSupport.resolveChooseOneCommand(choice, continueOption),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("continue")))
-    assertEquals(ServerUiSupport.resolveRecoverChoiceCommand(choice, "stop"),
+        DecisionAnswerWire.ChooseOneWire("button", "continue")))
+    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(choice, stopOption),
       GameCommand.ResolveWalker("red", "recover.choice",
-        DecisionPayloadWire.RecoverChoiceWire("stop")))
+        DecisionAnswerWire.ChooseOneWire("button", "stop")))
+    // A power that drops an option drops the control with it: the step
+    // carries whatever the projection offered, never a fixed pair.
+    val stopOnly = DecisionQueryState("choose-one", Vector(stopOption),
+      heading = Some("Recover"))
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(
+      choice.copy(query = Some(stopOnly))),
+      Some(WalkerPanelSupport.RecoverWalkerStep.Choice(stopOnly)))
   }
 
   test("the parked Recover relic decision offers one control per projected " +
-      "candidate, never a preselected relic") {
-    val bronze = CardDetails("relic-1", "relic", "Bronze Idol")
-    val silver = CardDetails("relic-2", "relic", "Silver Idol")
+      "option, never a preselected relic") {
+    val bronze = DecisionOptionState("relic", "relic-1", "Bronze Idol",
+      Some(CardDetails("relic-1", "relic", "Bronze Idol")))
+    val silver = DecisionOptionState("relic", "relic-2", "Silver Idol",
+      Some(CardDetails("relic-2", "relic", "Silver Idol")))
+    val relicQuery = DecisionQueryState("choose-one", Vector(bronze, silver),
+      heading = Some("Take a relic"))
     val relic = WalkerDecisionState("recover", "recover.relic", "decide",
-      relicCandidates = Vector(bronze, silver))
-    assertEquals(ServerUiSupport.recoverWalkerStep(relic),
-      Some(ServerUiSupport.RecoverWalkerStep.Relic(Vector(bronze, silver))))
-    assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, bronze.cardId),
+      query = Some(relicQuery))
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(relic),
+      Some(WalkerPanelSupport.RecoverWalkerStep.Relic(relicQuery)))
+    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, bronze),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-1")))
-    assertEquals(ServerUiSupport.resolveRecoverRelicCommand(relic, silver.cardId),
+        DecisionAnswerWire.ChooseOneWire("relic", "relic-1")))
+    assertEquals(WalkerPanelSupport.resolveChooseOneCommand(relic, silver),
       GameCommand.ResolveWalker("red", "recover.relic",
-        DecisionPayloadWire.RecoverRelicWire("relic-2")))
+        DecisionAnswerWire.ChooseOneWire("relic", "relic-2")))
+  }
+
+  test("a decide park whose query was suppressed renders no control, since " +
+      "there is no answer the client could safely build") {
+    Vector("recover.choice", "recover.relic").foreach(decisionId =>
+      assertEquals(WalkerPanelSupport.recoverWalkerStep(
+        WalkerDecisionState("recover", decisionId, "decide")), None,
+        s"$decisionId must render nothing without a projected query"))
   }
 
   test("an unrecognized parked walker decision renders no Recover control") {
-    assertEquals(ServerUiSupport.recoverWalkerStep(
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(
       WalkerDecisionState("recover", "some.other.decision", "decide")), None)
   }
 
   test("a parked decision for a walker action other than Recover renders no " +
       "Recover control, even if it happens to reuse a Recover-shaped kind") {
-    assertEquals(ServerUiSupport.recoverWalkerStep(
+    assertEquals(WalkerPanelSupport.recoverWalkerStep(
       WalkerDecisionState("teleport", "walker.recover.roll", "roll",
         pool = Some("recover"))), None)
   }

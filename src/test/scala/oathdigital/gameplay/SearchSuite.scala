@@ -81,7 +81,6 @@ class SearchSuite extends munit.FunSuite {
       player.pawnSite.flatMap(withFaceUpAdviser.game.current.map.regionOf).get)
       .toOption.get
 
-    assert(TravelRules.validateSupportedState(catalog, withFaceUpAdviser).isRight)
     assert(rules.handle(Ready(withFaceUpAdviser), SearchCommand.Start(
       player.player, DecisionId("travel-independent"),
       SearchSource.WorldDeck, drawn)).isRight)

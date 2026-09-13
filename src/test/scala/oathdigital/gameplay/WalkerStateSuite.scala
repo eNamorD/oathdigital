@@ -3,17 +3,9 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
   FirstGameSupportState, PlayerColor}
-import oathdigital.gameplay.walker.{OwnerQuery, WalkerCtx}
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._
-
-object WalkerStateSuite {
-  /** Test-only open payload (D2: powers define their own payloads later). */
-  final case class TestDecisionPayload(decision: String) extends DecisionPayload
-  final case class TestOwner(actor: PlayerId) extends OwnerQuery {
-    def owner(ctx: WalkerCtx): Option[PlayerId] = Some(actor)
-  }
-}
 
 /** Task 2 spec: walker leaves (Decide/Repeat) and PendingTree/pool state are
   * constructible and readable from a ReadyGame's CurrentGameState.
@@ -21,9 +13,11 @@ object WalkerStateSuite {
 class WalkerStateSuite extends munit.FunSuite {
   private val actor = playerId
   private val decide = Decide(
-    payload = WalkerStateSuite.TestDecisionPayload("continue-or-stop"),
-    owner = WalkerStateSuite.TestOwner(actor),
-    decisionId = "recover.choice")
+    decisionId = "recover.choice",
+    owner = actor,
+    query = DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(DecisionOptionRef.Button("continue"), "Continue"),
+      DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop"))))
 
   private val baseReady = ReadyGame(
     game,
@@ -42,7 +36,7 @@ class WalkerStateSuite extends munit.FunSuite {
     // is derived per command and the walker ctx rebuilt from state, so nothing
     // gameplay-typed is stored here.
     val answered = Answered("recover.choice",
-      WalkerStateSuite.TestDecisionPayload("continue"))
+      ChooseOneAnswer(DecisionOptionRef.Button("continue")))
     val tree = PendingTree(
       at = Vector("recover.roll"),
       answered = Vector(answered),

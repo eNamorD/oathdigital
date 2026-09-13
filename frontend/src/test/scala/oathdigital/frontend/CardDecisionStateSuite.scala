@@ -32,8 +32,41 @@ class CardDecisionStateSuite extends munit.FunSuite {
     assert(state.arrangementValid(cards))
     assertEquals(state.keep.map(_.cardId), Vector("b"))
     assertEquals(state.move("a", 1).discard.map(_.cardId), Vector("c", "a"))
-    assert(!state.copy(discard = state.discard :+ state.discard.head)
-      .arrangementValid(cards))
+    val duplicated = state.copy(partition = state.partition.copy(
+      contents = state.partition.contents.updated("discard",
+        state.partition.itemsIn("discard") :+
+          state.partition.itemsIn("discard").head)))
+    assert(!duplicated.arrangementValid(cards))
+  }
+
+  /** Task 5: Search and the starting adviser keep their exact arrangement
+    * rules, their discard ordering and their two-stage flow while running on
+    * the shared `PartitionDecisionState`. The zones below are that state's
+    * declared sections, and the keep bounds are its declared minimum and
+    * maximum -- so what moves a card here is the same code that moves an
+    * option in a parked walker partition.
+    */
+  test("card decisions run on the shared partition interaction") {
+    val state = CardDecisionState.initial(decision)
+    assertEquals(state.partition.sections, Vector(
+      PartitionSection(CardDecisionState.keepKey, "Keep", 1, Some(1)),
+      PartitionSection(CardDecisionState.discardKey, "Discard", 0)))
+    assertEquals(state.partition.items, cards.map(_.cardId))
+    assertEquals(state.partition.itemsIn(CardDecisionState.discardKey),
+      cards.map(_.cardId))
+    // A full single-slot Keep swaps rather than refusing, and the displaced
+    // card returns to the front of Discard, as Search has always behaved.
+    val swapped = state.moveToKeep("b").moveToKeep("c")
+    assertEquals(swapped.keep.map(_.cardId), Vector("c"))
+    assertEquals(swapped.discard.map(_.cardId), Vector("b", "a"))
+    // Returning the kept card reopens the arrangement stage.
+    val reopened = swapped.copy(stage = CardDecisionStage.Resolve)
+      .moveToDiscard("c")
+    assertEquals(reopened.stage, CardDecisionStage.Arrange)
+    assertEquals(reopened.discard.map(_.cardId), Vector("b", "a", "c"))
+    // Ordering is a discard-only concern: a kept card is never reordered.
+    assertEquals(swapped.move("c", 1), swapped)
+    assertEquals(swapped.arrangeDrop("c", Some("a")), swapped)
   }
 
   test("moving kept card back and drag ordering preserve local-only state") {

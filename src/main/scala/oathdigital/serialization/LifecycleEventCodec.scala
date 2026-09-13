@@ -13,8 +13,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
       case _: GamePawnPlaced => PawnPlacedType
       case _: StartingAdviserChosen => AdviserChosenType
       case FirstGameCompleted => FirstGameCompletedType
-      case _: WealthTaken => TakeWealthType
-      case _: WakeEnded => WakeEndedType
       case _: RestStarted => RestStartedType
       case _: LeagueTreatyDecisionStarted => LeagueTreatyDecisionStartedType
       case _: LeagueTreatyResolved => LeagueTreatyResolvedType
@@ -36,17 +34,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           "adviserId" -> adviserId.value
         )
       case FirstGameCompleted => ujson.Obj()
-      case WealthTaken(playerId, siteId, resource) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "siteId" -> siteId.value,
-          "resource" -> (resource match {
-            case WakeResource.Favor => "favor"
-            case WakeResource.Secret => "secret"
-          })
-        )
-      case WakeEnded(playerId) =>
-        ujson.Obj("playerId" -> playerId.value)
       case RestStarted(playerId) => ujson.Obj("playerId" -> playerId.value)
       case value: LeagueTreatyDecisionStarted => ujson.Obj(
         "restActorPlayerId" -> value.restActor.value,
@@ -126,22 +113,6 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
             )
           )
         case FirstGameCompletedType => Right(FirstGameCompleted)
-        case TakeWealthType =>
-          val resource = payload("resource").str match {
-            case "favor" => Right(WakeResource.Favor)
-            case "secret" => Right(WakeResource.Secret)
-            case other => Left(InvalidValue(
-              s"$path.resource",
-              s"unknown wealth resource '$other'"
-            ))
-          }
-          resource.map(WealthTaken(
-            PlayerId(payload("playerId").str),
-            SiteId(payload("siteId").str),
-            _
-          ))
-        case WakeEndedType =>
-          Right(WakeEnded(PlayerId(payload("playerId").str)))
         case RestStartedType =>
           Right(RestStarted(PlayerId(payload("playerId").str)))
         case LeagueTreatyDecisionStartedType => for {

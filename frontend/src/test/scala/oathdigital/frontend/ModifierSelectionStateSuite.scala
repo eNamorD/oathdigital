@@ -40,16 +40,22 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       Vector("travel", "campaign", "campaign", "muster", "trade", "trade", "search"))
     val commands = Vector[GameIntent](
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
-      GameIntent.BeginForge,
       GameIntent.StartWalker("recover", Vector.empty),
+      GameIntent.StartWalker("forge", Vector.empty),
+      // Travel joined the walker at batch-1 Task 5. It is the first action
+      // that is both walker-registered and board-targeted, so it reaches this
+      // path carrying a destination its two predecessors have no equivalent
+      // of -- and it must still be offered its modifiers, not skipped.
+      GameIntent.StartWalker("travel", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:a"))),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "forge", "recover", "search"))
-    assertEquals(ModifierWorkflow.action(GameIntent.Travel("site:a")), None)
+      Vector("search", "recover", "forge", "travel", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
-    // A walker action other than Recover must not be swept into the same
-    // modifier-offering path -- only "recover" is registered on the walker
-    // in this slice.
+    // An UNREGISTERED walker action must not be swept into the same
+    // modifier-offering path: only the keys the engine registers on the
+    // walker ("recover" and, since batch-1 Task 3, "forge") map to a
+    // preview the server will answer.
     assertEquals(ModifierWorkflow.action(GameIntent.StartWalker("teleport", Vector.empty)),
       None)
   }
@@ -171,8 +177,10 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     val (submitted, outerModifiers) = ModifierWorkflow.submission(
-      GameIntent.BeginForge, Vector(invocation))
-    assertEquals(submitted, GameIntent.BeginForge)
+      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
+      Vector(invocation))
+    assertEquals(submitted,
+      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)))
     assertEquals(outerModifiers, Vector(invocation))
   }
 }

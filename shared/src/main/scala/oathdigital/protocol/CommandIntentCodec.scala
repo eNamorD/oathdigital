@@ -6,7 +6,6 @@ private[protocol] object CommandIntentCodec {
 
   def encode(intent: GameIntent): ujson.Obj = intent match {
     case PlacePawn(site) => tagged("placePawn", "siteId" -> site)
-    case TakeWealth(resource) => tagged("takeWealth", "resource" -> resource)
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
@@ -15,14 +14,10 @@ private[protocol] object CommandIntentCodec {
       "allocations" -> ujson.Arr.from(allocations.map(restAllocation)),
       "destinationBank" -> bank)
     case DeclineRestPower(id) => tagged("declineRestPower", "decisionId" -> id)
-    case Travel(site) => tagged("travel", "destinationSiteId" -> site)
     case Muster(target) => tagged("muster", "target" -> economy(target))
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
       "region" -> source.region.map(ujson.Str(_)).getOrElse(ujson.Null))
-    case BeginForge => tagged("beginForge")
-    case CompleteForge(id, assignments) => tagged("completeForge", "decisionId" -> id,
-      "assignments" -> ujson.Arr.from(assignments.map(forge)))
     case BeginChallenge(banner) => tagged("beginChallenge", "banner" -> banner)
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
@@ -48,11 +43,14 @@ private[protocol] object CommandIntentCodec {
     case RelocateCampaignRaidPawn(id, site) => tagged("relocateCampaignRaidPawn", "decisionId" -> id, "destinationSiteId" -> site)
     case ChooseOathkeeperRecipient(id, recipient) => tagged("chooseOathkeeperRecipient", "decisionId" -> id, "recipientPlayerId" -> recipient)
     case ResolveCardDecision(id, resolution) => tagged("resolveCardDecision", "decisionId" -> id, "resolution" -> decision(resolution))
-    case StartWalker(action, modifiers) => tagged("startWalker", "action" -> action,
-      "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))))
+    case StartWalker(action, modifiers, startArgs) =>
+      tagged("startWalker", "action" -> action,
+        "modifiers" -> ujson.Arr.from(modifiers.map(ujson.Str(_))),
+        "startArgs" -> ujson.Arr.from(startArgs.map(
+          CommandNestedCodecs.encodeStartArgWire)))
     case RollWalker(pool) => tagged("rollWalker", "pool" -> pool)
     case ResolveWalker(id, payload) => tagged("resolveWalker", "decisionId" -> id,
-      "payload" -> CommandNestedCodecs.encodeDecisionPayloadWire(payload))
+      "payload" -> CommandNestedCodecs.encodeDecisionAnswerWire(payload))
   }
 
   def decode(value: ujson.Value, path: String): Either[ProtocolDecodeFailure, GameIntent] =
@@ -68,7 +66,6 @@ private[protocol] object CommandIntentCodec {
   private def card(v: CardRef) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
   private def place(v: Placement) = ujson.Obj("kind" -> v.kind,
     "replace" -> v.replace.map(card).getOrElse(ujson.Null))
-  private def forge(v: ForgeAssignment) = ujson.Obj("siteId" -> v.siteId, "denizenId" -> v.denizenId, "resource" -> v.resource)
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
   private def restAllocation(v: RestFavorAllocation) = ujson.Obj(
     "source" -> ujson.Obj("kind" -> v.source.kind,

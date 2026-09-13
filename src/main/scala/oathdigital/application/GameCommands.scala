@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource, WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource}
 import oathdigital.gameplay.setup.FirstGameSetupPlan
 import oathdigital.model._
 
@@ -28,20 +28,13 @@ object GameCommand {
   /** Internal setup adapter retained for rules tests; transports use ResolveCardDecision. */
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
       extends GameCommand
-  final case class TakeWealth(playerId: PlayerId, resource: WakeResource)
-      extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
-  final case class Travel(playerId: PlayerId, destinationSiteId: SiteId)
-      extends GameCommand
   final case class Muster(playerId: PlayerId, target: EconomyTargetRef)
       extends GameCommand
   final case class Trade(playerId: PlayerId, target: EconomyTargetRef,
       resource: TradeResource) extends GameCommand
   final case class BeginSearch(playerId: PlayerId, source: SearchSource)
       extends GameCommand
-  final case class BeginForge(playerId: PlayerId) extends GameCommand
-  final case class CompleteForge(playerId: PlayerId, decision: DecisionId,
-      assignments: Vector[ForgeResourceAssignment]) extends GameCommand
   final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
       site: SiteId) extends GameCommand
@@ -120,11 +113,20 @@ object GameCommand {
   * which is every walker Recover today; `OathRules.startWalker` validates
   * every id against the audited catalog before walking.
   */
+/** `startArgs` (batch-1 Task 5) is what the player selected before the
+  * action started, for an action whose tree needs it -- Travel's destination
+  * is the only one today. They are the same `DecisionOptionRef`s a decision
+  * option names, and the command layer does not interpret them:
+  * `OathRules.startWalker` hands them to the registered action's own builder,
+  * which rejects a shape it did not ask for. Empty is every Recover and every
+  * Forge.
+  */
 final case class StartPayload(actor: PlayerId,
-    modifiers: Vector[PowerId] = Vector.empty)
+    modifiers: Vector[PowerId] = Vector.empty,
+    startArgs: Vector[DecisionOptionRef] = Vector.empty)
 
 /** One answer to the currently parked generic walker decision. */
-final case class TreeDecision(decisionId: String, payload: DecisionPayload)
+final case class TreeDecision(decisionId: String, answer: DecisionAnswer)
 
 sealed trait CardDecisionResolution extends Product with Serializable
 object CardDecisionResolution {

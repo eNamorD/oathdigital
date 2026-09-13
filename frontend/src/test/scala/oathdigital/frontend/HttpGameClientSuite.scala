@@ -5,7 +5,8 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionPayloadWire, GameIntent, MajorActionPreviewRequest, ModifierInvocation}
+  DecisionAnswerWire, DecisionPlacementWire, GameIntent, MajorActionPreviewRequest,
+  ModifierInvocation}
 
 class HttpGameClientSuite extends FunSuite {
   test("production client previews and submits the same ordered modifiers") {
@@ -165,21 +166,33 @@ class HttpGameClientSuite extends FunSuite {
     assert(GameJson.encodeCommand(21, GameCommand.RollWalker("red", "recover"))
       .contains("\"type\":\"rollWalker\""))
     val choice = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
-      "red", "recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")))
+      "red", "recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "stop")))
     assert(choice.contains("\"decisionId\":\"recover.choice\""))
-    assert(choice.contains("\"kind\":\"recover-choice\""))
+    assert(choice.contains("\"kind\":\"choose-one\""))
+    assert(choice.contains("\"optionKind\":\"button\""))
+    assert(choice.contains("\"optionId\":\"stop\""))
     val take = GameJson.encodeCommand(22, GameCommand.ResolveWalker(
-      "red", "recover.relic", DecisionPayloadWire.RecoverRelicWire("relic:R1")))
-    assert(take.contains("\"kind\":\"recover-relic\""))
-    assert(take.contains("\"relicId\":\"relic:R1\""))
+      "red", "recover.relic",
+      DecisionAnswerWire.ChooseOneWire("relic", "relic:R1")))
+    assert(take.contains("\"kind\":\"choose-one\""))
+    assert(take.contains("\"optionId\":\"relic:R1\""))
   }
   test("Forge commands encode stable assignment targets without relic identity") {
-    val target = ForgeTarget("site:a", "denizen:1", "One")
-    assert(GameJson.encodeCommand(20, GameCommand.BeginForge("red"))
-      .contains("\"type\":\"beginForge\""))
-    val completed = GameJson.encodeCommand(21, GameCommand.CompleteForge(
-      "red", "forge-20", Vector(target -> "favor")))
-    assert(completed.contains("\"denizenId\":\"denizen:1\""))
+    // Forge is a walker action (batch-1 Task 3): the start is a
+    // `StartWalker` and the assignment answer a `ResolveWalker`, so the same
+    // two guarantees this test always made -- the denizen target rides the
+    // wire, the forged relic never does -- are asserted on those.
+    val target = DecisionOptionState("denizen", "denizen:1", "One")
+    assert(GameJson.encodeCommand(20,
+      GameCommand.StartWalker("red", "forge")).contains("\"action\":\"forge\""))
+    val completed = GameJson.encodeCommand(21, GameCommand.ResolveWalker(
+      "red", "forge.assignment", DecisionAnswerWire.PartitionWire(
+        Vector(DecisionPlacementWire(target.kind, target.id,
+          "pay-favor")))))
+    assert(completed.contains("\"kind\":\"partition\""))
+    assert(completed.contains("\"optionId\":\"denizen:1\""))
+    assert(completed.contains("\"sectionKey\":\"pay-favor\""))
     assert(!completed.contains("relicId"))
   }
   test("Rest commands encode current sequence without an actor") {
@@ -302,8 +315,12 @@ class HttpGameClientSuite extends FunSuite {
       9L,
       GameCommand.EndWake("red-exile")
     )
-    assert(wealth.contains("\"type\":\"takeWealth\""))
-    assert(wealth.contains("\"resource\":\"favor\""))
+    // Take Wealth is a walker start with the resource as its selection
+    // (batch-1 Task 7); the wire says only that it is a button called favor.
+    assert(wealth.contains("\"type\":\"startWalker\""))
+    assert(wealth.contains("\"action\":\"take-wealth\""))
+    assert(wealth.contains("\"optionKind\":\"button\""))
+    assert(wealth.contains("\"optionId\":\"favor\""))
     assert(end.contains("\"type\":\"endWake\""))
 
     val json = projectionJson(
@@ -333,8 +350,10 @@ class HttpGameClientSuite extends FunSuite {
   test("Travel encodes destination and decodes authoritative legal costs") {
     val command = GameJson.encodeCommand(10L,
       GameCommand.Travel("red-exile", "site:b"))
-    assert(command.contains("\"type\":\"travel\""))
-    assert(command.contains("\"destinationSiteId\":\"site:b\""))
+    assert(command.contains("\"type\":\"startWalker\""))
+    assert(command.contains("\"action\":\"travel\""))
+    assert(command.contains("\"optionKind\":\"site\""))
+    assert(command.contains("\"optionId\":\"site:b\""))
     val json = projectionJson(sequence = 10, choices = false).replace(
       "\"pendingCardDecision\":null",
       "\"pendingCardDecision\":null,\"legalTravelDestinations\":[" +

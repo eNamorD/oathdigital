@@ -7,7 +7,8 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
-  WalkerCompleted, WalkerParked, WalkerPowers, WalkerStepRecorded}
+  WalkerActionRegistry, WalkerCompleted, WalkerParked, WalkerPowers,
+  WalkerStepRecorded}
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.model._
 
@@ -28,6 +29,22 @@ import oathdigital.model._
   * every other walker suite exercises. The wiring under test is generic; the
   * tree only has to carry a hookable node.
   */
+object OathRulesWalkerPowerSuite {
+  /** A `PlayerSelected` power applicable at exactly one window and nowhere
+    * else -- so "which window did the call site consult?" is directly
+    * observable from whether the power is offered. Declared here rather than
+    * inside the suite class so it carries no outer reference.
+    */
+  final case class WindowScopedPower(id: PowerId, at: PowerWindow)
+      extends ContributingPower {
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map.empty
+    override def resolution: PowerResolution = PowerResolution.PlayerSelected
+    override def applicable(ctx: PowerCtx): Boolean = ctx.window == at
+  }
+
+}
+
 class OathRulesWalkerPowerSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)
 
@@ -54,9 +71,11 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     */
   private def hookedTree(actor: PlayerId): Operation = {
     def decide(id: String) = Decide(
-      payload = ProcedureWalkerSuite.TestDecisionPayload(id),
-      owner = ProcedureWalkerSuite.TestOwner(actor),
-      decisionId = id)
+      decisionId = id,
+      owner = actor,
+      query = DecisionQuery.ChooseOne(Vector(
+        DecisionOption.Button(ProcedureWalkerSuite.continueOption,
+          "Continue"))))
     Sequence(ProcedureWalkerSuite.WindowedNode(window, Vector(
       decide(RecoverProcedure.choiceDecisionId),
       decide(RecoverProcedure.relicDecisionId))))
@@ -99,7 +118,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
 
     // Control: the resume is legal from this parked state.
     val resumed = rules(actor, WalkerPowers.empty)
@@ -135,7 +154,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected the unrestricted start to run, got $other")
     }
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
 
     // The intruder is rejected with WrongPlayer -- a `Left` carries no
     // transition, so nothing is appended to the actor's parked action.
@@ -208,7 +227,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val answer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     // Without ruling I's fix, `walkerResumeContext` would fold this command
     // with an EMPTY modifiers vector: the AdjustSupply would no longer be
     // prepended, the folded vector would shift back by one, and this resume
@@ -272,7 +291,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atFirstPark.game.current.walkerModifiers, Vector(powerId))
 
     val firstAnswer = Answered(RecoverProcedure.choiceDecisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     val afterFirst = rulesInstance.resolveWalker(started.state, actor,
         firstAnswer) match {
       case Right(transition) => transition
@@ -283,7 +302,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     assertEquals(atSecondPark.game.current.walkerModifiers, Vector(powerId))
 
     val secondAnswer = Answered(RecoverProcedure.relicDecisionId,
-      ProcedureWalkerSuite.TestDecisionPayload("continue"))
+      DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption))
     val finished = rulesInstance.resolveWalker(afterFirst.state, actor,
         secondAnswer) match {
       case Right(transition) => transition
@@ -326,4 +345,161 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case other => fail(s"expected an InvalidEventOrder rejection, got $other")
     }
   }
+
+  // -------------------------------------------------------------------------
+  // Batch-1 Task 1: the modifier-selection window is per-action, read from the
+  // registered `WalkerActionRegistry.Entry`, not the literal
+  // `PowerWindow.RecoverModifierSelection` both call sites used to name.
+  //
+  // `ActionRef` is sealed with exactly one inhabitant, so a second action
+  // cannot be constructed from outside `ActionRef.scala`. These tests use the
+  // same `registrations`-parameter precedent `WalkerActionRegistry.build`/
+  // `rebuild` already set (see `WalkerActionRegistrySuite`'s doc): the
+  // trailing `registrations` map stands in for a second action's entry, so
+  // the behaviour that differs BETWEEN actions is provable while Recover is
+  // still the only registered one. Production call sites pass nothing.
+  // -------------------------------------------------------------------------
+
+  private def windowScoped(id: PowerId, at: PowerWindow): ContributingPower =
+    OathRulesWalkerPowerSuite.WindowScopedPower(id, at)
+
+  /** A registry entry that differs from Recover's in nothing but its
+    * `modifierWindow`. `build`/`rebuild` are never invoked on these paths --
+    * `offerableWalkerPowers`/`validateModifiers` read the window and stop.
+    */
+  private def entryWindowed(modifierWindow: Option[PowerWindow])
+      : WalkerActionRegistry.Entry =
+    WalkerActionRegistry.Entry(
+      fallbackKind = MajorActionKind.Recover,
+      rollDecisionId = Some(RecoverProcedure.rollDecisionId),
+      modifierWindow = modifierWindow,
+      continuationFor = (_, _, _) => None,
+      build = (_, _, _, _) =>
+        Left(OathViolation.InvalidEventOrder("build is not exercised here")),
+      rebuild = (_, _, _, _) =>
+        Left(OathViolation.InvalidEventOrder("rebuild is not exercised here")))
+
+  private def registered(modifierWindow: Option[PowerWindow])
+      : Map[ActionRef, WalkerActionRegistry.Entry] =
+    Map(ActionRef.Recover -> entryWindowed(modifierWindow))
+
+  private val forgeWindowed = PowerId("test.forge-windowed")
+
+  test("offerableWalkerPowers reads the registered entry's modifier window: a " +
+      "power applicable only at another action's window is offered for that " +
+      "action and not for Recover") {
+    val (ready, actor) = actable
+    val power = windowScoped(forgeWindowed,
+      PowerWindow.ForgeModifierSelection)
+    val rulesInstance = rules(actor, WalkerPowers(Vector(power)))
+
+    // Offered for the entry whose modifierWindow is ForgeModifierSelection.
+    assertEquals(
+      rulesInstance.offerableWalkerPowers(ready, actor, ActionRef.Recover,
+        registered(Some(PowerWindow.ForgeModifierSelection))).map(_.map(_.id)),
+      Right(Vector(forgeWindowed)))
+
+    // NOT offered for Recover's own production entry, whose modifierWindow is
+    // RecoverModifierSelection. Before this task both calls consulted the
+    // Recover literal, so both sides returned the same set.
+    assertEquals(
+      rulesInstance.offerableWalkerPowers(ready, actor, ActionRef.Recover)
+        .map(_.map(_.id)),
+      Right(Vector.empty[PowerId]))
+  }
+
+  test("an entry declaring no modifier window offers nothing and rejects a " +
+      "modifier id a windowed entry accepts") {
+    val (ready, actor) = actable
+    val power = windowScoped(forgeWindowed,
+      PowerWindow.ForgeModifierSelection)
+    val rulesInstance = rules(actor, WalkerPowers(Vector(power)))
+    val windowed = registered(Some(PowerWindow.ForgeModifierSelection))
+    val windowless = registered(None)
+
+    // Control: the windowed entry accepts this id.
+    assertEquals(rulesInstance.validateModifiers(ready, actor,
+      ActionRef.Recover, Vector(forgeWindowed), windowed), Right(()))
+
+    assertEquals(rulesInstance.offerableWalkerPowers(ready, actor,
+      ActionRef.Recover, windowless), Right(Vector.empty[ContributingPower]))
+    rulesInstance.validateModifiers(ready, actor, ActionRef.Recover,
+        Vector(forgeWindowed), windowless) match {
+      case Left(rejection: OathViolation.InvalidEventOrder) =>
+        assert(rejection.detail.contains("is not applicable"),
+          s"violation detail '${rejection.detail}' should mention " +
+            "inapplicability")
+        // Ruling R3: the message names the action, not "Recover".
+        assert(rejection.detail.contains(ActionRef.Recover.key),
+          s"violation detail '${rejection.detail}' should name the action")
+      case other => fail(s"expected an InvalidEventOrder rejection, got $other")
+    }
+  }
+
+  test("Recover parity: its offerable set is what the Recover-window literal " +
+      "returned, for an empty and a populated walkerPowerCatalog") {
+    val (ready, actor) = actable
+
+    assertEquals(rules(actor, WalkerPowers.empty)
+      .offerableWalkerPowers(ready, actor, ActionRef.Recover),
+      Right(Vector.empty[ContributingPower]))
+
+    val recoverWindowed = PowerId("test.recover-windowed")
+    val populated = WalkerPowers(Vector(
+      windowScoped(recoverWindowed, PowerWindow.RecoverModifierSelection),
+      windowScoped(forgeWindowed, PowerWindow.ForgeModifierSelection)))
+    assertEquals(rules(actor, populated)
+      .offerableWalkerPowers(ready, actor, ActionRef.Recover)
+      .map(_.map(_.id)),
+      Right(Vector(recoverWindowed)))
+  }
+
+  // -------------------------------------------------------------------------
+  // Batch-1 Task 3, ruling R18 (P4), first consulting call site.
+  //
+  // `WalkerActionRegistry.rollDecisionId` returns a typed `Left` for an
+  // action whose entry declares none, and `WalkerActionRegistrySuite` pins
+  // that value. What that pin does NOT prove is that anyone honours it: a
+  // call site that recovered with `.getOrElse("")` -- or that had been
+  // handed a sentinel id instead of an Option in the first place -- would
+  // keep the accessor's test green while parking the player on a decision
+  // id no tree ever declares, which is precisely the failure R18 exists to
+  // prevent.
+  //
+  // `parkedContinue`'s Roll branch is only reachable from a tree carrying a
+  // `Roll` node, and Forge's real tree has none, so the injected
+  // `walkerTree` seam supplies one. The control below is the same tree
+  // under `ActionRef.Recover`: the ONLY difference between the two calls is
+  // which action's entry the accessor is asked about.
+  // -------------------------------------------------------------------------
+
+  test("a Roll park under an action declaring no roll decision id rejects " +
+      "the whole command with the accessor's typed Left, appending nothing") {
+    val (ready, actor) = actable
+    val rollTree: Operation = Sequence(
+      Roll(PoolKey("test.roll"), DiceSpec(DiceKind.Defense)))
+    val rulesInstance = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowers.empty,
+      walkerTree = (_, _, _, _, _, _) => Right(rollTree))
+
+    // Control: the identical tree under Recover, whose entry DOES declare a
+    // roll decision id, parks and is handed that id's continuation.
+    val started = rulesInstance.startWalker(Ready(ready), ActionRef.Recover,
+        actor) match {
+      case Right(transition) => transition
+      case other => fail(s"expected the Recover roll park to run, got $other")
+    }
+    assertEquals(started.continue, OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)))
+    assert(started.events.nonEmpty)
+
+    // Forge declares none: the rejection is carried through as the command's
+    // own `Left`, so no `WalkerParked` is appended and the client is never
+    // handed a decision id to send back.
+    assertEquals(
+      rulesInstance.startWalker(Ready(ready), ActionRef.Forge, actor),
+      Left(OathViolation.InvalidEventOrder(
+        "walker action forge declares no roll decision id")))
+  }
+
 }

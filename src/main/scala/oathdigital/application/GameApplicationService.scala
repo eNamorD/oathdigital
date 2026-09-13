@@ -6,16 +6,17 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand, EconomyCommand, Forge, ForgeCommand,
-  SearchCommand, TravelCommand}
+  ChallengeCommand, EconomyCommand, SearchCommand}
+import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerActionRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
-import oathdigital.gameplay.phases.{RestCommand, WakeCommand}
+import oathdigital.gameplay.phases.RestCommand
 import oathdigital.gameplay.phases.WarExhaustionRandomPort
 import oathdigital.model._
+import oathdigital.protocol.PreviewTarget
 import oathdigital.gameplay.setup.{
   FirstGameSetupCommand,
   FirstGameSetupRules
@@ -33,9 +34,15 @@ final case class LoadedGame(
     state: OathState,
     nextSequence: Long
 )
+/** `targets` (batch-1 Task 5) is the walker-action targets costed against the
+  * modifiers THIS preview selected, rather than against the automatic set the
+  * projection is built from. Empty for an action whose targets the projection
+  * already carries, and for a walker action that has none.
+  */
 final case class MajorActionPreviewAccepted(loaded: LoadedGame,
     options: Vector[OrderedRuleInvocation],
-    ignored: Vector[IgnoredRuleDiagnostic])
+    ignored: Vector[IgnoredRuleDiagnostic],
+    targets: Vector[PreviewTarget] = Vector.empty)
 
 sealed trait GameApplicationError extends Product with Serializable
 object GameApplicationError {
@@ -72,7 +79,6 @@ final class GameApplicationService(
     catalog: ExecutableCatalog,
     repository: EventStreamRepository,
     searchDrawPort: SearchDrawPort = SearchDrawPort.authoritative,
-    relicDrawPort: RelicDrawPort = RelicDrawPort.authoritative,
     defenseDicePort: DefenseDicePort = DefenseDicePort.random,
     campaignDicePort: CampaignDicePort = CampaignDicePort.random,
     warExhaustionRandomPort: WarExhaustionRandomPort =
@@ -119,10 +125,19 @@ final class GameApplicationService(
         Left(StaleClientPosition(expectedNextSequence, loaded.nextSequence))
       case Some(loaded @ LoadedGame(OathState.Ready(ready), _)) =>
         walkerAction(action) match {
-          case Some(_) =>
-            val options = rules.offerableWalkerPowers(ready, actor).map(power =>
+          // The `ActionRef` this match already resolved is bound rather than
+          // discarded (batch-1 Task 1): `offerableWalkerPowers` reads the
+          // action's own modifier-selection window from the registry, so the
+          // preview offers what THIS action offers instead of what Recover
+          // does. It is the same ref, not a second derivation.
+          case Some(actionRef) => for {
+            offerable <- rules.offerableWalkerPowers(ready, actor, actionRef)
+              .left.map(CommandRejected)
+            options = offerable.map(power =>
               OrderedRuleInvocation(power.source, power.id.value))
-            acceptPreview(loaded, options, selected, Vector.empty)
+            accepted <- acceptPreview(loaded, options, selected, Vector.empty,
+              walkerTargets(actionRef, ready, actor, selected))
+          } yield accepted
           case None => for {
             options <- PowerRuntime.options(catalog, ready, actor, action)
               .left.map(CommandRejected)
@@ -140,7 +155,7 @@ final class GameApplicationService(
     * are walker-driven, so this needs no per-action `MajorActionKind` match
     * of its own. `MajorActionKind` and `ActionRef` share their key strings by
     * convention (see `GameIntentMapper.actionRef`, which bridges the same
-    * way from the wire intent), so a legacy-only kind like `Travel` simply
+    * way from the wire intent), so a legacy-only kind like `Muster` simply
     * has no matching `ActionRef` and falls through to the `None` branch.
     */
   private def walkerAction(action: MajorActionKind): Option[ActionRef] =
@@ -153,13 +168,44 @@ final class GameApplicationService(
   private def acceptPreview(loaded: LoadedGame,
       options: Vector[OrderedRuleInvocation],
       selected: Vector[OrderedRuleInvocation],
-      ignored: Vector[IgnoredRuleDiagnostic])
+      ignored: Vector[IgnoredRuleDiagnostic],
+      // By name: `targets` costs the action against `selected`, which is only
+      // known to name real powers once this gate has accepted it. A rejected
+      // preview must not evaluate it at all -- `PowerId` refuses to be built
+      // from an unknown id, so costing an unvalidated selection throws rather
+      // than rejecting.
+      targets: => Vector[PreviewTarget] = Vector.empty)
       : Either[GameApplicationError, MajorActionPreviewAccepted] =
     Either.cond(selected.distinct.size == selected.size &&
       selected.forall(options.contains),
-      MajorActionPreviewAccepted(loaded, options, ignored),
+      MajorActionPreviewAccepted(loaded, options, ignored, targets),
       CommandRejected(OathViolation.InvalidModifierInvocation(
         "preview contains a duplicate or unavailable modifier")))
+
+  /** A walker action's targets, costed with the powers this preview actually
+    * selected (batch-1 Task 5).
+    *
+    * The projection a route builds beside this is costed with automatic
+    * powers alone, because it is built before the player has chosen anything.
+    * Once they have, the number shown beside a destination has to reflect
+    * that choice, so the preview asks the same evaluator again with the
+    * selected vector. The match is one line per action that has targets at
+    * all, in the application layer beside the command dispatch that already
+    * names each action -- it is not a rule, and no engine code learns it.
+    */
+  private def walkerTargets(action: ActionRef,
+      ready: oathdigital.gameplay.ReadyGame,
+      actor: PlayerId, selected: Vector[OrderedRuleInvocation])
+      : Vector[PreviewTarget] = action match {
+    case ActionRef.Travel =>
+      val powers = rules.walkerPowers(ready, actor,
+        selected.map(invocation => PowerId(invocation.handlerId)))
+      TravelProcedure.candidates(catalog, ready, actor, powers).map {
+        case (site, cost) =>
+          PreviewTarget(s"site:${site.value}", cost, "Travel destination")
+      }
+    case _ => Vector.empty
+  }
 
   def handle(
       gameId: String,
@@ -306,10 +352,11 @@ final class GameApplicationService(
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
       case GameCommand.StartWalker(action, start) =>
-        rules.startWalker(state, action, start.actor, start.modifiers)
+        rules.startWalker(state, action, start.actor, start.modifiers,
+          start.startArgs)
       case GameCommand.ResolveWalker(actor, treeDecision) =>
         rules.resolveWalker(state, actor, Answered(treeDecision.decisionId,
-          treeDecision.payload))
+          treeDecision.answer))
       case GameCommand.RollWalker(actor, pool) =>
         rules.rollWalkerPrepared(state, actor, pool) { count =>
           Either.cond(count == defenseDicePort.diceCount,
@@ -324,12 +371,11 @@ final class GameApplicationService(
           state,
           FirstGameSetupCommand.ChooseAdviser(playerId, adviserId)
         )
-      case GameCommand.TakeWealth(playerId, resource) =>
-        rules.handle(state, WakeCommand.TakeWealth(playerId, resource))
+      // Ending Wake is a walker procedure (batch-1 Task 7); the command
+      // survives as the client's spelling for it, so no transport and no
+      // caller had to learn that the engine changed underneath.
       case GameCommand.EndWake(playerId) =>
-        rules.handle(state, WakeCommand.EndWake(playerId))
-      case GameCommand.Travel(playerId, destination) =>
-        rules.handle(state, TravelCommand.Travel(playerId, destination))
+        rules.startWalker(state, ActionRef.EndWake, playerId)
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>
@@ -344,17 +390,6 @@ final class GameApplicationService(
             result <- rules.handle(state, SearchCommand.Start(
               playerId, DecisionId(s"search-$nextSequence"), source, drawn))
           } yield result
-        case _ => Left(OathViolation.GameNotStarted)
-      }
-      case GameCommand.BeginForge(playerId) =>
-        rules.handle(state, ForgeCommand.Begin(playerId,
-          DecisionId(s"forge-$nextSequence")))
-      case GameCommand.CompleteForge(playerId, decision, assignments) => state match {
-        case OathState.Ready(ready) =>
-          Forge.prepareComplete(catalog, state, playerId, decision, assignments)
-            .flatMap(_ => relicDrawPort.prepare(ready)).flatMap(relic =>
-              rules.handle(state, ForgeCommand.Complete(playerId, decision,
-                assignments, relic)))
         case _ => Left(OathViolation.GameNotStarted)
       }
       case GameCommand.BeginChallenge(playerId, banner) =>
@@ -468,13 +503,11 @@ final class GameApplicationService(
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
     command match {
-      case GameCommand.Travel(actor, _) => Some(actor -> MajorActionKind.Travel)
       case GameCommand.Muster(actor, _) => Some(actor -> MajorActionKind.Muster)
       case GameCommand.Trade(actor, _, _) => Some(actor -> MajorActionKind.Trade)
       case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
       case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
         Some(actor -> MajorActionKind.Search)
-      case GameCommand.BeginForge(actor) => Some(actor -> MajorActionKind.Forge)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>

@@ -58,16 +58,6 @@ trait SearchDrawPort {
   ): Either[OathViolation, Vector[WorldCardId]]
 }
 
-trait RelicDrawPort {
-  def prepare(ready: oathdigital.gameplay.ReadyGame): Either[OathViolation, RelicId]
-}
-object RelicDrawPort {
-  val authoritative: RelicDrawPort = new RelicDrawPort {
-    def prepare(ready: oathdigital.gameplay.ReadyGame) =
-      ready.game.current.commonCards.relicDeck.headOption
-        .toRight(OathViolation.ForgeUnavailable("relic deck is empty"))
-  }
-}
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
     def prepare(ready: oathdigital.gameplay.ReadyGame, source: SearchSource,

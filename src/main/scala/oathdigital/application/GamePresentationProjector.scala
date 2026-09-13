@@ -165,23 +165,23 @@ private[application] final class GamePresentationProjector(
     (players.drop(start) ++ players.take(start)).map { player =>
       val secrets = PlayerSecretSummary.derive(ready, player.player)
         .fold(error => throw new IllegalStateException(error), identity)
-      val owns = viewer.contains(player.player)
-      val knownAdvisers = viewer.toVector.flatMap(id =>
-        ready.knowledge.advisers.getOrElse(id, Vector.empty)).toSet
-      val knownRelics = viewer.toVector.flatMap(id =>
-        ready.knowledge.heldRelics.getOrElse(id, Vector.empty)).toSet
+      def identifies(id: CardId, orientation: Orientation,
+          area: PlayerCardArea): Boolean = identifiesCard(ready, viewer, id,
+        Some(orientation), CardContainer.Player(player.player, area))
       PlayerBoardProjection(player.player.value, player.board.warbands,
         player.board.favor, player.board.faceUpSecrets, player.board.faceDownSecrets,
         secrets.committed, secrets.totalSecrets,
         player.board.supply.supply, player.pawnSite.map(_.value),
-        player.advisers.map(card => if (adviserOrientation(card) == Orientation.FaceDown &&
-            !owns && !knownAdvisers(card.id.asInstanceOf[WorldCardId]))
-          hiddenCard("adviser") else cardDetails(card.id,
-            Some(adviserOrientation(card)), hidden = false)),
-        player.relics.map(card => if (card.orientation == Orientation.FaceDown &&
-            !owns && !knownRelics(card.id))
-          hiddenCard("relic") else cardDetails(card.id,
-            Some(card.orientation), hidden = false)),
+        player.advisers.map(card =>
+          if (identifies(card.id, adviserOrientation(card),
+              PlayerCardArea.Advisers))
+            cardDetails(card.id, Some(adviserOrientation(card)),
+              hidden = false)
+          else hiddenCard("adviser")),
+        player.relics.map(card =>
+          if (identifies(card.id, card.orientation, PlayerCardArea.Relics))
+            cardDetails(card.id, Some(card.orientation), hidden = false)
+          else hiddenCard("relic")),
         player.revealedVision.map(card => cardDetails(card.id,
           Some(card.orientation), hidden = false)),
         banners(ready).filter(_.holderPlayerId.contains(player.player.value)))
@@ -214,6 +214,85 @@ private[application] final class GamePresentationProjector(
 
   private def hiddenCard(kind: String) = CardDetailsProjection(
     "hidden", kind, s"Facedown $kind", orientation = Some("face-down"), hidden = true)
+
+  /** Whether `viewer` may be told WHICH card this is, as opposed to merely
+    * that a card is there.
+    *
+    * One rule with two consumers, which redact differently because they have
+    * to. [[playerBoards]] above substitutes [[hiddenCard]] and keeps the slot
+    * visible, since a board needs to show that an adviser is there. A walker
+    * decision option cannot do that: its reference IS the card's identity and
+    * the client answers by sending it back, so an unidentifiable option is not
+    * an option at all and `WalkerDecisionProjector` suppresses the whole
+    * decision instead. Both ask this one question rather than each writing its
+    * own disclosure test.
+    *
+    * The clauses, and where each comes from:
+    *
+    *  - A site's denizens are named to every viewer whatever their
+    *    orientation. That is not a judgement made here; `siteProjection`
+    *    above already projects them that way, and a rule stricter than the
+    *    world projection would hide a card the same response already names.
+    *    Tighten both together or neither.
+    *  - A site's facedown relics are named only to a viewer who has peeked
+    *    (`knowledge.siteRelics`) or whose pawn stands at that site. The pawn
+    *    clause is Recover's shipped disclosure: succeeding at Recover means
+    *    looking through the site's facedown relics to choose one, which is
+    *    why the relic decision could name them before this predicate existed.
+    *    It is stated once, here, instead of being a blanket exemption.
+    *  - A player's facedown cards are named to their owner, or to a viewer
+    *    whose recorded `knowledge` covers them -- the same two conditions
+    *    [[playerBoards]] applied inline before this method.
+    *  - A player's temporary hand is named to that player and to nobody
+    *    else. It is drawn-but-unresolved cards, not a board slot, and it is
+    *    the one player area with no orientation to reason about.
+    *  - Everything else -- decks, discards, the reliquary, set-aside relics,
+    *    the dispossessed pile, suited reserves, atlas sites -- is never
+    *    identified. A card in a deck has no orientation at all, so it must be
+    *    rejected by its container rather than by being facedown.
+    */
+  def identifiesCard(ready: ReadyGame, viewer: Option[PlayerId], id: CardId,
+      orientation: Option[Orientation], container: CardContainer): Boolean = {
+    // Known-faceup, never merely "not facedown". A card whose container
+    // holds no state at all -- a deck, a discard, a temporary hand -- has NO
+    // orientation, and reading that absence as public is how such a card
+    // would slip through a clause meant for a board slot.
+    val faceup = orientation.contains(Orientation.FaceUp)
+    container match {
+      case CardContainer.Site(_, SiteCardArea.Denizens) => true
+      case CardContainer.Site(site, SiteCardArea.Relics) =>
+        faceup || viewer.exists(player =>
+          ready.knowledge.siteRelics.getOrElse(player, Map.empty)
+            .getOrElse(site, Vector.empty).contains(id) ||
+            pawnSiteOf(ready, player).contains(site))
+      // A temporary hand is the cards a player has drawn and not yet
+      // resolved. It is private to them outright -- `PendingProcedureProjector`
+      // projects a Search hand only to the drawing actor -- and its cards
+      // carry no orientation to reason about, so ownership is the whole
+      // rule and there is no faceup case to fall through to.
+      case CardContainer.Player(owner, PlayerCardArea.Hand) =>
+        viewer.contains(owner)
+      case CardContainer.Player(owner, area) =>
+        faceup || viewer.exists(player => player == owner ||
+          knownToViewer(ready, player, id, area))
+      case _ => false
+    }
+  }
+
+  private def pawnSiteOf(ready: ReadyGame, player: PlayerId): Option[SiteId] =
+    ready.game.current.players.find(_.player == player).flatMap(_.pawnSite)
+
+  /** Recorded knowledge for the areas that have any: relics by
+    * `heldRelics`, world cards by `advisers`. `Hand` never reaches here --
+    * [[identifiesCard]] settles it on ownership alone.
+    */
+  private def knownToViewer(ready: ReadyGame, player: PlayerId, id: CardId,
+      area: PlayerCardArea): Boolean = area match {
+    case PlayerCardArea.Relics =>
+      ready.knowledge.heldRelics.getOrElse(player, Vector.empty).contains(id)
+    case _ => ready.knowledge.advisers.getOrElse(player, Vector.empty)
+      .exists(_.value == id.value)
+  }
 
   def adviserOrientation(card: AdviserState): Orientation = card match {
     case value: DenizenState => value.orientation

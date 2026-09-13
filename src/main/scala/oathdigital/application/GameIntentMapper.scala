@@ -1,10 +1,9 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef, TradeResource,
-  WakeResource}
+import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef,
+  TradeResource}
 import oathdigital.model._
-import oathdigital.model.DecisionPayload.{RecoverChoice, RecoverChoicePayload,
-  RecoverRelicPayload}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -17,7 +16,6 @@ object GameIntentMapper {
     val actor = AuthorizedPlayer.forPlayer(actorId)
     intent match {
       case Intent.PlacePawn(site) => Right(actor.placePawn(SiteId(site)))
-      case Intent.TakeWealth(resource) => wake(resource).map(actor.takeWealth)
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
@@ -26,12 +24,9 @@ object GameIntentMapper {
         destination <- suit(bank, "$.intent.destinationBank")
       } yield actor.resolveRestPower(DecisionId(id), allocations, destination)
       case Intent.DeclineRestPower(id) => Right(actor.declineRestPower(DecisionId(id)))
-      case Intent.Travel(site) => Right(actor.travel(SiteId(site)))
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
-      case Intent.BeginForge => Right(actor.beginForge)
-      case Intent.CompleteForge(id, values) => traverse(values)(forge).map(actor.completeForge(DecisionId(id), _))
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
       case Intent.ChooseChallengeSecretSite(id, site) => Right(actor.chooseChallengeSecretSite(DecisionId(id), SiteId(site)))
       case Intent.CompleteChallenge(id, amount) => Right(actor.completeChallenge(DecisionId(id), amount))
@@ -58,12 +53,13 @@ object GameIntentMapper {
       case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ChooseOathkeeperRecipient(id, recipient) => Right(actor.chooseOathkeeperRecipient(DecisionId(id), PlayerId(recipient)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
-      case Intent.StartWalker(value, modifiers) => for {
+      case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)
         ids <- traverse(modifiers.zipWithIndex)((powerId _).tupled)
-      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids))
+        args <- traverse(startArgs.zipWithIndex)((walkerStartArg _).tupled)
+      } yield GameCommand.StartWalker(ref, StartPayload(actorId, ids, args))
       case Intent.RollWalker(pool) => Right(actor.rollWalker(PoolKey(pool)))
-      case Intent.ResolveWalker(id, value) => decisionPayload(value).map(p =>
+      case Intent.ResolveWalker(id, value) => decisionAnswer(value).map(p =>
         actor.resolveWalker(TreeDecision(id, p)))
     }
   }
@@ -105,7 +101,6 @@ object GameIntentMapper {
   }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
-  private def wake(value: String): Result[WakeResource] = value match { case "favor" => Right(WakeResource.Favor); case "secret" => Right(WakeResource.Secret); case v => invalid("$.intent.resource", v, "wake resource") }
   private def trade(value: String): Result[TradeResource] = value match { case "favor" => Right(TradeResource.Favor); case "secret" => Right(TradeResource.Secret); case v => invalid("$.intent.resource", v, "trade resource") }
   private def banner(value: String): Result[Banner] = Banner.fromKey(value).toRight(GameIntentMappingFailure("$.intent.banner", s"unknown banner '$value'"))
   private def economy(value: EconomyTarget): Result[EconomyTargetRef] = value.kind match { case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(value.id))); case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(value.id))); case v => invalid("$.intent.target.kind", v, "economy target") }
@@ -113,11 +108,6 @@ object GameIntentMapper {
     case "world" if value.region.isEmpty => Right(oathdigital.model.SearchSource.WorldDeck)
     case "regional-discard" => value.region.flatMap(k => Region.all.find(_.key == k)).map(oathdigital.model.SearchSource.RegionalDiscard).toRight(GameIntentMappingFailure("$.intent.region", "unknown or missing region"))
     case v => invalid("$.intent.source", v, "search source")
-  }
-  private def forge(value: ForgeAssignment): Result[ForgeResourceAssignment] = value.resource match {
-    case "favor" => Right(ForgeResourceAssignment(SiteDenizenTarget(SiteId(value.siteId), DenizenId(value.denizenId)), ForgeResource.Favor))
-    case "secret" => Right(ForgeResourceAssignment(SiteDenizenTarget(SiteId(value.siteId), DenizenId(value.denizenId)), ForgeResource.Secret))
-    case v => invalid("$.intent.assignments.resource", v, "forge resource")
   }
   private def restAllocation(value: RestFavorAllocation): Result[FavorAllocation] = {
     val site = SiteId(value.source.siteId)
@@ -172,22 +162,44 @@ object GameIntentMapper {
     case NegotiationInformation.HeldRelic(owner, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.HeldRelic(PlayerId(owner), RelicId(relic))))
     case NegotiationInformation.SiteRelic(site, relic) => Right(oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.SiteRelic(SiteId(site), RelicId(relic))))
   }
+  /** One wire start selection to the engine's own reference, through the SAME
+    * `DecisionOptionRef.fromWire` a walker answer is decoded with (see
+    * `optionRef`). Whether the action accepts this reference at all is not
+    * asked here: that is the registered action's own question, answered when
+    * it builds its tree.
+    */
+  private def walkerStartArg(value: WalkerStartArgWire, index: Int)
+      : Result[DecisionOptionRef] = optionRef(value.optionKind, value.optionId,
+    s"$$.intent.startArgs[$index]")
+
   private def actionRef(value: String): Result[ActionRef] =
     ActionRef.fromKey(value).toRight(GameIntentMappingFailure("$.intent.action",
       s"unknown action '$value'"))
   private def powerId(value: String, index: Int): Result[PowerId] =
     PowerId.fromValue(value).toRight(GameIntentMappingFailure(
       s"$$.intent.modifiers[$index]", s"invalid power id '$value'"))
-  private def decisionPayload(value: DecisionPayloadWire): Result[DecisionPayload] = value match {
-    case DecisionPayloadWire.RecoverChoiceWire(choice) => choice match {
-      case "continue" => Right(RecoverChoicePayload(RecoverChoice.Continue))
-      case "stop" => Right(RecoverChoicePayload(RecoverChoice.Stop))
-      case v => invalid("$.intent.payload.choice", v, "Recover choice")
-    }
-    case DecisionPayloadWire.RecoverRelicWire(relicId) =>
-      RelicId.fromValue(relicId).map(RecoverRelicPayload).toRight(
-        GameIntentMappingFailure("$.intent.payload.relicId",
-          s"invalid relic id '$relicId'"))
+  /** The kind/id pair back to the engine's option reference. Total over the
+    * seven declared variants, and deliberately not a table written here:
+    * `DecisionOptionRef.fromWire` is the same function the journal codec
+    * decodes with, so a client's answer and a replayed one resolve a given
+    * pair identically or not at all.
+    */
+  private def optionRef(kind: String, id: String,
+      path: String): Result[DecisionOptionRef] =
+    DecisionOptionRef.fromWire(kind, id).toRight(GameIntentMappingFailure(path,
+      s"unknown decision option '$kind/$id'"))
+
+  /** Names no action and no decision id: a walker answer is generic over the
+    * query shapes the engine declares, and the engine checks it against the
+    * query the parked node actually carries.
+    */
+  private def decisionAnswer(value: DecisionAnswerWire): Result[DecisionAnswer] = value match {
+    case DecisionAnswerWire.ChooseOneWire(kind, id) =>
+      optionRef(kind, id, "$.intent.payload.option").map(ChooseOneAnswer)
+    case DecisionAnswerWire.PartitionWire(placements) =>
+      traverse(placements)(row => optionRef(row.optionKind, row.optionId,
+        "$.intent.payload.placements.option").map(
+          DecisionPlacement(_, row.sectionKey))).map(PartitionAnswer)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

@@ -28,7 +28,7 @@ object ServerModeUi {
     var boardSelectionState = Option.empty[BoardTargetSelectionState]
     var boardFormationState = Option.empty[BoardTargetFormationState]
     var campaignPlacementState = Option.empty[CampaignPlacementState]
-    var forgeAssignmentState = Option.empty[ForgeAssignmentState]
+    var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
     var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
@@ -97,10 +97,10 @@ object ServerModeUi {
             campaignPlacementState,
             BoardSelectionContext(gameId, selectedPlayer,
               displayed.nextSequence), displayed.campaign)
-          forgeAssignmentState = ForgeAssignmentState.reconcile(
-            forgeAssignmentState,
+          walkerPartitionDraft = WalkerPartitionDraft.reconcile(
+            walkerPartitionDraft,
             BoardSelectionContext(gameId, selectedPlayer,
-              displayed.nextSequence), displayed.forge)
+              displayed.nextSequence), displayed.walkerDecision)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
             cardDecisionState.filter(_.decisionId == decision.decisionId)
               .getOrElse(CardDecisionState.initial(decision))
@@ -389,8 +389,8 @@ object ServerModeUi {
       def currentBoardFormation_=(value: Option[BoardTargetFormationState]) = boardFormationState = value
       def currentCampaignPlacement = campaignPlacementState
       def currentCampaignPlacement_=(value: Option[CampaignPlacementState]) = campaignPlacementState = value
-      def currentForgeAssignment = forgeAssignmentState
-      def currentForgeAssignment_=(value: Option[ForgeAssignmentState]) = forgeAssignmentState = value
+      def currentWalkerPartition = walkerPartitionDraft
+      def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) = walkerPartitionDraft = value
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow

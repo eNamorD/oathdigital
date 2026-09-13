@@ -4,12 +4,12 @@ package oathdigital.model
   *
   * `answered` grows per resolution (a `Repeat` re-parks the same decision id
   * on every fresh pass and each answer is recorded — duplicates accumulate,
-  * and pass guards must key on the LATEST payload, not on `answered.size`).
+  * and pass guards must key on the LATEST answer, not on `answered.size`).
   *
   * @param decisionId the id of the `Decide` node that parked.
-  * @param payload the model-safe choice the player made.
+  * @param answer the model-safe choice the player made.
   */
-final case class Answered(decisionId: String, payload: DecisionPayload)
+final case class Answered(decisionId: String, answer: DecisionAnswer)
 
 /** Parked walker position recorded in game state while an action awaits a
   * decision or roll (spec decision S1).
@@ -24,7 +24,7 @@ final case class Answered(decisionId: String, payload: DecisionPayload)
   *
   * @param at stable node-id chain naming the node the walker resumes at.
   * @param answered decisions already recorded during this action, in answer
-  *   order (each carries its model-safe [[DecisionPayload]]).
+  *   order (each carries its model-safe [[DecisionAnswer]]).
   * @param actor the player whose action this is.
   */
 final case class PendingTree(

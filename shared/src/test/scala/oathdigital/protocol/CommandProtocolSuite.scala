@@ -4,14 +4,13 @@ class CommandProtocolSuite extends munit.FunSuite {
   import GameIntent._
 
   private val examples: Vector[GameIntent] = Vector(
-    PlacePawn("site:a"), TakeWealth("favor"), EndWake, BeginRest, FinishRest,
+    PlacePawn("site:a"), EndWake, BeginRest, FinishRest,
     ResolveRestPower("rest-1", Vector(RestFavorAllocation(
       RestFavorSource("relic-slot", "site:a", "0"), 2)), "hearth"),
     DeclineRestPower("rest-1"),
-    Travel("site:b"), Muster(EconomyTarget("denizen", "d1")),
+    Muster(EconomyTarget("denizen", "d1")),
     Trade(EconomyTarget("edifice", "e1"), "secret"),
-    BeginSearch(SearchSource("world", None)), BeginForge,
-    CompleteForge("forge-1", Vector(ForgeAssignment("site:a", "d1", "favor"))),
+    BeginSearch(SearchSource("world", None)),
     BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
     CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
     ResolveFacedownAdviser(WorldCard("denizen", "d1"), None),
@@ -41,10 +40,27 @@ class CommandProtocolSuite extends munit.FunSuite {
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
-    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("continue")),
-    ResolveWalker("recover.choice", DecisionPayloadWire.RecoverChoiceWire("stop")),
-    ResolveWalker("recover.relic", DecisionPayloadWire.RecoverRelicWire("relic-1"))
+    ResolveWalker("recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "continue")),
+    ResolveWalker("recover.choice",
+      DecisionAnswerWire.ChooseOneWire("button", "stop")),
+    ResolveWalker("recover.relic",
+      DecisionAnswerWire.ChooseOneWire("relic", "relic-1")),
+    StartWalker("forge", Vector.empty),
+    ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(
+      Vector(DecisionPlacementWire("denizen", "d1", "pay-favor"),
+        DecisionPlacementWire("denizen", "d2", "pay-favor"),
+        DecisionPlacementWire("denizen", "d3", "pay-secret"))))
   )
+
+  test("a walker answer carrying a deleted legacy tag is rejected") {
+    val legacy = ujson.Obj("kind" -> "recover-choice", "choice" -> "continue")
+    Vector("recover-choice", "recover-relic", "forge-assignment").foreach { tag =>
+      val payload = legacy.value.toMap.updated("kind", ujson.Str(tag))
+      assert(CommandNestedCodecs.decodeDecisionAnswerWire(
+        ujson.Obj.from(payload), "$.payload").isLeft, tag)
+    }
+  }
 
   test("every actorless command intent round trips through the shared codec") {
     examples.zipWithIndex.foreach { case (intent, index) =>
@@ -76,9 +92,13 @@ class CommandProtocolSuite extends munit.FunSuite {
 
   test("malformed fields and structural duplicates retain exact paths") {
     assertEquals(ActorlessCommandCodec.decode("{").left.toOption.get.path, "$")
-    val missing = """{"expectedNextSequence":8,"intent":{"type":"travel"}}"""
+    // Travel's destination moved onto `StartWalker`'s start selection
+    // (batch-1 Task 5), so the path a malformed one reports moved with it --
+    // still exact, and now indexed because a selection is a list.
+    val missing = """{"expectedNextSequence":8,"intent":{"type":"startWalker",""" +
+      """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(ActorlessCommandCodec.decode(missing).left.toOption.get.path,
-      "$.intent.destinationSiteId")
+      "$.intent.startArgs[0].optionId")
     val duplicate = """{"expectedNextSequence":0,"intent":{"type":"beginNegotiation","participantPlayerIds":["p2","p2"]}}"""
     assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
       "$.intent.participantPlayerIds")
@@ -88,7 +108,8 @@ class CommandProtocolSuite extends munit.FunSuite {
     val modifiers = Vector(
       ModifierInvocation("adviser", "d2", None, "denizen.second"),
       ModifierInvocation("site-card", "d1", Some("s1"), "denizen.first"))
-    val request = ActorlessCommandRequest(9, Travel("s2"), modifiers)
+    val request = ActorlessCommandRequest(9, StartWalker("travel",
+      Vector.empty, Vector(WalkerStartArgWire("site", "s2"))), modifiers)
     assertEquals(ActorlessCommandCodec.decode(ActorlessCommandCodec.encode(request)),
       Right(request))
     val duplicate = request.copy(orderedModifiers = Vector(modifiers.head,
@@ -103,7 +124,20 @@ class CommandProtocolSuite extends munit.FunSuite {
     val failure = ActorlessCommandCodec.decode(json).left.toOption.get
     assertEquals(failure.path, "$.intent.payload.kind")
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
-    assert(failure.message.contains("unknown decision payload"))
+    assert(failure.message.contains("unknown decision answer"))
+  }
+
+  test("a partition payload placing one option twice is rejected at its " +
+      "exact path") {
+    val row = """{"optionKind":"denizen","optionId":"d1","sectionKey":"pay-favor"}"""
+    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
+      s""""decisionId":"forge.assignment","payload":{"kind":"partition",""" +
+      s""""placements":[$row,$row]}}}"""
+    val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+    assertEquals(failure.path, "$.intent.payload.placements")
+    // The engine rejects a duplicated placement too (`DecisionQueries`);
+    // catching it at the transport keeps the two rules the same shape.
+    assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
   }
 
   test("an unknown walker intent type is rejected without throwing") {

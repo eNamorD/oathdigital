@@ -10,7 +10,7 @@ import oathdigital.gameplay.OathViolation._
 
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
-import oathdigital.gameplay.operations.{AdjustSupply, CardDeck,
+import oathdigital.gameplay.operations.{AdjustSupply,
   CoreOperation, Draw,
   Location, OperationPipeline, OperationPolicy}
 

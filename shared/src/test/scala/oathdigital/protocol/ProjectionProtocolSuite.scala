@@ -41,8 +41,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Map("hidden" -> Vector(CardResolutionProjection("discard")),
         "known" -> Vector(CardResolutionProjection("play-site", Some("faceup"), true,
           Vector(hidden)))))),
-    forge = Some(ForgeProjection("forge", "red", 1, 1,
-      Vector(ForgeAssignmentTargetProjection("site:a", "known", "Known")))),
     campaign = Some(CampaignProjection("campaign", Vector("site:a"), 2, false,
       Vector(choice), Vector.empty, Vector("two"), 2, 0, 1, None,
       Vector("one"), None, None, 2,
@@ -75,7 +73,21 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       "denizen.league-treaty", LeagueTreatyProjection(Vector(
         RestFavorSourceProjection("denizen", "site:a", "known", "Known", 2)),
         Vector("beast", "hearth")))),
-    restPowerWaiting = true)
+    restPowerWaiting = true,
+    // A partition query, the shape with every field populated: a form, two
+    // sections with minima, and options carrying both a plain label and
+    // card details. A choose-one query is the same type with no sections,
+    // so this one round-trip covers both.
+    walkerDecision = Some(WalkerDecisionProjection("forge", "forge.assignment",
+      "decide", query = Some(DecisionQueryProjection("partition",
+        Vector(DecisionOptionProjection("denizen", "known", "Known",
+            Some(known)),
+          DecisionOptionProjection("button", "skip", "Skip")),
+        Vector(DecisionSectionProjection("pay-favor", "Pay Favor", 1),
+          DecisionSectionProjection("pay-secret", "Pay Secret", 1)),
+        heading = Some("Forge a relic"),
+        confirmLabel = Some("Complete Forge"))),
+      rollOutcome = Some(WalkerRollOutcomeProjection(Vector("one-shield"), 1, 2)))))
 
   test("populated player-scoped projections round-trip exactly on both runtimes") {
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(projection)),
@@ -84,6 +96,23 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     assertEquals(projection.playerBoards.head.advisers.head.name, "Unknown")
     assertEquals(projection.tracks.map(_.round), Some(4))
     assertEquals(projection.privateAdviserPreview.map(_.cardId), Vector("known"))
+  }
+
+  /** Task 5b: a decision's panel copy is two OPTIONAL strings, so the
+    * absent case has to round-trip as faithfully as the present one. The
+    * populated projection above covers the present case; this covers a
+    * query that declares neither, which is what every choose-one park
+    * that has nothing to title itself sends.
+    */
+  test("a decision query declaring no panel copy round-trips as absent") {
+    val bare = DecisionQueryProjection("choose-one",
+      Vector(DecisionOptionProjection("button", "stop", "Stop")))
+    assertEquals(bare.heading, None)
+    assertEquals(bare.confirmLabel, None)
+    val without = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(bare))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
+      Right(without))
   }
 
   test("projection decoder reports exact nested paths and unexpected fields") {

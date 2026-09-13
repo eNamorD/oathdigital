@@ -114,143 +114,14 @@ object WalkerPowers {
 object ProcedureWalker {
 
   /** Replays one durable walker fact. This path applies recorded operations
-    * and payload state writes only; it never derives or walks an action tree.
+    * and payload state writes only; it never derives or walks an action tree
+    * -- see [[WalkerReplay]], which holds the whole of it (split out to keep
+    * this file under the project's line bound, like [[WalkerPowerGather]]).
     */
   def applyRecorded(state: OathState,
-      event: WalkerEvent): Either[OathViolation, OathState] = state match {
-    case OathState.Ready(ready) => applyRecordedReady(ready, event)
-      .map(OathState.Ready)
-    case _ => Left(OathViolation.GameNotStarted)
-  }
+      event: WalkerEvent): Either[OathViolation, OathState] =
+    WalkerReplay.applyRecorded(state, event)
 
-  private def applyRecordedReady(ready: ReadyGame,
-      event: WalkerEvent): Either[OathViolation, ReadyGame] = {
-    def invalid(detail: String) = Left(OathViolation.InvalidEventOrder(detail))
-    def validateActor(actor: PlayerId): Either[OathViolation, Unit] =
-      Either.cond(actor == ready.game.current.turn.activePlayer, (),
-        OathViolation.WrongPlayer(ready.game.current.turn.activePlayer, actor))
-    def validateStep(step: WalkerStepRecorded)
-        : Either[OathViolation, Unit] = for {
-      _ <- validateActor(step.actor)
-      _ <- Either.cond(validNodeId(step.nodeId), (),
-        OathViolation.InvalidEventOrder(
-          s"invalid walker node id '${step.nodeId}'"))
-    } yield ()
-    def validateParkedStep(step: WalkerStepRecorded)
-        : Either[OathViolation, PendingTree] = for {
-      _ <- validateStep(step)
-      pending <- ready.game.current.walkerPending.toRight(
-        OathViolation.InvalidEventOrder(
-          "walker step requires a durable pending position"))
-      _ <- Either.cond(pending.actor == step.actor, (),
-        OathViolation.WrongPlayer(pending.actor, step.actor))
-      _ <- Either.cond(pending.at.mkString(".") == step.nodeId, (),
-        OathViolation.InvalidEventOrder(
-          s"walker step ${step.nodeId} does not match pending position " +
-            pending.at.mkString(".")))
-    } yield pending
-
-    event match {
-      // `contributions` is deliberately unmatched (`_`) below: replay applies
-      // `ops` only and must never consult which powers produced them (spec
-      // decision 5) -- see `WalkerStepRecorded.contributions`'s doc.
-      case step @ WalkerStepRecorded(_, _, RollPayload(pool, faces), ops, _) =>
-        for {
-          _ <- validateParkedStep(step)
-          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded RollPayload must not contain operations"))
-          count <- ready.game.current.rollPools.get(pool).map(_.count).toRight(
-            OathViolation.InvalidEventOrder(
-              s"recorded roll references missing pool ${pool.value}"))
-          _ <- Either.cond(faces.size == count, (),
-            OathViolation.InvalidEventOrder(
-              s"recorded roll has ${faces.size} faces but pool count is $count"))
-          _ <- Either.cond(faces.forall(_.isInstanceOf[DefenseDieFace]), (),
-            OathViolation.InvalidEventOrder(
-              "recorded Recover roll contains a non-defense face"))
-        } yield writeRollOutcome(ready, RollOutcome(pool, count, faces,
-          skulls = 0, score = DefenseDieFace.score(faces.collect {
-            case face: DefenseDieFace => face
-          })))
-
-      case step @ WalkerStepRecorded(_, _,
-          ChoicePayload(decisionId, payload), ops, _) =>
-        for {
-          pending <- validateParkedStep(step)
-          _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded ChoicePayload must not contain operations"))
-          answered = pending.copy(answered = pending.answered :+
-            Answered(decisionId, payload))
-        } yield ready.copy(game = ready.game.copy(current =
-          ready.game.current.copy(walkerPending = Some(answered))))
-
-      case step @ WalkerStepRecorded(_, _,
-          _: WalkerStepPayload.DeltaRecorded, ops, _) =>
-        for {
-          _ <- validateStep(step)
-          _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(
-            "recorded delta step must contain operations"))
-          updated <- new OperationExecutor().executeAll(ready, ops)
-            .left.map(_.toViolation)
-        } yield updated
-
-      case WalkerParked(actor, action, at, answered, modifiers) => for {
-        _ <- validateActor(actor)
-        _ <- Either.cond(at.nonEmpty && at.forall(segment =>
-          segment.nonEmpty && segment.forall(_.isDigit)), (),
-          OathViolation.InvalidEventOrder("invalid durable walker park path"))
-        _ <- ready.game.current.walkerAction match {
-          case Some(existing) => for {
-            _ <- Either.cond(existing == action, (),
-              OathViolation.InvalidEventOrder(
-                s"walker action ${action.key} does not match ${existing.key}"))
-            _ <- Either.cond(ready.game.current.walkerModifiers == modifiers, (),
-              OathViolation.InvalidEventOrder(
-                "durable walker park modifiers do not match the recorded " +
-                  "selection"))
-          } yield ()
-          case None => Right(())
-        }
-        _ <- ready.game.current.walkerPending match {
-          case Some(existing) => Either.cond(existing.answered == answered, (),
-            OathViolation.InvalidEventOrder(
-              "durable walker park answers do not match recorded choices"))
-          case None => Either.cond(answered.isEmpty, (),
-            OathViolation.InvalidEventOrder(
-              "initial durable walker park has unexpected answers"))
-        }
-      } yield ready.copy(game = ready.game.copy(current =
-        ready.game.current.copy(
-          walkerPending = Some(PendingTree(at, answered, actor)),
-          walkerAction = Some(action),
-          walkerModifiers = modifiers)))
-
-      case WalkerCompleted(actor, action) => for {
-        _ <- validateActor(actor)
-        _ <- ready.game.current.walkerAction match {
-          case Some(existing) => Either.cond(existing == action, (),
-            OathViolation.InvalidEventOrder(
-              s"walker completion ${action.key} does not match ${existing.key}"))
-          case None => invalid("walker completion has no active walker action")
-        }
-      } yield ready.copy(game = ready.game.copy(current =
-        ready.game.current.copy(
-          walkerPending = None,
-          walkerAction = None,
-          walkerModifiers = Vector.empty,
-          rollPools = Map.empty,
-          rollOutcomes = Map.empty)))
-
-      case step: WalkerStepRecorded =>
-        invalid(s"unsupported recorded walker payload ${step.payload.productPrefix}")
-      case other =>
-        invalid(s"unsupported walker event ${other.productPrefix}")
-    }
-  }
-
-  private def validNodeId(nodeId: String): Boolean =
-    nodeId.nonEmpty && nodeId.split('.').forall(segment =>
-      segment.nonEmpty && segment.forall(_.isDigit))
 
   def advance(state: ReadyGame, action: Operation,
       pending: Option[PendingTree], powers: WalkerPowers)
@@ -300,7 +171,7 @@ object ProcedureWalker {
     * mismatched decision id, or any other position rejects with an
     * `OathViolation`). Semantics: check the node's `owner` resolves to the
     * acting player, run the node's optional `validate(state, pending,
-    * payload)` against `answer.payload` when present, append ONE
+    * answer)` against the submitted answer when present, append ONE
     * [[WalkerStepRecorded]] carrying [[ChoicePayload]] (`ops` empty — the
     * answer is a state write into `pending.answered`, not a delta batch), add
     * `answer` to `answered`, then continue auto-walking from the node after
@@ -443,11 +314,11 @@ object ProcedureWalker {
     * local to this walk. A composite emits no event of its own; its gather
     * order rides down to the leaves it shaped (ruling F).
     */
-  private def walkFolded(window: Option[PowerWindow],
+  private def walkFolded(window: Option[PowerWindow], operation: Operation,
       children: Vector[Operation], ctx: WalkCtx, path: Vector[String],
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
-    val (folded, order) = WalkerPowerGather.applyWindow(window, ctx.state,
+    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
       ctx.actor, ctx.powers, path, children)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
   }
@@ -455,7 +326,7 @@ object ProcedureWalker {
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
       resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
-    walkFolded(composite.window, composite.children, ctx, path, cursor,
+    walkFolded(composite.window, composite, composite.children, ctx, path, cursor,
       resume, hooks)
 
   /** A `Branch` has no static children: its `select` chooses the children to
@@ -470,7 +341,7 @@ object ProcedureWalker {
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val branchTree = PendingTree(at = path, answered = ctx.answered,
       actor = ctx.actor)
-    walkFolded(branch.window, branch.select(ctx.state, branchTree), ctx, path,
+    walkFolded(branch.window, branch, branch.select(ctx.state, branchTree), ctx, path,
       cursor, resume, hooks)
   }
 
@@ -488,7 +359,7 @@ object ProcedureWalker {
       */
     def pass(current: WalkCtx,
         at: Option[Vector[String]]): Either[OathViolation, Step] =
-      walkFolded(repeat.window, repeat.children, current, path, at, resume,
+      walkFolded(repeat.window, repeat, repeat.children, current, path, at, resume,
         hooks).flatMap {
           case park: Park => Right(park)
           case Done(next) => passes(next)
@@ -525,7 +396,7 @@ object ProcedureWalker {
       path: Vector[String], cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = leaf.window match {
     case Some(w) if !hooks.gathered.contains(w) =>
-      walkFolded(Some(w), Vector(leaf), ctx, path, cursor, resume,
+      walkFolded(Some(w), leaf, Vector(leaf), ctx, path, cursor, resume,
         hooks.copy(gathered = hooks.gathered + w))
     case _ => runLeaf(leaf, ctx, path, cursor, resume, hooks.inherited)
   }
@@ -690,27 +561,26 @@ object ProcedureWalker {
   }
 
   /** Validates a resolved answer against the parked Decide and records its
-    * step: the owner must resolve to the acting player, and the node's
-    * optional `validate` must accept the payload; on success `answer` is
-    * appended to `answered` and ONE [[WalkerStepRecorded]] carrying a
-    * [[ChoicePayload]] (ops empty — the answer is a state write into
-    * `pending.answered`) is appended.
+    * step: the node's owner must be the acting player, the node's query must
+    * be answerable at all, and that query must accept the submitted answer.
+    * On success `answer` is appended to `answered` and ONE
+    * [[WalkerStepRecorded]] carrying a [[ChoicePayload]] (ops empty -- the
+    * answer is a state write into `pending.answered`) is appended.
+    *
+    * Both checks are generic and read no game state (see [[DecisionQueries]]),
+    * so the walker learns nothing here about which action parked: a legality
+    * fact that used to live in a per-node `validate` closure now lives in the
+    * declared option set, which is also what the projector offers.
     */
   private def answerDecide(decide: Decide, ctx: WalkCtx,
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
-    val parkTree = PendingTree(at = path, answered = ctx.answered,
-      actor = ctx.actor)
     for {
-      _ <- decide.owner.owner(WalkerCtx(ctx.state)) match {
-        case None => Left(OathViolation.InvalidEventOrder(
-          s"decision ${decide.decisionId} at ${path.mkString(".")} has no " +
-            "resolving owner"))
-        case Some(owner) => Either.cond(owner == ctx.actor, (),
-          OathViolation.WrongPlayer(owner, ctx.actor))
-      }
-      _ <- decide.validate.fold[Either[OathViolation, Unit]](
-        Right(()))(_(ctx.state, parkTree, answer.payload))
+      _ <- Either.cond(decide.owner == ctx.actor, (),
+        OathViolation.WrongPlayer(decide.owner, ctx.actor))
+      _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
+      _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
+        answer.answer)
     } yield {
       val nodeId =
         if (path.isEmpty) leafLabel(decide) else path.mkString(".")
@@ -719,7 +589,7 @@ object ProcedureWalker {
         events = ctx.events :+ WalkerStepRecorded(
           actor = ctx.actor,
           nodeId = nodeId,
-          payload = ChoicePayload(answer.decisionId, answer.payload),
+          payload = ChoicePayload(answer.decisionId, answer.answer),
           ops = Vector.empty,
           contributions = contributions))
     }
@@ -770,7 +640,13 @@ object ProcedureWalker {
     * required because each Doubler multiplies shields from every accumulated
     * roll, not only the roll containing that Doubler.
     */
-  private def writeRollOutcome(ready: ReadyGame, outcome: RollOutcome): ReadyGame = {
+  /** `private[walker]`, not `private`: [[WalkerReplay]] merges a recorded
+    * `RollPayload` into the same accumulator the live walk writes through, so
+    * a replayed roll and a rolled one accumulate identically by construction
+    * rather than by two implementations agreeing.
+    */
+  private[walker] def writeRollOutcome(ready: ReadyGame,
+      outcome: RollOutcome): ReadyGame = {
     val accumulated = ready.game.current.rollOutcomes.get(outcome.pool)
       .fold(outcome) { previous =>
         val faces = previous.faces ++ outcome.faces

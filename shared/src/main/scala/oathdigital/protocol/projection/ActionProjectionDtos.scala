@@ -90,11 +90,67 @@ final case class PendingCardDecisionProjection(
     orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
 )
-final case class ForgeAssignmentTargetProjection(
-    siteId: String, denizenId: String, label: String)
-final case class ForgeProjection(
-    decisionId: String, actorPlayerId: String, favor: Int, secrets: Int,
-    targets: Vector[ForgeAssignmentTargetProjection])
+/** The parked `Decide`'s declared question, described rather than derived.
+  *
+  * This is the whole of Task 4: the projector no longer discovers what to
+  * offer, it projects the transformed `DecisionQuery` the walker is actually
+  * parked on. So a power that adds or removes an option changes what the
+  * client is offered and what the engine accepts in the same edit, and the
+  * Recover-specific relic-candidate field and the Forge-specific assignment
+  * projection this replaced -- two hand-written candidate derivations that
+  * agreed with the engine only by convention -- are gone.
+  *
+  * `form` is the query shape, `"choose-one"` (pick exactly one option) or
+  * `"partition"` (spread every option across the declared sections). A
+  * choose-one query carries no `sections` at all.
+  *
+  * There is deliberately NO prebuilt wire answer on an option. The client
+  * already holds everything an answer needs: a `ChooseOneWire(kind, id)` or
+  * a `PartitionWire` of placements is built from the same kind-and-id pair
+  * each option carries, so embedding an answer would duplicate the identity
+  * and couple these DTOs to the command protocol for nothing.
+  *
+  * `heading` and `confirmLabel` (Task 5b) are the panel's own prompt copy,
+  * passed through from the query the action declared -- the frame around the
+  * options, where an option's `label` is the copy on the option itself. Both
+  * are optional, and a client that is handed neither falls back to generic
+  * copy of its own; nothing on the server supplies a default. A choose-one
+  * query never carries a `confirmLabel`, because it submits on the click and
+  * has no confirm step to name.
+  *
+  * This is two optional strings, not the start of a form language: no
+  * layout, no conditionals, no per-option copy beyond the label an option
+  * already carries. A third piece of panel copy is a reason to ask what the
+  * panel is really missing.
+  */
+final case class DecisionQueryProjection(
+    form: String,
+    options: Vector[DecisionOptionProjection],
+    sections: Vector[DecisionSectionProjection] = Vector.empty,
+    heading: Option[String] = None,
+    confirmLabel: Option[String] = None)
+
+/** One selectable option: its stable reference as `kind` plus `id` -- the
+  * exact pair `DecisionOptionRef` spells for a submitted answer and a
+  * journalled one -- its display text, and for card-shaped options the same
+  * [[CardDetailsProjection]] every other card projection carries, so
+  * disclosure rules are inherited rather than restated.
+  *
+  * A button's `label` is the query's own declarative prompt copy, authored
+  * by the action. Every other option's label is a game-object name resolved
+  * at projection time from the reference, which is why no naming logic
+  * enters gameplay.
+  */
+final case class DecisionOptionProjection(kind: String, id: String,
+    label: String, card: Option[CardDetailsProjection] = None)
+
+/** One named bucket a partition spreads its options across: the stable
+  * `key` a placement names, the section's prompt copy, and the fewest
+  * options it must receive. A client's confirmation predicate is computed
+  * from these minima, never from local knowledge of the action's cost.
+  */
+final case class DecisionSectionProjection(key: String, label: String,
+    minRequired: Int)
 /** Wire projection of a parked generic-walker decision (Task 6:
   * `CurrentGameState.walkerPending`/`walkerAction`) -- the walker path's
   * counterpart to [[PendingCardDecisionProjection]] above, which the walker
@@ -113,13 +169,13 @@ final case class ForgeProjection(
   * continue/stop choice, and the relic pick -- are each distinguishable
   * by `decisionId` alone.
   *
-  * `relicCandidates` is populated only for the Recover relic Decide
-  * (`"recover.relic"`): the actor's current site's facedown relics, the
-  * same set `RecoverProcedure`'s `validateRelic` accepts at resolve time.
-  * The tree's own payload closes over a placeholder marker relic id used
-  * only to type-tag the Decide node; that marker is never surfaced here,
-  * since it is not a preselected or committed choice -- the concrete
-  * relic rides the `ResolveWalker` answer.
+  * `query` is populated for a `"decide"` park and empty for a `"roll"`
+  * park: it is the parked `Decide`'s own transformed
+  * [[DecisionQueryProjection]], which is the single source of both what the
+  * client may offer and what the engine will accept. It is absent entirely
+  * when any declared option's identity cannot be presented -- a
+  * half-described option a client would render as a blank control and then
+  * submit is worse than no prompt, so the whole projection is omitted.
   *
   * `rollOutcome` (I5) carries the parked pool's accumulated roll feedback --
   * the dice faces rolled so far, the derived score, and the site's
@@ -135,7 +191,7 @@ final case class WalkerDecisionProjection(
     kind: String,
     pool: Option[String] = None,
     count: Option[Int] = None,
-    relicCandidates: Vector[CardDetailsProjection] = Vector.empty,
+    query: Option[DecisionQueryProjection] = None,
     rollOutcome: Option[WalkerRollOutcomeProjection] = None
 )
 /** `faces` are display-ready die-face labels (e.g. `"one-shield"`), in roll

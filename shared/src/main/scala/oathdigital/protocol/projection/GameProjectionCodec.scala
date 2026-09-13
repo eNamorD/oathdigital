@@ -14,7 +14,7 @@ object GameProjectionCodec {
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
     "currentSiteResources", "actionSelectionOpen", "actionFamilies",
     "legalTravelDestinations", "legalSearchSources", "legalMusters", "legalTrades",
-    "boardTargetActions", "pendingCardDecision", "forge", "campaign",
+    "boardTargetActions", "pendingCardDecision", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "oathkeeperRecipient", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
@@ -59,11 +59,6 @@ object GameProjectionCodec {
       "supplyCost" -> t.supplyCost, "gained" -> t.gained)),
     "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
     "pendingCardDecision" -> option(value.pendingCardDecision)(encodePending),
-    "forge" -> option(value.forge)(f => ujson.Obj(
-      "decisionId" -> f.decisionId, "actorPlayerId" -> f.actorPlayerId,
-      "favor" -> f.favor, "secrets" -> f.secrets,
-      "targets" -> encoded(f.targets)(t => ujson.Obj(
-        "siteId" -> t.siteId, "denizenId" -> t.denizenId, "label" -> t.label)))),
     "campaign" -> option(value.campaign)(CampaignProjectionCodec.encode),
     "campaignRaidRelocation" -> option(value.campaignRaidRelocation)(r => ujson.Obj(
       "decisionId" -> r.decisionId, "actorPlayerId" -> r.actorPlayerId,
@@ -133,7 +128,6 @@ object GameProjectionCodec {
     actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
     actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
     pending <- optionalAbsent(value, "pendingCardDecision", path)(decodePending)
-    forge <- optionalAbsent(value, "forge", path)(decodeForge)
     campaign <- optionalAbsent(value, "campaign", path)(CampaignProjectionCodec.decode)
     relocation <- optionalAbsent(value, "campaignRaidRelocation", path)(decodeRelocation)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
@@ -169,7 +163,7 @@ object GameProjectionCodec {
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
-    sources, musters, trades, actions, pending, forge, campaign, relocation,
+    sources, musters, trades, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, recipient, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
     walkerDecision)
@@ -253,15 +247,6 @@ object GameProjectionCodec {
     label <- string(v, "label", path); suit <- string(v, "suit", path)
     resource <- string(v, "resource", path); cost <- int(v, "supplyCost", path); gained <- int(v, "gained", path)
   } yield LegalTradeProjection(target._1, target._2, label, suit, resource, cost, gained)
-  private def decodeForge(raw: ujson.Value, path: String): Result[ForgeProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "favor", "secrets", "targets"), path)
-    decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)
-    favor <- int(v, "favor", path); secrets <- int(v, "secrets", path); raws <- array(v, "targets", path)
-    targets <- traverse(raws, s"$path.targets") { (raw, child) => for {
-      row <- obj(raw, child); _ <- exact(row, Set("siteId", "denizenId", "label"), child)
-      site <- string(row, "siteId", child); denizen <- string(row, "denizenId", child); label <- string(row, "label", child)
-    } yield ForgeAssignmentTargetProjection(site, denizen, label) }
-  } yield ForgeProjection(decision, actor, favor, secrets, targets)
   private def decodeRelocation(raw: ujson.Value, path: String): Result[CampaignRaidRelocationProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "defenderPlayerId", "originSiteId", "legalSiteIds"), path)
     decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)

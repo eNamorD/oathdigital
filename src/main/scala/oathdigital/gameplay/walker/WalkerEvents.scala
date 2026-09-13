@@ -2,8 +2,8 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{ActionRef, Answered, DecisionPayload, DieFace,
-  PlayerId, PoolKey, PowerId, RelicId, SiteId}
+import oathdigital.model.{ActionRef, Answered, DecisionAnswer,
+  DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, RelicId, SiteId}
 
 /** Payload of one recorded walker step (Task 3).
   *
@@ -39,7 +39,7 @@ object WalkerStepPayload {
   * (the walker rebuilds `answered` from these events at replay), not an
   * operation batch.
   */
-final case class ChoicePayload(decisionId: String, payload: DecisionPayload)
+final case class ChoicePayload(decisionId: String, answer: DecisionAnswer)
     extends WalkerStepPayload
 
 /** Faces the acting player rolled for `pool`, recorded when a `Roll` park is
@@ -80,14 +80,20 @@ final case class WalkerStepRecorded(
   * (fix-round ruling I) is the player-selected power ids chosen when the
   * walker action started, carried on every park of this action so replay
   * restores `CurrentGameState.walkerModifiers` from this fact alone, without
-  * re-running the walker or re-deriving anything.
+  * re-running the walker or re-deriving anything. `startArgs` (batch-1 Task
+  * 5) is carried on every park for exactly the same reason: an action whose
+  * tree needs what the player selected at the start cannot rebuild that tree
+  * without it, and a selection -- unlike the actor's pawn site -- is a
+  * choice, not a state read. Empty for the actions that select nothing, which
+  * is every action that parks today.
   */
 final case class WalkerParked(
     actor: PlayerId,
     action: ActionRef,
     at: Vector[String],
     answered: Vector[Answered],
-    modifiers: Vector[PowerId]
+    modifiers: Vector[PowerId],
+    startArgs: Vector[DecisionOptionRef]
 ) extends WalkerEvent
 
 /** Durable action-boundary fact. Replay clears every walker-owned scratch

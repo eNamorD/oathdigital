@@ -13,17 +13,16 @@ private[application] final class PendingProcedureProjector(
 ) {
   def project(context: ScopedProjectionContext): PendingProjection = {
     val cardDecision = pendingCardDecision(context)
-    val forge = forgeProjection(context)
+    val walkerDecision = walkerDecisions.project(context)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
     val recipient = oathkeeperRecipient(context)
     val restPower = restPowerProjection(context)
-    val walkerDecision = walkerDecisions.project(context)
     PendingProjection(
-      phase(context, cardDecision, forge, challenge, campaign,
+      phase(context, cardDecision, challenge, campaign,
         relocation, recipient, walkerDecision),
-      cardDecision, forge, campaign, relocation, recipient, challenge,
+      cardDecision, campaign, relocation, recipient, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -88,15 +87,6 @@ private[application] final class PendingProcedureProjector(
           1, 1, orderingRequired = true,
           drawn.map(card => card.value -> groupedResolutions(
             SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
-    }
-
-  private def forgeProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case f: PendingProcedure.Forge if context.viewer.contains(f.actor) =>
-        ForgeProjection(f.decision.value, f.actor.value, f.cost.favor,
-          f.cost.secrets, f.eligibleTargets.map(target =>
-            ForgeAssignmentTargetProjection(target.siteId.value,
-              target.denizenId.value, presentation.denizenLabel(target.denizenId))))
     }
 
   private def challengeProjection(context: ScopedProjectionContext) =
@@ -307,7 +297,7 @@ private[application] final class PendingProcedureProjector(
 
   private def phase(context: ScopedProjectionContext,
       card: Option[PendingCardDecisionProjection],
-      forge: Option[ForgeProjection], challenge: Option[ChallengeProjection],
+      challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
       recipient: Option[OathkeeperRecipientProjection],
@@ -337,8 +327,6 @@ private[application] final class PendingProcedureProjector(
     else context.current.pending match {
       case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"
       case Some(_: PendingProcedure.Search) => "search-waiting"
-      case Some(_: PendingProcedure.Forge) if forge.nonEmpty => "forge-assignment"
-      case Some(_: PendingProcedure.Forge) => "forge-waiting"
       case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"
       case Some(_: PendingProcedure.Challenge) => "challenge-waiting"
       case Some(_: PendingProcedure.Campaign)

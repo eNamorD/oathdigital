@@ -7,7 +7,6 @@ sealed trait GameIntent extends Product with Serializable
 
 object GameIntent {
   final case class PlacePawn(siteId: String) extends GameIntent
-  final case class TakeWealth(resource: String) extends GameIntent
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
@@ -15,13 +14,9 @@ object GameIntent {
       allocations: Vector[RestFavorAllocation], destinationBank: String)
       extends GameIntent
   final case class DeclineRestPower(decisionId: String) extends GameIntent
-  final case class Travel(destinationSiteId: String) extends GameIntent
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
-  case object BeginForge extends GameIntent
-  final case class CompleteForge(decisionId: String,
-      assignments: Vector[ForgeAssignment]) extends GameIntent
   final case class BeginChallenge(banner: String) extends GameIntent
   final case class ChooseChallengeSecretSite(decisionId: String, siteId: String)
       extends GameIntent
@@ -59,24 +54,40 @@ object GameIntent {
     * wire key (e.g. `"recover"`); `modifiers` is the ordered list of opaque
     * player-selected power ids chosen before the walk begins -- validated
     * engine-side against the audited catalog, never interpreted here.
+    *
+    * `startArgs` is what the player selected before the action started, for
+    * an action whose tree needs it. Empty for every action that derives its
+    * whole tree from the actor's pawn site, which is Recover and Forge;
+    * Travel carries its destination here, which is why there is no longer a
+    * `Travel` intent of its own. The engine rejects a selection an action did
+    * not ask for.
     */
-  final case class StartWalker(action: String, modifiers: Vector[String])
-      extends GameIntent
+  final case class StartWalker(action: String, modifiers: Vector[String],
+      startArgs: Vector[WalkerStartArgWire] = Vector.empty) extends GameIntent
   /** Answers the currently parked Roll node for `pool`. Carries no die
     * faces: those are generated application-side once the parked pool is
     * validated against this command.
     */
   final case class RollWalker(pool: String) extends GameIntent
   final case class ResolveWalker(decisionId: String,
-      payload: DecisionPayloadWire) extends GameIntent
+      payload: DecisionAnswerWire) extends GameIntent
 }
+
+/** One game-object reference in a walker action's start selection, spelled
+  * exactly as a decision answer spells one: a kind and an id, decoded by the
+  * same `DecisionOptionRef.fromWire` the engine decodes an answer with.
+  *
+  * Deliberately NOT a case per action. The protocol has no business knowing
+  * that a Travel start names a destination -- only the action itself does,
+  * and it checks the shape when it builds its tree.
+  */
+final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
 final case class EconomyTarget(kind: String, id: String)
 final case class SearchSource(source: String, region: Option[String])
 final case class WorldCard(kind: String, id: String)
 final case class CardRef(kind: String, id: String)
 final case class Placement(kind: String, replace: Option[CardRef])
-final case class ForgeAssignment(siteId: String, denizenId: String, resource: String)
 final case class CampaignForceAllocation(siteId: String, count: Int)
 final case class RestFavorSource(kind: String, siteId: String, sourceId: String)
 final case class RestFavorAllocation(source: RestFavorSource, amount: Int)
@@ -128,17 +139,29 @@ object DecisionResolution {
       placement: Placement) extends DecisionResolution
 }
 
-/** Wire form of the engine's open `DecisionPayload` trait, bounded to
-  * Recover's two payloads for this slice. A power that adds a walker
-  * decision widens this family the same way it widens `DecisionPayload`
-  * itself -- the engine stays generic over both.
+/** Wire form of a walker decision answer, generic over the engine's
+  * `DecisionQuery` shapes rather than over any action's own vocabulary.
+  *
+  * Every option is named by the kind/id pair the engine's option references
+  * carry, so neither case here knows that Recover or Forge exists, and a new
+  * walker action adds no case. Both fields stay opaque strings until the
+  * application mapping boundary resolves them, exactly like every other
+  * identifier in this protocol.
   */
-sealed trait DecisionPayloadWire extends Product with Serializable
-object DecisionPayloadWire {
-  /** `choice` is `"continue"` or `"stop"`; validated at the application
-    * mapping boundary, not here, matching every other enum-shaped field in
-    * this protocol (e.g. `TakeWealth`'s `resource`).
+sealed trait DecisionAnswerWire extends Product with Serializable
+object DecisionAnswerWire {
+  /** Answers a choose-one decision with the single option selected. */
+  final case class ChooseOneWire(optionKind: String, optionId: String)
+      extends DecisionAnswerWire
+
+  /** Answers a partition decision: every offered option, each placed in one
+    * declared section.
     */
-  final case class RecoverChoiceWire(choice: String) extends DecisionPayloadWire
-  final case class RecoverRelicWire(relicId: String) extends DecisionPayloadWire
+  final case class PartitionWire(placements: Vector[DecisionPlacementWire])
+      extends DecisionAnswerWire
 }
+
+/** One option placed in one section of a [[DecisionAnswerWire.PartitionWire]].
+  */
+final case class DecisionPlacementWire(optionKind: String, optionId: String,
+    sectionKey: String)

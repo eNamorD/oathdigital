@@ -15,8 +15,8 @@ private[frontend] trait ServerUiView {
   def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit
   def currentCampaignPlacement: Option[CampaignPlacementState]
   def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit
-  def currentForgeAssignment: Option[ForgeAssignmentState]
-  def currentForgeAssignment_=(value: Option[ForgeAssignmentState]): Unit
+  def currentWalkerPartition: Option[WalkerPartitionDraft]
+  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
@@ -284,7 +284,7 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] final case class TakeWealthAction(
       label: String,
-      command: GameCommand.TakeWealth
+      command: GameCommand
   )
 
   private[frontend] final case class ViewerPresentation(
@@ -480,8 +480,15 @@ private[frontend] object ServerUiSupport {
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.PlacePawn(site))
+      // Travel moved onto the generic walker (batch-1 Task 5), so the
+      // destination the player just picked rides `StartWalker`'s start
+      // selection instead of a `Travel` intent of its own -- as a plain site
+      // reference, which is all the wire says about it. Modifiers are folded
+      // into this same intent by `ModifierWorkflow.submission`, which is why
+      // they are empty here.
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
-        Some(GameCommand.Travel(site))
+        Some(GameCommand.StartWalker("travel", Vector.empty,
+          Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
       case ("campaign-conquest", sites) if sites.nonEmpty &&
           sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
         Some(GameCommand.BeginCampaignConquest(sites.collect {
@@ -560,115 +567,9 @@ private[frontend] object ServerUiSupport {
       amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
         decision.decisionId, amount))
 
-  /** Which control the panel should render for a parked walker decision.
-    * `WalkerDecisionState.kind` alone cannot tell the two "decide" parks
-    * apart (both `"recover.choice"` and `"recover.relic"` share it) -- only
-    * `decisionId` does, so that comparison lives here rather than being
-    * re-derived at each call site. The two decision id literals mirror
-    * `RecoverProcedure.choiceDecisionId`/`.relicDecisionId`
-    * (`src/main/scala/oathdigital/gameplay/actions/recover/
-    * RecoverProcedure.scala`) as plain strings: that object lives in the
-    * JVM-only application sources the frontend cannot depend on, and a
-    * `decisionId` already rides the wire as an uninterpreted string on
-    * every walker/decision command (see
-    * `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`).
-    */
-  private[frontend] val recoverChoiceDecisionId = "recover.choice"
-  private[frontend] val recoverRelicDecisionId = "recover.relic"
-
-  private[frontend] sealed trait RecoverWalkerStep
-  private[frontend] object RecoverWalkerStep {
-    final case class Roll(pool: String) extends RecoverWalkerStep
-    case object Choice extends RecoverWalkerStep
-    final case class Relic(candidates: Vector[CardDetails]) extends RecoverWalkerStep
-  }
-
-  private[frontend] def recoverWalkerStep(decision: WalkerDecisionState)
-      : Option[RecoverWalkerStep] =
-    if (decision.action != "recover") None
-    else decision.kind match {
-      case "roll" => decision.pool.map(RecoverWalkerStep.Roll)
-      case "decide" if decision.decisionId == recoverChoiceDecisionId =>
-        Some(RecoverWalkerStep.Choice)
-      case "decide" if decision.decisionId == recoverRelicDecisionId =>
-        Some(RecoverWalkerStep.Relic(decision.relicCandidates))
-      case _ => None
-    }
-
-  private[frontend] def resolveRecoverChoiceCommand(decision: WalkerDecisionState,
-      choice: String): GameCommand.ResolveWalker =
-    GameCommand.ResolveWalker(decision.decisionId,
-      DecisionPayloadWire.RecoverChoiceWire(choice))
-
-  private[frontend] def resolveRecoverRelicCommand(decision: WalkerDecisionState,
-      relicId: String): GameCommand.ResolveWalker =
-    GameCommand.ResolveWalker(decision.decisionId,
-      DecisionPayloadWire.RecoverRelicWire(relicId))
-
-  /** Renders the parked Recover's accumulated roll feedback (I5) -- the
-    * dice faces rolled so far, the derived score, and the site's Recover
-    * difficulty -- the same information the legacy (deleted)
-    * `RecoverProjection`-backed panel showed, now sourced from
-    * `WalkerDecisionState.rollOutcome`. Before any roll `faces` is empty:
-    * the difficulty is still worth showing so the player knows the target
-    * before rolling.
-    */
-  private[frontend] def rollOutcomeSummary(outcome: WalkerRollOutcomeState): String =
-    if (outcome.faces.isEmpty)
-      s"Need ${outcome.difficulty} shields to succeed."
-    else
-      s"Rolled ${outcome.faces.mkString(", ")} -- ${outcome.score} shields " +
-        s"so far (need ${outcome.difficulty})."
-
-  /** Renders the Recover panel for whichever of the three parks
-    * (`recoverWalkerStep`) the walker is at, moved out of
-    * `ActionDecisionRenderer.actionsPanel` to keep that file under the
-    * architecture line bound. Shows `rollOutcomeSummary` (I5) above each
-    * park's controls, and gates "Spend 1 Supply for two dice" on the
-    * player actually having supply -- as the legacy (deleted) Recover
-    * panel did.
-    */
-  private[frontend] def renderRecoverPanel(value: GameProjection,
-      presentation: ViewerPresentation, canControl: Boolean,
-      panel: dom.Element, ui: ServerUiView): Unit = {
-    value.walkerDecision.filter(_ => presentation.showGameplayControls)
-        .flatMap(decision => recoverWalkerStep(decision).map(decision -> _))
-        .foreach {
-      case (decision, RecoverWalkerStep.Roll(pool)) =>
-        panel.appendChild(text("h2", "", "Recover"))
-        decision.rollOutcome.foreach(outcome => panel.appendChild(
-          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
-        val roll = button("Roll", "recover-roll")
-        roll.disabled = !canControl
-        roll.onclick = _ => ui.submitCommand(GameCommand.RollWalker(pool))
-        panel.appendChild(roll)
-      case (decision, RecoverWalkerStep.Choice) =>
-        panel.appendChild(text("h2", "", "Recover"))
-        decision.rollOutcome.foreach(outcome => panel.appendChild(
-          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
-        val hasSupply = value.activePlayerResources.exists(_.supply >= 1)
-        val continue = button("Spend 1 Supply for two dice", "recover-add")
-        continue.disabled = !canControl || !hasSupply
-        continue.onclick = _ => ui.submitCommand(
-          resolveRecoverChoiceCommand(decision, "continue"))
-        panel.appendChild(continue)
-        val stop = button("Stop Recover", "recover-stop")
-        stop.disabled = !canControl
-        stop.onclick = _ => ui.submitCommand(resolveRecoverChoiceCommand(decision, "stop"))
-        panel.appendChild(stop)
-      case (decision, RecoverWalkerStep.Relic(candidates)) =>
-        panel.appendChild(text("h2", "", "Take a relic"))
-        decision.rollOutcome.foreach(outcome => panel.appendChild(
-          text("p", "recover-roll-outcome", rollOutcomeSummary(outcome))))
-        candidates.foreach { card =>
-          val choose = button(s"Take ${card.name} facedown", "recover-relic-choice")
-          choose.disabled = !canControl
-          choose.onclick = _ => ui.submitCommand(
-            resolveRecoverRelicCommand(decision, card.cardId))
-          panel.appendChild(choose)
-        }
-    }
-  }
+  private def takeWealth(resource: String): GameCommand =
+    GameCommand.StartWalker("take-wealth", Vector.empty,
+      Vector(WalkerStartArgWire("button", resource)))
 
   private[frontend] def takeWealthActions(
       value: GameProjection,
@@ -676,15 +577,16 @@ private[frontend] object ServerUiSupport {
   ): Vector[TakeWealthAction] =
     if (value.phase != "wake" ||
         !viewerPresentation(value, playerId).showGameplayControls) Vector.empty
+    // Take Wealth moved onto the generic walker (batch-1 Task 7), so the
+    // resource the player picks rides `StartWalker`'s start selection as the
+    // button it is -- a choice with no game object behind it -- instead of a
+    // `TakeWealth` intent of its own. The legal-control keys are unchanged:
+    // the server still decides which of the two it offers.
     else Vector(
       "takeFavor" -> TakeWealthAction(
-        "Take Wealth: 1 favor",
-        GameCommand.TakeWealth("favor")
-      ),
+        "Take Wealth: 1 favor", takeWealth("favor")),
       "takeSecret" -> TakeWealthAction(
-        "Take Wealth: 1 secret",
-        GameCommand.TakeWealth("secret")
-      )
+        "Take Wealth: 1 secret", takeWealth("secret"))
     ).collect {
       case (legalControl, action)
           if value.legalControls.contains(legalControl) => action

@@ -72,7 +72,7 @@ final class GameServerGateway(
     accepted.options.map(v => PreviewModifier(v.source.stableKey, v.handlerId,
       v.handlerId)), accepted.ignored.map(v => PreviewIgnoredRule(
       v.source.stableKey, v.handlerId, v.timing.key, v.reason)),
-    MajorActionPreviewTargets.from(projection, request))
+    MajorActionPreviewTargets.from(projection, request, accepted.targets))
   def rawEventHistory(gameId: String, limit: Int)
       : Either[GameApplicationError, Vector[String]] =
     service.rawEventHistory(gameId, limit)
@@ -136,10 +136,16 @@ private[server] object MajorActionPreviewTargets {
       case None => Right(())
     }
 
-  def from(projection: GameProjection,
-      request: MajorActionPreviewRequest): Vector[PreviewTarget] = request.action match {
-    case "travel" => projection.legalTravelDestinations.map(v =>
-      PreviewTarget(s"site:${v.siteId}", v.supplyCost, "Travel destination"))
+  /** `walker` is the targets the application already costed against the
+    * modifiers THIS request selected (batch-1 Task 5). Every other branch
+    * reads the projection, which is costed before the player has chosen
+    * anything -- correct for opening a preview, wrong once a modifier is in
+    * hand, which is why a walker action supplies its own.
+    */
+  def from(projection: GameProjection, request: MajorActionPreviewRequest,
+      walker: Vector[PreviewTarget] = Vector.empty)
+      : Vector[PreviewTarget] = request.action match {
+    case "travel" => walker
     case "search" if request.baseParameters.get("procedure")
         .contains("facedown-adviser") => Vector.empty
     case "search" => projection.legalSearchSources.map(v => PreviewTarget(
