@@ -27,98 +27,100 @@
 
 The spec is binding. Implementation needs these changes to its letter; each is recorded so a reviewer does not read it as drift.
 
-1. **`Distribute` carries display options, like every other query.** The spec sketches slots by reference. Here a slot is `DistributeSlot(option: DecisionOption, minimum, maximum, suggested: Option[Int])`, and the query is `Distribute(slots, total, heading: Option[String] = None, confirmLabel: Option[String] = None)`. A slot's `ref` is `option.ref`, so the projector presents it exactly as it presents a `ChooseOne` option, and `heading` stays the `Option` that `DecisionQuery.heading` already declares.
+1. **`Distribute.heading` stays `Option[String]`.** The spec's vocabulary is followed otherwise: `DistributeSlot(ref: DecisionOptionRef, minimum, maximum, suggested: Option[Int])`, `DistributeAmount(ref, amount)`, and a required `confirmLabel: String`. `DecisionQuery` already declares `def heading: Option[String]`, and a case-class field `heading: String` does not compile against it. So `heading` keeps that type with no default, and `DecisionQueries.wellFormed` rejects `None` or blank. That gives the spec's "required label" at validation instead of in the type. The projector presents a slot's reference through `DecisionOption.forRef`, so `wellFormed` rejects a button slot, whose label only an authored option can carry.
 2. **`ActionRef.UsePower(power)` is parameterized, so no `all` vector can list it.** `ActionRef.fromKey`, `StartableRef.fromKey` and `ProcedureRef.fromFamilyKey` parse the `use-power:<powerId>` key directly. `WalkerProcedureRegistry.lookup` and `isRegistered` map every `UsePower(_)` to one entry built for that id. The registry coverage test checks `ProcedureRef.all` plus one representative `UsePower`.
 3. **`WalkerProcedureRegistry.fallbackKind` returns `Either[OathViolation, Option[MajorActionKind]]`.** Begin Rest records `MajorActionKind.Rest` diagnostics; Finish Rest and `UsePower` declare `None`, and `startWalker` skips `withFallback` for them. A triggered procedure still never reaches this accessor.
 4. **`UsePower` trees bypass the injected tree source.** `OathRules`' default parameter list cannot pass its own `phasePowerCatalog` into `declaredWalkerTree`, so `WalkerTreeSource` keeps its shape and every test lambda stays as it is. Instead `OathRulesWalker.buildWalker` and `WalkerDecisionProjector` route an `ActionRef.UsePower` straight to `WalkerProcedureRegistry.build`/`rebuild` with the injected `PhasePowers`; every other procedure still goes through the injected source.
 5. **The Rest files live in a new package `gameplay/phases/rest/`**: `BeginRestProcedure`, `FinishRestProcedure`, `TurnBoundary` and the moved `WarExhaustionRandomPort`. `RestCleanup.scala` stays in `gameplay/phases`.
-6. **A phase power's sources follow `ReviewedPowerInspector.accessible`.** That rule exposes a site card or site relic only at the player's pawn site, and an adviser or held relic only to its owner, all face up. It does not expose ruled-site access, so neither does this plan.
-7. **The application gate already exists.** `GameApplicationService.applyCommand` refuses every non-resume command while `walkerPending` is set, and `OathLifecycle.validateAct` refuses Act commands. The unguarded path is the `OathRules.handle` overloads. The invariant task adds that guard and pins both layers.
-8. **The invariant is pinned per layer, not as one matrix over four contexts.** The application gate refuses a command from `walkerPending` alone, so its matrix of every `GameCommand` runs over the two parks commands can reach from a first-game setup: a Recover roll and an off-turn Oathkeeper recipient. League Treaty needs card 237 on a ruled site and Silver Tongue needs card 92 as an adviser. A recorded delta cannot lift a specific card from the middle of a deck, so those two parks are arranged as state and pinned at the rules boundary: every walker start and every legacy `handle` overload is refused over them.
-9. **Delivery is split into twelve tasks, not six.** Each task is a reviewable unit. Between Task 4 and Task 7 the Rest auto-skip consults a usability stub that is always false. Task 7 replaces it with the real usability function, and the production phase power catalog stays empty until Task 8 adds Silver Tongue. The stub is honest for the catalog of that moment.
-10. **Task 4 keeps a trimmed `Rest.scala`.** It holds only the legacy League Treaty resolve and decline commands until Task 6 deletes the seam. Nothing starts a legacy League Treaty decision after Task 4, so that code is unreachable but still compiles.
-11. **The walker League Treaty is a new file, `powers/rest/LeagueTreatyContribution.scala`.** The spec rewrites `LeagueTreatyPower.scala` in place, but the legacy seam still compiles against that object until Task 6. Following the `CatacombsContribution` naming, Task 5 adds the new power beside it, and Task 6 deletes `LeagueTreatyPower.scala`.
+6. **Phase power sources add ruled sites to the reviewed access rule.** The spec's sources are the cards at the player's pawn site, at sites they rule, and in their play area. The reviewed rule (`ReviewedPowerInspector.accessible`) covers the pawn site and the play area only. Task 9 extracts that rule into `RuleSourceAccess` unchanged for reviewed powers, and phase powers additionally accept a faceup site card or site relic, or an intact edifice, at a site whose ruler is the player.
+7. **The application gate already exists.** `GameApplicationService.applyCommand` refuses every non-resume command while `walkerPending` is set, and `OathLifecycle.validateAct` refuses Act commands. The unguarded path is the `OathRules.handle` overloads. Task 13 adds that guard and pins both layers.
+8. **Two parks are arranged by journalled deltas.** League Treaty needs card 237 on a ruled site and Silver Tongue needs card 92 as an adviser; no command reaches either from a first-game setup. `ParkedServiceFixture` puts the card on top of the world deck through the setup plan and journals one arranging `WalkerStepRecorded` delta, the technique the off-turn Oathkeeper reload test already uses. All four spec contexts then run the full service-level matrix.
+9. **Delivery is split into fourteen tasks, not six.** Each task is a reviewable unit. Between Task 5 and Task 9 the Rest auto-skip consults a usability stub that is always false. Task 9 replaces it with the real usability function, and the production phase power catalog stays empty until Task 10 adds Silver Tongue.
+10. **League Treaty is never unreachable (spec, Delivery order 3).** Task 5 adds the walker Rest procedures while the commands still route to legacy Rest, whose League Treaty hook stays live. Task 6 adds League Treaty as a walker power, tested through `startWalker`. Task 7 routes both commands to the walker in one commit. Task 8 then deletes the seam.
+11. **The walker League Treaty is a new file, `powers/rest/LeagueTreatyContribution.scala`.** The spec rewrites `LeagueTreatyPower.scala` in place, but the legacy seam compiles against that object until Task 8. Following the `CatacombsContribution` naming, Task 6 adds the new power beside it, and Task 8 deletes `LeagueTreatyPower.scala`.
+12. **Silver Tongue's restriction reads the tree's visible card moves.** A `Restriction` receives the tree root, whose `BuildOps` leaves compute their operations only at walk time. The restriction counts the holder's current advisers plus world-card `Move`s into their play area, minus those out of it, among the tree's statically visible leaves. Search's migration must place advisers through visible `Move` leaves for the limit to see them. The restriction is registered but untested, as the spec rules.
 
 ## File map
 
 | File | Responsibility | Tasks |
 |---|---|---|
-| `src/main/scala/oathdigital/model/Decisions.scala` | `FavorBank` ref and option, `Distribute` query, `DistributeAnswer` | 1 |
+| `src/main/scala/oathdigital/model/Decisions.scala` | `FavorBank` ref and option, `DecisionOption.forRef`, `Distribute` query, `DistributeAnswer` | 1 |
 | `src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala` | `Distribute` well-formedness and acceptance | 1 |
 | `src/main/scala/oathdigital/serialization/DecisionAnswerCodec.scala` | Journal spelling of `DistributeAnswer` | 1 |
-| `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala` | `distribute` projection, `FavorBank` label, phase-power tree factory | 1, 7 |
-| `shared/.../protocol/projection/ActionProjectionDtos.scala`, `ActionProjectionCodec.scala` | Slot projection; `PhasePowerProjection` | 1, 9 |
-| `shared/.../protocol/CommandIntents.scala`, `CommandNestedCodecs.scala`, `CommandIntentCodec.scala`, `CommandIntentDecoders.scala` | `DistributeWire`; `usePower` intent; Rest intent deletion | 1, 6, 9 |
-| `src/main/scala/oathdigital/application/GameIntentMapper.scala` | Distribute answer mapping; `usePower`; Rest intent deletion | 1, 6, 9 |
-| `frontend/.../DistributeDecisionState.scala` (new) | Pure stepper state and walker draft | 2 |
-| `frontend/.../DistributePanelRenderer.scala` (new) | Distribute panel with Shift+click | 2 |
-| `frontend/.../ServerUiSupport.scala`, `ServerModeUi.scala`, `ActionDecisionRenderer.scala` | Draft wiring; Rest renderer deletion; phase-power buttons | 2, 6, 10 |
-| `src/main/scala/oathdigital/model/GameState.scala` | `PowerSourceRef.Card` | 3 |
-| `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala`, `OperationStateMutation.scala`, `OperationError.scala` | `BeginTurn` | 3 |
-| `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala` | `begin-turn`; card power source | 3 |
-| `src/main/scala/oathdigital/model/ProcedureRef.scala` | `BeginRest`, `FinishRest`, `UsePower` | 4, 7 |
-| `src/main/scala/oathdigital/gameplay/phases/rest/` (new) | `BeginRestProcedure`, `FinishRestProcedure`, `TurnBoundary`, `WarExhaustionRandomPort` | 4 |
-| `src/main/scala/oathdigital/gameplay/walker/WalkerProcedureRegistry.scala` | Rest and `UsePower` entries; optional fallback kind; phase powers | 4, 7 |
-| `src/main/scala/oathdigital/gameplay/RuleSourceIndex.scala`, `gameplay/powers/PowerSupport.scala` | One access rule for reviewed and phase powers | 7 |
-| `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala` | Rest continuation, turn boundary, auto-skip | 4, 7 |
-| `src/main/scala/oathdigital/gameplay/OathRules.scala` | Legacy Rest removal, constructor, `handle` guard | 4, 6, 7, 11 |
-| `src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala` | `AwaitingRestDecision`, `AwaitingPowerDecision` | 4, 6, 7 |
-| `src/main/scala/oathdigital/gameplay/powers/rest/LeagueTreatyContribution.scala` (new) | League Treaty as a `ContributingPower` | 5 |
-| `src/main/scala/oathdigital/gameplay/powers/RestPowers.scala` | Reviewed handler inventory for League Treaty and Silver Tongue | 5, 8 |
-| `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala` | Registers League Treaty and Silver Tongue | 5, 8 |
-| Legacy Rest seam (deleted) | `Rest.scala`, `RestPowerIntegration`, `RestPowerHandler`, events, codecs, commands, projections | 6 |
-| `src/main/scala/oathdigital/gameplay/powerresolver/PhasePower.scala` (new) | `PhasePower`, `PhasePowers` | 7 |
-| `src/main/scala/oathdigital/gameplay/phases/PhasePowerProcedure.scala` (new) | Sources, usability, tree | 7 |
-| `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala` (new) | Production phase powers | 7, 8 |
-| `src/main/scala/oathdigital/gameplay/powers/rest/SilverTongue.scala` (new) | Silver Tongue | 8 |
-| `src/main/scala/oathdigital/application/PhasePowerProjector.scala` (new) | `phasePowers` projection and `usePower` controls | 9 |
-| `frontend/.../PhasePowerButtons.scala` (new) | Phase power buttons and the Finish Rest predicate | 10 |
-| `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`, `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala` (new) | The invariant, per layer | 11 |
-| `docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md` | Superseded statements corrected | 12 |
+| `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala` | `distribute` projection, `FavorBank` label, `UsePower` routing | 1, 2, 9 |
+| `shared/.../protocol/projection/ActionProjectionDtos.scala`, `ActionProjectionCodec.scala` | Slot projection; `PhasePowerProjection` | 2, 11 |
+| `shared/.../protocol/CommandIntents.scala`, `CommandNestedCodecs.scala`, `CommandIntentCodec.scala`, `CommandIntentDecoders.scala` | `DistributeWire`; `usePower` intent; Rest intent deletion | 2, 8, 11 |
+| `src/main/scala/oathdigital/application/GameIntentMapper.scala` | Distribute answer mapping; `usePower`; Rest intent deletion | 2, 8, 11 |
+| `frontend/.../DistributeDecisionState.scala`, `DistributePanelRenderer.scala` (new) | Pure stepper state, walker draft, Distribute panel | 3 |
+| `frontend/.../ServerUiSupport.scala`, `ServerModeUi.scala`, `ActionDecisionRenderer.scala` | Draft wiring; Rest renderer deletion; phase-power buttons | 3, 8, 12 |
+| `frontend/.../PhasePowerButtons.scala` (new) | Phase power buttons and the Finish Rest predicate | 12 |
+| `src/main/scala/oathdigital/model/GameState.scala` | `PowerSourceRef.Card` | 4 |
+| `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala`, `OperationStateMutation.scala`, `OperationError.scala` | `BeginTurn` | 4 |
+| `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala` | `begin-turn`; card power source | 4 |
+| `src/main/scala/oathdigital/model/ProcedureRef.scala` | `BeginRest`, `FinishRest`, `UsePower` | 5, 9 |
+| `src/main/scala/oathdigital/gameplay/phases/rest/` (new) | `BeginRestProcedure`, `FinishRestProcedure`, `TurnBoundary`, `WarExhaustionRandomPort` | 5 |
+| `src/main/scala/oathdigital/gameplay/walker/WalkerProcedureRegistry.scala` | Rest and `UsePower` entries; optional fallback kind; phase powers | 5, 9 |
+| `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala` | Rest continuation, turn boundary, auto-skip, `UsePower` routing | 5, 9 |
+| `src/main/scala/oathdigital/gameplay/OathRules.scala` | Turn boundary, legacy Rest removal, constructor, `handle` guard | 5, 7, 8, 9, 13 |
+| `src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala` | `AwaitingRestDecision`, `AwaitingPowerDecision` | 5, 8, 9 |
+| `src/main/scala/oathdigital/gameplay/phases/Rest.scala` | Delegates (5), trimmed (7), deleted (8) | 5, 7, 8 |
+| `src/main/scala/oathdigital/application/GameApplicationService.scala`, `LegalActionProjector.scala` | Rest routing and legal controls; `UsePower` command | 5, 7, 9, 11 |
+| `src/main/scala/oathdigital/gameplay/powers/rest/LeagueTreatyContribution.scala` (new) | League Treaty as a `ContributingPower` | 6 |
+| `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala` | Registers League Treaty and Silver Tongue | 6, 10 |
+| `src/main/scala/oathdigital/gameplay/powers/RestPowers.scala` | Reviewed handler inventory for League Treaty and Silver Tongue | 8, 10 |
+| `src/test/scala/oathdigital/application/ParkedServiceFixture.scala` (new) | Real service games parked on each of the four walker contexts | 7, 13 |
+| Legacy Rest seam (deleted) | `Rest.scala`, `RestPowerIntegration`, `RestPowerHandler`, `LeagueTreatyPower`, events, codecs, commands, projections | 8 |
+| `src/main/scala/oathdigital/gameplay/RuleSourceIndex.scala`, `gameplay/powers/PowerSupport.scala` | One access rule for reviewed and phase powers | 9 |
+| `src/main/scala/oathdigital/gameplay/powerresolver/PhasePower.scala` (new) | `PhasePower`, `PhasePowers` | 9 |
+| `src/main/scala/oathdigital/gameplay/phases/PhasePowerProcedure.scala` (new) | Sources (with ruled sites), usability, tree | 9 |
+| `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala` (new) | Production phase powers | 9, 10 |
+| `src/main/scala/oathdigital/gameplay/powers/rest/SilverTongue.scala` (new) | Silver Tongue | 10 |
+| `src/main/scala/oathdigital/application/PhasePowerProjector.scala` (new) | `phasePowers` projection and `usePower` controls | 11 |
+| `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`, `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala` (new) | The invariant, per layer | 13 |
+| `docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md` | Superseded statements corrected | 14 |
 
 ---
 
-### Task 1: Distribute decision vocabulary through the backend and the wire
+### Task 1: Distribute vocabulary, validation and journal
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/Decisions.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala`
 - Modify: `src/main/scala/oathdigital/serialization/DecisionAnswerCodec.scala`
-- Modify: `shared/src/main/scala/oathdigital/protocol/CommandIntents.scala` (`DecisionAnswerWire`)
-- Modify: `shared/src/main/scala/oathdigital/protocol/CommandNestedCodecs.scala`
-- Modify: `src/main/scala/oathdigital/application/GameIntentMapper.scala:190-202`
-- Modify: `shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala:126`, `ActionProjectionCodec.scala:212-246`
-- Modify: `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala:90-93,161-170,196-214`
-- Modify: `frontend/src/main/scala/oathdigital/frontend/package.scala:83` (alias)
-- Test: `src/test/scala/oathdigital/gameplay/walker/DecisionQuerySuite.scala`, `src/test/scala/oathdigital/serialization/GameEventWireSuite.scala`, `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`, `src/test/scala/oathdigital/server/GameHttpWireSuite.scala`
+- Modify: `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala:90-93,161-170,189-214`
+- Test: `src/test/scala/oathdigital/gameplay/walker/DecisionQuerySuite.scala`, `src/test/scala/oathdigital/serialization/GameEventWireSuite.scala`
 
 **Interfaces:**
 - Consumes: nothing new.
 - Produces:
-  - `DecisionOptionRef.FavorBank(suit: Suit)` with kind `"favor-bank"`, wireId `suit.key`; `DecisionOption.FavorBank(ref: DecisionOptionRef.FavorBank)`.
-  - `DistributeSlot(option: DecisionOption, minimum: Int, maximum: Int, suggested: Option[Int]) { def ref: DecisionOptionRef }`.
-  - `DecisionQuery.Distribute(slots: Vector[DistributeSlot], total: Int, heading: Option[String] = None, confirmLabel: Option[String] = None)`.
-  - `DistributeAmount(option: DecisionOptionRef, amount: Int)`; `DecisionAnswer.DistributeAnswer(amounts: Vector[DistributeAmount])`.
-  - Wire: `DecisionAnswerWire.DistributeWire(amounts: Vector[DistributeAmountWire])`, `DistributeAmountWire(optionKind: String, optionId: String, amount: Int)`.
-  - Projection: `DecisionSlotProjection(option: DecisionOptionProjection, minimum: Int, maximum: Int, suggested: Option[Int])`; `DecisionQueryProjection` gains trailing `slots: Vector[DecisionSlotProjection] = Vector.empty, total: Option[Int] = None`; form `"distribute"` carries `options = Vector.empty`. Frontend alias `DecisionSlotState`.
+  - `DecisionOptionRef.FavorBank(suit: Suit)`: kind `"favor-bank"`, wireId `suit.key`. `DecisionOption.FavorBank(ref: DecisionOptionRef.FavorBank)`.
+  - `DecisionOption.forRef(ref: DecisionOptionRef): Option[DecisionOption]`: the option for every reference kind except a button.
+  - `DistributeSlot(ref: DecisionOptionRef, minimum: Int, maximum: Int, suggested: Option[Int])`.
+  - `DecisionQuery.Distribute(slots: Vector[DistributeSlot], total: Int, heading: Option[String], confirmLabel: String)`. No defaults (Correction 1).
+  - `DistributeAmount(ref: DecisionOptionRef, amount: Int)`; `DecisionAnswer.DistributeAnswer(amounts: Vector[DistributeAmount])`.
+  - Journal tag `"distribute"`: `{"kind":"distribute","amounts":[{"option":<ref>,"amount":n}]}`.
+  - `WalkerDecisionProjector` suppresses a `Distribute` query until Task 2 projects it. No procedure declares one before Task 6.
 
 - [ ] **Step 1: Write the failing validator tests**
 
-Append to `DecisionQuerySuite` (add `DistributeAmount`, `DistributeSlot`, `Suit` to its imports):
+Append to `DecisionQuerySuite`, and add `DistributeAmount`, `DistributeSlot` and `Suit` to its model imports:
 
 ```scala
   private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
   private def slot(suit: Suit, min: Int, max: Int,
-      suggested: Option[Int] = None) =
-    DistributeSlot(DecisionOption.FavorBank(bank(suit)), min, max, suggested)
+      suggested: Option[Int] = None) = DistributeSlot(bank(suit), min, max,
+    suggested)
+  private def dist(slots: Vector[DistributeSlot], total: Int,
+      heading: Option[String] = Some("League Treaty"),
+      confirm: String = "Move favor") =
+    DecisionQuery.Distribute(slots, total, heading, confirm)
 
   /** The spec's worked example: three source suits of two favor each, and a
-    * destination that must keep its own zero.
+    * destination that may take all six.
     */
-  private val distribute = DecisionQuery.Distribute(Vector(
+  private val distribute = dist(Vector(
     slot(Suit.Arcane, 0, 2, Some(2)), slot(Suit.Discord, 0, 2, Some(2)),
-    slot(Suit.Hearth, 0, 2, Some(2)), slot(Suit.Nomad, 0, 6, Some(0))),
-    total = 6)
+    slot(Suit.Hearth, 0, 2, Some(2)), slot(Suit.Nomad, 0, 6, Some(0))), 6)
 
   private def amounts(values: (Suit, Int)*) = DecisionAnswer.DistributeAnswer(
     values.toVector.map { case (suit, n) => DistributeAmount(bank(suit), n) })
@@ -133,26 +135,28 @@ Append to `DecisionQuerySuite` (add `DistributeAmount`, `DistributeSlot`, `Suit`
   test("a malformed distribution names its own defect") {
     val two = Vector(slot(Suit.Arcane, 0, 2), slot(Suit.Nomad, 0, 2))
     val cases = Vector(
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 0, 2)), 1) ->
+      dist(two, 1, heading = None) -> "declares no heading",
+      dist(two, 1, heading = Some("  ")) -> "declares no heading",
+      dist(two, 1, confirm = " ") -> "declares a blank confirm label",
+      dist(Vector(slot(Suit.Arcane, 0, 2)), 1) ->
         "declares fewer than two slots",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 0, 2),
-        slot(Suit.Arcane, 0, 2)), 1) -> "declares duplicate options",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, -1, 2),
-        slot(Suit.Nomad, 0, 2)), 1) ->
+      dist(Vector(slot(Suit.Arcane, 0, 2), slot(Suit.Arcane, 0, 2)), 1) ->
+        "declares duplicate options",
+      dist(Vector(slot(Suit.Arcane, 0, 2), DistributeSlot(
+        DecisionOptionRef.Button("stop"), 0, 2, None)), 1) ->
+        "declares slot button/stop, which has no presentable option",
+      dist(Vector(slot(Suit.Arcane, -1, 2), slot(Suit.Nomad, 0, 2)), 1) ->
         "declares slot favor-bank/arcane with bounds -1..2",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 3, 2),
-        slot(Suit.Nomad, 0, 2)), 1) ->
+      dist(Vector(slot(Suit.Arcane, 3, 2), slot(Suit.Nomad, 0, 2)), 1) ->
         "declares slot favor-bank/arcane with bounds 3..2",
-      DecisionQuery.Distribute(two, 5) -> "declares a total no answer can meet",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 1, 2),
-        slot(Suit.Nomad, 1, 2)), 2) ->
+      dist(two, 5) -> "declares a total no answer can meet",
+      dist(Vector(slot(Suit.Arcane, 1, 2), slot(Suit.Nomad, 1, 2)), 2) ->
         "declares minimums that already make its total, leaving nothing to decide",
-      DecisionQuery.Distribute(two, 4) ->
+      dist(two, 4) ->
         "declares maximums that already make its total, leaving nothing to decide",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 0, 2, Some(1)),
-        slot(Suit.Nomad, 0, 2)), 1) ->
+      dist(Vector(slot(Suit.Arcane, 0, 2, Some(1)), slot(Suit.Nomad, 0, 2)), 1) ->
         "suggests amounts for some slots but not all",
-      DecisionQuery.Distribute(Vector(slot(Suit.Arcane, 0, 2, Some(2)),
+      dist(Vector(slot(Suit.Arcane, 0, 2, Some(2)),
         slot(Suit.Nomad, 0, 2, Some(2))), 1) ->
         "suggests a distribution it would not accept")
     cases.foreach { case (query, detail) =>
@@ -211,14 +215,28 @@ In `object DecisionOptionRef`, after `Deck`:
   }
 ```
 
-In `fromWire`, before `case _ => None`, add
-`case "favor-bank" => Suit.all.find(_.key == wireId).map(FavorBank(_))`. In the doc comments of `DecisionOptionRef.kind` and `fromWire`, change "seven" to "eight".
+In `fromWire`, before `case _ => None`, add `case "favor-bank" => Suit.all.find(_.key == wireId).map(FavorBank(_))`. In the doc comments of `DecisionOptionRef.kind` and `fromWire`, change "seven" to "eight".
 
 In `object DecisionOption`, after `Deck`:
 
 ```scala
   final case class FavorBank(ref: DecisionOptionRef.FavorBank)
       extends DecisionOption
+
+  /** The option presenting `ref`, for every kind whose name the projector
+    * resolves itself. A button has no such name: its label is authored, so
+    * a reference alone cannot present one.
+    */
+  def forRef(ref: DecisionOptionRef): Option[DecisionOption] = ref match {
+    case _: DecisionOptionRef.Button => None
+    case value: DecisionOptionRef.Player => Some(Player(value))
+    case value: DecisionOptionRef.Site => Some(Site(value))
+    case value: DecisionOptionRef.Denizen => Some(Denizen(value))
+    case value: DecisionOptionRef.Relic => Some(Relic(value))
+    case value: DecisionOptionRef.Vision => Some(Vision(value))
+    case value: DecisionOptionRef.Deck => Some(Deck(value))
+    case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
+  }
 ```
 
 After `DecisionSection`:
@@ -226,18 +244,16 @@ After `DecisionSection`:
 ```scala
 /** One amount-taking slot of a [[DecisionQuery.Distribute]].
   *
-  * @param option what the slot distributes to, presented like any other
-  *   option.
+  * @param ref what the slot distributes to. The projector presents it
+  *   through [[DecisionOption.forRef]], so a button cannot be a slot.
   * @param minimum fewest the slot may take; never negative.
   * @param maximum most the slot may take; never below `minimum`.
   * @param suggested the amount a client's draft opens at. Either every slot
   *   of a query suggests one or none does, and the suggestions together must
   *   be an accepted answer.
   */
-final case class DistributeSlot(option: DecisionOption, minimum: Int,
-    maximum: Int, suggested: Option[Int]) {
-  def ref: DecisionOptionRef = option.ref
-}
+final case class DistributeSlot(ref: DecisionOptionRef, minimum: Int,
+    maximum: Int, suggested: Option[Int])
 ```
 
 In `object DecisionQuery`, after `Partition`:
@@ -245,19 +261,20 @@ In `object DecisionQuery`, after `Partition`:
 ```scala
   /** Spread exactly `total` across the slots, each within its own bounds.
     *
-    * @param confirmLabel what the submitting control is called; a
-    *   distribution, like a partition, has a confirm step.
+    * Both labels are required. `heading` keeps the `Option` type that
+    * [[DecisionQuery.heading]] declares, and `DecisionQueries.wellFormed`
+    * rejects `None` or blank. A distribution has a confirm step, so it
+    * always names its confirm control.
     */
   final case class Distribute(slots: Vector[DistributeSlot], total: Int,
-      heading: Option[String] = None,
-      confirmLabel: Option[String] = None) extends DecisionQuery
+      heading: Option[String], confirmLabel: String) extends DecisionQuery
 ```
 
 After `DecisionPlacement`:
 
 ```scala
 /** One slot's amount in a [[DecisionAnswer.DistributeAnswer]]. */
-final case class DistributeAmount(option: DecisionOptionRef, amount: Int)
+final case class DistributeAmount(ref: DecisionOptionRef, amount: Int)
 ```
 
 In `object DecisionAnswer`, after `PartitionAnswer`:
@@ -275,16 +292,25 @@ In `object DecisionAnswer`, after `PartitionAnswer`:
 Add a `wellFormed` case after `Partition`:
 
 ```scala
-    case DecisionQuery.Distribute(slots, total, _, _) =>
+    case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
       val refs = slots.map(_.ref)
       val minimums = slots.map(_.minimum.toLong).sum
       val maximums = slots.map(_.maximum.toLong).sum
       val suggested = slots.flatMap(_.suggested)
       for {
+        _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
+          "declares no heading")
+        _ <- require(confirmLabel.trim.nonEmpty, decisionId,
+          "declares a blank confirm label")
         _ <- require(slots.size >= 2, decisionId,
           "declares fewer than two slots")
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
+        _ <- refs.find(DecisionOption.forRef(_).isEmpty) match {
+          case Some(ref) => reject(decisionId,
+            s"declares slot ${label(ref)}, which has no presentable option")
+          case None => Right(())
+        }
         _ <- slots.find(s => s.minimum < 0 || s.minimum > s.maximum) match {
           case Some(s) => reject(decisionId, s"declares slot ${label(s.ref)} " +
             s"with bounds ${s.minimum}..${s.maximum}")
@@ -319,14 +345,14 @@ Add an `accepts` case after `Partition`:
     }
 ```
 
-Add the helpers beside `acceptsPartition` (import `DistributeAmount` and `DistributeSlot`):
+Add the helpers beside `acceptsPartition`, and import `DecisionOption`, `DistributeAmount` and `DistributeSlot`:
 
 ```scala
   private def acceptsDistribution(decisionId: String,
       slots: Vector[DistributeSlot], total: Int,
       amounts: Vector[DistributeAmount]): Either[OathViolation, Unit] = {
     val declared = slots.map(_.ref)
-    val named = amounts.map(_.option)
+    val named = amounts.map(_.ref)
     for {
       _ <- require(named.forall(declared.contains), decisionId,
         "does not offer a distributed option")
@@ -334,7 +360,7 @@ Add the helpers beside `acceptsPartition` (import `DistributeAmount` and `Distri
         "distributes to an option more than once")
       _ <- require(declared.forall(named.contains), decisionId,
         "leaves an option undistributed")
-      _ <- slots.find(s => amounts.find(_.option == s.ref)
+      _ <- slots.find(s => amounts.find(_.ref == s.ref)
           .exists(a => a.amount < s.minimum || a.amount > s.maximum)) match {
         case Some(s) => reject(decisionId, s"distributes to ${label(s.ref)} " +
           s"outside ${s.minimum}..${s.maximum}")
@@ -349,12 +375,7 @@ Add the helpers beside `acceptsPartition` (import `DistributeAmount` and `Distri
     s"${ref.kind}/${ref.wireId}"
 ```
 
-- [ ] **Step 5: Run the validator suite**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite"`
-Expected: compilation still fails elsewhere. `-Xlint` reports non-exhaustive matches in `DecisionAnswerCodec`, `WalkerDecisionProjector` and `GameIntentMapper`. Steps 6-9 fix them.
-
-- [ ] **Step 6: Journal spelling in `DecisionAnswerCodec.scala`**
+- [ ] **Step 5: Journal spelling in `DecisionAnswerCodec.scala`**
 
 Add `private val DistributeTag = "distribute"`. Add an encode case:
 
@@ -362,7 +383,7 @@ Add `private val DistributeTag = "distribute"`. Add an encode case:
     case DecisionAnswer.DistributeAnswer(amounts) => ujson.Obj(
       "kind" -> DistributeTag,
       "amounts" -> ujson.Arr.from(amounts.map(entry => ujson.Obj(
-        "option" -> encodeRef(entry.option), "amount" -> entry.amount))))
+        "option" -> encodeRef(entry.ref), "amount" -> entry.amount))))
 ```
 
 Add a decode case before `case other`:
@@ -381,7 +402,7 @@ Add a decode case before `case other`:
         }.map(DecisionAnswer.DistributeAnswer)
 ```
 
-In `GameEventWireSuite`'s test "both generic walker decision answers round trip on the step and on the park", add a third answer and include it in the `answered` vector and as a `WalkerStepRecorded` step:
+In `GameEventWireSuite`'s test "both generic walker decision answers round trip on the step and on the park", add a third answer. Include it in the `answered` vector and as a `WalkerStepRecorded` step:
 
 ```scala
     val distribute = DistributeAnswer(Vector(
@@ -389,9 +410,159 @@ In `GameEventWireSuite`'s test "both generic walker decision answers round trip 
       DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))
 ```
 
-Rename that test to "every generic walker decision answer round trips on the step and on the park". In "every option reference kind round trips through a recorded answer", add `DecisionOptionRef.FavorBank(Suit.Hearth)` to the reference list.
+Change the suite's `DecisionAnswer` import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`. Rename that test to "every generic walker decision answer round trips on the step and on the park". In "every option reference kind round trips through a recorded answer", add `DecisionOptionRef.FavorBank(Suit.Hearth)` to the reference list.
 
-- [ ] **Step 7: Command wire for the answer**
+- [ ] **Step 6: Keep the projector total over the new cases**
+
+In `WalkerDecisionProjector.scala`:
+
+- Replace the `waiting` heading match (lines 90-93) with a read of the declared heading, which every query shape now has:
+
+```scala
+    ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
+      parked.powers).flatMap(_.query.heading))
+```
+
+- In `optionProjection`, add `case DecisionOption.FavorBank(bank) => row(presentation.safeLabel(bank.suit.key))`. Update the doc's "A `Deck` is a closed four-case enum" sentence to also cover a favor bank.
+- In `queryProjection`, after the `Partition` case:
+
+```scala
+      // Task 2 projects distributions; until then a parked one projects as
+      // nothing, as an unpresentable decision does. No procedure declares
+      // one before League Treaty (Task 6).
+      case _: DecisionQuery.Distribute => None
+```
+
+- [ ] **Step 7: Run the affected suites**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite oathdigital.serialization.GameEventWireSuite oathdigital.application.WalkerDecisionProjectorSuite"`
+Expected: PASS.
+
+- [ ] **Step 8: Run the full gate and commit**
+
+Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
+Expected: all green.
+
+```bash
+git add src/main/scala/oathdigital/model/Decisions.scala src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala src/main/scala/oathdigital/serialization/DecisionAnswerCodec.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/test/scala/oathdigital/gameplay/walker/DecisionQuerySuite.scala src/test/scala/oathdigital/serialization/GameEventWireSuite.scala
+git commit -m "feat(walker): add the Distribute decision and favor-bank options
+
+Distribute spreads an exact total across bounded slots, and is the first
+decision shape that carries amounts. It is validated and journalled.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Distribute on the command wire and in the projection
+
+**Files:**
+- Modify: `shared/src/main/scala/oathdigital/protocol/CommandIntents.scala` (`DecisionAnswerWire`)
+- Modify: `shared/src/main/scala/oathdigital/protocol/CommandNestedCodecs.scala:79-110`
+- Modify: `src/main/scala/oathdigital/application/GameIntentMapper.scala:190-202`
+- Modify: `shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala:126`, `ActionProjectionCodec.scala:212-246`
+- Modify: `src/main/scala/oathdigital/application/WalkerDecisionProjector.scala` (the Task 1 `Distribute` arm)
+- Modify: `frontend/src/main/scala/oathdigital/frontend/package.scala:83` (alias)
+- Test: `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/server/GameHttpWireSuite.scala:78-96`, `src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala`
+
+**Interfaces:**
+- Consumes: `DistributeSlot`, `DecisionQuery.Distribute`, `DistributeAmount`, `DecisionAnswer.DistributeAnswer`, `DecisionOption.forRef` (Task 1).
+- Produces:
+  - Wire: `DecisionAnswerWire.DistributeWire(amounts: Vector[DistributeAmountWire])`, `DistributeAmountWire(optionKind: String, optionId: String, amount: Int)`, JSON `{"kind":"distribute","amounts":[{"optionKind":..,"optionId":..,"amount":n}]}`.
+  - Projection: `DecisionSlotProjection(option: DecisionOptionProjection, minimum: Int, maximum: Int, suggested: Option[Int])`. `DecisionQueryProjection` gains trailing `slots: Vector[DecisionSlotProjection] = Vector.empty, total: Option[Int] = None`. The `"distribute"` form carries `options = Vector.empty`.
+  - Frontend alias `DecisionSlotState`.
+
+- [ ] **Step 1: Write the failing wire tests**
+
+In `CommandProtocolSuite`, add to `examples`:
+
+```scala
+    ResolveWalker("rest.distribution", DecisionAnswerWire.DistributeWire(Vector(
+      DistributeAmountWire("favor-bank", "arcane", 0),
+      DistributeAmountWire("favor-bank", "nomad", 3)))),
+```
+
+and append:
+
+```scala
+  test("a distribute payload naming one option twice is rejected at its path") {
+    val row = """{"optionKind":"favor-bank","optionId":"nomad","amount":1}"""
+    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
+      """"decisionId":"d","payload":{"kind":"distribute",""" +
+      s""""amounts":[$row,$row]}}}"""
+    assertEquals(ActorlessCommandCodec.decode(json).left.toOption.get.path,
+      "$.intent.payload.amounts")
+  }
+```
+
+In `GameHttpWireSuite`, in the test that maps `GameIntent.ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(...))`, add after that `assertEquals`:
+
+```scala
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("rest.distribution",
+        DecisionAnswerWire.DistributeWire(Vector(
+          DistributeAmountWire("favor-bank", "arcane", 0),
+          DistributeAmountWire("favor-bank", "nomad", 3))))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("rest.distribution", DistributeAnswer(Vector(
+          DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
+          DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))))))
+```
+
+Change its import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`.
+
+- [ ] **Step 2: Write the failing projection tests**
+
+Add to `ProjectionProtocolSuite`:
+
+```scala
+  test("a distribute query round-trips its slots, suggestions and total") {
+    def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
+    val distribute = DecisionQueryProjection("distribute", Vector.empty,
+      heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
+      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
+        DecisionSlotProjection(bank("nomad"), 0, 6, None)),
+      total = Some(6))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(distribute))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
+  }
+```
+
+The query mixes a suggestion with an absent one only to exercise both codec paths.
+
+Add to `WalkerDecisionProjectorSuite`, beside `decideTree`:
+
+```scala
+  test("a parked distribution projects its slots, bounds, suggestions and total") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(
+      Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
+        DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
+      total = 2, heading = Some("League Treaty"), confirmLabel = "Move favor")))
+    val query = projectorFor(tree).project(context).flatMap(_.query)
+      .getOrElse(fail("a parked distribution must project"))
+    assertEquals(query.form, "distribute")
+    assertEquals(query.options, Vector.empty)
+    assertEquals(query.slots.map(s => (s.option.kind, s.option.id, s.minimum,
+      s.maximum, s.suggested)), Vector(("favor-bank", "arcane", 0, 2, Some(2)),
+      ("favor-bank", "nomad", 0, 6, Some(0))))
+    assertEquals(query.total, Some(2))
+    assertEquals(query.heading, Some("League Treaty"))
+    assertEquals(query.confirmLabel, Some("Move favor"))
+  }
+```
+
+Add `DistributeSlot` and `Suit` to the suite's imports if its model import is not a wildcard.
+
+- [ ] **Step 3: Run to verify they fail**
+
+Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
+Expected: compilation fails on `DistributeWire`, `DistributeAmountWire` and `DecisionSlotProjection`.
+
+- [ ] **Step 4: Command wire**
 
 In `CommandIntents.scala`, beside `PartitionWire`:
 
@@ -407,7 +578,7 @@ final case class DistributeAmountWire(optionKind: String, optionId: String,
     amount: Int)
 ```
 
-In `CommandNestedCodecs.encodeDecisionAnswerWire`, add:
+In `CommandNestedCodecs.encodeDecisionAnswerWire`:
 
 ```scala
     case DecisionAnswerWire.DistributeWire(amounts) => ujson.Obj(
@@ -434,15 +605,18 @@ and beside `decodeDecisionPlacement`:
 
 ```scala
   private def decodeDistributeAmount(value: ujson.Value, path: String)
-      : Either[ProtocolDecodeFailure, DistributeAmountWire] = obj(value, path).flatMap { row => for {
-    _ <- exact(row, Set("optionKind", "optionId", "amount"), path)
-    optionKind <- string(row, "optionKind", path)
-    optionId <- string(row, "optionId", path)
-    amount <- field(row, "amount", path).flatMap(integer(_, s"$path.amount"))
-  } yield DistributeAmountWire(optionKind, optionId, amount) }
+      : Either[ProtocolDecodeFailure, DistributeAmountWire] =
+    obj(value, path).flatMap { row => for {
+      _ <- exact(row, Set("optionKind", "optionId", "amount"), path)
+      optionKind <- string(row, "optionKind", path)
+      optionId <- string(row, "optionId", path)
+      amount <- field(row, "amount", path).flatMap(integer(_, s"$path.amount"))
+    } yield DistributeAmountWire(optionKind, optionId, amount) }
 ```
 
-In `GameIntentMapper.decisionAnswer` (import `DistributeAnswer` and `DistributeAmount`):
+`obj`, `exact`, `field`, `string`, `integer`, `array`, `traverse` and `noDuplicates` are `CommandJsonSupport`'s.
+
+In `GameIntentMapper.decisionAnswer`, importing `DistributeAnswer` and `DistributeAmount`:
 
 ```scala
     case DecisionAnswerWire.DistributeWire(amounts) =>
@@ -451,32 +625,7 @@ In `GameIntentMapper.decisionAnswer` (import `DistributeAnswer` and `DistributeA
           DistributeAmount(_, row.amount))).map(DistributeAnswer)
 ```
 
-Add to `CommandProtocolSuite`:
-
-```scala
-  test("a distribute payload round-trips, and one naming a slot twice is " +
-      "rejected at its exact path") {
-    val intent = GameIntent.ResolveWalker("rest.league-treaty.distribution",
-      DecisionAnswerWire.DistributeWire(Vector(
-        DistributeAmountWire("favor-bank", "arcane", 0),
-        DistributeAmountWire("favor-bank", "nomad", 3))))
-    val command = ActorlessCommand(0L, intent)
-    assertEquals(ActorlessCommandCodec.decode(
-      ActorlessCommandCodec.encode(command)), Right(command))
-    val row = """{"optionKind":"favor-bank","optionId":"nomad","amount":1}"""
-    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
-      """"decisionId":"d","payload":{"kind":"distribute",""" +
-      s""""amounts":[$row,$row]}}}"""
-    assertEquals(ActorlessCommandCodec.decode(json).left.toOption.get.path,
-      "$.intent.payload.amounts")
-  }
-```
-
-Use the file's existing names for `ActorlessCommand` and its codec's `encode`. If the suite spells them differently, follow the neighbouring "a partition payload placing one option twice" test.
-
-In `GameHttpWireSuite`, find the test that posts a `resolveWalker` partition payload and add a distribute case beside it. Assert that the mapped command is `GameCommand.ResolveWalker(actor, TreeDecision(id, DistributeAnswer(Vector(DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3), ...))))`.
-
-- [ ] **Step 8: Projection DTO and codec**
+- [ ] **Step 5: Projection DTO and codec**
 
 In `ActionProjectionDtos.scala`, append to `DecisionQueryProjection`:
 
@@ -486,7 +635,7 @@ In `ActionProjectionDtos.scala`, append to `DecisionQueryProjection`:
     total: Option[Int] = None)
 ```
 
-Document both fields in the class doc: "`slots` and `total` are a `distribute` form's whole content. That form's `options` is empty, because every option it offers sits on a slot." Add:
+Add to the class doc: "`slots` and `total` are a `distribute` form's whole content. That form's `options` is empty, because every option it offers sits on a slot." Then add:
 
 ```scala
 /** One amount-taking slot of a `distribute` query: its option, presented
@@ -497,16 +646,17 @@ final case class DecisionSlotProjection(option: DecisionOptionProjection,
     minimum: Int, maximum: Int, suggested: Option[Int])
 ```
 
-In `ActionProjectionCodec.scala`, extract the option-row pair into two private helpers `encodeOptionRow(row: DecisionOptionProjection): ujson.Value` and `decodeOptionRow(raw: ujson.Value, child: String): Result[DecisionOptionProjection]`, with bodies copied from the existing inline lambdas. Use them for `options`. Then extend both functions:
+In `ActionProjectionCodec.scala`, move the option-row lambdas of `encodeDecisionQuery` and `decodeDecisionQuery` into `private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value` and `private[projection] def decodeOptionRow(raw: ujson.Value, child: String): Result[DecisionOptionProjection]`, with the lambda bodies unchanged. Use them for `options`. Then extend the encoder:
 
 ```scala
     "confirmLabel" -> stringOption(value.confirmLabel),
     "slots" -> encoded(value.slots)(slot => ujson.Obj(
       "option" -> encodeOptionRow(slot.option), "minimum" -> slot.minimum,
-      "maximum" -> slot.maximum,
-      "suggested" -> slot.suggested.fold[ujson.Value](ujson.Null)(ujson.Num(_)))),
-    "total" -> value.total.fold[ujson.Value](ujson.Null)(ujson.Num(_)))
+      "maximum" -> slot.maximum, "suggested" -> intOption(slot.suggested))),
+    "total" -> intOption(value.total))
 ```
+
+and the decoder:
 
 ```scala
     _ <- exact(value, Set("form", "options", "sections", "heading",
@@ -526,7 +676,7 @@ In `ActionProjectionCodec.scala`, extract the option-row pair into two private h
     confirmLabel, slots, total)
 ```
 
-If `ProjectionCodecSupport` has no `field(obj, name, path)`, read the key the way `optionalAbsent` does in the same file.
+`int`, `optionalInt`, `field`, `intOption` and `encoded` are `ProjectionCodecSupport`'s.
 
 In `frontend/.../package.scala`, after the `DecisionSectionState` alias:
 
@@ -535,74 +685,44 @@ In `frontend/.../package.scala`, after the `DecisionSectionState` alias:
   val DecisionSlotState = protocol.projection.DecisionSlotProjection
 ```
 
-Add to `ProjectionProtocolSuite`:
+- [ ] **Step 6: Project the query**
 
-```scala
-  test("a distribute query round-trips its slots, suggestions and total") {
-    def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
-    val distribute = DecisionQueryProjection("distribute", Vector.empty,
-      heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
-      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
-        DecisionSlotProjection(bank("nomad"), 0, 6, None)),
-      total = Some(6))
-    val carrying = projection.copy(walkerDecision =
-      projection.walkerDecision.map(_.copy(query = Some(distribute))))
-    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
-      Right(carrying))
-  }
-```
-
-(Test data only: the query mixes a suggestion with an absent one to exercise both codec paths.)
-
-- [ ] **Step 9: Project the query in `WalkerDecisionProjector.scala`**
-
-Replace the `waiting` heading match (lines 90-93) with `.flatMap(_.query.heading)`:
-
-```scala
-    ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
-      parked.powers).flatMap(_.query.heading))
-```
-
-In `queryProjection`, add after the `Partition` case:
+In `WalkerDecisionProjector.queryProjection`, replace Task 1's `case _: DecisionQuery.Distribute => None` with:
 
 ```scala
       case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
-        described(slots.map(_.option)).map(options =>
-          DecisionQueryProjection("distribute", Vector.empty,
-            heading = heading, confirmLabel = confirmLabel,
-            slots = slots.zip(options).map { case (slot, option) =>
-              DecisionSlotProjection(option, slot.minimum, slot.maximum,
-                slot.suggested) },
-            total = Some(total)))
+        described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))
+          .filter(_.size == slots.size).map(options =>
+            DecisionQueryProjection("distribute", Vector.empty,
+              heading = heading, confirmLabel = Some(confirmLabel),
+              slots = slots.zip(options).map { case (slot, option) =>
+                DecisionSlotProjection(option, slot.minimum, slot.maximum,
+                  slot.suggested) },
+              total = Some(total)))
 ```
 
-In `optionProjection`, add
-`case DecisionOption.FavorBank(bank) => row(presentation.safeLabel(bank.suit.key))`. Update the doc's "A `Deck` is a closed four-case enum" sentence to also cover a favor bank.
+`described` is the same helper the `ChooseOne` case uses. The size check keeps a slot with no presentable option suppressing the whole decision, the same rule an unpresentable choose-one option follows.
 
-Add to `WalkerDecisionProjectorSuite` a test that parks the owner on a one-node `Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(...)))` substituted through the `TreeSource` seam, as the suite's Roll-park test does. Assert that `project` returns `query.form == "distribute"`, `options == Vector.empty`, each slot's `option.kind == "favor-bank"` and `option.id == suit key`, the declared bounds and suggestions, and `total == Some(6)`.
+- [ ] **Step 7: Run the affected suites**
 
-- [ ] **Step 10: Run the affected suites**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite oathdigital.serialization.GameEventWireSuite oathdigital.application.WalkerDecisionProjectorSuite oathdigital.server.GameHttpWireSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
+Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: PASS.
 
-- [ ] **Step 11: Run the full gate and commit**
+- [ ] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
 
 ```bash
-git add -A src/main/scala/oathdigital/model/Decisions.scala src/main/scala/oathdigital/gameplay/walker/DecisionQueries.scala src/main/scala/oathdigital/serialization/DecisionAnswerCodec.scala src/main/scala/oathdigital/application shared frontend/src/main/scala/oathdigital/frontend/package.scala src/test
-git commit -m "feat(walker): add the Distribute decision and favor-bank options
-
-Distribute spreads an exact total across bounded slots, and is the first
-decision shape that carries amounts. It is validated, journalled,
-projected and accepted on the command wire.
+git add shared/src/main/scala/oathdigital/protocol/CommandIntents.scala shared/src/main/scala/oathdigital/protocol/CommandNestedCodecs.scala src/main/scala/oathdigital/application/GameIntentMapper.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala frontend/src/main/scala/oathdigital/frontend/package.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala src/test/scala/oathdigital/server/GameHttpWireSuite.scala src/test/scala/oathdigital/application/WalkerDecisionProjectorSuite.scala
+git commit -m "feat(protocol): carry Distribute answers and project Distribute queries
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
-### Task 2: Distribute panel with Shift+click fill and drain
+---
+
+### Task 3: Distribute panel with Shift+click fill and drain
 
 **Files:**
 - Create: `frontend/src/main/scala/oathdigital/frontend/DistributeDecisionState.scala`
@@ -615,7 +735,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Test: `frontend/src/test/scala/oathdigital/frontend/DistributeDecisionStateSuite.scala`, `frontend/src/test/scala/oathdigital/frontend/DistributePanelRenderSuite.scala`
 
 **Interfaces:**
-- Consumes: `DecisionQueryState` with `form == "distribute"`, `slots: Vector[DecisionSlotState]` and `total: Option[Int]` (Task 1); `DecisionAnswerWire.DistributeWire` and `DistributeAmountWire` (Task 1); `WalkerPartitionDraft.itemId`.
+- Consumes: `DecisionQueryState` with `form == "distribute"`, `slots: Vector[DecisionSlotState]` and `total: Option[Int]` (Task 2); `DecisionAnswerWire.DistributeWire` and `DistributeAmountWire` (Task 2); `WalkerPartitionDraft.itemId`.
 - Produces:
   - `DistributeDecisionState(slots: Vector[DistributeSlotBounds], total: Int, amounts: Map[String, Int])` with `amount`, `remaining`, `increment`, `decrement`, `fill`, `drain`, `canConfirm`, and `DistributeDecisionState.opened(slots, total, suggested: Option[Vector[Int]])`.
   - `WalkerDistributeDraft(context, decisionId, query, state)` with `reconcile` and `command: Option[GameIntent.ResolveWalker]`.
@@ -965,7 +1085,7 @@ class DistributePanelRenderSuite extends munit.FunSuite {
 }
 ```
 
-`RecordingView.submitted` and `rerenders` already exist on the moved class. If `GameProjection`'s positional shape differs from `PartitionPanelRenderSuite.projectionWith`, copy that function's argument list.
+`RecordingView.submitted` and `rerenders` already exist on the moved class.
 
 - [ ] **Step 7: Run it to verify it fails**
 
@@ -1060,7 +1180,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add frontend
+git add frontend/src/main/scala/oathdigital/frontend/DistributeDecisionState.scala frontend/src/main/scala/oathdigital/frontend/DistributePanelRenderer.scala frontend/src/main/scala/oathdigital/frontend/ServerUiSupport.scala frontend/src/main/scala/oathdigital/frontend/ServerModeUi.scala frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala frontend/src/test/scala/oathdigital/frontend/RecordingServerUiView.scala frontend/src/test/scala/oathdigital/frontend/PartitionPanelRenderSuite.scala frontend/src/test/scala/oathdigital/frontend/DistributeDecisionStateSuite.scala frontend/src/test/scala/oathdigital/frontend/DistributePanelRenderSuite.scala
 git commit -m "feat(frontend): render Distribute decisions with Shift+click steppers
 
 A pure DistributeDecisionState clamps every step to its slot's bounds and
@@ -1069,7 +1189,9 @@ the remaining total. Its panel lives in its own renderer file for headroom.
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
-### Task 3: `BeginTurn` and card power sources
+---
+
+### Task 4: `BeginTurn` and card power sources
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/GameState.scala` (`PowerSourceRef`)
@@ -1237,7 +1359,7 @@ Add beside `decodePowerTiming`:
   }
 ```
 
-Before writing this, check `CardId.kind` for each of `DenizenId`, `RelicId`, `EdificeId` and `VisionId` in `model/Identity.scala`. The strings above must be exactly what `kind` returns. If a kind differs, match the value `kind` returns.
+These are exactly the strings `CardId.kind` returns for `DenizenId`, `RelicId`, `EdificeId` and `VisionId` (`model/Identity.scala`).
 
 - [ ] **Step 6: Extend the codec round-trip list**
 
@@ -1255,7 +1377,7 @@ In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the w
       BeginTurn(other, Phase.RoundEnd),
 ```
 
-Check that the suite imports `oathdigital.model._` and the walker operation names; add `BeginTurn`, `EnterPhase` and `RecordPowerUse` to its operations import if they are listed explicitly.
+The suite imports `oathdigital.model._` and lists its operations explicitly (`import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn, ...}`); add `BeginTurn`, `EnterPhase` and `RecordPowerUse` to that list.
 
 - [ ] **Step 7: Run both suites**
 
@@ -1268,7 +1390,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src
+git add src/main/scala/oathdigital/model/GameState.scala src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala src/main/scala/oathdigital/gameplay/operations/OperationStateMutation.scala src/main/scala/oathdigital/gameplay/operations/OperationError.scala src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala src/test/scala/oathdigital/gameplay/operations/OperationStateMutationSuite.scala src/test/scala/oathdigital/serialization/GameEventWireSuite.scala
 git commit -m "feat(walker): add BeginTurn and card power sources
 
 BeginTurn hands the turn over with its used powers cleared, and a
@@ -1279,153 +1401,173 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Rest on the walker
+### Task 5: Rest procedures on the walker
+
+This task adds walker Begin Rest and Finish Rest beside the legacy commands. Production still routes `beginRest` and `finishRest` to the legacy handlers, so legacy League Treaty stays reachable until Task 7 switches both at once (Correction 10).
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/model/ProcedureRef.scala` (`BeginRest`, `FinishRest`)
 - Create: `src/main/scala/oathdigital/gameplay/phases/rest/WarExhaustionRandomPort.scala`, `BeginRestProcedure.scala`, `FinishRestProcedure.scala`, `TurnBoundary.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/phases/Rest.scala` (trim to the legacy League Treaty resolve/decline only)
+- Modify: `src/main/scala/oathdigital/gameplay/phases/Rest.scala` (delegate to the new objects)
 - Modify: `src/main/scala/oathdigital/gameplay/walker/WalkerProcedureRegistry.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala:49-75,330-395`
-- Modify: `src/main/scala/oathdigital/gameplay/OathRules.scala:11-12,36-45,168-183,244-246,302`
+- Modify: `src/main/scala/oathdigital/gameplay/OathRules.scala:11-12,36-45`
 - Modify: `src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala` (`AwaitingRestDecision`)
-- Modify: `src/main/scala/oathdigital/application/GameApplicationService.scala:16-17,84,486-490`
-- Modify: `src/main/scala/oathdigital/application/LegalActionProjector.scala:13,127,158`
-- Test: `src/test/scala/oathdigital/gameplay/RestSuite.scala`, `StateBasedEvaluationSuite.scala:8,136-161`, `src/test/scala/oathdigital/application/ForgeWalkerFixture.scala:114-126`, `GameApplicationServiceSuite.scala:575,601-605,1570-1591,1990-1998`, `src/test/scala/oathdigital/gameplay/walker/WalkerProcedureRegistrySuite.scala`
+- Modify: `src/main/scala/oathdigital/application/GameApplicationService.scala:17,84`, `src/main/scala/oathdigital/application/LegalActionProjector.scala:13,127`
+- Test: `src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala` (new), `src/test/scala/oathdigital/gameplay/walker/WalkerProcedureRegistrySuite.scala`, `src/test/scala/oathdigital/gameplay/RestSuite.scala:3-4,362`, `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala:575,605`
 
 **Interfaces:**
-- Consumes: `BeginTurn(player, phase)` (Task 3).
+- Consumes: `BeginTurn(player, phase)` (Task 4).
 - Produces:
   - `PhaseTransitionRef.BeginRest` (key `"begin-rest"`), `PhaseTransitionRef.FinishRest` (key `"finish-rest"`).
   - `oathdigital.gameplay.phases.rest.WarExhaustionRandomPort` (moved, same members).
-  - `BeginRestProcedure.validateBegin(catalog, state: OathState, player): Either[OathViolation, ReadyGame]`, `BeginRestProcedure.build(catalog, ready, player, args): Either[OathViolation, Operation]`.
-  - `FinishRestProcedure.gate(catalog, ready, player): Either[OathViolation, ReadyGame]`, `FinishRestProcedure.build(...)` (same shape as `BeginRestProcedure.build`), `FinishRestProcedure.cleanup(catalog, ready, player): Either[OathViolation, Vector[CoreOperation]]`.
+  - `BeginRestProcedure.validateBegin(catalog, state: OathState, player): Either[OathViolation, ReadyGame]`, `BeginRestProcedure.validateSupportedState(catalog, ready): Either[OathViolation, Unit]`, `BeginRestProcedure.build(catalog, ready, player, args): Either[OathViolation, Operation]`.
+  - `FinishRestProcedure.gate(catalog, ready, player): Either[OathViolation, ReadyGame]`, `FinishRestProcedure.build(...)` (the same shape as `BeginRestProcedure.build`), `FinishRestProcedure.ExileSupply: SupplyRules`, `FinishRestProcedure.turnOrder(ready): Vector[PlayerId]`.
   - `TurnBoundary.finishRound(catalog, transition, port): Either[OathViolation, OathTransition]`.
   - `OathContinue.AwaitingRestDecision(playerId: PlayerId, decision: DecisionId)`.
   - `WalkerProcedureRegistry.fallbackKind(procedure: StartableRef): Either[OathViolation, Option[MajorActionKind]]`.
-  - `OathRulesWalker` abstract members `turnBoundary(transition)` and `restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean`. Task 7 replaces the stub body of `restPowerUsable`.
+  - `OathRulesWalker` abstract members `turnBoundary(transition)` and `restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean`. `OathRules` implements `restPowerUsable` as `false`, and Task 9 replaces that body.
 
-- [ ] **Step 1: Rewrite `RestSuite` against the walker (failing)**
+- [ ] **Step 1: Write the failing walker Rest suite**
 
-Replace the imports with:
+`src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala`:
 
 ```scala
-import oathdigital.gameplay.phases.RestCleanupPlan
-import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
-import oathdigital.gameplay.walker.WalkerCompleted
-import oathdigital.model._
-import oathdigital.gameplay.setup._
-import oathdigital.gameplay.setup.FirstGameSetupFixture._
+package oathdigital.gameplay
+
 import oathdigital.gameplay.OathEvent.IgnoredRulesRecorded
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation.{UnsupportedRestState,
-  UnsupportedRoundEndCatalogInventory, UnsupportedRuleCatalog}
-import oathdigital.catalog.CatalogPower
-```
+import oathdigital.gameplay.phases.RestCommand
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
+import oathdigital.gameplay.setup.FirstGameSetupRules
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.WalkerCompleted
+import oathdigital.model._
 
-Add helpers under `act`:
+/** Walker Begin Rest and Finish Rest, driven through `startWalker` while the
+  * commands still route to the legacy handlers (Task 7 switches them).
+  */
+class RestWalkerSuite extends munit.FunSuite {
+  private val rules = new OathRules(catalog)
 
-```scala
-  private def rest(state: OathState, player: PlayerId,
-      using: OathRules = rules) =
+  private val act: ReadyGame = {
+    val Ready(initial) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    initial.copy(game = initial.game.copy(current = initial.game.current.copy(
+      turn = initial.game.current.turn.copy(phase = Phase.Act))))
+  }
+  private val actor = act.game.current.turn.activePlayer
+  private def inRest(ready: ReadyGame) = ready.copy(game = ready.game.copy(
+    current = ready.game.current.copy(turn = ready.game.current.turn.copy(
+      phase = Phase.Rest))))
+  private def rest(state: OathState, player: PlayerId, using: OathRules = rules) =
     using.startWalker(state, PhaseTransitionRef.BeginRest, player)
+  private def ready(state: OathState) = state.asInstanceOf[Ready].value
 
-  private def inRest(ready: ReadyGame): ReadyGame = ready.copy(game =
-    ready.game.copy(current = ready.game.current.copy(turn =
-      ready.game.current.turn.copy(phase = Phase.Rest))))
-```
-
-Rewrite each existing test body, keeping its name unless stated:
-
-1. "Rest returns controlled resources reveals secrets refreshes and wakes next": replace the `started`/`completed`/`event` lines with
-
-```scala
-    val completed = rest(Ready(prepared), actor.player).toOption.get
-    assertEquals(completed.events.collect { case WalkerCompleted(p) => p },
-      Vector(PhaseTransitionRef.BeginRest, PhaseTransitionRef.FinishRest))
-    val Ready(after) = completed.state: @unchecked
-    val rested = after.game.current.players.find(_.player == actor.player).get
-    assertEquals(completed.continue,
-      OathContinue.AwaitingWakeAction(after.game.current.turn.activePlayer))
-```
-
-   Delete the two `event.returned*` assertions; keep every other assertion (the bank `+ 3` and the faceup `+ 2 + 6` already pin them).
-2. "Rest rejects a missing bounded warband supply": `rest(Ready(malformed), actor.player)`.
-3. "Rest globally cleans every in-play denizen and relic": replace `began`/`finished` with `val finished = rest(Ready(prepared), actor.player).toOption.get`.
-4. Rename "replay validates recorded Rest outcome and advances the round" to "replaying a round of walker Rests reproduces the state and advances the round":
-
-```scala
-  test("replaying a round of walker Rests reproduces the state and advances the round") {
-    var state: OathState = Ready(act)
-    var events = Vector.empty[OathEvent]
-    val participants = act.game.current.players.map(_.player)
-    val start = participants.indexOf(act.setup.firstPlayer)
-    val order = participants.drop(start) ++ participants.take(start)
-    order.foreach { player =>
-      val rested = rest(state, player).toOption.get
-      events ++= rested.events
-      state = rested.state
-      if (player != order.last) {
-        val woke = rules.startWalker(state, PhaseTransitionRef.EndWake,
-          state.asInstanceOf[Ready].value.game.current.turn.activePlayer).toOption.get
-        events ++= woke.events
-        state = woke.state
-      }
-    }
-    val Ready(after) = state: @unchecked
-    assertEquals(after.game.current.tracks.round, 2)
-    assertEquals(after.game.current.turn.activePlayer, after.setup.firstPlayer)
-    assertEquals(after.game.current.turn.phase, Phase.Wake)
-    assert(events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
-    assertEquals(events.foldLeft[Either[OathViolation, OathState]](
-      Right(Ready(act)))((next, event) => next.flatMap(rules.evolve(_, event))),
-      Right(state))
-  }
-```
-
-5. "unrelated active powers ...": `assert(rest(Ready(supported), supported.game.current.turn.activePlayer).isRight)`.
-6. "each relevant Rest handler records fallback diagnostics without blocking": both `rules.handle(..., RestCommand.Begin(actor.player))` become `rest(Ready(...), actor.player)`. The diagnostics event stays `events.head`.
-7. "changed inventory ...": `rest(Ready(base), actor, new OathRules(c))`.
-8. "altered banner ...": `rest(Ready(ready), actor)`.
-9. "last player of round eight ...": `val finished = rest(Ready(unsupported), last, deterministic).toOption.get` replaces `started`/`finished`; the `GameEnded` assertion becomes `rest(finished.state, last, deterministic).left.toOption.get`.
-10. Delete "League Treaty gives its off-turn ruler an atomic optional Rest decision" and "League Treaty is omitted without a player ruler or regional favor". Task 5 replaces them.
-
-Append:
-
-```scala
-  test("Finish Rest belongs to the active player in the Rest phase") {
-    val ready = inRest(act)
-    val actor = ready.game.current.turn.activePlayer
-    val other = ready.game.current.players.map(_.player).find(_ != actor).get
-    assertEquals(rules.startWalker(Ready(ready), PhaseTransitionRef.FinishRest,
-      other).left.toOption, Some(OathViolation.WrongPlayer(actor, other)))
-    assertEquals(rules.startWalker(Ready(act), PhaseTransitionRef.FinishRest,
-      actor).left.toOption,
-      Some(OathViolation.WrongPhase(Phase.Rest, Phase.Act)))
-    val finished = rules.startWalker(Ready(ready), PhaseTransitionRef.FinishRest,
-      actor).toOption.get
-    assertEquals(finished.state.asInstanceOf[Ready].value.game.current.turn.phase,
-      Phase.Wake)
-    val projector = new oathdigital.application.GameProjector(catalog)
-    def controls(state: ReadyGame) = projector.project("rest-controls",
-      oathdigital.application.LoadedGame(Ready(state), 30L), actor).legalControls
-    assertEquals(controls(ready), Vector("finishRest"))
-    assert(!controls(act).contains("finishRest"))
-  }
-
-  test("Begin Rest records no Rest events and cannot run twice") {
-    val actor = act.game.current.turn.activePlayer
+  test("Begin Rest with no usable REST power finishes Rest in the same command") {
     val rested = rest(Ready(act), actor).toOption.get
-    assert(!rested.events.exists(_.getClass.getSimpleName.startsWith("Rest")))
+    assertEquals(rested.events.collect { case WalkerCompleted(p) => p },
+      Vector(PhaseTransitionRef.BeginRest, PhaseTransitionRef.FinishRest))
+    val next = ready(rested.state).game.current.turn
+    assertEquals(next.phase, Phase.Wake)
+    assertNotEquals(next.activePlayer, actor)
+    assertEquals(rested.continue, OathContinue.AwaitingWakeAction(next.activePlayer))
+    assertEquals(rested.events.foldLeft[Either[OathViolation, OathState]](
+      Right(Ready(act)))((state, event) => state.flatMap(rules.evolve(_, event))),
+      Right(rested.state))
+  }
+
+  test("walker Rest reaches the same game as legacy Begin and Finish Rest") {
+    val legacy = rules.handle(Ready(act), RestCommand.Begin(actor))
+      .flatMap(begun => rules.handle(begun.state, RestCommand.Finish(actor)))
+      .toOption.get
+    val walker = rest(Ready(act), actor).toOption.get
+    assertEquals(ready(walker.state).game.current, ready(legacy.state).game.current)
+    assertEquals(ready(walker.state).banks, ready(legacy.state).banks)
+  }
+
+  test("Finish Rest belongs to the active player in the Rest phase") {
+    val other = act.game.current.players.map(_.player).find(_ != actor).get
+    assertEquals(rules.startWalker(Ready(inRest(act)),
+      PhaseTransitionRef.FinishRest, other).left.toOption,
+      Some(OathViolation.WrongPlayer(actor, other)))
+    assertEquals(rules.startWalker(Ready(act), PhaseTransitionRef.FinishRest,
+      actor).left.toOption, Some(OathViolation.WrongPhase(Phase.Rest, Phase.Act)))
     assertEquals(rules.startWalker(Ready(inRest(act)),
       PhaseTransitionRef.BeginRest, actor).left.toOption,
       Some(OathViolation.WrongPhase(Phase.Act, Phase.Rest)))
+    val finished = rules.startWalker(Ready(inRest(act)),
+      PhaseTransitionRef.FinishRest, actor).toOption.get
+    assertEquals(ready(finished.state).game.current.turn.phase, Phase.Wake)
+  }
+
+  test("the last player's Rest ends the round and wakes the first player") {
+    val order = {
+      val participants = act.game.current.players.map(_.player)
+      val start = participants.indexOf(act.setup.firstPlayer)
+      participants.drop(start) ++ participants.take(start)
+    }
+    val last = act.copy(game = act.game.copy(current = act.game.current.copy(
+      turn = TurnState(order.last, Phase.Act, Set.empty))))
+    val rested = rest(Ready(last), order.last).toOption.get
+    assert(rested.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
+    val after = ready(rested.state).game.current
+    assertEquals(after.tracks.round, act.game.current.tracks.round + 1)
+    assertEquals(after.turn.activePlayer, order.head)
+    assertEquals(after.turn.phase, Phase.Wake)
+  }
+
+  test("the last player of round eight finishes the game by War Exhaustion") {
+    val order = {
+      val participants = act.game.current.players.map(_.player)
+      val start = participants.indexOf(act.setup.firstPlayer)
+      participants.drop(start) ++ participants.take(start)
+    }
+    val eighth = act.copy(game = act.game.copy(current = act.game.current.copy(
+      tracks = act.game.current.tracks.copy(round = 8),
+      turn = TurnState(order.last, Phase.Act, Set.empty))))
+    val deterministic = new OathRules(catalog, warExhaustionRandomPort =
+      new WarExhaustionRandomPort {
+        def choose(candidates: Vector[PlayerId]) = candidates.last
+      })
+    val finished = rest(Ready(eighth), order.last, deterministic).toOption.get
+    assert(finished.events.exists(_.isInstanceOf[OathEvent.WarExhaustionResolved]))
+    assert(finished.continue.isInstanceOf[OathContinue.GameFinished])
+  }
+
+  test("walker Begin Rest records the Rest fallback diagnostics first") {
+    val definition = catalog.denizens.find(_.handlers.contains(
+      "denizen.naysayers")).get
+    val advised = act.copy(game = act.game.copy(current = act.game.current.copy(
+      players = act.game.current.players.map(p => if (p.player != actor) p
+        else p.copy(advisers = Vector(DenizenState(DenizenId(definition.id.value),
+          Orientation.FaceUp, Tokens.empty)))))))
+    val rested = rest(Ready(advised), actor).toOption.get
+    assertEquals(rested.events.head.asInstanceOf[IgnoredRulesRecorded]
+      .diagnostics.head.handlerId, "denizen.naysayers")
+  }
+}
+```
+
+In `WalkerProcedureRegistrySuite`, add:
+
+```scala
+  test("Begin Rest records Rest diagnostics; Finish Rest records none and " +
+      "parks as a generic Rest decision") {
+    assertEquals(WalkerProcedureRegistry.fallbackKind(
+      PhaseTransitionRef.BeginRest), Right(Some(MajorActionKind.Rest)))
+    assertEquals(WalkerProcedureRegistry.fallbackKind(
+      PhaseTransitionRef.FinishRest), Right(None))
+    assertEquals(WalkerProcedureRegistry.continuationFor(
+      PhaseTransitionRef.FinishRest, "any", actor, DecisionId("d")),
+      Right(Some(OathContinue.AwaitingRestDecision(actor, DecisionId("d")))))
   }
 ```
 
+Add `PhaseTransitionRef` to that suite's model import.
+
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.RestSuite"`
+Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite"`
 Expected: compilation fails on `PhaseTransitionRef.BeginRest` and `oathdigital.gameplay.phases.rest`.
 
 - [ ] **Step 3: Add the references and the continuation**
@@ -1441,7 +1583,7 @@ In `ProcedureRef.scala`, `object PhaseTransitionRef`:
   val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
 ```
 
-In `GameProcedureProtocol.scala`, after `AwaitingRestAction`:
+In `GameProcedureProtocol.scala`, after `AwaitingRestPowerDecision`:
 
 ```scala
   /** Any decision parked inside Finish Rest; the owner may be off-turn. */
@@ -1449,11 +1591,11 @@ In `GameProcedureProtocol.scala`, after `AwaitingRestAction`:
       decision: DecisionId) extends OathContinue
 ```
 
-Run `grep -rn "AwaitingRestAction" --include='*.scala' src shared frontend`. Every exhaustive match over `OathContinue` that names `AwaitingRestAction` gains an `AwaitingRestDecision` arm with the same shape as its `AwaitingOathkeeperRecipient` arm.
+No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
 - [ ] **Step 4: Create the Rest procedure package**
 
-`gameplay/phases/rest/WarExhaustionRandomPort.scala`: move the trait and companion out of `Rest.scala` verbatim, with `package oathdigital.gameplay.phases.rest`. Update the imports in `OathRules`, `GameApplicationService` and `GameApplicationServiceSuite` (both inline `oathdigital.gameplay.phases.WarExhaustionRandomPort` references).
+`gameplay/phases/rest/WarExhaustionRandomPort.scala`: move the trait and its companion out of `Rest.scala` unchanged, under `package oathdigital.gameplay.phases.rest`. Update the import in `OathRules.scala` to `oathdigital.gameplay.phases.rest.WarExhaustionRandomPort`, the import at `GameApplicationService.scala:17`, the import at `RestSuite.scala:3-4`, and both inline `oathdigital.gameplay.phases.WarExhaustionRandomPort` references at `GameApplicationServiceSuite.scala:575,605`.
 
 `gameplay/phases/rest/BeginRestProcedure.scala`:
 
@@ -1470,10 +1612,10 @@ import oathdigital.model._
   *
   * Cleanup waits for Finish Rest so REST powers can be used in between. The
   * exile-only and handler-inventory checks stay here because Rest's cleanup
-  * and Supply bands are only reviewed for that game.
+  * and Supply bands are reviewed only for that game.
   */
 object BeginRestProcedure {
-  private[rest] val ExpectedHandlerInventory =
+  private val ExpectedHandlerInventory =
     "5fc88b0d9622a3f523722c288ea7a78d0ec09b7ce191bdabc7f471139ec85898"
 
   def validateBegin(catalog: ExecutableCatalog, state: OathState,
@@ -1540,7 +1682,7 @@ import oathdigital.model._
   * resume rebuilds through the same function.
   */
 object FinishRestProcedure {
-  private val ExileSupply = SupplyRules(SupplyTrack.Maximum, Vector(
+  val ExileSupply: SupplyRules = SupplyRules(SupplyTrack.Maximum, Vector(
     SupplyRefreshBand(InclusiveIntRange(9, Int.MaxValue), 6),
     SupplyRefreshBand(InclusiveIntRange(4, 8), 5),
     SupplyRefreshBand(InclusiveIntRange(0, 3), 4)))
@@ -1572,10 +1714,11 @@ object FinishRestProcedure {
     BuildOps((state, _) => beginNextTurn(state, player))))
 
   /** Card favor to its printed suit bank, card secrets to the resting
-    * player, and the resting player's facedown stash flipped faceup.
+    * player, and the resting player's facedown stash flipped faceup: the
+    * operations legacy `Rest.applyCompletion` ran.
     */
-  def cleanup(catalog: ExecutableCatalog, ready: ReadyGame, resting: PlayerId)
-      : Either[OathViolation, Vector[CoreOperation]] = for {
+  private def cleanup(catalog: ExecutableCatalog, ready: ReadyGame,
+      resting: PlayerId): Either[OathViolation, Vector[CoreOperation]] = for {
     plan <- RestCleanupPlan.derive(catalog, ready, resting)
       .left.map(UnsupportedRestState)
     player <- ready.game.current.players.find(_.player == resting)
@@ -1626,7 +1769,7 @@ object FinishRestProcedure {
     else Right(Vector(BeginTurn(order(index + 1), Phase.Wake)))
   }
 
-  private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
+  def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
     val participants = ready.game.current.players.map(_.player)
     val index = participants.indexOf(ready.setup.firstPlayer)
     participants.drop(index) ++ participants.take(index)
@@ -1634,7 +1777,7 @@ object FinishRestProcedure {
 }
 ```
 
-Before compiling, check `SupplyRules.refresh`'s return type in `model`. Legacy `Rest.expected` read `.supply` off its result, so it is a `SupplyTrack`; if it is an `Int`, drop `.supply` on `refreshed`.
+`SupplyRules.refresh` returns `Option[SupplyTrack]` (`model/Resources.scala:86`), so `refreshed.supply` is an `Int`.
 
 `gameplay/phases/rest/TurnBoundary.scala`:
 
@@ -1646,8 +1789,8 @@ import oathdigital.gameplay.{OathContinue, OathTransition, OathViolation,
   StateBasedEvaluation}
 import oathdigital.gameplay.OathState.Ready
 
-/** Round end after the last player's Finish Rest, moved unchanged from the
-  * deleted `Rest.finishRound`.
+/** Round end after the last player's Rest, moved unchanged from
+  * `Rest.finishRound`.
   */
 object TurnBoundary {
   def finishRound(catalog: ExecutableCatalog, transition: OathTransition,
@@ -1671,50 +1814,25 @@ object TurnBoundary {
 }
 ```
 
-If `StateBasedEvaluation.evolve` or `endRound` is `private[gameplay]`, it is still visible from `gameplay.phases.rest`.
+- [ ] **Step 5: Make legacy Rest delegate instead of duplicating**
 
-- [ ] **Step 5: Trim `Rest.scala`**
+In `Rest.scala`:
 
-Delete `RestCommand.Begin` and `RestCommand.Finish`, the trait `WarExhaustionRandomPort` and its companion, `ExpectedHandlerInventory`, `ExileSupply`, `validateBegin`, `validateRest`, `validateSupportedState`, `validateAllExileAndRules`, `expected`, `applyCompletion`, `turnOrder`, `transition` and `finishRound`. What remains:
+- Delete `ExpectedHandlerInventory`, `ExileSupply`, `validateAllExileAndRules`, `turnOrder`, `finishRound` and the `WarExhaustionRandomPort` trait and companion (moved in Step 4). Import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure, TurnBoundary, WarExhaustionRandomPort}`.
+- `validateBegin` becomes `def validateBegin(catalog: ExecutableCatalog, state: OathState, playerId: PlayerId): Either[OathViolation, ReadyGame] = BeginRestProcedure.validateBegin(catalog, state, playerId)`.
+- `validateSupportedState` becomes `BeginRestProcedure.validateSupportedState(catalog, ready)`.
+- In `expected`, read `FinishRestProcedure.ExileSupply` and `FinishRestProcedure.turnOrder(ready)`. In `applyCompletion`, read `FinishRestProcedure.turnOrder(ready)`.
+- In `handle`'s `Finish` case, call `TurnBoundary.finishRound(catalog, rested, randomPort)`.
 
-```scala
-sealed trait RestCommand extends Product with Serializable
-object RestCommand {
-  final case class ResolvePower(playerId: PlayerId, decision: DecisionId,
-      allocations: Vector[FavorAllocation], destinationBank: Suit)
-      extends RestCommand
-  final case class DeclinePower(playerId: PlayerId, decision: DecisionId)
-      extends RestCommand
-}
-
-/** Legacy League Treaty resolution only, unreachable since Begin Rest moved
-  * onto the walker. Task 6 deletes it.
-  */
-object Rest {
-  def handle(catalog: ExecutableCatalog, state: OathState, command: RestCommand)
-      : Either[OathViolation, OathTransition] = command match {
-    case RestCommand.ResolvePower(playerId, decision, allocations, bank) =>
-      RestPowerIntegration.resolveLeagueTreaty(catalog, state, playerId,
-        decision, allocations, bank)
-    case RestCommand.DeclinePower(playerId, decision) =>
-      RestPowerIntegration.decline(catalog, state, playerId, decision)
-  }
-
-  def evolve(catalog: ExecutableCatalog, state: OathState, event: RestPowerEvent)
-      : Either[OathViolation, OathState] =
-    RestPowerIntegration.evolve(catalog, state, event)
-}
-```
-
-Remove imports the compiler reports unused (`-Xlint`).
+`LegalActionProjector`: import `oathdigital.gameplay.phases.rest.BeginRestProcedure` in place of `phases.Rest`, and call `BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player)` at line 127.
 
 - [ ] **Step 6: Registry entries and optional fallback kind**
 
-In `WalkerProcedureRegistry.scala` import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}` and add after the `EndWake` entry:
+In `WalkerProcedureRegistry.scala`, import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}` and add after the `EndWake` entry:
 
 ```scala
     /** Records the Rest timing's ignored-rule diagnostics, as the legacy
-      * `withFallback(MajorActionKind.Rest)` wrapper did.
+      * `withFallback(MajorActionKind.Rest)` wrapper does.
       */
     PhaseTransitionRef.BeginRest -> Entry(
       fallbackKind = Some(MajorActionKind.Rest),
@@ -1746,7 +1864,7 @@ Replace `fallbackKind` with:
     lookup(procedure, entries).map(_.fallbackKind)
 ```
 
-and change its doc's last sentence to: "`None` means the start records no fallback diagnostics."
+End its doc with: "`None` means the start records no fallback diagnostics."
 
 - [ ] **Step 7: Walker completion in Rest**
 
@@ -1755,7 +1873,7 @@ In `OathRulesWalker.scala`, add abstract members:
 ```scala
   protected def turnBoundary(transition: OathTransition)
       : Either[OathViolation, OathTransition]
-  /** Whether `player` could use a REST power now. Task 7 gives it a body. */
+  /** Whether `player` could use a REST power now. */
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean
 ```
 
@@ -1825,15 +1943,12 @@ Add beside `runsActionBoundary`:
   }
 ```
 
-In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))` and update its doc: Rest now has a continuation; `RoundEnd` still has none because only Finish Rest reaches it and the turn boundary owns that continuation. Update `startTriggered`'s doc sentence about `continuationIn` to name Act, Wake and Rest.
+In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))`. Change its doc: Rest has a continuation; `RoundEnd` has none, because only Finish Rest reaches it and the turn boundary owns that continuation. In `startTriggered`'s doc, change "only knows `Phase.Act` and `Phase.Wake`" to "knows Act, Wake and Rest".
 
-- [ ] **Step 8: `OathRules` wiring**
+- [ ] **Step 8: `OathRules` implements the new members**
 
-- Import `oathdigital.gameplay.phases.{Rest, RestCommand}` and `oathdigital.gameplay.phases.rest.{TurnBoundary, WarExhaustionRandomPort}`.
 - Constructor: `protected val warExhaustionRandomPort: WarExhaustionRandomPort = WarExhaustionRandomPort.random`.
-- Replace `handle(state, command: RestCommand)` with `def handle(state: OathState, command: RestCommand) = Rest.handle(catalog, state, command)`.
-- evolve: `case event: RestPowerEvent => Rest.evolve(catalog, state, event)`. `RestStarted` and `RestCompleted` become `case _: RestStarted | _: RestCompleted => Left(InvalidEventOrder("legacy Rest events no longer replay"))`.
-- `enterWake` becomes `private[gameplay] def enterWake` (unchanged body), and add:
+- Add:
 
 ```scala
   protected def turnBoundary(transition: OathTransition)
@@ -1849,91 +1964,53 @@ In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestActi
     })
   }
 
+  /** No REST power exists on the walker until Task 9. */
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
     false
 ```
 
-- [ ] **Step 9: Service and legal controls**
+Import `oathdigital.gameplay.phases.rest.TurnBoundary`. `enterWake` stays private: `turnBoundary` is a member of the same class.
 
-`GameApplicationService.applyUnblockedCommand`:
+- [ ] **Step 9: Run the suites**
 
-```scala
-      case GameCommand.BeginRest(playerId) =>
-        rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
-      case GameCommand.FinishRest(playerId) =>
-        rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
-```
+Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.gameplay.RestSuite oathdigital.application.GameApplicationServiceSuite"`
+Expected: PASS. `RestSuite` and `GameApplicationServiceSuite` are unchanged apart from imports and still exercise the legacy commands.
 
-Import `WarExhaustionRandomPort` from `phases.rest`.
-
-`LegalActionProjector`: import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}` in place of `phases.Rest`. The Act vector uses `BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player)`. Replace `case Phase.Rest => Vector("finishRest")` with:
-
-```scala
-        case Phase.Rest => Option.when(FinishRestProcedure.gate(catalog,
-          context.ready, active.player).isRight)("finishRest").toVector
-```
-
-- [ ] **Step 10: Move the other callers off `RestCommand`**
-
-- `StateBasedEvaluationSuite`: drop the `RestCommand` import. Each `Begin`/`Finish` pair becomes `accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, player))` (and `holder`).
-- `ForgeWalkerFixture:114-126` and `GameApplicationServiceSuite:601-603,1990-1998`: delete every `GameCommand.FinishRest` submission; `BeginRest` now finishes Rest.
-- `GameApplicationServiceSuite` "Rest v5 commands persist reload and project the next player's Wake": rename it "Begin Rest finishes Rest, persists and reloads to the next player's Wake". Delete the `restProjection` lines and the `FinishRest` submission; `finished` is the `BeginRest` result. Keep the load and phase assertions. The `takeRight(2)` formatVersion assertion stays.
-- `WalkerProcedureRegistrySuite`: add
-
-```scala
-  test("Begin Rest records Rest diagnostics; Finish Rest records none and " +
-      "parks as a generic Rest decision") {
-    assertEquals(WalkerProcedureRegistry.fallbackKind(
-      PhaseTransitionRef.BeginRest), Right(Some(MajorActionKind.Rest)))
-    assertEquals(WalkerProcedureRegistry.fallbackKind(
-      PhaseTransitionRef.FinishRest), Right(None))
-    assertEquals(WalkerProcedureRegistry.continuationFor(
-      PhaseTransitionRef.FinishRest, "any", actor, DecisionId("d")),
-      Right(Some(OathContinue.AwaitingRestDecision(actor, DecisionId("d")))))
-  }
-```
-
-   Fix any existing `fallbackKind` assertion to expect `Right(Some(...))`.
-
-- [ ] **Step 11: Run the Rest and walker suites**
-
-Run: `./sbtw "testOnly oathdigital.gameplay.RestSuite oathdigital.gameplay.StateBasedEvaluationSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.application.GameApplicationServiceSuite"`
-Expected: PASS. If "Rest returns controlled resources" fails on `usedPowers`, check that `BeginTurn` is the last recorded step.
-
-- [ ] **Step 12: Full gate and commit**
+- [ ] **Step 10: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
 
 ```bash
-git add src
-git commit -m "feat(rest): run Begin Rest and Finish Rest on the walker
+git add src/main/scala/oathdigital/model/ProcedureRef.scala src/main/scala/oathdigital/gameplay/phases/rest/WarExhaustionRandomPort.scala src/main/scala/oathdigital/gameplay/phases/rest/BeginRestProcedure.scala src/main/scala/oathdigital/gameplay/phases/rest/FinishRestProcedure.scala src/main/scala/oathdigital/gameplay/phases/rest/TurnBoundary.scala src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oathdigital/gameplay/walker/WalkerProcedureRegistry.scala src/main/scala/oathdigital/gameplay/OathRulesWalker.scala src/main/scala/oathdigital/gameplay/OathRules.scala src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/LegalActionProjector.scala src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala src/test/scala/oathdigital/gameplay/walker/WalkerProcedureRegistrySuite.scala src/test/scala/oathdigital/gameplay/RestSuite.scala src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala
+git commit -m "feat(rest): add Begin Rest and Finish Rest walker procedures
 
 Begin Rest enters the Rest phase and, with no usable REST power, finishes
 Rest in the same command. Finish Rest cleans up, refreshes Supply and
 hands the turn over through BeginTurn; the turn boundary then ends the
-round and evaluates Wake.
+round and evaluates Wake. Commands still route to legacy Rest.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 5: League Treaty as a walker power
+### Task 6: League Treaty as a walker power
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/rest/LeagueTreatyContribution.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/phases/RestCleanup.scala` (widen `suitOf`)
+- Create: `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatySuite.scala` (new)
 
 **Interfaces:**
-- Consumes: `DecisionOptionRef.FavorBank`, `DecisionOption.FavorBank`, `DistributeSlot`, `DecisionQuery.Distribute`, `DistributeAmount`, `DecisionAnswer.DistributeAnswer` (Task 1); `PhaseTransitionRef.BeginRest`, `FinishRestProcedure`'s `RestReturnFavor` window, `OathContinue.AwaitingRestDecision` (Task 4).
-- Produces: `LeagueTreatyContribution.id = PowerId("denizen.league-treaty")`, `LeagueTreatyContribution.forCatalog(catalog): Option[LeagueTreatyContribution]`, `LeagueTreatyContribution.destinationDecisionId(ready, rester, site, card): String` and `distributionDecisionId(...)` (same parameters).
+- Consumes: `DecisionOptionRef.FavorBank`, `DecisionOption.FavorBank`, `DistributeSlot`, `DecisionQuery.Distribute`, `DistributeAmount`, `DecisionAnswer.DistributeAnswer` (Task 1); `PhaseTransitionRef.BeginRest`, `FinishRestProcedure`'s `RestReturnFavor` window, `OathContinue.AwaitingRestDecision` (Task 5).
+- Produces: `LeagueTreatyContribution.id = PowerId("denizen.league-treaty")`, `LeagueTreatyContribution.forCatalog(catalog): Option[LeagueTreatyContribution]`, `LeagueTreatyContribution.destinationDecisionId(ready, rester, site, card): String` and `distributionDecisionId(...)` (same parameters). Test object `LeagueTreatyFixture` with `treatyCard: DenizenId`, `act: ReadyGame`, `suitOf(id: DenizenId): Suit` and `arranged(ruler: Option[PlayerId], favor: Vector[(Suit, Int)]): (ReadyGame, SiteId)`.
 
 - [ ] **Step 1: Write the failing suite**
 
-`LeagueTreatySuite.scala`:
+`src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala`:
 
 ```scala
 package oathdigital.gameplay.powers.rest
@@ -1942,21 +2019,21 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.model._
 
-class LeagueTreatySuite extends munit.FunSuite {
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
-  private val treatyCard = DenizenId("237")
+/** League Treaty arranged on a first-game Act state, shared with the
+  * pending-walker invariant (Task 13).
+  */
+object LeagueTreatyFixture {
+  val treatyCard = DenizenId("237")
 
-  private def act: ReadyGame = {
+  def act: ReadyGame = {
     val Ready(initial) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
     initial.copy(game = initial.game.copy(current = initial.game.current.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }
 
-  private def suitOf(id: DenizenId): Suit = Suit.all.find(suit => catalog
+  def suitOf(id: DenizenId): Suit = Suit.all.find(suit => catalog
     .denizens.find(_.id.value == id.value).exists(_.suit.value == suit.key)).get
 
   /** Places League Treaty and `favor` (suit -> amounts per card) on the
@@ -1964,7 +2041,7 @@ class LeagueTreatySuite extends munit.FunSuite {
     * and every other in-play card emptied of favor. The treaty site is ruled
     * by `ruler`'s warband when `ruler` is set, and by bandits otherwise.
     */
-  private def arranged(ruler: Option[PlayerId],
+  def arranged(ruler: Option[PlayerId],
       favor: Vector[(Suit, Int)]): (ReadyGame, SiteId) = {
     val base = act
     val current = base.game.current
@@ -2005,6 +2082,25 @@ class LeagueTreatySuite extends munit.FunSuite {
           case _ => false
         })))) -> site
   }
+}
+```
+
+`LeagueTreatySuite.scala`:
+
+```scala
+package oathdigital.gameplay.powers.rest
+
+import oathdigital.gameplay._
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.model._
+
+class LeagueTreatySuite extends munit.FunSuite {
+  import LeagueTreatyFixture._
+
+  private val rules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
 
   private def rester(ready: ReadyGame) = ready.game.current.turn.activePlayer
   private def offTurn(ready: ReadyGame) =
@@ -2095,8 +2191,6 @@ class LeagueTreatySuite extends munit.FunSuite {
 }
 ```
 
-If `suit.key` does not match the catalog's `suit.value` spelling, compare the way `RestCleanupPlan.suitOf` does. If the first game's cradle has fewer sites with room than the picks need, the helper still works: several picks share a site.
-
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
@@ -2104,7 +2198,7 @@ Expected: compilation fails on `LeagueTreatyContribution`.
 
 - [ ] **Step 3: Widen the suit lookup**
 
-In `RestCleanup.scala`, change `private def suitOf` to `private[gameplay] def suitOf` and leave its body alone. The steps below call it as `RestCleanupPlan.suitOf(catalog, cardId)`. If it lives on a different object or takes different parameters, call it with its real signature.
+In `RestCleanup.scala`, change `object RestCleanupPlan`'s `private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit]` to `private[gameplay] def suitOf` and leave its body alone. The steps below call it as `RestCleanupPlan.suitOf(catalog, cardId)`.
 
 - [ ] **Step 4: Implement the power**
 
@@ -2199,14 +2293,13 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
     DecisionQuery.Distribute(
       treaty.suits.filter(_ != bank).map { suit =>
         val maximum = treaty.favorOf(suit)
-        DistributeSlot(DecisionOption.FavorBank(
-          DecisionOptionRef.FavorBank(suit)), 0, maximum, Some(maximum))
-      } :+ DistributeSlot(DecisionOption.FavorBank(
-        DecisionOptionRef.FavorBank(bank)), treaty.favorOf(bank), treaty.total,
-        Some(treaty.favorOf(bank))),
+        DistributeSlot(DecisionOptionRef.FavorBank(suit), 0, maximum,
+          Some(maximum))
+      } :+ DistributeSlot(DecisionOptionRef.FavorBank(bank),
+        treaty.favorOf(bank), treaty.total, Some(treaty.favorOf(bank))),
       total = treaty.total,
       heading = Some("League Treaty: how much favor stays with its own bank?"),
-      confirmLabel = Some("Send favor"))
+      confirmLabel = "Send favor")
 
   /** For each source suit, what the ruler did not leave behind moves to the
     * destination, taken card by card in holding order.
@@ -2259,7 +2352,7 @@ object LeagueTreatyContribution {
 
 The `Branch` and the trailing `BuildOps` both read the destination answer. When the answer is a bank that is the only source suit, the `Branch` yields nothing and the `BuildOps` yields nothing: that favor reaches the same bank through cleanup. On decline, `chosenBank` is `None`, and both yield nothing.
 
-Check `DistributeSlot`'s bounds against Task 1's `wellFormed`. A destination with its own favor has `minimum = favorOf(bank)`, `maximum = total`. With at least one other source suit, the sum of minimums stays below `total` and the sum of maximums stays above it, so the query is never forced.
+These bounds pass Task 1's `wellFormed`. A destination with its own favor has `minimum = favorOf(bank)`, `maximum = total`. With at least one other source suit, the sum of minimums stays below `total` and the sum of maximums stays above it, so the query is never forced.
 
 - [ ] **Step 5: Register it**
 
@@ -2276,15 +2369,15 @@ Add a sentence to its doc: League Treaty is inert until Finish Rest walks its `R
 - [ ] **Step 6: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite oathdigital.gameplay.RestSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS. If the architecture suite's power-name scan fails because an engine file contains "leaguetreaty", rename nothing in the engine. Instead check which file matched: no file under `gameplay/walker` or `gameplay/operations` should name it.
+Expected: PASS.
 
 - [ ] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
-Expected: all green. `GameApplicationService` passes `WalkerPowerCatalog.default(catalog)`, so production Rest now asks the ruler.
+Expected: all green. Production commands still route to legacy Rest until Task 7, so in this commit only `startWalker` reaches the new power and legacy League Treaty keeps serving production.
 
 ```bash
-git add src
+git add src/main/scala/oathdigital/gameplay/powers/rest/LeagueTreatyContribution.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/phases/RestCleanup.scala src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatySuite.scala
 git commit -m "feat(rest): fold League Treaty into Finish Rest as a walker power
 
 The treaty site's ruler picks a destination bank or declines, then
@@ -2296,7 +2389,363 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 6: Delete the legacy Rest seam
+### Task 7: Route Rest commands to the walker
+
+This is the switch. After this commit `beginRest` and `finishRest` run only the walker procedures, and League Treaty is reached through `LeagueTreatyContribution` (Task 6). No commit on the branch leaves League Treaty unreachable (Correction 10).
+
+**Files:**
+- Modify: `src/main/scala/oathdigital/application/GameApplicationService.scala:486-490`
+- Modify: `src/main/scala/oathdigital/application/LegalActionProjector.scala:158`
+- Modify: `src/main/scala/oathdigital/gameplay/OathRules.scala:168-183,244-246`
+- Modify: `src/main/scala/oathdigital/gameplay/phases/Rest.scala` (trim to legacy League Treaty resolve and decline)
+- Create: `src/test/scala/oathdigital/application/ParkedServiceFixture.scala`
+- Test: `src/test/scala/oathdigital/gameplay/RestSuite.scala`, `src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala`, `src/test/scala/oathdigital/gameplay/StateBasedEvaluationSuite.scala:8,136-161`, `src/test/scala/oathdigital/application/ForgeWalkerFixture.scala:114-126`, `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala:601-603,1570-1591,1990-1998`
+
+**Interfaces:**
+- Consumes: `PhaseTransitionRef.BeginRest`/`FinishRest`, `FinishRestProcedure.gate` (Task 5); `LeagueTreatyContribution` and `WalkerPowerCatalog.default` registering it (Task 6).
+- Produces:
+  - `GameCommand.BeginRest` and `GameCommand.FinishRest` start the walker procedures.
+  - The `finishRest` legal control appears iff `FinishRestProcedure.gate` passes.
+  - Test fixture `ParkedServiceFixture` with `setUp(service, gameId, placementSites = sites, setupPlan = plan): GameAccepted`, `withWorldDeckTop(base: FirstGameSetupPlan, cards: Vector[DenizenId]): FirstGameSetupPlan`, `seed(repository, gameId, at: Long, ops: Vector[CoreOperation]): Unit`, `treatyCard: DenizenId`, and `leagueTreatyPark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId)` returning `(parked, active, ruler)`.
+
+- [ ] **Step 1: Write the service fixture**
+
+`src/test/scala/oathdigital/application/ParkedServiceFixture.scala`:
+
+```scala
+package oathdigital.application
+
+import oathdigital.gameplay.OathContinue
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.operations.{CoreOperation, Kill, Location, Move,
+  Piece, PositionedLocation, StackPosition}
+import oathdigital.gameplay.setup.{FirstGameRulesData, FirstGameSetupPlan}
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
+import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
+import oathdigital.gameplay.walker.WalkerStepRecorded
+import oathdigital.model._
+import oathdigital.serialization.GameEventWire
+
+/** Real games parked on a walker through the application service.
+  *
+  * A park that needs a specific card in play puts that card on top of the
+  * world deck through the setup plan, then journals one arranging
+  * `WalkerStepRecorded` delta that moves it into place: the same replay path
+  * production uses, as the off-turn Oathkeeper reload test does.
+  */
+object ParkedServiceFixture {
+  val treatyCard: DenizenId = DenizenId("237")
+
+  def setUp(service: GameApplicationService, gameId: String,
+      placementSites: Vector[SiteId] = sites,
+      setupPlan: FirstGameSetupPlan = plan): GameAccepted = {
+    var accepted = service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
+      .toOption.get
+    Vector(PlayerId("p2"), PlayerId("p3"), PlayerId("p1")).zipWithIndex
+      .foreach { case (playerId, index) =>
+        accepted = service.handle(gameId, accepted.nextSequence,
+          GameCommand.PlacePawn(playerId, placementSites(index))).toOption.get
+        val participantIndex =
+          setupPlan.participants.indexWhere(_.playerId == playerId)
+        accepted = service.handle(gameId, accepted.nextSequence,
+          GameCommand.ChooseAdviser(playerId,
+            setupPlan.denizenOrder(6 + participantIndex * 3))).toOption.get
+      }
+    accepted
+  }
+
+  /** `cards`, in order, become the top of the world deck. A card already
+    * dealt by setup swaps places with the card it displaces, and the world
+    * deck is rebuilt with the fixture's own interleaving of visions.
+    */
+  def withWorldDeckTop(base: FirstGameSetupPlan,
+      cards: Vector[DenizenId]): FirstGameSetupPlan = {
+    val dealt = 6 + base.participants.size * 3
+    val order = cards.zipWithIndex.foldLeft(base.denizenOrder) {
+      case (current, (card, offset)) =>
+        val target = dealt + offset
+        val at = current.indexOf(card)
+        if (at < 0) current.updated(target, card)
+        else current.updated(target, card).updated(at, current(target))
+    }
+    val remaining = order.drop(dealt)
+    base.copy(denizenOrder = order, worldDeckOrder =
+      remaining.take(10) ++ FirstGameRulesData.visions.take(2) ++
+        remaining.slice(10, 25) ++ FirstGameRulesData.visions.drop(2) ++
+        remaining.drop(25))
+  }
+
+  /** Journals one arranging delta at `at`, the stream's next sequence. */
+  def seed(repository: InMemoryEventStreamRepository, gameId: String, at: Long,
+      ops: Vector[CoreOperation]): Unit = {
+    val arrange = WalkerStepRecorded("0", DeltaRecorded(OperationApplied(
+      s"arrange the $gameId fixture")), ops, Vector.empty)
+    val record = ujson.write(GameEventWire.encodeEvent(gameId, catalogRef, at,
+      arrange).toOption.get)
+    repository.append(gameId, ExpectedStream.AtNextSequence(at), Vector(record))
+  }
+
+  def topOfWorldDeck(card: DenizenId, to: Location,
+      orientation: Orientation = Orientation.FaceUp): Move =
+    Move(Piece.Card(card), PositionedLocation(Location.Deck(CardDeck.World),
+      StackPosition.Top), PositionedLocation(to), Some(orientation))
+
+  def cleared(ready: oathdigital.gameplay.ReadyGame, site: SiteId)
+      : Vector[CoreOperation] = ready.game.current.map.sites(site).forces match {
+    case SiteForces.Occupied(kind, count) => Vector(Kill(Piece.Warbands(kind,
+      count), PositionedLocation(Location.Site(site))))
+    case SiteForces.Empty => Vector.empty
+  }
+
+  /** League Treaty on the first cradle site, ruled by an off-turn player's
+    * warband and holding 2 favor of its own suit. The active player ends
+    * Wake and begins Rest, which finishes Rest and parks on the ruler's
+    * destination decision.
+    */
+  def leagueTreatyPark(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId) = {
+    val setup = setUp(service, gameId, setupPlan = withWorldDeckTop(plan,
+      Vector(treatyCard)))
+    val Ready(base) = setup.state: @unchecked
+    val current = base.game.current
+    assert(current.commonCards.worldDeck.headOption.contains(treatyCard),
+      "League Treaty must top the world deck")
+    val active = current.turn.activePlayer
+    val ruler = current.players.map(_.player).find(_ != active).get
+    val lineage = current.players.find(_.player == ruler).get.lineage
+    val site = current.map.cradle.head
+    val suit = Suit.all.find(s => catalog.denizens.exists(d =>
+      d.id.value == treatyCard.value && d.suit.value == s.key)).get
+    seed(repository, gameId, setup.nextSequence, cleared(base, site) ++ Vector(
+      topOfWorldDeck(treatyCard, Location.Site(site)),
+      Move(Piece.Warbands(ForceKind.Exile(lineage), 1),
+        PositionedLocation(Location.PlayArea(ruler)),
+        PositionedLocation(Location.Site(site))),
+      Move(Piece.Favor(2), PositionedLocation(Location.FavorBank(suit)),
+        PositionedLocation(Location.OnCard(treatyCard)))))
+    val seeded = service.load(gameId).toOption.flatten.get
+    val act = service.handle(gameId, seeded.nextSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val parked = service.handle(gameId, act.nextSequence,
+      GameCommand.BeginRest(active)).toOption.get
+    assert(parked.continue match {
+      case OathContinue.AwaitingRestDecision(owner, _) => owner == ruler
+      case _ => false
+    }, s"expected the ruler's Rest decision, got ${parked.continue}")
+    (parked, active, ruler)
+  }
+}
+```
+
+- [ ] **Step 2: Write the failing service test**
+
+Add to `GameApplicationServiceSuite`:
+
+```scala
+  test("beginRest through the service parks the off-turn League Treaty ruler " +
+      "and survives reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (parked, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      service, repository, "game-league-treaty")
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load("game-league-treaty").toOption.flatten.get
+    assertEquals(reloaded.state, parked.state)
+    val OathContinue.AwaitingRestDecision(_, decision) = parked.continue: @unchecked
+    val decline = GameCommand.ResolveWalker(_: PlayerId, TreeDecision(
+      decision.value, ChooseOneAnswer(DecisionOptionRef.Button("decline"))))
+    assert(service.handle("game-league-treaty", parked.nextSequence,
+      decline(active)).isLeft)
+    val finished = service.handle("game-league-treaty", parked.nextSequence,
+      decline(ruler)).toOption.get
+    val Ready(after) = finished.state: @unchecked
+    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(after.game.current.turn.activePlayer, active)
+  }
+```
+
+- [ ] **Step 3: Run to verify it fails**
+
+Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
+Expected: FAIL in the new test. The fixture's `parked.continue` assertion reports `AwaitingRestPowerDecision` from the legacy handler, not `AwaitingRestDecision`.
+
+- [ ] **Step 4: Route the commands**
+
+`GameApplicationService.applyUnblockedCommand`:
+
+```scala
+      case GameCommand.BeginRest(playerId) =>
+        rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
+      case GameCommand.FinishRest(playerId) =>
+        rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
+```
+
+`LegalActionProjector`: import `oathdigital.gameplay.phases.rest.FinishRestProcedure` and replace `case Phase.Rest => Vector("finishRest")` with:
+
+```scala
+        case Phase.Rest => Option.when(FinishRestProcedure.gate(catalog,
+          context.ready, active.player).isRight)("finishRest").toVector
+```
+
+- [ ] **Step 5: Trim legacy Rest to League Treaty resolve and decline**
+
+`Rest.scala` becomes:
+
+```scala
+package oathdigital.gameplay.phases
+
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.{OathState, OathTransition, OathViolation}
+import oathdigital.gameplay.OathEvent.RestPowerEvent
+import oathdigital.gameplay.powers.rest.RestPowerIntegration
+import oathdigital.model._
+
+sealed trait RestCommand extends Product with Serializable
+object RestCommand {
+  final case class ResolvePower(playerId: PlayerId, decision: DecisionId,
+      allocations: Vector[FavorAllocation], destinationBank: Suit)
+      extends RestCommand
+  final case class DeclinePower(playerId: PlayerId, decision: DecisionId)
+      extends RestCommand
+}
+
+/** Legacy League Treaty resolution only. Nothing starts a legacy League
+  * Treaty decision since Rest commands moved onto the walker; Task 8 deletes
+  * this file.
+  */
+object Rest {
+  def handle(catalog: ExecutableCatalog, state: OathState, command: RestCommand)
+      : Either[OathViolation, OathTransition] = command match {
+    case RestCommand.ResolvePower(playerId, decision, allocations, bank) =>
+      RestPowerIntegration.resolveLeagueTreaty(catalog, state, playerId,
+        decision, allocations, bank)
+    case RestCommand.DeclinePower(playerId, decision) =>
+      RestPowerIntegration.decline(catalog, state, playerId, decision)
+  }
+
+  def evolve(catalog: ExecutableCatalog, state: OathState, event: RestPowerEvent)
+      : Either[OathViolation, OathState] =
+    RestPowerIntegration.evolve(catalog, state, event)
+}
+```
+
+`OathRules`: `def handle(state: OathState, command: RestCommand): Either[OathViolation, OathTransition] = Rest.handle(catalog, state, command)`. The evolve arms become `case event: RestPowerEvent => Rest.evolve(catalog, state, event)` and `case _: RestStarted | _: RestCompleted => Left(InvalidEventOrder("legacy Rest events no longer replay"))`.
+
+In `RestWalkerSuite`, delete "walker Rest reaches the same game as legacy Begin and Finish Rest" and the `RestCommand` import. It pinned parity while both paths existed.
+
+- [ ] **Step 6: Rewrite `RestSuite` against the walker**
+
+Replace its imports with:
+
+```scala
+import oathdigital.gameplay.phases.RestCleanupPlan
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
+import oathdigital.gameplay.walker.WalkerCompleted
+import oathdigital.model._
+import oathdigital.gameplay.setup._
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.gameplay.OathEvent.IgnoredRulesRecorded
+import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.OathViolation.{UnsupportedRestState,
+  UnsupportedRoundEndCatalogInventory, UnsupportedRuleCatalog}
+import oathdigital.catalog.CatalogPower
+```
+
+Add under `act`:
+
+```scala
+  private def rest(state: OathState, player: PlayerId,
+      using: OathRules = rules) =
+    using.startWalker(state, PhaseTransitionRef.BeginRest, player)
+```
+
+Rewrite each test body as follows, keeping the test name unless stated:
+
+1. "Rest returns controlled resources reveals secrets refreshes and wakes next": replace the `started`, `completed` and `event` lines with
+
+```scala
+    val completed = rest(Ready(prepared), actor.player).toOption.get
+    assertEquals(completed.events.collect { case WalkerCompleted(p) => p },
+      Vector(PhaseTransitionRef.BeginRest, PhaseTransitionRef.FinishRest))
+    val Ready(after) = completed.state: @unchecked
+    val rested = after.game.current.players.find(_.player == actor.player).get
+```
+
+   Delete `assertEquals(event.returnedFavor.values.sum, 3)` and `assertEquals(event.returnedSecrets, 6)`. The bank `+ 3` and faceup `+ 2 + 6` assertions that remain pin the same amounts.
+2. "Rest rejects a missing bounded warband supply": `rest(Ready(malformed), actor.player)`.
+3. "Rest globally cleans every in-play denizen and relic": replace `began` and `finished` with `val finished = rest(Ready(prepared), actor.player).toOption.get`.
+4. Replace "replay validates recorded Rest outcome and advances the round" with:
+
+```scala
+  test("replaying a round of walker Rests reproduces the state and advances the round") {
+    var state: OathState = Ready(act)
+    var events = Vector.empty[OathEvent]
+    val participants = act.game.current.players.map(_.player)
+    val start = participants.indexOf(act.setup.firstPlayer)
+    val order = participants.drop(start) ++ participants.take(start)
+    order.foreach { player =>
+      val rested = rest(state, player).toOption.get
+      events ++= rested.events
+      state = rested.state
+      if (player != order.last) {
+        val woke = rules.startWalker(state, PhaseTransitionRef.EndWake,
+          state.asInstanceOf[Ready].value.game.current.turn.activePlayer).toOption.get
+        events ++= woke.events
+        state = woke.state
+      }
+    }
+    val Ready(after) = state: @unchecked
+    assertEquals(after.game.current.tracks.round, 2)
+    assertEquals(after.game.current.turn.activePlayer, after.setup.firstPlayer)
+    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertEquals(events.foldLeft[Either[OathViolation, OathState]](
+      Right(Ready(act)))((next, event) => next.flatMap(rules.evolve(_, event))),
+      Right(state))
+  }
+```
+
+5. "unrelated active powers and the end-die Arbiter legacy do not block": `assert(rest(Ready(supported), supported.game.current.turn.activePlayer).isRight)`.
+6. "each relevant Rest handler records fallback diagnostics without blocking": both `rules.handle(..., RestCommand.Begin(actor.player))` calls become `rest(Ready(...), actor.player)`.
+7. "changed inventory in every catalog family fails before runtime discovery": `rest(Ready(base), actor, new OathRules(c))`.
+8. "altered banner and Foundation types record stable fallback identities": `rest(Ready(ready), actor)`.
+9. "last player of round eight finishes the game by War Exhaustion": `val finished = rest(Ready(unsupported), last, deterministic).toOption.get` replaces `started` and `finished`, and the `GameEnded` assertion reads `rest(finished.state, last, deterministic).left.toOption.get`.
+10. Delete "League Treaty gives its off-turn ruler an atomic optional Rest decision" and "League Treaty is omitted without a player ruler or regional favor". `LeagueTreatySuite` (Task 6) and the service test above replace them.
+
+Remove the now-unused `RestOutcomeMismatch` import and the `RestCompleted`/`RestStarted` event imports.
+
+- [ ] **Step 7: Move the other callers off the legacy Rest commands**
+
+- `StateBasedEvaluationSuite`: drop the `RestCommand` import. Each `accept(rules.handle(state, RestCommand.Begin(x)))` / `accept(rules.handle(state, RestCommand.Finish(x)))` pair (lines 138-139 with `player`, 159-160 with `holder`) becomes `accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, x))`.
+- `ForgeWalkerFixture:114-126`: delete both `GameCommand.FinishRest` submissions (lines 117-118 and 124-125). `BeginRest` now finishes Rest.
+- `GameApplicationServiceSuite:601-603`: delete the `GameCommand.FinishRest(actor)` submission. `1990-1998`: delete the `GameCommand.FinishRest(actor)` submission.
+- `GameApplicationServiceSuite` "Rest v5 commands persist reload and project the next player's Wake": rename it "Begin Rest finishes Rest, persists and reloads to the next player's Wake". Replace everything from `val restProjection` through `val finished = ...` with `val finished = begun`. Keep the load, phase, active-player and `takeRight(2)` formatVersion assertions.
+
+- [ ] **Step 8: Run the Rest and service suites**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.RestSuite oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.StateBasedEvaluationSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
+Expected: PASS.
+
+- [ ] **Step 9: Full gate and commit**
+
+Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
+Expected: all green.
+
+```bash
+git add src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/LegalActionProjector.scala src/main/scala/oathdigital/gameplay/OathRules.scala src/main/scala/oathdigital/gameplay/phases/Rest.scala src/test/scala/oathdigital/application/ParkedServiceFixture.scala src/test/scala/oathdigital/gameplay/RestSuite.scala src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala src/test/scala/oathdigital/gameplay/StateBasedEvaluationSuite.scala src/test/scala/oathdigital/application/ForgeWalkerFixture.scala src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala
+git commit -m "feat(rest): route Begin Rest and Finish Rest to the walker
+
+Rest commands now run only the walker procedures, and League Treaty's
+off-turn ruler answers through the walker. Legacy Rest keeps only the
+unreachable League Treaty resolution until the seam is deleted.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 8: Delete the legacy Rest seam
 
 This task deletes code and adds no behavior. Its test is the grep in Step 6, plus the full gate.
 
@@ -2308,12 +2757,17 @@ This task deletes code and adds no behavior. Its test is the grep in Step 6, plu
 - Test: `BackendArchitectureSuite.scala:387-397`, `GameEventWireSuite.scala`, `server/GameHttpWireSuite.scala`, `shared/.../CommandProtocolSuite.scala:7-10`, `ProjectionProtocolSuite.scala:71-75`, `frontend/.../ProtocolTestCommands.scala`, `HttpGameClientSuite.scala:184-198`, `ServerModeUiSuite.scala:611-630`
 
 **Interfaces:**
-- Consumes: Tasks 4 and 5 (nothing reaches the legacy seam any more).
+- Consumes: Tasks 5-7 (nothing reaches the legacy seam any more).
 - Produces: no new names. `RestCommand`, `RestPowerEvent`, `RestStarted`, `RestCompleted`, the three League Treaty events, `PendingProcedure.RestPowerDecision`, `OathContinue.AwaitingRestPowerDecision`, `RestOutcomeMismatch`, `GameCommand.ResolveRestPower`/`DeclineRestPower`, the `resolveRestPower`/`declineRestPower` intents, `RestPowerProjection`, `LeagueTreatyProjection` and `GameProjection.restPower`/`restPowerWaiting` stop existing.
 
 - [ ] **Step 1: Delete the gameplay seam**
 
-- `git rm` the four backend files above.
+- Delete the four backend files:
+
+```bash
+git rm src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oathdigital/gameplay/powers/rest/RestPowerIntegration.scala src/main/scala/oathdigital/gameplay/powers/rest/RestPowerHandler.scala src/main/scala/oathdigital/gameplay/powers/rest/LeagueTreatyPower.scala
+```
+
 - `OathRules`: delete `handle(state, command: RestCommand)`, the `RestPowerEvent`/`RestStarted`/`RestCompleted` evolve arms and the `phases.{Rest, RestCommand}` import.
 - `RestPowers`: drop `LeagueTreatyPower` from `powers` and its import. `LeagueTreatyContribution` covers the id, following the Catacombs precedent in `RecoverPowers`' doc. Add one line to the object doc saying so.
 - `GameProcedureProtocol`: delete `AwaitingRestPowerDecision` and every match arm naming it.
@@ -2359,10 +2813,10 @@ Expected: no output.
 - [ ] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
-Expected: all green. If `ReviewedPowerCatalog.requireAudited` or `BeginRestProcedure.validateSupportedState` now fails on a fingerprint, recompute that constant from the failing message (Global Constraints). If an "unclassified-handler" rejection names `denizen.league-treaty`, compare how `denizen.catacombs` is audited after leaving `RecoverPowers`, and do the same.
+Expected: all green. Neither fingerprint changes: `ReviewedPowerCatalog.AuditedCatalogFingerprint` and the Rest handler inventory both hash the catalog, not the Scala `Power` objects. Dropping `LeagueTreatyPower` from `RestPowers` follows Catacombs, which left `RecoverPowers` the same way and stays audited through `CatalogHandlerInventory.handlerIds`.
 
 ```bash
-git add -A src shared frontend
+git add src/main/scala/oathdigital/gameplay/OathRules.scala src/main/scala/oathdigital/gameplay/powers/RestPowers.scala src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala src/main/scala/oathdigital/gameplay/model/GameViolation.scala src/main/scala/oathdigital/gameplay/setup/FirstGameSetup.scala src/main/scala/oathdigital/model/PendingProcedures.scala src/main/scala/oathdigital/serialization/GameEventWire.scala src/main/scala/oathdigital/serialization/LifecycleEventCodec.scala src/main/scala/oathdigital/application/GameCommands.scala src/main/scala/oathdigital/application/Authorization.scala src/main/scala/oathdigital/application/GameIntentMapper.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/PendingProcedureProjector.scala src/main/scala/oathdigital/application/ScopedProjectionContext.scala src/main/scala/oathdigital/application/GameProjection.scala shared/src/main/scala/oathdigital/protocol/CommandIntents.scala shared/src/main/scala/oathdigital/protocol/CommandIntentCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntentDecoders.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala frontend/src/main/scala/oathdigital/frontend/ServerUiSupport.scala frontend/src/main/scala/oathdigital/frontend/package.scala src/test/scala/oathdigital/gameplay/BackendArchitectureSuite.scala src/test/scala/oathdigital/serialization/GameEventWireSuite.scala src/test/scala/oathdigital/server/GameHttpWireSuite.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala frontend/src/test/scala/oathdigital/frontend/ProtocolTestCommands.scala frontend/src/test/scala/oathdigital/frontend/HttpGameClientSuite.scala frontend/src/test/scala/oathdigital/frontend/ServerModeUiSuite.scala
 git commit -m "refactor(rest): delete the legacy Rest power seam
 
 Rest events, League Treaty events, the Rest power pending procedure,
@@ -2374,7 +2828,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 7: The phase power engine
+### Task 9: The phase power engine
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powerresolver/PhasePower.scala`
@@ -2389,7 +2843,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Test: `src/test/scala/oathdigital/gameplay/PhasePowerSuite.scala` (new), `src/test/scala/oathdigital/model/ProcedureRefSuite.scala` (new), `walker/WalkerProcedureRegistrySuite.scala`, `serialization/GameEventWireSuite.scala`, `gameplay/BackendArchitectureSuite.scala:~254`
 
 **Interfaces:**
-- Consumes: `PowerSourceRef.Card`, `BeginTurn` (Task 3); `restPowerUsable` stub, `continuationIn(Phase.Rest)` (Task 4).
+- Consumes: `PowerSourceRef.Card`, `BeginTurn` (Task 4); `restPowerUsable` stub, `continuationIn(Phase.Rest)` (Task 5).
 - Produces:
   - `trait PhasePower { def id: PowerId; def timing: PowerTiming; def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Boolean; def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Either[OathViolation, Operation] }`; `final case class PhasePowers(powers: Vector[PhasePower])` with `PhasePowers.empty`.
   - `PhasePowerProcedure.PowerSource(power: PhasePower, card: CardId, ref: DecisionOptionRef)`; `PhasePowerProcedure.usable(catalog, ready, player, powers): Vector[PowerSource]`; `PhasePowerProcedure.check(catalog, ready, requester, power, source): Either[OathViolation, CardId]`; `PhasePowerProcedure.useRef(power, card): PowerUseRef`.
@@ -2398,7 +2852,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `OathRules(..., phasePowerCatalog: PhasePowers = PhasePowers.empty)`, the last constructor parameter.
   - `WalkerProcedureRegistry.build`/`rebuild(..., args, phasePowers: PhasePowers = PhasePowers.empty, registrations = entries)`.
   - `WalkerDecisionProjector(..., rebuildTree, phasePowers: PhasePowers = PhasePowers.empty)`.
-  - `PhasePowerCatalog.default(catalog): PhasePowers` (empty until Task 8).
+  - `PhasePowerCatalog.default(catalog): PhasePowers` (empty until Task 10).
 
 - [ ] **Step 1: Write the failing reference test**
 
@@ -2529,6 +2983,28 @@ class PhasePowerSuite extends munit.FunSuite {
       Vector(DecisionOptionRef.Denizen(DenizenId("no-such-card")))).isLeft)
   }
 
+  test("a card at a site the player rules is a source, and one at an unruled " +
+      "site is not") {
+    val power = TestPower(powerId, PowerTiming.Act)
+    val current = base.game.current
+    val holder = current.players.find(_.player == actor).get
+    val far = current.map.inPlay.find(id => !holder.pawnSite.contains(id)).get
+    def withCardAt(forces: SiteForces) = base.copy(game = base.game.copy(
+      current = current.copy(
+        turn = TurnState(actor, Phase.Act, Set.empty),
+        players = current.players.map(p =>
+          if (p.player != actor) p else p.copy(advisers = Vector.empty)),
+        map = current.map.copy(sites = current.map.sites.updated(far,
+          current.map.sites(far).copy(forces = forces, denizens = Vector(
+            DenizenState(card, Orientation.FaceUp, Tokens.empty))))))))
+    val powers = PhasePowers(Vector(power))
+    assertEquals(PhasePowerProcedure.usable(catalog, withCardAt(
+      SiteForces.Occupied(ForceKind.Exile(holder.lineage), 1)), actor, powers)
+      .map(_.ref), Vector(source))
+    assertEquals(PhasePowerProcedure.usable(catalog, withCardAt(
+      SiteForces.Occupied(ForceKind.Bandit, 1)), actor, powers), Vector.empty)
+  }
+
   test("a usable REST power stops the Rest auto-skip, and using it still " +
       "leaves Finish Rest to the player") {
     val power = TestPower(powerId, PowerTiming.Rest)
@@ -2622,7 +3098,7 @@ object PhasePowers {
     all.find(_.key == key).orElse(usePower(key))
 ```
 
-`StartableRef.fromKey`: `all.find(_.key == key).orElse(ActionRef.usePower(key))`. `ProcedureRef.fromFamilyKey`: `all.find(ref => ref.family == family && ref.key == key).orElse(ActionRef.usePower(key).filter(_.family == family))`. Update both docs to say a use-power key parses rather than being listed. Before relying on it, check that `PowerId.fromValue("")` is `None`. If it is not, add `.filter(_.nonEmpty)` before `.flatMap`.
+`StartableRef.fromKey`: `all.find(_.key == key).orElse(ActionRef.usePower(key))`. `ProcedureRef.fromFamilyKey`: `all.find(ref => ref.family == family && ref.key == key).orElse(ActionRef.usePower(key).filter(_.family == family))`. Update both docs to say a use-power key parses rather than being listed. `PowerId.fromValue` accepts only `[a-z][a-z0-9-]*(\.[a-z0-9-]+)+`, so an empty or malformed id parses to `None`.
 
 `GameProcedureProtocol.scala`, after `AwaitingRestDecision`:
 
@@ -2632,7 +3108,7 @@ object PhasePowers {
       decision: DecisionId) extends OathContinue
 ```
 
-Give it an arm wherever Task 4 gave `AwaitingRestDecision` one.
+No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
 - [ ] **Step 5: One access rule for reviewed and phase powers**
 
@@ -2680,8 +3156,9 @@ In `PowerSupport.scala`, replace `accessible`'s body with `RuleSourceAccess.acce
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, ReadyGame, RuleSourceAccess,
-  RuleSourceIndex, RuleSourceRef}
+import oathdigital.gameplay.{IndexedRuleSource, OathViolation, ReadyGame,
+  RuleSourceAccess, RuleSourceFace, RuleSourceIndex, RuleSourceRef, SiteRule,
+  SiteRuler}
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.operations.{Operation, RecordPowerUse, Sequence}
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
@@ -2714,9 +3191,30 @@ object PhasePowerProcedure {
   def sources(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
       power: PhasePower): Vector[(CardId, DecisionOptionRef)] =
     RuleSourceIndex.enumerate(catalog, ready).filter(source =>
-      source.powerIds.contains(power.id) && RuleSourceAccess.accessible(
-        source.source, source.face, ready, player, facedownAdviser = false))
-      .flatMap(source => cardRef(source.source))
+      source.powerIds.contains(power.id) && accessible(source, ready, player))
+      .flatMap(source => sourceRef(source.source))
+
+  /** The reviewed access rule, plus faceup site cards and relics and intact
+    * edifices at sites `player` rules (Corrections 6).
+    */
+  private def accessible(source: IndexedRuleSource, ready: ReadyGame,
+      player: PlayerId): Boolean =
+    RuleSourceAccess.accessible(source.source, source.face, ready, player,
+      facedownAdviser = false) || (source.source match {
+      case RuleSourceRef.SiteCard(site, _) =>
+        source.face == RuleSourceFace.FaceUp && rules(ready, player, site)
+      case RuleSourceRef.SiteRelic(site, _) =>
+        source.face == RuleSourceFace.FaceUp && rules(ready, player, site)
+      case RuleSourceRef.Edifice(site, _) =>
+        source.face == RuleSourceFace.Intact && rules(ready, player, site)
+      case _ => false
+    })
+
+  private def rules(ready: ReadyGame, player: PlayerId, site: SiteId): Boolean = {
+    val current = ready.game.current
+    current.map.sites.get(site).exists(state => SiteRule.ruler(state.forces,
+      current.players).toOption.contains(SiteRuler.Player(player)))
+  }
 
   def check(catalog: ExecutableCatalog, ready: ReadyGame, requester: PlayerId,
       power: PhasePower, source: DecisionOptionRef)
@@ -2769,7 +3267,7 @@ object PhasePowerProcedure {
       : Either[OathViolation, Operation] = for {
     power <- find(id, powers)
     source <- single(id, args)
-    card <- cardRef(source)
+    card <- sourceCard(source)
     tree <- power.build(ready, player, source)
   } yield Sequence(Vector(tree, RecordPowerUse(useRef(power, card))))
 
@@ -2782,7 +3280,7 @@ object PhasePowerProcedure {
       s"one source, got ${other.size}"))
   }
 
-  private def cardRef(source: RuleSourceRef): Option[(CardId, DecisionOptionRef)] =
+  private def sourceRef(source: RuleSourceRef): Option[(CardId, DecisionOptionRef)] =
     source match {
       case RuleSourceRef.SiteCard(_, id: DenizenId) =>
         Some(id -> DecisionOptionRef.Denizen(id))
@@ -2793,7 +3291,7 @@ object PhasePowerProcedure {
       case _ => None
     }
 
-  private def cardRef(source: DecisionOptionRef): Either[OathViolation, CardId] =
+  private def sourceCard(source: DecisionOptionRef): Either[OathViolation, CardId] =
     source match {
       case DecisionOptionRef.Denizen(id) => Right(id)
       case DecisionOptionRef.Relic(id) => Right(id)
@@ -2802,8 +3300,6 @@ object PhasePowerProcedure {
     }
 }
 ```
-
-If the compiler rejects the two `cardRef` overloads under `-Xlint`, rename the second one `sourceCard`.
 
 `gameplay/powers/PhasePowerCatalog.scala`:
 
@@ -2897,7 +3393,7 @@ object PhasePowerCatalog {
 
 `GameEventWireSuite`: next to `WalkerCompleted(TriggeredProcedureRef.Oathkeeper)` (line ~184), add `WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue")))` to the same round-trip list.
 
-`BackendArchitectureSuite`: `val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r`, and add "or `PhasePower`" to the comment above it. If the engine-name scan then flags `PhasePowerProcedure`, the regex's `declaration` picks the declared name; an engine file matches only when it names a specific power, and no file under `gameplay/walker` or `gameplay/operations` should.
+`BackendArchitectureSuite`: `val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r`, and add "or `PhasePower`" to the comment above it.
 
 - [ ] **Step 9: Run the suites**
 
@@ -2910,7 +3406,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src
+git add src/main/scala/oathdigital/gameplay/powerresolver/PhasePower.scala src/main/scala/oathdigital/gameplay/phases/PhasePowerProcedure.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/main/scala/oathdigital/gameplay/RuleSourceIndex.scala src/main/scala/oathdigital/gameplay/powers/PowerSupport.scala src/main/scala/oathdigital/model/ProcedureRef.scala src/main/scala/oathdigital/gameplay/model/GameProcedureProtocol.scala src/main/scala/oathdigital/gameplay/walker/WalkerProcedureRegistry.scala src/main/scala/oathdigital/gameplay/OathRulesWalker.scala src/main/scala/oathdigital/gameplay/OathRules.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/test/scala/oathdigital/gameplay/PhasePowerSuite.scala src/test/scala/oathdigital/model/ProcedureRefSuite.scala src/test/scala/oathdigital/gameplay/walker/WalkerProcedureRegistrySuite.scala src/test/scala/oathdigital/serialization/GameEventWireSuite.scala src/test/scala/oathdigital/gameplay/BackendArchitectureSuite.scala
 git commit -m "feat(walker): use WAKE, ACTION and REST powers through one procedure
 
 UsePower(powerId) gates on one usability function, walks the power's
@@ -2922,7 +3418,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 8: Silver Tongue
+### Task 10: Silver Tongue
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/rest/SilverTongue.scala`
@@ -2930,7 +3426,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Test: `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala` (new), `src/test/scala/oathdigital/gameplay/RestSuite.scala` ("each relevant Rest handler records fallback diagnostics without blocking")
 
 **Interfaces:**
-- Consumes: `PhasePower`, `PhasePowers`, `PhasePowerProcedure`, `ActionRef.UsePower`, `OathContinue.AwaitingPowerDecision` (Task 7); `DecisionOptionRef.FavorBank` (Task 1); `RestCleanupPlan.suitOf` (Task 5).
+- Consumes: `PhasePower`, `PhasePowers`, `PhasePowerProcedure`, `ActionRef.UsePower`, `OathContinue.AwaitingPowerDecision` (Task 9); `DecisionOptionRef.FavorBank` (Task 1); `RestCleanupPlan.suitOf` (Task 6).
 - Produces: `SilverTongue.id = PowerId("denizen.silver-tongue")`, `SilverTongue.forCatalog(catalog): Option[SilverTongue]`, `SilverTongue.choiceDecisionId(ready, player): String`.
 
 - [ ] **Step 1: Write the failing suite**
@@ -3072,11 +3568,11 @@ import oathdigital.model._
   *
   * The REST power is a [[PhasePower]]. The adviser limit is a registered
   * [[Restriction]] at `SearchPlayFacedownAdviser`, inert until Search walks
-  * that window. It reads the holder's current advisers; Search's migration
-  * decides whether it must also read the cards the tree is about to add.
+  * that window. It counts the advisers the holder would have once the
+  * tree's visible card moves land (Corrections 12).
   */
-final case class SilverTongue private (catalog: ExecutableCatalog)
-    extends PhasePower with ContributingPower {
+final case class SilverTongue private (cardId: DenizenId,
+    catalog: ExecutableCatalog) extends PhasePower with ContributingPower {
   import SilverTongue._
 
   def id: PowerId = SilverTongue.id
@@ -3104,12 +3600,34 @@ final case class SilverTongue private (catalog: ExecutableCatalog)
   }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.SearchPlayFacedownAdviser -> Vector(Restriction((ctx, _) =>
-      ctx.state.game.current.players.find(_.advisers.exists {
-        case DenizenState(card, Orientation.FaceUp, _) => card == Card
-        case _ => false
-      }).filter(_.advisers.size > 2).map(holder => OathViolation.InvalidEventOrder(
-        s"${holder.player.value} holds Silver Tongue and can have only two advisers")))))
+    Map(PowerWindow.SearchPlayFacedownAdviser -> Vector(Restriction((ctx, tree) =>
+      holder(ctx.state).filter(advisersAfter(_, tree) > 2).map(player =>
+        OathViolation.InvalidEventOrder(s"${player.player.value} holds " +
+          "Silver Tongue and can have only two advisers")))))
+
+  private def holder(ready: ReadyGame): Option[PlayerState] =
+    ready.game.current.players.find(_.advisers.exists {
+      case DenizenState(card, Orientation.FaceUp, _) => card == cardId
+      case _ => false
+    })
+
+  /** The holder's adviser count once the tree's statically visible world-card
+    * moves land. `BuildOps` leaves compute their operations at walk time, so
+    * a restriction cannot see them (Corrections 12).
+    */
+  private def advisersAfter(holder: PlayerState, tree: Operation): Int = {
+    def leaves(operation: Operation): Vector[Operation] = operation match {
+      case leaf: PrimitiveOperation => Vector(leaf)
+      case composite => composite.children.flatMap(leaves)
+    }
+    val area = Location.PlayArea(holder.player)
+    leaves(tree).foldLeft(holder.advisers.size) {
+      case (count, Move(Piece.Card(_: WorldCardId), from, to, _)) =>
+        count + (if (to.location == area) 1 else 0) -
+          (if (from.location == area) 1 else 0)
+      case (count, _) => count
+    }
+  }
 
   /** Suits of faceup denizens and edifices at the player's pawn site whose
     * bank holds favor, in suit order.
@@ -3134,18 +3652,14 @@ final case class SilverTongue private (catalog: ExecutableCatalog)
 
 object SilverTongue {
   val id: PowerId = PowerId("denizen.silver-tongue")
-  private val Card = DenizenId("92")
-
   def forCatalog(catalog: ExecutableCatalog): Option[SilverTongue] =
-    Option.when(catalog.denizens.exists(_.powers.exists(_.id == id)))(
-      new SilverTongue(catalog))
+    catalog.denizens.find(_.powers.exists(_.id == id))
+      .map(d => new SilverTongue(DenizenId(d.id.value), catalog))
 
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
     s"silver-tongue-${ready.game.current.tracks.round}-${player.value}"
 }
 ```
-
-`Card` duplicates the catalog id. Replace it with the id `forCatalog` finds (a second constructor field, `cardId: DenizenId`, as `CatacombsContribution` does), so the restriction and the catalog cannot disagree.
 
 - [ ] **Step 4: Register it and move the legacy diagnostic**
 
@@ -3156,7 +3670,7 @@ object SilverTongue {
 - [ ] **Step 5: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.gameplay.RestSuite oathdigital.gameplay.PhasePowerSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS. If a reviewed-catalog or Rest inventory fingerprint assertion fails, recompute that constant from the failure message (Global Constraints) and rerun.
+Expected: PASS. Moving a reviewed handler's window changes no catalog handler id, so neither fingerprint changes.
 
 - [ ] **Step 6: Full gate and commit**
 
@@ -3164,7 +3678,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src
+git add src/main/scala/oathdigital/gameplay/powers/rest/SilverTongue.scala src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala src/main/scala/oathdigital/gameplay/powers/RestPowers.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala src/test/scala/oathdigital/gameplay/RestSuite.scala
 git commit -m "feat(rest): add Silver Tongue as the first REST power
 
 Silver Tongue takes one favor from a bank matching a card at the pawn
@@ -3177,17 +3691,17 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 9: Phase power projection, intent and command
+### Task 11: Phase power projection, intent and command
 
 **Files:**
 - Create: `src/main/scala/oathdigital/application/PhasePowerProjector.scala`
 - Modify: `shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala`, `ActionProjectionCodec.scala:212-236`, `GameProjectionDto.scala:41-43`, `GameProjectionCodec.scala:20-22,87-98,142-167`
 - Modify: `shared/src/main/scala/oathdigital/protocol/CommandIntents.scala`, `CommandIntentCodec.scala:45-52`, `CommandIntentDecoders.scala:117-129`
 - Modify: `src/main/scala/oathdigital/application/GameCommands.scala`, `Authorization.scala`, `GameIntentMapper.scala:55-60`, `GameApplicationService.scala:355-357`, `WalkerDecisionProjector.scala:189`, `LegalActionProjector.scala`, `GameProjection.scala`
-- Test: `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala` (new), `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala`
+- Test: `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala`
 
 **Interfaces:**
-- Consumes: `PhasePowerProcedure.usable`, `PhasePowerCatalog.default`, `ActionRef.UsePower` (Task 7); `SilverTongue` (Task 8).
+- Consumes: `PhasePowerProcedure.usable`, `PhasePowerCatalog.default`, `ActionRef.UsePower` (Task 9); `SilverTongue` (Task 10).
 - Produces:
   - Shared: `PhasePowerProjection(powerId: String, source: DecisionOptionProjection, name: String, rulesText: String)`; `GameProjection.phasePowers: Vector[PhasePowerProjection] = Vector.empty` (last field, JSON key `"phasePowers"`); `GameIntent.UsePower(powerId: String, source: WalkerStartArgWire)` (JSON `{"type":"usePower","powerId":..,"source":{"optionKind":..,"optionId":..}}`).
   - Backend: `GameCommand.UsePower(playerId: PlayerId, power: PowerId, source: DecisionOptionRef)`; `AuthorizedPlayer.usePower(power, source)`; `PhasePowerProjector.project(context): Vector[PhasePowerProjection]`; the legal control `s"usePower:${powerId}:${source.id}"`.
@@ -3205,8 +3719,6 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
 `ProjectionProtocolSuite`: in the full projection fixture, set `phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue", DecisionOptionProjection("denizen", "92", "Silver Tongue"), "Silver Tongue", "Take a favor."))` and keep the existing round-trip assertion.
-
-Check the spelling `encodeStartArgWire` writes before copying the JSON above. If its keys are not `optionKind`/`optionId`, use its keys.
 
 - [ ] **Step 2: Write the failing projector test**
 
@@ -3249,7 +3761,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
 }
 ```
 
-The intent-to-command mapping is pinned end to end by Task 11, which submits `GameCommand.UsePower` through the service, and by the `CommandProtocolSuite` round trip above.
+The intent-to-command mapping is pinned end to end by Task 13, which submits `GameCommand.UsePower` through the service, and by the `CommandProtocolSuite` round trip above.
 
 - [ ] **Step 3: Run to verify they fail**
 
@@ -3268,9 +3780,35 @@ final case class PhasePowerProjection(powerId: String,
     source: DecisionOptionProjection, name: String, rulesText: String)
 ```
 
-- `ActionProjectionCodec`: extract the option-row object in `encodeDecisionQuery`/`decodeDecisionQuery` into `encodeDecisionOption(row)` and `decodeDecisionOption(raw, path)` (skip if Task 1 already did), then add `encodePhasePower`/`decodePhasePower` over `powerId`, `source`, `name`, `rulesText` with `exact` key checking.
+- `ActionProjectionCodec`: add, reusing Task 2's `encodeOptionRow` and `decodeOptionRow`:
+
+```scala
+  def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
+    "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),
+    "name" -> value.name, "rulesText" -> value.rulesText)
+
+  def decodePhasePower(raw: ujson.Value, path: String)
+      : Result[PhasePowerProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("powerId", "source", "name", "rulesText"), path)
+    powerId <- string(value, "powerId", path)
+    source <- field(value, "source", path).flatMap(
+      decodeOptionRow(_, s"$path.source"))
+    name <- string(value, "name", path)
+    rulesText <- string(value, "rulesText", path)
+  } yield PhasePowerProjection(powerId, source, name, rulesText)
+```
+
 - `GameProjectionDto`: append `,phasePowers: Vector[PhasePowerProjection] = Vector.empty`.
-- `GameProjectionCodec`: add `"phasePowers"` to the key set; encode with `encoded(value.phasePowers)(ActionProjectionCodec.encodePhasePower)`; decode with `default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)` and `traverse`, as `favorBanks` does; pass it last to the constructor.
+- `GameProjectionCodec`: add `"phasePowers"` to the key set, encode `"phasePowers" -> encoded(value.phasePowers)(ActionProjectionCodec.encodePhasePower)`, and decode beside `favorBanks`:
+
+```scala
+    powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
+    phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
+      ActionProjectionCodec.decodePhasePower(raw, child) }
+```
+
+   Pass `phasePowers` last to the `GameProjection` constructor.
 - `CommandIntents`: `final case class UsePower(powerId: String, source: WalkerStartArgWire) extends GameIntent`.
 - `CommandIntentCodec.encode`: `case UsePower(power, source) => tagged("usePower", "powerId" -> power, "source" -> CommandNestedCodecs.encodeStartArgWire(source))`.
 - `CommandIntentDecoders`:
@@ -3283,13 +3821,12 @@ final case class PhasePowerProjection(powerId: String,
         CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw), s"$path.source"))
         .flatMap {
           case Vector(one) => Right(one)
-          case _ => Left(ProtocolDecodeFailure(s"$path.source",
+          case _ => Left(ProtocolDecodeFailure.InvalidValue(s"$path.source",
             "expected one power source"))
         }
     } yield UsePower(power, source)
 ```
 
-If `ProtocolDecodeFailure` takes other parameters, build it the way the neighboring decoders do.
 
 - [ ] **Step 5: Backend command path**
 
@@ -3313,7 +3850,7 @@ If `ProtocolDecodeFailure` takes other parameters, build it the way the neighbor
           Vector.empty, Vector(source))
 ```
 
-   Run `grep -n "case GameCommand.EndWake" src/main/scala/oathdigital/application/*.scala`. Every other exhaustive `GameCommand` match (the actor lookup, `majorAction`, audit naming) gains a `UsePower` arm shaped like its `EndWake` arm.
+   No other production code matches exhaustively over `GameCommand`: `applyUnblockedCommand` is the only place `case GameCommand.EndWake` appears.
 
 - [ ] **Step 6: Projection**
 
@@ -3349,8 +3886,9 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
           .flatMap(d => d.powers.find(_.id == usable.power.id).map(d -> _))
         for {
           (card, power) <- printed
+          option <- DecisionOption.forRef(usable.ref)
           source <- walkerDecisions.optionProjection(context.ready,
-            context.viewer, index, option(usable.ref))
+            context.viewer, index, option)
         } yield PhasePowerProjection(usable.power.id.value, source,
           card.name, power.rulesText)
       }
@@ -3359,18 +3897,33 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   def controls(context: ScopedProjectionContext): Vector[String] =
     project(context).map(p => s"usePower:${p.powerId}:${p.source.id}")
 
-  private def option(ref: DecisionOptionRef): DecisionOption = ref match {
-    case denizen: DecisionOptionRef.Denizen => DecisionOption.Denizen(denizen)
-    case relic: DecisionOptionRef.Relic => DecisionOption.Relic(relic)
-    case other => DecisionOption.Button(DecisionOptionRef.Button(other.wireId),
-      other.wireId)
-  }
 }
 ```
 
-   Check the catalog denizen's display-name field (it may be `title` rather than `name`) and use it. A relic source reads `catalog.relics` the same way; add that lookup when the first relic phase power exists, not now.
-- `LegalActionProjector`: take a `PhasePowerProjector` constructor argument, built in `GameProjector` from the same `WalkerDecisionProjector`. In `controls`, the `Phase.Act` vector, the `Phase.Wake` vector and the `Phase.Rest` vector each gain `++ phasePowers.controls(context)`: Act before its `.flatten`-ed list's end, Wake before `"endWake"`, Rest before `"finishRest"`.
-- `GameProjection`: build `PhasePowerProjector` next to `LegalActionProjector`, and add `phasePowers = phasePowers.project(context)` to the final `.copy`.
+   `DenizenDefinition.name` is the printed card name. A relic source reads `catalog.relics` the same way; that lookup arrives with the first relic phase power.
+- `GameProjector` (`GameProjection.scala:12-17`): build the projector once and pass it on:
+
+```scala
+  private val walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
+  private val phasePowerProjector = new PhasePowerProjector(catalog, walkerDecisions)
+  private val legalActions = new LegalActionProjector(catalog, presentation,
+    walkerDecisions, phasePowerProjector)
+```
+
+   In the final `.copy(...)` at lines 156-159, add `phasePowers = phasePowerProjector.project(context)`. `context` is the `ScopedProjectionContext` that method already reads `context.ready` from.
+- `LegalActionProjector`: add the constructor parameter `phasePowers: PhasePowerProjector` after `walkerDecisions`. In `controls`:
+
+```scala
+        case Phase.Act => Vector(
+          // ... the existing Option.when(...) entries, unchanged ...
+        ).flatten ++ phasePowers.controls(context)
+        case Phase.Rest => phasePowers.controls(context) ++ Option.when(
+          FinishRestProcedure.gate(catalog, context.ready, active.player).isRight)(
+          "finishRest")
+        case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
+        case Phase.Wake => takeableResources(context).map(takeControl) ++
+          phasePowers.controls(context) :+ "endWake"
+```
 
 - [ ] **Step 7: Run the suites**
 
@@ -3383,7 +3936,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src shared
+git add src/main/scala/oathdigital/application/PhasePowerProjector.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntents.scala shared/src/main/scala/oathdigital/protocol/CommandIntentCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntentDecoders.scala src/main/scala/oathdigital/application/GameCommands.scala src/main/scala/oathdigital/application/Authorization.scala src/main/scala/oathdigital/application/GameIntentMapper.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/main/scala/oathdigital/application/LegalActionProjector.scala src/main/scala/oathdigital/application/GameProjection.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala
 git commit -m "feat(protocol): project usable phase powers and accept usePower
 
 The projection lists the viewer's usable phase powers with their source
@@ -3395,7 +3948,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Phase power buttons and Finish Rest in the frontend
+### Task 12: Phase power buttons and Finish Rest in the frontend
 
 **Files:**
 - Create: `frontend/src/main/scala/oathdigital/frontend/PhasePowerButtons.scala`
@@ -3403,7 +3956,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Test: `frontend/src/test/scala/oathdigital/frontend/ServerModeUiSuite.scala`
 
 **Interfaces:**
-- Consumes: `GameProjection.phasePowers`, `PhasePowerProjection`, `GameIntent.UsePower`, `WalkerStartArgWire` (Task 9).
+- Consumes: `GameProjection.phasePowers`, `PhasePowerProjection`, `GameIntent.UsePower`, `WalkerStartArgWire` (Task 11).
 - Produces: `PhasePowerButtons.actions(value: GameProjection): Vector[(PhasePowerState, GameCommand)]`, `PhasePowerButtons.showsFinishRest(value): Boolean`, `PhasePowerButtons.render(value, canControl, panel: dom.Element, submit: GameCommand => Unit): Unit`; buttons carry class `phase-power` and `data-power-id`.
 
 - [ ] **Step 1: Write the failing UI tests**
@@ -3418,8 +3971,8 @@ In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty
     val legal = projection(Set("usePower:denizen.silver-tongue:92", "finishRest"),
       phase = "rest", phasePowers = Vector(power))
     assertEquals(PhasePowerButtons.actions(legal), Vector(power ->
-      GameCommand.UsePower("denizen.silver-tongue",
-        WalkerStartArgWire("denizen", "92"))))
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))))
     assertEquals(PhasePowerButtons.actions(projection(Set("finishRest"),
       phase = "rest", phasePowers = Vector(power))), Vector.empty)
   }
@@ -3433,8 +3986,6 @@ In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty
       phase = "wake")))
   }
 ```
-
-Import `oathdigital.protocol.WalkerStartArgWire` if the suite does not already.
 
 - [ ] **Step 2: Run to verify it fails**
 
@@ -3450,7 +4001,7 @@ Expected: compilation fails on `PhasePowerState`.
 ```scala
 package oathdigital.frontend
 
-import oathdigital.protocol.WalkerStartArgWire
+import oathdigital.protocol.{GameIntent => GameCommand, WalkerStartArgWire}
 import org.scalajs.dom
 
 /** One button per legal phase power, in Act, Wake and Rest alike. */
@@ -3483,7 +4034,7 @@ object PhasePowerButtons {
 }
 ```
 
-Match the import of `GameProjection` and `GameCommand` to how `DistributePanelRenderer` (Task 2) imports them.
+`GameProjection` is a frontend package alias. `GameCommand` is imported the way `ActionDecisionRenderer` imports it.
 
 In `ActionDecisionRenderer`:
 - Wake panel: call `PhasePowerButtons.render(value, canControl, panel, submitCommand)` before the "End Wake" button.
@@ -3505,7 +4056,7 @@ In `ActionDecisionRenderer`:
    }
 ```
 
-   Check the file stays at or under 800 lines. It shrank in Task 6.
+   Run `wc -l frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala`. Expected: at most 800 lines; Task 8 removed the Rest power branch.
 
 - [ ] **Step 4: Run the UI suite**
 
@@ -3518,7 +4069,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add frontend
+git add frontend/src/main/scala/oathdigital/frontend/PhasePowerButtons.scala frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala frontend/src/main/scala/oathdigital/frontend/package.scala frontend/src/test/scala/oathdigital/frontend/ServerModeUiSuite.scala
 git commit -m "feat(frontend): render phase power buttons and legal-only Finish Rest
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
@@ -3526,27 +4077,148 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 11: The pending-walker invariant
+### Task 13: The pending-walker invariant
 
 **Files:**
 - Modify: `src/main/scala/oathdigital/gameplay/OathRules.scala` (every `handle` overload)
-- Create: `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`, `src/test/scala/oathdigital/application/OathkeeperTieFixture.scala`
-- Create: `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala`, `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala`
-- Modify: `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala:1339-1406` (use the fixture), `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatySuite.scala` (use the fixture)
+- Modify: `src/test/scala/oathdigital/application/ParkedServiceFixture.scala` (three more parks)
+- Modify: `src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala:1339-1409` (use the Oathkeeper park)
+- Create: `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`
+- Create: `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala`
 
 **Interfaces:**
-- Consumes: every earlier task. `GameCommand.UsePower` (Task 9), `SilverTongueFixture.arranged` (Task 9), `LeagueTreatySuite.arranged` (Task 5).
-- Produces: `OathRules.handle` refuses with `InvalidEventOrder("a walker procedure is already pending")` whenever `walkerPending` or `walkerProcedure` is set. Test fixtures `OathkeeperTieFixture.parked(service, repository, gameId): (GameAccepted, PlayerId, PlayerId)` returning `(parked, active, holder)` and `LeagueTreatyFixture.arranged(ruler: Option[PlayerId], favor: Vector[(Suit, Int)]): (ReadyGame, SiteId)`.
+- Consumes: `ParkedServiceFixture` (Task 7), `GameCommand.UsePower` (Task 11), `SilverTongue` (Task 10), `LeagueTreatyFixture` (Task 6), `SilverTongueFixture` (Task 11).
+- Produces:
+  - `OathRules.handle` refuses with `InvalidEventOrder("a walker procedure is already pending")` whenever `walkerPending` or `walkerProcedure` is set.
+  - `ParkedServiceFixture.recoverRollPark(service, gameId): (GameAccepted, Vector[PlayerId])`.
+  - `ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId, PlayerId)` returning `(parked, active, holder, leaderB)`.
+  - `ParkedServiceFixture.silverTonguePark(service, repository, gameId): (GameAccepted, PlayerId)`.
 
-- [ ] **Step 1: Move the two park arrangements into fixtures**
+- [ ] **Step 1: Add the remaining parks to the fixture**
 
-- `LeagueTreatyFixture`: move `LeagueTreatySuite`'s `act`, `suitOf`, `treatyCard` and `arranged` into `object LeagueTreatyFixture` unchanged, and have the suite import them.
-- `OathkeeperTieFixture`: move the body of `GameApplicationServiceSuite`'s "an off-turn Oathkeeper tie parks through the application service and survives reload" from `val setup = execute(service, gameId)` through the `parked` value and its `WalkerParked`/`AwaitingOathkeeperRecipient` assertions into `def parked(service: GameApplicationService, repository: InMemoryEventStreamRepository, gameId: String): (GameAccepted, PlayerId, PlayerId)`. It returns `(parked, active, holder)`. The fixture needs `execute`: copy the suite's private `execute` helper (lines 1157-1185) into the fixture as `def setUp` with the same body and defaults. The existing test calls the fixture and keeps every assertion after the park, including `leaderB`, which it recomputes from the parked state as the fixture did.
-- Run `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.LeagueTreatySuite"`. Expected: PASS, with no behavior change.
+Append to `ParkedServiceFixture` (add `oathdigital.gameplay.actions.recover.RecoverProcedure`, `oathdigital.gameplay.oathkeeper.OathkeeperProcedure`, `oathdigital.gameplay.operations.SetOathkeeper`, `oathdigital.gameplay.powers.rest.SilverTongue` and `oathdigital.gameplay.walker.WalkerParked` to its imports):
+
+```scala
+  val silverTongueCard: DenizenId = DenizenId("92")
+
+  /** A Recover roll parked in Act, at the first catalog site Recover can
+    * target.
+    */
+  def recoverRollPark(service: GameApplicationService, gameId: String)
+      : (GameAccepted, Vector[PlayerId]) = {
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
+        site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val recoverPlan = plan.copy(orderedSites = recoverSite +:
+      plan.orderedSites.filterNot(_ == recoverSite))
+    val actor = recoverPlan.firstPlayer
+    val setup = setUp(service, gameId, recoverPlan.orderedSites, recoverPlan)
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val parked = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
+    assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)), parked.continue.toString)
+    (parked, recoverPlan.participants.map(_.playerId))
+  }
+
+  /** The off-turn Oathkeeper tie from the service suite: the holder must
+    * pick between two tied leaders after the active player's Travel.
+    */
+  def oathkeeperTiePark(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId, PlayerId) = {
+    val setup = setUp(service, gameId)
+    val Ready(base) = setup.state: @unchecked
+    val active = base.game.current.turn.activePlayer
+    val players = base.game.current.players.map(_.player)
+    val holder = players.find(_ != active).get
+    val leaders = players.filterNot(_ == holder)
+    val lineageOf = base.game.current.players.map(p => p.player -> p.lineage).toMap
+    val siteA = base.game.current.map.inPlay(0)
+    val siteB = base.game.current.map.inPlay(1)
+    seed(repository, gameId, setup.nextSequence,
+      cleared(base, siteA) ++ cleared(base, siteB) ++ Vector(
+        SetOathkeeper(Some(holder)),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(0))), 1),
+          PositionedLocation(Location.PlayArea(leaders(0))),
+          PositionedLocation(Location.Site(siteA))),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(1))), 1),
+          PositionedLocation(Location.PlayArea(leaders(1))),
+          PositionedLocation(Location.Site(siteB)))))
+    val act = service.handle(gameId, setup.nextSequence + 1L,
+      GameCommand.EndWake(active)).toOption.get
+    val Ready(inAct) = act.state: @unchecked
+    val activePlayer = inAct.game.current.players.find(_.player == active).get
+    val destination = inAct.game.current.map.inPlay.find(id =>
+      !activePlayer.pawnSite.contains(id) && id != siteA && id != siteB).get
+    val parked = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Site(destination))))).toOption.get
+    assert(parked.events.last match {
+      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
+      case _ => false
+    }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
+    assert(parked.continue == OathContinue.AwaitingOathkeeperRecipient(holder,
+      DecisionId(OathkeeperProcedure.recipientDecisionId)), parked.continue.toString)
+    (parked, active, holder, leaders(1))
+  }
+
+  /** Silver Tongue as the active player's faceup adviser, with two faceup
+    * denizens of different suits at their pawn site. Every favor bank starts
+    * with at least 3 favor, so Begin Rest stops at the Rest action, and
+    * using Silver Tongue parks on its bank choice.
+    */
+  def silverTonguePark(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository, gameId: String)
+      : (GameAccepted, PlayerId) = {
+    val bySuit = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit.value)
+      .filterNot { case (id, _) => id == silverTongueCard || id == treatyCard }
+    val first = bySuit.head
+    val second = bySuit.find(_._2 != first._2).get
+    val cards = Vector(silverTongueCard, first._1, second._1)
+    val setup = setUp(service, gameId, setupPlan = withWorldDeckTop(plan, cards))
+    val Ready(base) = setup.state: @unchecked
+    val current = base.game.current
+    assert(current.commonCards.worldDeck.take(3) == cards,
+      "Silver Tongue and the two site cards must top the world deck")
+    val active = current.turn.activePlayer
+    val pawn = current.players.find(_.player == active).get.pawnSite.get
+    seed(repository, gameId, setup.nextSequence, Vector(
+      topOfWorldDeck(silverTongueCard, Location.PlayArea(active)),
+      topOfWorldDeck(first._1, Location.Site(pawn)),
+      topOfWorldDeck(second._1, Location.Site(pawn))))
+    val act = service.handle(gameId, setup.nextSequence + 1L,
+      GameCommand.EndWake(active)).toOption.get
+    val resting = service.handle(gameId, act.nextSequence,
+      GameCommand.BeginRest(active)).toOption.get
+    assert(resting.continue == OathContinue.AwaitingRestAction(active),
+      resting.continue.toString)
+    val parked = service.handle(gameId, resting.nextSequence,
+      GameCommand.UsePower(active, SilverTongue.id,
+        DecisionOptionRef.Denizen(silverTongueCard))).toOption.get
+    assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
+      parked.continue.toString)
+    (parked, active)
+  }
+```
+
+In `GameApplicationServiceSuite`, replace lines 1342-1409 of "an off-turn Oathkeeper tie parks through the application service and survives reload" (from `val setup = execute(service, gameId)` through the `AwaitingOathkeeperRecipient` assertion) with:
+
+```scala
+    val (parked, active, holder, leaderB) =
+      ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId)
+```
+
+Delete the `assertEquals(parked.nextSequence, actEntered.nextSequence + parked.events.size)` assertion that follows: the fixture owns the End Wake command now. Keep every later assertion unchanged.
+
+Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
+Expected: PASS, with no behavior change.
 
 - [ ] **Step 2: Write the failing rules-level suite**
 
-`PendingWalkerRulesSuite.scala`:
+`src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala`:
 
 ```scala
 package oathdigital.gameplay
@@ -3558,24 +4230,25 @@ import oathdigital.gameplay.actions.{CampaignCommand, ChallengeCommand,
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyFixture, SilverTongue,
   SilverTongueFixture}
+import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
 /** The rules half of the pending-walker invariant: over a parked walker,
-  * neither a walker start nor any legacy `handle` overload runs. The
-  * application half is `PendingWalkerInvariantSuite`.
+  * neither a walker start nor any legacy `handle` overload runs.
   */
 class PendingWalkerRulesSuite extends munit.FunSuite {
   private val rules = new OathRules(catalog,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
     phasePowerCatalog = PhasePowerCatalog.default(catalog))
-  private val pending = Left(OathViolation.InvalidEventOrder(
-    "a walker procedure is already pending"))
+  private val pending = OathViolation.InvalidEventOrder(
+    "a walker procedure is already pending")
 
   private def leagueTreatyPark: OathState = {
-    val (ready, _) = LeagueTreatyFixture.arranged(Some(
-      LeagueTreatyFixture.act.game.current.players.map(_.player)
-        .find(_ != LeagueTreatyFixture.act.game.current.turn.activePlayer).get),
+    val act = LeagueTreatyFixture.act
+    val ruler = act.game.current.players.map(_.player)
+      .find(_ != act.game.current.turn.activePlayer).get
+    val (ready, _) = LeagueTreatyFixture.arranged(Some(ruler),
       Vector(Suit.Arcane -> 2, Suit.Discord -> 2))
     val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
       ready.game.current.turn.activePlayer).toOption.get
@@ -3596,41 +4269,42 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
   Vector("off-turn League Treaty" -> (() => leagueTreatyPark),
     "Silver Tongue choice" -> (() => silverTonguePark)).foreach {
     case (name, park) =>
-      test(s"nothing but a resume runs over a parked $name") {
+      test(s"no walker start and no legacy handle runs over a parked $name") {
         val state = park()
         val ready = state.asInstanceOf[Ready].value
         val actor = ready.game.current.turn.activePlayer
         val site = ready.game.current.map.inPlay.head
         (StartableRef.all :+ ActionRef.UsePower(SilverTongue.id)).foreach { ref =>
           assertEquals(rules.startWalker(state, ref, actor).left.toOption,
-            pending.left.toOption, ref.key)
+            Some(pending), ref.key)
         }
         Vector(
-          rules.handle(state, EconomyCommand.Muster(actor,
-            EconomyTargetRef.Denizen(DenizenId("d1")))),
-          rules.handle(state, SearchCommand.Start(actor, DecisionId("s1"),
-            SearchSource.WorldDeck, Vector.empty)),
-          rules.handle(state, ChallengeCommand.Begin(actor, DecisionId("c1"),
-            Banner.all.head)),
-          rules.handle(state, MinorActionCommand.PeekSiteRelics(actor)),
-          rules.handle(state, VisionCommand.Reveal(actor, VisionId("v1"))),
-          rules.handle(state, NegotiationCommand.Decline(actor, DecisionId("n1"))),
-          rules.handle(state, CampaignCommand.Start(actor, DecisionId("cp1"),
-            Vector(site), 1))
-        ).zipWithIndex.foreach { case (result, index) =>
-          assertEquals(result, pending, s"legacy handle #$index")
+          "economy" -> rules.handle(state, EconomyCommand.Muster(actor,
+            EconomyTargetRef.Denizen(DenizenId("92")))),
+          "search" -> rules.handle(state, SearchCommand.Start(actor,
+            DecisionId("s1"), SearchSource.WorldDeck, Vector.empty)),
+          "challenge" -> rules.handle(state, ChallengeCommand.Begin(actor,
+            DecisionId("c1"), Banner.PeoplesFavor)),
+          "minor action" -> rules.handle(state,
+            MinorActionCommand.PeekSiteRelics(actor)),
+          "vision" -> rules.handle(state, VisionCommand.Reveal(actor,
+            FirstGameRulesData.visions.collectFirst { case id: VisionId => id }.get)),
+          "negotiation" -> rules.handle(state, NegotiationCommand.Decline(actor,
+            DecisionId("n1"))),
+          "campaign" -> rules.handle(state, CampaignCommand.Start(actor,
+            DecisionId("cp1"), Vector(site), 1))
+        ).foreach { case (family, result) =>
+          assertEquals(result.left.toOption, Some(pending), family)
         }
       }
   }
 }
 ```
 
-If `LeagueTreatyFixture.act` is a `def` that rebuilds setup, bind it to a local `val` first. The off-turn owner must come from the same state the arrangement starts from.
-
 - [ ] **Step 3: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.PendingWalkerRulesSuite"`
-Expected: FAIL. The legacy handles reject with their own messages (for example `validateAct`'s "a walker procedure is pending; legacy actions are blocked", or a phase error), not the invariant's. The `startWalker` assertions already pass.
+Expected: FAIL on the legacy handles, which reject with their own gates' messages. The `startWalker` assertions already pass.
 
 - [ ] **Step 4: Guard every `handle` overload**
 
@@ -3652,7 +4326,7 @@ In `OathRules.scala`, add:
   }
 ```
 
-Wrap the body of each `handle` overload (`EconomyCommand`, `SearchCommand`, `ChallengeCommand`, `MinorActionCommand`, `VisionCommand`, `NegotiationCommand`, `CampaignCommand`): `def handle(state: OathState, command: X): Either[OathViolation, OathTransition] = unlessWalkerPending(state) { <existing body> }`. Setup's `handle` (if `OathRules` exposes one) is not wrapped: no walker exists before the game is ready.
+Wrap the body of each `handle` overload (`EconomyCommand` line 50, `SearchCommand` line 61, `ChallengeCommand` line 99, `MinorActionCommand` line 111, `VisionCommand` line 122, `NegotiationCommand` line 134, `CampaignCommand` line 145): `def handle(state: OathState, command: X): Either[OathViolation, OathTransition] = unlessWalkerPending(state) { <existing body> }`.
 
 - [ ] **Step 5: Run the rules suite**
 
@@ -3661,41 +4335,79 @@ Expected: PASS.
 
 - [ ] **Step 6: Write the service-level matrix**
 
-`PendingWalkerInvariantSuite.scala`:
+`src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`:
 
 ```scala
 package oathdigital.application
 
 import java.nio.file.{Files, Paths}
-import oathdigital.gameplay.OathContinue
-import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.TradeResource
+import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
-import oathdigital.protocol.{GameIntent => Intent, _}
+import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 
-/** The application half of the pending-walker invariant. Over each parked
-  * walker, every `GameCommand` constructor except `ResolveWalker` and
-  * `RollWalker` is refused and appends nothing, whoever submits it.
+/** The application half of the pending-walker invariant (spec, Testing).
+  * Over each of the spec's four parked contexts, every `GameCommand`
+  * constructor except `ResolveWalker` and `RollWalker` is refused for every
+  * player and appends nothing.
   */
 class PendingWalkerInvariantSuite extends munit.FunSuite {
-
-  /** Every transport intent, copied verbatim from `CommandProtocolSuite`'s
-    * `examples` (shared tests are not on this project's classpath).
-    */
-  private val intents: Vector[GameIntent] = Vector(
-    // Paste CommandProtocolSuite.examples here, unchanged.
-  )
+  private val site = plan.orderedSites.head
+  private val denizen = plan.denizenOrder.head
+  private val relic = plan.relicOrder.head
+  private val vision = FirstGameRulesData.visions.collectFirst {
+    case id: VisionId => id
+  }.get
+  private val decision = DecisionId("d1")
 
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
-  private def everyCommand(actor: PlayerId): Vector[GameCommand] =
-    intents.map(intent => GameIntentMapper.bind(actor, intent)
-      .fold(failure => fail(s"$intent did not bind: $failure"), identity)) ++
-      Vector(
-        GameCommand.WithModifiers(GameCommand.EndWake(actor), Vector.empty),
-        GameCommand.Begin(plan),
-        GameCommand.ChooseAdviser(actor, DenizenId("d1")),
-        GameCommand.CompleteSearch(actor, DecisionId("s1"), DenizenId("d1"),
-          Vector.empty, SearchPlacement.Site(None)))
+  private def everyCommand(actor: PlayerId): Vector[GameCommand] = Vector(
+    GameCommand.WithModifiers(GameCommand.EndWake(actor), Vector.empty),
+    GameCommand.Begin(plan),
+    GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor)),
+    GameCommand.ResolveWalker(actor, TreeDecision("d1",
+      ChooseOneAnswer(DecisionOptionRef.Button("go")))),
+    GameCommand.RollWalker(actor, PoolKey("recover")),
+    GameCommand.PlacePawn(actor, site),
+    GameCommand.ChooseAdviser(actor, denizen),
+    GameCommand.EndWake(actor),
+    GameCommand.Muster(actor, EconomyTargetRef.Denizen(denizen)),
+    GameCommand.Trade(actor, EconomyTargetRef.Denizen(denizen),
+      TradeResource.Favor),
+    GameCommand.BeginSearch(actor, SearchSource.WorldDeck),
+    GameCommand.BeginChallenge(actor, Banner.PeoplesFavor),
+    GameCommand.ChooseChallengeSecretSite(actor, decision, site),
+    GameCommand.CompleteChallenge(actor, decision, 1),
+    GameCommand.PlaceBannerResource(actor, Banner.DarkestSecret, 1),
+    GameCommand.ResolveFacedownAdviser(actor, denizen, None),
+    GameCommand.PeekSiteRelics(actor),
+    GameCommand.RevealOwnedRelic(actor, relic),
+    GameCommand.MoveWarbands(actor, toSite = true, 1),
+    GameCommand.RevealVision(actor, vision),
+    GameCommand.PlayConspiracy(actor, None),
+    GameCommand.BeginNegotiation(actor, Vector(PlayerId("p2"))),
+    GameCommand.ReplaceNegotiationTerms(actor, decision, NegotiationTerms()),
+    GameCommand.AcceptNegotiation(actor, decision),
+    GameCommand.DeclineNegotiation(actor, decision),
+    GameCommand.BeginCampaignConquest(actor, Vector(site), 1),
+    GameCommand.BeginCampaignRaid(actor,
+      Vector(CampaignRaidTarget.Pawn(PlayerId("p2"))), 1),
+    GameCommand.ChooseCampaignPlan(actor, decision,
+      PendingProcedure.CampaignPlanSource.Adviser(actor, denizen)),
+    GameCommand.FinishCampaignPlans(actor, decision),
+    GameCommand.ChooseCampaignSacrifice(actor, decision, 1),
+    GameCommand.PlaceCampaignForce(actor, decision,
+      Vector(CampaignForceAllocation(site, 1))),
+    GameCommand.RelocateCampaignRaidPawn(actor, decision, site),
+    GameCommand.CompleteSearch(actor, decision, denizen, Vector.empty,
+      SearchPlacement.Discard),
+    GameCommand.ResolveCardDecision(actor, decision,
+      CardDecisionResolution.StartingAdviser(denizen)),
+    GameCommand.BeginRest(actor),
+    GameCommand.FinishRest(actor),
+    GameCommand.UsePower(actor, PowerId("denizen.silver-tongue"),
+      DecisionOptionRef.Denizen(DenizenId("92"))))
 
   private def resumes(command: GameCommand) = command match {
     case _: GameCommand.ResolveWalker | _: GameCommand.RollWalker => true
@@ -3705,8 +4417,8 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
   test("the sample holds every GameCommand constructor") {
     val source = Files.readString(Paths.get(
       "src/main/scala/oathdigital/application/GameCommands.scala"))
-    val body = source.substring(source.indexOf("object GameCommand {"),
-      source.indexOf("\n}\n", source.indexOf("object GameCommand {")))
+    val start = source.indexOf("object GameCommand {")
+    val body = source.substring(start, source.indexOf("\n}\n", start))
     val declared = "final case class (\\w+)".r.findAllMatchIn(body)
       .map(_.group(1)).toSet
     assertEquals(everyCommand(PlayerId("p1")).map(_.productPrefix).toSet, declared)
@@ -3725,47 +4437,51 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
       "a refused command must append nothing")
   }
 
+  private val everyone = plan.participants.map(_.playerId)
+
   test("over a parked Recover roll in Act, only resumes are accepted") {
-    val recoverSite = catalog.sites.find(site =>
-      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
-        site.relicSlots > 0 &&
-        !site.handlers.exists(_.contains(".homeland-"))).get.id
-    val recoverPlan = plan.copy(orderedSites = recoverSite +:
-      plan.orderedSites.filterNot(_ == recoverSite))
-    val actor = recoverPlan.firstPlayer
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val setup = OathkeeperTieFixture.setUp(service, "invariant-recover",
-      recoverPlan.orderedSites, recoverPlan)
-    val act = service.handle("invariant-recover", setup.nextSequence,
-      GameCommand.EndWake(actor)).toOption.get
-    val parked = service.handle("invariant-recover", act.nextSequence,
-      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
-    assertEquals(parked.continue, OathContinue.AwaitingRecoverRoll(actor,
-      DecisionId(RecoverProcedure.rollDecisionId)))
-    assertOnlyResumes(service, repository, "invariant-recover", parked,
-      recoverPlan.participants.map(_.playerId))
+    val (parked, players) =
+      ParkedServiceFixture.recoverRollPark(service, "invariant-recover")
+    assertOnlyResumes(service, repository, "invariant-recover", parked, players)
   }
 
-  test("over an off-turn Oathkeeper recipient decision, only resumes are accepted") {
+  test("over an off-turn Oathkeeper recipient, only resumes are accepted") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
-    val (parked, _, _) = OathkeeperTieFixture.parked(service, repository,
-      "invariant-oathkeeper")
+    val (parked, _, _, _) = ParkedServiceFixture.oathkeeperTiePark(service,
+      repository, "invariant-oathkeeper")
     assertOnlyResumes(service, repository, "invariant-oathkeeper", parked,
-      plan.participants.map(_.playerId))
+      everyone)
+  }
+
+  test("over an off-turn League Treaty decision in Rest, only resumes are accepted") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (parked, _, _) = ParkedServiceFixture.leagueTreatyPark(service,
+      repository, "invariant-league-treaty")
+    assertOnlyResumes(service, repository, "invariant-league-treaty", parked,
+      everyone)
+  }
+
+  test("over a Silver Tongue bank choice in Rest, only resumes are accepted") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (parked, _) = ParkedServiceFixture.silverTonguePark(service, repository,
+      "invariant-silver-tongue")
+    assertOnlyResumes(service, repository, "invariant-silver-tongue", parked,
+      everyone)
   }
 }
 ```
 
-Fill `intents` by pasting `CommandProtocolSuite.examples` as it stands after Tasks 6 and 9, which is every intent including `UsePower` and `ResolveWalker`. It is the one list in this plan that is copied rather than written out: the source of truth is that vector, and the coverage test above fails if the copy misses a constructor.
-
-If `recoverPlan.participants.map(_.playerId)` or `plan.participants` does not exist under those names, use the same player list `setUp` iterates.
+The application gate already refuses these commands (Correction 7), so this suite pins that gate rather than driving new code. If a command is accepted, the gate in `GameApplicationService.applyCommand` has a hole: fix it there, never in the test.
 
 - [ ] **Step 7: Run the matrix**
 
 Run: `./sbtw "testOnly oathdigital.application.PendingWalkerInvariantSuite"`
-Expected: PASS. The application gate already refuses these commands (Correction 7), so this suite pins it rather than driving new code. If a command is accepted, the gate has a hole: fix it in `GameApplicationService.applyCommand`, never in the test.
+Expected: PASS.
 
 - [ ] **Step 8: Full gate and commit**
 
@@ -3773,27 +4489,27 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src
+git add src/main/scala/oathdigital/gameplay/OathRules.scala src/test/scala/oathdigital/application/ParkedServiceFixture.scala src/test/scala/oathdigital/application/GameApplicationServiceSuite.scala src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala
 git commit -m "feat(walker): refuse every non-resume command over a parked walker
 
 The rules boundary now refuses legacy handles while a walker is parked,
-matching the application gate. Both layers are pinned: every GameCommand
-over a parked Recover roll and an off-turn Oathkeeper decision, and every
-walker start and legacy handle over League Treaty and Silver Tongue parks.
+matching the application gate. Every GameCommand is pinned over a
+parked Recover roll, an off-turn Oathkeeper recipient, an off-turn League
+Treaty decision and a Silver Tongue choice.
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 12: Close out the superseded spec statements
+### Task 14: Close out the superseded spec statements
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md:66-72,244-247,272-273,553-555,564-565`
 - Modify: `docs/superpowers/specs/2026-09-13-rest-walker-and-phase-powers-design.md:3`
 
 **Interfaces:**
-- Consumes: the shipped behavior of Tasks 1-11.
+- Consumes: the shipped behavior of Tasks 1-13.
 - Produces: no code.
 
 - [ ] **Step 1: Correct the 2026-09-12 spec**
@@ -3826,8 +4542,19 @@ Run: `git diff --check`
 Expected: no output.
 
 ```bash
-git add docs/superpowers/specs
+git add docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md docs/superpowers/specs/2026-09-13-rest-walker-and-phase-powers-design.md
 git commit -m "docs(spec): record what the Rest walker settled
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 ```
+
+---
+
+## Execution handoff
+
+Plan complete and saved to `docs/superpowers/plans/2026-09-13-rest-walker-and-phase-powers.md`. Two execution options:
+
+1. **Subagent-Driven (recommended).** A fresh subagent runs each task, with a review between tasks, using superpowers:subagent-driven-development.
+2. **Inline Execution.** Tasks run in the controlling session, in batches with checkpoints, using superpowers:executing-plans.
+
+Whichever is chosen, tasks run in order: each task's **Interfaces → Consumes** names what earlier tasks must have produced.
