@@ -3844,7 +3844,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Modify: `shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala`, `ActionProjectionCodec.scala:212-236`, `GameProjectionDto.scala:41-43`, `GameProjectionCodec.scala:20-22,87-98,142-167`
 - Modify: `shared/src/main/scala/oathdigital/protocol/CommandIntents.scala`, `CommandIntentCodec.scala:45-52`, `CommandIntentDecoders.scala:117-129`
 - Modify: `src/main/scala/oathdigital/application/GameCommands.scala`, `Authorization.scala`, `GameIntentMapper.scala:55-60`, `GameApplicationService.scala:355-357`, `WalkerDecisionProjector.scala:189`, `LegalActionProjector.scala`, `GameProjection.scala`
-- Test: `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala`
+- Test: `shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala`, `ProjectionProtocolSuite.scala`, `src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala` (new), `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala`, `src/test/scala/oathdigital/server/GameHttpWireSuite.scala`
 
 **Interfaces:**
 - Consumes: `PhasePowerProcedure.usable`, `PhasePowerCatalog.default`, `ActionRef.UsePower` (Task 9); `SilverTongue` (Task 10); `PhasePowerFixture` (Task 9).
@@ -3983,6 +3983,37 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
     }
   }
 
+  test("a phase power used from a held relic is projected and legal with the " +
+      "relic's printed name and text") {
+    import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex,
+      RuleSourceRef}
+    import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base}
+    val current = base.game.current
+    val relic = current.commonCards.relicDeck.find(id => catalog.relics.exists(
+      r => r.id.value == id.value && r.powers.nonEmpty)).get
+    val held = base.copy(game = base.game.copy(current = current.copy(
+      turn = TurnState(actor, Phase.Act, Set.empty),
+      players = current.players.map(p => if (p.player != actor) p else
+        p.copy(relics = p.relics :+ RelicState(relic, Orientation.FaceUp,
+          Tokens.empty))),
+      commonCards = current.commonCards.copy(relicDeck =
+        current.commonCards.relicDeck.filterNot(_ == relic)))))
+    val powerId = RuleSourceIndex.enumerate(catalog, held).collectFirst {
+      case IndexedRuleSource(RuleSourceRef.Relic(`actor`, `relic`), ids, _, _)
+          if ids.nonEmpty => ids.head
+    }.get
+    val printed = catalog.relics.find(_.id.value == relic.value).get
+    val projected = new GameProjector(catalog,
+      PhasePowers(Vector(TestPower(powerId, PowerTiming.Act))))
+      .project("relic-power", LoadedGame(Ready(held), 30L), actor)
+    assertEquals(projected.phasePowers.map(p =>
+      (p.powerId, p.source.kind, p.source.id, p.name, p.rulesText)),
+      Vector((powerId.value, "relic", relic.value, printed.name,
+        printed.powers.find(_.id == powerId).get.rulesText)))
+    assert(projected.legalControls.contains(
+      s"usePower:${powerId.value}:${relic.value}"))
+  }
+
   test("an unusable power is neither projected nor legal") {
     val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
       Set(Suit.Nomad))
@@ -3993,11 +4024,31 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
 }
 ```
 
-The intent-to-command mapping is pinned end to end by Task 13, which submits `GameCommand.UsePower` through the service, and by the `CommandProtocolSuite` round trip above.
+Add to `GameHttpWireSuite`, which already imports `GameCommand`, `GameIntentMapper` and `oathdigital.model._`:
+
+```scala
+  test("the usePower intent binds to a UsePower command for the requester") {
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))),
+      Right(GameCommand.UsePower(PlayerId("actor-1"),
+        PowerId("denizen.silver-tongue"),
+        DecisionOptionRef.Denizen(DenizenId("92")))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("Not A Power",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))).left.toOption
+      .map(_.path), Some("$.intent.powerId"))
+    assert(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
+  }
+```
+
+`CommandProtocolSuite` pins the JSON spelling, this test pins the binding to a command, and Task 13 submits the bound command through the service.
 
 - [ ] **Step 3: Run to verify they fail**
 
-Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite"`
+Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.server.GameHttpWireSuite"`
 Expected: compilation fails on `UsePower` and `PhasePowerProjection`.
 
 - [ ] **Step 4: Shared protocol**
@@ -4114,25 +4165,36 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
       val index = CardIndex.from(context.ready.game).toOption
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
         powers).flatMap { usable =>
-        val printed = catalog.denizens.find(_.id.value == usable.card.value)
-          .flatMap(d => d.powers.find(_.id == usable.power.id).map(d -> _))
         for {
-          (card, power) <- printed
+          (name, power) <- printed(usable.card, usable.power.id)
           option <- DecisionOption.forRef(usable.ref)
           source <- walkerDecisions.optionProjection(context.ready,
             context.viewer, index, option)
-        } yield PhasePowerProjection(usable.power.id.value, source,
-          card.name, power.rulesText)
+        } yield PhasePowerProjection(usable.power.id.value, source, name,
+          power.rulesText)
       }
     }
 
   def controls(context: ScopedProjectionContext): Vector[String] =
     project(context).map(p => s"usePower:${p.powerId}:${p.source.id}")
 
+  /** The printed card name and power for every source kind
+    * `PhasePowerProcedure` yields: a denizen or a relic. The source was found
+    * through that same catalog entry, so a usable source always resolves.
+    */
+  private def printed(card: CardId, power: PowerId)
+      : Option[(String, oathdigital.catalog.CatalogPower)] = card match {
+    case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
+      .flatMap(d => d.powers.find(_.id == power).map(d.name -> _))
+    case id: RelicId => catalog.relics.find(_.id.value == id.value)
+      .flatMap(r => r.powers.find(_.id == power).map(r.name -> _))
+    case _ => None
+  }
+
 }
 ```
 
-   `DenizenDefinition.name` is the printed card name. A relic source reads `catalog.relics` the same way; that lookup arrives with the first relic phase power.
+   `DenizenDefinition.name` and `RelicDefinition.name` are the printed card names, so a denizen source and a relic source both project with their card's name and power text.
 - `GameProjector` (`GameProjection.scala:11-18`): take the phase powers as a constructor parameter, so a test can inject synthetic ones, and build every projector that needs them from it. Replace the class header and the `walkerDecisions`/`legalActions` members with:
 
 ```scala
@@ -4204,7 +4266,7 @@ Existing tests that assert an exact `legalControls` vector keep passing: the def
 
 - [ ] **Step 7: Run the suites**
 
-Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.SilverTongueSuite"`
+Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.server.GameHttpWireSuite"`
 Expected: PASS.
 
 - [ ] **Step 8: Full gate and commit**
@@ -4213,7 +4275,7 @@ Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/che
 Expected: all green.
 
 ```bash
-git add src/main/scala/oathdigital/application/PhasePowerProjector.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntents.scala shared/src/main/scala/oathdigital/protocol/CommandIntentCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntentDecoders.scala src/main/scala/oathdigital/application/GameCommands.scala src/main/scala/oathdigital/application/Authorization.scala src/main/scala/oathdigital/application/GameIntentMapper.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/main/scala/oathdigital/application/LegalActionProjector.scala src/main/scala/oathdigital/application/GameProjection.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala
+git add src/main/scala/oathdigital/application/PhasePowerProjector.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionDtos.scala shared/src/main/scala/oathdigital/protocol/projection/ActionProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionDto.scala shared/src/main/scala/oathdigital/protocol/projection/GameProjectionCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntents.scala shared/src/main/scala/oathdigital/protocol/CommandIntentCodec.scala shared/src/main/scala/oathdigital/protocol/CommandIntentDecoders.scala src/main/scala/oathdigital/application/GameCommands.scala src/main/scala/oathdigital/application/Authorization.scala src/main/scala/oathdigital/application/GameIntentMapper.scala src/main/scala/oathdigital/application/GameApplicationService.scala src/main/scala/oathdigital/application/WalkerDecisionProjector.scala src/main/scala/oathdigital/application/LegalActionProjector.scala src/main/scala/oathdigital/application/GameProjection.scala shared/src/test/scala/oathdigital/protocol/CommandProtocolSuite.scala shared/src/test/scala/oathdigital/protocol/ProjectionProtocolSuite.scala src/test/scala/oathdigital/application/PhasePowerProjectorSuite.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueSuite.scala src/test/scala/oathdigital/server/GameHttpWireSuite.scala
 git commit -m "feat(protocol): project usable phase powers and accept usePower
 
 The projection lists the viewer's usable phase powers with their source
