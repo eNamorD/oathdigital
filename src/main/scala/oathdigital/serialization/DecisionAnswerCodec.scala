@@ -1,6 +1,7 @@
 package oathdigital.serialization
 
-import oathdigital.model.{DecisionAnswer, DecisionOptionRef, DecisionPlacement}
+import oathdigital.model.{DecisionAnswer, DecisionOptionRef, DecisionPlacement,
+  DistributeAmount}
 import oathdigital.serialization.WireError.InvalidValue
 
 /** Journal wire form of a walker [[DecisionAnswer]].
@@ -18,12 +19,13 @@ import oathdigital.serialization.WireError.InvalidValue
   *
   * Both shapes spell an option reference as the kind/id pair
   * [[DecisionOptionRef.kind]] and [[DecisionOptionRef.wireId]] define, so the
-  * seven variants are named once in the model rather than tabulated again
+  * eight variants are named once in the model rather than tabulated again
   * here, in the command protocol, and in the projection.
   */
 private[serialization] object DecisionAnswerCodec {
   private val ChooseOneTag = "choose-one"
   private val PartitionTag = "partition"
+  private val DistributeTag = "distribute"
 
   def encode(answer: DecisionAnswer): ujson.Value = answer match {
     case DecisionAnswer.ChooseOneAnswer(selected) => ujson.Obj(
@@ -33,6 +35,10 @@ private[serialization] object DecisionAnswerCodec {
       "placements" -> ujson.Arr.from(placements.map(placement => ujson.Obj(
         "option" -> encodeRef(placement.option),
         "sectionKey" -> placement.sectionKey))))
+    case DecisionAnswer.DistributeAnswer(amounts) => ujson.Obj(
+      "kind" -> DistributeTag,
+      "amounts" -> ujson.Arr.from(amounts.map(entry => ujson.Obj(
+        "option" -> encodeRef(entry.ref), "amount" -> entry.amount))))
   }
 
   def decode(value: ujson.Value,
@@ -47,6 +53,17 @@ private[serialization] object DecisionAnswerCodec {
             decodeRef(entry("option"), s"$entryPath.option").map(
               DecisionPlacement(_, entry("sectionKey").str))
         }.map(DecisionAnswer.PartitionAnswer)
+      case DistributeTag =>
+        traverse(value("amounts").arr.toVector.zipWithIndex) {
+          case (entry, index) =>
+            val entryPath = s"$path.amounts[$index]"
+            val raw = entry("amount").num
+            for {
+              ref <- decodeRef(entry("option"), s"$entryPath.option")
+              amount <- Either.cond(raw.isValidInt, raw.toInt,
+                InvalidValue(s"$entryPath.amount", s"amount '$raw' is not an integer"))
+            } yield DistributeAmount(ref, amount)
+        }.map(DecisionAnswer.DistributeAnswer)
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker decision answer '$other'"))
     }

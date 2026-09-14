@@ -19,7 +19,8 @@ import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
 import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
+  PartitionAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
   test("ignored-rule diagnostics round trip durable source timing and reason") {
@@ -137,7 +138,7 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("both generic walker decision answers round trip on the step and on " +
+  test("every generic walker decision answer round trips on the step and on " +
       "the park") {
     // The answer fact rides a walker `ChoicePayload` and the parked
     // `answered` vector, so both directions of `DecisionAnswerCodec` are
@@ -148,8 +149,12 @@ class GameEventWireSuite extends munit.FunSuite {
       .zip(Vector("pay-favor", "pay-secret", "pay-favor"))
       .map { case (option, section) => DecisionPlacement(option, section) })
     val chooseOne = ChooseOneAnswer(DecisionOptionRef.Relic(RelicId("R01")))
+    val distribute = DistributeAnswer(Vector(
+      DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
+      DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))
     val answered = Vector(Answered("forge.assignment", partition, player),
-      Answered("recover.relic", chooseOne, player))
+      Answered("recover.relic", chooseOne, player),
+      Answered("league-treaty.distribute", distribute, player))
     val events = Vector[OathEvent](
       WalkerStepRecorded("1",
         ChoicePayload("forge.assignment", partition, player), Vector.empty,
@@ -157,6 +162,9 @@ class GameEventWireSuite extends munit.FunSuite {
       WalkerStepRecorded("2",
         ChoicePayload("recover.relic", chooseOne, player), Vector.empty,
         Vector.empty),
+      WalkerStepRecorded("3",
+        ChoicePayload("league-treaty.distribute", distribute, player),
+        Vector.empty, Vector.empty),
       WalkerParked(ActionRef.Forge, Vector("2"), answered,
         Vector.empty, Vector.empty),
       // Batch-1 Task 5: the only action that makes a start selection does not
@@ -212,7 +220,8 @@ class GameEventWireSuite extends munit.FunSuite {
       DecisionOptionRef.Denizen(DenizenId("denizen:d1")),
       DecisionOptionRef.Relic(RelicId("R01")),
       DecisionOptionRef.Vision(VisionId("vision:v1")),
-      DecisionOptionRef.Deck(CardDeck.Relic))
+      DecisionOptionRef.Deck(CardDeck.Relic),
+      DecisionOptionRef.FavorBank(Suit.Hearth))
     val events = refs.zipWithIndex.map { case (ref, index) =>
       WalkerStepRecorded(index.toString,
         ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,

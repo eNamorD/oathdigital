@@ -87,10 +87,7 @@ private[application] final class WalkerDecisionProjector(
       parked.pending, parked.powers, parked.awaited)
   } yield WalkerWaitingProjection(parked.awaited.value,
     ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
-      parked.powers).flatMap(decide => decide.query match {
-        case DecisionQuery.ChooseOne(_, heading) => heading
-        case DecisionQuery.Partition(_, _, heading, _) => heading
-      }))
+      parked.powers).flatMap(_.query.heading))
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
@@ -167,6 +164,10 @@ private[application] final class WalkerDecisionProjector(
           sections.map(section => DecisionSectionProjection(section.key,
             section.label, section.minRequired)),
           heading = heading, confirmLabel = confirmLabel))
+      // Task 2 projects distributions; until then a parked one projects as
+      // nothing, as an unpresentable decision does. No procedure declares
+      // one before League Treaty (Task 6).
+      case _: DecisionQuery.Distribute => None
     }
   }
 
@@ -183,8 +184,9 @@ private[application] final class WalkerDecisionProjector(
     * declares a reference, and the name is resolved here.
     *
     * `None` means "absent from authoritative state", which the caller turns
-    * into a suppressed decision. A `Deck` is a closed four-case enum and a
-    * button is its own identity, so neither can be absent.
+    * into a suppressed decision. A `Deck` is a closed four-case enum, a
+    * favor bank is a closed six-case enum, and a button is its own identity,
+    * so none can be absent.
     */
   private def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
       index: Option[CardIndex],
@@ -211,6 +213,8 @@ private[application] final class WalkerDecisionProjector(
           .flatMap(details => row(details.name, Some(details)))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
+      case DecisionOption.FavorBank(bank) =>
+        row(presentation.safeLabel(bank.suit.key))
     }
   }
 

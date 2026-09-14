@@ -101,7 +101,7 @@ The spec is binding. Implementation needs these changes to its letter; each is r
   - Journal tag `"distribute"`: `{"kind":"distribute","amounts":[{"option":<ref>,"amount":n}]}`.
   - `WalkerDecisionProjector` suppresses a `Distribute` query until Task 2 projects it. No procedure declares one before Task 6.
 
-- [ ] **Step 1: Write the failing validator tests**
+- [x] **Step 1: Write the failing validator tests**
 
 Append to `DecisionQuerySuite`, and add `DistributeAmount`, `DistributeSlot` and `Suit` to its model imports:
 
@@ -196,12 +196,12 @@ Append to `DecisionQuerySuite`, and add `DistributeAmount`, `DistributeSlot` and
   }
 ```
 
-- [ ] **Step 2: Run the suite to verify it fails**
+- [x] **Step 2: Run the suite to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite"`
 Expected: compilation fails on `DecisionOptionRef.FavorBank`, `DistributeSlot` and `DecisionQuery.Distribute`.
 
-- [ ] **Step 3: Add the vocabulary to `Decisions.scala`**
+- [x] **Step 3: Add the vocabulary to `Decisions.scala`**
 
 In `object DecisionOptionRef`, after `Deck`:
 
@@ -287,7 +287,7 @@ In `object DecisionAnswer`, after `PartitionAnswer`:
       extends DecisionAnswer
 ```
 
-- [ ] **Step 4: Validate `Distribute` in `DecisionQueries.scala`**
+- [x] **Step 4: Validate `Distribute` in `DecisionQueries.scala`**
 
 Add a `wellFormed` case after `Partition`:
 
@@ -375,7 +375,7 @@ Add the helpers beside `acceptsPartition`, and import `DecisionOption`, `Distrib
     s"${ref.kind}/${ref.wireId}"
 ```
 
-- [ ] **Step 5: Journal spelling in `DecisionAnswerCodec.scala`**
+- [x] **Step 5: Journal spelling in `DecisionAnswerCodec.scala`**
 
 Add `private val DistributeTag = "distribute"`. Add an encode case:
 
@@ -412,7 +412,7 @@ In `GameEventWireSuite`'s test "both generic walker decision answers round trip 
 
 Change the suite's `DecisionAnswer` import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`. Rename that test to "every generic walker decision answer round trips on the step and on the park". In "every option reference kind round trips through a recorded answer", add `DecisionOptionRef.FavorBank(Suit.Hearth)` to the reference list.
 
-- [ ] **Step 6: Keep the projector total over the new cases**
+- [x] **Step 6: Keep the projector total over the new cases**
 
 In `WalkerDecisionProjector.scala`:
 
@@ -433,12 +433,12 @@ In `WalkerDecisionProjector.scala`:
       case _: DecisionQuery.Distribute => None
 ```
 
-- [ ] **Step 7: Run the affected suites**
+- [x] **Step 7: Run the affected suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite oathdigital.serialization.GameEventWireSuite oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
