@@ -81,6 +81,11 @@ private[protocol] object CommandNestedCodecs {
         "placements" -> ujson.Arr.from(placements.map(row => ujson.Obj(
           "optionKind" -> row.optionKind, "optionId" -> row.optionId,
           "sectionKey" -> row.sectionKey))))
+    case DecisionAnswerWire.DistributeWire(amounts) => ujson.Obj(
+      "kind" -> "distribute",
+      "amounts" -> ujson.Arr.from(amounts.map(row => ujson.Obj(
+        "optionKind" -> row.optionKind, "optionId" -> row.optionId,
+        "amount" -> row.amount))))
   }
 
   def decodeDecisionAnswerWire(value: ujson.Value, path: String)
@@ -99,6 +104,14 @@ private[protocol] object CommandNestedCodecs {
         _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
           s"$path.placements")
       } yield DecisionAnswerWire.PartitionWire(rows)
+      case "distribute" => for {
+        _ <- exact(root, Set("kind", "amounts"), path)
+        raw <- field(root, "amounts", path).flatMap(array(_, s"$path.amounts"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeDistributeAmount(v, s"$path.amounts[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
+          s"$path.amounts")
+      } yield DecisionAnswerWire.DistributeWire(rows)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision answer '$kind'"))
     }}
 
@@ -109,6 +122,15 @@ private[protocol] object CommandNestedCodecs {
     optionId <- string(row, "optionId", path)
     sectionKey <- string(row, "sectionKey", path)
   } yield DecisionPlacementWire(optionKind, optionId, sectionKey) }
+
+  private def decodeDistributeAmount(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DistributeAmountWire] =
+    obj(value, path).flatMap { row => for {
+      _ <- exact(row, Set("optionKind", "optionId", "amount"), path)
+      optionKind <- string(row, "optionKind", path)
+      optionId <- string(row, "optionId", path)
+      amount <- field(row, "amount", path).flatMap(integer(_, s"$path.amount"))
+    } yield DistributeAmountWire(optionKind, optionId, amount) }
 
   private def encodeInformation(value: NegotiationInformation): ujson.Obj = value match {
     case NegotiationInformation.Adviser(owner, card) => ujson.Obj("kind" -> "adviser", "ownerPlayerId" -> owner, "card" -> world(card))

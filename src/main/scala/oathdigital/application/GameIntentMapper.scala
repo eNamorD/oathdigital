@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef,
   TradeResource}
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -199,6 +199,10 @@ object GameIntentMapper {
       traverse(placements)(row => optionRef(row.optionKind, row.optionId,
         "$.intent.payload.placements.option").map(
           DecisionPlacement(_, row.sectionKey))).map(PartitionAnswer)
+    case DecisionAnswerWire.DistributeWire(amounts) =>
+      traverse(amounts)(row => optionRef(row.optionKind, row.optionId,
+        "$.intent.payload.amounts.option").map(
+          DistributeAmount(_, row.amount))).map(DistributeAnswer)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

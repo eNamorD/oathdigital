@@ -49,7 +49,10 @@ class CommandProtocolSuite extends munit.FunSuite {
     ResolveWalker("forge.assignment", DecisionAnswerWire.PartitionWire(
       Vector(DecisionPlacementWire("denizen", "d1", "pay-favor"),
         DecisionPlacementWire("denizen", "d2", "pay-favor"),
-        DecisionPlacementWire("denizen", "d3", "pay-secret"))))
+        DecisionPlacementWire("denizen", "d3", "pay-secret")))),
+    ResolveWalker("rest.distribution", DecisionAnswerWire.DistributeWire(Vector(
+      DistributeAmountWire("favor-bank", "arcane", 0),
+      DistributeAmountWire("favor-bank", "nomad", 3))))
   )
 
   test("a walker answer carrying a deleted legacy tag is rejected") {
@@ -137,6 +140,15 @@ class CommandProtocolSuite extends munit.FunSuite {
     // The engine rejects a duplicated placement too (`DecisionQueries`);
     // catching it at the transport keeps the two rules the same shape.
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
+  }
+
+  test("a distribute payload naming one option twice is rejected at its path") {
+    val row = """{"optionKind":"favor-bank","optionId":"nomad","amount":1}"""
+    val json = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker",""" +
+      """"decisionId":"d","payload":{"kind":"distribute",""" +
+      s""""amounts":[$row,$row]}}}"""
+    assertEquals(ActorlessCommandCodec.decode(json).left.toOption.get.path,
+      "$.intent.payload.amounts")
   }
 
   test("an unknown walker intent type is rejected without throwing") {

@@ -115,6 +115,19 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(without))
   }
 
+  test("a distribute query round-trips its slots, suggestions and total") {
+    def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
+    val distribute = DecisionQueryProjection("distribute", Vector.empty,
+      heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
+      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
+        DecisionSlotProjection(bank("nomad"), 0, 6, None)),
+      total = Some(6))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(distribute))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
+  }
+
   /** `WalkerWaitingProjection.heading` is `None` for a Roll park (see its
     * doc): the populated projection above only covers the Decide case
     * (`Some("Choose the Oathkeeper")`), so this pins the Roll case's absent

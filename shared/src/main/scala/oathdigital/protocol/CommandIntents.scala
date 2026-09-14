@@ -157,9 +157,15 @@ object DecisionAnswerWire {
     */
   final case class PartitionWire(placements: Vector[DecisionPlacementWire])
       extends DecisionAnswerWire
+
+  final case class DistributeWire(amounts: Vector[DistributeAmountWire])
+      extends DecisionAnswerWire
 }
 
 /** One option placed in one section of a [[DecisionAnswerWire.PartitionWire]].
   */
 final case class DecisionPlacementWire(optionKind: String, optionId: String,
     sectionKey: String)
+
+final case class DistributeAmountWire(optionKind: String, optionId: String,
+    amount: Int)

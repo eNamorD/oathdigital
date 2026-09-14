@@ -100,15 +100,19 @@ final case class PendingCardDecisionProjection(
   * projection this replaced -- two hand-written candidate derivations that
   * agreed with the engine only by convention -- are gone.
   *
-  * `form` is the query shape, `"choose-one"` (pick exactly one option) or
-  * `"partition"` (spread every option across the declared sections). A
-  * choose-one query carries no `sections` at all.
+  * `form` is the query shape: `"choose-one"` (pick exactly one option),
+  * `"partition"` (spread every option across the declared sections), or
+  * `"distribute"` (assign amounts across the declared slots). A choose-one
+  * query carries no `sections` at all. `slots` and `total` are a distribute
+  * form's whole content. That form's `options` is empty, because every
+  * option it offers sits on a slot.
   *
   * There is deliberately NO prebuilt wire answer on an option. The client
-  * already holds everything an answer needs: a `ChooseOneWire(kind, id)` or
-  * a `PartitionWire` of placements is built from the same kind-and-id pair
-  * each option carries, so embedding an answer would duplicate the identity
-  * and couple these DTOs to the command protocol for nothing.
+  * already holds everything an answer needs: a `ChooseOneWire(kind, id)`, a
+  * `PartitionWire` of placements, or a `DistributeWire` of amounts is built
+  * from the same kind-and-id pair each option or slot carries. Embedding an
+  * answer would duplicate the identity and couple these DTOs to the command
+  * protocol for nothing.
   *
   * `heading` and `confirmLabel` (Task 5b) are the panel's own prompt copy,
   * passed through from the query the action declared -- the frame around the
@@ -128,7 +132,9 @@ final case class DecisionQueryProjection(
     options: Vector[DecisionOptionProjection],
     sections: Vector[DecisionSectionProjection] = Vector.empty,
     heading: Option[String] = None,
-    confirmLabel: Option[String] = None)
+    confirmLabel: Option[String] = None,
+    slots: Vector[DecisionSlotProjection] = Vector.empty,
+    total: Option[Int] = None)
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a
@@ -151,6 +157,13 @@ final case class DecisionOptionProjection(kind: String, id: String,
   */
 final case class DecisionSectionProjection(key: String, label: String,
     minRequired: Int)
+
+/** One amount-taking slot of a `distribute` query: its option, presented
+  * exactly as a choose-one option is, its bounds, and the amount a draft
+  * opens at when the query suggests one.
+  */
+final case class DecisionSlotProjection(option: DecisionOptionProjection,
+    minimum: Int, maximum: Int, suggested: Option[Int])
 /** Wire projection of a parked generic-walker decision (Task 6:
   * `CurrentGameState.walkerPending`/`walkerProcedure`) -- the walker path's
   * counterpart to [[PendingCardDecisionProjection]] above, which the walker

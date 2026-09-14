@@ -4,9 +4,9 @@ import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
   TreeDecision}
 import oathdigital.gameplay.WakeResource
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
-  DecisionAnswerWire, DecisionPlacementWire, GameIntent}
+  DecisionAnswerWire, DecisionPlacementWire, DistributeAmountWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
   test("development and authenticated transports decode the same actorless intent") {
@@ -95,6 +95,15 @@ class GameHttpWireSuite extends munit.FunSuite {
             "pay-favor"),
           DecisionPlacement(DecisionOptionRef.Denizen(DenizenId("d2")),
             "pay-secret")))))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      GameIntent.ResolveWalker("rest.distribution",
+        DecisionAnswerWire.DistributeWire(Vector(
+          DistributeAmountWire("favor-bank", "arcane", 0),
+          DistributeAmountWire("favor-bank", "nomad", 3))))),
+      Right(GameCommand.ResolveWalker(PlayerId("actor-1"),
+        TreeDecision("rest.distribution", DistributeAnswer(Vector(
+          DistributeAmount(DecisionOptionRef.FavorBank(Suit.Arcane), 0),
+          DistributeAmount(DecisionOptionRef.FavorBank(Suit.Nomad), 3)))))))
 
     // An unknown option kind, and a blank id an identifier would throw on,
     // are both typed mapping failures rather than exceptions.

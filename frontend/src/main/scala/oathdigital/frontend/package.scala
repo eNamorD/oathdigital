@@ -81,6 +81,8 @@ package object frontend {
   val DecisionOptionState = protocol.projection.DecisionOptionProjection
   type DecisionSectionState = protocol.projection.DecisionSectionProjection
   val DecisionSectionState = protocol.projection.DecisionSectionProjection
+  type DecisionSlotState = protocol.projection.DecisionSlotProjection
+  val DecisionSlotState = protocol.projection.DecisionSlotProjection
   type CampaignState = protocol.projection.CampaignProjection
   object CampaignState {
     def apply(decisionId: String, targetSiteIds: Vector[String], force: Int,

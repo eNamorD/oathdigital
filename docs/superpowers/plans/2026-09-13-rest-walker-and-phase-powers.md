@@ -473,7 +473,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - Projection: `DecisionSlotProjection(option: DecisionOptionProjection, minimum: Int, maximum: Int, suggested: Option[Int])`. `DecisionQueryProjection` gains trailing `slots: Vector[DecisionSlotProjection] = Vector.empty, total: Option[Int] = None`. The `"distribute"` form carries `options = Vector.empty`.
   - Frontend alias `DecisionSlotState`.
 
-- [ ] **Step 1: Write the failing wire tests**
+- [x] **Step 1: Write the failing wire tests**
 
 In `CommandProtocolSuite`, add to `examples`:
 
@@ -512,7 +512,7 @@ In `GameHttpWireSuite`, in the test that maps `GameIntent.ResolveWalker("forge.a
 
 Change its import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`.
 
-- [ ] **Step 2: Write the failing projection tests**
+- [x] **Step 2: Write the failing projection tests**
 
 Add to `ProjectionProtocolSuite`:
 
@@ -557,12 +557,12 @@ Add to `WalkerDecisionProjectorSuite`, beside `decideTree`:
 
 Add `DistributeSlot` and `Suit` to the suite's imports if its model import is not a wildcard.
 
-- [ ] **Step 3: Run to verify they fail**
+- [x] **Step 3: Run to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: compilation fails on `DistributeWire`, `DistributeAmountWire` and `DecisionSlotProjection`.
 
-- [ ] **Step 4: Command wire**
+- [x] **Step 4: Command wire**
 
 In `CommandIntents.scala`, beside `PartitionWire`:
 
@@ -625,7 +625,7 @@ In `GameIntentMapper.decisionAnswer`, importing `DistributeAnswer` and `Distribu
           DistributeAmount(_, row.amount))).map(DistributeAnswer)
 ```
 
-- [ ] **Step 5: Projection DTO and codec**
+- [x] **Step 5: Projection DTO and codec**
 
 In `ActionProjectionDtos.scala`, append to `DecisionQueryProjection`:
 
@@ -716,7 +716,7 @@ In `frontend/.../package.scala`, after the `DecisionSectionState` alias:
   val DecisionSlotState = protocol.projection.DecisionSlotProjection
 ```
 
-- [ ] **Step 6: Project the query**
+- [x] **Step 6: Project the query**
 
 In `WalkerDecisionProjector.queryProjection`, replace Task 1's `case _: DecisionQuery.Distribute => None` with:
 
@@ -734,12 +734,12 @@ In `WalkerDecisionProjector.queryProjection`, replace Task 1's `case _: Decision
 
 `described` is the same helper the `ChooseOne` case uses. The size check keeps a slot with no presentable option suppressing the whole decision, the same rule an unpresentable choose-one option follows.
 
-- [ ] **Step 7: Run the affected suites**
+- [x] **Step 7: Run the affected suites**
 
 Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

@@ -11,7 +11,7 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
-  DecisionSectionProjection, WalkerDecisionProjection,
+  DecisionSectionProjection, DecisionSlotProjection, WalkerDecisionProjection,
   WalkerRollOutcomeProjection, WalkerWaitingProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
@@ -164,10 +164,15 @@ private[application] final class WalkerDecisionProjector(
           sections.map(section => DecisionSectionProjection(section.key,
             section.label, section.minRequired)),
           heading = heading, confirmLabel = confirmLabel))
-      // Task 2 projects distributions; until then a parked one projects as
-      // nothing, as an unpresentable decision does. No procedure declares
-      // one before League Treaty (Task 6).
-      case _: DecisionQuery.Distribute => None
+      case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
+        described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))
+          .filter(_.size == slots.size).map(options =>
+            DecisionQueryProjection("distribute", Vector.empty,
+              heading = heading, confirmLabel = Some(confirmLabel),
+              slots = slots.zip(options).map { case (slot, option) =>
+                DecisionSlotProjection(option, slot.minimum, slot.maximum,
+                  slot.suggested) },
+              total = Some(total)))
     }
   }
 
