@@ -646,27 +646,45 @@ final case class DecisionSlotProjection(option: DecisionOptionProjection,
     minimum: Int, maximum: Int, suggested: Option[Int])
 ```
 
-In `ActionProjectionCodec.scala`, move the option-row lambdas of `encodeDecisionQuery` and `decodeDecisionQuery` into `private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value` and `private[projection] def decodeOptionRow(raw: ujson.Value, child: String): Result[DecisionOptionProjection]`, with the lambda bodies unchanged. Use them for `options`. Then extend the encoder:
+In `ActionProjectionCodec.scala`, replace `encodeDecisionQuery` and `decodeDecisionQuery` (lines 212-246) with the two functions below. They keep every existing field and add the option-row helpers, `slots` and `total`:
 
 ```scala
+  def encodeDecisionQuery(value: DecisionQueryProjection): ujson.Value = ujson.Obj(
+    "form" -> value.form,
+    "options" -> encoded(value.options)(encodeOptionRow),
+    "sections" -> encoded(value.sections)(section => ujson.Obj(
+      "key" -> section.key, "label" -> section.label,
+      "minRequired" -> section.minRequired)),
+    "heading" -> stringOption(value.heading),
     "confirmLabel" -> stringOption(value.confirmLabel),
     "slots" -> encoded(value.slots)(slot => ujson.Obj(
       "option" -> encodeOptionRow(slot.option), "minimum" -> slot.minimum,
       "maximum" -> slot.maximum, "suggested" -> intOption(slot.suggested))),
     "total" -> intOption(value.total))
-```
 
-and the decoder:
-
-```scala
+  def decodeDecisionQuery(raw: ujson.Value, path: String)
+      : Result[DecisionQueryProjection] = for {
+    value <- obj(raw, path)
     _ <- exact(value, Set("form", "options", "sections", "heading",
       "confirmLabel", "slots", "total"), path)
-    // ... existing fields ...
+    form <- string(value, "form", path)
+    optionRaws <- array(value, "options", path)
+    options <- traverse(optionRaws, s"$path.options")(decodeOptionRow)
+    sectionRaws <- array(value, "sections", path)
+    sections <- traverse(sectionRaws, s"$path.sections") { (raw, child) => for {
+      row <- obj(raw, child)
+      _ <- exact(row, Set("key", "label", "minRequired"), child)
+      key <- string(row, "key", child); label <- string(row, "label", child)
+      minimum <- int(row, "minRequired", child)
+    } yield DecisionSectionProjection(key, label, minimum) }
+    heading <- optionalString(value, "heading", path)
+    confirmLabel <- optionalString(value, "confirmLabel", path)
     slotRaws <- array(value, "slots", path)
     slots <- traverse(slotRaws, s"$path.slots") { (raw, child) => for {
       row <- obj(raw, child)
       _ <- exact(row, Set("option", "minimum", "maximum", "suggested"), child)
-      option <- field(row, "option", child).flatMap(decodeOptionRow(_, s"$child.option"))
+      option <- field(row, "option", child).flatMap(
+        decodeOptionRow(_, s"$child.option"))
       minimum <- int(row, "minimum", child)
       maximum <- int(row, "maximum", child)
       suggested <- optionalInt(row, "suggested", child)
@@ -674,9 +692,22 @@ and the decoder:
     total <- optionalInt(value, "total", path)
   } yield DecisionQueryProjection(form, options, sections, heading,
     confirmLabel, slots, total)
+
+  private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
+    ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,
+      "card" -> option(row.card)(encodeCard))
+
+  private[projection] def decodeOptionRow(raw: ujson.Value, child: String)
+      : Result[DecisionOptionProjection] = for {
+    row <- obj(raw, child)
+    _ <- exact(row, Set("kind", "id", "label", "card"), child)
+    kind <- string(row, "kind", child); id <- string(row, "id", child)
+    label <- string(row, "label", child)
+    card <- optionalAbsent(row, "card", child)(decodeCard)
+  } yield DecisionOptionProjection(kind, id, label, card)
 ```
 
-`int`, `optionalInt`, `field`, `intOption` and `encoded` are `ProjectionCodecSupport`'s.
+`obj`, `exact`, `field`, `string`, `array`, `int`, `optionalInt`, `optionalString`, `optionalAbsent`, `traverse`, `encoded`, `option`, `stringOption` and `intOption` all come from `ProjectionCodecSupport`. `traverse`'s callback takes `(raw, child)`, so `decodeOptionRow` passes to it directly.
 
 In `frontend/.../package.scala`, after the `DecisionSectionState` alias:
 
@@ -943,13 +974,71 @@ Expected: PASS.
 
 - [ ] **Step 5: Move the recording view into a shared test file**
 
-Cut `private final class RecordingView` out of `PartitionPanelRenderSuite.scala` and paste it unchanged into `frontend/src/test/scala/oathdigital/frontend/RecordingServerUiView.scala`, as `private[frontend] final class RecordingView(...)` with the same imports it uses. Add to it:
+Delete `private final class RecordingView` (lines 253 to the end of the file) from `PartitionPanelRenderSuite.scala`. Its protocol import becomes:
 
 ```scala
-  var currentWalkerDistribution: Option[WalkerDistributeDraft] = None
+import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
+  GameIntent => Intent}
 ```
 
-(Adjust to the partition field's style: the getter and setter pair `currentWalkerPartition` uses.)
+Create `frontend/src/test/scala/oathdigital/frontend/RecordingServerUiView.scala` with exactly:
+
+```scala
+package oathdigital.frontend
+
+import oathdigital.protocol.{GameIntent => Intent, PreviewModifier}
+
+/** A `ServerUiView` that records submissions and rerenders instead of
+  * touching a server, shared by the walker panel render suites.
+  */
+private[frontend] final class RecordingView(gameId: String, playerId: String)
+    extends ServerUiView {
+  var partition: Option[WalkerPartitionDraft] = None
+  var distribution: Option[WalkerDistributeDraft] = None
+  var submitted: Vector[Intent] = Vector.empty
+  var rerenders: Int = 0
+
+  def currentWalkerPartition: Option[WalkerPartitionDraft] = partition
+  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit =
+    partition = value
+  def currentWalkerDistribution: Option[WalkerDistributeDraft] = distribution
+  def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit =
+    distribution = value
+  def rerender(): Unit = rerenders += 1
+  def submitCommand(command: Intent): Unit = submitted :+= command
+
+  def currentGameId: String = gameId
+  def currentPlayerId: String = playerId
+  def displayedProjection: Option[GameProjection] = None
+  val sessionCoordinator: ServerSessionCoordinator =
+    new ServerSessionCoordinator(gameId, playerId)
+  def currentBoardSelection: Option[BoardTargetSelectionState] = None
+  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
+  def currentBoardFormation: Option[BoardTargetFormationState] = None
+  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit = ()
+  def currentCampaignPlacement: Option[CampaignPlacementState] = None
+  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit = ()
+  def currentCardDecision: Option[CardDecisionState] = None
+  def currentCardDecision_=(value: Option[CardDecisionState]): Unit = ()
+  def currentModifierWorkflow: Option[ModifierWorkflow] = None
+  def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
+  def chooseFacedownAdviser(cardId: String): Unit = ()
+  def toggleModifier(value: PreviewModifier): Unit = ()
+  def moveModifier(value: PreviewModifier, delta: Int): Unit = ()
+  def confirmModifiers(): Unit = ()
+  def backFromModifiers(): Unit = ()
+  def cancelModifiers(): Unit = ()
+  def beginTargetedMajorAction(actionKind: String): Unit = ()
+  def backFromTargets(): Unit = ()
+  def cancelTargetAction(): Unit = ()
+  def submitTargetCommand(command: Intent): Unit = ()
+  def canControl: Boolean = true
+  def handleSelection(result: BoardSelectionResult): Unit = ()
+  def loadSession(gameId: String, playerId: String): Unit = ()
+  def reconnectSession(): Unit = ()
+  def createGame(): Unit = ()
+}
+```
 
 Add to `trait ServerUiView`, after `currentWalkerPartition_=`:
 
@@ -3913,9 +4002,41 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
    In the final `.copy(...)` at lines 156-159, add `phasePowers = phasePowerProjector.project(context)`. `context` is the `ScopedProjectionContext` that method already reads `context.ready` from.
 - `LegalActionProjector`: add the constructor parameter `phasePowers: PhasePowerProjector` after `walkerDecisions`. In `controls`:
 
+Replace the whole `case None => current.turn.phase match { ... }` arm (after Task 7 it reads exactly as below, without the three `phasePowers.controls(context)` calls) with:
+
 ```scala
+      case None => current.turn.phase match {
         case Phase.Act => Vector(
-          // ... the existing Option.when(...) entries, unchanged ...
+          Option.when(BeginRestProcedure.validateBegin(catalog,
+            Ready(context.ready), active.player).isRight)("beginRest"),
+          Option.when(active.pawnSite.exists(_ =>
+            recoverEligible(context, active)))("beginRecover"),
+          Option.when(active.pawnSite.exists(site => ForgeRules.validate(
+            catalog, context.ready, active, site).isRight))("beginForge"),
+          Option.when(ChallengeRules.legal(catalog, context.ready,
+            active.player).nonEmpty)("beginChallenge"),
+          Option.when(Banner.all.exists(b => BannerRules.holder(current, b)
+            .contains(active.player) && BannerRules.playerResources(active, b) > 0))(
+            "placeBannerResource"),
+          Option.when(active.advisers.exists(presentation.adviserOrientation(_) ==
+            Orientation.FaceDown))("facedownAdviserMinorAction"),
+          Option.when(active.advisers.exists {
+            case VisionState(id, Orientation.FaceDown) =>
+              Visions.canReveal(catalog, context.ready, active.player, id)
+            case _ => false
+          })("revealVision"),
+          Option.when(active.advisers.exists {
+            case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
+            case _ => false
+          } && Visions.canPlayConspiracy(catalog, context.ready, active.player))(
+            "playConspiracy"),
+          Option.when(context.activeSite.exists(_.relics.nonEmpty))("peekSiteRelics"),
+          Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(
+            "revealOwnedRelic"),
+          Option.when(minor.exists(value => value.maxBoardToSite > 0 ||
+            value.maxSiteToBoard > 0))("moveWarbands"),
+          Option.when(oathdigital.gameplay.actions.Negotiation
+            .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
         ).flatten ++ phasePowers.controls(context)
         case Phase.Rest => phasePowers.controls(context) ++ Option.when(
           FinishRestProcedure.gate(catalog, context.ready, active.player).isRight)(
@@ -3923,7 +4044,10 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake => takeableResources(context).map(takeControl) ++
           phasePowers.controls(context) :+ "endWake"
+      }
 ```
+
+Existing tests that assert an exact `legalControls` vector keep passing: the default production catalog registers no WAKE or ACTION phase power, and Silver Tongue is usable only when card 92 is an accessible adviser or site card.
 
 - [ ] **Step 7: Run the suites**
 
