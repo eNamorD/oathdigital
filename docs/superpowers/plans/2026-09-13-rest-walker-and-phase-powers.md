@@ -1297,7 +1297,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `PowerSourceRef.Card(id: CardId)`.
   - Journal kinds: `"begin-turn"` `{playerId, phase}`; `"record-power-use"` with `siteId` for a site source, or `cardKind` and `cardId` for a card source.
 
-- [ ] **Step 1: Write the failing mutation tests**
+- [x] **Step 1: Write the failing mutation tests**
 
 Append to `OperationStateMutationSuite` (it already imports `oathdigital.model._` and has `ready` and `playerId`):
 
@@ -1328,12 +1328,12 @@ Append to `OperationStateMutationSuite` (it already imports `oathdigital.model._
   }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite"`
 Expected: compilation fails, because `BeginTurn` and `PowerSourceRef.Card` are not defined.
 
-- [ ] **Step 3: Implement the primitive and the source**
+- [x] **Step 3: Implement the primitive and the source**
 
 In `GameState.scala`, inside `object PowerSourceRef`, after `Site`:
 
@@ -1395,12 +1395,12 @@ and after `setOathkeeper`:
 
 Run `grep -rn "SetOathkeeper" --include='*.scala' src/main`. Every production match that names `SetOathkeeper` must also name `BeginTurn`. Today the only such matches are the two codec arms and the mutation above.
 
-- [ ] **Step 4: Run the mutation suite**
+- [x] **Step 4: Run the mutation suite**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite"`
 Expected: compilation fails in `WalkerOperationCodec` ("match may not be exhaustive": `BeginTurn` and `PowerSourceRef.Card`).
 
-- [ ] **Step 5: Journal both in `WalkerOperationCodec.scala`**
+- [x] **Step 5: Journal both in `WalkerOperationCodec.scala`**
 
 Import `BeginTurn`. Replace the site-only `RecordPowerUse` encode arm and add `BeginTurn`:
 
@@ -1444,13 +1444,14 @@ Add beside `decodePowerTiming`:
     case "relic" => Right(RelicId(id))
     case "edifice" => Right(EdificeId(id))
     case "vision" => Right(VisionId(id))
+    case "legacy" => Right(LegacyId(id))
     case other => Left(InvalidValue(path, s"unknown power source card '$other'"))
   }
 ```
 
-These are exactly the strings `CardId.kind` returns for `DenizenId`, `RelicId`, `EdificeId` and `VisionId` (`model/Identity.scala`).
+These are exactly the strings `CardId.kind` returns for `DenizenId`, `RelicId`, `EdificeId`, `VisionId` and `LegacyId` (`model/Identity.scala`). Although phase-power discovery does not produce legacy sources, the journal codec remains total for every `CardId` admitted by `PowerSourceRef.Card`.
 
-- [ ] **Step 6: Extend the codec round-trip list**
+- [x] **Step 6: Extend the codec round-trip list**
 
 In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the walker codec", add to `operations`:
 
@@ -1468,12 +1469,12 @@ In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the w
 
 The suite imports `oathdigital.model._` and lists its operations explicitly (`import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn, ...}`); add `BeginTurn`, `EnterPhase` and `RecordPowerUse` to that list.
 
-- [ ] **Step 7: Run both suites**
+- [x] **Step 7: Run both suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite oathdigital.serialization.GameEventWireSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

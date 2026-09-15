@@ -7,13 +7,13 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
   RestCompleted, RestStarted, SearchCompleted, SearchStarted}
-import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
-  PositionedLocation, Repeat, Replace, Reveal, Roll, Sacrifice, SecretSide,
-  Sequence, SetOathkeeper, StackPosition, Swap, Take}
+  PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll,
+  Sacrifice, SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
@@ -546,10 +546,22 @@ class GameEventWireSuite extends munit.FunSuite {
     val vision = VisionId("vision")
     val relic = RelicId("relic")
     val edifice = EdificeId("edifice")
+    val legacy = LegacyId("legacy")
     val lineage = LineageId("lineage")
     val operations: Vector[CoreOperation] = Vector(
       AdjustSupply(player, 2),
       ModifyDicePool(PoolKey("recover"), 2),
+      RecordPowerUse(PowerUseRef(PowerTiming.Wake,
+        PowerSourceRef.Site(site), PowerId("site.take-wealth"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Rest,
+        PowerSourceRef.Card(denizen), PowerId("denizen.silver-tongue"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Act,
+        PowerSourceRef.Card(relic), PowerId("relic.test-power"))),
+      RecordPowerUse(PowerUseRef(PowerTiming.Act,
+        PowerSourceRef.Card(legacy), PowerId("legacy.test-power"))),
+      EnterPhase(Phase.Act),
+      BeginTurn(player, Phase.Wake),
+      BeginTurn(other, Phase.RoundEnd),
       Move(Piece.Card(relic),
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(site)), Some(Orientation.FaceDown)),

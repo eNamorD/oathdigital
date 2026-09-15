@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.gameplay.{DiceKind, DiceSpec}
-import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
@@ -49,15 +49,21 @@ private[serialization] trait WalkerOperationCodec {
       // A use limit is journalled as the ref it records, not as the power
       // that asked for it: replay adds the same ref to the same turn without
       // gathering anything.
-      case RecordPowerUse(PowerUseRef(timing, PowerSourceRef.Site(site), id)) =>
-        ujson.Obj("kind" -> "record-power-use",
-          "timing" -> encodePowerTiming(timing), "siteId" -> site.value,
-          "powerId" -> id.value)
+      case RecordPowerUse(PowerUseRef(timing, source, id)) =>
+        ujson.Obj.from(Vector[(String, ujson.Value)](
+          "kind" -> "record-power-use",
+          "timing" -> encodePowerTiming(timing)) ++ (source match {
+          case PowerSourceRef.Site(site) => Vector("siteId" -> ujson.Str(site.value))
+          case PowerSourceRef.Card(card) => Vector(
+            "cardKind" -> ujson.Str(card.kind), "cardId" -> ujson.Str(card.value))
+        }) :+ ("powerId" -> ujson.Str(id.value)))
       case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
         "phase" -> phase.key)
       case SetOathkeeper(holder) => ujson.Obj("kind" -> "set-oathkeeper",
         "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p =>
           ujson.Str(p.value)))
+      case BeginTurn(player, phase) => ujson.Obj("kind" -> "begin-turn",
+        "playerId" -> player.value, "phase" -> phase.key)
       case Move(piece, from, to, orientation) => ujson.Obj(
         "kind" -> "move",
         "piece" -> encodePiece(piece),
@@ -201,6 +207,16 @@ private[serialization] trait WalkerOperationCodec {
     case other => Left(InvalidValue(path, s"unknown power timing '$other'"))
   }
 
+  private def decodePowerCard(kind: String, id: String,
+      path: String): Either[WireError, CardId] = kind match {
+    case "denizen" => Right(DenizenId(id))
+    case "relic" => Right(RelicId(id))
+    case "edifice" => Right(EdificeId(id))
+    case "vision" => Right(VisionId(id))
+    case "legacy" => Right(LegacyId(id))
+    case other => Left(InvalidValue(path, s"unknown power source card '$other'"))
+  }
+
   protected final def decodeOperation(value: ujson.Value,
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
@@ -209,11 +225,14 @@ private[serialization] trait WalkerOperationCodec {
       case "modify-dice-pool" =>
         decodeSignedInt(value("delta"), s"$path.delta")
           .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
-      case "record-power-use" =>
-        decodePowerTiming(value("timing").str, s"$path.timing").map(timing =>
-          RecordPowerUse(PowerUseRef(timing,
-            PowerSourceRef.Site(SiteId(value("siteId").str)),
-            PowerId(value("powerId").str))))
+      case "record-power-use" => for {
+        timing <- decodePowerTiming(value("timing").str, s"$path.timing")
+        source <- if (value.obj.contains("siteId"))
+            Right(PowerSourceRef.Site(SiteId(value("siteId").str)))
+          else decodePowerCard(value("cardKind").str, value("cardId").str,
+            s"$path.cardKind").map(PowerSourceRef.Card)
+      } yield RecordPowerUse(PowerUseRef(timing, source,
+        PowerId(value("powerId").str)))
       case "enter-phase" =>
         val key = value("phase").str
         Phase.fromKey(key).toRight(
@@ -223,6 +242,11 @@ private[serialization] trait WalkerOperationCodec {
         case ujson.Null => None
         case other => Some(PlayerId(other.str))
       }))
+      case "begin-turn" =>
+        val key = value("phase").str
+        Phase.fromKey(key).toRight(
+          InvalidValue(s"$path.phase", s"unknown phase '$key'"))
+          .map(BeginTurn(PlayerId(value("playerId").str), _))
       case "move" => for {
         piece <- decodePiece(value("piece"), s"$path.piece")
         from <- decodePositionedLocation(value("from"), s"$path.from")
