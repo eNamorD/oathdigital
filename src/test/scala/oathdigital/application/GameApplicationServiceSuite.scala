@@ -42,6 +42,45 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
     _.id.value == "denizen.catacombs")).get.id.value)
 
+  test("withWorldDeckTop preserves two absent requested denizens of one suit") {
+    val (suit, absent) = catalog.denizens.groupBy(_.suit.value).iterator
+      .map { case (suit, definitions) => suit -> definitions
+        .map(definition => DenizenId(definition.id.value))
+        .filterNot(plan.denizenOrder.contains) }
+      .find(_._2.size >= 2).get
+    val (otherSuits, sameSuit) = plan.denizenOrder.partition(id =>
+      catalog.denizens.find(_.id.value == id.value).forall(_.suit.value != suit))
+    val base = plan.copy(denizenOrder = otherSuits ++ sameSuit)
+    val requested = absent.take(2).toVector
+    val changed = ParkedServiceFixture.withWorldDeckTop(base, requested)
+    val dealt = 6 + changed.participants.size * 3
+
+    assertEquals(changed.denizenOrder.slice(dealt, dealt + 2), requested)
+    assertEquals(changed.denizenOrder.distinct.size, changed.denizenOrder.size)
+    assert(requested.forall(changed.denizenOrder.contains))
+  }
+
+  test("beginRest through the service parks the off-turn League Treaty ruler " +
+      "and survives reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (parked, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      service, repository, "game-league-treaty")
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load("game-league-treaty").toOption.flatten.get
+    assertEquals(reloaded.state, parked.state)
+    val OathContinue.AwaitingRestDecision(_, decision) = parked.continue: @unchecked
+    val decline = GameCommand.ResolveWalker(_: PlayerId, TreeDecision(
+      decision.value, ChooseOneAnswer(DecisionOptionRef.Button("decline"))))
+    assert(service.handle("game-league-treaty", parked.nextSequence,
+      decline(active)).isLeft)
+    val finished = service.handle("game-league-treaty", parked.nextSequence,
+      decline(ruler)).toOption.get
+    val Ready(after) = finished.state: @unchecked
+    assertEquals(after.game.current.turn.phase, Phase.Wake)
+    assertNotEquals(after.game.current.turn.activePlayer, active)
+  }
+
   private def catacombsPlan = {
     val recoverSite = catalog.sites.find(site => site.recoverDifficulty.nonEmpty &&
       site.relicSlots == 1 && !site.handlers.exists(_.contains(".homeland-"))).get.id
@@ -599,8 +638,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       }
       accepted = service.handle("powered-playability", accepted.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
-      accepted = service.handle("powered-playability", accepted.nextSequence,
-        GameCommand.FinishRest(actor)).toOption.get
       service = new GameApplicationService(catalog, repository,
         warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
           def choose(candidates: Vector[PlayerId]) = candidates.head
@@ -1565,7 +1602,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       Vector.empty)
   }
 
-  test("Rest v5 commands persist reload and project the next player's Wake") {
+  test("Begin Rest finishes Rest, persists and reloads to the next player's Wake") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val setup = execute(service, "game-rest")
@@ -1575,12 +1612,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(active)).toOption.get
     val begun = service.handle("game-rest", act.nextSequence,
       GameCommand.BeginRest(active)).toOption.get
-    val restProjection = new GameProjector(catalog).project("game-rest",
-      LoadedGame(begun.state, begun.nextSequence), active)
-    assertEquals(restProjection.phase, "rest")
-    assertEquals(restProjection.legalControls, Vector("finishRest"))
-    val finished = service.handle("game-rest", begun.nextSequence,
-      GameCommand.FinishRest(active)).toOption.get
+    val finished = begun
     val loaded = new GameApplicationService(catalog, repository)
       .load("game-rest").toOption.flatten.get
     val Ready(after) = loaded.state: @unchecked
@@ -1992,8 +2024,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         GameCommand.EndWake(actor)).toOption.get
       val begun = service.handle(gameId, act.nextSequence,
         GameCommand.BeginRest(actor)).toOption.get
-      service.handle(gameId, begun.nextSequence,
-        GameCommand.FinishRest(actor)).toOption.get
+      begun
     } finally first.close()
     val reopened = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     try {

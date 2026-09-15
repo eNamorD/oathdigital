@@ -58,6 +58,7 @@ private[gameplay] trait OathRulesWalker {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
           ready.game.current.walkerProcedure.nonEmpty =>
         Left(InvalidEventOrder("a walker procedure is already pending"))
+      case Ready(ready) if ready.game.current.result.nonEmpty => Left(GameEnded)
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
         def run = for {

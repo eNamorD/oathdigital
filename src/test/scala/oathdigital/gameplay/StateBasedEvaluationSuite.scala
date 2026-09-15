@@ -5,7 +5,6 @@ import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.oathkeeper.{OathkeeperFixture, OathkeeperOutcome,
   OathkeeperRules}
 import oathdigital.gameplay.walker.WalkerCompleted
-import oathdigital.gameplay.phases.RestCommand
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -135,8 +134,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     }
     def finishTurn(player: PlayerId): Unit = {
       accept(rules.startWalker(state, PhaseTransitionRef.EndWake, player))
-      accept(rules.handle(state, RestCommand.Begin(player)))
-      accept(rules.handle(state, RestCommand.Finish(player)))
+      accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, player))
     }
 
     turnOrder.foreach(finishTurn)
@@ -156,8 +154,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       Vector(DecisionOptionRef.Site(destination))))
     assertEquals(state.asInstanceOf[Ready].value.game.current.title,
       OathkeeperState(Some(holder), TitleSide.Usurper))
-    accept(rules.handle(state, RestCommand.Begin(holder)))
-    accept(rules.handle(state, RestCommand.Finish(holder)))
+    accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, holder))
     turnOrder.tail.foreach(finishTurn)
 
     val won = state.asInstanceOf[Ready].value

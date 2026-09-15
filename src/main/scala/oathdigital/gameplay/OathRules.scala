@@ -168,21 +168,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: RestCommand)
       : Either[OathViolation, OathTransition] =
-    (command match {
-      case begin: RestCommand.Begin => withFallback(state, begin.playerId,
-        MajorActionKind.Rest)(Rest.handle(catalog, state, command,
-          warExhaustionRandomPort))
-      case _ => Rest.handle(catalog, state, command, warExhaustionRandomPort)
-    }).flatMap { transition =>
-      command match {
-        case _: RestCommand.Finish if (transition.state match {
-          case Ready(ready) => ready.game.current.result.nonEmpty
-          case _ => false
-        }) => Right(transition)
-        case _: RestCommand.Finish => enterWake(transition)
-        case _ => Right(transition)
-      }
-    }
+    Rest.handle(catalog, state, command)
 
   override def evolve(
       state: OathState,
@@ -242,9 +228,9 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         campaignLosingForceRegistry)
       case event: CampaignRaidPawnRelocated => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
-      case event: RestStarted => Rest.evolve(catalog, state, event)
       case event: RestPowerEvent => Rest.evolve(catalog, state, event)
-      case event: RestCompleted => Rest.evolve(catalog, state, event)
+      case _: RestStarted | _: RestCompleted =>
+        Left(InvalidEventOrder("legacy Rest events no longer replay"))
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)

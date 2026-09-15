@@ -2505,7 +2505,7 @@ This is the switch. After this commit `beginRest` and `finishRest` run only the 
   - The `finishRest` legal control appears iff `FinishRestProcedure.gate` passes.
   - Test fixture `ParkedServiceFixture` with `setUp(service, gameId, placementSites = sites, setupPlan = plan): GameAccepted`, `withWorldDeckTop(base: FirstGameSetupPlan, cards: Vector[DenizenId]): FirstGameSetupPlan`, `seed(repository, gameId, at: Long, ops: Vector[CoreOperation]): Unit`, `treatyCard: DenizenId`, and `leagueTreatyPark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId)` returning `(parked, active, ruler)`.
 
-- [ ] **Step 1: Write the service fixture**
+- [x] **Step 1: Write the service fixture**
 
 `src/test/scala/oathdigital/application/ParkedServiceFixture.scala`:
 
@@ -2636,7 +2636,7 @@ object ParkedServiceFixture {
 }
 ```
 
-- [ ] **Step 2: Write the failing service test**
+- [x] **Step 2: Write the failing service test**
 
 Add to `GameApplicationServiceSuite`:
 
@@ -2663,12 +2663,12 @@ Add to `GameApplicationServiceSuite`:
   }
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
 Expected: FAIL in the new test. The fixture's `parked.continue` assertion reports `AwaitingRestPowerDecision` from the legacy handler, not `AwaitingRestDecision`.
 
-- [ ] **Step 4: Route the commands**
+- [x] **Step 4: Route the commands**
 
 `GameApplicationService.applyUnblockedCommand`:
 
@@ -2686,7 +2686,7 @@ Expected: FAIL in the new test. The fixture's `parked.continue` assertion report
           context.ready, active.player).isRight)("finishRest").toVector
 ```
 
-- [ ] **Step 5: Trim legacy Rest to League Treaty resolve and decline**
+- [x] **Step 5: Trim legacy Rest to League Treaty resolve and decline**
 
 `Rest.scala` becomes:
 
@@ -2732,7 +2732,7 @@ object Rest {
 
 In `RestWalkerSuite`, delete "walker Rest reaches the same game as legacy Begin and Finish Rest" and the `RestCommand` import. It pinned parity while both paths existed.
 
-- [ ] **Step 6: Rewrite `RestSuite` against the walker**
+- [x] **Step 6: Rewrite `RestSuite` against the walker**
 
 Replace its imports with:
 
@@ -2812,19 +2812,19 @@ Rewrite each test body as follows, keeping the test name unless stated:
 
 Remove the now-unused `RestOutcomeMismatch` import and the `RestCompleted`/`RestStarted` event imports.
 
-- [ ] **Step 7: Move the other callers off the legacy Rest commands**
+- [x] **Step 7: Move the other callers off the legacy Rest commands**
 
 - `StateBasedEvaluationSuite`: drop the `RestCommand` import. Each `accept(rules.handle(state, RestCommand.Begin(x)))` / `accept(rules.handle(state, RestCommand.Finish(x)))` pair (lines 138-139 with `player`, 159-160 with `holder`) becomes `accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, x))`.
 - `ForgeWalkerFixture:114-126`: delete both `GameCommand.FinishRest` submissions (lines 117-118 and 124-125). `BeginRest` now finishes Rest.
 - `GameApplicationServiceSuite:601-603`: delete the `GameCommand.FinishRest(actor)` submission. `1990-1998`: delete the `GameCommand.FinishRest(actor)` submission.
 - `GameApplicationServiceSuite` "Rest v5 commands persist reload and project the next player's Wake": rename it "Begin Rest finishes Rest, persists and reloads to the next player's Wake". Replace everything from `val restProjection` through `val finished = ...` with `val finished = begun`. Keep the load, phase, active-player and `takeRight(2)` formatVersion assertions.
 
-- [ ] **Step 8: Run the Rest and service suites**
+- [x] **Step 8: Run the Rest and service suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestSuite oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.StateBasedEvaluationSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
 Expected: PASS.
 
-- [ ] **Step 9: Full gate and commit**
+- [x] **Step 9: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

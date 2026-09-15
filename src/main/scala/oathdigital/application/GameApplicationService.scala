@@ -485,9 +485,9 @@ final class GameApplicationService(
               playerId, decision, kept, discarded, placement))
         }
       case GameCommand.BeginRest(playerId) =>
-        rules.handle(state, RestCommand.Begin(playerId))
+        rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
-        rules.handle(state, RestCommand.Finish(playerId))
+        rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
       case GameCommand.ResolveRestPower(playerId, decision, allocations, bank) =>
         rules.handle(state, RestCommand.ResolvePower(playerId, decision,
           allocations, bank))

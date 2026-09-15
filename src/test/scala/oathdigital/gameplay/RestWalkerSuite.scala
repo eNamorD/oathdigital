@@ -2,16 +2,13 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.OathEvent.IgnoredRulesRecorded
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.phases.RestCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 
-/** Walker Begin Rest and Finish Rest, driven through `startWalker` while the
-  * commands still route to the legacy handlers (Task 7 switches them).
-  */
+/** Walker Begin Rest and Finish Rest, driven through `startWalker`. */
 class RestWalkerSuite extends munit.FunSuite {
   private val rules = new OathRules(catalog)
 
@@ -39,15 +36,6 @@ class RestWalkerSuite extends munit.FunSuite {
     assertEquals(rested.events.foldLeft[Either[OathViolation, OathState]](
       Right(Ready(act)))((state, event) => state.flatMap(rules.evolve(_, event))),
       Right(rested.state))
-  }
-
-  test("walker Rest reaches the same game as legacy Begin and Finish Rest") {
-    val legacy = rules.handle(Ready(act), RestCommand.Begin(actor))
-      .flatMap(begun => rules.handle(begun.state, RestCommand.Finish(actor)))
-      .toOption.get
-    val walker = rest(Ready(act), actor).toOption.get
-    assertEquals(ready(walker.state).game.current, ready(legacy.state).game.current)
-    assertEquals(ready(walker.state).banks, ready(legacy.state).banks)
   }
 
   test("Finish Rest belongs to the active player in the Rest phase") {

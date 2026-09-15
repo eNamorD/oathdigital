@@ -6,6 +6,7 @@ import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -155,7 +156,8 @@ private[application] final class LegalActionProjector(
           Option.when(oathdigital.gameplay.actions.Negotiation
             .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
         ).flatten
-        case Phase.Rest => Vector("finishRest")
+        case Phase.Rest => Option.when(FinishRestProcedure.gate(catalog,
+          context.ready, active.player).isRight)("finishRest").toVector
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake =>
           takeableResources(context).map(takeControl) :+ "endWake"
