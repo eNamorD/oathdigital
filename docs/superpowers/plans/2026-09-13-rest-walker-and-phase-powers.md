@@ -2098,7 +2098,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `DecisionOptionRef.FavorBank`, `DecisionOption.FavorBank`, `DistributeSlot`, `DecisionQuery.Distribute`, `DistributeAmount`, `DecisionAnswer.DistributeAnswer` (Task 1); `PhaseTransitionRef.BeginRest`, `FinishRestProcedure`'s `RestReturnFavor` window, `OathContinue.AwaitingRestDecision` (Task 5).
 - Produces: `LeagueTreatyContribution.id = PowerId("denizen.league-treaty")`, `LeagueTreatyContribution.forCatalog(catalog): Option[LeagueTreatyContribution]`, `LeagueTreatyContribution.destinationDecisionId(ready, rester, site, card): String` and `distributionDecisionId(...)` (same parameters). Test object `LeagueTreatyFixture` with `treatyCard: DenizenId`, `act: ReadyGame`, `suitOf(id: DenizenId): Suit` and `arranged(ruler: Option[PlayerId], favor: Vector[(Suit, Int)]): (ReadyGame, SiteId)`.
 
-- [ ] **Step 1: Write the failing suite**
+- [x] **Step 1: Write the failing suite**
 
 `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala`:
 
@@ -2138,7 +2138,9 @@ object LeagueTreatyFixture {
     val site = current.map.cradle.head
     val region = current.map.inPlay.filter(current.map.regionOf(_) ==
       current.map.regionOf(site))
-    val deck = current.commonCards.worldDeck.collect { case id: DenizenId => id }
+    val deck = (current.commonCards.worldDeck ++
+      current.commonCards.regionalDiscards.values.flatten)
+      .collect { case id: DenizenId => id }
     val picks = favor.foldLeft(Vector.empty[(DenizenId, Int)]) {
       case (chosen, (suit, amount)) => chosen :+ (deck.find(id =>
         id != treatyCard && !chosen.exists(_._1 == id) && suitOf(id) == suit)
@@ -2166,10 +2168,15 @@ object LeagueTreatyFixture {
     val removed = picks.map(_._1).toSet + treatyCard
     base.copy(game = base.game.copy(current = current.copy(
       map = current.map.copy(sites = sites),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot {
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck.filterNot {
           case id: DenizenId => removed(id)
           case _ => false
+        }, regionalDiscards = current.commonCards.regionalDiscards.map {
+          case (region, cards) => region -> cards.filterNot {
+            case id: DenizenId => removed(id)
+            case _ => false
+          }
         })))) -> site
   }
 }
@@ -2281,16 +2288,16 @@ class LeagueTreatySuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
 Expected: compilation fails on `LeagueTreatyContribution`.
 
-- [ ] **Step 3: Widen the suit lookup**
+- [x] **Step 3: Widen the suit lookup**
 
 In `RestCleanup.scala`, change `object RestCleanupPlan`'s `private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit]` to `private[gameplay] def suitOf` and leave its body alone. The steps below call it as `RestCleanupPlan.suitOf(catalog, cardId)`.
 
-- [ ] **Step 4: Implement the power**
+- [x] **Step 4: Implement the power**
 
 `LeagueTreatyContribution.scala`:
 
@@ -2444,7 +2451,7 @@ The `Branch` and the trailing `BuildOps` both read the destination answer. When 
 
 These bounds pass Task 1's `wellFormed`. A destination with its own favor has `minimum = favorOf(bank)`, `maximum = total`. With at least one other source suit, the sum of minimums stays below `total` and the sum of maximums stays above it, so the query is never forced.
 
-- [ ] **Step 5: Register it**
+- [x] **Step 5: Register it**
 
 `WalkerPowerCatalog.default`:
 
@@ -2456,12 +2463,12 @@ These bounds pass Task 1's `wellFormed`. A destination with its own favor has `m
 
 Add a sentence to its doc: League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
 
-- [ ] **Step 6: Run the suites**
+- [x] **Step 6: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite oathdigital.gameplay.RestSuite oathdigital.gameplay.BackendArchitectureSuite"`
 Expected: PASS.
 
-- [ ] **Step 7: Full gate and commit**
+- [x] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green. Production commands still route to legacy Rest until Task 7, so in this commit only `startWalker` reaches the new power and legacy League Treaty keeps serving production.

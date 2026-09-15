@@ -57,7 +57,7 @@ object RestCleanupPlan {
     }
   }
 
-  private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] = {
+  private[gameplay] def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] = {
     val key = catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
       .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
     key.flatMap(value => Suit.all.find(_.key == value))
