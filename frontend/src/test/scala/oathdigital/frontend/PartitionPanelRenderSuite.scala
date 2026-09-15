@@ -1,7 +1,7 @@
 package oathdigital.frontend
 
 import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
-  GameIntent => Intent, PreviewModifier}
+  GameIntent => Intent}
 import org.scalajs.dom
 import scala.scalajs.js
 
@@ -245,51 +245,4 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     event.updateDynamic("dataTransfer")(transfer)
     event.asInstanceOf[dom.Event]
   }
-}
-
-/** A `ServerUiView` that records what the panel asked of it. Only the four
-  * members a decision panel touches do anything.
-  */
-private final class RecordingView(gameId: String, playerId: String)
-    extends ServerUiView {
-  var partition: Option[WalkerPartitionDraft] = None
-  var submitted: Vector[Intent] = Vector.empty
-  var rerenders: Int = 0
-
-  def currentWalkerPartition: Option[WalkerPartitionDraft] = partition
-  def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit =
-    partition = value
-  def rerender(): Unit = rerenders += 1
-  def submitCommand(command: Intent): Unit = submitted :+= command
-
-  def currentGameId: String = gameId
-  def currentPlayerId: String = playerId
-  def displayedProjection: Option[GameProjection] = None
-  val sessionCoordinator: ServerSessionCoordinator =
-    new ServerSessionCoordinator(gameId, playerId)
-  def currentBoardSelection: Option[BoardTargetSelectionState] = None
-  def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
-  def currentBoardFormation: Option[BoardTargetFormationState] = None
-  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit = ()
-  def currentCampaignPlacement: Option[CampaignPlacementState] = None
-  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit = ()
-  def currentCardDecision: Option[CardDecisionState] = None
-  def currentCardDecision_=(value: Option[CardDecisionState]): Unit = ()
-  def currentModifierWorkflow: Option[ModifierWorkflow] = None
-  def currentFacedownAdviserDraft: Option[FacedownAdviserDraft] = None
-  def chooseFacedownAdviser(cardId: String): Unit = ()
-  def toggleModifier(value: PreviewModifier): Unit = ()
-  def moveModifier(value: PreviewModifier, delta: Int): Unit = ()
-  def confirmModifiers(): Unit = ()
-  def backFromModifiers(): Unit = ()
-  def cancelModifiers(): Unit = ()
-  def beginTargetedMajorAction(actionKind: String): Unit = ()
-  def backFromTargets(): Unit = ()
-  def cancelTargetAction(): Unit = ()
-  def submitTargetCommand(command: Intent): Unit = ()
-  def canControl: Boolean = true
-  def handleSelection(result: BoardSelectionResult): Unit = ()
-  def loadSession(gameId: String, playerId: String): Unit = ()
-  def reconnectSession(): Unit = ()
-  def createGame(): Unit = ()
 }

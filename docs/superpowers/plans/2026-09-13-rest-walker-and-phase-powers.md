@@ -773,7 +773,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `ServerUiView.currentWalkerDistribution` getter and setter.
   - `DistributePanelRenderer.render(value, presentation, canControl, panel, ui)`.
 
-- [ ] **Step 1: Write the failing state tests**
+- [x] **Step 1: Write the failing state tests**
 
 Create `DistributeDecisionStateSuite.scala`:
 
@@ -848,12 +848,12 @@ class DistributeDecisionStateSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite"`
 Expected: compilation fails, because `DistributeDecisionState` is not defined.
 
-- [ ] **Step 3: Implement `DistributeDecisionState.scala`**
+- [x] **Step 3: Implement `DistributeDecisionState.scala`**
 
 ```scala
 package oathdigital.frontend
@@ -967,12 +967,12 @@ private[frontend] object WalkerDistributeDraft {
 }
 ```
 
-- [ ] **Step 4: Run the state suite**
+- [x] **Step 4: Run the state suite**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Move the recording view into a shared test file**
+- [x] **Step 5: Move the recording view into a shared test file**
 
 Delete `private final class RecordingView` (lines 253 to the end of the file) from `PartitionPanelRenderSuite.scala`. Its protocol import becomes:
 
@@ -1063,7 +1063,7 @@ Implement the pair beside `currentWalkerPartition`:
       def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
 ```
 
-- [ ] **Step 6: Write the failing render tests**
+- [x] **Step 6: Write the failing render tests**
 
 Create `DistributePanelRenderSuite.scala`:
 
@@ -1176,12 +1176,12 @@ class DistributePanelRenderSuite extends munit.FunSuite {
 
 `RecordingView.submitted` and `rerenders` already exist on the moved class.
 
-- [ ] **Step 7: Run it to verify it fails**
+- [x] **Step 7: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributePanelRenderSuite"`
 Expected: compilation fails, because `DistributePanelRenderer` is not defined.
 
-- [ ] **Step 8: Implement `DistributePanelRenderer.scala`**
+- [x] **Step 8: Implement `DistributePanelRenderer.scala`**
 
 ```scala
 package oathdigital.frontend
@@ -1258,12 +1258,12 @@ In `ActionDecisionRenderer.scala`, after the `renderPartitionPanel` call:
    DistributePanelRenderer.render(value, presentation, canControl, panel, ui)
 ```
 
-- [ ] **Step 9: Run the frontend suites**
+- [x] **Step 9: Run the frontend suites**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite oathdigital.frontend.DistributePanelRenderSuite oathdigital.frontend.PartitionPanelRenderSuite oathdigital.frontend.ServerModeUiSuite"`
 Expected: PASS.
 
-- [ ] **Step 10: Run the full gate and commit**
+- [x] **Step 10: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

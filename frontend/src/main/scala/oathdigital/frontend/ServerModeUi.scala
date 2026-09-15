@@ -29,6 +29,7 @@ object ServerModeUi {
     var boardFormationState = Option.empty[BoardTargetFormationState]
     var campaignPlacementState = Option.empty[CampaignPlacementState]
     var walkerPartitionDraft = Option.empty[WalkerPartitionDraft]
+    var walkerDistributeDraft = Option.empty[WalkerDistributeDraft]
     var cardDecisionState = Option.empty[CardDecisionState]
     var modifierWorkflow = Option.empty[ModifierWorkflow]
     var facedownAdviserDraft = Option.empty[FacedownAdviserDraft]
@@ -99,6 +100,10 @@ object ServerModeUi {
               displayed.nextSequence), displayed.campaign)
           walkerPartitionDraft = WalkerPartitionDraft.reconcile(
             walkerPartitionDraft,
+            BoardSelectionContext(gameId, selectedPlayer,
+              displayed.nextSequence), displayed.walkerDecision)
+          walkerDistributeDraft = WalkerDistributeDraft.reconcile(
+            walkerDistributeDraft,
             BoardSelectionContext(gameId, selectedPlayer,
               displayed.nextSequence), displayed.walkerDecision)
           cardDecisionState = displayed.pendingCardDecision.map { decision =>
@@ -391,6 +396,8 @@ object ServerModeUi {
       def currentCampaignPlacement_=(value: Option[CampaignPlacementState]) = campaignPlacementState = value
       def currentWalkerPartition = walkerPartitionDraft
       def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]) = walkerPartitionDraft = value
+      def currentWalkerDistribution = walkerDistributeDraft
+      def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
       def currentCardDecision = cardDecisionState
       def currentCardDecision_=(value: Option[CardDecisionState]) = cardDecisionState = value
       def currentModifierWorkflow = modifierWorkflow
