@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powers.recover.CatacombsContribution
-import oathdigital.gameplay.powers.rest.LeagueTreatyContribution
+import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.walker.WalkerPowers
@@ -20,10 +20,13 @@ import oathdigital.gameplay.walker.WalkerPowers
   * until an action declares `PowerWindow.WakeTakeWealth` (batch-1 Task 7),
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
+  * Silver Tongue's restriction is inert until Search walks
+  * `SearchPlayFacedownAdviser`.
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =
     WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
       TravelSitePowers.forCatalog(catalog) ++
-      LeagueTreatyContribution.forCatalog(catalog) :+ TakeWealthLimit)
+      LeagueTreatyContribution.forCatalog(catalog) ++
+      SilverTongue.forCatalog(catalog) :+ TakeWealthLimit)
 }

@@ -3583,7 +3583,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `PhasePower`, `PhasePowers`, `PhasePowerProcedure`, `ActionRef.UsePower`, `OathContinue.AwaitingPowerDecision` (Task 9); `DecisionOptionRef.FavorBank` (Task 1); `RestCleanupPlan.suitOf` (Task 6).
 - Produces: `SilverTongue.id = PowerId("denizen.silver-tongue")`, `SilverTongue.forCatalog(catalog): Option[SilverTongue]`, `SilverTongue.choiceDecisionId(ready, player): String`.
 
-- [ ] **Step 1: Write the failing suite**
+- [x] **Step 1: Write the failing suite**
 
 `SilverTongueSuite.scala`:
 
@@ -3698,12 +3698,12 @@ class SilverTongueSuite extends munit.FunSuite {
 
 In `RestSuite`'s "each relevant Rest handler records fallback diagnostics without blocking", remove `"denizen.silver-tongue"` from `relevant`. Silver Tongue's diagnostic now belongs to Search.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.SilverTongueSuite"`
 Expected: compilation fails on `SilverTongue`.
 
-- [ ] **Step 3: Implement Silver Tongue**
+- [x] **Step 3: Implement Silver Tongue**
 
 `SilverTongue.scala`:
 
@@ -3815,18 +3815,18 @@ object SilverTongue {
 }
 ```
 
-- [ ] **Step 4: Register it and move the legacy diagnostic**
+- [x] **Step 4: Register it and move the legacy diagnostic**
 
 - `PhasePowerCatalog.default`: `PhasePowers(SilverTongue.forCatalog(catalog).toVector)`.
 - `WalkerPowerCatalog.default`: add `++ SilverTongue.forCatalog(catalog)` before `:+ TakeWealthLimit`, and a doc line saying the restriction is inert until Search walks `SearchPlayFacedownAdviser`.
 - `RestPowers.SilverTongue`: `extends ReviewedPower("denizen.silver-tongue", None, Vector(ReviewedHandler.automatic(PowerWindow.SearchModifierSelection)))`.
 
-- [ ] **Step 5: Run the suites**
+- [x] **Step 5: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.gameplay.RestSuite oathdigital.gameplay.PhasePowerSuite oathdigital.gameplay.BackendArchitectureSuite"`
 Expected: PASS. Moving a reviewed handler's window changes no catalog handler id, so neither fingerprint changes.
 
-- [ ] **Step 6: Full gate and commit**
+- [x] **Step 6: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
