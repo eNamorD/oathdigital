@@ -15,6 +15,8 @@ import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.operations.Operation
+import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
@@ -40,7 +42,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       WarExhaustionRandomPort.random,
     protected val walkerPowerCatalog: WalkerPowers = WalkerPowers.empty,
     protected val walkerTree: OathRules.WalkerTreeSource =
-      OathRules.declaredWalkerTree)
+      OathRules.declaredWalkerTree,
+    protected val phasePowerCatalog: PhasePowers = PhasePowers.empty)
     extends EventEvolution[OathState, OathEvent, OathViolation]
     with OathRulesWalker {
   private val setup = new FirstGameSetupRules(catalog)
@@ -252,9 +255,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     })
   }
 
-  /** No REST power exists on the walker until Task 9. */
   protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
-    false
+    PhasePowerProcedure.usable(catalog, ready, player, phasePowerCatalog).nonEmpty
 
   /** The boundary decides only WHETHER the title changes; the triggered
     * procedure performs the change, so every title change is one walker step.

@@ -8,7 +8,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, SearchCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
@@ -90,7 +90,8 @@ final class GameApplicationService(
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog,
     warExhaustionRandomPort = warExhaustionRandomPort,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */

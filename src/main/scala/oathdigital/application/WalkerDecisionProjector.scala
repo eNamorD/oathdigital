@@ -5,7 +5,8 @@ import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
@@ -43,10 +44,12 @@ private[application] final class WalkerDecisionProjector(
     catalog: ExecutableCatalog, presentation: GamePresentationProjector,
     walkerPowerCatalog: WalkerPowers,
     rebuildTree: WalkerDecisionProjector.TreeSource =
-      WalkerDecisionProjector.declaredTree) {
+      WalkerDecisionProjector.declaredTree,
+    phasePowers: PhasePowers = PhasePowers.empty) {
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
-    this(catalog, presentation, WalkerPowerCatalog.default(catalog))
+    this(catalog, presentation, WalkerPowerCatalog.default(catalog),
+      WalkerDecisionProjector.declaredTree, PhasePowerCatalog.default(catalog))
 
   private def parkedPosition(context: ScopedProjectionContext)
       : Option[WalkerDecisionProjector.Parked] = {
@@ -91,7 +94,14 @@ private[application] final class WalkerDecisionProjector(
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
-    rebuildTree(catalog, procedure, ready, activePlayer, args)
+    tree(procedure, ready, activePlayer, args)
+
+  private def tree(procedure: ProcedureRef, ready: ReadyGame, actor: PlayerId,
+      args: Vector[DecisionOptionRef]) = procedure match {
+    case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(procedure,
+      catalog, ready, actor, args, phasePowers)
+    case _ => rebuildTree(catalog, procedure, ready, actor, args)
+  }
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,

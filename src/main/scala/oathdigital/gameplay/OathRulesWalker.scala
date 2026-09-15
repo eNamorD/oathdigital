@@ -5,7 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.operations.{Operation, Sequence}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
-  PowerResolution}
+  PhasePowers, PowerResolution}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry}
 import oathdigital.gameplay.OathState._
@@ -26,6 +26,7 @@ private[gameplay] trait OathRulesWalker {
 
   protected def catalog: ExecutableCatalog
   protected def walkerPowerCatalog: WalkerPowers
+  protected def phasePowerCatalog: PhasePowers
   protected def walkerTree: OathRules.WalkerTreeSource
   protected def withFallback(state: OathState, actor: PlayerId,
       action: MajorActionKind)(
@@ -323,7 +324,13 @@ private[gameplay] trait OathRulesWalker {
       actor: PlayerId, startArgs: Vector[DecisionOptionRef],
       starting: Boolean)
       : Either[OathViolation, Operation] =
-    walkerTree(catalog, procedure, ready, actor, startArgs, starting)
+    procedure match {
+      case _: ActionRef.UsePower if starting => WalkerProcedureRegistry.build(
+        procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
+      case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(
+        procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
+      case _ => walkerTree(catalog, procedure, ready, actor, startArgs, starting)
+    }
 
   private def walkerCall[A](result: => Either[OathViolation, A])
       : Either[OathViolation, A] =

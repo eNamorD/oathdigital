@@ -6,7 +6,7 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
-  PhaseTransitionRef, PlayerId, ProcedureRef, SiteId}
+  PhaseTransitionRef, PlayerId, PowerId, ProcedureRef, SiteId}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -154,6 +154,15 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
     assertEquals(WalkerProcedureRegistry.continuationFor(
       PhaseTransitionRef.FinishRest, "any", actor, DecisionId("d")),
       Right(Some(OathContinue.AwaitingRestDecision(actor, DecisionId("d")))))
+  }
+
+  test("every use-power reference is registered and parks as a power decision") {
+    val use = ActionRef.UsePower(PowerId("denizen.anything"))
+    assert(WalkerProcedureRegistry.isRegistered(use))
+    assertEquals(WalkerProcedureRegistry.fallbackKind(use), Right(None))
+    assertEquals(WalkerProcedureRegistry.continuationFor(use, "any", actor,
+      DecisionId("d")),
+      Right(Some(OathContinue.AwaitingPowerDecision(actor, DecisionId("d")))))
   }
 
   /** An action that selects nothing at its start must REJECT a selection, not

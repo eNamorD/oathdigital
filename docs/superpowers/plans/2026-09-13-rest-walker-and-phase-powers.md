@@ -2953,7 +2953,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `PhasePowerCatalog.default(catalog): PhasePowers` (empty until Task 10).
   - Test object `PhasePowerFixture` with `TestPower(id: PowerId, timing: PowerTiming, tree: PlayerId => Operation = ...)`, `base: ReadyGame`, `actor: PlayerId`, `card: DenizenId`, `powerId: PowerId`, `source: DecisionOptionRef.Denizen` and `inPhase(phase: Phase): ReadyGame`.
 
-- [ ] **Step 1: Write the failing reference test**
+- [x] **Step 1: Write the failing reference test**
 
 `src/test/scala/oathdigital/model/ProcedureRefSuite.scala`:
 
@@ -2976,7 +2976,7 @@ class ProcedureRefSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Write the failing engine suite**
+- [x] **Step 2: Write the failing engine suite**
 
 `src/test/scala/oathdigital/gameplay/PhasePowerFixture.scala`:
 
@@ -3192,12 +3192,12 @@ class PhasePowerSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 3: Run both to verify they fail**
+- [x] **Step 3: Run both to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.model.ProcedureRefSuite oathdigital.gameplay.PhasePowerSuite"`
 Expected: compilation fails on `ActionRef.UsePower` and `PhasePower`.
 
-- [ ] **Step 4: The contract, the reference and the continuation**
+- [x] **Step 4: The contract, the reference and the continuation**
 
 `gameplay/powerresolver/PhasePower.scala`:
 
@@ -3262,7 +3262,7 @@ object PhasePowers {
 
 No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
-- [ ] **Step 5: One access rule for reviewed and phase powers**
+- [x] **Step 5: One access rule for reviewed and phase powers**
 
 In `RuleSourceIndex.scala`, add:
 
@@ -3300,7 +3300,7 @@ private[gameplay] object RuleSourceAccess {
 
 In `PowerSupport.scala`, replace `accessible`'s body with `RuleSourceAccess.accessible(ref, source.face, facts.ready, facts.actor, window == PowerWindow.ActionCardPlayed)`.
 
-- [ ] **Step 6: Sources, usability and the tree**
+- [x] **Step 6: Sources, usability and the tree**
 
 `gameplay/phases/PhasePowerProcedure.scala`:
 
@@ -3471,7 +3471,7 @@ object PhasePowerCatalog {
 }
 ```
 
-- [ ] **Step 7: Registry, rules and projector routing**
+- [x] **Step 7: Registry, rules and projector routing**
 
 `WalkerProcedureRegistry`:
 
@@ -3530,7 +3530,7 @@ object PhasePowerCatalog {
 
 `GameApplicationService` constructor: pass `phasePowerCatalog = PhasePowerCatalog.default(catalog)` to `new OathRules`.
 
-- [ ] **Step 8: Registry, codec and architecture tests**
+- [x] **Step 8: Registry, codec and architecture tests**
 
 `WalkerProcedureRegistrySuite`:
 
@@ -3549,12 +3549,12 @@ object PhasePowerCatalog {
 
 `BackendArchitectureSuite`: `val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r`, and add "or `PhasePower`" to the comment above it.
 
-- [ ] **Step 9: Run the suites**
+- [x] **Step 9: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.model.ProcedureRefSuite oathdigital.gameplay.PhasePowerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.serialization.GameEventWireSuite oathdigital.gameplay.BackendArchitectureSuite oathdigital.gameplay.RestSuite"`
 Expected: PASS.
 
-- [ ] **Step 10: Full gate and commit**
+- [x] **Step 10: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

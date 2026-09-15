@@ -241,7 +241,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
     // here at all.
     //
     // Power names therefore come from a backward search: for each
-    // `extends ContributingPower`, the nearest preceding declaration
+    // `extends ContributingPower` or `PhasePower`, the nearest preceding declaration
     // identifier, with a trailing `Contribution` stripped. That works at any
     // nesting depth without tracking braces. Limits: it reads text, so an
     // `extends ContributingPower` inside a comment counts (the count
@@ -252,7 +252,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
     // scan is a lowercase substring match, so rename a power that collides
     // with unrelated engine text rather than loosening the scan.
     val powersRoot = Paths.get("src/main/scala/oathdigital/gameplay/powers")
-    val declaresPower = "(?:extends|with)\\s+ContributingPower\\b".r
+    val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r
     val declaration = "(?:class|object|trait)\\s+([A-Za-z0-9_]+)".r
     val contributionStream = Files.walk(powersRoot)
     val contributions =

@@ -189,7 +189,8 @@ class GameEventWireSuite extends munit.FunSuite {
       // place the Oathkeeper procedure's wire spelling is pinned.
       WalkerParked(TriggeredProcedureRef.Oathkeeper, Vector("0"),
         Vector.empty, Vector.empty, Vector.empty),
-      WalkerCompleted(TriggeredProcedureRef.Oathkeeper))
+      WalkerCompleted(TriggeredProcedureRef.Oathkeeper),
+      WalkerCompleted(ActionRef.UsePower(PowerId("denizen.silver-tongue"))))
     val encoded = GameEventWire.encodeStream("families", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
         RecordedEvent(index, event) }).toOption.get

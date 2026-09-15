@@ -6,14 +6,15 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
+import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powerresolver.PowerWindow
+import oathdigital.gameplay.powerresolver.{PhasePowers, PowerWindow}
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
   PhaseTransitionRef, PlayerId, ProcedureRef, StartableRef,
-  TriggeredProcedureRef}
+  PowerId, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
@@ -285,9 +286,10 @@ object WalkerProcedureRegistry {
   def build(procedure: ProcedureRef, catalog: ExecutableCatalog,
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
+      phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations).flatMap(
+    lookup(procedure, registrations, phasePowers).flatMap(
       _.build(catalog, state, activePlayer, args))
 
   /** Rebuilds `procedure`'s tree to resume an already-started walker
@@ -299,15 +301,33 @@ object WalkerProcedureRegistry {
   def rebuild(procedure: ProcedureRef, catalog: ExecutableCatalog,
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
+      phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations).flatMap(
+    lookup(procedure, registrations, phasePowers).flatMap(
       _.rebuild(catalog, state, activePlayer, args))
 
+  /** Every `UsePower` shares one entry shape, built for its id. A parked
+    * decision inside the power is a generic power decision, so the registry
+    * names no power.
+    */
+  private def usePowerEntry(id: PowerId, powers: PhasePowers): Entry = Entry(
+    fallbackKind = None,
+    rollDecisionId = None,
+    modifierWindow = None,
+    continuationFor = (_, awaited, decision) =>
+      Some(OathContinue.AwaitingPowerDecision(awaited, decision)),
+    build = PhasePowerProcedure.build(id, powers),
+    rebuild = PhasePowerProcedure.rebuild(id, powers))
+
   private def lookup(procedure: ProcedureRef,
-      registrations: Map[ProcedureRef, Entry]): Either[OathViolation, Entry] =
-    registrations.get(procedure).toRight(OathViolation.InvalidEventOrder(
-      s"no walker procedure registered for ${procedure.key}"))
+      registrations: Map[ProcedureRef, Entry],
+      powers: PhasePowers = PhasePowers.empty): Either[OathViolation, Entry] =
+    procedure match {
+      case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
+      case _ => registrations.get(procedure).toRight(OathViolation
+        .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
+    }
 
   /** `procedure`'s [[MajorActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
@@ -377,5 +397,5 @@ object WalkerProcedureRegistry {
     * second `ProcedureRef` match at the preview call site.
     */
   def isRegistered(procedure: ProcedureRef): Boolean =
-    entries.contains(procedure)
+    procedure.isInstanceOf[ActionRef.UsePower] || entries.contains(procedure)
 }
