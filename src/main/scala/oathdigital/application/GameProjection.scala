@@ -153,9 +153,7 @@ final class GameProjector(catalog: ExecutableCatalog) {
         current.tracks.visionsDrawn, current.tracks.usurperLimited, 4,
         context.ready.setup.firstPlayer.value)),
       relicDeckCount = current.commonCards.relicDeck.size)
-      .copy(restPower = pending.restPower,
-        restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting,
-        walkerDecision = pending.walkerDecision,
+      .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting)
   }
 

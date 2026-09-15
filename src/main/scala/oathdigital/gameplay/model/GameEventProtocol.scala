@@ -13,16 +13,6 @@ sealed trait OathEvent extends Product with Serializable
   * would forbid — mirroring the `Operation` root decision in Task 1.
   */
 trait WalkerEvent extends OathEvent
-sealed trait RestPowerEvent extends OathEvent {
-  def restActor: PlayerId
-  def decision: DecisionId
-  def powerId: PowerId
-}
-sealed trait RestPowerDecisionStarted extends RestPowerEvent {
-  def decisionOwner: PlayerId
-  def remaining: Vector[RestPowerInvocationRef]
-}
-sealed trait RestPowerDecisionCompleted extends RestPowerEvent
 object OathEvent {
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
@@ -212,42 +202,6 @@ object OathEvent {
       defender: PlayerId, origin: SiteId, destination: SiteId
   ) extends OathEvent
   final case class BanditsRefilled(sites: Vector[(SiteId, Int)]) extends OathEvent
-  final case class RestStarted(playerId: PlayerId) extends OathEvent
-  final case class LeagueTreatyDecisionStarted(
-      restActor: PlayerId,
-      decision: DecisionId,
-      powerId: PowerId,
-      source: SiteDenizenTarget,
-      decisionOwner: PlayerId,
-      remaining: Vector[RestPowerInvocationRef],
-      eligibleSources: Vector[SiteFavorSource],
-      legalBanks: Vector[Suit]
-  ) extends RestPowerDecisionStarted
-  final case class LeagueTreatyResolved(
-      restActor: PlayerId,
-      decision: DecisionId,
-      powerId: PowerId,
-      source: SiteDenizenTarget,
-      decisionOwner: PlayerId,
-      allocations: Vector[FavorAllocation],
-      destinationBank: Suit
-  ) extends RestPowerDecisionCompleted
-  final case class LeagueTreatyDeclined(
-      restActor: PlayerId,
-      decision: DecisionId,
-      powerId: PowerId,
-      source: SiteDenizenTarget,
-      decisionOwner: PlayerId
-  ) extends RestPowerDecisionCompleted
-  final case class RestCompleted(
-      playerId: PlayerId,
-      returnedFavor: Map[Suit, Int],
-      returnedSecrets: Int,
-      refreshedSupply: Int,
-      postRestActivePlayerId: PlayerId,
-      completedRound: Int,
-      usurperLimited: Boolean
-  ) extends OathEvent
   final case class RoundEnded(completedRound: Int, nextRound: Option[Int])
       extends OathEvent
   final case class WarExhaustionResolved(

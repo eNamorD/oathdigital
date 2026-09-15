@@ -13,7 +13,6 @@ import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
-import oathdigital.gameplay.phases.RestCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
@@ -488,11 +487,6 @@ final class GameApplicationService(
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
-      case GameCommand.ResolveRestPower(playerId, decision, allocations, bank) =>
-        rules.handle(state, RestCommand.ResolvePower(playerId, decision,
-          allocations, bank))
-      case GameCommand.DeclineRestPower(playerId, decision) =>
-        rules.handle(state, RestCommand.DeclinePower(playerId, decision))
     }
 
   private def isWalkerResume(command: GameCommand): Boolean = command match {

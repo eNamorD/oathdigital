@@ -608,27 +608,6 @@ class ServerModeUiSuite extends FunSuite {
       Some("Waiting for the negotiation to finish."))
   }
 
-  test("Rest power owner controls the off-turn choice while other viewers wait") {
-    val decision = RestPowerState("rest-1", "red-exile", "blue-exile",
-      "denizen.league-treaty", LeagueTreatyState(Vector(RestFavorSourceState(
-        "relic-slot", "site:1", "0", "Facedown relic 1", 2)),
-        Vector("beast", "hearth")))
-    val ownerView = projection(Set.empty, phase = "rest-power-decision")
-      .copy(restPower = Some(decision))
-    val owner = ServerUiSupport.viewerPresentation(ownerView, "blue-exile")
-    assert(owner.showGameplayControls)
-    assertEquals(owner.waitingForPlayerId, None)
-    assertEquals(owner.procedureStatus,
-      Some("Choose whether to use the Rest power."))
-
-    val waitingView = ownerView.copy(restPower = None, restPowerWaiting = true,
-      phase = "rest-power-waiting")
-    val waiting = ServerUiSupport.viewerPresentation(waitingView, "red-exile")
-    assert(!waiting.showGameplayControls)
-    assertEquals(waiting.procedureStatus,
-      Some("Waiting for a Rest power decision."))
-  }
-
   /** Fix round 1: a parked walker `Decide`'s owner is not always the active
     * participant (Task 5). `walkerDecision` is projected to the owner alone
     * regardless of whose turn it is, so `viewerPresentation` must grant

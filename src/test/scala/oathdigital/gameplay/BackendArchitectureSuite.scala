@@ -392,8 +392,6 @@ class BackendArchitectureSuite extends munit.FunSuite {
       assert(!source.contains(forbidden),
         s"RestPowers must leave '$forbidden' to typed handlers/integration")
     }
-    assert(Files.exists(Paths.get(
-      "src/main/scala/oathdigital/gameplay/powers/rest/RestPowerIntegration.scala")))
   }
 
   test("procedure power inventories use named Power objects, not raw ID tables") {

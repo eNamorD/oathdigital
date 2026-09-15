@@ -18,7 +18,6 @@ private[application] final class PendingProcedureProjector(
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
-    val restPower = restPowerProjection(context)
     PendingProjection(
       phase(context, cardDecision, challenge, campaign,
         relocation, walkerDecision),
@@ -28,49 +27,7 @@ private[application] final class PendingProcedureProjector(
         case n: PendingProcedure.Negotiation =>
           !context.viewer.exists(n.participants.contains)
         case _ => false
-      }, restPower, context.current.pending.exists {
-        case p: PendingProcedure.RestPowerDecision =>
-          !context.viewer.contains(p.current.decisionOwner)
-        case _ => false
       }, walkerDecision, walkerWaiting)
-  }
-
-  private def restPowerProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case pending: PendingProcedure.RestPowerDecision
-          if context.viewer.contains(pending.current.decisionOwner) =>
-        pending.payload match {
-          case payload: RestPowerDecisionPayload.LeagueTreaty =>
-            RestPowerProjection(pending.decision.value, pending.restActor.value,
-              pending.current.decisionOwner.value, pending.current.powerId.value,
-              LeagueTreatyProjection(payload.eligibleSources.map(
-                restSourceProjection(context, _)), payload.legalBanks.map(_.key)))
-        }
-    }
-
-  private def restSourceProjection(context: ScopedProjectionContext,
-      source: SiteFavorSource): RestFavorSourceProjection = {
-    val site = context.current.map.sites(source.siteId)
-    source match {
-      case SiteFavorSource.Denizen(_, id) =>
-        val favor = site.denizens.collectFirst {
-          case DenizenState(`id`, _, tokens) => tokens.favor }.getOrElse(0)
-        RestFavorSourceProjection("denizen", source.siteId.value, id.value,
-          presentation.denizenLabel(id), favor)
-      case SiteFavorSource.Edifice(_, id) =>
-        val (side, favor) = site.denizens.collectFirst {
-          case EdificeState(`id`, side, tokens) => side -> tokens.favor
-        }.get
-        RestFavorSourceProjection("edifice", source.siteId.value, id.value,
-          presentation.edificeLabel(id, side), favor)
-      case SiteFavorSource.Relic(_, slot) =>
-        val relic = site.relics(slot)
-        val label = if (relic.orientation == Orientation.FaceDown)
-          s"Facedown relic ${slot + 1}"
-        else presentation.relicLabel(relic.id)
-        RestFavorSourceProjection("relic-slot", source.siteId.value,
-          slot.toString, label, relic.tokens.favor)
-    }
   }
 
   private def pendingCardDecision(context: ScopedProjectionContext) =
@@ -334,9 +291,6 @@ private[application] final class PendingProcedureProjector(
       case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
           context.viewer.contains(p.actor) => "conspiracy-target"
       case Some(_: PendingProcedure.Conspiracy) => "conspiracy-waiting"
-      case Some(p: PendingProcedure.RestPowerDecision)
-          if context.viewer.contains(p.current.decisionOwner) => "rest-power-decision"
-      case Some(_: PendingProcedure.RestPowerDecision) => "rest-power-waiting"
       case _ => context.current.turn.phase match {
         case Phase.Wake => "wake"
         case Phase.Act => "act-action-selection"

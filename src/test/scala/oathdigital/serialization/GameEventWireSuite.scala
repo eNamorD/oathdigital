@@ -6,7 +6,7 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
-  RestCompleted, RestStarted, SearchCompleted, SearchStarted}
+  SearchCompleted, SearchStarted}
 import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
@@ -708,83 +708,6 @@ class GameEventWireSuite extends munit.FunSuite {
     val invalid = ujson.read(encoded).arr
     invalid.head("payload")("target")("kind") = "relic"
     assert(GameEventWire.decodeStream(ujson.write(invalid)).isLeft)
-  }
-
-  test("v5 Rest events round-trip all authoritative transition facts") {
-    val events = Vector[OathEvent](
-      RestStarted(PlayerId("red")),
-      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2, Suit.Order -> 1),
-        returnedSecrets = 3, refreshedSupply = 6, PlayerId("blue"), 2,
-        usurperLimited = true)
-    )
-    val encoded = GameEventWire.encodeStream("rest", catalogRef,
-      events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-
-    assertEquals(decoded.map(_.formatVersion), Vector(1, 1))
-    assertEquals(decoded.map(_.event), events)
-    assertEquals(decoded.map(_.eventType), Vector(
-      GameEventWire.RestStartedType, GameEventWire.RestCompletedType))
-  }
-
-  test("League Treaty events round-trip typed sources allocations and ownership") {
-    val actor = PlayerId("red")
-    val owner = PlayerId("blue")
-    val decision = DecisionId("rest-league")
-    val power = PowerId("denizen.league-treaty")
-    val source = SiteDenizenTarget(SiteId("site-a"), DenizenId("237"))
-    val favorSources = Vector[SiteFavorSource](
-      SiteFavorSource.Denizen(SiteId("site-a"), DenizenId("237")),
-      SiteFavorSource.Edifice(SiteId("site-b"), EdificeId("E1")),
-      SiteFavorSource.Relic(SiteId("site-b"), 0))
-    val remaining = Vector(RestPowerInvocationRef(
-      PowerId("banner.darkest-secret.festival"),
-      RestPowerSourceRef.Banner(Banner.DarkestSecret), owner))
-    val events = Vector[OathEvent](
-      OathEvent.LeagueTreatyDecisionStarted(actor, decision, power, source,
-        owner, remaining, favorSources, Suit.all),
-      OathEvent.LeagueTreatyResolved(actor, decision, power, source, owner,
-        Vector(FavorAllocation(favorSources.head, 1),
-          FavorAllocation(favorSources.last, 2)), Suit.Hearth),
-      OathEvent.LeagueTreatyDeclined(actor, decision, power, source, owner))
-    events.zipWithIndex.foreach { case (event, index) =>
-      val encoded = GameEventWire.encodeEvent("rest-power", catalogRef,
-        index.toLong, event).toOption.get
-      assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
-    }
-  }
-
-  test("v5 Rest numeric facts require exact non-negative Int values") {
-    def restValue(): ujson.Obj = GameEventWire.encodeEvent(
-      "rest", catalogRef, 0L,
-      RestCompleted(PlayerId("red"), Map(Suit.Beast -> 2), 3, 6,
-        PlayerId("blue"), 2, usurperLimited = true)).toOption.get.obj
-    def reject(field: String, value: Double, expected: WireError): Unit = {
-      val encoded = restValue()
-      encoded("payload")(field) = ujson.Num(value)
-      assertEquals(GameEventWire.decode(encoded), Left(expected))
-    }
-    val safeRange = s"must be between 0 and ${GameEventWire.MaxSafeSequence} inclusive"
-    val intRange = s"must be between 0 and ${Int.MaxValue} inclusive"
-
-    reject("returnedSecrets", 1.5,
-      WireError.WrongType("$.payload.returnedSecrets", "expected an integer"))
-    reject("refreshedSupply", -1,
-      WireError.InvalidValue("$.payload.refreshedSupply", safeRange))
-    reject("completedRound", Double.PositiveInfinity,
-      WireError.WrongType("$.payload.completedRound", "expected an integer"))
-    reject("returnedSecrets", GameEventWire.MaxSafeSequence.toDouble + 1,
-      WireError.InvalidValue("$.payload.returnedSecrets", safeRange))
-    reject("completedRound", Int.MaxValue.toDouble + 1,
-      WireError.InvalidValue("$.payload.completedRound", intRange))
-
-    val favor = restValue()
-    favor("payload")("returnedFavor")("beast") =
-      ujson.Num(Int.MaxValue.toDouble + 1)
-    assertEquals(GameEventWire.decode(favor), Left(WireError.InvalidValue(
-      "$.payload.returnedFavor.beast", intRange)))
   }
 
   test("v2 serialized replay equals command state and preserves ordering") {

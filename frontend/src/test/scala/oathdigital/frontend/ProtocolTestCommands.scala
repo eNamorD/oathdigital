@@ -16,10 +16,6 @@ private[frontend] object GameCommand {
   def EndWake(actor: String) = Intent.EndWake
   def BeginRest(actor: String) = Intent.BeginRest
   def FinishRest(actor: String) = Intent.FinishRest
-  def ResolveRestPower(actor: String, id: String,
-      allocations: Vector[RestFavorAllocation], bank: String) =
-    Intent.ResolveRestPower(id, allocations, bank)
-  def DeclineRestPower(actor: String, id: String) = Intent.DeclineRestPower(id)
   // Travel starts on the generic walker (batch-1 Task 5): its destination
   // rides the start selection, not an intent of its own.
   def Travel(actor: String, site: String) = Intent.StartWalker("travel",

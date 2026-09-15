@@ -2857,7 +2857,7 @@ This task deletes code and adds no behavior. Its test is the grep in Step 6, plu
 - Consumes: Tasks 5-7 (nothing reaches the legacy seam any more).
 - Produces: no new names. `RestCommand`, `RestPowerEvent`, `RestStarted`, `RestCompleted`, the three League Treaty events, `PendingProcedure.RestPowerDecision`, `OathContinue.AwaitingRestPowerDecision`, `RestOutcomeMismatch`, `GameCommand.ResolveRestPower`/`DeclineRestPower`, the `resolveRestPower`/`declineRestPower` intents, `RestPowerProjection`, `LeagueTreatyProjection` and `GameProjection.restPower`/`restPowerWaiting` stop existing.
 
-- [ ] **Step 1: Delete the gameplay seam**
+- [x] **Step 1: Delete the gameplay seam**
 
 - Delete the four backend files:
 
@@ -2873,13 +2873,13 @@ git rm src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oath
 - `FirstGameSetup.scala:248-249`: delete the Rest event arms.
 - `PendingProcedures.scala`: delete `SiteFavorSource`, `FavorAllocation`, `RestPowerSourceRef`, `RestPowerInvocationRef`, `RestPowerDecisionPayload`, `PendingProcedure.RestPowerDecision`, `RestPowerContinuation`, and every exhaustive-match arm that names them.
 
-- [ ] **Step 2: Delete the journal spelling**
+- [x] **Step 2: Delete the journal spelling**
 
 - `GameEventWire.scala`: delete `RestStartedType`, `LeagueTreatyDecisionStartedType`, `LeagueTreatyResolvedType`, `LeagueTreatyDeclinedType`, `RestCompletedType` and their dispatch arms.
 - `LifecycleEventCodec.scala`: delete the encode and decode branches and helpers for the same events, including every helper used only by them (the compiler's `-Xlint` unused warnings name them).
 - `GameEventWireSuite` and `GameHttpWireSuite`: delete the round-trip cases for those events. Do not add rejection tests: an unknown type already fails through the generic unknown-type path.
 
-- [ ] **Step 3: Delete the command and projection surface**
+- [x] **Step 3: Delete the command and projection surface**
 
 - `GameCommands`: delete `ResolveRestPower` and `DeclineRestPower`. `Authorization`: delete `resolveRestPower` and `declineRestPower`. `GameIntentMapper`: delete their intent arms and any helper used only by them. `GameApplicationService`: delete their `applyUnblockedCommand` arms.
 - `CommandIntents`: delete `ResolveRestPower`, `DeclineRestPower`, `RestFavorSource`, `RestFavorAllocation`. Delete their codec, decoder and `restAllocation` helpers.
@@ -2887,17 +2887,17 @@ git rm src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oath
 - `GameProjectionDto`: delete `restPower` and `restPowerWaiting`. `GameProjectionCodec`: remove both keys from the key set and delete their encode, decode and helper code. `ActionProjectionDtos`: delete `RestFavorSourceProjection`, `RestPowerPayloadProjection`, `LeagueTreatyProjection`, `RestPowerProjection`.
 - Shared tests: remove the two intents from `CommandProtocolSuite:7-10` and the two fields from `ProjectionProtocolSuite:71-75`.
 
-- [ ] **Step 4: Delete the frontend branches**
+- [x] **Step 4: Delete the frontend branches**
 
 - `git rm frontend/src/main/scala/oathdigital/frontend/RestPowerDecisionRenderer.scala`.
 - `ActionDecisionRenderer`: delete the `value.restPower...foreach` block. `ServerUiSupport`: delete the `restPower`/`restPowerWaiting` branches. `package.scala`: delete `RestFavorSourceState`, `RestPowerState` and `LeagueTreatyState`.
 - Tests: delete the two Rest power helpers in `ProtocolTestCommands`, the resolve/decline encoding assertions in `HttpGameClientSuite:184-198` (keep the Begin/Finish Rest encoding), and the "Rest power owner controls the off-turn choice..." test in `ServerModeUiSuite:611-630`.
 
-- [ ] **Step 5: Retire the architecture assertion**
+- [x] **Step 5: Retire the architecture assertion**
 
 In `BackendArchitectureSuite`'s "Rest registry cannot own procedure orchestration or state mutation", delete the final `assert(Files.exists(... RestPowerIntegration.scala))`. Keep the forbidden-string loop.
 
-- [ ] **Step 6: Verify nothing names the seam**
+- [x] **Step 6: Verify nothing names the seam**
 
 Run:
 
@@ -2907,7 +2907,7 @@ grep -rnE "RestPowerIntegration|RestPowerHandler|RestPowerEvent|RestStarted|Rest
 
 Expected: no output.
 
-- [ ] **Step 7: Full gate and commit**
+- [x] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green. Neither fingerprint changes: `ReviewedPowerCatalog.AuditedCatalogFingerprint` and the Rest handler inventory both hash the catalog, not the Scala `Power` objects. Dropping `LeagueTreatyPower` from `RestPowers` follows Catacombs, which left `RecoverPowers` the same way and stays audited through `CatalogHandlerInventory.handlerIds`.

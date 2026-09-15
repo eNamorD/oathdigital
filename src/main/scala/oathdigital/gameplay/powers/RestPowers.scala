@@ -1,9 +1,10 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powers.rest.LeagueTreatyPower
 
-/** Reviewed Rest classifications and their procedure-specific callables. */
+/** Reviewed Rest classifications and their procedure-specific callables.
+  * League Treaty is audited through its walker contribution and catalog handler.
+  */
 object RestPowers {
   private def rest = Vector(ReviewedHandler.automatic(PowerWindow.RestStart))
 
@@ -19,5 +20,5 @@ object RestPowers {
       ReviewedHandler.automatic(PowerWindow.RestStart)))
 
   val powers: Vector[Power] = Vector(Naysayers, SilverTongue, Insomnia,
-    VowOfObedience, VowOfPoverty, LeagueTreatyPower)
+    VowOfObedience, VowOfPoverty)
 }

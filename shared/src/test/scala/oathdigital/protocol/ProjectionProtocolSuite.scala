@@ -68,11 +68,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
     relicDeckCount = 21,
     privateAdviserPreview = Vector(known),
-    restPower = Some(RestPowerProjection("rest-power", "red", "blue",
-      "denizen.league-treaty", LeagueTreatyProjection(Vector(
-        RestFavorSourceProjection("denizen", "site:a", "known", "Known", 2)),
-        Vector("beast", "hearth")))),
-    restPowerWaiting = true,
     // A partition query, the shape with every field populated: a form, two
     // sections with minima, and options carrying both a plain label and
     // card details. A choose-one query is the same type with no sections,

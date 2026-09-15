@@ -8,7 +8,6 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
-import oathdigital.gameplay.phases.{Rest, RestCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
 import oathdigital.model._
@@ -166,10 +165,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       }
     }
 
-  def handle(state: OathState, command: RestCommand)
-      : Either[OathViolation, OathTransition] =
-    Rest.handle(catalog, state, command)
-
   override def evolve(
       state: OathState,
       event: OathEvent
@@ -228,9 +223,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         campaignLosingForceRegistry)
       case event: CampaignRaidPawnRelocated => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
-      case event: RestPowerEvent => Rest.evolve(catalog, state, event)
-      case _: RestStarted | _: RestCompleted =>
-        Left(InvalidEventOrder("legacy Rest events no longer replay"))
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)

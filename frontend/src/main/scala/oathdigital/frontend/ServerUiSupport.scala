@@ -318,14 +318,6 @@ private[frontend] object ServerUiSupport {
         waitingForPlayerId = value.walkerWaiting.map(_.playerId),
         waitingForDisplayName = value.walkerWaiting.map(w =>
           playerDisplayName(value, w.playerId)))
-    if (value.restPower.exists(_.decisionOwnerPlayerId == playerId))
-      return ViewerPresentation(showGameplayControls = true,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Choose whether to use the Rest power."))
-    if (value.restPowerWaiting)
-      return ViewerPresentation(showGameplayControls = false,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Waiting for a Rest power decision."))
     if (value.negotiation.exists(_.participantPlayerIds.contains(playerId)))
       return ViewerPresentation(showGameplayControls = true,
         waitingForPlayerId = None, waitingForDisplayName = None,

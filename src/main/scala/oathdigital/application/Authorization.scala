@@ -69,13 +69,6 @@ final case class AuthorizedPlayer private (
 
   def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
-  def resolveRestPower(decision: DecisionId,
-      allocations: Vector[FavorAllocation], destinationBank: Suit): GameCommand =
-    GameCommand.ResolveRestPower(access.playerId, decision, allocations,
-      destinationBank)
-  def declineRestPower(decision: DecisionId): GameCommand =
-    GameCommand.DeclineRestPower(access.playerId, decision)
-
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 

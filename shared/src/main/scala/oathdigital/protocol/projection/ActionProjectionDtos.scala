@@ -293,12 +293,3 @@ final case class NegotiationProjection(decisionId: String, actorPlayerId: String
     editableFavor: Int, editableRelics: Vector[CardDetailsProjection],
     editableAdvisers: Vector[CardDetailsProjection],
     editableSiteRelics: Vector[NegotiationSiteRelicProjection])
-final case class RestFavorSourceProjection(kind: String, siteId: String,
-    sourceId: String, label: String, availableFavor: Int)
-sealed trait RestPowerPayloadProjection extends Product with Serializable
-final case class LeagueTreatyProjection(
-    sources: Vector[RestFavorSourceProjection],
-    legalBanks: Vector[String]) extends RestPowerPayloadProjection
-final case class RestPowerProjection(decisionId: String,
-    restActorPlayerId: String, decisionOwnerPlayerId: String, powerId: String,
-    payload: RestPowerPayloadProjection)

@@ -10,10 +10,6 @@ object GameIntent {
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
-  final case class ResolveRestPower(decisionId: String,
-      allocations: Vector[RestFavorAllocation], destinationBank: String)
-      extends GameIntent
-  final case class DeclineRestPower(decisionId: String) extends GameIntent
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent
@@ -87,9 +83,6 @@ final case class WorldCard(kind: String, id: String)
 final case class CardRef(kind: String, id: String)
 final case class Placement(kind: String, replace: Option[CardRef])
 final case class CampaignForceAllocation(siteId: String, count: Int)
-final case class RestFavorSource(kind: String, siteId: String, sourceId: String)
-final case class RestFavorAllocation(source: RestFavorSource, amount: Int)
-
 sealed trait ConspiracyTarget extends Product with Serializable
 object ConspiracyTarget {
   final case class RelicSlot(ownerPlayerId: String, slot: Int) extends ConspiracyTarget

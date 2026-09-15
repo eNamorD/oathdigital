@@ -33,8 +33,6 @@ private[application] final case class PendingProjection(
     challenge: Option[ChallengeProjection],
     negotiation: Option[NegotiationProjection],
     negotiationWaiting: Boolean,
-    restPower: Option[RestPowerProjection],
-    restPowerWaiting: Boolean,
     walkerDecision: Option[WalkerDecisionProjection],
     walkerWaiting: Option[WalkerWaitingProjection]
 )

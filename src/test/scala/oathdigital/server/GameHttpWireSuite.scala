@@ -36,15 +36,6 @@ class GameHttpWireSuite extends munit.FunSuite {
       Right(GameCommand.PlacePawn(PlayerId("dev-selected"), SiteId("site:a"))))
     assertEquals(GameIntentMapper.bind(PlayerId("member-seat"), GameIntent.EndWake),
       Right(GameCommand.EndWake(PlayerId("member-seat"))))
-    val rest = GameIntent.ResolveRestPower("rest-1", Vector(
-      oathdigital.protocol.RestFavorAllocation(
-        oathdigital.protocol.RestFavorSource("relic-slot", "site:a", "0"), 2)),
-      "hearth")
-    assertEquals(GameIntentMapper.bind(PlayerId("off-turn-owner"), rest), Right(
-      GameCommand.ResolveRestPower(PlayerId("off-turn-owner"),
-        DecisionId("rest-1"), Vector(FavorAllocation(
-          SiteFavorSource.Relic(SiteId("site:a"), 0), 2)),
-        Suit.Hearth)))
   }
 
   test("domain conversion rejects unknown protocol identifiers without throwing") {

@@ -561,11 +561,6 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(choose)
      }
    }
-   value.restPower.filter(decision =>
-     decision.decisionOwnerPlayerId == currentPlayerId &&
-       presentation.showGameplayControls).foreach { decision =>
-     panel.appendChild(RestPowerDecisionRenderer.render(value, decision, ui))
-   }
    if (value.phase == "rest" && presentation.showGameplayControls) {
      panel.appendChild(text("p", "informational",
        "Finish Rest to return card resources, reveal secrets, refresh " +
