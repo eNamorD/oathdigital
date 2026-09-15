@@ -606,12 +606,12 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   test("a procedure completing in a phase with no walker continuation is " +
       "still a typed rejection") {
     val (act, actor) = actable
-    val rest = act.copy(game = act.game.copy(current = act.game.current.copy(
-      turn = act.game.current.turn.copy(phase = Phase.Rest))))
+    val roundEnd = act.copy(game = act.game.copy(current = act.game.current.copy(
+      turn = act.game.current.turn.copy(phase = Phase.RoundEnd))))
     val flat = new OathRules(catalog, walkerTree = (_, _, _, _, _, _) =>
       Right(Sequence(Vector.empty)))
-    assertEquals(flat.startWalker(Ready(rest), ActionRef.Recover, actor),
+    assertEquals(flat.startWalker(Ready(roundEnd), ActionRef.Recover, actor),
       Left(OathViolation.InvalidEventOrder("a walker procedure completed in " +
-        "the Rest phase, which has no walker continuation")))
+        "the RoundEnd phase, which has no walker continuation")))
   }
 }

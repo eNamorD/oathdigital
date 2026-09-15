@@ -1518,7 +1518,7 @@ This task adds walker Begin Rest and Finish Rest beside the legacy commands. Pro
   - `WalkerProcedureRegistry.fallbackKind(procedure: StartableRef): Either[OathViolation, Option[MajorActionKind]]`.
   - `OathRulesWalker` abstract members `turnBoundary(transition)` and `restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean`. `OathRules` implements `restPowerUsable` as `false`, and Task 9 replaces that body.
 
-- [ ] **Step 1: Write the failing walker Rest suite**
+- [x] **Step 1: Write the failing walker Rest suite**
 
 `src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala`:
 
@@ -1655,12 +1655,12 @@ In `WalkerProcedureRegistrySuite`, add:
 
 Add `PhaseTransitionRef` to that suite's model import.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite"`
 Expected: compilation fails on `PhaseTransitionRef.BeginRest` and `oathdigital.gameplay.phases.rest`.
 
-- [ ] **Step 3: Add the references and the continuation**
+- [x] **Step 3: Add the references and the continuation**
 
 In `ProcedureRef.scala`, `object PhaseTransitionRef`:
 
@@ -1683,7 +1683,7 @@ In `GameProcedureProtocol.scala`, after `AwaitingRestPowerDecision`:
 
 No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
-- [ ] **Step 4: Create the Rest procedure package**
+- [x] **Step 4: Create the Rest procedure package**
 
 `gameplay/phases/rest/WarExhaustionRandomPort.scala`: move the trait and its companion out of `Rest.scala` unchanged, under `package oathdigital.gameplay.phases.rest`. Update the import in `OathRules.scala` to `oathdigital.gameplay.phases.rest.WarExhaustionRandomPort`, the import at `GameApplicationService.scala:17`, the import at `RestSuite.scala:3-4`, and both inline `oathdigital.gameplay.phases.WarExhaustionRandomPort` references at `GameApplicationServiceSuite.scala:575,605`.
 
@@ -1904,7 +1904,7 @@ object TurnBoundary {
 }
 ```
 
-- [ ] **Step 5: Make legacy Rest delegate instead of duplicating**
+- [x] **Step 5: Make legacy Rest delegate instead of duplicating**
 
 In `Rest.scala`:
 
@@ -1916,7 +1916,7 @@ In `Rest.scala`:
 
 `LegalActionProjector`: import `oathdigital.gameplay.phases.rest.BeginRestProcedure` in place of `phases.Rest`, and call `BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player)` at line 127.
 
-- [ ] **Step 6: Registry entries and optional fallback kind**
+- [x] **Step 6: Registry entries and optional fallback kind**
 
 In `WalkerProcedureRegistry.scala`, import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}` and add after the `EndWake` entry:
 
@@ -1956,7 +1956,7 @@ Replace `fallbackKind` with:
 
 End its doc with: "`None` means the start records no fallback diagnostics."
 
-- [ ] **Step 7: Walker completion in Rest**
+- [x] **Step 7: Walker completion in Rest**
 
 In `OathRulesWalker.scala`, add abstract members:
 
@@ -2035,7 +2035,7 @@ Add beside `runsActionBoundary`:
 
 In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))`. Change its doc: Rest has a continuation; `RoundEnd` has none, because only Finish Rest reaches it and the turn boundary owns that continuation. In `startTriggered`'s doc, change "only knows `Phase.Act` and `Phase.Wake`" to "knows Act, Wake and Rest".
 
-- [ ] **Step 8: `OathRules` implements the new members**
+- [x] **Step 8: `OathRules` implements the new members**
 
 - Constructor: `protected val warExhaustionRandomPort: WarExhaustionRandomPort = WarExhaustionRandomPort.random`.
 - Add:
@@ -2061,12 +2061,12 @@ In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestActi
 
 Import `oathdigital.gameplay.phases.rest.TurnBoundary`. `enterWake` stays private: `turnBoundary` is a member of the same class.
 
-- [ ] **Step 9: Run the suites**
+- [x] **Step 9: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.gameplay.RestSuite oathdigital.application.GameApplicationServiceSuite"`
 Expected: PASS. `RestSuite` and `GameApplicationServiceSuite` are unchanged apart from imports and still exercise the legacy commands.
 
-- [ ] **Step 10: Full gate and commit**
+- [x] **Step 10: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

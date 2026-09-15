@@ -572,7 +572,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val poweredPlan = plan.copy(denizenOrder = poweredOrder,
       worldDeckOrder = poweredWorldDeck)
     var service = new GameApplicationService(catalog, repository,
-      warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+      warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.head
       })
     var accepted = execute(service, "powered-playability", setupPlan = poweredPlan)
@@ -602,7 +602,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       accepted = service.handle("powered-playability", accepted.nextSequence,
         GameCommand.FinishRest(actor)).toOption.get
       service = new GameApplicationService(catalog, repository,
-        warExhaustionRandomPort = new oathdigital.gameplay.phases.WarExhaustionRandomPort {
+        warExhaustionRandomPort = new oathdigital.gameplay.phases.rest.WarExhaustionRandomPort {
           def choose(candidates: Vector[PlayerId]) = candidates.head
         })
       val reopened = service.load("powered-playability").toOption.flatten.get

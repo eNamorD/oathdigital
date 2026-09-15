@@ -5,8 +5,8 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, PlayerId,
-  ProcedureRef, SiteId}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
+  PhaseTransitionRef, PlayerId, ProcedureRef, SiteId}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -143,6 +143,17 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       assertEquals(WalkerProcedureRegistry.continuationFor(ActionRef.Travel, id,
         PlayerId("p1"), DecisionId("d1")), Right(None))
     }
+  }
+
+  test("Begin Rest records Rest diagnostics; Finish Rest records none and " +
+      "parks as a generic Rest decision") {
+    assertEquals(WalkerProcedureRegistry.fallbackKind(
+      PhaseTransitionRef.BeginRest), Right(Some(MajorActionKind.Rest)))
+    assertEquals(WalkerProcedureRegistry.fallbackKind(
+      PhaseTransitionRef.FinishRest), Right(None))
+    assertEquals(WalkerProcedureRegistry.continuationFor(
+      PhaseTransitionRef.FinishRest, "any", actor, DecisionId("d")),
+      Right(Some(OathContinue.AwaitingRestDecision(actor, DecisionId("d")))))
   }
 
   /** An action that selects nothing at its start must REJECT a selection, not

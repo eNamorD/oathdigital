@@ -1,8 +1,7 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle, StateBasedEvaluation}
+import oathdigital.gameplay.{GameplayTransition, GameStateUpdates}
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue._
@@ -10,6 +9,8 @@ import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.powers.rest.RestPowerIntegration
+import oathdigital.gameplay.phases.rest.{BeginRestProcedure,
+  FinishRestProcedure, TurnBoundary, WarExhaustionRandomPort}
 import oathdigital.gameplay.operations.{CoreOperation, FlipSecrets, Location,
   Move => CoreMove, OperationPipeline, OperationPolicy,
   Piece, PositionedLocation, SecretSide}
@@ -25,29 +26,7 @@ object RestCommand {
       extends RestCommand
 }
 
-trait WarExhaustionRandomPort {
-  def choose(candidates: Vector[PlayerId]): PlayerId
-}
-object WarExhaustionRandomPort {
-  val random: WarExhaustionRandomPort = new WarExhaustionRandomPort {
-    private val rng = new scala.util.Random()
-    def choose(candidates: Vector[PlayerId]): PlayerId =
-      candidates(rng.nextInt(candidates.size))
-  }
-}
-
 object Rest {
-  private val ExpectedHandlerInventory =
-    "5fc88b0d9622a3f523722c288ea7a78d0ec09b7ce191bdabc7f471139ec85898"
-  private val ExileSupply = SupplyRules(
-    SupplyTrack.Maximum,
-    Vector(
-      SupplyRefreshBand(InclusiveIntRange(9, Int.MaxValue), 6),
-      SupplyRefreshBand(InclusiveIntRange(4, 8), 5),
-      SupplyRefreshBand(InclusiveIntRange(0, 3), 4)
-    )
-  )
-
   def handle(catalog: ExecutableCatalog, state: OathState, command: RestCommand,
       randomPort: WarExhaustionRandomPort = WarExhaustionRandomPort.random)
       : Either[OathViolation, OathTransition] = command match {
@@ -64,8 +43,8 @@ object Rest {
         expected(catalog, ready, playerId).flatMap { event =>
           transition(catalog, state, Vector(event),
             AwaitingWakeAction(event.postRestActivePlayerId)).flatMap { rested =>
-            if (playerId != turnOrder(ready).last) Right(rested)
-            else finishRound(catalog, rested, randomPort)
+            if (playerId != FinishRestProcedure.turnOrder(ready).last) Right(rested)
+            else TurnBoundary.finishRound(catalog, rested, randomPort)
           }
         }
       }
@@ -101,9 +80,7 @@ object Rest {
   /** Single legality path for command handling, replay, and projection. */
   def validateBegin(catalog: ExecutableCatalog, state: OathState, playerId: PlayerId)
       : Either[OathViolation, ReadyGame] =
-    OathLifecycle.validateAct(state, playerId).flatMap { ready =>
-      validateSupportedState(catalog, ready).map(_ => ready)
-    }
+    BeginRestProcedure.validateBegin(catalog, state, playerId)
 
   private def validateRest(catalog: ExecutableCatalog,
       state: OathState, playerId: PlayerId)
@@ -122,27 +99,8 @@ object Rest {
   }
 
   def validateSupportedState(catalog: ExecutableCatalog,
-      ready: ReadyGame): Either[OathViolation, Unit] = {
-    validateAllExileAndRules(catalog, ready)
-  }
-
-  private def validateAllExileAndRules(catalog: ExecutableCatalog,
-      ready: ReadyGame): Either[OathViolation, Unit] = {
-    val game = ready.game
-    val actualHandlerInventory = CatalogHandlerInventory.structuralFingerprint(catalog)
-    val missingWarbandSupplies = game.current.players.iterator
-      .map(player => ForceKind.Exile(player.lineage)).toVector.distinct
-      .filterNot(ready.banks.warbandSupply.contains)
-    if (game.campaign.lineages.values.exists(_.role != Role.Exile))
-      Left(UnsupportedRestState("Rest is limited to the exile-only first game"))
-    else if (missingWarbandSupplies.nonEmpty)
-      Left(UnsupportedRestState(
-        s"no bounded warband supply for ${missingWarbandSupplies.mkString(", ")}"))
-    else if (actualHandlerInventory != ExpectedHandlerInventory)
-      Left(UnsupportedRoundEndCatalogInventory(ExpectedHandlerInventory,
-        actualHandlerInventory))
-    else Right(())
-  }
+      ready: ReadyGame): Either[OathViolation, Unit] =
+    BeginRestProcedure.validateSupportedState(catalog, ready)
 
   private def expected(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId): Either[OathViolation, RestCompleted] = {
@@ -165,7 +123,7 @@ object Rest {
       .map(supply => math.max(0,
         supply - player.board.warbands - siteWarbands))
     val refreshed = banked.flatMap { amount =>
-      ExileSupply.refresh(amount, player.board.supply.supply)
+      FinishRestProcedure.ExileSupply.refresh(amount, player.board.supply.supply)
         .toRight(UnsupportedRestState(
           s"no Supply band for $amount banked warbands"))
     }
@@ -174,7 +132,7 @@ object Rest {
       cleanup <- RestCleanupPlan.derive(catalog, ready, playerId)
         .left.map(UnsupportedRestState)
     } yield {
-      val order = turnOrder(ready)
+      val order = FinishRestProcedure.turnOrder(ready)
       val index = order.indexOf(playerId)
       val last = index == order.size - 1
       RestCompleted(playerId, cleanup.returnedFavor, cleanup.returnedSecrets,
@@ -231,7 +189,8 @@ object Rest {
           },
           tracks = current.tracks.copy(usurperLimited = event.usurperLimited),
           turn = TurnState(event.postRestActivePlayerId,
-            if (turnOrder(ready).last == event.playerId) Phase.RoundEnd
+            if (FinishRestProcedure.turnOrder(ready).last == event.playerId)
+              Phase.RoundEnd
             else Phase.Wake,
             Set.empty),
           pending = None))))
@@ -241,35 +200,9 @@ object Rest {
       operations, "Rest semantic root is not permitted"))(update)
   }
 
-  private def turnOrder(ready: ReadyGame): Vector[PlayerId] = {
-    val participants = ready.game.current.players.map(_.player)
-    val index = participants.indexOf(ready.setup.firstPlayer)
-    participants.drop(index) ++ participants.take(index)
-  }
-
   private def transition(catalog: ExecutableCatalog, state: OathState,
       events: Vector[OathEvent], continue: OathContinue)
       : Either[OathViolation, OathTransition] =
     GameplayTransition(state, events, continue)(evolve(catalog, _, _))
 
-  private def finishRound(catalog: ExecutableCatalog, transition: OathTransition,
-      randomPort: WarExhaustionRandomPort)
-      : Either[OathViolation, OathTransition] = {
-    val choose: (Vector[PlayerId] => PlayerId) = randomPort.choose
-    StateBasedEvaluation.endRound(transition.state, choose).flatMap { events =>
-      events.foldLeft[Either[OathViolation, OathTransition]](Right(transition)) {
-        case (Right(current), event) =>
-          StateBasedEvaluation.evolve(catalog, current.state, event).map { next =>
-            val continuation = next match {
-              case Ready(ready) if ready.game.current.result.nonEmpty =>
-                GameFinished(ready.game.current.result.get.winner)
-              case _ => current.continue
-            }
-            current.copy(state = next, events = current.events :+ event,
-              continue = continuation)
-          }
-        case (failure @ Left(_), _) => failure
-      }
-    }
-  }
 }

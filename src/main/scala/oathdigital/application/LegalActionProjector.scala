@@ -10,7 +10,7 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.phases.Rest
+import oathdigital.gameplay.phases.rest.BeginRestProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -124,7 +124,7 @@ private[application] final class LegalActionProjector(
       case Some(_) => Vector.empty
       case None => current.turn.phase match {
         case Phase.Act => Vector(
-          Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
+          Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
           Option.when(active.pawnSite.exists(_ =>
             recoverEligible(context, active)))("beginRecover"),

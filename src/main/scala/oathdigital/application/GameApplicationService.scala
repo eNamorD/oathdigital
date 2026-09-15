@@ -14,7 +14,7 @@ import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.RestCommand
-import oathdigital.gameplay.phases.WarExhaustionRandomPort
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
 import oathdigital.gameplay.setup.{

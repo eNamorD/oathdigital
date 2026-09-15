@@ -33,6 +33,10 @@ private[gameplay] trait OathRulesWalker {
       : Either[OathViolation, OathTransition]
   protected def completeAction(transition: OathTransition)
       : Either[OathViolation, OathTransition]
+  protected def turnBoundary(transition: OathTransition)
+      : Either[OathViolation, OathTransition]
+  /** Whether `player` could use a REST power now. */
+  protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean
 
   /** Starts one action on the generic procedure walker. Recover is the only
     * registered action in this vertical slice.
@@ -56,9 +60,7 @@ private[gameplay] trait OathRulesWalker {
         Left(InvalidEventOrder("a walker procedure is already pending"))
       case Ready(ready) =>
         val activePlayer = ready.game.current.turn.activePlayer
-        WalkerProcedureRegistry.fallbackKind(procedure)
-          .flatMap(kind => withFallback(state, activePlayer, kind) {
-          for {
+        def run = for {
             _ <- requireActivePlayer(ready, requester)
             _ <- validateModifiers(ready, activePlayer, procedure, modifiers)
             powers = walkerPowers(ready, activePlayer, modifiers)
@@ -70,7 +72,10 @@ private[gameplay] trait OathRulesWalker {
             transition <- walkerTransition(state, procedure, tree,
               outcome, powers, modifiers, startArgs)
           } yield transition
-        })
+        WalkerProcedureRegistry.fallbackKind(procedure).flatMap {
+          case Some(kind) => withFallback(state, activePlayer, kind)(run)
+          case None => run
+        }
       case _ => Left(GameNotStarted)
     }
 
@@ -83,12 +88,12 @@ private[gameplay] trait OathRulesWalker {
     * procedure journal as one command.
     *
     * When the triggered procedure finishes without parking, `walkerTransition`
-    * recomputes its continuation with `continuationIn(phase)`, which only
-    * knows `Phase.Act` and `Phase.Wake`. That matches every current
+    * recomputes its continuation with `continuationIn(phase)`, which knows
+    * Act, Wake and Rest. That matches every current
     * `completeAction` caller today -- all Act-gated with
     * `ActActionSelection`, or Wake's Take Wealth -- so a triggered procedure
-    * always finishes in one of those two phases. A future trigger fired
-    * outside Act or Wake must extend `continuationIn` first.
+    * always finishes in one of those phases. A future trigger fired outside
+    * Act, Wake or Rest must extend `continuationIn` first.
     */
   private[gameplay] def startTriggered(transition: OathTransition,
       procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
@@ -353,14 +358,20 @@ private[gameplay] trait OathRulesWalker {
       } yield OathTransition(finalState, steps :+ fact, continue)
 
     case WalkerOutcome.Finished(treeless, steps) =>
-      val activePlayer = treeless.game.current.turn.activePlayer
-      continuationIn(treeless.game.current.turn.phase, activePlayer).flatMap {
-        continue => GameplayTransition(state,
+      val turn = treeless.game.current.turn
+      val continued =
+        if (runsTurnBoundary(procedure))
+          Right(OathContinue.AwaitingWakeAction(turn.activePlayer))
+        else continuationIn(turn.phase, turn.activePlayer)
+      continued.flatMap(continue => GameplayTransition(state,
           steps :+ WalkerCompleted(procedure), continue)(evolve)
-          .flatMap(transition =>
-            if (runsActionBoundary(procedure)) completeAction(transition)
-            else Right(transition))
-      }
+        .flatMap(transition =>
+          if (runsActionBoundary(procedure)) completeAction(transition)
+          else if (runsTurnBoundary(procedure)) turnBoundary(transition)
+          else Right(transition))
+        .flatMap(transition =>
+          if (procedure == PhaseTransitionRef.BeginRest) autoFinishRest(transition)
+          else Right(transition)))
   }
 
   /** Whether the action boundary follows a completed procedure. Only an
@@ -375,12 +386,35 @@ private[gameplay] trait OathRulesWalker {
       case _: PhaseTransitionRef | _: TriggeredProcedureRef => false
     }
 
+  /** Whether the turn boundary (round end, then Wake evaluation) follows a
+    * completed procedure. Only Finish Rest hands the turn over; it owns its
+    * continuation, so `continuationIn` is never asked about `RoundEnd`.
+    */
+  private def runsTurnBoundary(procedure: ProcedureRef): Boolean =
+    procedure == PhaseTransitionRef.FinishRest
+
+  /** Only after Begin Rest: a player with no usable REST power finishes Rest
+    * in the same command. After a REST power is used the player always
+    * finishes Rest deliberately, so nothing else calls this.
+    */
+  private def autoFinishRest(transition: OathTransition)
+      : Either[OathViolation, OathTransition] = transition.state match {
+    case Ready(ready) if !restPowerUsable(ready,
+        ready.game.current.turn.activePlayer) =>
+      startWalker(transition.state, PhaseTransitionRef.FinishRest,
+        ready.game.current.turn.activePlayer).map(finished =>
+        finished.copy(events = transition.events ++ finished.events))
+    case _ => Right(transition)
+  }
+
   /** Where a completed walker procedure returns its player: read off the
     * phase the procedure finished in, and deliberately not declared by the
     * procedure or carried on its registry entry -- the walker and its
     * registry state what a procedure DOES, and which phase a player is in is
     * neither's business.
     *
+    * Rest has a continuation. `RoundEnd` has none, because only Finish Rest
+    * reaches it and the turn boundary owns that continuation.
     * A phase with no walker continuation is a typed rejection rather than a
     * default, because a default here is exactly the kind of behaviour nobody
     * chooses: the first procedure registered in Rest should fail loudly and
@@ -390,6 +424,7 @@ private[gameplay] trait OathRulesWalker {
       : Either[OathViolation, OathContinue] = phase match {
     case Phase.Act => Right(OathContinue.ActActionSelection(actor))
     case Phase.Wake => Right(OathContinue.AwaitingWakeAction(actor))
+    case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))
     case other => Left(InvalidEventOrder("a walker procedure completed in " +
       s"the ${other.productPrefix} phase, which has no walker continuation"))
   }

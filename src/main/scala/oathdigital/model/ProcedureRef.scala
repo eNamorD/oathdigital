@@ -76,7 +76,12 @@ object PhaseTransitionRef {
     */
   case object EndWake extends PhaseTransitionRef { val key = "end-wake" }
 
-  val all: Vector[PhaseTransitionRef] = Vector(EndWake)
+  /** Leaves Act for Rest (rest-walker spec, Rest procedure). */
+  case object BeginRest extends PhaseTransitionRef { val key = "begin-rest" }
+  /** Cleans up, refreshes Supply and hands the turn over. */
+  case object FinishRest extends PhaseTransitionRef { val key = "finish-rest" }
+
+  val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
 }
 
 object TriggeredProcedureRef {

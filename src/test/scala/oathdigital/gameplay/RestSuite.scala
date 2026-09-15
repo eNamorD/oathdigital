@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.phases.{RestCommand,
-  RestCleanupPlan, WarExhaustionRandomPort}
+import oathdigital.gameplay.phases.{RestCommand, RestCleanupPlan}
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

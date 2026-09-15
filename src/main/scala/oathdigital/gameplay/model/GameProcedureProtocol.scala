@@ -17,6 +17,9 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingRestPowerDecision(playerId: PlayerId,
       decision: DecisionId) extends OathContinue
+  /** Any decision parked inside Finish Rest; the owner may be off-turn. */
+  final case class AwaitingRestDecision(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingRecoverRoll(playerId: PlayerId, decision: DecisionId)

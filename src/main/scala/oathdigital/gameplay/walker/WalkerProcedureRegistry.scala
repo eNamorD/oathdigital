@@ -5,6 +5,7 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
+import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.PowerWindow
@@ -222,6 +223,30 @@ object WalkerProcedureRegistry {
       build = EndWakeProcedure.build,
       rebuild = EndWakeProcedure.build),
 
+    /** Records the Rest timing's ignored-rule diagnostics, as the legacy
+      * `withFallback(MajorActionKind.Rest)` wrapper does.
+      */
+    PhaseTransitionRef.BeginRest -> Entry(
+      fallbackKind = Some(MajorActionKind.Rest),
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, _, _) => None,
+      build = BeginRestProcedure.build,
+      rebuild = BeginRestProcedure.build),
+
+    /** Begin Rest already recorded the Rest diagnostics, so this declares no
+      * fallback kind. Any decision a power parks inside it -- League Treaty's
+      * off-turn ruler -- is a generic Rest decision, so this names no power.
+      */
+    PhaseTransitionRef.FinishRest -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, awaited, decision) =>
+        Some(OathContinue.AwaitingRestDecision(awaited, decision)),
+      build = FinishRestProcedure.build,
+      rebuild = FinishRestProcedure.build),
+
     /** The first triggered procedure. It is started by the action boundary,
       * never by a client, so it has no fallback kind (the boundary recorded
       * its diagnostics), no modifier window and no start selection.
@@ -292,15 +317,12 @@ object WalkerProcedureRegistry {
     * `OathRules`.
     *
     * Typed `StartableRef`, not `ProcedureRef` (Task 4): only a startable
-    * procedure ever reaches `startWalker`'s fallback diagnostics, and an
-    * entry declaring no fallback kind at all -- every triggered procedure --
-    * is a typed rejection rather than a kind nothing chose.
+    * procedure ever reaches `startWalker`'s fallback diagnostics. `None`
+    * means the start records no fallback diagnostics.
     */
   def fallbackKind(procedure: StartableRef)
-      : Either[OathViolation, MajorActionKind] =
-    lookup(procedure, entries).flatMap(_.fallbackKind.toRight(
-      OathViolation.InvalidEventOrder(
-        s"walker procedure ${procedure.key} declares no fallback kind")))
+      : Either[OathViolation, Option[MajorActionKind]] =
+    lookup(procedure, entries).map(_.fallbackKind)
 
   /** `procedure`'s synthetic Roll-park decision id (I4) -- see `Entry`'s doc.
     * Both `OathRules.parkedContinue` and `WalkerDecisionProjector` read

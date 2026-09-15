@@ -8,7 +8,8 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
-import oathdigital.gameplay.phases.{Rest, RestCommand,
+import oathdigital.gameplay.phases.{Rest, RestCommand}
+import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
@@ -36,7 +37,7 @@ import oathdigital.gameplay.OathViolation._
 final class OathRules(protected val catalog: ExecutableCatalog,
     campaignLosingForceRegistry: CampaignLosingForceRegistry =
       CampaignLosingForceRegistry.default,
-    warExhaustionRandomPort: WarExhaustionRandomPort =
+    protected val warExhaustionRandomPort: WarExhaustionRandomPort =
       WarExhaustionRandomPort.random,
     protected val walkerPowerCatalog: WalkerPowers = WalkerPowers.empty,
     protected val walkerTree: OathRules.WalkerTreeSource =
@@ -259,6 +260,23 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     recordBoundaryFallback(transition)
       .flatMap(appendEvaluation(_, StateBasedEvaluation.banditRefill(catalog, _)))
       .flatMap(oathkeeperStep)
+
+  protected def turnBoundary(transition: OathTransition)
+      : Either[OathViolation, OathTransition] = {
+    val rounded = transition.state match {
+      case Ready(ready) if ready.game.current.turn.phase == Phase.RoundEnd =>
+        TurnBoundary.finishRound(catalog, transition, warExhaustionRandomPort)
+      case _ => Right(transition)
+    }
+    rounded.flatMap(next => next.state match {
+      case Ready(ready) if ready.game.current.result.nonEmpty => Right(next)
+      case _ => enterWake(next)
+    })
+  }
+
+  /** No REST power exists on the walker until Task 9. */
+  protected def restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean =
+    false
 
   /** The boundary decides only WHETHER the title changes; the triggered
     * procedure performs the change, so every title change is one walker step.
