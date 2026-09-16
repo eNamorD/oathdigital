@@ -59,20 +59,6 @@ final case class SilverTongue private (cardId: DenizenId,
     * moves land. `BuildOps` leaves compute their operations at walk time, so
     * a restriction cannot see them (Corrections 12).
     */
-  private def advisersAfter(holder: PlayerState, tree: Operation): Int = {
-    def leaves(operation: Operation): Vector[Operation] = operation match {
-      case leaf: PrimitiveOperation => Vector(leaf)
-      case composite => composite.children.flatMap(leaves)
-    }
-    val area = Location.PlayArea(holder.player)
-    leaves(tree).foldLeft(holder.advisers.size) {
-      case (count, Move(Piece.Card(_: WorldCardId), from, to, _)) =>
-        count + (if (to.location == area) 1 else 0) -
-          (if (from.location == area) 1 else 0)
-      case (count, _) => count
-    }
-  }
-
   /** Suits of faceup denizens and edifices at the player's pawn site whose
     * bank holds favor, in suit order.
     */
@@ -102,4 +88,18 @@ object SilverTongue {
 
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
     s"silver-tongue-${ready.game.current.tracks.round}-${player.value}"
+
+  private[rest] def advisersAfter(holder: PlayerState, tree: Operation): Int = {
+    def leaves(operation: Operation): Vector[Operation] = operation match {
+      case leaf: PrimitiveOperation => Vector(leaf)
+      case composite => composite.children.flatMap(leaves)
+    }
+    val area = Location.PlayArea(holder.player)
+    leaves(tree).foldLeft(holder.advisers.size) {
+      case (count, Move(Piece.Card(_: WorldCardId), from, to, _)) =>
+        count + (if (to.location == area) 1 else 0) -
+          (if (from.location == area) 1 else 0)
+      case (count, _) => count
+    }
+  }
 }

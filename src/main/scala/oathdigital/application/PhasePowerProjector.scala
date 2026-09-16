@@ -33,7 +33,10 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
     }
 
   def controls(context: ScopedProjectionContext): Vector[String] =
-    project(context).map(p => s"usePower:${p.powerId}:${p.source.id}")
+    controls(project(context))
+
+  def controls(projected: Vector[PhasePowerProjection]): Vector[String] =
+    projected.map(p => s"usePower:${p.powerId}:${p.source.id}")
 
   private def printed(card: CardId, power: PowerId)
       : Option[(String, oathdigital.catalog.CatalogPower)] = card match {

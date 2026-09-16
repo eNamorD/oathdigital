@@ -102,7 +102,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       context: ScopedProjectionContext): GameProjection = {
     val current = context.current
     val active = context.active
-    val legal = legalActions.project(context)
+    val projectedPhasePowers = phasePowerProjector.project(context)
+    val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProcedures.project(context)
     val site = context.activeSite
 
@@ -164,7 +165,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting,
-        phasePowers = phasePowerProjector.project(context))
+        phasePowers = projectedPhasePowers)
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

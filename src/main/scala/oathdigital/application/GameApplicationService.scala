@@ -320,7 +320,8 @@ final class GameApplicationService(
   ): Either[OathViolation, OathTransition] =
     state match {
       case OathState.Ready(ready)
-          if ready.game.current.walkerPending.nonEmpty &&
+          if (ready.game.current.walkerPending.nonEmpty ||
+            ready.game.current.walkerProcedure.nonEmpty) &&
             !isWalkerResume(command) =>
         Left(OathViolation.InvalidEventOrder(
           "a walker procedure is pending; only walker resume commands are legal"))

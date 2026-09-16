@@ -6,7 +6,6 @@ import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.phases.rest.FinishRestProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -65,7 +64,11 @@ private[application] final class LegalActionProjector(
     case WakeResource.Secret => "takeSecret"
   }
 
-  def project(context: ScopedProjectionContext): LegalProjection = {
+  def project(context: ScopedProjectionContext): LegalProjection =
+    project(context, phasePowers.project(context))
+
+  def project(context: ScopedProjectionContext,
+      projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
       context.current.walkerPending.isEmpty)(minorActionsProjection(context))
@@ -73,7 +76,7 @@ private[application] final class LegalActionProjector(
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
       context.current.walkerPending.isEmpty
     LegalProjection(
-      controls(context, minor),
+      controls(context, minor, projectedPhasePowers),
       if (ordinaryAct) travelCandidates(context).map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       } else Vector.empty,
@@ -100,7 +103,8 @@ private[application] final class LegalActionProjector(
   }
 
   private def controls(context: ScopedProjectionContext,
-      minor: Option[MinorActionsProjection]): Vector[String] = {
+      minor: Option[MinorActionsProjection],
+      projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] = {
     val current = context.current
     val active = context.active
     if (current.result.nonEmpty) Vector.empty
@@ -162,14 +166,12 @@ private[application] final class LegalActionProjector(
             value.maxSiteToBoard > 0))("moveWarbands"),
           Option.when(oathdigital.gameplay.actions.Negotiation
             .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
-        ).flatten ++ phasePowers.controls(context)
-        case Phase.Rest => phasePowers.controls(context) ++ Option.when(
-          FinishRestProcedure.gate(catalog, context.ready, active.player).isRight)(
-          "finishRest")
+        ).flatten ++ phasePowers.controls(projectedPhasePowers)
+        case Phase.Rest => phasePowers.controls(projectedPhasePowers) :+ "finishRest"
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake =>
           takeableResources(context).map(takeControl) ++
-            phasePowers.controls(context) :+ "endWake"
+            phasePowers.controls(projectedPhasePowers) :+ "endWake"
       }
     }
   }

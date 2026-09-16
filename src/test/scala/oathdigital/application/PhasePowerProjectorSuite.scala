@@ -84,4 +84,40 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
     assertEquals(own.phasePowers, Vector.empty)
     assert(!own.legalControls.exists(_.startsWith("usePower:")))
   }
+
+  test("Rest still offers Finish Rest when catalog drift makes its gate fail") {
+    val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
+      Set(Suit.Arcane))
+    val drifted = catalog.copy(denizens = catalog.denizens.filterNot(_.id.value ==
+      "92"))
+    val projected = new GameProjector(drifted).project("drifted-rest",
+      LoadedGame(Ready(ready), 30L), actor)
+
+    assert(projected.legalControls.contains("finishRest"))
+  }
+
+  test("real League Treaty and Silver Tongue parks project their panels") {
+    val treatyRepository = new InMemoryEventStreamRepository
+    val treatyService = new GameApplicationService(catalog, treatyRepository)
+    val (treatyPark, active, ruler) = ParkedServiceFixture.leagueTreatyPark(
+      treatyService, treatyRepository, "project-league-treaty")
+    val treatyOwner = projector.project("project-league-treaty",
+      LoadedGame(treatyPark.state, treatyPark.nextSequence), ruler)
+    assertEquals(treatyOwner.walkerDecision.map(_.query.map(_.form)),
+      Some(Some("choose-one")))
+    val treatyWaiter = projector.project("project-league-treaty",
+      LoadedGame(treatyPark.state, treatyPark.nextSequence), active)
+    assertEquals(treatyWaiter.walkerDecision, None)
+    assertEquals(treatyWaiter.walkerWaiting.map(_.playerId), Some(ruler.value))
+
+    val tongueRepository = new InMemoryEventStreamRepository
+    val tongueService = new GameApplicationService(catalog, tongueRepository)
+    val (tonguePark, actor, _) = ParkedServiceFixture.silverTonguePark(
+      tongueService, tongueRepository, "project-silver-tongue")
+    val tongueOwner = projector.project("project-silver-tongue",
+      LoadedGame(tonguePark.state, tonguePark.nextSequence), actor)
+    assertEquals(tongueOwner.walkerDecision.map(_.query.map(_.form)),
+      Some(Some("choose-one")))
+    assertEquals(tongueOwner.legalControls, Vector("resolveWalkerDecision"))
+  }
 }

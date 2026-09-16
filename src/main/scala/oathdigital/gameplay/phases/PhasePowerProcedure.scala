@@ -34,7 +34,11 @@ object PhasePowerProcedure {
   /** Cards `player` can access that print `power`, in index order. */
   def sources(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
       power: PhasePower): Vector[(CardId, DecisionOptionRef)] =
-    RuleSourceIndex.enumerate(catalog, ready).filter(source =>
+    sourcesFrom(RuleSourceIndex.enumerate(catalog, ready), ready, player, power)
+
+  private def sourcesFrom(index: Vector[IndexedRuleSource], ready: ReadyGame,
+      player: PlayerId, power: PhasePower): Vector[(CardId, DecisionOptionRef)] =
+    index.filter(source =>
       source.powerIds.contains(power.id) && accessible(source, ready, player))
       .flatMap(source => sourceRef(source.source))
 
@@ -86,11 +90,26 @@ object PhasePowerProcedure {
   }
 
   def usable(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
-      powers: PhasePowers): Vector[PowerSource] =
-    powers.powers.flatMap(power => sources(catalog, ready, player, power)
-      .collect { case (card, ref)
-          if check(catalog, ready, player, power, ref).isRight =>
-        PowerSource(power, card, ref) })
+      powers: PhasePowers): Vector[PowerSource] = {
+    val current = ready.game.current
+    val available = current.result.isEmpty &&
+      player == current.turn.activePlayer &&
+      current.walkerPending.isEmpty && current.walkerProcedure.isEmpty &&
+      current.pending.isEmpty
+    if (!available) Vector.empty
+    else {
+      val index = RuleSourceIndex.enumerate(catalog, ready)
+      powers.powers.flatMap { power =>
+        if (!timingOf(current.turn.phase).contains(power.timing)) Vector.empty
+        else sourcesFrom(index, ready, player, power).collect {
+          case (card, ref)
+              if !current.turn.usedPowers.contains(useRef(power, card)) &&
+                power.usable(ready, player, ref) =>
+            PowerSource(power, card, ref)
+        }
+      }
+    }
+  }
 
   def build(id: PowerId, powers: PhasePowers)(catalog: ExecutableCatalog,
       ready: ReadyGame, player: PlayerId, args: Vector[DecisionOptionRef])

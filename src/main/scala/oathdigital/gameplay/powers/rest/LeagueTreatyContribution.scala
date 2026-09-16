@@ -25,7 +25,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
     Map(PowerWindow.RestReturnFavor -> Vector(Transform((ctx, ops) =>
       treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.activePlayer, _) ++ ops))))
 
-  /** One region card holding favor, in site order then card id. */
+  /** One region card holding favor, in map site order then site card order. */
   private final case class Holding(card: CardId, suit: Suit, favor: Int)
   private final case class Treaty(site: SiteId, ruler: PlayerId,
       holdings: Vector[Holding]) {
@@ -52,7 +52,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
             card -> tokens.favor
           case EdificeState(card, _, tokens) if tokens.favor > 0 =>
             card -> tokens.favor
-        }.sortBy(_._1.value).flatMap { case (card, favor) =>
+        }.flatMap { case (card, favor) =>
           RestCleanupPlan.suitOf(catalog, card).map(Holding(card, _, favor))
         }
       }

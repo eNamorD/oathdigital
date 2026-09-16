@@ -4,6 +4,8 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent.BanditsRefilled
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
+import oathdigital.gameplay.operations.{Location, Move, Piece,
+  PositionedLocation, Sequence}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -60,5 +62,24 @@ class SilverTongueSuite extends munit.FunSuite {
       actor).toOption.get
     assert(rested.continue.isInstanceOf[OathContinue.AwaitingWakeAction],
       rested.continue.toString)
+  }
+
+  test("adviser limit counts visible card moves into and out of the holder's area") {
+    val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Arcane))
+    val holder = ready.game.current.players.find(_.player == actor).get
+    val hand = PositionedLocation(Location.Hand(actor))
+    val area = PositionedLocation(Location.PlayArea(actor))
+    val first = DenizenId("10")
+    val second = DenizenId("11")
+    val overLimit = Sequence(Vector(
+      Move(Piece.Card(first), hand, area),
+      Move(Piece.Card(second), hand, area)))
+    val backAtLimit = Sequence(Vector(
+      Move(Piece.Card(first), hand, area),
+      Move(Piece.Card(second), hand, area),
+      Move(Piece.Card(first), area, hand)))
+
+    assertEquals(SilverTongue.advisersAfter(holder, overLimit), 3)
+    assertEquals(SilverTongue.advisersAfter(holder, backAtLimit), 2)
   }
 }
