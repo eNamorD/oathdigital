@@ -58,6 +58,7 @@ class OperationValidatorSuite extends munit.FunSuite {
 
     assertEquals(reasons.map(_.code), Vector("insufficient-pieces"))
     assertEquals(reasons.head.detail, "favor bank contains 5 of requested favor")
+    assertEquals(reasons.head.kind, OperationReasonKind.Impossible)
     assertEquals(OperationShape.first(ready, operation).map(_.code),
       Some("insufficient-pieces"))
   }
@@ -76,6 +77,7 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(reasons.map(_.code), Vector("invalid-stack-position"))
     assertEquals(reasons.head.detail,
       "card does not match requested stack position")
+    assertEquals(reasons.head.kind, OperationReasonKind.Invalid)
   }
 
   test("one operation moving the same card twice is a conflicting-deltas") {
@@ -114,6 +116,15 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(OperationShape.first(missing,
       Gain.Warbands(playerId, redForce, 1)).map(_.code),
       Some("unknown-warband-supply"))
+  }
+
+  test("counted move into an incompatible destination is invalid") {
+    val operation = Move(Piece.Favor(7),
+      PositionedLocation(Location.FavorBank(Suit.Order)),
+      PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top))
+    val reasons = OperationShape.validate(ready, operation)
+    assert(reasons.exists(_.kind == OperationReasonKind.Impossible))
+    assert(reasons.exists(_.kind == OperationReasonKind.Invalid))
   }
 
   test("a supply spend beyond the track is an insufficient-supply") {
@@ -211,17 +222,17 @@ class OperationValidatorSuite extends munit.FunSuite {
     assertEquals(code, "restricted-operation")
   }
 
-  test("restriction registry is held but inert this phase") {
+  test("restriction registry is checked for each operation") {
     val blocking = new OperationRestriction {
       override def reason(ready: ReadyGame, operation: CoreOperation) =
-        Some(OperationReason("power-blocked", "Phase 5 predicate"))
+        Some(OperationReason("power-blocked", "test predicate",
+          OperationReasonKind.Impossible))
     }
     val validator = new OperationValidator(
       OperationPolicy.Permissive, Vector(blocking))
     val operation = Gain.Favor(playerId, Suit.Order, 1)
-    // Shape and allowlist pass; the registered restriction is not yet folded
-    // into validateOne (registry becomes live in Phase 5).
-    assertEquals(validator.validateOne(ready, operation), Vector.empty)
+    assertEquals(validator.validateOne(ready, operation).map(_.code),
+      Vector("power-blocked"))
   }
 
   test("report aggregates whole-batch reasons with allowlist precedence") {
