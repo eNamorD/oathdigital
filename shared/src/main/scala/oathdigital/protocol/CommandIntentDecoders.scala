@@ -11,20 +11,17 @@ private[protocol] object CommandIntentDecoders {
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
-    case "resolveRestPower" => for {
-      _ <- exact(value, Set("type", "decisionId", "allocations",
-        "destinationBank"), path)
-      id <- string(value, "decisionId", path)
-      raw <- field(value, "allocations", path).flatMap(array(_,
-        s"$path.allocations"))
-      allocations <- traverse(raw.zipWithIndex) { case (v, i) =>
-        restAllocation(v, s"$path.allocations[$i]") }
-      _ <- noDuplicates(allocations.map(value =>
-        s"${value.source.kind}/${value.source.siteId}/${value.source.sourceId}"),
-        s"$path.allocations")
-      bank <- string(value, "destinationBank", path)
-    } yield ResolveRestPower(id, allocations, bank)
-    case "declineRestPower" => decision(value, path)(DeclineRestPower)
+    case "usePower" => for {
+      _ <- exact(value, Set("type", "powerId", "source"), path)
+      power <- string(value, "powerId", path)
+      source <- field(value, "source", path).flatMap(raw =>
+        CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw), s"$path.source"))
+        .flatMap {
+          case Vector(one) => Right(one)
+          case _ => Left(InvalidValue(s"$path.source",
+            "expected one power source"))
+        }
+    } yield UsePower(power, source)
     case "muster" => nested(value, path, "target")(economy).map(Muster)
     case "trade" => for {
       _ <- exact(value, Set("type", "target", "resource"), path)
@@ -162,19 +159,6 @@ private[protocol] object CommandIntentDecoders {
   private def allocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("siteId", "count"), p); s <- string(o, "siteId", p); c <- field(o, "count", p).flatMap(integer(_, s"$p.count"))
   } yield CampaignForceAllocation(s, c) }
-  private def restAllocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o =>
-    for {
-      _ <- exact(o, Set("source", "amount"), p)
-      sourceRaw <- field(o, "source", p)
-      source <- obj(sourceRaw, s"$p.source").flatMap { row => for {
-        _ <- exact(row, Set("kind", "siteId", "sourceId"), s"$p.source")
-        kind <- string(row, "kind", s"$p.source")
-        site <- string(row, "siteId", s"$p.source")
-        sourceId <- string(row, "sourceId", s"$p.source")
-      } yield RestFavorSource(kind, site, sourceId) }
-      amount <- field(o, "amount", p).flatMap(integer(_, s"$p.amount"))
-    } yield RestFavorAllocation(source, amount)
-  }
   private def conspiracy(v: ujson.Value, p: String): Either[ProtocolDecodeFailure, ConspiracyTarget] = obj(v, p).flatMap { o =>
     string(o, "kind", p).flatMap {
       case "relic-slot" => for { _ <- exact(o, Set("kind", "ownerPlayerId", "slot"), p); owner <- string(o, "ownerPlayerId", p); slot <- field(o, "slot", p).flatMap(integer(_, s"$p.slot")) } yield ConspiracyTarget.RelicSlot(owner, slot)

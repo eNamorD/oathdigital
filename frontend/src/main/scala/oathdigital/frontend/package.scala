@@ -79,8 +79,12 @@ package object frontend {
   val DecisionQueryState = protocol.projection.DecisionQueryProjection
   type DecisionOptionState = protocol.projection.DecisionOptionProjection
   val DecisionOptionState = protocol.projection.DecisionOptionProjection
+  type PhasePowerState = protocol.projection.PhasePowerProjection
+  val PhasePowerState = protocol.projection.PhasePowerProjection
   type DecisionSectionState = protocol.projection.DecisionSectionProjection
   val DecisionSectionState = protocol.projection.DecisionSectionProjection
+  type DecisionSlotState = protocol.projection.DecisionSlotProjection
+  val DecisionSlotState = protocol.projection.DecisionSlotProjection
   type CampaignState = protocol.projection.CampaignProjection
   object CampaignState {
     def apply(decisionId: String, targetSiteIds: Vector[String], force: Int,
@@ -129,12 +133,6 @@ package object frontend {
   val NegotiationSiteRelicState = protocol.projection.NegotiationSiteRelicProjection
   type NegotiationState = protocol.projection.NegotiationProjection
   val NegotiationState = protocol.projection.NegotiationProjection
-  type RestFavorSourceState = protocol.projection.RestFavorSourceProjection
-  val RestFavorSourceState = protocol.projection.RestFavorSourceProjection
-  type LeagueTreatyState = protocol.projection.LeagueTreatyProjection
-  val LeagueTreatyState = protocol.projection.LeagueTreatyProjection
-  type RestPowerState = protocol.projection.RestPowerProjection
-  val RestPowerState = protocol.projection.RestPowerProjection
   type PlayerBoard = protocol.projection.PlayerBoardProjection
   val PlayerBoard = protocol.projection.PlayerBoardProjection
   type OathkeeperStatus = protocol.projection.OathkeeperProjection

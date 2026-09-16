@@ -114,8 +114,6 @@ object OathViolation {
       extends OathViolation
   final case class UnsupportedRoundEndCatalogInventory(
       expected: String, actual: String) extends OathViolation
-  final case class RestOutcomeMismatch(detail: String)
-      extends OathViolation
   case object ParticipantsEmpty extends OathViolation
   final case class DuplicatePlayer(id: PlayerId)
       extends OathViolation

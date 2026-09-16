@@ -9,11 +9,8 @@ private[protocol] object CommandIntentCodec {
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
-    case ResolveRestPower(id, allocations, bank) => tagged("resolveRestPower",
-      "decisionId" -> id,
-      "allocations" -> ujson.Arr.from(allocations.map(restAllocation)),
-      "destinationBank" -> bank)
-    case DeclineRestPower(id) => tagged("declineRestPower", "decisionId" -> id)
+    case UsePower(power, source) => tagged("usePower", "powerId" -> power,
+      "source" -> CommandNestedCodecs.encodeStartArgWire(source))
     case Muster(target) => tagged("muster", "target" -> economy(target))
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
@@ -66,10 +63,6 @@ private[protocol] object CommandIntentCodec {
   private def place(v: Placement) = ujson.Obj("kind" -> v.kind,
     "replace" -> v.replace.map(card).getOrElse(ujson.Null))
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
-  private def restAllocation(v: RestFavorAllocation) = ujson.Obj(
-    "source" -> ujson.Obj("kind" -> v.source.kind,
-      "siteId" -> v.source.siteId, "sourceId" -> v.source.sourceId),
-    "amount" -> v.amount)
   private def conspiracy(v: ConspiracyTarget): ujson.Obj = v match {
     case ConspiracyTarget.RelicSlot(owner, slot) => ujson.Obj("kind" -> "relic-slot", "ownerPlayerId" -> owner, "slot" -> slot)
     case ConspiracyTarget.Banner(owner, banner) => ujson.Obj("kind" -> "banner", "ownerPlayerId" -> owner, "banner" -> banner)

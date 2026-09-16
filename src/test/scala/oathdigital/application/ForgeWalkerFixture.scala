@@ -114,15 +114,11 @@ object ForgeWalkerFixture extends munit.Assertions {
     searchOne(); searchOne()
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.BeginRest(actor)).toOption.get
-    accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.FinishRest(actor)).toOption.get
     Vector(PlayerId("p3"), PlayerId("p1")).foreach { player =>
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.EndWake(player)).toOption.get
       accepted = service.handle(gameId, accepted.nextSequence,
         GameCommand.BeginRest(player)).toOption.get
-      accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.FinishRest(player)).toOption.get
     }
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.EndWake(actor)).toOption.get

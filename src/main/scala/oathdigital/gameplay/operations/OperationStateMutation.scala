@@ -306,6 +306,8 @@ private[operations] object OperationStateMutation {
         result.flatMap(enterPhase(_, phase))
       case (result, SetOathkeeper(holder)) =>
         result.flatMap(setOathkeeper(_, holder))
+      case (result, BeginTurn(player, phase)) =>
+        result.flatMap(beginTurn(_, player, phase))
       case (result, _) => result
     }
 
@@ -335,6 +337,15 @@ private[operations] object OperationStateMutation {
       updateCurrent(ready)(current => current.copy(
         title = OathkeeperState(holder, TitleSide.Oathkeeper))),
       OathkeeperUnchanged(holder))
+
+  private def beginTurn(ready: ReadyGame, player: PlayerId,
+      phase: Phase): Either[OperationError, ReadyGame] =
+    if (!ready.game.current.players.exists(_.player == player))
+      Left(UnknownPlayer(player))
+    else if (phase != Phase.Wake && phase != Phase.RoundEnd)
+      Left(InvalidTurnPhase(phase))
+    else Right(updateCurrent(ready)(current =>
+      current.copy(turn = TurnState(player, phase, Set.empty))))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
       amount: Int): Either[OperationError, ReadyGame] =

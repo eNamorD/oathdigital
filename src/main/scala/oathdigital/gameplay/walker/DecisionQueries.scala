@@ -1,7 +1,8 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.OathViolation
-import oathdigital.model.{DecisionAnswer, DecisionOptionRef, DecisionQuery}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef,
+  DecisionQuery, DistributeAmount, DistributeSlot}
 
 /** The whole generic decision contract: whether a declared query is
   * answerable at all, and whether a submitted answer satisfies it.
@@ -21,12 +22,11 @@ import oathdigital.model.{DecisionAnswer, DecisionOptionRef, DecisionQuery}
   * is simply absent from the query and the answer naming it is rejected
   * below.
   *
-  * Prompt copy never appears in either function — not an option's label,
-  * not a section's, and not the heading or confirm label a query titles its
-  * panel with. Every match below discards those fields explicitly. An
-  * author or a power may restate a prompt without changing what is
-  * submittable, which is the whole reason an answer records references
-  * rather than options.
+  * Prompt copy never affects submitted answers — not an option's label or a
+  * section's. A distribution's heading and confirm label are required so a
+  * player can understand and submit it, but do not otherwise change what is
+  * submittable. An author or a power may restate a prompt without changing
+  * what an answer records: references rather than options.
   *
   * Neither function throws; a malformed query and a mismatched answer are
   * both `InvalidEventOrder` naming the decision.
@@ -54,6 +54,9 @@ object DecisionQueries {
     * count. A query that collapses to a forced shape against live state is
     * an action that should have omitted the node and applied the placement
     * itself.
+    * A distribution is forced when fewer than two slots have variable bounds,
+    * or when its minimums or maximums already sum to its total; all are
+    * rejected.
     *
     * A choose-one with a single option is deliberately NOT rejected. A lone
     * button is a consent step rather than a choice — the player is being
@@ -96,6 +99,48 @@ object DecisionQueries {
           case None => Right(())
         }
       } yield ()
+
+    case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
+      val refs = slots.map(_.ref)
+      val minimums = slots.map(_.minimum.toLong).sum
+      val maximums = slots.map(_.maximum.toLong).sum
+      val variableSlots = slots.count(s => s.minimum < s.maximum)
+      val suggested = slots.flatMap(_.suggested)
+      for {
+        _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
+          "declares no heading")
+        _ <- require(confirmLabel.trim.nonEmpty, decisionId,
+          "declares a blank confirm label")
+        _ <- require(slots.size >= 2, decisionId,
+          "declares fewer than two slots")
+        _ <- require(refs.distinct.size == refs.size, decisionId,
+          "declares duplicate options")
+        _ <- refs.find(DecisionOption.forRef(_).isEmpty) match {
+          case Some(ref) => reject(decisionId,
+            s"declares slot ${label(ref)}, which has no presentable option")
+          case None => Right(())
+        }
+        _ <- slots.find(s => s.minimum < 0 || s.minimum > s.maximum) match {
+          case Some(s) => reject(decisionId, s"declares slot ${label(s.ref)} " +
+            s"with bounds ${s.minimum}..${s.maximum}")
+          case None => Right(())
+        }
+        _ <- require(minimums <= total && total <= maximums, decisionId,
+          "declares a total no answer can meet")
+        _ <- require(minimums != total, decisionId, "declares minimums that " +
+          "already make its total, leaving nothing to decide")
+        _ <- require(maximums != total, decisionId, "declares maximums that " +
+          "already make its total, leaving nothing to decide")
+        _ <- require(variableSlots >= 2, decisionId,
+          "declares fewer than two variable slots, leaving nothing to decide")
+        _ <- require(suggested.isEmpty || suggested.size == slots.size,
+          decisionId, "suggests amounts for some slots but not all")
+        _ <- if (suggested.isEmpty) Right(())
+          else acceptsDistribution(decisionId, slots, total,
+              slots.zip(suggested).map { case (s, n) => DistributeAmount(s.ref, n) })
+            .fold(_ => reject(decisionId,
+              "suggests a distribution it would not accept"), Right(_))
+      } yield ()
   }
 
   /** Check on a submitted answer: the failure here is a bad or stale
@@ -122,6 +167,36 @@ object DecisionQueries {
       case _ =>
         reject(decisionId, "expects a partition answer")
     }
+
+    case DecisionQuery.Distribute(slots, total, _, _) => answer match {
+      case DecisionAnswer.DistributeAnswer(amounts) =>
+        acceptsDistribution(decisionId, slots, total, amounts)
+      case _ =>
+        reject(decisionId, "expects a distribution answer")
+    }
+  }
+
+  private def acceptsDistribution(decisionId: String,
+      slots: Vector[DistributeSlot], total: Int,
+      amounts: Vector[DistributeAmount]): Either[OathViolation, Unit] = {
+    val declared = slots.map(_.ref)
+    val named = amounts.map(_.ref)
+    for {
+      _ <- require(named.forall(declared.contains), decisionId,
+        "does not offer a distributed option")
+      _ <- require(named.distinct.size == named.size, decisionId,
+        "distributes to an option more than once")
+      _ <- require(declared.forall(named.contains), decisionId,
+        "leaves an option undistributed")
+      _ <- slots.find(s => amounts.find(_.ref == s.ref)
+          .exists(a => a.amount < s.minimum || a.amount > s.maximum)) match {
+        case Some(s) => reject(decisionId, s"distributes to ${label(s.ref)} " +
+          s"outside ${s.minimum}..${s.maximum}")
+        case None => Right(())
+      }
+      _ <- require(amounts.map(_.amount.toLong).sum == total.toLong,
+        decisionId, s"distributes an amount other than its total of $total")
+    } yield ()
   }
 
   private def acceptsPartition(decisionId: String,
@@ -151,6 +226,9 @@ object DecisionQueries {
         }
     } yield ()
   }
+
+  private def label(ref: DecisionOptionRef): String =
+    s"${ref.kind}/${ref.wireId}"
 
   private def require(condition: Boolean, decisionId: String,
       detail: String): Either[OathViolation, Unit] =

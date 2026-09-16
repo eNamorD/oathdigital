@@ -5,14 +5,16 @@ import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
+import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
+import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powerresolver.PowerWindow
+import oathdigital.gameplay.powerresolver.{PhasePowers, PowerWindow}
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
   ReadyGame}
 import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
   PhaseTransitionRef, PlayerId, ProcedureRef, StartableRef,
-  TriggeredProcedureRef}
+  PowerId, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
@@ -222,6 +224,30 @@ object WalkerProcedureRegistry {
       build = EndWakeProcedure.build,
       rebuild = EndWakeProcedure.build),
 
+    /** Records the Rest timing's ignored-rule diagnostics, as the legacy
+      * `withFallback(MajorActionKind.Rest)` wrapper does.
+      */
+    PhaseTransitionRef.BeginRest -> Entry(
+      fallbackKind = Some(MajorActionKind.Rest),
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, _, _) => None,
+      build = BeginRestProcedure.build,
+      rebuild = BeginRestProcedure.build),
+
+    /** Begin Rest already recorded the Rest diagnostics, so this declares no
+      * fallback kind. Any off-turn decision a power parks inside it is a
+      * generic Rest decision, so this entry names no concrete power.
+      */
+    PhaseTransitionRef.FinishRest -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (_, awaited, decision) =>
+        Some(OathContinue.AwaitingRestDecision(awaited, decision)),
+      build = FinishRestProcedure.build,
+      rebuild = FinishRestProcedure.build),
+
     /** The first triggered procedure. It is started by the action boundary,
       * never by a client, so it has no fallback kind (the boundary recorded
       * its diagnostics), no modifier window and no start selection.
@@ -260,9 +286,10 @@ object WalkerProcedureRegistry {
   def build(procedure: ProcedureRef, catalog: ExecutableCatalog,
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
+      phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations).flatMap(
+    lookup(procedure, registrations, phasePowers).flatMap(
       _.build(catalog, state, activePlayer, args))
 
   /** Rebuilds `procedure`'s tree to resume an already-started walker
@@ -274,15 +301,33 @@ object WalkerProcedureRegistry {
   def rebuild(procedure: ProcedureRef, catalog: ExecutableCatalog,
       state: ReadyGame, activePlayer: PlayerId,
       args: Vector[DecisionOptionRef] = Vector.empty,
+      phasePowers: PhasePowers = PhasePowers.empty,
       registrations: Map[ProcedureRef, Entry] = entries)
       : Either[OathViolation, Operation] =
-    lookup(procedure, registrations).flatMap(
+    lookup(procedure, registrations, phasePowers).flatMap(
       _.rebuild(catalog, state, activePlayer, args))
 
+  /** Every `UsePower` shares one entry shape, built for its id. A parked
+    * decision inside the power is a generic power decision, so the registry
+    * names no power.
+    */
+  private def usePowerEntry(id: PowerId, powers: PhasePowers): Entry = Entry(
+    fallbackKind = None,
+    rollDecisionId = None,
+    modifierWindow = None,
+    continuationFor = (_, awaited, decision) =>
+      Some(OathContinue.AwaitingPowerDecision(awaited, decision)),
+    build = PhasePowerProcedure.build(id, powers),
+    rebuild = PhasePowerProcedure.rebuild(id, powers))
+
   private def lookup(procedure: ProcedureRef,
-      registrations: Map[ProcedureRef, Entry]): Either[OathViolation, Entry] =
-    registrations.get(procedure).toRight(OathViolation.InvalidEventOrder(
-      s"no walker procedure registered for ${procedure.key}"))
+      registrations: Map[ProcedureRef, Entry],
+      powers: PhasePowers = PhasePowers.empty): Either[OathViolation, Entry] =
+    procedure match {
+      case ActionRef.UsePower(id) => Right(usePowerEntry(id, powers))
+      case _ => registrations.get(procedure).toRight(OathViolation
+        .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
+    }
 
   /** `procedure`'s [[MajorActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
@@ -292,15 +337,12 @@ object WalkerProcedureRegistry {
     * `OathRules`.
     *
     * Typed `StartableRef`, not `ProcedureRef` (Task 4): only a startable
-    * procedure ever reaches `startWalker`'s fallback diagnostics, and an
-    * entry declaring no fallback kind at all -- every triggered procedure --
-    * is a typed rejection rather than a kind nothing chose.
+    * procedure ever reaches `startWalker`'s fallback diagnostics. `None`
+    * means the start records no fallback diagnostics.
     */
   def fallbackKind(procedure: StartableRef)
-      : Either[OathViolation, MajorActionKind] =
-    lookup(procedure, entries).flatMap(_.fallbackKind.toRight(
-      OathViolation.InvalidEventOrder(
-        s"walker procedure ${procedure.key} declares no fallback kind")))
+      : Either[OathViolation, Option[MajorActionKind]] =
+    lookup(procedure, entries).map(_.fallbackKind)
 
   /** `procedure`'s synthetic Roll-park decision id (I4) -- see `Entry`'s doc.
     * Both `OathRules.parkedContinue` and `WalkerDecisionProjector` read
@@ -355,5 +397,5 @@ object WalkerProcedureRegistry {
     * second `ProcedureRef` match at the preview call site.
     */
   def isRegistered(procedure: ProcedureRef): Boolean =
-    entries.contains(procedure)
+    procedure.isInstanceOf[ActionRef.UsePower] || entries.contains(procedure)
 }

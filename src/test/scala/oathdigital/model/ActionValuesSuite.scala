@@ -17,7 +17,8 @@ class ActionValuesSuite extends munit.FunSuite {
   test("procedure references form three families with keys unique across all") {
     assertEquals(ActionRef.all.map(_.key),
       Vector("recover", "forge", "travel", "take-wealth"))
-    assertEquals(PhaseTransitionRef.all.map(_.key), Vector("end-wake"))
+    assertEquals(PhaseTransitionRef.all.map(_.key),
+      Vector("end-wake", "begin-rest", "finish-rest"))
     assertEquals(ProcedureRef.all.map(_.key).distinct.size,
       ProcedureRef.all.size)
     assertEquals(StartableRef.fromKey("end-wake"),

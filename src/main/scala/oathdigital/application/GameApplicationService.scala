@@ -8,13 +8,12 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, SearchCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.actions.VisionCommand
 import oathdigital.gameplay.actions.NegotiationCommand
-import oathdigital.gameplay.phases.RestCommand
-import oathdigital.gameplay.phases.WarExhaustionRandomPort
+import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
 import oathdigital.gameplay.setup.{
@@ -91,7 +90,8 @@ final class GameApplicationService(
   private val setupRules = new FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog,
     warExhaustionRandomPort = warExhaustionRandomPort,
-    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
+    phasePowerCatalog = PhasePowerCatalog.default(catalog))
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */
@@ -320,7 +320,8 @@ final class GameApplicationService(
   ): Either[OathViolation, OathTransition] =
     state match {
       case OathState.Ready(ready)
-          if ready.game.current.walkerPending.nonEmpty &&
+          if (ready.game.current.walkerPending.nonEmpty ||
+            ready.game.current.walkerProcedure.nonEmpty) &&
             !isWalkerResume(command) =>
         Left(OathViolation.InvalidEventOrder(
           "a walker procedure is pending; only walker resume commands are legal"))
@@ -377,6 +378,9 @@ final class GameApplicationService(
       // caller had to learn that the engine changed underneath.
       case GameCommand.EndWake(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)
+      case GameCommand.UsePower(playerId, power, source) =>
+        rules.startWalker(state, ActionRef.UsePower(power), playerId,
+          Vector.empty, Vector(source))
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>
@@ -485,14 +489,9 @@ final class GameApplicationService(
               playerId, decision, kept, discarded, placement))
         }
       case GameCommand.BeginRest(playerId) =>
-        rules.handle(state, RestCommand.Begin(playerId))
+        rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
       case GameCommand.FinishRest(playerId) =>
-        rules.handle(state, RestCommand.Finish(playerId))
-      case GameCommand.ResolveRestPower(playerId, decision, allocations, bank) =>
-        rules.handle(state, RestCommand.ResolvePower(playerId, decision,
-          allocations, bank))
-      case GameCommand.DeclineRestPower(playerId, decision) =>
-        rules.handle(state, RestCommand.DeclinePower(playerId, decision))
+        rules.startWalker(state, PhaseTransitionRef.FinishRest, playerId)
     }
 
   private def isWalkerResume(command: GameCommand): Boolean = command match {

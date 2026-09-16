@@ -245,8 +245,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         Left(InvalidEventOrder("Economy requires the gameplay evolution"))
       case _: SearchStarted | _: SearchCompleted =>
         Left(InvalidEventOrder("Search requires the gameplay evolution"))
-      case _: RestStarted | _: RestPowerEvent | _: RestCompleted =>
-        Left(InvalidEventOrder("Rest requires the gameplay evolution"))
       case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
           _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |

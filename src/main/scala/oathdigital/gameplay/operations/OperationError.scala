@@ -112,6 +112,13 @@ object OperationError {
       s"the turn is already in the ${phase.productPrefix} phase"
   }
 
+  /** A turn handed over in a phase no turn begins in. */
+  final case class InvalidTurnPhase(phase: Phase) extends OperationError {
+    override val code: String = "invalid-turn-phase"
+    override val detail: String =
+      s"a turn cannot begin in the ${phase.productPrefix} phase"
+  }
+
   /** A title "change" to the player (or bank) already holding it. */
   final case class OathkeeperUnchanged(holder: Option[PlayerId])
       extends OperationError {

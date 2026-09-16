@@ -65,14 +65,12 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Vector(NegotiationSiteRelicProjection("site:b", known)))),
     negotiationWaiting = true,
     favorBanks = Vector(FavorBankProjection("beast", 4)),
+    phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue",
+      DecisionOptionProjection("denizen", "92", "Silver Tongue"),
+      "Silver Tongue", "Take a favor.")),
     tracks = Some(GameTracksProjection(4, 3, false, 4, "red")),
     relicDeckCount = 21,
     privateAdviserPreview = Vector(known),
-    restPower = Some(RestPowerProjection("rest-power", "red", "blue",
-      "denizen.league-treaty", LeagueTreatyProjection(Vector(
-        RestFavorSourceProjection("denizen", "site:a", "known", "Known", 2)),
-        Vector("beast", "hearth")))),
-    restPowerWaiting = true,
     // A partition query, the shape with every field populated: a form, two
     // sections with minima, and options carrying both a plain label and
     // card details. A choose-one query is the same type with no sections,
@@ -113,6 +111,19 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       projection.walkerDecision.map(_.copy(query = Some(bare))))
     assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(without)),
       Right(without))
+  }
+
+  test("a distribute query round-trips its slots, suggestions and total") {
+    def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
+    val distribute = DecisionQueryProjection("distribute", Vector.empty,
+      heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
+      slots = Vector(DecisionSlotProjection(bank("arcane"), 0, 2, Some(2)),
+        DecisionSlotProjection(bank("nomad"), 0, 6, None)),
+      total = Some(6))
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(distribute))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
   }
 
   /** `WalkerWaitingProjection.heading` is `None` for a Roll park (see its

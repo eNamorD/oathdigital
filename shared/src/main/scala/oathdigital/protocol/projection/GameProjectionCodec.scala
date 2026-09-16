@@ -18,8 +18,8 @@ object GameProjectionCodec {
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
-    "relicDeckCount", "privateAdviserPreview", "restPower", "restPowerWaiting",
-    "walkerDecision", "walkerWaiting")
+    "relicDeckCount", "privateAdviserPreview",
+    "walkerDecision", "walkerWaiting", "phasePowers")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -92,10 +92,9 @@ object GameProjectionCodec {
       "firstPlayerId" -> t.firstPlayerId)),
     "relicDeckCount" -> value.relicDeckCount,
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
-    "restPower" -> option(value.restPower)(encodeRestPower),
-    "restPowerWaiting" -> value.restPowerWaiting,
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
-    "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting))
+    "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
+    "phasePowers" -> encoded(value.phasePowers)(encodePhasePower))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -155,55 +154,17 @@ object GameProjectionCodec {
     previewRaws <- default(value, "privateAdviserPreview", path,
       Vector.empty[ujson.Value])(array)
     preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
-    restPower <- optionalAbsent(value, "restPower", path)(decodeRestPower)
-    restWaiting <- boolOr(value, "restPowerWaiting", path, false)
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
     walkerWaiting <- optionalAbsent(value, "walkerWaiting", path)(decodeWalkerWaiting)
+    powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
+    phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
+      decodePhasePower(raw, child) }
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, banners, challenge, minor,
-    negotiation, waiting, banks, tracks, relicDeck, preview, restPower, restWaiting,
-    walkerDecision, walkerWaiting)
-
-  private def encodeRestPower(value: RestPowerProjection): ujson.Value = {
-    value.payload match {
-      case LeagueTreatyProjection(sources, legalBanks) => ujson.Obj(
-        "decisionId" -> value.decisionId,
-        "restActorPlayerId" -> value.restActorPlayerId,
-        "decisionOwnerPlayerId" -> value.decisionOwnerPlayerId,
-        "powerId" -> value.powerId,
-        "sources" -> encoded(sources)(source => ujson.Obj(
-          "kind" -> source.kind, "siteId" -> source.siteId,
-          "sourceId" -> source.sourceId, "label" -> source.label,
-          "availableFavor" -> source.availableFavor)),
-        "legalBanks" -> encoded(legalBanks)(ujson.Str(_)))
-    }
-  }
-
-  private def decodeRestPower(raw: ujson.Value, path: String)
-      : Result[RestPowerProjection] = for {
-    value <- obj(raw, path)
-    _ <- exact(value, Set("decisionId", "restActorPlayerId",
-      "decisionOwnerPlayerId", "powerId", "sources", "legalBanks"), path)
-    decision <- string(value, "decisionId", path)
-    actor <- string(value, "restActorPlayerId", path)
-    owner <- string(value, "decisionOwnerPlayerId", path)
-    power <- string(value, "powerId", path)
-    sourceRaws <- array(value, "sources", path)
-    sources <- traverse(sourceRaws, s"$path.sources") { (raw, child) => for {
-      row <- obj(raw, child)
-      _ <- exact(row, Set("kind", "siteId", "sourceId", "label",
-        "availableFavor"), child)
-      kind <- string(row, "kind", child)
-      site <- string(row, "siteId", child)
-      sourceId <- string(row, "sourceId", child)
-      label <- string(row, "label", child)
-      favor <- int(row, "availableFavor", child)
-    } yield RestFavorSourceProjection(kind, site, sourceId, label, favor) }
-    banks <- strings(value, "legalBanks", path)
-  } yield RestPowerProjection(decision, actor, owner, power,
-    LeagueTreatyProjection(sources, banks))
+    negotiation, waiting, banks, tracks, relicDeck, preview,
+    walkerDecision, walkerWaiting, phasePowers)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

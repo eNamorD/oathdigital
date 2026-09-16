@@ -10,15 +10,22 @@ import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerPowers
-import oathdigital.gameplay.phases.Rest
+import oathdigital.gameplay.phases.rest.BeginRestProcedure
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
 private[application] final class LegalActionProjector(
     catalog: ExecutableCatalog,
     presentation: GamePresentationProjector,
-    walkerDecisions: WalkerDecisionProjector
+    walkerDecisions: WalkerDecisionProjector,
+    phasePowers: PhasePowerProjector
 ) {
+  def this(catalog: ExecutableCatalog,
+      presentation: GamePresentationProjector,
+      walkerDecisions: WalkerDecisionProjector) =
+    this(catalog, presentation, walkerDecisions,
+      new PhasePowerProjector(catalog, walkerDecisions))
+
   /** The automatic walker powers a Travel candidate is costed against
     * (batch-1 Task 5) -- the same full catalog `OathRules` is constructed
     * with, selected down to the automatic set because a projection is built
@@ -57,7 +64,11 @@ private[application] final class LegalActionProjector(
     case WakeResource.Secret => "takeSecret"
   }
 
-  def project(context: ScopedProjectionContext): LegalProjection = {
+  def project(context: ScopedProjectionContext): LegalProjection =
+    project(context, phasePowers.project(context))
+
+  def project(context: ScopedProjectionContext,
+      projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
       context.current.walkerPending.isEmpty)(minorActionsProjection(context))
@@ -65,7 +76,7 @@ private[application] final class LegalActionProjector(
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
       context.current.walkerPending.isEmpty
     LegalProjection(
-      controls(context, minor),
+      controls(context, minor, projectedPhasePowers),
       if (ordinaryAct) travelCandidates(context).map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
       } else Vector.empty,
@@ -92,7 +103,8 @@ private[application] final class LegalActionProjector(
   }
 
   private def controls(context: ScopedProjectionContext,
-      minor: Option[MinorActionsProjection]): Vector[String] = {
+      minor: Option[MinorActionsProjection],
+      projectedPhasePowers: Vector[PhasePowerProjection]): Vector[String] = {
     val current = context.current
     val active = context.active
     if (current.result.nonEmpty) Vector.empty
@@ -124,7 +136,7 @@ private[application] final class LegalActionProjector(
       case Some(_) => Vector.empty
       case None => current.turn.phase match {
         case Phase.Act => Vector(
-          Option.when(Rest.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
+          Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
           Option.when(active.pawnSite.exists(_ =>
             recoverEligible(context, active)))("beginRecover"),
@@ -154,11 +166,12 @@ private[application] final class LegalActionProjector(
             value.maxSiteToBoard > 0))("moveWarbands"),
           Option.when(oathdigital.gameplay.actions.Negotiation
             .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
-        ).flatten
-        case Phase.Rest => Vector("finishRest")
+        ).flatten ++ phasePowers.controls(projectedPhasePowers)
+        case Phase.Rest => phasePowers.controls(projectedPhasePowers) :+ "finishRest"
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake =>
-          takeableResources(context).map(takeControl) :+ "endWake"
+          takeableResources(context).map(takeControl) ++
+            phasePowers.controls(projectedPhasePowers) :+ "endWake"
       }
     }
   }

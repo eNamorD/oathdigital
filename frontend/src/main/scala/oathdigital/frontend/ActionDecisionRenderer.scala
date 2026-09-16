@@ -98,6 +98,7 @@ private[frontend] object ActionDecisionRenderer {
        control.onclick = _ => submitCommand(action.command)
        panel.appendChild(control)
      }
+     PhasePowerButtons.render(value, canControl, panel, submitCommand)
      val end = button("End Wake", "wake-action")
      end.disabled = !canControl ||
        !value.legalControls.contains("endWake")
@@ -328,6 +329,7 @@ private[frontend] object ActionDecisionRenderer {
        groups.appendTo(panel)
        panel.appendChild(text("p", "informational",
          "Other normal action families are not yet implemented."))
+       PhasePowerButtons.render(value, canControl, panel, submitCommand)
        if (value.legalControls.contains("beginRest")) {
          val rest = button("End Act and Rest", "rest-action")
          rest.disabled = !canControl
@@ -342,6 +344,7 @@ private[frontend] object ActionDecisionRenderer {
      panel, ui)
    WalkerPanelSupport.renderPartitionPanel(value, presentation, canControl,
      panel, ui)
+   DistributePanelRenderer.render(value, presentation, canControl, panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
    value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
      panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
@@ -560,20 +563,17 @@ private[frontend] object ActionDecisionRenderer {
        panel.appendChild(choose)
      }
    }
-   value.restPower.filter(decision =>
-     decision.decisionOwnerPlayerId == currentPlayerId &&
-       presentation.showGameplayControls).foreach { decision =>
-     panel.appendChild(RestPowerDecisionRenderer.render(value, decision, ui))
-   }
    if (value.phase == "rest" && presentation.showGameplayControls) {
-     panel.appendChild(text("p", "informational",
-       "Finish Rest to return card resources, reveal secrets, refresh " +
-         "Supply, and wake the next player."))
-     val finish = button("Finish Rest", "rest-action")
-     finish.disabled = !canControl ||
-       !value.legalControls.contains("finishRest")
-     finish.onclick = _ => submitCommand(GameCommand.FinishRest)
-     panel.appendChild(finish)
+     PhasePowerButtons.render(value, canControl, panel, submitCommand)
+     if (PhasePowerButtons.showsFinishRest(value)) {
+       panel.appendChild(text("p", "informational",
+         "Finish Rest to return card resources, reveal secrets, refresh " +
+           "Supply, and wake the next player."))
+       val finish = button("Finish Rest", "rest-action finish-rest")
+       finish.disabled = !canControl
+       finish.onclick = _ => submitCommand(GameCommand.FinishRest)
+       panel.appendChild(finish)
+     }
    }
    value.pendingCardDecision.filter(_ => presentation.showGameplayControls)
      .foreach(decision => panel.appendChild(cardDecision(value, decision, ui)))

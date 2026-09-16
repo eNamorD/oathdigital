@@ -48,6 +48,14 @@ object ActionRef {
   case object Travel extends ActionRef { val key = "travel" }
   case object TakeWealth extends ActionRef { val key = "take-wealth" }
 
+  /** Uses one phase power. Parameterized, so `all` cannot list it; the key
+    * parses directly.
+    */
+  final case class UsePower(power: PowerId) extends ActionRef {
+    val key: String = s"${UsePower.Prefix}${power.value}"
+  }
+  object UsePower { private[model] val Prefix = "use-power:" }
+
   /** A key here that also names a [[oathdigital.gameplay.MajorActionKind]]
     * bridges to it on the string alone -- `GameApplicationService
     * .walkerAction` and `GameIntentMapper.actionRef` both do that, and the
@@ -65,7 +73,12 @@ object ActionRef {
     */
   val all: Vector[ActionRef] = Vector(Recover, Forge, Travel, TakeWealth)
 
-  def fromKey(key: String): Option[ActionRef] = all.find(_.key == key)
+  def usePower(key: String): Option[UsePower] =
+    Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))
+      .flatMap(PowerId.fromValue).map(UsePower(_))
+
+  def fromKey(key: String): Option[ActionRef] =
+    all.find(_.key == key).orElse(usePower(key))
 }
 
 object PhaseTransitionRef {
@@ -76,7 +89,12 @@ object PhaseTransitionRef {
     */
   case object EndWake extends PhaseTransitionRef { val key = "end-wake" }
 
-  val all: Vector[PhaseTransitionRef] = Vector(EndWake)
+  /** Leaves Act for Rest (rest-walker spec, Rest procedure). */
+  case object BeginRest extends PhaseTransitionRef { val key = "begin-rest" }
+  /** Cleans up, refreshes Supply and hands the turn over. */
+  case object FinishRest extends PhaseTransitionRef { val key = "finish-rest" }
+
+  val all: Vector[PhaseTransitionRef] = Vector(EndWake, BeginRest, FinishRest)
 }
 
 object TriggeredProcedureRef {
@@ -86,9 +104,13 @@ object TriggeredProcedureRef {
 }
 
 object StartableRef {
+  /** Finite references are listed in `all`; parameterized use-power keys
+    * parse directly.
+    */
   val all: Vector[StartableRef] = ActionRef.all ++ PhaseTransitionRef.all
 
-  def fromKey(key: String): Option[StartableRef] = all.find(_.key == key)
+  def fromKey(key: String): Option[StartableRef] =
+    all.find(_.key == key).orElse(ActionRef.usePower(key))
 }
 
 object ProcedureRef {
@@ -98,7 +120,10 @@ object ProcedureRef {
     * and its key -- rejecting a reference read back under the wrong family
     * (an End Wake key spelled `"action"`) or an unknown family, rather than
     * resolving on the key alone and trusting the family tag as decoration.
+    * Finite references are listed in `all`; parameterized use-power keys
+    * parse directly.
     */
   def fromFamilyKey(family: String, key: String): Option[ProcedureRef] =
     all.find(ref => ref.family == family && ref.key == key)
+      .orElse(ActionRef.usePower(key).filter(_.family == family))
 }

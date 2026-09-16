@@ -68,8 +68,9 @@ Out of scope, each recorded under Open items: Negotiation's any-order
 multi-owner acceptance; new answer kinds (amounts, ordering, per-site
 allocations); per-action cleanup (minted decision ids, Campaign's
 `bandit-validation` context, Campaign's plan vocabulary); power selection by an
-off-turn owner; an owner who never answers; the Rest completion continuation;
-turn-scoped power activation.
+off-turn owner; an owner who never answers; turn-scoped power activation. The
+Rest completion continuation was settled by
+`2026-09-13-rest-walker-and-phase-powers-design.md`.
 
 ## Procedure references
 
@@ -241,19 +242,20 @@ phase; the procedure's own `build` passed its phase gates at start. A recorded
 start phase would always match, and would wrongly reject a tree that changes
 the phase and then parks.
 
-`continuationIn` keeps its typed rejection for every phase but Act and Wake.
-Nothing in this design can complete in Rest (no Rest action exists and Rest's
-commands are legacy), so the first procedure that completes there adds
-`Rest -> AwaitingRestAction` with its own tests, as batch 1 ruled.
+`continuationIn` gives Act `ActActionSelection`, Wake `AwaitingWakeAction` and
+Rest `AwaitingRestAction`, and keeps its typed rejection for every other phase.
+Rest gained its continuation with Begin Rest
+(`2026-09-13-rest-walker-and-phase-powers-design.md`). Finish Rest never
+consults it: its turn boundary owns the continuation.
 
 ## Completion and the action boundary
 
 When a walk finishes, `walkerTransition` applies `WalkerCompleted` and then
 makes two independent decisions:
 
-- **Continuation** is read off the phase the walk finished in, unchanged:
-  Act gives `ActActionSelection`, Wake gives `AwaitingWakeAction`, any other
-  phase is a typed rejection.
+- **Continuation** is read off the phase the walk finished in, unchanged: Act
+  gives `ActActionSelection`, Wake gives `AwaitingWakeAction`, Rest gives
+  `AwaitingRestAction`, any other phase is a typed rejection.
 - **Boundary** runs iff the completed reference is an `ActionRef`. This
   replaces batch 1's "runs after a procedure that started in Act", which the
   phase can no longer answer: Take Wealth (an action) and End Wake (a phase
@@ -269,8 +271,10 @@ Oathkeeper step. It runs after every action in every phase:
 - **Take Wealth, which now runs it.** This is a deliberate behaviour change:
   bandits refill and Oathkeeper is checked after a take during Wake.
 
-Legacy Rest commands (`BeginRest`, `FinishRest`, the power hook commands) are
-not actions and do not run it.
+Begin Rest and Finish Rest are phase transitions and do not run it. Finish Rest
+runs the turn boundary instead. A REST power used through `UsePower` is an
+action and does run it
+(`2026-09-13-rest-walker-and-phase-powers-design.md`).
 
 `completeAction`'s two `hasResult` checks and `appendEvaluation`'s
 `UsurperVictory -> GameFinished` and `OathkeeperRecipientChoiceStarted` cases
@@ -553,16 +557,19 @@ intentional and neither changes behaviour today:
 - **Answer kinds.** Amounts (Campaign dice and sacrifice, Challenge), ordering
   (Search discards) and per-site allocations (Campaign placement) have no
   `DecisionQuery` shape. The first port that needs one widens the vocabulary.
+  Amounts now have `DecisionQuery.Distribute`
+  (`2026-09-13-rest-walker-and-phase-powers-design.md`); ordering and per-site
+  allocations remain open.
 - **Power selection by an off-turn owner.** Only the active player selects
   powers, at `StartWalker`. Whether Campaign's defender plans are powers the
   defender selects or options on the defender's `Decide` is settled at
   Campaign's port.
 - **Unanswered off-turn decisions.** A parked decision blocks every command
-  until its owner answers, as legacy Rest hooks and Oathkeeper recipients
-  already do. Timeouts, forfeits and administrative resolution are not
-  designed.
-- **Rest completion continuation.** Added by the first procedure that
-  completes in Rest.
+  until its owner answers, as League Treaty and Oathkeeper recipients do.
+  Timeouts, forfeits and administrative resolution are not designed.
+- **Rest completion continuation.** Settled: Begin Rest completes to
+  `AwaitingRestAction`, and Finish Rest's turn boundary to `AwaitingWakeAction`
+  or `GameFinished` (`2026-09-13-rest-walker-and-phase-powers-design.md`).
 - **Turn-scoped power activation.** Unchanged from the walker spec.
 - **Per-action cleanup.** Minted decision ids (Conspiracy, Negotiation), the
   `bandit-validation` context in `CampaignRules`, Campaign's plan vocabulary,

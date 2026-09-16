@@ -5,13 +5,14 @@ import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
+import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
   WalkerProcedureRegistry}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
-  DecisionSectionProjection, WalkerDecisionProjection,
+  DecisionSectionProjection, DecisionSlotProjection, WalkerDecisionProjection,
   WalkerRollOutcomeProjection, WalkerWaitingProjection}
 
 /** Projects a parked generic-walker position (`CurrentGameState.walkerPending`
@@ -43,10 +44,12 @@ private[application] final class WalkerDecisionProjector(
     catalog: ExecutableCatalog, presentation: GamePresentationProjector,
     walkerPowerCatalog: WalkerPowers,
     rebuildTree: WalkerDecisionProjector.TreeSource =
-      WalkerDecisionProjector.declaredTree) {
+      WalkerDecisionProjector.declaredTree,
+    phasePowers: PhasePowers = PhasePowers.empty) {
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
-    this(catalog, presentation, WalkerPowerCatalog.default(catalog))
+    this(catalog, presentation, WalkerPowerCatalog.default(catalog),
+      WalkerDecisionProjector.declaredTree, PhasePowerCatalog.default(catalog))
 
   private def parkedPosition(context: ScopedProjectionContext)
       : Option[WalkerDecisionProjector.Parked] = {
@@ -87,14 +90,18 @@ private[application] final class WalkerDecisionProjector(
       parked.pending, parked.powers, parked.awaited)
   } yield WalkerWaitingProjection(parked.awaited.value,
     ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
-      parked.powers).flatMap(decide => decide.query match {
-        case DecisionQuery.ChooseOne(_, heading) => heading
-        case DecisionQuery.Partition(_, _, heading, _) => heading
-      }))
+      parked.powers).flatMap(_.query.heading))
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
-    rebuildTree(catalog, procedure, ready, activePlayer, args)
+    tree(procedure, ready, activePlayer, args)
+
+  private def tree(procedure: ProcedureRef, ready: ReadyGame, actor: PlayerId,
+      args: Vector[DecisionOptionRef]) = procedure match {
+    case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(procedure,
+      catalog, ready, actor, args, phasePowers)
+    case _ => rebuildTree(catalog, procedure, ready, actor, args)
+  }
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
@@ -167,6 +174,15 @@ private[application] final class WalkerDecisionProjector(
           sections.map(section => DecisionSectionProjection(section.key,
             section.label, section.minRequired)),
           heading = heading, confirmLabel = confirmLabel))
+      case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
+        described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))
+          .filter(_.size == slots.size).map(options =>
+            DecisionQueryProjection("distribute", Vector.empty,
+              heading = heading, confirmLabel = Some(confirmLabel),
+              slots = slots.zip(options).map { case (slot, option) =>
+                DecisionSlotProjection(option, slot.minimum, slot.maximum,
+                  slot.suggested) },
+              total = Some(total)))
     }
   }
 
@@ -183,10 +199,11 @@ private[application] final class WalkerDecisionProjector(
     * declares a reference, and the name is resolved here.
     *
     * `None` means "absent from authoritative state", which the caller turns
-    * into a suppressed decision. A `Deck` is a closed four-case enum and a
-    * button is its own identity, so neither can be absent.
+    * into a suppressed decision. A `Deck` is a closed four-case enum, a
+    * favor bank is a closed six-case enum, and a button is its own identity,
+    * so none can be absent.
     */
-  private def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
+  private[application] def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
       index: Option[CardIndex],
       option: DecisionOption): Option[DecisionOptionProjection] = {
     val ref = option.ref
@@ -211,6 +228,8 @@ private[application] final class WalkerDecisionProjector(
           .flatMap(details => row(details.name, Some(details)))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
+      case DecisionOption.FavorBank(bank) =>
+        row(presentation.safeLabel(bank.suit.key))
     }
   }
 

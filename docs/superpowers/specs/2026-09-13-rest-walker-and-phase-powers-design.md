@@ -1,6 +1,6 @@
 # Rest on the Walker and Generic Phase Powers Design
 
-> Status: approved design; not yet implemented.
+> Status: implemented on feat/rest-walker; see docs/superpowers/plans/2026-09-13-rest-walker-and-phase-powers.md.
 
 ## Goal
 

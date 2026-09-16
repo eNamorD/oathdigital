@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable {
-  /** Which of the seven variants this is, as a stable wire string. */
+  /** Which of the eight variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -43,7 +43,7 @@ sealed trait DecisionOptionRef extends Product with Serializable {
     * a journalled answer, and (from Task 4) in a projected option — and all
     * three spell it as this pair. The spelling lives here, next to the cases
     * it names, so those three code paths cannot drift into three
-    * independently written tables of the same seven strings; that drift is
+    * independently written tables of the same eight strings; that drift is
     * the failure mode this whole vocabulary exists to remove.
     */
   def wireId: String
@@ -80,12 +80,19 @@ object DecisionOptionRef {
     val kind: String = "deck"
     def wireId: String = id.key
   }
+  /** A suit's favor bank: the one shared place favor of that suit returns
+    * to. A suit is a closed six-case enum, so this can never be absent.
+    */
+  final case class FavorBank(suit: Suit) extends DecisionOptionRef {
+    val kind: String = "favor-bank"
+    def wireId: String = suit.key
+  }
 
   /** Safe parse of the [[DecisionOptionRef.kind]]/[[DecisionOptionRef.wireId]]
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the seven variants, and the exact inverse of the two
+    * Total over the eight variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -100,6 +107,7 @@ object DecisionOptionRef {
       case "relic" => Some(Relic(RelicId(wireId)))
       case "vision" => Some(Vision(VisionId(wireId)))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
+      case "favor-bank" => Suit.all.find(_.key == wireId).map(FavorBank(_))
       case _ => None
     }
 }
@@ -126,6 +134,23 @@ object DecisionOption {
   final case class Relic(ref: DecisionOptionRef.Relic) extends DecisionOption
   final case class Vision(ref: DecisionOptionRef.Vision) extends DecisionOption
   final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
+  final case class FavorBank(ref: DecisionOptionRef.FavorBank)
+      extends DecisionOption
+
+  /** The option presenting `ref`, for every kind whose name the projector
+    * resolves itself. A button has no such name: its label is authored, so
+    * a reference alone cannot present one.
+    */
+  def forRef(ref: DecisionOptionRef): Option[DecisionOption] = ref match {
+    case _: DecisionOptionRef.Button => None
+    case value: DecisionOptionRef.Player => Some(Player(value))
+    case value: DecisionOptionRef.Site => Some(Site(value))
+    case value: DecisionOptionRef.Denizen => Some(Denizen(value))
+    case value: DecisionOptionRef.Relic => Some(Relic(value))
+    case value: DecisionOptionRef.Vision => Some(Vision(value))
+    case value: DecisionOptionRef.Deck => Some(Deck(value))
+    case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
+  }
 }
 
 /** One named bucket a [[DecisionQuery.Partition]] spreads its options across.
@@ -136,6 +161,19 @@ object DecisionOption {
   *   section may be left empty. Never negative.
   */
 final case class DecisionSection(key: String, label: String, minRequired: Int)
+
+/** One amount-taking slot of a [[DecisionQuery.Distribute]].
+  *
+  * @param ref what the slot distributes to. The projector presents it
+  *   through [[DecisionOption.forRef]], so a button cannot be a slot.
+  * @param minimum fewest the slot may take; never negative.
+  * @param maximum most the slot may take; never below `minimum`.
+  * @param suggested the amount a client's draft opens at. Either every slot
+  *   of a query suggests one or none does, and the suggestions together must
+  *   be an accepted answer.
+  */
+final case class DistributeSlot(ref: DecisionOptionRef, minimum: Int,
+    maximum: Int, suggested: Option[Int])
 
 /** The question a parked `Decide` asks.
   *
@@ -182,12 +220,25 @@ object DecisionQuery {
   final case class Partition(sections: Vector[DecisionSection],
       options: Vector[DecisionOption], heading: Option[String] = None,
       confirmLabel: Option[String] = None) extends DecisionQuery
+
+  /** Spread exactly `total` across the slots, each within its own bounds.
+    *
+    * Both labels are required. `heading` keeps the `Option` type that
+    * [[DecisionQuery.heading]] declares, and `DecisionQueries.wellFormed`
+    * rejects `None` or blank. A distribution has a confirm step, so it
+    * always names its confirm control.
+    */
+  final case class Distribute(slots: Vector[DistributeSlot], total: Int,
+      heading: Option[String], confirmLabel: String) extends DecisionQuery
 }
 
 /** One option assigned to one section in a [[DecisionAnswer.PartitionAnswer]].
   */
 final case class DecisionPlacement(option: DecisionOptionRef,
     sectionKey: String)
+
+/** One slot's amount in a [[DecisionAnswer.DistributeAnswer]]. */
+final case class DistributeAmount(ref: DecisionOptionRef, amount: Int)
 
 /** What a player submitted for a walker `Decide` leaf, stored in
   * `PendingTree.answered`.
@@ -202,7 +253,7 @@ final case class DecisionPlacement(option: DecisionOptionRef,
   * The family used to be open so a power could declare its own answer case.
   * That freedom is now unreachable: [[DecisionQuery]] is sealed, and
   * `DecisionQueries.accepts` is total over it and rejects anything that is
-  * not one of the two cases below. A third case could therefore be
+  * not one of the three cases below. A fourth case could therefore be
   * constructed but never recorded — while every encoder over the family had
   * to carry a runtime throw for a case the walker cannot produce. Sealing
   * turns that structural fact into a compile-time one: the journal codec's
@@ -223,5 +274,11 @@ object DecisionAnswer {
     * reference, each placed in exactly one declared section.
     */
   final case class PartitionAnswer(placements: Vector[DecisionPlacement])
+      extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.Distribute]]: every declared slot exactly
+    * once, each with its amount.
+    */
+  final case class DistributeAnswer(amounts: Vector[DistributeAmount])
       extends DecisionAnswer
 }

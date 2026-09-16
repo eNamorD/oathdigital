@@ -3,16 +3,25 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
+import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterializer}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
 /** Assembles a player-scoped projection from authoritative state. */
-final class GameProjector(catalog: ExecutableCatalog) {
+final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) {
+  def this(catalog: ExecutableCatalog) =
+    this(catalog, PhasePowerCatalog.default(catalog))
+
   private val presentation = new GamePresentationProjector(catalog)
-  private val walkerDecisions = new WalkerDecisionProjector(catalog, presentation)
+  private val walkerDecisions = new WalkerDecisionProjector(catalog,
+    presentation, WalkerPowerCatalog.default(catalog),
+    WalkerDecisionProjector.declaredTree, phasePowers)
+  private val phasePowerProjector = new PhasePowerProjector(catalog,
+    walkerDecisions, phasePowers)
   private val legalActions = new LegalActionProjector(catalog, presentation,
-    walkerDecisions)
+    walkerDecisions, phasePowerProjector)
   private val pendingProcedures = new PendingProcedureProjector(catalog,
     presentation, walkerDecisions)
   private val setupMaterializer = new FirstGameSetupMaterializer(catalog)
@@ -93,7 +102,8 @@ final class GameProjector(catalog: ExecutableCatalog) {
       context: ScopedProjectionContext): GameProjection = {
     val current = context.current
     val active = context.active
-    val legal = legalActions.project(context)
+    val projectedPhasePowers = phasePowerProjector.project(context)
+    val legal = legalActions.project(context, projectedPhasePowers)
     val pending = pendingProcedures.project(context)
     val site = context.activeSite
 
@@ -153,10 +163,9 @@ final class GameProjector(catalog: ExecutableCatalog) {
         current.tracks.visionsDrawn, current.tracks.usurperLimited, 4,
         context.ready.setup.firstPlayer.value)),
       relicDeckCount = current.commonCards.relicDeck.size)
-      .copy(restPower = pending.restPower,
-        restPowerWaiting = current.result.isEmpty && pending.restPowerWaiting,
-        walkerDecision = pending.walkerDecision,
-        walkerWaiting = pending.walkerWaiting)
+      .copy(walkerDecision = pending.walkerDecision,
+        walkerWaiting = pending.walkerWaiting,
+        phasePowers = projectedPhasePowers)
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

@@ -204,35 +204,33 @@ private[projection] object ActionProjectionCodec {
     heading <- optionalString(value, "heading", path)
   } yield WalkerWaitingProjection(playerId, heading)
 
-  /** A projected decision query: one `form` string, the options, and the
-    * sections a partition declares. An option's `kind`/`id` pair is the
-    * same spelling a submitted and a journalled answer use, so this codec
-    * writes no table of its own -- it copies the two strings through.
+  /** A projected decision query: one `form` string, direct options, the
+    * sections a partition declares, and the slots plus total a distribute
+    * query declares. An option's `kind`/`id` pair, including an option
+    * embedded in a distribute slot, is the same spelling a submitted and a
+    * journalled answer use, so this codec writes no table of its own -- it
+    * copies the two strings through.
     */
   def encodeDecisionQuery(value: DecisionQueryProjection): ujson.Value = ujson.Obj(
     "form" -> value.form,
-    "options" -> encoded(value.options)(row => ujson.Obj(
-      "kind" -> row.kind, "id" -> row.id, "label" -> row.label,
-      "card" -> option(row.card)(encodeCard))),
+    "options" -> encoded(value.options)(encodeOptionRow),
     "sections" -> encoded(value.sections)(section => ujson.Obj(
       "key" -> section.key, "label" -> section.label,
       "minRequired" -> section.minRequired)),
     "heading" -> stringOption(value.heading),
-    "confirmLabel" -> stringOption(value.confirmLabel))
+    "confirmLabel" -> stringOption(value.confirmLabel),
+    "slots" -> encoded(value.slots)(slot => ujson.Obj(
+      "option" -> encodeOptionRow(slot.option), "minimum" -> slot.minimum,
+      "maximum" -> slot.maximum, "suggested" -> intOption(slot.suggested))),
+    "total" -> intOption(value.total))
   def decodeDecisionQuery(raw: ujson.Value, path: String)
       : Result[DecisionQueryProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("form", "options", "sections", "heading",
-      "confirmLabel"), path)
+      "confirmLabel", "slots", "total"), path)
     form <- string(value, "form", path)
     optionRaws <- array(value, "options", path)
-    options <- traverse(optionRaws, s"$path.options") { (raw, child) => for {
-      row <- obj(raw, child)
-      _ <- exact(row, Set("kind", "id", "label", "card"), child)
-      kind <- string(row, "kind", child); id <- string(row, "id", child)
-      label <- string(row, "label", child)
-      card <- optionalAbsent(row, "card", child)(decodeCard)
-    } yield DecisionOptionProjection(kind, id, label, card) }
+    options <- traverse(optionRaws, s"$path.options")(decodeOptionRow)
     sectionRaws <- array(value, "sections", path)
     sections <- traverse(sectionRaws, s"$path.sections") { (raw, child) => for {
       row <- obj(raw, child)
@@ -242,8 +240,47 @@ private[projection] object ActionProjectionCodec {
     } yield DecisionSectionProjection(key, label, minimum) }
     heading <- optionalString(value, "heading", path)
     confirmLabel <- optionalString(value, "confirmLabel", path)
+    slotRaws <- array(value, "slots", path)
+    slots <- traverse(slotRaws, s"$path.slots") { (raw, child) => for {
+      row <- obj(raw, child)
+      _ <- exact(row, Set("option", "minimum", "maximum", "suggested"), child)
+      option <- field(row, "option", child).flatMap(
+        decodeOptionRow(_, s"$child.option"))
+      minimum <- int(row, "minimum", child)
+      maximum <- int(row, "maximum", child)
+      suggested <- optionalInt(row, "suggested", child)
+    } yield DecisionSlotProjection(option, minimum, maximum, suggested) }
+    total <- optionalInt(value, "total", path)
   } yield DecisionQueryProjection(form, options, sections, heading,
-    confirmLabel)
+    confirmLabel, slots, total)
+
+  private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
+    ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,
+      "card" -> option(row.card)(encodeCard))
+
+  private[projection] def decodeOptionRow(raw: ujson.Value, child: String)
+      : Result[DecisionOptionProjection] = for {
+    row <- obj(raw, child)
+    _ <- exact(row, Set("kind", "id", "label", "card"), child)
+    kind <- string(row, "kind", child); id <- string(row, "id", child)
+    label <- string(row, "label", child)
+    card <- optionalAbsent(row, "card", child)(decodeCard)
+  } yield DecisionOptionProjection(kind, id, label, card)
+
+  def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
+    "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),
+    "name" -> value.name, "rulesText" -> value.rulesText)
+
+  def decodePhasePower(raw: ujson.Value, path: String)
+      : Result[PhasePowerProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("powerId", "source", "name", "rulesText"), path)
+    powerId <- string(value, "powerId", path)
+    source <- field(value, "source", path).flatMap(
+      decodeOptionRow(_, s"$path.source"))
+    name <- string(value, "name", path)
+    rulesText <- string(value, "rulesText", path)
+  } yield PhasePowerProjection(powerId, source, name, rulesText)
 
   def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
     "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,

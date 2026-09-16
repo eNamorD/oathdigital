@@ -608,27 +608,6 @@ class ServerModeUiSuite extends FunSuite {
       Some("Waiting for the negotiation to finish."))
   }
 
-  test("Rest power owner controls the off-turn choice while other viewers wait") {
-    val decision = RestPowerState("rest-1", "red-exile", "blue-exile",
-      "denizen.league-treaty", LeagueTreatyState(Vector(RestFavorSourceState(
-        "relic-slot", "site:1", "0", "Facedown relic 1", 2)),
-        Vector("beast", "hearth")))
-    val ownerView = projection(Set.empty, phase = "rest-power-decision")
-      .copy(restPower = Some(decision))
-    val owner = ServerUiSupport.viewerPresentation(ownerView, "blue-exile")
-    assert(owner.showGameplayControls)
-    assertEquals(owner.waitingForPlayerId, None)
-    assertEquals(owner.procedureStatus,
-      Some("Choose whether to use the Rest power."))
-
-    val waitingView = ownerView.copy(restPower = None, restPowerWaiting = true,
-      phase = "rest-power-waiting")
-    val waiting = ServerUiSupport.viewerPresentation(waitingView, "red-exile")
-    assert(!waiting.showGameplayControls)
-    assertEquals(waiting.procedureStatus,
-      Some("Waiting for a Rest power decision."))
-  }
-
   /** Fix round 1: a parked walker `Decide`'s owner is not always the active
     * participant (Task 5). `walkerDecision` is projected to the owner alone
     * regardless of whose turn it is, so `viewerPresentation` must grant
@@ -928,11 +907,34 @@ class ServerModeUiSuite extends FunSuite {
     ))
   }
 
+  test("a legal phase power becomes one usePower command") {
+    val power = PhasePowerState("denizen.silver-tongue",
+      DecisionOptionState("denizen", "92", "Silver Tongue"),
+      "Silver Tongue", "Take a favor.")
+    val legal = projection(Set("usePower:denizen.silver-tongue:92", "finishRest"),
+      phase = "rest", phasePowers = Vector(power))
+    assertEquals(PhasePowerButtons.actions(legal), Vector(power ->
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))))
+    assertEquals(PhasePowerButtons.actions(projection(Set("finishRest"),
+      phase = "rest", phasePowers = Vector(power))), Vector.empty)
+  }
+
+  test("Finish Rest is offered only when finishRest is legal") {
+    assert(PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
+      phase = "rest")))
+    assert(!PhasePowerButtons.showsFinishRest(projection(Set.empty,
+      phase = "rest")))
+    assert(!PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
+      phase = "wake")))
+  }
+
   private def projection(
       legalControls: Set[String],
       phase: String = "wake",
       activeParticipantId: String = "red-exile",
-      ready: Boolean = true
+      ready: Boolean = true,
+      phasePowers: Vector[PhasePowerState] = Vector.empty
   ): GameProjection =
     GameProjection(
       gameId = "game-1",
@@ -957,7 +959,8 @@ class ServerModeUiSuite extends FunSuite {
       pawnLocations = Vector.empty,
       legalControls = legalControls.toVector.sorted,
       ready = ready,
-      completed = false
+      completed = false,
+      phasePowers = phasePowers
     )
 
   /** Task 5: a `GameProjection` parked on the Forge decision above, for the

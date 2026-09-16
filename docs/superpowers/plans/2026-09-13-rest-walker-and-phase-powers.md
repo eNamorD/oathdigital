@@ -101,7 +101,7 @@ The spec is binding. Implementation needs these changes to its letter; each is r
   - Journal tag `"distribute"`: `{"kind":"distribute","amounts":[{"option":<ref>,"amount":n}]}`.
   - `WalkerDecisionProjector` suppresses a `Distribute` query until Task 2 projects it. No procedure declares one before Task 6.
 
-- [ ] **Step 1: Write the failing validator tests**
+- [x] **Step 1: Write the failing validator tests**
 
 Append to `DecisionQuerySuite`, and add `DistributeAmount`, `DistributeSlot` and `Suit` to its model imports:
 
@@ -196,12 +196,12 @@ Append to `DecisionQuerySuite`, and add `DistributeAmount`, `DistributeSlot` and
   }
 ```
 
-- [ ] **Step 2: Run the suite to verify it fails**
+- [x] **Step 2: Run the suite to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite"`
 Expected: compilation fails on `DecisionOptionRef.FavorBank`, `DistributeSlot` and `DecisionQuery.Distribute`.
 
-- [ ] **Step 3: Add the vocabulary to `Decisions.scala`**
+- [x] **Step 3: Add the vocabulary to `Decisions.scala`**
 
 In `object DecisionOptionRef`, after `Deck`:
 
@@ -287,7 +287,7 @@ In `object DecisionAnswer`, after `PartitionAnswer`:
       extends DecisionAnswer
 ```
 
-- [ ] **Step 4: Validate `Distribute` in `DecisionQueries.scala`**
+- [x] **Step 4: Validate `Distribute` in `DecisionQueries.scala`**
 
 Add a `wellFormed` case after `Partition`:
 
@@ -375,7 +375,7 @@ Add the helpers beside `acceptsPartition`, and import `DecisionOption`, `Distrib
     s"${ref.kind}/${ref.wireId}"
 ```
 
-- [ ] **Step 5: Journal spelling in `DecisionAnswerCodec.scala`**
+- [x] **Step 5: Journal spelling in `DecisionAnswerCodec.scala`**
 
 Add `private val DistributeTag = "distribute"`. Add an encode case:
 
@@ -412,7 +412,7 @@ In `GameEventWireSuite`'s test "both generic walker decision answers round trip 
 
 Change the suite's `DecisionAnswer` import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`. Rename that test to "every generic walker decision answer round trips on the step and on the park". In "every option reference kind round trips through a recorded answer", add `DecisionOptionRef.FavorBank(Suit.Hearth)` to the reference list.
 
-- [ ] **Step 6: Keep the projector total over the new cases**
+- [x] **Step 6: Keep the projector total over the new cases**
 
 In `WalkerDecisionProjector.scala`:
 
@@ -433,12 +433,12 @@ In `WalkerDecisionProjector.scala`:
       case _: DecisionQuery.Distribute => None
 ```
 
-- [ ] **Step 7: Run the affected suites**
+- [x] **Step 7: Run the affected suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.walker.DecisionQuerySuite oathdigital.serialization.GameEventWireSuite oathdigital.application.WalkerDecisionProjectorSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -473,7 +473,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - Projection: `DecisionSlotProjection(option: DecisionOptionProjection, minimum: Int, maximum: Int, suggested: Option[Int])`. `DecisionQueryProjection` gains trailing `slots: Vector[DecisionSlotProjection] = Vector.empty, total: Option[Int] = None`. The `"distribute"` form carries `options = Vector.empty`.
   - Frontend alias `DecisionSlotState`.
 
-- [ ] **Step 1: Write the failing wire tests**
+- [x] **Step 1: Write the failing wire tests**
 
 In `CommandProtocolSuite`, add to `examples`:
 
@@ -512,7 +512,7 @@ In `GameHttpWireSuite`, in the test that maps `GameIntent.ResolveWalker("forge.a
 
 Change its import to `import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}`.
 
-- [ ] **Step 2: Write the failing projection tests**
+- [x] **Step 2: Write the failing projection tests**
 
 Add to `ProjectionProtocolSuite`:
 
@@ -557,12 +557,12 @@ Add to `WalkerDecisionProjectorSuite`, beside `decideTree`:
 
 Add `DistributeSlot` and `Suit` to the suite's imports if its model import is not a wildcard.
 
-- [ ] **Step 3: Run to verify they fail**
+- [x] **Step 3: Run to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: compilation fails on `DistributeWire`, `DistributeAmountWire` and `DecisionSlotProjection`.
 
-- [ ] **Step 4: Command wire**
+- [x] **Step 4: Command wire**
 
 In `CommandIntents.scala`, beside `PartitionWire`:
 
@@ -625,7 +625,7 @@ In `GameIntentMapper.decisionAnswer`, importing `DistributeAnswer` and `Distribu
           DistributeAmount(_, row.amount))).map(DistributeAnswer)
 ```
 
-- [ ] **Step 5: Projection DTO and codec**
+- [x] **Step 5: Projection DTO and codec**
 
 In `ActionProjectionDtos.scala`, append to `DecisionQueryProjection`:
 
@@ -716,7 +716,7 @@ In `frontend/.../package.scala`, after the `DecisionSectionState` alias:
   val DecisionSlotState = protocol.projection.DecisionSlotProjection
 ```
 
-- [ ] **Step 6: Project the query**
+- [x] **Step 6: Project the query**
 
 In `WalkerDecisionProjector.queryProjection`, replace Task 1's `case _: DecisionQuery.Distribute => None` with:
 
@@ -734,12 +734,12 @@ In `WalkerDecisionProjector.queryProjection`, replace Task 1's `case _: Decision
 
 `described` is the same helper the `ChooseOne` case uses. The size check keeps a slot with no presentable option suppressing the whole decision, the same rule an unpresentable choose-one option follows.
 
-- [ ] **Step 7: Run the affected suites**
+- [x] **Step 7: Run the affected suites**
 
 Run: `./sbtw "testOnly oathdigital.server.GameHttpWireSuite oathdigital.application.WalkerDecisionProjectorSuite" "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -773,7 +773,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `ServerUiView.currentWalkerDistribution` getter and setter.
   - `DistributePanelRenderer.render(value, presentation, canControl, panel, ui)`.
 
-- [ ] **Step 1: Write the failing state tests**
+- [x] **Step 1: Write the failing state tests**
 
 Create `DistributeDecisionStateSuite.scala`:
 
@@ -848,12 +848,12 @@ class DistributeDecisionStateSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite"`
 Expected: compilation fails, because `DistributeDecisionState` is not defined.
 
-- [ ] **Step 3: Implement `DistributeDecisionState.scala`**
+- [x] **Step 3: Implement `DistributeDecisionState.scala`**
 
 ```scala
 package oathdigital.frontend
@@ -967,12 +967,12 @@ private[frontend] object WalkerDistributeDraft {
 }
 ```
 
-- [ ] **Step 4: Run the state suite**
+- [x] **Step 4: Run the state suite**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Move the recording view into a shared test file**
+- [x] **Step 5: Move the recording view into a shared test file**
 
 Delete `private final class RecordingView` (lines 253 to the end of the file) from `PartitionPanelRenderSuite.scala`. Its protocol import becomes:
 
@@ -1063,7 +1063,7 @@ Implement the pair beside `currentWalkerPartition`:
       def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]) = walkerDistributeDraft = value
 ```
 
-- [ ] **Step 6: Write the failing render tests**
+- [x] **Step 6: Write the failing render tests**
 
 Create `DistributePanelRenderSuite.scala`:
 
@@ -1176,12 +1176,12 @@ class DistributePanelRenderSuite extends munit.FunSuite {
 
 `RecordingView.submitted` and `rerenders` already exist on the moved class.
 
-- [ ] **Step 7: Run it to verify it fails**
+- [x] **Step 7: Run it to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributePanelRenderSuite"`
 Expected: compilation fails, because `DistributePanelRenderer` is not defined.
 
-- [ ] **Step 8: Implement `DistributePanelRenderer.scala`**
+- [x] **Step 8: Implement `DistributePanelRenderer.scala`**
 
 ```scala
 package oathdigital.frontend
@@ -1258,12 +1258,12 @@ In `ActionDecisionRenderer.scala`, after the `renderPartitionPanel` call:
    DistributePanelRenderer.render(value, presentation, canControl, panel, ui)
 ```
 
-- [ ] **Step 9: Run the frontend suites**
+- [x] **Step 9: Run the frontend suites**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.DistributeDecisionStateSuite oathdigital.frontend.DistributePanelRenderSuite oathdigital.frontend.PartitionPanelRenderSuite oathdigital.frontend.ServerModeUiSuite"`
 Expected: PASS.
 
-- [ ] **Step 10: Run the full gate and commit**
+- [x] **Step 10: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -1297,7 +1297,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `PowerSourceRef.Card(id: CardId)`.
   - Journal kinds: `"begin-turn"` `{playerId, phase}`; `"record-power-use"` with `siteId` for a site source, or `cardKind` and `cardId` for a card source.
 
-- [ ] **Step 1: Write the failing mutation tests**
+- [x] **Step 1: Write the failing mutation tests**
 
 Append to `OperationStateMutationSuite` (it already imports `oathdigital.model._` and has `ready` and `playerId`):
 
@@ -1328,12 +1328,12 @@ Append to `OperationStateMutationSuite` (it already imports `oathdigital.model._
   }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite"`
 Expected: compilation fails, because `BeginTurn` and `PowerSourceRef.Card` are not defined.
 
-- [ ] **Step 3: Implement the primitive and the source**
+- [x] **Step 3: Implement the primitive and the source**
 
 In `GameState.scala`, inside `object PowerSourceRef`, after `Site`:
 
@@ -1395,12 +1395,12 @@ and after `setOathkeeper`:
 
 Run `grep -rn "SetOathkeeper" --include='*.scala' src/main`. Every production match that names `SetOathkeeper` must also name `BeginTurn`. Today the only such matches are the two codec arms and the mutation above.
 
-- [ ] **Step 4: Run the mutation suite**
+- [x] **Step 4: Run the mutation suite**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite"`
 Expected: compilation fails in `WalkerOperationCodec` ("match may not be exhaustive": `BeginTurn` and `PowerSourceRef.Card`).
 
-- [ ] **Step 5: Journal both in `WalkerOperationCodec.scala`**
+- [x] **Step 5: Journal both in `WalkerOperationCodec.scala`**
 
 Import `BeginTurn`. Replace the site-only `RecordPowerUse` encode arm and add `BeginTurn`:
 
@@ -1444,13 +1444,14 @@ Add beside `decodePowerTiming`:
     case "relic" => Right(RelicId(id))
     case "edifice" => Right(EdificeId(id))
     case "vision" => Right(VisionId(id))
+    case "legacy" => Right(LegacyId(id))
     case other => Left(InvalidValue(path, s"unknown power source card '$other'"))
   }
 ```
 
-These are exactly the strings `CardId.kind` returns for `DenizenId`, `RelicId`, `EdificeId` and `VisionId` (`model/Identity.scala`).
+These are exactly the strings `CardId.kind` returns for `DenizenId`, `RelicId`, `EdificeId`, `VisionId` and `LegacyId` (`model/Identity.scala`). Although phase-power discovery does not produce legacy sources, the journal codec remains total for every `CardId` admitted by `PowerSourceRef.Card`.
 
-- [ ] **Step 6: Extend the codec round-trip list**
+- [x] **Step 6: Extend the codec round-trip list**
 
 In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the walker codec", add to `operations`:
 
@@ -1468,12 +1469,12 @@ In `GameEventWireSuite`'s "every CoreOperation variant round-trips through the w
 
 The suite imports `oathdigital.model._` and lists its operations explicitly (`import oathdigital.gameplay.operations.{AdjustSupply, BuildOps, Branch, Burn, ...}`); add `BeginTurn`, `EnterPhase` and `RecordPowerUse` to that list.
 
-- [ ] **Step 7: Run both suites**
+- [x] **Step 7: Run both suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.operations.OperationStateMutationSuite oathdigital.serialization.GameEventWireSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Run the full gate and commit**
+- [x] **Step 8: Run the full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -1517,7 +1518,7 @@ This task adds walker Begin Rest and Finish Rest beside the legacy commands. Pro
   - `WalkerProcedureRegistry.fallbackKind(procedure: StartableRef): Either[OathViolation, Option[MajorActionKind]]`.
   - `OathRulesWalker` abstract members `turnBoundary(transition)` and `restPowerUsable(ready: ReadyGame, player: PlayerId): Boolean`. `OathRules` implements `restPowerUsable` as `false`, and Task 9 replaces that body.
 
-- [ ] **Step 1: Write the failing walker Rest suite**
+- [x] **Step 1: Write the failing walker Rest suite**
 
 `src/test/scala/oathdigital/gameplay/RestWalkerSuite.scala`:
 
@@ -1654,12 +1655,12 @@ In `WalkerProcedureRegistrySuite`, add:
 
 Add `PhaseTransitionRef` to that suite's model import.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite"`
 Expected: compilation fails on `PhaseTransitionRef.BeginRest` and `oathdigital.gameplay.phases.rest`.
 
-- [ ] **Step 3: Add the references and the continuation**
+- [x] **Step 3: Add the references and the continuation**
 
 In `ProcedureRef.scala`, `object PhaseTransitionRef`:
 
@@ -1682,7 +1683,7 @@ In `GameProcedureProtocol.scala`, after `AwaitingRestPowerDecision`:
 
 No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
-- [ ] **Step 4: Create the Rest procedure package**
+- [x] **Step 4: Create the Rest procedure package**
 
 `gameplay/phases/rest/WarExhaustionRandomPort.scala`: move the trait and its companion out of `Rest.scala` unchanged, under `package oathdigital.gameplay.phases.rest`. Update the import in `OathRules.scala` to `oathdigital.gameplay.phases.rest.WarExhaustionRandomPort`, the import at `GameApplicationService.scala:17`, the import at `RestSuite.scala:3-4`, and both inline `oathdigital.gameplay.phases.WarExhaustionRandomPort` references at `GameApplicationServiceSuite.scala:575,605`.
 
@@ -1903,7 +1904,7 @@ object TurnBoundary {
 }
 ```
 
-- [ ] **Step 5: Make legacy Rest delegate instead of duplicating**
+- [x] **Step 5: Make legacy Rest delegate instead of duplicating**
 
 In `Rest.scala`:
 
@@ -1915,7 +1916,7 @@ In `Rest.scala`:
 
 `LegalActionProjector`: import `oathdigital.gameplay.phases.rest.BeginRestProcedure` in place of `phases.Rest`, and call `BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player)` at line 127.
 
-- [ ] **Step 6: Registry entries and optional fallback kind**
+- [x] **Step 6: Registry entries and optional fallback kind**
 
 In `WalkerProcedureRegistry.scala`, import `oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}` and add after the `EndWake` entry:
 
@@ -1955,7 +1956,7 @@ Replace `fallbackKind` with:
 
 End its doc with: "`None` means the start records no fallback diagnostics."
 
-- [ ] **Step 7: Walker completion in Rest**
+- [x] **Step 7: Walker completion in Rest**
 
 In `OathRulesWalker.scala`, add abstract members:
 
@@ -2034,7 +2035,7 @@ Add beside `runsActionBoundary`:
 
 In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestAction(actor))`. Change its doc: Rest has a continuation; `RoundEnd` has none, because only Finish Rest reaches it and the turn boundary owns that continuation. In `startTriggered`'s doc, change "only knows `Phase.Act` and `Phase.Wake`" to "knows Act, Wake and Rest".
 
-- [ ] **Step 8: `OathRules` implements the new members**
+- [x] **Step 8: `OathRules` implements the new members**
 
 - Constructor: `protected val warExhaustionRandomPort: WarExhaustionRandomPort = WarExhaustionRandomPort.random`.
 - Add:
@@ -2060,12 +2061,12 @@ In `continuationIn`, add `case Phase.Rest => Right(OathContinue.AwaitingRestActi
 
 Import `oathdigital.gameplay.phases.rest.TurnBoundary`. `enterWake` stays private: `turnBoundary` is a member of the same class.
 
-- [ ] **Step 9: Run the suites**
+- [x] **Step 9: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.gameplay.RestSuite oathdigital.application.GameApplicationServiceSuite"`
 Expected: PASS. `RestSuite` and `GameApplicationServiceSuite` are unchanged apart from imports and still exercise the legacy commands.
 
-- [ ] **Step 10: Full gate and commit**
+- [x] **Step 10: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -2097,7 +2098,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `DecisionOptionRef.FavorBank`, `DecisionOption.FavorBank`, `DistributeSlot`, `DecisionQuery.Distribute`, `DistributeAmount`, `DecisionAnswer.DistributeAnswer` (Task 1); `PhaseTransitionRef.BeginRest`, `FinishRestProcedure`'s `RestReturnFavor` window, `OathContinue.AwaitingRestDecision` (Task 5).
 - Produces: `LeagueTreatyContribution.id = PowerId("denizen.league-treaty")`, `LeagueTreatyContribution.forCatalog(catalog): Option[LeagueTreatyContribution]`, `LeagueTreatyContribution.destinationDecisionId(ready, rester, site, card): String` and `distributionDecisionId(...)` (same parameters). Test object `LeagueTreatyFixture` with `treatyCard: DenizenId`, `act: ReadyGame`, `suitOf(id: DenizenId): Suit` and `arranged(ruler: Option[PlayerId], favor: Vector[(Suit, Int)]): (ReadyGame, SiteId)`.
 
-- [ ] **Step 1: Write the failing suite**
+- [x] **Step 1: Write the failing suite**
 
 `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatyFixture.scala`:
 
@@ -2137,7 +2138,9 @@ object LeagueTreatyFixture {
     val site = current.map.cradle.head
     val region = current.map.inPlay.filter(current.map.regionOf(_) ==
       current.map.regionOf(site))
-    val deck = current.commonCards.worldDeck.collect { case id: DenizenId => id }
+    val deck = (current.commonCards.worldDeck ++
+      current.commonCards.regionalDiscards.values.flatten)
+      .collect { case id: DenizenId => id }
     val picks = favor.foldLeft(Vector.empty[(DenizenId, Int)]) {
       case (chosen, (suit, amount)) => chosen :+ (deck.find(id =>
         id != treatyCard && !chosen.exists(_._1 == id) && suitOf(id) == suit)
@@ -2165,10 +2168,15 @@ object LeagueTreatyFixture {
     val removed = picks.map(_._1).toSet + treatyCard
     base.copy(game = base.game.copy(current = current.copy(
       map = current.map.copy(sites = sites),
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot {
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck.filterNot {
           case id: DenizenId => removed(id)
           case _ => false
+        }, regionalDiscards = current.commonCards.regionalDiscards.map {
+          case (region, cards) => region -> cards.filterNot {
+            case id: DenizenId => removed(id)
+            case _ => false
+          }
         })))) -> site
   }
 }
@@ -2280,16 +2288,16 @@ class LeagueTreatySuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
 Expected: compilation fails on `LeagueTreatyContribution`.
 
-- [ ] **Step 3: Widen the suit lookup**
+- [x] **Step 3: Widen the suit lookup**
 
 In `RestCleanup.scala`, change `object RestCleanupPlan`'s `private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit]` to `private[gameplay] def suitOf` and leave its body alone. The steps below call it as `RestCleanupPlan.suitOf(catalog, cardId)`.
 
-- [ ] **Step 4: Implement the power**
+- [x] **Step 4: Implement the power**
 
 `LeagueTreatyContribution.scala`:
 
@@ -2443,7 +2451,7 @@ The `Branch` and the trailing `BuildOps` both read the destination answer. When 
 
 These bounds pass Task 1's `wellFormed`. A destination with its own favor has `minimum = favorOf(bank)`, `maximum = total`. With at least one other source suit, the sum of minimums stays below `total` and the sum of maximums stays above it, so the query is never forced.
 
-- [ ] **Step 5: Register it**
+- [x] **Step 5: Register it**
 
 `WalkerPowerCatalog.default`:
 
@@ -2455,12 +2463,12 @@ These bounds pass Task 1's `wellFormed`. A destination with its own favor has `m
 
 Add a sentence to its doc: League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
 
-- [ ] **Step 6: Run the suites**
+- [x] **Step 6: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.LeagueTreatySuite oathdigital.gameplay.RestSuite oathdigital.gameplay.BackendArchitectureSuite"`
 Expected: PASS.
 
-- [ ] **Step 7: Full gate and commit**
+- [x] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green. Production commands still route to legacy Rest until Task 7, so in this commit only `startWalker` reaches the new power and legacy League Treaty keeps serving production.
@@ -2497,7 +2505,7 @@ This is the switch. After this commit `beginRest` and `finishRest` run only the 
   - The `finishRest` legal control appears iff `FinishRestProcedure.gate` passes.
   - Test fixture `ParkedServiceFixture` with `setUp(service, gameId, placementSites = sites, setupPlan = plan): GameAccepted`, `withWorldDeckTop(base: FirstGameSetupPlan, cards: Vector[DenizenId]): FirstGameSetupPlan`, `seed(repository, gameId, at: Long, ops: Vector[CoreOperation]): Unit`, `treatyCard: DenizenId`, and `leagueTreatyPark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId)` returning `(parked, active, ruler)`.
 
-- [ ] **Step 1: Write the service fixture**
+- [x] **Step 1: Write the service fixture**
 
 `src/test/scala/oathdigital/application/ParkedServiceFixture.scala`:
 
@@ -2628,7 +2636,7 @@ object ParkedServiceFixture {
 }
 ```
 
-- [ ] **Step 2: Write the failing service test**
+- [x] **Step 2: Write the failing service test**
 
 Add to `GameApplicationServiceSuite`:
 
@@ -2655,12 +2663,12 @@ Add to `GameApplicationServiceSuite`:
   }
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
 Expected: FAIL in the new test. The fixture's `parked.continue` assertion reports `AwaitingRestPowerDecision` from the legacy handler, not `AwaitingRestDecision`.
 
-- [ ] **Step 4: Route the commands**
+- [x] **Step 4: Route the commands**
 
 `GameApplicationService.applyUnblockedCommand`:
 
@@ -2678,7 +2686,7 @@ Expected: FAIL in the new test. The fixture's `parked.continue` assertion report
           context.ready, active.player).isRight)("finishRest").toVector
 ```
 
-- [ ] **Step 5: Trim legacy Rest to League Treaty resolve and decline**
+- [x] **Step 5: Trim legacy Rest to League Treaty resolve and decline**
 
 `Rest.scala` becomes:
 
@@ -2724,7 +2732,7 @@ object Rest {
 
 In `RestWalkerSuite`, delete "walker Rest reaches the same game as legacy Begin and Finish Rest" and the `RestCommand` import. It pinned parity while both paths existed.
 
-- [ ] **Step 6: Rewrite `RestSuite` against the walker**
+- [x] **Step 6: Rewrite `RestSuite` against the walker**
 
 Replace its imports with:
 
@@ -2804,19 +2812,19 @@ Rewrite each test body as follows, keeping the test name unless stated:
 
 Remove the now-unused `RestOutcomeMismatch` import and the `RestCompleted`/`RestStarted` event imports.
 
-- [ ] **Step 7: Move the other callers off the legacy Rest commands**
+- [x] **Step 7: Move the other callers off the legacy Rest commands**
 
 - `StateBasedEvaluationSuite`: drop the `RestCommand` import. Each `accept(rules.handle(state, RestCommand.Begin(x)))` / `accept(rules.handle(state, RestCommand.Finish(x)))` pair (lines 138-139 with `player`, 159-160 with `holder`) becomes `accept(rules.startWalker(state, PhaseTransitionRef.BeginRest, x))`.
 - `ForgeWalkerFixture:114-126`: delete both `GameCommand.FinishRest` submissions (lines 117-118 and 124-125). `BeginRest` now finishes Rest.
 - `GameApplicationServiceSuite:601-603`: delete the `GameCommand.FinishRest(actor)` submission. `1990-1998`: delete the `GameCommand.FinishRest(actor)` submission.
 - `GameApplicationServiceSuite` "Rest v5 commands persist reload and project the next player's Wake": rename it "Begin Rest finishes Rest, persists and reloads to the next player's Wake". Replace everything from `val restProjection` through `val finished = ...` with `val finished = begun`. Keep the load, phase, active-player and `takeRight(2)` formatVersion assertions.
 
-- [ ] **Step 8: Run the Rest and service suites**
+- [x] **Step 8: Run the Rest and service suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.RestSuite oathdigital.gameplay.RestWalkerSuite oathdigital.gameplay.StateBasedEvaluationSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.LeagueTreatySuite"`
 Expected: PASS.
 
-- [ ] **Step 9: Full gate and commit**
+- [x] **Step 9: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -2849,7 +2857,7 @@ This task deletes code and adds no behavior. Its test is the grep in Step 6, plu
 - Consumes: Tasks 5-7 (nothing reaches the legacy seam any more).
 - Produces: no new names. `RestCommand`, `RestPowerEvent`, `RestStarted`, `RestCompleted`, the three League Treaty events, `PendingProcedure.RestPowerDecision`, `OathContinue.AwaitingRestPowerDecision`, `RestOutcomeMismatch`, `GameCommand.ResolveRestPower`/`DeclineRestPower`, the `resolveRestPower`/`declineRestPower` intents, `RestPowerProjection`, `LeagueTreatyProjection` and `GameProjection.restPower`/`restPowerWaiting` stop existing.
 
-- [ ] **Step 1: Delete the gameplay seam**
+- [x] **Step 1: Delete the gameplay seam**
 
 - Delete the four backend files:
 
@@ -2865,13 +2873,13 @@ git rm src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oath
 - `FirstGameSetup.scala:248-249`: delete the Rest event arms.
 - `PendingProcedures.scala`: delete `SiteFavorSource`, `FavorAllocation`, `RestPowerSourceRef`, `RestPowerInvocationRef`, `RestPowerDecisionPayload`, `PendingProcedure.RestPowerDecision`, `RestPowerContinuation`, and every exhaustive-match arm that names them.
 
-- [ ] **Step 2: Delete the journal spelling**
+- [x] **Step 2: Delete the journal spelling**
 
 - `GameEventWire.scala`: delete `RestStartedType`, `LeagueTreatyDecisionStartedType`, `LeagueTreatyResolvedType`, `LeagueTreatyDeclinedType`, `RestCompletedType` and their dispatch arms.
 - `LifecycleEventCodec.scala`: delete the encode and decode branches and helpers for the same events, including every helper used only by them (the compiler's `-Xlint` unused warnings name them).
 - `GameEventWireSuite` and `GameHttpWireSuite`: delete the round-trip cases for those events. Do not add rejection tests: an unknown type already fails through the generic unknown-type path.
 
-- [ ] **Step 3: Delete the command and projection surface**
+- [x] **Step 3: Delete the command and projection surface**
 
 - `GameCommands`: delete `ResolveRestPower` and `DeclineRestPower`. `Authorization`: delete `resolveRestPower` and `declineRestPower`. `GameIntentMapper`: delete their intent arms and any helper used only by them. `GameApplicationService`: delete their `applyUnblockedCommand` arms.
 - `CommandIntents`: delete `ResolveRestPower`, `DeclineRestPower`, `RestFavorSource`, `RestFavorAllocation`. Delete their codec, decoder and `restAllocation` helpers.
@@ -2879,17 +2887,17 @@ git rm src/main/scala/oathdigital/gameplay/phases/Rest.scala src/main/scala/oath
 - `GameProjectionDto`: delete `restPower` and `restPowerWaiting`. `GameProjectionCodec`: remove both keys from the key set and delete their encode, decode and helper code. `ActionProjectionDtos`: delete `RestFavorSourceProjection`, `RestPowerPayloadProjection`, `LeagueTreatyProjection`, `RestPowerProjection`.
 - Shared tests: remove the two intents from `CommandProtocolSuite:7-10` and the two fields from `ProjectionProtocolSuite:71-75`.
 
-- [ ] **Step 4: Delete the frontend branches**
+- [x] **Step 4: Delete the frontend branches**
 
 - `git rm frontend/src/main/scala/oathdigital/frontend/RestPowerDecisionRenderer.scala`.
 - `ActionDecisionRenderer`: delete the `value.restPower...foreach` block. `ServerUiSupport`: delete the `restPower`/`restPowerWaiting` branches. `package.scala`: delete `RestFavorSourceState`, `RestPowerState` and `LeagueTreatyState`.
 - Tests: delete the two Rest power helpers in `ProtocolTestCommands`, the resolve/decline encoding assertions in `HttpGameClientSuite:184-198` (keep the Begin/Finish Rest encoding), and the "Rest power owner controls the off-turn choice..." test in `ServerModeUiSuite:611-630`.
 
-- [ ] **Step 5: Retire the architecture assertion**
+- [x] **Step 5: Retire the architecture assertion**
 
 In `BackendArchitectureSuite`'s "Rest registry cannot own procedure orchestration or state mutation", delete the final `assert(Files.exists(... RestPowerIntegration.scala))`. Keep the forbidden-string loop.
 
-- [ ] **Step 6: Verify nothing names the seam**
+- [x] **Step 6: Verify nothing names the seam**
 
 Run:
 
@@ -2899,7 +2907,7 @@ grep -rnE "RestPowerIntegration|RestPowerHandler|RestPowerEvent|RestStarted|Rest
 
 Expected: no output.
 
-- [ ] **Step 7: Full gate and commit**
+- [x] **Step 7: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green. Neither fingerprint changes: `ReviewedPowerCatalog.AuditedCatalogFingerprint` and the Rest handler inventory both hash the catalog, not the Scala `Power` objects. Dropping `LeagueTreatyPower` from `RestPowers` follows Catacombs, which left `RecoverPowers` the same way and stays audited through `CatalogHandlerInventory.handlerIds`.
@@ -2945,7 +2953,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `PhasePowerCatalog.default(catalog): PhasePowers` (empty until Task 10).
   - Test object `PhasePowerFixture` with `TestPower(id: PowerId, timing: PowerTiming, tree: PlayerId => Operation = ...)`, `base: ReadyGame`, `actor: PlayerId`, `card: DenizenId`, `powerId: PowerId`, `source: DecisionOptionRef.Denizen` and `inPhase(phase: Phase): ReadyGame`.
 
-- [ ] **Step 1: Write the failing reference test**
+- [x] **Step 1: Write the failing reference test**
 
 `src/test/scala/oathdigital/model/ProcedureRefSuite.scala`:
 
@@ -2968,7 +2976,7 @@ class ProcedureRefSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 2: Write the failing engine suite**
+- [x] **Step 2: Write the failing engine suite**
 
 `src/test/scala/oathdigital/gameplay/PhasePowerFixture.scala`:
 
@@ -3184,12 +3192,12 @@ class PhasePowerSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 3: Run both to verify they fail**
+- [x] **Step 3: Run both to verify they fail**
 
 Run: `./sbtw "testOnly oathdigital.model.ProcedureRefSuite oathdigital.gameplay.PhasePowerSuite"`
 Expected: compilation fails on `ActionRef.UsePower` and `PhasePower`.
 
-- [ ] **Step 4: The contract, the reference and the continuation**
+- [x] **Step 4: The contract, the reference and the continuation**
 
 `gameplay/powerresolver/PhasePower.scala`:
 
@@ -3254,7 +3262,7 @@ object PhasePowers {
 
 No production code matches exhaustively over `OathContinue`, so nothing else changes.
 
-- [ ] **Step 5: One access rule for reviewed and phase powers**
+- [x] **Step 5: One access rule for reviewed and phase powers**
 
 In `RuleSourceIndex.scala`, add:
 
@@ -3292,7 +3300,7 @@ private[gameplay] object RuleSourceAccess {
 
 In `PowerSupport.scala`, replace `accessible`'s body with `RuleSourceAccess.accessible(ref, source.face, facts.ready, facts.actor, window == PowerWindow.ActionCardPlayed)`.
 
-- [ ] **Step 6: Sources, usability and the tree**
+- [x] **Step 6: Sources, usability and the tree**
 
 `gameplay/phases/PhasePowerProcedure.scala`:
 
@@ -3463,7 +3471,7 @@ object PhasePowerCatalog {
 }
 ```
 
-- [ ] **Step 7: Registry, rules and projector routing**
+- [x] **Step 7: Registry, rules and projector routing**
 
 `WalkerProcedureRegistry`:
 
@@ -3522,7 +3530,7 @@ object PhasePowerCatalog {
 
 `GameApplicationService` constructor: pass `phasePowerCatalog = PhasePowerCatalog.default(catalog)` to `new OathRules`.
 
-- [ ] **Step 8: Registry, codec and architecture tests**
+- [x] **Step 8: Registry, codec and architecture tests**
 
 `WalkerProcedureRegistrySuite`:
 
@@ -3541,12 +3549,12 @@ object PhasePowerCatalog {
 
 `BackendArchitectureSuite`: `val declaresPower = "(?:extends|with)\\s+(?:ContributingPower|PhasePower)\\b".r`, and add "or `PhasePower`" to the comment above it.
 
-- [ ] **Step 9: Run the suites**
+- [x] **Step 9: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.model.ProcedureRefSuite oathdigital.gameplay.PhasePowerSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.serialization.GameEventWireSuite oathdigital.gameplay.BackendArchitectureSuite oathdigital.gameplay.RestSuite"`
 Expected: PASS.
 
-- [ ] **Step 10: Full gate and commit**
+- [x] **Step 10: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -3575,7 +3583,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `PhasePower`, `PhasePowers`, `PhasePowerProcedure`, `ActionRef.UsePower`, `OathContinue.AwaitingPowerDecision` (Task 9); `DecisionOptionRef.FavorBank` (Task 1); `RestCleanupPlan.suitOf` (Task 6).
 - Produces: `SilverTongue.id = PowerId("denizen.silver-tongue")`, `SilverTongue.forCatalog(catalog): Option[SilverTongue]`, `SilverTongue.choiceDecisionId(ready, player): String`.
 
-- [ ] **Step 1: Write the failing suite**
+- [x] **Step 1: Write the failing suite**
 
 `SilverTongueSuite.scala`:
 
@@ -3690,12 +3698,12 @@ class SilverTongueSuite extends munit.FunSuite {
 
 In `RestSuite`'s "each relevant Rest handler records fallback diagnostics without blocking", remove `"denizen.silver-tongue"` from `relevant`. Silver Tongue's diagnostic now belongs to Search.
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.SilverTongueSuite"`
 Expected: compilation fails on `SilverTongue`.
 
-- [ ] **Step 3: Implement Silver Tongue**
+- [x] **Step 3: Implement Silver Tongue**
 
 `SilverTongue.scala`:
 
@@ -3807,18 +3815,18 @@ object SilverTongue {
 }
 ```
 
-- [ ] **Step 4: Register it and move the legacy diagnostic**
+- [x] **Step 4: Register it and move the legacy diagnostic**
 
 - `PhasePowerCatalog.default`: `PhasePowers(SilverTongue.forCatalog(catalog).toVector)`.
 - `WalkerPowerCatalog.default`: add `++ SilverTongue.forCatalog(catalog)` before `:+ TakeWealthLimit`, and a doc line saying the restriction is inert until Search walks `SearchPlayFacedownAdviser`.
 - `RestPowers.SilverTongue`: `extends ReviewedPower("denizen.silver-tongue", None, Vector(ReviewedHandler.automatic(PowerWindow.SearchModifierSelection)))`.
 
-- [ ] **Step 5: Run the suites**
+- [x] **Step 5: Run the suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.gameplay.RestSuite oathdigital.gameplay.PhasePowerSuite oathdigital.gameplay.BackendArchitectureSuite"`
 Expected: PASS. Moving a reviewed handler's window changes no catalog handler id, so neither fingerprint changes.
 
-- [ ] **Step 6: Full gate and commit**
+- [x] **Step 6: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -3854,7 +3862,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - Shared: `PhasePowerProjection(powerId: String, source: DecisionOptionProjection, name: String, rulesText: String)`; `GameProjection.phasePowers: Vector[PhasePowerProjection] = Vector.empty` (last field, JSON key `"phasePowers"`); `GameIntent.UsePower(powerId: String, source: WalkerStartArgWire)` (JSON `{"type":"usePower","powerId":..,"source":{"optionKind":..,"optionId":..}}`).
   - Backend: `GameCommand.UsePower(playerId: PlayerId, power: PowerId, source: DecisionOptionRef)`; `AuthorizedPlayer.usePower(power, source)`; `PhasePowerProjector.project(context): Vector[PhasePowerProjection]`; the legal control `s"usePower:${powerId}:${source.id}"`.
 
-- [ ] **Step 1: Write the failing protocol tests**
+- [x] **Step 1: Write the failing protocol tests**
 
 `CommandProtocolSuite`: add `UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92"))` to the intent round-trip list, and a test that the decoder rejects a `usePower` object with an extra key:
 
@@ -3868,7 +3876,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 `ProjectionProtocolSuite`: in the full projection fixture, set `phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue", DecisionOptionProjection("denizen", "92", "Silver Tongue"), "Silver Tongue", "Take a favor."))` and keep the existing round-trip assertion.
 
-- [ ] **Step 2: Write the failing projector test**
+- [x] **Step 2: Write the failing projector test**
 
 Move Silver Tongue's arrangement into a shared test object. Create `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala`:
 
@@ -4046,12 +4054,12 @@ Add to `GameHttpWireSuite`, which already imports `GameCommand`, `GameIntentMapp
 
 `CommandProtocolSuite` pins the JSON spelling, this test pins the binding to a command, and Task 13 submits the bound command through the service.
 
-- [ ] **Step 3: Run to verify they fail**
+- [x] **Step 3: Run to verify they fail**
 
 Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.server.GameHttpWireSuite"`
 Expected: compilation fails on `UsePower` and `PhasePowerProjection`.
 
-- [ ] **Step 4: Shared protocol**
+- [x] **Step 4: Shared protocol**
 
 - `ActionProjectionDtos`:
 
@@ -4111,7 +4119,7 @@ final case class PhasePowerProjection(powerId: String,
 ```
 
 
-- [ ] **Step 5: Backend command path**
+- [x] **Step 5: Backend command path**
 
 - `GameCommands`: `final case class UsePower(playerId: PlayerId, power: PowerId, source: DecisionOptionRef) extends GameCommand`.
 - `Authorization.AuthorizedPlayer`: `def usePower(power: PowerId, source: DecisionOptionRef): GameCommand = GameCommand.UsePower(access.playerId, power, source)`.
@@ -4135,7 +4143,7 @@ final case class PhasePowerProjection(powerId: String,
 
    No other production code matches exhaustively over `GameCommand`: `applyUnblockedCommand` is the only place `case GameCommand.EndWake` appears.
 
-- [ ] **Step 6: Projection**
+- [x] **Step 6: Projection**
 
 - `WalkerDecisionProjector.optionProjection`: widen to `private[application]`.
 - `PhasePowerProjector.scala`:
@@ -4264,12 +4272,12 @@ Replace the whole `case None => current.turn.phase match { ... }` arm (after Tas
 
 Existing tests that assert an exact `legalControls` vector keep passing: the default production catalog registers no WAKE or ACTION phase power, and Silver Tongue is usable only when card 92 is an accessible adviser or site card.
 
-- [ ] **Step 7: Run the suites**
+- [x] **Step 7: Run the suites**
 
 Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.server.GameHttpWireSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Full gate and commit**
+- [x] **Step 8: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -4298,7 +4306,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `GameProjection.phasePowers`, `PhasePowerProjection`, `GameIntent.UsePower`, `WalkerStartArgWire` (Task 11).
 - Produces: `PhasePowerButtons.actions(value: GameProjection): Vector[(PhasePowerState, GameCommand)]`, `PhasePowerButtons.showsFinishRest(value): Boolean`, `PhasePowerButtons.render(value, canControl, panel: dom.Element, submit: GameCommand => Unit): Unit`; buttons carry class `phase-power` and `data-power-id`.
 
-- [ ] **Step 1: Write the failing UI tests**
+- [x] **Step 1: Write the failing UI tests**
 
 In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty` as the last parameter of the `projection` helper at line 931 and pass it to `GameProjection(...)`. The suite tests UI decisions through pure helpers (as `ServerUiSupport.takeWealthActions` is tested), so add:
 
@@ -4326,12 +4334,12 @@ In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty
   }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ServerModeUiSuite"`
 Expected: compilation fails on `PhasePowerState`.
 
-- [ ] **Step 3: Implement the buttons**
+- [x] **Step 3: Implement the buttons**
 
 `package.scala`: `type PhasePowerState = oathdigital.protocol.projection.PhasePowerProjection` and `val PhasePowerState = oathdigital.protocol.projection.PhasePowerProjection`, placed beside the other projection aliases.
 
@@ -4397,12 +4405,12 @@ In `ActionDecisionRenderer`:
 
    Run `wc -l frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala`. Expected: at most 800 lines; Task 8 removed the Rest power branch.
 
-- [ ] **Step 4: Run the UI suite**
+- [x] **Step 4: Run the UI suite**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ServerModeUiSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Full gate and commit**
+- [x] **Step 5: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -4433,7 +4441,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId, PlayerId)` returning `(parked, active, holder, leaderB)`.
   - `ParkedServiceFixture.silverTonguePark(service, repository, gameId): (GameAccepted, PlayerId, Suit)` returning `(parked, active, bank)`, where `bank` is a suit the parked choice offers.
 
-- [ ] **Step 1: Add the remaining parks to the fixture**
+- [x] **Step 1: Add the remaining parks to the fixture**
 
 Append to `ParkedServiceFixture` (add `oathdigital.gameplay.actions.recover.RecoverProcedure`, `oathdigital.gameplay.oathkeeper.OathkeeperProcedure`, `oathdigital.gameplay.operations.SetOathkeeper`, `oathdigital.gameplay.powers.rest.SilverTongue` and `oathdigital.gameplay.walker.WalkerParked` to its imports):
 
@@ -4556,7 +4564,7 @@ Delete the `assertEquals(parked.nextSequence, actEntered.nextSequence + parked.e
 Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
 Expected: PASS, with no behavior change.
 
-- [ ] **Step 2: Write the failing rules-level suite**
+- [x] **Step 2: Write the failing rules-level suite**
 
 `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala`:
 
@@ -4641,12 +4649,12 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.PendingWalkerRulesSuite"`
 Expected: FAIL on the legacy handles, which reject with their own gates' messages. The `startWalker` assertions already pass.
 
-- [ ] **Step 4: Guard every `handle` overload**
+- [x] **Step 4: Guard every `handle` overload**
 
 In `OathRules.scala`, add:
 
@@ -4797,12 +4805,12 @@ Replace `OathRules.scala` lines 50-167, the seven non-Rest `handle` overloads an
 
 No body changes: each overload's original body now sits one level deeper inside `unlessWalkerPending(state) { ... }`.
 
-- [ ] **Step 5: Run the rules suite**
+- [x] **Step 5: Run the rules suite**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.PendingWalkerRulesSuite"`
 Expected: PASS.
 
-- [ ] **Step 6: Write the service-level matrix**
+- [x] **Step 6: Write the service-level matrix**
 
 `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`:
 
@@ -4961,12 +4969,12 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
 
 The application gate already refuses these commands (Correction 7), so this suite pins that gate rather than driving new code. If a command is accepted, the gate in `GameApplicationService.applyCommand` has a hole: fix it there, never in the test.
 
-- [ ] **Step 7: Run the matrix**
+- [x] **Step 7: Run the matrix**
 
 Run: `./sbtw "testOnly oathdigital.application.PendingWalkerInvariantSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Full gate and commit**
+- [x] **Step 8: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.
@@ -4995,7 +5003,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the shipped behavior of Tasks 1-13.
 - Produces: no code.
 
-- [ ] **Step 1: Correct the 2026-09-12 spec**
+- [x] **Step 1: Correct the 2026-09-12 spec**
 
 Make each edit in place, keeping surrounding text:
 
@@ -5012,11 +5020,11 @@ Make each edit in place, keeping surrounding text:
 5. Open item "Rest completion continuation" (lines 564-565): replace its text with "Settled: Begin Rest completes to `AwaitingRestAction`, and Finish Rest's turn boundary to `AwaitingWakeAction` or `GameFinished` (`2026-09-13-rest-walker-and-phase-powers-design.md`)."
 6. Open item "Unanswered off-turn decisions": replace "as legacy Rest hooks and Oathkeeper recipients already do" with "as League Treaty and Oathkeeper recipients do".
 
-- [ ] **Step 2: Mark the Rest spec implemented**
+- [x] **Step 2: Mark the Rest spec implemented**
 
 In `2026-09-13-rest-walker-and-phase-powers-design.md`, change line 3 to `> Status: implemented on feat/rest-walker; see docs/superpowers/plans/2026-09-13-rest-walker-and-phase-powers.md.`
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `grep -n "Nothing in this design can complete in Rest\|Legacy Rest commands" docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md`
 Expected: no output.

@@ -2,7 +2,8 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.OathViolation
 import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef,
-  DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, RelicId}
+  DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount,
+  DistributeSlot, RelicId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -320,5 +321,96 @@ class DecisionQuerySuite extends munit.FunSuite {
         s"copy ${query.heading} / ${query.confirmLabel} must not change " +
           "legality")
     }
+  }
+
+  private def bank(suit: Suit) = DecisionOptionRef.FavorBank(suit)
+  private def slot(suit: Suit, min: Int, max: Int,
+      suggested: Option[Int] = None) = DistributeSlot(bank(suit), min, max,
+    suggested)
+  private def dist(slots: Vector[DistributeSlot], total: Int,
+      heading: Option[String] = Some("League Treaty"),
+      confirm: String = "Move favor") =
+    DecisionQuery.Distribute(slots, total, heading, confirm)
+
+  /** The spec's worked example: three source suits of two favor each, and a
+    * destination that may take all six.
+    */
+  private val distribute = dist(Vector(
+    slot(Suit.Arcane, 0, 2, Some(2)), slot(Suit.Discord, 0, 2, Some(2)),
+    slot(Suit.Hearth, 0, 2, Some(2)), slot(Suit.Nomad, 0, 6, Some(0))), 6)
+
+  private def amounts(values: (Suit, Int)*) = DecisionAnswer.DistributeAnswer(
+    values.toVector.map { case (suit, n) => DistributeAmount(bank(suit), n) })
+
+  private def violation(detail: String) =
+    Left(OathViolation.InvalidEventOrder(s"decision $decisionId $detail"))
+
+  test("a distribution with two or more open slots and a reachable total is well formed") {
+    assertEquals(DecisionQueries.wellFormed(decisionId, distribute), Right(()))
+  }
+
+  test("a malformed distribution names its own defect") {
+    val two = Vector(slot(Suit.Arcane, 0, 2), slot(Suit.Nomad, 0, 2))
+    val cases = Vector(
+      dist(two, 1, heading = None) -> "declares no heading",
+      dist(two, 1, heading = Some("  ")) -> "declares no heading",
+      dist(two, 1, confirm = " ") -> "declares a blank confirm label",
+      dist(Vector(slot(Suit.Arcane, 0, 2)), 1) ->
+        "declares fewer than two slots",
+      dist(Vector(slot(Suit.Arcane, 0, 2), slot(Suit.Arcane, 0, 2)), 1) ->
+        "declares duplicate options",
+      dist(Vector(slot(Suit.Arcane, 0, 2), DistributeSlot(
+        DecisionOptionRef.Button("stop"), 0, 2, None)), 1) ->
+        "declares slot button/stop, which has no presentable option",
+      dist(Vector(slot(Suit.Arcane, -1, 2), slot(Suit.Nomad, 0, 2)), 1) ->
+        "declares slot favor-bank/arcane with bounds -1..2",
+      dist(Vector(slot(Suit.Arcane, 3, 2), slot(Suit.Nomad, 0, 2)), 1) ->
+        "declares slot favor-bank/arcane with bounds 3..2",
+      dist(two, 5) -> "declares a total no answer can meet",
+      dist(Vector(slot(Suit.Arcane, 1, 2), slot(Suit.Nomad, 1, 2)), 2) ->
+        "declares minimums that already make its total, leaving nothing to decide",
+      dist(two, 4) ->
+        "declares maximums that already make its total, leaving nothing to decide",
+      dist(Vector(slot(Suit.Arcane, 0, 2), slot(Suit.Nomad, 0, 0)), 1) ->
+        "declares fewer than two variable slots, leaving nothing to decide",
+      dist(Vector(slot(Suit.Arcane, 0, 2, Some(1)), slot(Suit.Nomad, 0, 2)), 1) ->
+        "suggests amounts for some slots but not all",
+      dist(Vector(slot(Suit.Arcane, 0, 2, Some(2)),
+        slot(Suit.Nomad, 0, 2, Some(2))), 1) ->
+        "suggests a distribution it would not accept")
+    cases.foreach { case (query, detail) =>
+      assertEquals(DecisionQueries.wellFormed(decisionId, query),
+        violation(detail), detail)
+    }
+  }
+
+  test("the worked example's answer is accepted") {
+    assertEquals(DecisionQueries.accepts(decisionId, distribute, amounts(
+      Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2, Suit.Nomad -> 3)),
+      Right(()))
+  }
+
+  test("a mismatched distribution answer names its own defect") {
+    val full = Vector(Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2,
+      Suit.Nomad -> 3)
+    val cases = Vector(
+      amounts(full :+ (Suit.Order -> 0): _*) ->
+        "does not offer a distributed option",
+      amounts(full :+ (Suit.Nomad -> 0): _*) ->
+        "distributes to an option more than once",
+      amounts(full.init: _*) -> "leaves an option undistributed",
+      amounts(Suit.Arcane -> 3, Suit.Discord -> 0, Suit.Hearth -> 0,
+        Suit.Nomad -> 3) -> "distributes to favor-bank/arcane outside 0..2",
+      amounts(Suit.Arcane -> 0, Suit.Discord -> 0, Suit.Hearth -> 0,
+        Suit.Nomad -> 3) -> "distributes an amount other than its total of 6")
+    cases.foreach { case (answer, detail) =>
+      assertEquals(DecisionQueries.accepts(decisionId, distribute, answer),
+        violation(detail), detail)
+    }
+    assertEquals(DecisionQueries.accepts(decisionId, distribute,
+      DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))),
+      violation("expects a distribution answer"))
+    assertEquals(DecisionQueries.accepts(decisionId, chooseOne,
+      amounts(full: _*)), violation("expects a single-choice answer"))
   }
 }

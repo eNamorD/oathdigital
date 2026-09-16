@@ -128,6 +128,24 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       new GamePresentationProjector(catalog), WalkerPowers.empty,
       (_, _, _, _, _) => Right(tree))
 
+  test("a parked distribution projects its slots, bounds, suggestions and total") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(
+      Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
+        DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
+      total = 2, heading = Some("League Treaty"), confirmLabel = "Move favor")))
+    val query = projectorFor(tree).project(context).flatMap(_.query)
+      .getOrElse(fail("a parked distribution must project"))
+    assertEquals(query.form, "distribute")
+    assertEquals(query.options, Vector.empty)
+    assertEquals(query.slots.map(s => (s.option.kind, s.option.id, s.minimum,
+      s.maximum, s.suggested)), Vector(("favor-bank", "arcane", 0, 2, Some(2)),
+      ("favor-bank", "nomad", 0, 6, Some(0))))
+    assertEquals(query.total, Some(2))
+    assertEquals(query.heading, Some("League Treaty"))
+    assertEquals(query.confirmLabel, Some("Move favor"))
+  }
+
   /** Whether the tree below projects at all, for the given options. */
   private def projects(context: ScopedProjectionContext, actor: PlayerId,
       options: Vector[DecisionOption]) =

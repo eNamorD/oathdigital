@@ -71,4 +71,29 @@ class OperationStateMutationSuite extends munit.FunSuite {
     assertEquals(set(titled(None, TitleSide.Oathkeeper), None).left.map(_.code),
       Left("oathkeeper-unchanged"))
   }
+
+  private def begin(ready: ReadyGame, operation: BeginTurn) =
+    new OperationExecutor().executeAll(ready, Vector(operation))
+      .map(_.game.current.turn)
+
+  test("BeginTurn hands the turn to a seated player and clears used powers") {
+    val used = PowerUseRef(PowerTiming.Rest,
+      PowerSourceRef.Card(DenizenId("92")), PowerId("denizen.silver-tongue"))
+    val resting = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(turn = TurnState(playerId, Phase.Rest,
+        Set(used)))))
+    assertEquals(begin(resting, BeginTurn(playerId, Phase.Wake)),
+      Right(TurnState(playerId, Phase.Wake, Set.empty)))
+    assertEquals(begin(resting, BeginTurn(playerId, Phase.RoundEnd)),
+      Right(TurnState(playerId, Phase.RoundEnd, Set.empty)))
+  }
+
+  test("BeginTurn rejects an unseated player and a phase no turn begins in") {
+    assertEquals(begin(ready, BeginTurn(PlayerId("nobody"), Phase.Wake))
+      .left.map(_.code), Left("unknown-player"))
+    Vector(Phase.Act, Phase.Rest, Phase.WarExhaustion).foreach { phase =>
+      assertEquals(begin(ready, BeginTurn(playerId, phase)).left.map(_.code),
+        Left("invalid-turn-phase"), phase.key)
+    }
+  }
 }

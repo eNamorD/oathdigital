@@ -96,6 +96,13 @@ object PowerTiming {
 sealed trait PowerSourceRef extends Product with Serializable
 object PowerSourceRef {
   final case class Site(id: SiteId) extends PowerSourceRef
+
+  /** A globally named card whose printed power was used. This includes
+    * denizens, relics, edifices, visions, and legacies. Where the card sat
+    * when it was used is not part of the use's identity, just as a decision
+    * option names a card without its location.
+    */
+  final case class Card(id: CardId) extends PowerSourceRef
 }
 
 /** A stable identity for one use-limited power instance this turn. */
