@@ -10,6 +10,8 @@ object GameIntent {
   case object EndWake extends GameIntent
   case object BeginRest extends GameIntent
   case object FinishRest extends GameIntent
+  final case class UsePower(powerId: String, source: WalkerStartArgWire)
+      extends GameIntent
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginSearch(source: SearchSource) extends GameIntent

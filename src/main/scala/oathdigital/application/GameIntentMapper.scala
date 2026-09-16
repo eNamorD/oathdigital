@@ -19,6 +19,11 @@ object GameIntentMapper {
       case Intent.EndWake => Right(actor.endWake)
       case Intent.BeginRest => Right(actor.beginRest)
       case Intent.FinishRest => Right(actor.finishRest)
+      case Intent.UsePower(value, source) => for {
+        power <- PowerId.fromValue(value).toRight(GameIntentMappingFailure(
+          "$.intent.powerId", s"invalid power id '$value'"))
+        ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
+      } yield actor.usePower(power, ref)
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)

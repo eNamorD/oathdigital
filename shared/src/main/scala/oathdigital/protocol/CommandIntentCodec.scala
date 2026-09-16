@@ -9,6 +9,8 @@ private[protocol] object CommandIntentCodec {
     case EndWake => tagged("endWake")
     case BeginRest => tagged("beginRest")
     case FinishRest => tagged("finishRest")
+    case UsePower(power, source) => tagged("usePower", "powerId" -> power,
+      "source" -> CommandNestedCodecs.encodeStartArgWire(source))
     case Muster(target) => tagged("muster", "target" -> economy(target))
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,

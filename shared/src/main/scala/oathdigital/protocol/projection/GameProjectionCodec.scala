@@ -19,7 +19,7 @@ object GameProjectionCodec {
     "oathkeeper", "banners", "challenge", "minorActions",
     "negotiation", "negotiationWaiting", "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview",
-    "walkerDecision", "walkerWaiting")
+    "walkerDecision", "walkerWaiting", "phasePowers")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -93,7 +93,8 @@ object GameProjectionCodec {
     "relicDeckCount" -> value.relicDeckCount,
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
-    "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting))
+    "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
+    "phasePowers" -> encoded(value.phasePowers)(encodePhasePower))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -155,12 +156,15 @@ object GameProjectionCodec {
     preview <- traverse(previewRaws, s"$path.privateAdviserPreview")(decodeCard)
     walkerDecision <- optionalAbsent(value, "walkerDecision", path)(decodeWalkerDecision)
     walkerWaiting <- optionalAbsent(value, "walkerWaiting", path)(decodeWalkerWaiting)
+    powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
+    phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
+      decodePhasePower(raw, child) }
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, musters, trades, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview,
-    walkerDecision, walkerWaiting)
+    walkerDecision, walkerWaiting, phasePowers)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

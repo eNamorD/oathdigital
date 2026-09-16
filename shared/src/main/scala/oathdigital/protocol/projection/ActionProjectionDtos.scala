@@ -90,6 +90,11 @@ final case class PendingCardDecisionProjection(
     orderingRequired: Boolean,
     resolutionsByCard: Map[String, Vector[CardResolutionProjection]]
 )
+/** A phase power the viewer can use now: its id, the card it is used from,
+  * and the card's printed power name and rules text.
+  */
+final case class PhasePowerProjection(powerId: String,
+    source: DecisionOptionProjection, name: String, rulesText: String)
 /** The parked `Decide`'s declared question, described rather than derived.
   *
   * This is the whole of Task 4: the projector no longer discovers what to

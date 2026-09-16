@@ -39,4 +39,5 @@ final case class GameProjection(
     ,privateAdviserPreview: Vector[CardDetailsProjection] = Vector.empty
     ,walkerDecision: Option[WalkerDecisionProjection] = None
     ,walkerWaiting: Option[WalkerWaitingProjection] = None
+    ,phasePowers: Vector[PhasePowerProjection] = Vector.empty
 )

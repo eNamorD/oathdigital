@@ -377,6 +377,9 @@ final class GameApplicationService(
       // caller had to learn that the engine changed underneath.
       case GameCommand.EndWake(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.EndWake, playerId)
+      case GameCommand.UsePower(playerId, power, source) =>
+        rules.startWalker(state, ActionRef.UsePower(power), playerId,
+          Vector.empty, Vector(source))
       case GameCommand.Muster(playerId, target) =>
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>

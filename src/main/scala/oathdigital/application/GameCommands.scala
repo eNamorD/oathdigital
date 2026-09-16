@@ -95,6 +95,8 @@ object GameCommand {
   ) extends GameCommand
   final case class BeginRest(playerId: PlayerId) extends GameCommand
   final case class FinishRest(playerId: PlayerId) extends GameCommand
+  final case class UsePower(playerId: PlayerId, power: PowerId,
+      source: DecisionOptionRef) extends GameCommand
 }
 
 /** Generic action-start data. Action-specific starts may widen this family

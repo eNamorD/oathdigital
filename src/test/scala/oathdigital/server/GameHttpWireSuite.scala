@@ -9,6 +9,21 @@ import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,
   DecisionAnswerWire, DecisionPlacementWire, DistributeAmountWire, GameIntent}
 
 class GameHttpWireSuite extends munit.FunSuite {
+  test("the usePower intent binds to a UsePower command for the requester") {
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))),
+      Right(GameCommand.UsePower(PlayerId("actor-1"),
+        PowerId("denizen.silver-tongue"),
+        DecisionOptionRef.Denizen(DenizenId("92")))))
+    assertEquals(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("Not A Power",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))).left.toOption
+      .map(_.path), Some("$.intent.powerId"))
+    assert(GameIntentMapper.bind(PlayerId("actor-1"),
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("warband", "w1"))).isLeft)
+  }
   test("development and authenticated transports decode the same actorless intent") {
     val json = ActorlessCommandCodec.encode(ActorlessCommandRequest(
       8L,

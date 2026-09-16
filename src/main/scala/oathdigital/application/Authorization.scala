@@ -69,6 +69,8 @@ final case class AuthorizedPlayer private (
 
   def beginRest: GameCommand = GameCommand.BeginRest(access.playerId)
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
+  def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
+    GameCommand.UsePower(access.playerId, power, source)
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 

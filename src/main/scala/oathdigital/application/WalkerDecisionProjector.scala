@@ -203,7 +203,7 @@ private[application] final class WalkerDecisionProjector(
     * favor bank is a closed six-case enum, and a button is its own identity,
     * so none can be absent.
     */
-  private def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
+  private[application] def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
       index: Option[CardIndex],
       option: DecisionOption): Option[DecisionOptionProjection] = {
     val ref = option.ref

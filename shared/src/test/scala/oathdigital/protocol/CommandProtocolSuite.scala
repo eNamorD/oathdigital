@@ -5,6 +5,7 @@ class CommandProtocolSuite extends munit.FunSuite {
 
   private val examples: Vector[GameIntent] = Vector(
     PlacePawn("site:a"), EndWake, BeginRest, FinishRest,
+    UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     Muster(EconomyTarget("denizen", "d1")),
     Trade(EconomyTarget("edifice", "e1"), "secret"),
     BeginSearch(SearchSource("world", None)),
@@ -51,6 +52,12 @@ class CommandProtocolSuite extends munit.FunSuite {
       DistributeAmountWire("favor-bank", "arcane", 0),
       DistributeAmountWire("favor-bank", "nomad", 3))))
   )
+
+  test("usePower names exactly one power and one source") {
+    val json = """{"type":"usePower","powerId":"denizen.silver-tongue",""" +
+      """"source":{"optionKind":"denizen","optionId":"92"},"extra":1}"""
+    assert(CommandIntentCodec.decode(ujson.read(json), "$").isLeft)
+  }
 
   test("a walker answer carrying a deleted legacy tag is rejected") {
     val legacy = ujson.Obj("kind" -> "recover-choice", "choice" -> "continue")

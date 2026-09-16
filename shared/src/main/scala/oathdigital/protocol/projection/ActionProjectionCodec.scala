@@ -267,6 +267,21 @@ private[projection] object ActionProjectionCodec {
     card <- optionalAbsent(row, "card", child)(decodeCard)
   } yield DecisionOptionProjection(kind, id, label, card)
 
+  def encodePhasePower(value: PhasePowerProjection): ujson.Value = ujson.Obj(
+    "powerId" -> value.powerId, "source" -> encodeOptionRow(value.source),
+    "name" -> value.name, "rulesText" -> value.rulesText)
+
+  def decodePhasePower(raw: ujson.Value, path: String)
+      : Result[PhasePowerProjection] = for {
+    value <- obj(raw, path)
+    _ <- exact(value, Set("powerId", "source", "name", "rulesText"), path)
+    powerId <- string(value, "powerId", path)
+    source <- field(value, "source", path).flatMap(
+      decodeOptionRow(_, s"$path.source"))
+    name <- string(value, "name", path)
+    rulesText <- string(value, "rulesText", path)
+  } yield PhasePowerProjection(powerId, source, name, rulesText)
+
   def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
     "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,
     "siteId" -> value.siteId,

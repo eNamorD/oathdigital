@@ -18,8 +18,15 @@ import oathdigital.protocol.projection._
 private[application] final class LegalActionProjector(
     catalog: ExecutableCatalog,
     presentation: GamePresentationProjector,
-    walkerDecisions: WalkerDecisionProjector
+    walkerDecisions: WalkerDecisionProjector,
+    phasePowers: PhasePowerProjector
 ) {
+  def this(catalog: ExecutableCatalog,
+      presentation: GamePresentationProjector,
+      walkerDecisions: WalkerDecisionProjector) =
+    this(catalog, presentation, walkerDecisions,
+      new PhasePowerProjector(catalog, walkerDecisions))
+
   /** The automatic walker powers a Travel candidate is costed against
     * (batch-1 Task 5) -- the same full catalog `OathRules` is constructed
     * with, selected down to the automatic set because a projection is built
@@ -155,12 +162,14 @@ private[application] final class LegalActionProjector(
             value.maxSiteToBoard > 0))("moveWarbands"),
           Option.when(oathdigital.gameplay.actions.Negotiation
             .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
-        ).flatten
-        case Phase.Rest => Option.when(FinishRestProcedure.gate(catalog,
-          context.ready, active.player).isRight)("finishRest").toVector
+        ).flatten ++ phasePowers.controls(context)
+        case Phase.Rest => phasePowers.controls(context) ++ Option.when(
+          FinishRestProcedure.gate(catalog, context.ready, active.player).isRight)(
+          "finishRest")
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty
         case Phase.Wake =>
-          takeableResources(context).map(takeControl) :+ "endWake"
+          takeableResources(context).map(takeControl) ++
+            phasePowers.controls(context) :+ "endWake"
       }
     }
   }

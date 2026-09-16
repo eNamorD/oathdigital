@@ -3862,7 +3862,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - Shared: `PhasePowerProjection(powerId: String, source: DecisionOptionProjection, name: String, rulesText: String)`; `GameProjection.phasePowers: Vector[PhasePowerProjection] = Vector.empty` (last field, JSON key `"phasePowers"`); `GameIntent.UsePower(powerId: String, source: WalkerStartArgWire)` (JSON `{"type":"usePower","powerId":..,"source":{"optionKind":..,"optionId":..}}`).
   - Backend: `GameCommand.UsePower(playerId: PlayerId, power: PowerId, source: DecisionOptionRef)`; `AuthorizedPlayer.usePower(power, source)`; `PhasePowerProjector.project(context): Vector[PhasePowerProjection]`; the legal control `s"usePower:${powerId}:${source.id}"`.
 
-- [ ] **Step 1: Write the failing protocol tests**
+- [x] **Step 1: Write the failing protocol tests**
 
 `CommandProtocolSuite`: add `UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92"))` to the intent round-trip list, and a test that the decoder rejects a `usePower` object with an extra key:
 
@@ -3876,7 +3876,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 
 `ProjectionProtocolSuite`: in the full projection fixture, set `phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue", DecisionOptionProjection("denizen", "92", "Silver Tongue"), "Silver Tongue", "Take a favor."))` and keep the existing round-trip assertion.
 
-- [ ] **Step 2: Write the failing projector test**
+- [x] **Step 2: Write the failing projector test**
 
 Move Silver Tongue's arrangement into a shared test object. Create `src/test/scala/oathdigital/gameplay/powers/rest/SilverTongueFixture.scala`:
 
@@ -4054,12 +4054,12 @@ Add to `GameHttpWireSuite`, which already imports `GameCommand`, `GameIntentMapp
 
 `CommandProtocolSuite` pins the JSON spelling, this test pins the binding to a command, and Task 13 submits the bound command through the service.
 
-- [ ] **Step 3: Run to verify they fail**
+- [x] **Step 3: Run to verify they fail**
 
 Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.server.GameHttpWireSuite"`
 Expected: compilation fails on `UsePower` and `PhasePowerProjection`.
 
-- [ ] **Step 4: Shared protocol**
+- [x] **Step 4: Shared protocol**
 
 - `ActionProjectionDtos`:
 
@@ -4119,7 +4119,7 @@ final case class PhasePowerProjection(powerId: String,
 ```
 
 
-- [ ] **Step 5: Backend command path**
+- [x] **Step 5: Backend command path**
 
 - `GameCommands`: `final case class UsePower(playerId: PlayerId, power: PowerId, source: DecisionOptionRef) extends GameCommand`.
 - `Authorization.AuthorizedPlayer`: `def usePower(power: PowerId, source: DecisionOptionRef): GameCommand = GameCommand.UsePower(access.playerId, power, source)`.
@@ -4143,7 +4143,7 @@ final case class PhasePowerProjection(powerId: String,
 
    No other production code matches exhaustively over `GameCommand`: `applyUnblockedCommand` is the only place `case GameCommand.EndWake` appears.
 
-- [ ] **Step 6: Projection**
+- [x] **Step 6: Projection**
 
 - `WalkerDecisionProjector.optionProjection`: widen to `private[application]`.
 - `PhasePowerProjector.scala`:
@@ -4272,12 +4272,12 @@ Replace the whole `case None => current.turn.phase match { ... }` arm (after Tas
 
 Existing tests that assert an exact `legalControls` vector keep passing: the default production catalog registers no WAKE or ACTION phase power, and Silver Tongue is usable only when card 92 is an accessible adviser or site card.
 
-- [ ] **Step 7: Run the suites**
+- [x] **Step 7: Run the suites**
 
 Run: `./sbtw "frontend/testOnly oathdigital.protocol.CommandProtocolSuite oathdigital.protocol.ProjectionProtocolSuite" "testOnly oathdigital.application.PhasePowerProjectorSuite oathdigital.application.GameApplicationServiceSuite oathdigital.gameplay.powers.rest.SilverTongueSuite oathdigital.server.GameHttpWireSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Full gate and commit**
+- [x] **Step 8: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

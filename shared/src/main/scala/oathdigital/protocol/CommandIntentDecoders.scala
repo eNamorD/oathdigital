@@ -11,6 +11,17 @@ private[protocol] object CommandIntentDecoders {
     case "endWake" => empty(value, path, EndWake)
     case "beginRest" => empty(value, path, BeginRest)
     case "finishRest" => empty(value, path, FinishRest)
+    case "usePower" => for {
+      _ <- exact(value, Set("type", "powerId", "source"), path)
+      power <- string(value, "powerId", path)
+      source <- field(value, "source", path).flatMap(raw =>
+        CommandNestedCodecs.decodeStartArgsWire(ujson.Arr(raw), s"$path.source"))
+        .flatMap {
+          case Vector(one) => Right(one)
+          case _ => Left(InvalidValue(s"$path.source",
+            "expected one power source"))
+        }
+    } yield UsePower(power, source)
     case "muster" => nested(value, path, "target")(economy).map(Muster)
     case "trade" => for {
       _ <- exact(value, Set("type", "target", "resource"), path)
