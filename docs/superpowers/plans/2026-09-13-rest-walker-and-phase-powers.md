@@ -5003,7 +5003,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: the shipped behavior of Tasks 1-13.
 - Produces: no code.
 
-- [ ] **Step 1: Correct the 2026-09-12 spec**
+- [x] **Step 1: Correct the 2026-09-12 spec**
 
 Make each edit in place, keeping surrounding text:
 
@@ -5020,11 +5020,11 @@ Make each edit in place, keeping surrounding text:
 5. Open item "Rest completion continuation" (lines 564-565): replace its text with "Settled: Begin Rest completes to `AwaitingRestAction`, and Finish Rest's turn boundary to `AwaitingWakeAction` or `GameFinished` (`2026-09-13-rest-walker-and-phase-powers-design.md`)."
 6. Open item "Unanswered off-turn decisions": replace "as legacy Rest hooks and Oathkeeper recipients already do" with "as League Treaty and Oathkeeper recipients do".
 
-- [ ] **Step 2: Mark the Rest spec implemented**
+- [x] **Step 2: Mark the Rest spec implemented**
 
 In `2026-09-13-rest-walker-and-phase-powers-design.md`, change line 3 to `> Status: implemented on feat/rest-walker; see docs/superpowers/plans/2026-09-13-rest-walker-and-phase-powers.md.`
 
-- [ ] **Step 3: Verify and commit**
+- [x] **Step 3: Verify and commit**
 
 Run: `grep -n "Nothing in this design can complete in Rest\|Legacy Rest commands" docs/superpowers/specs/2026-09-12-walker-ownership-and-phases-design.md`
 Expected: no output.

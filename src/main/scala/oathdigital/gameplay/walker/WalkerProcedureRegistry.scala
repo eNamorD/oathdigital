@@ -236,8 +236,8 @@ object WalkerProcedureRegistry {
       rebuild = BeginRestProcedure.build),
 
     /** Begin Rest already recorded the Rest diagnostics, so this declares no
-      * fallback kind. Any decision a power parks inside it -- League Treaty's
-      * off-turn ruler -- is a generic Rest decision, so this names no power.
+      * fallback kind. Any off-turn decision a power parks inside it is a
+      * generic Rest decision, so this entry names no concrete power.
       */
     PhaseTransitionRef.FinishRest -> Entry(
       fallbackKind = None,
