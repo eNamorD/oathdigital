@@ -106,7 +106,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   private val move: Move = Move(Piece.Pawn(actor),
     PositionedLocation(Location.Site(sites.head)),
     PositionedLocation(Location.Site(sites(2))))
-  private val adjust: AdjustSupply = AdjustSupply(actor, -1)
+  private val adjust: SpendSupply = SpendSupply(actor, 1)
 
   private def pawnSiteOf(state: ReadyGame): Option[SiteId] =
     state.game.current.players.find(_.player == actor).get.pawnSite
@@ -330,7 +330,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   test("Repeat re-runs its body while the pure guard holds and records every pass") {
     // Pure state-based guard: full supply 7 loops while >= 5, so three body
     // passes run (7 -> 6 -> 5 -> 4), then the guard fails and the walk
-    // continues past the Repeat into the trailing AdjustSupply.
+    // continues past the Repeat into the trailing SpendSupply.
     val guard: (ReadyGame, PendingTree) => Boolean =
       (state, _) => supplyOf(state) >= SupplyTrack.Maximum - 2
     val tree: Operation = Sequence(Repeat(guard, adjust), adjust)
@@ -695,7 +695,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val tree: Operation = Sequence(hooked)
     val powers = WalkerPowers(Vector(power))
 
-    // The fold turns the leaf into [AdjustSupply, Decide]: the delta runs and
+    // The fold turns the leaf into [SpendSupply, Decide]: the delta runs and
     // the walk parks on the Decide the transform left in place (this raised a
     // contract violation before the folded vector was walked as children).
     val (parked, parkEvents) = ProcedureWalker.advance(ready, tree, None,

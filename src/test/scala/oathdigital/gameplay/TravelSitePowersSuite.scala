@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{AdjustSupply, Location, Move, Operation,
+import oathdigital.gameplay.operations.{SpendSupply, Location, Move, Operation,
   Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
@@ -48,7 +48,7 @@ class TravelSitePowersSuite extends munit.FunSuite {
 
   private def costNode(source: SiteId, destination: SiteId, base: Int): Sequence =
     Sequence(Vector(
-      AdjustSupply(actor, -base),
+      SpendSupply(actor, base),
       Move(Piece.Pawn(actor), PositionedLocation(Location.Site(source)),
         PositionedLocation(Location.Site(destination)))
     ), Some(PowerWindow.TravelCost))
@@ -71,7 +71,7 @@ class TravelSitePowersSuite extends munit.FunSuite {
       .transforms.foldLeft(node.children) { case (ops, (id, transform)) =>
         transform.fn(ctx(ready, PowerWindow.TravelCost, node, byId(id)), ops)
       }
-    -transformed.collectFirst { case AdjustSupply(_, amount) => amount }
+    transformed.collectFirst { case SpendSupply(_, amount, _) => amount }
       .getOrElse(fail("terrain transform removed payment"))
   }
 

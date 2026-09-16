@@ -9,7 +9,7 @@ import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
+import oathdigital.gameplay.operations.{SpendSupply, CoreOperation,
   Cost, Location, ModifyDicePool, Move, PayCost, Piece,
   PositionedLocation, StackPosition}
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
@@ -203,7 +203,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(recordedOps, Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll)),
-      AdjustSupply(actor, -1),
+      SpendSupply(actor, 1),
       Move(Piece.Card(relic),
         PositionedLocation(Location.Site(recoverSite)),
         PositionedLocation(Location.PlayArea(actor)),

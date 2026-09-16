@@ -101,7 +101,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
     assertEquals(recorded.flatMap(_.ops), Vector[CoreOperation](
       ModifyDicePool(RecoverProcedure.recoverPool, 2,
         window = Some(PowerWindow.RecoverBeforeFirstRoll)),
-      AdjustSupply(fixture.actor, -1)))
+      SpendSupply(fixture.actor, 1)))
 
     val Ready(after) = transition.state: @unchecked
     assertEquals(after.game.current.commonCards.relicDeck,

@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.operations.{AdjustSupply, Location, Move, Operation,
+import oathdigital.gameplay.operations.{SpendSupply, Location, Move, Operation,
   Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
   PowerCtx, PowerResolution, PowerWindow, Transform}
@@ -168,7 +168,7 @@ class TravelProcedureSuite extends munit.FunSuite {
       _ != active(ready).pawnSite.get).get
     assert(TravelProcedure.build(catalog, ready, actor,
       Vector(DecisionOptionRef.Site(destination))).isRight,
-      "supply is owned by the transformed AdjustSupply, not a build gate")
+      "supply is owned by the transformed SpendSupply, not a build gate")
     assertEquals(simulate(ready, destination), None)
 
     val rules = new OathRules(catalog, walkerPowerCatalog = powers)
@@ -247,7 +247,7 @@ class TravelProcedureSuite extends munit.FunSuite {
     val cost = tree.children.head
     assertEquals(cost.window, Some(PowerWindow.TravelCost))
     assertEquals(Operation.flatten(tree).size, 2)
-    assert(Operation.flatten(tree).head.isInstanceOf[AdjustSupply])
+    assert(Operation.flatten(tree).head.isInstanceOf[SpendSupply])
     assert(Operation.flatten(tree).last.isInstanceOf[Move])
   }
 
@@ -275,8 +275,8 @@ class TravelProcedureSuite extends munit.FunSuite {
     def contributions: Map[PowerWindow, Vector[Contribution]] =
       Map(PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
         operations.map {
-          case AdjustSupply(player, amount) if player == ctx.activePlayer =>
-            AdjustSupply(player, amount - 2)
+          case SpendSupply(player, amount, _) if player == ctx.activePlayer =>
+            SpendSupply(player, amount + 2)
           case other => other
         })))
   }

@@ -255,7 +255,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   private def insertingPower(id: PowerId, actor: PlayerId,
       resolution: PowerResolution): ProcedureWalkerSuite.TestTransformPower =
     ProcedureWalkerSuite.TestTransformPower(id, window,
-      (_, ops) => AdjustSupply(actor, -1) +: ops, resolution)
+      (_, ops) => SpendSupply(actor, 1) +: ops, resolution)
 
   test("a player-selected modifier chosen at StartWalker is still folded on " +
       "resume, so the resumed park addresses the leaf that actually parked") {
@@ -269,7 +269,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       case Right(transition) => transition
       case other => fail(s"expected the modifier-selected start to run, got $other")
     }
-    // The transform fired at start: the inserted AdjustSupply ran before the
+    // The transform fired at start: the inserted SpendSupply ran before the
     // first Decide, so the park sits one index deeper than the bare tree
     // would (folded index 1, not declared index 0) -- proof the modifier was
     // in effect for this command.
@@ -282,7 +282,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
       DecisionAnswer.ChooseOneAnswer(ProcedureWalkerSuite.continueOption),
       actor)
     // Without ruling I's fix, `walkerResumeContext` would fold this command
-    // with an EMPTY modifiers vector: the AdjustSupply would no longer be
+    // with an EMPTY modifiers vector: the SpendSupply would no longer be
     // prepended, the folded vector would shift back by one, and this resume
     // would address the SECOND Decide instead of the first -- a decisionId
     // mismatch, rejected with InvalidEventOrder instead of resolving cleanly.

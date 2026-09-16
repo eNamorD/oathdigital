@@ -18,7 +18,7 @@ import oathdigital.model.{Answered, DecisionOption, DecisionOptionRef,
   *   ModifyDicePool("recover", +2),         // window = RecoverBeforeFirstRoll
   *   Repeat(guard = not succeeded && lastChoice != Stop,
   *     Sequence(
-  *       AdjustSupply(actor, -1),           // validated by OperationPipeline
+  *       SpendSupply(actor, 1),            // validated by OperationPipeline
   *       Roll("recover", Defense),          // parks; faces ride `roll()`
   *       Branch(choice when not yet success) // -> Decide("recover.choice") or nothing
   *     )),
@@ -35,7 +35,7 @@ import oathdigital.model.{Answered, DecisionOption, DecisionOptionRef,
   *
   * Semantics:
   *  - Each roll = 2 defense dice (pool count fixed to 2 by the head
-  *    `ModifyDicePool`) and costs 1 supply, debited by `AdjustSupply`.
+  *    `ModifyDicePool`) and costs 1 supply, debited by `SpendSupply`.
   *  - Success = `DefenseDieFace.score` over the combined faces from every roll
   *    of the "recover" pool (the walker accumulates roll outcomes per pool)
   *    reaching `RecoverRules.difficulty(catalog, site)`; site = the actor's
@@ -163,7 +163,7 @@ object RecoverProcedure {
     // Payment precedes Roll so OperationPipeline rejects insufficient supply
     // before randomness is requested.
     val body = Sequence(
-      AdjustSupply(actor, -supplyCost),
+      SpendSupply(actor, supplyCost),
       Roll(recoverPool, DiceSpec(DiceKind.Defense)),
       Branch((ready, _) =>
         if (succeeded(ready)) Vector.empty else Vector(choiceDecide)))

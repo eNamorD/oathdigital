@@ -592,7 +592,11 @@ object OperationShape {
         (result ++ violations, updated)
       case ((result, state), Peek(viewer, id, at)) =>
         (result ++ peekViolation(ready, viewer, id, at), state)
-      case ((result, state), AdjustSupply(player, amount)) =>
+      case ((result, state), SpendSupply(player, amount, _)) =>
+        val (violations, updated) =
+          adjustSupplyViolation(ready, player, -amount, state)
+        (result ++ violations, updated)
+      case ((result, state), GainSupply(player, amount)) =>
         val (violations, updated) =
           adjustSupplyViolation(ready, player, amount, state)
         (result ++ violations, updated)

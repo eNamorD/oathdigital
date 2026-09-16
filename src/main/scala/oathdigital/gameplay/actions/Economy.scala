@@ -224,7 +224,7 @@ object Economy {
         event.playerId,
         ForceKind.Exile(lineage),
         event.warbandsGained)).toVector ++
-      Vector(AdjustSupply(event.playerId, -event.supplySpent))
+      Vector(SpendSupply(event.playerId, event.supplySpent))
 
   private def tradeOperations(event: Traded): Vector[CoreOperation] =
     event.resource match {
@@ -233,13 +233,13 @@ object Economy {
           Cost(secret = 1))) ++
           Option.when(event.gained > 0)(Gain.Favor(
             event.playerId, event.suit, event.gained)).toVector ++
-          Vector(AdjustSupply(event.playerId, -event.supplySpent))
+          Vector(SpendSupply(event.playerId, event.supplySpent))
       case TradeResource.Secret =>
         Vector(PayCost(event.playerId, Location.OnCard(event.target.id),
           Cost(favor = 1, favorBurnt = 1))) ++
           Option.when(event.gained > 0)(Gain.Secrets(
             event.playerId, event.gained)).toVector ++
-          Vector(AdjustSupply(event.playerId, -event.supplySpent))
+          Vector(SpendSupply(event.playerId, event.supplySpent))
     }
 
   private def evolveOperations(

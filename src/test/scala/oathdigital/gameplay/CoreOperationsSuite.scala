@@ -10,6 +10,21 @@ class CoreOperationsSuite extends munit.FunSuite {
   private val blueArea = Location.PlayArea(blue)
   private val site = Location.Site(SiteId("site:mine"))
 
+  test("operation requiredness distinguishes costs, draws, and optional effects") {
+    assert(!GainSupply(red, 1).required)
+    assert(SpendSupply(red, 1).required)
+    assert(!SpendSupply(red, 1, required = false).required)
+    assert(PayCost(red, redArea, Cost.free).required)
+    assert(Draw(red, Vector(DenizenId("denizen:one")),
+      Location.Deck(CardDeck.World), redArea).required)
+    assert(Exchange(Give(Piece.Favor(1), red, redArea, blueArea),
+      Give(Piece.Secrets(1), blue, blueArea, redArea)).required)
+    assert(!Replace(Piece.Warbands(ForceKind.Imperial, 1),
+      Piece.Warbands(ForceKind.Bandit, 1), PositionedLocation(site)).required)
+    assert(Discard.Denizen(DenizenId("denizen:one"), PositionedLocation(site),
+      Region.Cradle, Suit.Order, 0, 0, red, required = true).required)
+  }
+
   test("Swap is two simultaneous reciprocal card moves") {
     val first = DenizenId("denizen:first")
     val second = RelicId("relic:second")

@@ -118,8 +118,8 @@ class OperationValidatorSuite extends munit.FunSuite {
 
   test("a supply spend beyond the track is an insufficient-supply") {
     assertEquals(codes(OperationShape.validate(ready,
-      AdjustSupply(playerId, -8))), Vector("insufficient-supply"))
-    assertEquals(OperationShape.first(ready, AdjustSupply(playerId, -8))
+      SpendSupply(playerId, 8))), Vector("insufficient-supply"))
+    assertEquals(OperationShape.first(ready, SpendSupply(playerId, 8))
       .map(_.code), Some("insufficient-supply"))
   }
 
@@ -165,7 +165,7 @@ class OperationValidatorSuite extends munit.FunSuite {
     val corpus = Vector[CoreOperation](
       Gain.Favor(playerId, Suit.Order, 7),          // insufficient-pieces
       Gain.Favor(playerId, Suit.Order, 1),          // valid
-      AdjustSupply(playerId, -8),                   // insufficient-supply
+      SpendSupply(playerId, 8),                   // insufficient-supply
       Move(Piece.Pawn(playerId),
         PositionedLocation(Location.Site(sites(2))),
         PositionedLocation(Location.Site(sites(3)))) // missing-piece

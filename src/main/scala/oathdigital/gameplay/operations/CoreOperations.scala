@@ -18,6 +18,7 @@ import oathdigital.model._
   */
 sealed trait CoreOperation extends Operation {
   def simultaneous: Boolean = false
+  def required: Boolean = false
 }
 
 sealed trait PrimitiveOperation extends CoreOperation {
@@ -118,14 +119,16 @@ final case class FlipSecrets(player: PlayerId, amount: Int,
   require(from != to, "secret flip must change side")
 }
 
-/** Changes a player's spendable Supply. Negative amounts spend (an
-  * insufficient track is an OperationError.InsufficientSupply), positive
-  * amounts gain up to SupplyTrack.Maximum. Rest's refresh-to-value stays a
-  * non-delta write in the Rest phase.
-  */
-final case class AdjustSupply(player: PlayerId, amount: Int)
+/** Gains Supply up to SupplyTrack.Maximum. */
+final case class GainSupply(player: PlayerId, amount: Int)
     extends PrimitiveOperation {
-  require(amount != 0, "supply adjustment must be non-zero")
+  require(amount > 0, "supply gain must be positive")
+}
+
+/** Spends Supply. Costs are required unless a power explicitly permits less. */
+final case class SpendSupply(player: PlayerId, amount: Int,
+    override val required: Boolean = true) extends PrimitiveOperation {
+  require(amount > 0, "supply spend must be positive")
 }
 
 /** Moves favor or secrets to the shared bank. */
@@ -180,7 +183,8 @@ object Discard {
     */
   final case class Denizen(card: DenizenId, from: PositionedLocation,
       to: Region, suit: Suit, favor: Int,
-      secrets: Int, actingPlayer: PlayerId) extends Discard {
+      secrets: Int, actingPlayer: PlayerId,
+      override val required: Boolean = false) extends Discard {
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
 
@@ -256,6 +260,7 @@ object Discard {
 final case class Draw(player: PlayerId, cards: Vector[CardId],
     source: Location, destination: Location)
     extends CoreOperation {
+  override val required: Boolean = true
   require(cards.nonEmpty, "draw must contain at least one card")
 
   val takes: Vector[Take] = cards.map(card => Take(Piece.Card(card),
@@ -266,6 +271,7 @@ final case class Draw(player: PlayerId, cards: Vector[CardId],
 
 /** Gives pieces in both directions. */
 final case class Exchange(give: Give, receive: Give) extends CoreOperation {
+  override val required: Boolean = true
   require(give.giver != receive.giver,
     "exchange requires two different giving players")
 
@@ -331,6 +337,7 @@ object Cost {
   */
 final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost)
     extends CoreOperation {
+  override val required: Boolean = true
   override val children: Vector[Operation] =
     favorMove(cost.favor, placedAt) ++
       secretMove(cost.secret, placedAt) ++

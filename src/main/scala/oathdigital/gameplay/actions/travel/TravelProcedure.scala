@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
-import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation, Location,
+import oathdigital.gameplay.operations.{SpendSupply, CoreOperation, Location,
   Move, Operation, Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
@@ -14,14 +14,14 @@ import oathdigital.model.{DecisionOptionRef, PlayerId, SiteId}
   * {{{
   * Sequence(                                  // window = TravelActionEligibility
   *   Sequence(                                // window = TravelCost
-  *     AdjustSupply(actor, -printedBase),
+  *     SpendSupply(actor, printedBase),
   *     Move(Pawn, source -> destination)))
   * }}}
   *
   * **Why the cost node is a composite and not a windowed leaf.** A transform
   * hooked on a windowed leaf is handed `Vector(leaf)` and can only wrap or
   * replace that one operation; it cannot see the route. Travel's terrain
-  * transforms need both children -- they rewrite the `AdjustSupply` amount but
+  * transforms need both children -- they rewrite the `SpendSupply` amount but
   * read the destination off the sibling `Move` -- so the window sits on a
   * `Sequence` that hands over both. The outer eligibility `Sequence` wraps the
   * complete cost node for the same reason: Narrow Pass's `Restriction` has to
@@ -36,7 +36,7 @@ import oathdigital.model.{DecisionOptionRef, PlayerId, SiteId}
   * anywhere that knows a Travel start selection is one site.
   *
   * **What does not gate a start.** Supply is not a build gate: it is owned by
-  * the transformed `AdjustSupply` and `OperationValidator`, and because the
+  * the transformed `SpendSupply` and `OperationValidator`, and because the
   * tree is flat a rejection there leaves neither a moved pawn nor pending
   * state. Player role and Foundation faces are not gates either -- neither is
   * a fact about the printed Travel action. Terrain is not a gate: it is the
@@ -84,7 +84,7 @@ object TravelProcedure {
       base: Int): Operation =
     Sequence(Vector(
       Sequence(Vector(
-        AdjustSupply(actor, -base),
+        SpendSupply(actor, base),
         Move(Piece.Pawn(actor),
           PositionedLocation(Location.Site(source)),
           PositionedLocation(Location.Site(destination)))),
@@ -127,6 +127,6 @@ object TravelProcedure {
     */
   private def supplySpent(operations: Vector[CoreOperation], actor: PlayerId)
       : Option[Int] = operations.collect {
-    case AdjustSupply(player, amount) if player == actor && amount < 0 => -amount
+    case SpendSupply(player, amount, _) if player == actor => amount
   }.lastOption
 }

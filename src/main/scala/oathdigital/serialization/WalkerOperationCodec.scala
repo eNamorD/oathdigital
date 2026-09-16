@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.gameplay.{DiceKind, DiceSpec}
-import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
@@ -40,8 +40,11 @@ private[serialization] trait WalkerOperationCodec {
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
-      case AdjustSupply(player, amount) => ujson.Obj(
-        "kind" -> "adjust-supply", "playerId" -> player.value,
+      case SpendSupply(player, amount, _) => ujson.Obj(
+        "kind" -> "spend-supply", "playerId" -> player.value,
+        "amount" -> amount)
+      case GainSupply(player, amount) => ujson.Obj(
+        "kind" -> "gain-supply", "playerId" -> player.value,
         "amount" -> amount)
       case ModifyDicePool(pool, delta, _) => ujson.Obj(
         "kind" -> "modify-dice-pool", "pool" -> pool.value,
@@ -91,7 +94,7 @@ private[serialization] trait WalkerOperationCodec {
       case bury: Bury => ujson.Obj("kind" -> "bury",
         "card" -> encodeBuryableCard(bury.card),
         "from" -> encodePositionedLocation(bury.from))
-      case Discard.Denizen(card, from, to, suit, favor, secrets, actingPlayer) =>
+      case Discard.Denizen(card, from, to, suit, favor, secrets, actingPlayer, _) =>
         ujson.Obj("kind" -> "discard-denizen", "card" -> card.value,
           "from" -> encodePositionedLocation(from), "to" -> to.key,
           "suit" -> suit.key, "favor" -> favor, "secrets" -> secrets,
@@ -220,8 +223,10 @@ private[serialization] trait WalkerOperationCodec {
   protected final def decodeOperation(value: ujson.Value,
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
-      case "adjust-supply" => decodeSignedInt(value("amount"), s"$path.amount")
-        .map(amount => AdjustSupply(PlayerId(value("playerId").str), amount))
+      case "spend-supply" => decodePositiveInt(value("amount"), s"$path.amount")
+        .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
+      case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")
+        .map(amount => GainSupply(PlayerId(value("playerId").str), amount))
       case "modify-dice-pool" =>
         decodeSignedInt(value("delta"), s"$path.delta")
           .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
@@ -644,4 +649,11 @@ private[serialization] trait WalkerOperationCodec {
         number >= Int.MinValue && number <= Int.MaxValue => Right(number.toInt)
     case _ => Left(InvalidValue(path, "expected a signed 32-bit integer"))
   }
+
+  private def decodePositiveInt(value: ujson.Value,
+      path: String): Either[WireError, Int] =
+    decodeSignedInt(value, path).flatMap { amount =>
+      if (amount > 0) Right(amount)
+      else Left(InvalidValue(path, "expected a positive integer"))
+    }
 }

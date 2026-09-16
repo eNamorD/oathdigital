@@ -185,7 +185,7 @@ class RecoverProcedureSuite extends munit.FunSuite
     assertEquals(steps(1).payload, WalkerStepPayload.DeltaRecorded(
       SupplySpent(actor.player, 1)))
     assertEquals(steps(1).ops,
-      Vector[CoreOperation](AdjustSupply(actor.player, -1)))
+      Vector[CoreOperation](SpendSupply(actor.player, 1)))
     assert(steps(2).payload.isInstanceOf[RollPayload])
     assertEquals(steps(2).ops, Vector.empty[CoreOperation])
     assertEquals(steps(3).payload,
@@ -231,7 +231,7 @@ class RecoverProcedureSuite extends munit.FunSuite
       ChoicePayload(RecoverProcedure.choiceDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Button("continue")), actor.player))
     assertEquals(continueEvents(1).asInstanceOf[WalkerStepRecorded].ops,
-      Vector[CoreOperation](AdjustSupply(actor.player, -1)))
+      Vector[CoreOperation](SpendSupply(actor.player, 1)))
     val stateAtRoll2 = applyRecorded(stateAtChoice, continueEvents)
 
     // Second roll succeeds cumulatively: parks the relic decision.

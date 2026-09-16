@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
   SearchCompleted, SearchStarted}
-import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location,
@@ -369,7 +369,7 @@ class GameEventWireSuite extends munit.FunSuite {
         Vector(ModifyDicePool(pool, 2)), Vector.empty),
       WalkerStepRecorded("1.0.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.SupplySpent(player, 1)),
-        Vector(AdjustSupply(player, -1)), Vector.empty),
+        Vector(SpendSupply(player, 1)), Vector.empty),
       WalkerStepRecorded("2.1", WalkerStepPayload.DeltaRecorded(
         DeltaMeaning.RelicAcquired(player, relic, site)), Vector(move),
         Vector.empty))
@@ -550,7 +550,8 @@ class GameEventWireSuite extends munit.FunSuite {
     val legacy = LegacyId("legacy")
     val lineage = LineageId("lineage")
     val operations: Vector[CoreOperation] = Vector(
-      AdjustSupply(player, 2),
+      GainSupply(player, 2),
+      SpendSupply(player, 1),
       ModifyDicePool(PoolKey("recover"), 2),
       RecordPowerUse(PowerUseRef(PowerTiming.Wake,
         PowerSourceRef.Site(site), PowerId("site.take-wealth"))),
@@ -674,9 +675,9 @@ class GameEventWireSuite extends munit.FunSuite {
       Decide("recover.relic", player, DecisionQuery.ChooseOne(Vector(
         DecisionOption.Relic(DecisionOptionRef.Relic(RelicId("r")))))),
       BuildOps((_, _) => Right(Vector.empty)),
-      Repeat((_, _) => false, AdjustSupply(player, 1)),
+      Repeat((_, _) => false, SpendSupply(player, 1)),
       Branch((_, _) => Vector.empty),
-      Sequence(Vector(AdjustSupply(player, 1))))
+      Sequence(Vector(SpendSupply(player, 1))))
     nodes.foreach { node =>
       val event: OathEvent = WalkerStepRecorded("0",
         WalkerStepPayload.DeltaRecorded(DeltaMeaning.OperationApplied("bad")),

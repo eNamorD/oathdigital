@@ -274,7 +274,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     assertEquals(first.window, Some(PowerWindow.ForgeCost): Option[PowerWindow])
     assertEquals(first.asInstanceOf[BuildOps].build(f.ready,
       PendingTree(Vector.empty, Vector.empty)),
-      Right(Vector[CoreOperation](AdjustSupply(f.actor.player, -1))):
+      Right(Vector[CoreOperation](SpendSupply(f.actor.player, 1))):
         Either[OathViolation, Vector[CoreOperation]])
 
     // The walk records exactly that one leaf before parking. A windowed leaf
@@ -284,7 +284,7 @@ class ForgeProcedureSuite extends munit.FunSuite
     val (_, atPark, steps) = parkAtAssignment(f.ready, tree)
     assertEquals(steps.map(_.nodeId), Vector("0.0"))
     assertEquals(steps.head.ops,
-      Vector[CoreOperation](AdjustSupply(f.actor.player, -1)))
+      Vector[CoreOperation](SpendSupply(f.actor.player, 1)))
     assertEquals(supplyOf(atPark, f.actor.player), SupplyTrack.Maximum - 1)
   }
 

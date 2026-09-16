@@ -3,7 +3,7 @@ package oathdigital.gameplay.phases.rest
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.operations.{AdjustSupply, BeginTurn, BuildOps,
+import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps,
   CoreOperation, FlipSecrets, Location, Move, Operation, Piece,
   PositionedLocation, SecretSide, Sequence}
 import oathdigital.gameplay.phases.RestCleanupPlan
@@ -98,8 +98,12 @@ object FinishRestProcedure {
       banked = math.max(0, supply - player.board.warbands - siteWarbands)
       refreshed <- ExileSupply.refresh(banked, player.board.supply.supply)
         .toRight(UnsupportedRestState(s"no Supply band for $banked banked warbands"))
-    } yield Vector(refreshed.supply - player.board.supply.supply)
-      .filter(_ != 0).map(AdjustSupply(resting, _))
+    } yield {
+      val change = refreshed.supply - player.board.supply.supply
+      if (change > 0) Vector(GainSupply(resting, change))
+      else if (change < 0) Vector(SpendSupply(resting, -change))
+      else Vector.empty
+    }
   }
 
   private def beginNextTurn(ready: ReadyGame, resting: PlayerId)

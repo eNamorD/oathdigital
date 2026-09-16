@@ -17,7 +17,7 @@ import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef,
   *
   * {{{
   * Sequence(                                  // window = ForgeActionEligibility
-  *   BuildOps(AdjustSupply(actor, -1)),       // window = ForgeCost
+  *   BuildOps(SpendSupply(actor, 1)),        // window = ForgeCost
   *   Branch(-> Decide("forge.assignment")),   // mixed printed cost only
   *   BuildOps(one PayCost per placed resource,
   *            Play(relic-deck top -> play area, FaceDown)))
@@ -25,7 +25,7 @@ import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef,
   *
   * Windows: the root carries `ForgeActionEligibility` (eligibility-shaped
   * restrictions/relaxations gather there) and the supply payment carries
-  * `ForgeCost`. `AdjustSupply` is a bare `PrimitiveOperation` with no window
+  * `ForgeCost`. `SpendSupply` is a bare `PrimitiveOperation` with no window
   * field of its own, so the payment is stated as a `BuildOps` whose window
   * hooks the node -- the same shape Recover's relic move uses at
   * `RecoverAfterRelic`. `ForgeModifierSelection` is not a tree node: it is the
@@ -268,10 +268,10 @@ object ForgeProcedure {
       else payments(targets.map(_.denizenId -> sectionKey))
     }
 
-    // `AdjustSupply` carries no window of its own, so the payment is a
+    // `SpendSupply` carries no window of its own, so the payment is a
     // BuildOps whose window is the hook point (see this object's doc).
     val paySupply = BuildOps((_, _) => Right(Vector[CoreOperation](
-      AdjustSupply(actor, -supplyCost))),
+      SpendSupply(actor, supplyCost))),
       window = Some(PowerWindow.ForgeCost))
 
     val forgeRelic = BuildOps((ready, pending) => for {

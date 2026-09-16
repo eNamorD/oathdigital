@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
   ReadyGame, WalkerEvent}
-import oathdigital.gameplay.operations.{AdjustSupply, Branch, BuildOps,
+import oathdigital.gameplay.operations.{SpendSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
   OperationPipeline, OperationPolicy, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
@@ -560,8 +560,8 @@ object ProcedureWalker {
       fallback: String): DeltaMeaning = ops match {
     case Vector(ModifyDicePool(pool, delta, _)) =>
       DicePoolModified(pool, delta)
-    case Vector(AdjustSupply(player, amount)) if amount < 0 =>
-      SupplySpent(player, -amount)
+    case Vector(SpendSupply(player, amount, _)) =>
+      SupplySpent(player, amount)
     case Vector(Move(Piece.Card(relic: RelicId),
         PositionedLocation(Location.Site(site), _),
         PositionedLocation(Location.PlayArea(player), _), _)) =>

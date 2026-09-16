@@ -10,7 +10,7 @@ import oathdigital.gameplay.OathViolation._
 
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
 import GameStateUpdates.updateCurrent
-import oathdigital.gameplay.operations.{AdjustSupply,
+import oathdigital.gameplay.operations.{SpendSupply,
   CoreOperation, Draw,
   Location, OperationPipeline, OperationPolicy}
 
@@ -96,7 +96,7 @@ object Search {
           Left(InsufficientSupply(cost, player.board.supply.supply))
         operation = drawOperation(event)
         operations = Vector[CoreOperation](operation,
-          AdjustSupply(event.playerId, -cost))
+          SpendSupply(event.playerId, cost))
         execution <- OperationPipeline.run(
           ready, operations, OperationPolicy.exact(
             operations, "Search semantic root is not permitted")
@@ -116,7 +116,7 @@ object Search {
     }
 
   /** Draws the recorded cards top-first from the authoritative source into the
-    * actor's temporary hand. Supply is spent by an AdjustSupply operation in
+    * actor's temporary hand. Supply is spent by a SpendSupply operation in
     * the Search batch; Visions Drawn and the pending Search procedure remain
     * direct updates.
     */

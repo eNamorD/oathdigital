@@ -296,7 +296,9 @@ private[operations] object OperationStateMutation {
         result.flatMap(flipPlayerSecrets(_, player, amount, from, to))
       case (result, Peek(viewer, id, at)) =>
         result.flatMap(peek(_, viewer, id, at))
-      case (result, AdjustSupply(player, amount)) =>
+      case (result, SpendSupply(player, amount, _)) =>
+        result.flatMap(adjustSupply(_, player, -amount))
+      case (result, GainSupply(player, amount)) =>
         result.flatMap(adjustSupply(_, player, amount))
       case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(adjustDicePool(_, pool, delta))
