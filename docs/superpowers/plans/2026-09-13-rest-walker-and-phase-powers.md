@@ -4306,7 +4306,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `GameProjection.phasePowers`, `PhasePowerProjection`, `GameIntent.UsePower`, `WalkerStartArgWire` (Task 11).
 - Produces: `PhasePowerButtons.actions(value: GameProjection): Vector[(PhasePowerState, GameCommand)]`, `PhasePowerButtons.showsFinishRest(value): Boolean`, `PhasePowerButtons.render(value, canControl, panel: dom.Element, submit: GameCommand => Unit): Unit`; buttons carry class `phase-power` and `data-power-id`.
 
-- [ ] **Step 1: Write the failing UI tests**
+- [x] **Step 1: Write the failing UI tests**
 
 In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty` as the last parameter of the `projection` helper at line 931 and pass it to `GameProjection(...)`. The suite tests UI decisions through pure helpers (as `ServerUiSupport.takeWealthActions` is tested), so add:
 
@@ -4334,12 +4334,12 @@ In `ServerModeUiSuite`, add `phasePowers: Vector[PhasePowerState] = Vector.empty
   }
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ServerModeUiSuite"`
 Expected: compilation fails on `PhasePowerState`.
 
-- [ ] **Step 3: Implement the buttons**
+- [x] **Step 3: Implement the buttons**
 
 `package.scala`: `type PhasePowerState = oathdigital.protocol.projection.PhasePowerProjection` and `val PhasePowerState = oathdigital.protocol.projection.PhasePowerProjection`, placed beside the other projection aliases.
 
@@ -4405,12 +4405,12 @@ In `ActionDecisionRenderer`:
 
    Run `wc -l frontend/src/main/scala/oathdigital/frontend/ActionDecisionRenderer.scala`. Expected: at most 800 lines; Task 8 removed the Rest power branch.
 
-- [ ] **Step 4: Run the UI suite**
+- [x] **Step 4: Run the UI suite**
 
 Run: `./sbtw "frontend/testOnly oathdigital.frontend.ServerModeUiSuite"`
 Expected: PASS.
 
-- [ ] **Step 5: Full gate and commit**
+- [x] **Step 5: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

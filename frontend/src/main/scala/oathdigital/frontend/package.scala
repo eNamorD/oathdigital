@@ -79,6 +79,8 @@ package object frontend {
   val DecisionQueryState = protocol.projection.DecisionQueryProjection
   type DecisionOptionState = protocol.projection.DecisionOptionProjection
   val DecisionOptionState = protocol.projection.DecisionOptionProjection
+  type PhasePowerState = protocol.projection.PhasePowerProjection
+  val PhasePowerState = protocol.projection.PhasePowerProjection
   type DecisionSectionState = protocol.projection.DecisionSectionProjection
   val DecisionSectionState = protocol.projection.DecisionSectionProjection
   type DecisionSlotState = protocol.projection.DecisionSlotProjection

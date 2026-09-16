@@ -907,11 +907,34 @@ class ServerModeUiSuite extends FunSuite {
     ))
   }
 
+  test("a legal phase power becomes one usePower command") {
+    val power = PhasePowerState("denizen.silver-tongue",
+      DecisionOptionState("denizen", "92", "Silver Tongue"),
+      "Silver Tongue", "Take a favor.")
+    val legal = projection(Set("usePower:denizen.silver-tongue:92", "finishRest"),
+      phase = "rest", phasePowers = Vector(power))
+    assertEquals(PhasePowerButtons.actions(legal), Vector(power ->
+      oathdigital.protocol.GameIntent.UsePower("denizen.silver-tongue",
+        oathdigital.protocol.WalkerStartArgWire("denizen", "92"))))
+    assertEquals(PhasePowerButtons.actions(projection(Set("finishRest"),
+      phase = "rest", phasePowers = Vector(power))), Vector.empty)
+  }
+
+  test("Finish Rest is offered only when finishRest is legal") {
+    assert(PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
+      phase = "rest")))
+    assert(!PhasePowerButtons.showsFinishRest(projection(Set.empty,
+      phase = "rest")))
+    assert(!PhasePowerButtons.showsFinishRest(projection(Set("finishRest"),
+      phase = "wake")))
+  }
+
   private def projection(
       legalControls: Set[String],
       phase: String = "wake",
       activeParticipantId: String = "red-exile",
-      ready: Boolean = true
+      ready: Boolean = true,
+      phasePowers: Vector[PhasePowerState] = Vector.empty
   ): GameProjection =
     GameProjection(
       gameId = "game-1",
@@ -936,7 +959,8 @@ class ServerModeUiSuite extends FunSuite {
       pawnLocations = Vector.empty,
       legalControls = legalControls.toVector.sorted,
       ready = ready,
-      completed = false
+      completed = false,
+      phasePowers = phasePowers
     )
 
   /** Task 5: a `GameProjection` parked on the Forge decision above, for the
