@@ -178,6 +178,62 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     }
   }
 
+  test("BuildOps filters immune discard and replays the legal discard") {
+    val first = Discard.Denizen(siteDenizen.id,
+      PositionedLocation(Location.Site(sites.head)), Region.Cradle,
+      Suit.Order, 1, 0, actor)
+    val second = Discard.Denizen(worldDenizen,
+      PositionedLocation(Location.Site(sites(1))), Region.Cradle,
+      Suit.Order, 0, 0, actor)
+    val current = ready.game.current
+    val source = ready.copy(game = ready.game.copy(current = current.copy(
+      commonCards = current.commonCards.copy(worldDeck = Vector.empty),
+      map = current.map.copy(sites = current.map.sites.updated(sites(1),
+        current.map.sites(sites(1)).copy(denizens = Vector(
+          DenizenState(worldDenizen, Orientation.FaceUp, Tokens.empty))))))))
+    val immunity = new OperationRestriction {
+      override def reason(state: ReadyGame, operation: CoreOperation) =
+        Option.when(operation == first)(OperationReason("immune",
+          "first card cannot be discarded", OperationReasonKind.Impossible))
+    }
+    val tree = Sequence(Vector(BuildOps((_, _) => Right(Vector(first, second)),
+      restrictions = (_, _) => Vector(immunity))))
+    ProcedureWalker.advance(source, tree, None, noPowers) match {
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
+          Vector(Vector[CoreOperation](second)))
+        val replay = events.foldLeft[Either[OathViolation, OathState]](
+          Right(OathState.Ready(source))) { (result, event) =>
+          result.flatMap(ProcedureWalker.applyRecorded(_, event
+            .asInstanceOf[WalkerStepRecorded]))
+        }
+        assertEquals(replay, Right(OathState.Ready(state)))
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
+  test("optional immune-only discard records nothing; required discard rejects") {
+    val discard = Discard.Denizen(siteDenizen.id,
+      PositionedLocation(Location.Site(sites.head)), Region.Cradle,
+      Suit.Order, 1, 0, actor)
+    val immunity = new OperationRestriction {
+      override def reason(state: ReadyGame, operation: CoreOperation) =
+        Some(OperationReason("immune", "site card cannot be discarded",
+          OperationReasonKind.Impossible))
+    }
+    def tree(operation: CoreOperation): Operation = Sequence(Vector(
+      BuildOps((_, _) => Right(Vector(operation)),
+        restrictions = (_, _) => Vector(immunity))))
+    ProcedureWalker.advance(ready, tree(discard), None, noPowers) match {
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(state, ready)
+        assertEquals(events, Vector.empty)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+    assert(ProcedureWalker.advance(ready,
+      tree(discard.copy(required = true)), None, noPowers).isLeft)
+  }
+
   test("a Decide at the head parks with no events, then the answered resume finishes") {
     val tree: Operation = Sequence(decide, adjust)
 

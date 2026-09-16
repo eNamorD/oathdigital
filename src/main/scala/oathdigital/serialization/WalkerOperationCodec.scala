@@ -132,12 +132,12 @@ private[serialization] trait WalkerOperationCodec {
       case Kill(warbands, from) => ujson.Obj("kind" -> "kill",
         "warbands" -> encodePiece(warbands),
         "from" -> encodePositionedLocation(from))
-      case Play(card, from, destination, orientation) => ujson.Obj(
+      case Play(card, from, destination, orientation, _) => ujson.Obj(
         "kind" -> "play", "card" -> encodeCardRef(card),
         "from" -> encodePositionedLocation(from),
         "destination" -> encodeLocation(destination),
         "orientation" -> encodeOrientation(orientation))
-      case Replace(removed, replacements, at) => ujson.Obj(
+      case Replace(removed, replacements, at, _) => ujson.Obj(
         "kind" -> "replace", "removed" -> encodePiece(removed),
         "replacements" -> encodePiece(replacements),
         "at" -> encodePositionedLocation(at))

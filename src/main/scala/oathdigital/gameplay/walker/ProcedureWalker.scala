@@ -4,7 +4,7 @@ import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
   ReadyGame, WalkerEvent}
 import oathdigital.gameplay.operations.{SpendSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
-  OperationPipeline, OperationPolicy, Piece,
+  OperationPipeline, OperationPolicy, OperationRestriction, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerResolution,
   PowerWindow}
@@ -529,7 +529,8 @@ object ProcedureWalker {
     val tree = PendingTree(at = path, answered = ctx.answered)
     build.build(ctx.state, tree).flatMap { ops =>
       if (ops.isEmpty) Right(ctx)
-      else recordBatch(ops, contributions, ctx, path, leafLabel(build))
+      else recordBatch(ops, contributions, ctx, path, leafLabel(build),
+        build.restrictions(ctx.state, tree))
     }
   }
 
@@ -543,8 +544,11 @@ object ProcedureWalker {
     */
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
-      label: String): Either[OathViolation, WalkCtx] =
-    OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive)(
+      label: String,
+      restrictions: Vector[OperationRestriction] = Vector.empty)
+      : Either[OathViolation, WalkCtx] =
+    OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
+      restrictions)(
       Right(_)).map { updated =>
       val nodeId = if (path.isEmpty) label else path.mkString(".")
       val events = if (updated.executed.isEmpty) ctx.events else

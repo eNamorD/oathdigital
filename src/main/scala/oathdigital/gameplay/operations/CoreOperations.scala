@@ -369,7 +369,8 @@ final case class Kill(warbands: Piece.Warbands,
   * their Advisers.
   */
 final case class Play(card: CardId, from: PositionedLocation,
-    destination: Location, orientation: Orientation)
+    destination: Location, orientation: Orientation,
+    override val required: Boolean = false)
     extends CoreOperation {
   require(destination match {
     case _: Location.Site | _: Location.PlayArea => true
@@ -383,7 +384,8 @@ final case class Play(card: CardId, from: PositionedLocation,
 
 /** Swaps warbands for a new color. This is distinct from kill and sacrifice. */
 final case class Replace(removed: Piece.Warbands,
-    replacements: Piece.Warbands, at: PositionedLocation)
+    replacements: Piece.Warbands, at: PositionedLocation,
+    override val required: Boolean = false)
     extends CoreOperation {
   require(removed.amount == replacements.amount,
     "replace must exchange equal numbers of warbands")
@@ -573,7 +575,9 @@ final case class Decide(decisionId: String, owner: PlayerId,
   */
 final case class BuildOps(build: (ReadyGame, PendingTree) =>
     Either[OathViolation, Vector[CoreOperation]],
-    override val window: Option[PowerWindow] = None)
+    override val window: Option[PowerWindow] = None,
+    restrictions: (ReadyGame, PendingTree) => Vector[OperationRestriction] =
+      (_, _) => Vector.empty)
     extends PrimitiveOperation
 
 /** Re-executes `body` until `guard` is false. The guard runs only at command

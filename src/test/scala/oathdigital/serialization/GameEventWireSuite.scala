@@ -13,7 +13,8 @@ import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, Buil
   Location,
   ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
   PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll,
-  Sacrifice, SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take}
+  Sacrifice, SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take,
+  OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
@@ -23,6 +24,27 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
+  test("reduced optional spend is canonical in memory and on the wire") {
+    import oathdigital.model.TestGameFixtures.{game, lineageId, playerId}
+    val base = ReadyGame(game, Map(playerId -> PlayerColor("red")),
+      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered,
+        playerId), MaterialBankState(Suit.all.map(_ -> 5).toMap,
+        Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+    val one = base.copy(game = base.game.copy(current =
+      base.game.current.copy(players = base.game.current.players.map { player =>
+        player.copy(board = player.board.copy(supply = SupplyTrack(1)))
+      })))
+    val run = OperationPipeline.run(one,
+      Vector(SpendSupply(playerId, 3, required = false)),
+      OperationPolicy.Permissive)(Right(_)).toOption.get
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.SupplySpent(playerId, 1)), run.executed, Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
+  }
+
   test("ignored-rule diagnostics round trip durable source timing and reason") {
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
       MajorActionKind.Rest, Vector(IgnoredRuleDiagnostic(

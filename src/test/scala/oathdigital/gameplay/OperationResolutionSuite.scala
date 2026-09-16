@@ -113,6 +113,14 @@ class OperationResolutionSuite extends munit.FunSuite {
       ModifyDicePool(PoolKey("recover"), -4), validator),
       Right(OperationResolution.Execute(
         ModifyDicePool(PoolKey("recover"), -2))))
+    assertEquals(OperationResolution.resolve(dice,
+      ModifyDicePool(PoolKey("recover"), Int.MinValue), validator),
+      Right(OperationResolution.Execute(
+        ModifyDicePool(PoolKey("recover"), -2))))
+    assertEquals(OperationResolution.resolve(dice,
+      ModifyDicePool(PoolKey("recover"), Int.MaxValue), validator),
+      Right(OperationResolution.Execute(
+        ModifyDicePool(PoolKey("recover"), Int.MaxValue - 2))))
   }
 
   test("Supply gain shrinks at the track maximum") {

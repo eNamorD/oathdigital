@@ -23,6 +23,11 @@ class CoreOperationsSuite extends munit.FunSuite {
       Piece.Warbands(ForceKind.Bandit, 1), PositionedLocation(site)).required)
     assert(Discard.Denizen(DenizenId("denizen:one"), PositionedLocation(site),
       Region.Cradle, Suit.Order, 0, 0, red, required = true).required)
+    assert(Play(DenizenId("denizen:one"), PositionedLocation(redArea),
+      site, Orientation.FaceUp, required = true).required)
+    assert(Replace(Piece.Warbands(ForceKind.Imperial, 1),
+      Piece.Warbands(ForceKind.Bandit, 1), PositionedLocation(site),
+      required = true).required)
   }
 
   test("Swap is two simultaneous reciprocal card moves") {

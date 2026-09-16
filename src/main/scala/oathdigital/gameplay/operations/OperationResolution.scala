@@ -36,8 +36,10 @@ object OperationResolution {
           case GainSupply(player, _) => ready.game.current.players
             .find(_.player == player).fold(0)(p =>
               math.max(0, SupplyTrack.Maximum - p.board.supply.supply))
-          case ModifyDicePool(pool, delta, _) if delta < 0 =>
-            ready.game.current.rollPools.get(pool).fold(0)(_.count)
+          case ModifyDicePool(pool, delta, _) =>
+            val current = ready.game.current.rollPools.get(pool).fold(0)(_.count)
+            if (delta < 0) math.max(0, current)
+            else math.max(0, Int.MaxValue - current)
           case _ => maximum
         }
         val upper = math.min(maximum, capped)
@@ -98,7 +100,8 @@ object OperationResolution {
         value.copy(removed = value.removed.copy(amount = n),
           replacements = value.replacements.copy(amount = n))))
       case value: ModifyDicePool if value.delta != 0 =>
-        Some(math.abs(value.delta) -> ((n: Int) =>
+        Some((if (value.delta == Int.MinValue) Int.MaxValue
+          else math.abs(value.delta)) -> ((n: Int) =>
           value.copy(delta = if (value.delta < 0) -n else n)))
       case _ => None
     }
