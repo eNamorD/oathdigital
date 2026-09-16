@@ -8,7 +8,7 @@
 
 **Tech Stack:** Scala 2.13, sbt, munit, Scala.js frontend, ujson.
 
-**Spec:** `docs/superpowers/specs/2026-09-16-search-walker-design.md` (approved), with the walker and declarative-decision specs linked there. **Prerequisite:** Complete `docs/superpowers/specs/2026-09-16-best-effort-core-operations-design.md` and its separate implementation plan first.
+**Spec:** `docs/superpowers/specs/2026-09-16-search-walker-design.md` (approved), with the walker and declarative-decision specs linked there. **Prerequisite:** Complete `docs/superpowers/plans/2026-09-16-best-effort-core-operations.md` first.
 
 ## Global Constraints
 
