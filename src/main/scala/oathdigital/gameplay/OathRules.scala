@@ -50,8 +50,22 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   override val initialState: OathState = setup.initialState
 
+  /** Walker-ownership invariant: while a walker procedure is parked, only
+    * its resume commands run. `GameApplicationService.applyCommand` refuses
+    * other commands first; this keeps the rules boundary honest for every
+    * other caller.
+    */
+  private def unlessWalkerPending(state: OathState)(
+      handled: => Either[OathViolation, OathTransition])
+      : Either[OathViolation, OathTransition] = state match {
+    case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
+        ready.game.current.walkerProcedure.nonEmpty =>
+      Left(InvalidEventOrder("a walker procedure is already pending"))
+    case _ => handled
+  }
+
   def handle(state: OathState, command: EconomyCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     command match {
       case value: EconomyCommand.Muster => withFallback(state, value.playerId,
         MajorActionKind.Muster)(Economy.handle(catalog, state, command))
@@ -60,11 +74,12 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         MajorActionKind.Trade)(Economy.handle(catalog, state, command))
         .flatMap(completeAction _)
     }
+  }
 
   def handle(
       state: OathState,
       command: SearchCommand
-  ): Either[OathViolation, OathTransition] =
+  ): Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
       case start: SearchCommand.Start => withFallback(state, start.playerId,
         MajorActionKind.Search)(Search.handle(catalog, state, command))
@@ -89,6 +104,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         case _ => Right(transition)
       }
     }
+  }
 
   private def recordSearchWhenPlayed(command: SearchCommand,
       transition: OathTransition): Either[OathViolation, OathTransition] =
@@ -100,7 +116,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     }
 
   def handle(state: OathState, command: ChallengeCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
       case begin: ChallengeCommand.Begin => withFallback(state, begin.player,
         MajorActionKind.Challenge)(Challenge.handle(catalog, state, command))
@@ -110,9 +126,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         completeAction(transition)
       case _ => Right(transition)
     }}
+  }
 
   def handle(state: OathState, command: MinorActionCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     MinorActions.handle(catalog, state, command).flatMap { transition =>
       (command, transition.state) match {
         case (play: MinorActionCommand.PlayFacedownAdviser, Ready(ready)) =>
@@ -121,9 +138,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         case _ => Right(transition)
       }
     }.flatMap(completeAction _)
+  }
 
   def handle(state: OathState, command: VisionCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     Visions.handle(catalog, state, command).flatMap { transition => command match {
       case _: VisionCommand.PlayConspiracy
           if (transition.state match {
@@ -133,9 +151,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case _: VisionCommand.Reveal => completeAction(transition)
       case _ => Right(transition)
     }}
+  }
 
   def handle(state: OathState, command: NegotiationCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     Negotiation.handle(catalog, state, command).flatMap { transition => command match {
       case _: NegotiationCommand.Accept if (transition.state match {
         case Ready(ready) => ready.game.current.pending.isEmpty
@@ -144,9 +163,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case _: NegotiationCommand.Decline => completeAction(transition)
       case _ => Right(transition)
     }}
+  }
 
   def handle(state: OathState, command: CampaignCommand)
-      : Either[OathViolation, OathTransition] =
+      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
       case begin: CampaignCommand.Start => withFallback(state, begin.playerId,
         MajorActionKind.Campaign)(Campaign.handle(catalog, state, command,
@@ -167,6 +187,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         case _ => Right(transition)
       }
     }
+  }
 
   override def evolve(
       state: OathState,

@@ -6,12 +6,12 @@ import oathdigital.protocol.projection.{BoardTargetRefProjection,
 import java.nio.file.Files
 
 import oathdigital.model._
-import oathdigital.gameplay.actions.{CampaignRules, RecoverRules, SearchRules}
+import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.operations.{AdjustSupply, CoreOperation,
-  Cost, Kill, Location, ModifyDicePool, Move, PayCost, Piece,
-  PositionedLocation, SetOathkeeper, StackPosition}
+  Cost, Location, ModifyDicePool, Move, PayCost, Piece,
+  PositionedLocation, StackPosition}
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
@@ -19,7 +19,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
-  OperationApplied, RelicAcquired, SupplySpent}
+  RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, PartitionAnswer}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
@@ -33,7 +33,6 @@ import oathdigital.gameplay.OathEvent.{
 }
 import oathdigital.gameplay.OathViolation.{CatalogMismatch, WrongPlayer}
 import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.ReadyGame
 import oathdigital.gameplay.{MajorActionKind, OathContinue, OathRules,
   OrderedRuleInvocation, RuleSourceRef}
@@ -1378,73 +1377,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)
     val gameId = "game-oathkeeper-tie"
-    val setup = execute(service, gameId)
-    val Ready(base) = setup.state: @unchecked
-    val active = base.game.current.turn.activePlayer
-    val players = base.game.current.players.map(_.player)
-    val holder = players.find(_ != active).get
-    val leaders = players.filterNot(_ == holder)
-    val leaderA = leaders(0)
-    val leaderB = leaders(1)
-    val lineageOf = base.game.current.players.map(p => p.player -> p.lineage).toMap
-    val siteA = base.game.current.map.inPlay(0)
-    val siteB = base.game.current.map.inPlay(1)
-
-    // Every site with capacity starts occupied by its printed bandit count
-    // (`FirstGameSetupMaterializer`); clear it first so the exile warband
-    // placed below does not conflict with the resident force kind.
-    def clear(site: SiteId): Vector[CoreOperation] =
-      base.game.current.map.sites(site).forces match {
-        case SiteForces.Occupied(kind, count) => Vector(
-          Kill(Piece.Warbands(kind, count), PositionedLocation(Location.Site(site))))
-        case SiteForces.Empty => Vector.empty
-      }
-
-    val arrange = WalkerStepRecorded("0", DeltaRecorded(
-      OperationApplied(
-        "arrange an off-turn Oathkeeper tie for the reload fixture")),
-      clear(siteA) ++ clear(siteB) ++ Vector(
-        SetOathkeeper(Some(holder)),
-        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaderA)), 1),
-          PositionedLocation(Location.PlayArea(leaderA)),
-          PositionedLocation(Location.Site(siteA))),
-        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaderB)), 1),
-          PositionedLocation(Location.PlayArea(leaderB)),
-          PositionedLocation(Location.Site(siteB)))
-      ), Vector.empty)
-    val record = ujson.write(GameEventWire.encodeEvent(gameId, catalogRef,
-      setup.nextSequence, arrange).toOption.get)
-    repository.append(gameId, ExpectedStream.AtNextSequence(setup.nextSequence),
-      Vector(record))
-
-    val seeded = service.load(gameId).toOption.flatten.get
-    val seededSequence = setup.nextSequence + 1L
-    assertEquals(seeded.nextSequence, seededSequence)
-    val Ready(arranged) = seeded.state: @unchecked
-    assertEquals(arranged.game.current.title,
-      OathkeeperState(Some(holder), TitleSide.Oathkeeper))
-
-    val actEntered = service.handle(gameId, seededSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val Ready(inAct) = actEntered.state: @unchecked
-    val activePlayer = inAct.game.current.players.find(_.player == active).get
-    val destination = inAct.game.current.map.inPlay.find(id =>
-      !activePlayer.pawnSite.contains(id) && id != siteA && id != siteB).get
-
-    // The completion's own triggered park is one append with the action: no
-    // separate command started the Oathkeeper procedure.
-    val parked = service.handle(gameId, actEntered.nextSequence,
-      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
-        Vector.empty, Vector(DecisionOptionRef.Site(destination))))
-      ).toOption.get
-    assert(parked.events.last match {
-      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
-      case _ => false
-    }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
-    assertEquals(parked.continue, OathContinue.AwaitingOathkeeperRecipient(
-      holder, DecisionId(OathkeeperProcedure.recipientDecisionId)))
-    assertEquals(parked.nextSequence,
-      actEntered.nextSequence + parked.events.size)
+    val (parked, active, holder, leaderB) =
+      ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId)
     assertEquals(
       repository.load(gameId).toOption.flatten.get.records.size.toLong,
       parked.nextSequence)

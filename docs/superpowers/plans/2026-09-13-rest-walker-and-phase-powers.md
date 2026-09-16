@@ -4441,7 +4441,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `ParkedServiceFixture.oathkeeperTiePark(service, repository, gameId): (GameAccepted, PlayerId, PlayerId, PlayerId)` returning `(parked, active, holder, leaderB)`.
   - `ParkedServiceFixture.silverTonguePark(service, repository, gameId): (GameAccepted, PlayerId, Suit)` returning `(parked, active, bank)`, where `bank` is a suit the parked choice offers.
 
-- [ ] **Step 1: Add the remaining parks to the fixture**
+- [x] **Step 1: Add the remaining parks to the fixture**
 
 Append to `ParkedServiceFixture` (add `oathdigital.gameplay.actions.recover.RecoverProcedure`, `oathdigital.gameplay.oathkeeper.OathkeeperProcedure`, `oathdigital.gameplay.operations.SetOathkeeper`, `oathdigital.gameplay.powers.rest.SilverTongue` and `oathdigital.gameplay.walker.WalkerParked` to its imports):
 
@@ -4564,7 +4564,7 @@ Delete the `assertEquals(parked.nextSequence, actEntered.nextSequence + parked.e
 Run: `./sbtw "testOnly oathdigital.application.GameApplicationServiceSuite"`
 Expected: PASS, with no behavior change.
 
-- [ ] **Step 2: Write the failing rules-level suite**
+- [x] **Step 2: Write the failing rules-level suite**
 
 `src/test/scala/oathdigital/gameplay/PendingWalkerRulesSuite.scala`:
 
@@ -4649,12 +4649,12 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
 }
 ```
 
-- [ ] **Step 3: Run to verify it fails**
+- [x] **Step 3: Run to verify it fails**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.PendingWalkerRulesSuite"`
 Expected: FAIL on the legacy handles, which reject with their own gates' messages. The `startWalker` assertions already pass.
 
-- [ ] **Step 4: Guard every `handle` overload**
+- [x] **Step 4: Guard every `handle` overload**
 
 In `OathRules.scala`, add:
 
@@ -4805,12 +4805,12 @@ Replace `OathRules.scala` lines 50-167, the seven non-Rest `handle` overloads an
 
 No body changes: each overload's original body now sits one level deeper inside `unlessWalkerPending(state) { ... }`.
 
-- [ ] **Step 5: Run the rules suite**
+- [x] **Step 5: Run the rules suite**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.PendingWalkerRulesSuite"`
 Expected: PASS.
 
-- [ ] **Step 6: Write the service-level matrix**
+- [x] **Step 6: Write the service-level matrix**
 
 `src/test/scala/oathdigital/application/PendingWalkerInvariantSuite.scala`:
 
@@ -4969,12 +4969,12 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
 
 The application gate already refuses these commands (Correction 7), so this suite pins that gate rather than driving new code. If a command is accepted, the gate in `GameApplicationService.applyCommand` has a hole: fix it there, never in the test.
 
-- [ ] **Step 7: Run the matrix**
+- [x] **Step 7: Run the matrix**
 
 Run: `./sbtw "testOnly oathdigital.application.PendingWalkerInvariantSuite"`
 Expected: PASS.
 
-- [ ] **Step 8: Full gate and commit**
+- [x] **Step 8: Full gate and commit**
 
 Run: `./sbtw "test" "frontend/test" "frontend/fastLinkJS" && python3 scripts/check-architecture.py && git diff --check`
 Expected: all green.

@@ -2,13 +2,16 @@ package oathdigital.application
 
 import oathdigital.gameplay.OathContinue
 import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.{CoreOperation, Kill, Location, Move,
-  Piece, PositionedLocation, StackPosition}
+  Piece, PositionedLocation, SetOathkeeper, StackPosition}
+import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.{FirstGameRulesData, FirstGameSetupPlan}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
-import oathdigital.gameplay.walker.WalkerStepRecorded
+import oathdigital.gameplay.walker.{WalkerParked, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.serialization.GameEventWire
 
@@ -21,6 +24,7 @@ import oathdigital.serialization.GameEventWire
   */
 object ParkedServiceFixture {
   val treatyCard: DenizenId = DenizenId("237")
+  val silverTongueCard: DenizenId = DenizenId("92")
 
   def setUp(service: GameApplicationService, gameId: String,
       placementSites: Vector[SiteId] = sites,
@@ -127,5 +131,108 @@ object ParkedServiceFixture {
       case _ => false
     }, s"expected the ruler's Rest decision, got ${parked.continue}")
     (parked, active, ruler)
+  }
+
+  /** A Recover roll parked in Act, at the first catalog site Recover can
+    * target.
+    */
+  def recoverRollPark(service: GameApplicationService, gameId: String)
+      : (GameAccepted, PlayerId, Vector[PlayerId]) = {
+    val recoverSite = catalog.sites.find(site =>
+      site.recoverDifficulty.exists(d => d > 0 && d <= 4) &&
+        site.relicSlots > 0 &&
+        !site.handlers.exists(_.contains(".homeland-"))).get.id
+    val recoverPlan = plan.copy(orderedSites = recoverSite +:
+      plan.orderedSites.filterNot(_ == recoverSite))
+    val actor = recoverPlan.firstPlayer
+    val setup = setUp(service, gameId, recoverPlan.orderedSites, recoverPlan)
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val parked = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor))).toOption.get
+    assert(parked.continue == OathContinue.AwaitingRecoverRoll(actor,
+      DecisionId(RecoverProcedure.rollDecisionId)), parked.continue.toString)
+    (parked, actor, recoverPlan.participants.map(_.playerId))
+  }
+
+  /** The off-turn Oathkeeper tie from the service suite: the holder must
+    * pick between two tied leaders after the active player's Travel.
+    */
+  def oathkeeperTiePark(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId, PlayerId) = {
+    val setup = setUp(service, gameId)
+    val Ready(base) = setup.state: @unchecked
+    val active = base.game.current.turn.activePlayer
+    val players = base.game.current.players.map(_.player)
+    val holder = players.find(_ != active).get
+    val leaders = players.filterNot(_ == holder)
+    val lineageOf = base.game.current.players.map(p => p.player -> p.lineage).toMap
+    val siteA = base.game.current.map.inPlay(0)
+    val siteB = base.game.current.map.inPlay(1)
+    seed(repository, gameId, setup.nextSequence,
+      cleared(base, siteA) ++ cleared(base, siteB) ++ Vector(
+        SetOathkeeper(Some(holder)),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(0))), 1),
+          PositionedLocation(Location.PlayArea(leaders(0))),
+          PositionedLocation(Location.Site(siteA))),
+        Move(Piece.Warbands(ForceKind.Exile(lineageOf(leaders(1))), 1),
+          PositionedLocation(Location.PlayArea(leaders(1))),
+          PositionedLocation(Location.Site(siteB)))))
+    val act = service.handle(gameId, setup.nextSequence + 1L,
+      GameCommand.EndWake(active)).toOption.get
+    val Ready(inAct) = act.state: @unchecked
+    val activePlayer = inAct.game.current.players.find(_.player == active).get
+    val destination = inAct.game.current.map.inPlay.find(id =>
+      !activePlayer.pawnSite.contains(id) && id != siteA && id != siteB).get
+    val parked = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Site(destination))))).toOption.get
+    assert(parked.events.last match {
+      case WalkerParked(TriggeredProcedureRef.Oathkeeper, _, _, _, _) => true
+      case _ => false
+    }, s"expected a triggered Oathkeeper park, got ${parked.events.last}")
+    assert(parked.continue == OathContinue.AwaitingOathkeeperRecipient(holder,
+      DecisionId(OathkeeperProcedure.recipientDecisionId)), parked.continue.toString)
+    (parked, active, holder, leaders(1))
+  }
+
+  /** Silver Tongue as the active player's faceup adviser, with two faceup
+    * denizens of different suits at their pawn site. Every favor bank starts
+    * with at least 3 favor, so Begin Rest stops at the Rest action, and
+    * using Silver Tongue parks on its bank choice. The returned suit is
+    * the first site card's, which that choice offers.
+    */
+  def silverTonguePark(service: GameApplicationService,
+      repository: InMemoryEventStreamRepository, gameId: String)
+      : (GameAccepted, PlayerId, Suit) = {
+    val bySuit = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit.value)
+      .filterNot { case (id, _) => id == silverTongueCard || id == treatyCard }
+    val first = bySuit.head
+    val second = bySuit.find(_._2 != first._2).get
+    val cards = Vector(silverTongueCard, first._1, second._1)
+    val setup = setUp(service, gameId, setupPlan = withWorldDeckTop(plan, cards))
+    val Ready(base) = setup.state: @unchecked
+    val current = base.game.current
+    assert(current.commonCards.worldDeck.take(3) == cards,
+      "Silver Tongue and the two site cards must top the world deck")
+    val active = current.turn.activePlayer
+    val pawn = current.players.find(_.player == active).get.pawnSite.get
+    seed(repository, gameId, setup.nextSequence, Vector(
+      topOfWorldDeck(silverTongueCard, Location.PlayArea(active)),
+      topOfWorldDeck(first._1, Location.Site(pawn)),
+      topOfWorldDeck(second._1, Location.Site(pawn))))
+    val act = service.handle(gameId, setup.nextSequence + 1L,
+      GameCommand.EndWake(active)).toOption.get
+    val resting = service.handle(gameId, act.nextSequence,
+      GameCommand.BeginRest(active)).toOption.get
+    assert(resting.continue == OathContinue.AwaitingRestAction(active),
+      resting.continue.toString)
+    val parked = service.handle(gameId, resting.nextSequence,
+      GameCommand.UsePower(active, SilverTongue.id,
+        DecisionOptionRef.Denizen(silverTongueCard))).toOption.get
+    assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
+      parked.continue.toString)
+    (parked, active, Suit.all.find(_.key == first._2).get)
   }
 }
