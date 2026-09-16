@@ -161,7 +161,7 @@ final case class DecisionOptionProjection(kind: String, id: String,
   * from these minima, never from local knowledge of the action's cost.
   */
 final case class DecisionSectionProjection(key: String, label: String,
-    minRequired: Int)
+    minRequired: Int, maxAllowed: Option[Int] = None)
 
 /** One amount-taking slot of a `distribute` query: its option, presented
   * exactly as a choose-one option is, its bounds, and the amount a draft

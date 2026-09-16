@@ -216,7 +216,8 @@ private[projection] object ActionProjectionCodec {
     "options" -> encoded(value.options)(encodeOptionRow),
     "sections" -> encoded(value.sections)(section => ujson.Obj(
       "key" -> section.key, "label" -> section.label,
-      "minRequired" -> section.minRequired)),
+      "minRequired" -> section.minRequired,
+      "maxAllowed" -> intOption(section.maxAllowed))),
     "heading" -> stringOption(value.heading),
     "confirmLabel" -> stringOption(value.confirmLabel),
     "slots" -> encoded(value.slots)(slot => ujson.Obj(
@@ -234,10 +235,11 @@ private[projection] object ActionProjectionCodec {
     sectionRaws <- array(value, "sections", path)
     sections <- traverse(sectionRaws, s"$path.sections") { (raw, child) => for {
       row <- obj(raw, child)
-      _ <- exact(row, Set("key", "label", "minRequired"), child)
+      _ <- exact(row, Set("key", "label", "minRequired", "maxAllowed"), child)
       key <- string(row, "key", child); label <- string(row, "label", child)
       minimum <- int(row, "minRequired", child)
-    } yield DecisionSectionProjection(key, label, minimum) }
+      maximum <- optionalInt(row, "maxAllowed", child)
+    } yield DecisionSectionProjection(key, label, minimum, maximum) }
     heading <- optionalString(value, "heading", path)
     confirmLabel <- optionalString(value, "confirmLabel", path)
     slotRaws <- array(value, "slots", path)

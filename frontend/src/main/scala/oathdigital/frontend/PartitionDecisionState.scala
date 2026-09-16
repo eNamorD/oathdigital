@@ -10,10 +10,8 @@ import oathdigital.protocol.{DecisionAnswerWire, DecisionPlacementWire,
   *
   * `maxAllowed` is `None` for an unbounded section. A section bounded at
   * exactly one swaps instead of refusing (see
-  * [[PartitionDecisionState.placeBefore]]) -- which is how Search's single
-  * Keep slot has always behaved, and the only reason a bound is here at all.
-  * A parked walker partition declares no maximum: its minima are what the
-  * engine offered, and nothing else constrains the spread.
+  * [[PartitionDecisionState.placeBefore]]). Walker partitions may declare
+  * the same bound as legacy card decisions.
   */
 private[frontend] final case class PartitionSection(key: String, label: String,
     minRequired: Int, maxAllowed: Option[Int] = None)
@@ -52,11 +50,11 @@ private[frontend] final case class PartitionDecisionState(
     */
   def placed: Vector[String] = sections.flatMap(section => itemsIn(section.key))
 
-  /** Each item paired with the section holding it, in declared item order --
-    * the order a submitted answer names them in.
+  /** Each item paired with its section, preserving the player's order within
+    * that section in the submitted answer.
     */
   def placements: Vector[(String, String)] =
-    items.flatMap(item => sectionOf(item).map(item -> _))
+    sections.flatMap(section => itemsIn(section.key).map(_ -> section.key))
 
   /** Moves one item into a declared section, appending it. A section this
     * interaction never declared, an item it never offered, and a move into
@@ -128,7 +126,7 @@ private[frontend] object PartitionDecisionState {
     PartitionDecisionState(sections, items, Map(sectionKey -> items))
 
   /** Opens by filling each section to its minimum in declared order, then
-    * putting any item the minima do not account for into the first section.
+    * putting remaining items into the first section with capacity.
     *
     * Forge's minima always sum to its option count, so the padding never
     * fires there; it exists so a partition with slack still opens on a fully
@@ -142,7 +140,16 @@ private[frontend] object PartitionDecisionState {
       Vector.fill(section.minRequired)(section.key))
     val slack = items.size - required.size
     val keys = if (slack <= 0) required.take(items.size)
-      else required ++ Vector.fill(slack)(sections.headOption.fold("")(_.key))
+      else {
+        val remaining = scala.collection.mutable.Map.empty[String, Int]
+        required.foreach(key => remaining.update(key, remaining.getOrElse(key, 0) + 1))
+        required ++ Vector.fill(slack)(()).map { _ =>
+          val key = sections.find(section => section.maxAllowed.forall(
+            remaining.getOrElse(section.key, 0) < _)).fold("")(_.key)
+          remaining.update(key, remaining.getOrElse(key, 0) + 1)
+          key
+        }
+      }
     PartitionDecisionState(sections, items, items.zip(keys).groupBy(_._2)
       .map { case (key, placed) => key -> placed.map(_._1) })
   }
@@ -206,7 +213,8 @@ private[frontend] object WalkerPartitionDraft {
             draft.decisionId == decisionId && draft.query == query)
           .getOrElse(WalkerPartitionDraft(context, decisionId, query,
             PartitionDecisionState.filled(query.sections.map(section =>
-              PartitionSection(section.key, section.label, section.minRequired)),
+              PartitionSection(section.key, section.label, section.minRequired,
+                section.maxAllowed)),
               query.options.map(itemId))))
       }
 }

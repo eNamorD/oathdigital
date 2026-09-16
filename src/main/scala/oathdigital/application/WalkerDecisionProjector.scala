@@ -172,7 +172,7 @@ private[application] final class WalkerDecisionProjector(
       case DecisionQuery.Partition(sections, options, heading, confirmLabel) =>
         described(options).map(DecisionQueryProjection("partition", _,
           sections.map(section => DecisionSectionProjection(section.key,
-            section.label, section.minRequired)),
+            section.label, section.minRequired, section.maxAllowed)),
           heading = heading, confirmLabel = confirmLabel))
       case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
         described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))

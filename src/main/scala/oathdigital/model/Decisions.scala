@@ -160,7 +160,8 @@ object DecisionOption {
   * @param minRequired fewest options the section must receive; `0` means the
   *   section may be left empty. Never negative.
   */
-final case class DecisionSection(key: String, label: String, minRequired: Int)
+final case class DecisionSection(key: String, label: String, minRequired: Int,
+    maxAllowed: Option[Int] = None)
 
 /** One amount-taking slot of a [[DecisionQuery.Distribute]].
   *

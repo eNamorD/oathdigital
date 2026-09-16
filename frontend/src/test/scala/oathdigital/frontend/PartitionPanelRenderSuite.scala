@@ -172,9 +172,9 @@ class PartitionPanelRenderSuite extends munit.FunSuite {
     click(confirm(arranged))
     assertEquals(ui.submitted, Vector(Intent.ResolveWalker("forge-9",
       DecisionAnswerWire.PartitionWire(Vector(
-        DecisionPlacementWire("denizen", "denizen:1", "pay-secret"),
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
-        DecisionPlacementWire("denizen", "denizen:3", "pay-favor"))))))
+        DecisionPlacementWire("denizen", "denizen:3", "pay-favor"),
+        DecisionPlacementWire("denizen", "denizen:1", "pay-secret"))))))
   }
 
   /** The copy is read from the query and from nowhere else, so these two

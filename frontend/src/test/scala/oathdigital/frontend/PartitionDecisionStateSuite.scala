@@ -90,6 +90,25 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     assertEquals(listed.shift("c", 4).itemsIn("all"), Vector("a", "b", "c"))
   }
 
+  test("submitted placements follow the player's within-section order") {
+    val draft = PartitionDecisionState.allIn(Vector(
+      PartitionSection("keep", "Keep", 1, Some(1)),
+      PartitionSection("discard", "Discard", 0)), items, "discard")
+      .moveTo("a", "keep")
+      .placeBefore("c", "discard", Some("b"))
+    assertEquals(draft.placements,
+      Vector("a" -> "keep", "c" -> "discard", "b" -> "discard"))
+  }
+
+  test("filled draft places slack outside a full section") {
+    val draft = PartitionDecisionState.filled(Vector(
+      PartitionSection("keep", "Keep", 1, Some(1)),
+      PartitionSection("discard", "Discard", 0)), items)
+    assertEquals(draft.itemsIn("keep"), Vector("a"))
+    assertEquals(draft.itemsIn("discard"), Vector("b", "c"))
+    assert(draft.canConfirm)
+  }
+
   /** The walker half: a parked partition decision adapted into the same
     * interaction, answered generically.
     */
@@ -126,8 +145,8 @@ class PartitionDecisionStateSuite extends munit.FunSuite {
     assert(repaired.canConfirm)
     assertEquals(repaired.command("red"), Some(GameCommand.ResolveWalker(
       "red", "forge-9", DecisionAnswerWire.PartitionWire(Vector(
-        DecisionPlacementWire("denizen", "denizen:1", "pay-secret"),
         DecisionPlacementWire("denizen", "denizen:2", "pay-favor"),
-        DecisionPlacementWire("denizen", "denizen:3", "pay-favor"))))))
+        DecisionPlacementWire("denizen", "denizen:3", "pay-favor"),
+        DecisionPlacementWire("denizen", "denizen:1", "pay-secret"))))))
   }
 }

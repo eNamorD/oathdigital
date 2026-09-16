@@ -89,15 +89,26 @@ object DecisionQueries {
             s"declares section '${section.key}' with a negative minimum")
           case None => Right(())
         }
+        _ <- sections.find(s => s.maxAllowed.exists(_ < s.minRequired)) match {
+          case Some(section) => reject(decisionId,
+            s"declares section '${section.key}' with a maximum below its minimum")
+          case None => Right(())
+        }
         _ <- require(
           sections.map(_.minRequired.toLong).sum <= refs.size.toLong,
           decisionId, "declares section minimums no answer can meet")
+        _ <- require(sections.map(_.maxAllowed.fold(refs.size.toLong)(_.toLong)).sum >=
+          refs.size.toLong, decisionId,
+          "declares section maximums no answer can meet")
         _ <- sections.find(_.minRequired == refs.size) match {
           case Some(section) => reject(decisionId,
             s"declares section '${section.key}' as taking every option, " +
               "leaving nothing to decide")
           case None => Right(())
         }
+        _ <- require(sections.count(_.maxAllowed.forall(_ > 0)) >= 2,
+          decisionId, "declares fewer than two sections that can take " +
+            "options, leaving nothing to decide")
       } yield ()
 
     case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
@@ -222,6 +233,13 @@ object DecisionQueries {
           case Some(section) => reject(decisionId,
             s"leaves section '${section.key}' below its minimum of " +
               section.minRequired)
+          case None => Right(())
+        }
+      _ <- sections.values.toVector.sortBy(_.key)
+        .find(s => s.maxAllowed.exists(counts.getOrElse(s.key, 0) > _)) match {
+          case Some(section) => reject(decisionId,
+            s"puts section '${section.key}' above its maximum of " +
+              section.maxAllowed.get)
           case None => Right(())
         }
     } yield ()
