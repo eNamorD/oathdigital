@@ -15,7 +15,7 @@
 - Preserve current first-game Search gates, stack orientation, temporary-hand ownership, hidden projections, and typed violations.
 - Keep `SearchModifierSelection` as the pre-start selection window for Search and facedown-adviser play. Selected IDs survive park/reload/resume; automatic Silver Tongue and Dazzle need no selection.
 - Site denizens are not generally discardable. Only existing supported Homeland replacement permission may offer a site-card discard; People's Favor and other unimplemented permissions remain inactive.
-- Dazzle skips rule-immune candidates before building discard operations. Never swallow executor errors as immunity.
+- New operation attempts default to best-effort: skip only typed rule-impossibility. Required attempts and every structural error fail. Existing strict pipeline callers keep their behavior until migrated.
 - Replay applies recorded operations and facts, not current catalog powers. No old-journal compatibility is required in this pre-release repository.
 - Keep diagnostics for unimplemented `WHEN PLAYED` handlers. Retire only executable Dazzle and Silver Tongue diagnostic handlers.
 - Do not modify `gameplay/walker` or `gameplay/operations` to name a specific power. Preserve the 800-line source cap and architecture check.
@@ -25,7 +25,7 @@
 
 - `model/Decisions.scala`, `gameplay/walker/DecisionQueries.scala`: generic `DecisionSection.maxAllowed: Option[Int]`, partition well-formedness and answer bounds; preserve `PartitionAnswer.placements` order.
 - `shared/.../projection/ActionProjectionDtos.scala` and `ActionProjectionCodec.scala`, `application/WalkerDecisionProjector.scala`, `frontend/PartitionDecisionState.scala`: carry maximum to UI, keep within-section drag order in submitted answers.
-- `gameplay/operations/CoreOperations.scala`, operation mutation/validation, and `serialization/WalkerOperationCodec.scala`: recorded generic Visions Drawn advancement, if no existing operation can express it; semantic `CardPlayed` hook is not recorded as a delta.
+- `gameplay/operations/CoreOperations.scala`, `OperationPipeline.scala`, `OperationValidator.scala`, operation mutation/validation, and `serialization/WalkerOperationCodec.scala`: zero-argument recorded Visions Drawn advancement, generic `OperationAttempt(required = false)` execution, and semantic `CardPlayed` hook.
 - `gameplay/actions/search/SearchProcedure.scala`: Search start gates, source order, payment, draw, card-selection `Partition`, and embedding of card play.
 - `gameplay/actions/cardplay/CardPlayProcedure.scala`: reusable placement query, adviser/site replacement branches, operation planning, and `CardPlayed` hook. No walker invocation inside this unit.
 - `gameplay/powers/rest/SilverTongue.scala`, `gameplay/powers/whenplayed/Dazzle.scala`, `gameplay/powers/WalkerPowerCatalog.scala`: automatic adviser limit and Dazzle effects.
@@ -68,9 +68,9 @@ def placements: Vector[(String, String)] =
 
 **Files:** Modify `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala`, relevant operation validation/mutation files, `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala`. Test `src/test/scala/oathdigital/gameplay/OperationExecutorSuite.scala`, `src/test/scala/oathdigital/serialization/GameEventWireSuite.scala`, `src/test/scala/oathdigital/gameplay/ProcedureWalkerSuite.scala` (use actual existing suite name found by `rg --files`).
 
-**Interfaces:** A recorded `AdvanceVisionsDrawn(amount: Int)` leaf changes the track by a validated positive amount; use a more general existing track operation if present at implementation time. `CardPlayed(card: WorldCardId, resultingSource: RuleSourceRef)` is a `CoreOperation` with `window = Some(ActionCardPlayed)` and empty children; it is never a recorded delta.
+**Interfaces:** A recorded zero-argument `AdvanceVisionsDrawn` leaf advances the track by exactly one when a world-deck Vision stops Search. `CardPlayed(card: WorldCardId, resultingSource: RuleSourceRef)` is a `CoreOperation` with `window = Some(ActionCardPlayed)` and empty children; it is never a recorded delta.
 
-- [ ] **Step 1: Write failing tests.** Advancing the track records and replays the same value; invalid amount or overflow returns typed error. A synthetic tree with `CardPlayed` gathers `ActionCardPlayed`, inserts a test operation, and records that inserted operation, not the empty hook.
+- [ ] **Step 1: Write failing tests.** One `AdvanceVisionsDrawn` records and replays an increment of exactly one; overflow returns a typed error. A synthetic tree with `CardPlayed` gathers `ActionCardPlayed`, inserts a test operation, and records that inserted operation, not the empty hook.
 
 ```scala
 val tree = Sequence(Vector(CardPlayed(dazzleId,
@@ -79,9 +79,38 @@ assertEquals(tree.children.size, 1)
 ```
 
 - [ ] **Step 2: Run** focused operation, codec, and walker suites; expect compile/test failures.
-- [ ] **Step 3: Implement** track leaf through existing executor/state adapter and wire codec with typed bounds; add generic hook composite without embedding power names or replaying the hook as an operation. If current track range has a domain bound, validate it; never use `require` on journal input.
+- [ ] **Step 3: Implement** the zero-argument track leaf through existing executor/state adapter and wire codec with typed bounds; add generic hook composite without embedding power names or replaying the hook as an operation. If current track range has a domain bound, validate it; never use `require` on journal input.
 - [ ] **Step 4: Run** focused and per-task gates.
 - [ ] **Step 5: Commit** `feat(walker): record Vision track changes and card-play hook`.
+
+### Task 2a: Generic staged best-effort attempts
+
+**Files:** Modify `src/main/scala/oathdigital/gameplay/operations/CoreOperations.scala`, `OperationValidator.scala`, `OperationPipeline.scala`, `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala`. Create `src/main/scala/oathdigital/gameplay/operations/DiscardRestrictions.scala`. Test `src/test/scala/oathdigital/gameplay/OperationPipelineSuite.scala`, `OperationExecutorSuite.scala`, `ProcedureWalkerSuite.scala`.
+
+**Interfaces:** `OperationAttempt(operation: CoreOperation, required: Boolean = false)` is an execution declaration, not a persisted operation. `OperationReason` gains a typed `RuleImpossible` versus `Invalid` classification. `OperationPipeline.runAttempts` validates attempts one by one against staged state and returns `AttemptResult(ready, executed: Vector[CoreOperation], skipped: Vector[OperationReason])`. Existing `run` remains strict. A generic `BuildAttempts` walker leaf builds attempts at walk time, receives contextual `OperationRestriction`s, and journals only `executed` operations. A catalog-backed `DiscardRestrictions` returns `RuleImpossible` for card-discard immunity; structural shape reasons remain `Invalid`.
+
+- [ ] **Step 1: Write failing tests.** An optional discard blocked by a rule restriction is skipped while a later legal discard executes; marking the same blocked attempt `required = true` rejects. Missing card source, bad stack destination, and malformed amounts reject even when optional. First attempt's state change can change the second attempt's legality. Walker journal contains only executed operations, and replay produces identical state without consulting restrictions.
+
+```scala
+val attempts = Vector(
+  OperationAttempt(immuneDiscard),
+  OperationAttempt(legalDiscard))
+assertEquals(result.executed, Vector(legalDiscard))
+assertEquals(result.skipped.size, 1)
+```
+
+- [ ] **Step 2: Run** `./sbtw "testOnly *OperationPipelineSuite *OperationExecutorSuite *ProcedureWalkerSuite"`; expect failure.
+- [ ] **Step 3: Implement** typed reason classification in `OperationValidator`, preserving current error codes and first-fail behavior. The current validator accepts `restrictions` but does not evaluate them; include their `reason` results in both reports and staged `validateOne`. `runAttempts` uses the same staged fold as `run`: if reasons are empty, execute and append to `executed`; if an optional attempt has only `RuleImpossible` reasons, append to `skipped`; otherwise reject. Do not filter from `validateBatch`, which checks initial state rather than each staged state. Keep current `run` strict by wrapping its operations with `required = true`. `BuildAttempts` calls `runAttempts` and records only `executed`; if none execute, it records no delta step. Make `DiscardRestrictions` reusable by single- and multi-discard callers and keep it independent of Dazzle.
+
+```scala
+if (reasons.isEmpty) execute(attempt.operation)
+else if (!attempt.required && reasons.forall(_.kind == RuleImpossible))
+  skip(attempt, reasons)
+else reject(reasons.head)
+```
+
+- [ ] **Step 4: Run** focused and per-task gates. Confirm existing Recover, Forge, Travel, and Rest tests remain unchanged and strict.
+- [ ] **Step 5: Commit** `feat(operations): stage best-effort attempts by typed reason`.
 
 ### Task 3: Shared card-play placement tree and Silver Tongue
 
@@ -98,7 +127,7 @@ assert(tree.isRight)
 ```
 
 - [ ] **Step 2: Run** `./sbtw "testOnly *CardPlayProcedureSuite *SilverTongueSuite"`; expect failure.
-- [ ] **Step 3: Implement** a placement `Decide`, then `Branch` for the selected destination and any required replacement `Decide`, then `BuildOps` for legal semantic discard/move/play/gain operations. Reuse current `CardPlay` legality and operation ordering as the temporary oracle; extract shared pure planner logic instead of copying it. Put `SearchPlayAdviser` on both adviser orientations. Silver Tongue transforms the adviser decision/query at that window to enforce capacity two and retains a final restriction; do not hardcode its card ID in the procedure or walker. Ensure replacement eligibility checks catalog lock and current holder. The Conspiracy handoff needs one recorded, typed state operation applied after Search's walker has made its card choice; never introduce simultaneous legacy and walker pending positions.
+- [ ] **Step 3: Implement** a placement `Decide`, then `Branch` for the selected destination and any required replacement `Decide`, then `BuildOps` for legal semantic discard/move/play/gain operations. Reuse current `CardPlay` legality and operation ordering as the temporary oracle; extract shared pure planner logic instead of copying it. Mark the chosen card's placement or discard and any chosen replacement required; an accepted choice must not silently leave the card in hand. Put `SearchPlayAdviser` on both adviser orientations. Silver Tongue transforms the adviser decision/query at that window to enforce capacity two and retains a final restriction; do not hardcode its card ID in the procedure or walker. Ensure replacement eligibility checks catalog lock and current holder. The Conspiracy handoff needs one recorded, typed state operation applied after Search's walker has made its card choice; never introduce simultaneous legacy and walker pending positions.
 - [ ] **Step 4: Run** focused and per-task gates. Compare complete state for representative old/new placement outcomes before deleting legacy code.
 - [ ] **Step 5: Commit** `feat(cardplay): declare shared walker placement tree`.
 
@@ -118,7 +147,7 @@ assert(started.isRight)
 ```
 
 - [ ] **Step 2: Run** `./sbtw "testOnly *SearchProcedureSuite *WalkerProcedureRegistrySuite *GameApplicationServiceSuite"`; expect failure.
-- [ ] **Step 3: Implement** source parser/gates, windowed payment/draw nodes, authoritative `Draw`, recorded track leaf, one-card bypass or Keep/Discard `Partition`, and shared `CardPlayProcedure` subtree. Register the action. Route source selection to `StartWalker`; preserve draw-port as application-only preparation/validation, never let engine call randomness. Keep old Search handling available solely for differential tests until Task 7.
+- [ ] **Step 3: Implement** source parser/gates, windowed payment/draw nodes, authoritative `Draw`, recorded track leaf, one-card bypass or Keep/Discard `Partition`, and shared `CardPlayProcedure` subtree. Mark Supply payment, source draw, and Visions Drawn advancement required: skipping any would leave a falsely completed Search. Register the action. Route source selection to `StartWalker`; preserve draw-port as application-only preparation/validation, never let engine call randomness. Keep old Search handling available solely for differential tests until Task 7.
 - [ ] **Step 4: Run** focused and per-task gates; document parity on complete ready state and hidden/public projections for world, regional, Vision, and replacement examples.
 - [ ] **Step 5: Commit** `feat(search): run Search on the procedure walker`.
 
@@ -126,9 +155,9 @@ assert(started.isRight)
 
 **Files:** Create `src/main/scala/oathdigital/gameplay/powers/whenplayed/Dazzle.scala`; modify `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala`, `ActionPowers.scala`, `SearchPowers.scala`, and source-scoped diagnostic dispatch in `OathRules.scala` if required. Test new `DazzleSuite.scala`, `SearchSuite.scala`, and `MinorActionsSuite.scala`.
 
-**Interfaces:** Dazzle contributes at `ActionCardPlayed`, matches `CardPlayed` for its catalog card ID, and emits ordered semantic `Discard` operations only for currently eligible non-immune Hearth/Order site cards in actor's pawn region.
+**Interfaces:** Dazzle contributes at `ActionCardPlayed`, matches `CardPlayed` for its catalog card ID, and inserts `BuildAttempts` declaring one default-optional semantic `Discard` attempt per Hearth/Order site card in actor's pawn region. The generic attempt runner and shared `DiscardRestrictions`, not Dazzle, decide which attempts are rule-impossible.
 
-- [ ] **Step 1: Write failing tests.** Dazzle at site and faceup adviser hits same region targets; facedown/discarded Dazzle does not fire; an immune card remains while another eligible card is discarded; resources return under `Discard`; unexpected missing-source error aborts rather than being treated as immunity. Other `WHEN PLAYED` powers still emit scoped diagnostics, Dazzle does not.
+- [ ] **Step 1: Write failing tests.** Dazzle at site and faceup adviser hits same region targets; facedown/discarded Dazzle does not fire; an immune card remains while another eligible card is discarded; resources return under `Discard`; unexpected missing-source error aborts rather than being treated as immunity. Assert the walker event records only discards that executed and replay needs no immunity check. Other `WHEN PLAYED` powers still emit scoped diagnostics, Dazzle does not.
 
 ```scala
 val played = CardPlayed(dazzleId,
@@ -137,7 +166,7 @@ assertEquals(played.window, Some(PowerWindow.ActionCardPlayed))
 ```
 
 - [ ] **Step 2: Run** `./sbtw "testOnly *DazzleSuite *SearchSuite *MinorActionsSuite"`; expect failure.
-- [ ] **Step 3: Implement** catalog-parameterized Dazzle contribution. Enumerate region sites in map order and denizens in site order; resolve suit and immunity per candidate against staged state. Filter immune candidates before building each `Discard`, but let executor report structural errors. Remove only Dazzle reviewed fallback handler and adjust catalog fingerprint in same commit. Keep remaining `WHEN PLAYED` diagnostics. Do not delete Silver Tongue diagnostic until both Search and facedown routes use its walker restriction.
+- [ ] **Step 3: Implement** catalog-parameterized Dazzle contribution. Enumerate region sites in map order and denizens in site order; resolve suit and build `OperationAttempt(Discard.Denizen(...))` for each matching card. Use the Task 2a shared restriction in `BuildAttempts`; do not add Dazzle-specific immunity filtering or swallow executor failures. Remove only Dazzle reviewed fallback handler and adjust catalog fingerprint in same commit. Keep remaining `WHEN PLAYED` diagnostics. Do not delete Silver Tongue diagnostic until both Search and facedown routes use its walker restriction.
 - [ ] **Step 4: Run** focused and per-task gates, including catalog audit/fingerprint suites.
 - [ ] **Step 5: Commit** `feat(power): execute Dazzle when played`.
 
