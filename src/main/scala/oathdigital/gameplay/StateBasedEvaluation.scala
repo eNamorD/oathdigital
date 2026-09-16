@@ -108,7 +108,9 @@ object StateBasedEvaluation {
             }
             OperationPipeline.run(
               ready, operations, operationAllowlist)(Right(_))
-              .map(execution => Ready(execution))
+              .flatMap(_.expectEffects(operations,
+                "Bandit refill effect differs from recorded outcome"))
+              .map(Ready(_))
           }
         case expected => Left(InvalidEventOrder(
           s"Bandit refill mismatch: expected $expected, recorded $recorded"))

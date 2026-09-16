@@ -442,7 +442,8 @@ object Campaign {
                 Vector(operation), "Raid pawn relocation is not permitted"))(
               evolved => Right(GameStateUpdates.updateCurrent(evolved)(current =>
                 current.copy(pending = None))))
-              .map(execution => Ready(execution))
+              .flatMap(_.expectEffects(Vector(operation), "Raid relocation mismatch"))
+              .map(Ready(_))
           }
         case _ => Left(CampaignOutcomeMismatch("Raid relocation is not pending"))
       }
@@ -526,18 +527,16 @@ object Campaign {
         }
     }
   }
-
   /** Runs the CoreOperations vector as one authoritative pipeline run. */
   private def execute(ready: ReadyGame,
       operations: Vector[oathdigital.gameplay.operations.CoreOperation],
       detail: String)(
       update: ReadyGame => Either[OathViolation, ReadyGame])
-      : Either[OathViolation, ReadyGame] = {
+      : Either[OathViolation, ReadyGame] =
     if (operations.isEmpty) update(ready)
     else OperationPipeline.run(ready, operations,
       OperationPolicy.exact(operations, detail))(update)
-  }
-
+      .flatMap(_.expectEffects(operations, detail))
   private def warbandMove(kind: ForceKind, count: Int, from: Location,
       to: Location): Vector[oathdigital.gameplay.operations.CoreOperation] =
     Option.when(count > 0)(CoreMove(

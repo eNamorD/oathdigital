@@ -151,7 +151,9 @@ object Visions {
         ready, operations, OperationPolicy.exact(
           operations, "Vision reveal semantic root is not permitted")
       )(Right(_))
-    } yield Ready(execution)
+      state <- execution.expectEffects(operations,
+        "Vision reveal differs from recorded outcome")
+    } yield Ready(state)
 
     case e: ConspiracyStarted => for {
       ready <- state match {
@@ -250,7 +252,8 @@ object Visions {
     else OperationPipeline.run(
       ready, operations, OperationPolicy.exact(
         operations, "Conspiracy semantic root is not permitted")
-    )(update)
+    )(update).flatMap(_.expectEffects(operations,
+      "Conspiracy effect differs from recorded outcome"))
     // The played Conspiracy was held either as a facedown adviser (direct play)
     // or in the actor's temporary hand (kept from a Search). Removing it here
     // is a documented executor bypass.

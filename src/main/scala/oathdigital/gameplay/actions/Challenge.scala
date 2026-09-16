@@ -256,7 +256,9 @@ object Challenge {
         ready, Vector(operation), OperationPolicy.exact(
           Vector(operation), "Banner resource placement is not permitted")
       )(Right(_))
-    } yield Ready(evolved)
+      state <- evolved.expectEffects(Vector(operation),
+        "Banner resource placement differs from recorded outcome")
+    } yield Ready(state)
     case _ => Left(InvalidEventOrder("Challenge received a non-banner event"))
   }
 
@@ -311,6 +313,8 @@ object Challenge {
       Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
     OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "Banner Challenge semantic root is not permitted"))(update)
+      .flatMap(_.expectEffects(operations,
+        "Banner Challenge effect differs from recorded outcome"))
   }
 
   private def transition(catalog: ExecutableCatalog, state: OathState,

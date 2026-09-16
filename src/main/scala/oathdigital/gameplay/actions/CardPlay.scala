@@ -336,6 +336,8 @@ object CardPlay {
     val evolved = if (operations.isEmpty) update(ready)
     else OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "CardPlay semantic root is not permitted"))(update)
+      .flatMap(_.expectEffects(operations,
+        "CardPlay effect differs from recorded outcome"))
     evolved.map(state => Outcome(
       state,
       plan.favorGained,

@@ -112,7 +112,9 @@ object Search {
             )
           })
         }
-      } yield Ready(execution)
+        state <- execution.expectEffects(operations,
+          "Search draw or cost differs from recorded outcome")
+      } yield Ready(state)
     }
 
   /** Draws the recorded cards top-first from the authoritative source into the

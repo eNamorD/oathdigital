@@ -547,13 +547,14 @@ object ProcedureWalker {
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive)(
       Right(_)).map { updated =>
       val nodeId = if (path.isEmpty) label else path.mkString(".")
-      ctx.copy(
-        state = updated,
-        events = ctx.events :+ WalkerStepRecorded(
+      val events = if (updated.executed.isEmpty) ctx.events else
+        ctx.events :+ WalkerStepRecorded(
           nodeId = nodeId,
-          payload = WalkerStepPayload.DeltaRecorded(deltaMeaning(ops, label)),
-          ops = ops,
-          contributions = contributions))
+          payload = WalkerStepPayload.DeltaRecorded(
+            deltaMeaning(updated.executed, label)),
+          ops = updated.executed,
+          contributions = contributions)
+      ctx.copy(state = updated.state, events = events)
     }
 
   private def deltaMeaning(ops: Vector[CoreOperation],

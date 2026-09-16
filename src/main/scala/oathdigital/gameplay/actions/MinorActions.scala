@@ -227,6 +227,8 @@ object MinorActions {
       operations: Vector[CoreOperation]
   ): Either[OathViolation, ReadyGame] =
     OperationPipeline.run(ready, operations, operationAllowlist)(Right(_))
+      .flatMap(_.expectEffects(operations,
+        "Minor action effect differs from recorded outcome"))
 
   private def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces

@@ -267,7 +267,8 @@ object Negotiation {
     OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "Negotiation semantic root is not permitted")) { evolved =>
       Right(GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None)))
-    }
+    }.flatMap(_.expectEffects(operations,
+      "Negotiation transfer differs from recorded outcome"))
   }
 }
 

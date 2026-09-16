@@ -248,6 +248,8 @@ object Economy {
   ): Either[OathViolation, ReadyGame] =
     OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "Economy semantic root is not permitted"))(Right(_))
+      .flatMap(_.expectEffects(operations,
+        "Economy effect differs from recorded outcome"))
   private def sourceOf(siteId: SiteId, card: SiteDenizenState): RuleSourceRef =
     card match {
       case value: DenizenState => RuleSourceRef.SiteCard(siteId, value.id)

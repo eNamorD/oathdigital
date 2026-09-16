@@ -2,6 +2,26 @@ package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{OathViolation, ReadyGame}
 
+final case class SkippedOperation(requested: CoreOperation,
+    reasons: Vector[OperationReason])
+
+final case class OperationRun(state: ReadyGame,
+    executed: Vector[CoreOperation], skipped: Vector[SkippedOperation]) {
+  /** Legacy event reducers must not accept a different effect than recorded. */
+  def expectEffects(requested: Vector[CoreOperation],
+      detail: String): Either[OathViolation, ReadyGame] =
+    if (executed == requested.map(OperationRun.canonical)) Right(state)
+    else Left(OathViolation.InvalidEventOrder(detail))
+}
+
+object OperationRun {
+  def canonical(operation: CoreOperation): CoreOperation = operation match {
+    case value: SpendSupply => value.copy(required = true)
+    case value: Discard.Denizen => value.copy(required = false)
+    case other => other
+  }
+}
+
 /** Sole public orchestrator of an operation batch. It owns the per-run
   * [[OperationValidator]] (assembled from the caller's contextual
   * `allowlist` policy plus the restrictions vector), folds each operation
@@ -25,33 +45,37 @@ object OperationPipeline {
       restrictions: Vector[OperationRestriction] = Vector.empty
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
-  ): Either[OathViolation, ReadyGame] = {
+  ): Either[OathViolation, OperationRun] = {
     val validator = new OperationValidator(allowlist, restrictions)
     if (operations.isEmpty) Left(OperationError.EmptyOperationBatch.toViolation)
     else
       for {
         expected <- OperationStateInvariant.cardIds(ready)
           .left.map(_.toViolation)
-        staged <- operations.foldLeft[Either[OathViolation, ReadyGame]](
-          Right(ready)) { (result, operation) =>
-          result.flatMap { current =>
-            validator.validateOne(current, operation) match {
-              case reasons if reasons.nonEmpty =>
-                Left(OathViolation.CoreOperationRejected(reasons.head.code,
-                  reasons.head.detail))
-              case _ => new OperationExecutor().execute(current, operation)
-                .left.map(_.toViolation)
-            }
+        staged <- operations.foldLeft[Either[OathViolation, OperationRun]](
+          Right(OperationRun(ready, Vector.empty, Vector.empty))) {
+          (result, operation) => result.flatMap { current =>
+            OperationResolution.resolve(current.state, operation, validator)
+              .flatMap {
+                case OperationResolution.Skip(reasons) =>
+                  Right(current.copy(skipped = current.skipped :+
+                    SkippedOperation(operation, reasons)))
+                case OperationResolution.Execute(actual) =>
+                  new OperationExecutor().execute(current.state, actual)
+                    .left.map(_.toViolation).map(state => current.copy(
+                      state = state,
+                      executed = current.executed :+ OperationRun.canonical(actual)))
+              }
           }
         }
-        updated <- OperationError.describe(update(staged))
+        updated <- OperationError.describe(update(staged.state))
           .left.map(_.toViolation).flatMap(identity)
         // Decision 5: the invariant runs once after the module update, not
         // between operations — intermediate states within a legal batch are
         // not invariant-checked (matching the retired post-`update` check).
         _ <- OperationStateInvariant.validate(updated, expected)
           .left.map(_.toViolation)
-      } yield updated
+      } yield staged.copy(state = updated)
   }
 
   /** Aggregated whole-batch report against the initial state: shape reasons

@@ -124,7 +124,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
         case other => fail(s"expected a WalkerStepRecorded, got $other")
       }
       OperationPipeline.run(current, recorded.ops,
-        OperationPolicy.Permissive)(Right(_)).toOption.get
+        OperationPolicy.Permissive)(Right(_)).toOption.get.state
     }
 
   test("fresh walk of a legal delta pair finishes and records one event per leaf") {
@@ -149,6 +149,33 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     recorded.foreach(step => assert(step.ops.nonEmpty))
     // Re-applying each recorded ops batch reproduces the walked state.
     assertEquals(applyEvents(ready, events), finalState)
+  }
+
+  test("all-skipped BuildOps records no delta step") {
+    val empty = ready.copy(banks = ready.banks.copy(favor =
+      ready.banks.favor.updated(Suit.Order, 0)))
+    val tree = BuildOps((_, _) =>
+      Right(Vector(Gain.Favor(actor, Suit.Order, 1))))
+    ProcedureWalker.advance(empty, tree, None, noPowers) match {
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(state, empty)
+        assertEquals(events, Vector.empty)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
+  test("BuildOps records actual reduced count") {
+    val six = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(players = ready.game.current.players.map { player =>
+        player.copy(board = player.board.copy(supply = SupplyTrack(6)))
+      })))
+    val tree = BuildOps((_, _) => Right(Vector(GainSupply(actor, 3))))
+    ProcedureWalker.advance(six, tree, None, noPowers) match {
+      case Right(WalkerOutcome.Finished(_, events)) =>
+        assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
+          Vector(Vector[CoreOperation](GainSupply(actor, 1))))
+      case other => fail(s"expected a Finished walk, got $other")
+    }
   }
 
   test("a Decide at the head parks with no events, then the answered resume finishes") {

@@ -58,7 +58,7 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
         case _ =>
           OperationPipeline.run(current, step.ops,
             OperationPolicy.Permissive)(Right(_)) match {
-            case Right(updated) => updated
+            case Right(updated) => updated.state
             case Left(violation) =>
               self.fail(s"$failureContext: $violation")
           }

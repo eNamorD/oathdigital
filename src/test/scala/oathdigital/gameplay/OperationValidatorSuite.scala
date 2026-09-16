@@ -188,7 +188,12 @@ class OperationValidatorSuite extends munit.FunSuite {
         OperationPolicy.Permissive)(Right(_))
       (reasons.headOption, pipeline) match {
         case (None, Right(after)) =>
-          assertEquals(after.game, raw.execute(ready, operation).toOption.get.game)
+          assertEquals(after.state.game,
+            raw.execute(ready, operation).toOption.get.game)
+        case (Some(reason), Right(after))
+            if reason.kind == OperationReasonKind.Impossible &&
+              !operation.required =>
+          assert(after.executed.nonEmpty || after.skipped.nonEmpty)
         case (Some(reason), Left(violation)) =>
           val code = violation match {
             case oathdigital.gameplay.OathViolation
