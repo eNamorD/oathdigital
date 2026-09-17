@@ -3,6 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
@@ -134,6 +135,17 @@ object WalkerProcedureRegistry {
     * up. It stays out of reach of every other package.
     */
   private[gameplay] val entries: Map[ProcedureRef, Entry] = Map(
+    ActionRef.Search -> Entry(
+      fallbackKind = Some(MajorActionKind.Search),
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.SearchModifierSelection),
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(decisionId == SearchProcedure.cardDecisionId ||
+          decisionId.startsWith("cardplay."))(
+          OathContinue.AwaitingSearchDecision(actor, decision)),
+      build = SearchProcedure.build,
+      rebuild = SearchProcedure.rebuild),
+
     ActionRef.Recover -> Entry(
       fallbackKind = Some(MajorActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),

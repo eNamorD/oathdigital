@@ -1489,8 +1489,50 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(service.handle("game-search-tamper", ended.nextSequence,
       GameCommand.BeginSearch(active, SearchSource.WorldDeck))
       .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
+    assert(service.handle("game-search-tamper", ended.nextSequence,
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
+      .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
     assertEquals(repository.load("game-search-tamper").toOption.flatten.get
       .nextSequence, ended.nextSequence)
+  }
+
+  test("walker Search persists its card choice and completes after reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-walker-search"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
+      .toOption.get
+    val reloaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(reloaded.state, started.state)
+    val Ready(afterDraw) = reloaded.state: @unchecked
+    val drawn = afterDraw.game.current.temporaryHands(actor)
+    val chosen = if (drawn.size == 1) started else {
+      def ref(card: WorldCardId): DecisionOptionRef = card match {
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+      }
+      val assignments = Vector(DecisionPlacement(ref(drawn.head), "keep")) ++
+        drawn.tail.map(card => DecisionPlacement(ref(card), "discard"))
+      service.handle(gameId, reloaded.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
+          DecisionAnswer.PartitionAnswer(assignments)))).toOption.get
+    }
+    val completed = service.handle(gameId, chosen.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${drawn.head.kind}.${drawn.head.value}",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
+      .toOption.get
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get.state, completed.state)
   }
 
   test("Wake projection is actor-private and Act boundary is informational") {

@@ -8,6 +8,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand, SearchCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
@@ -353,6 +354,23 @@ final class GameApplicationService(
       }
       case GameCommand.Begin(plan) =>
         setupRules.handle(state, FirstGameSetupCommand.Begin(plan))
+      case GameCommand.StartWalker(ActionRef.Search, start) => state match {
+        case OathState.Ready(ready) => for {
+          source <- SearchProcedure.sourceOf(start.startArgs)
+          region <- ready.game.current.players.find(_.player == start.actor)
+            .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
+            .toRight(OathViolation.PawnSiteMissing(start.actor))
+          prepared <- searchDrawPort.prepare(ready, source, region)
+          authoritative <- oathdigital.gameplay.actions.SearchRules.draw(
+            ready, source, region)
+          _ <- Either.cond(prepared == authoritative, (),
+            OathViolation.SearchDrawMismatch(
+              "prepared draw does not match authoritative source order"))
+          result <- rules.startWalker(state, ActionRef.Search, start.actor,
+            start.modifiers, start.startArgs)
+        } yield result
+        case _ => Left(OathViolation.GameNotStarted)
+      }
       case GameCommand.StartWalker(procedure, start) =>
         rules.startWalker(state, procedure, start.actor, start.modifiers,
           start.startArgs)

@@ -43,6 +43,7 @@ sealed trait TriggeredProcedureRef extends ProcedureRef {
 }
 
 object ActionRef {
+  case object Search extends ActionRef { val key = "search" }
   case object Recover extends ActionRef { val key = "recover" }
   case object Forge extends ActionRef { val key = "forge" }
   case object Travel extends ActionRef { val key = "travel" }
@@ -71,7 +72,7 @@ object ActionRef {
     * consequence is that a preview asked for the Wake kind keeps taking its
     * existing path rather than being answered as Take Wealth.
     */
-  val all: Vector[ActionRef] = Vector(Recover, Forge, Travel, TakeWealth)
+  val all: Vector[ActionRef] = Vector(Search, Recover, Forge, Travel, TakeWealth)
 
   def usePower(key: String): Option[UsePower] =
     Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))

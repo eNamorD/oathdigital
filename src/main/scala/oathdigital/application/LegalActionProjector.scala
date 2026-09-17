@@ -7,6 +7,7 @@ import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
+import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerPowers
@@ -200,7 +201,14 @@ private[application] final class LegalActionProjector(
     context.active.pawnSite.flatMap(context.current.map.regionOf).toVector.flatMap {
       origin => Vector(SearchSource.WorldDeck,
         SearchSource.RegionalDiscard(origin)).flatMap { source =>
-        SearchRules.cost(context.ready, source, origin).toOption
+        val argument = source match {
+          case SearchSource.WorldDeck => "search:world"
+          case SearchSource.RegionalDiscard(region) =>
+            s"search:regional-discard:${region.key}"
+        }
+        SearchProcedure.build(catalog, context.ready, context.active.player,
+          Vector(DecisionOptionRef.Button(argument))).toOption.flatMap(_ =>
+          SearchRules.cost(context.ready, source, origin).toOption)
           .filter(_ <= context.active.board.supply.supply)
           .filter(_ => SearchRules.draw(context.ready, source, origin).exists(_.nonEmpty))
           .map(cost => source match {
