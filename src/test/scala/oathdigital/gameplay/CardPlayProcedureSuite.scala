@@ -185,4 +185,32 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button("site")))
   }
+
+  test("facedown adviser starts the shared walker placement tree") {
+    val OathState.Ready(setup) = execute(setupRules)._1: @unchecked
+    val actor = setup.game.current.turn.activePlayer
+    val adviser = setup.game.current.players.find(_.player == actor).get
+      .advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) => id
+      }.get
+    val ready = setup.copy(game = setup.game.copy(current =
+      setup.game.current.copy(turn = setup.game.current.turn.copy(
+        phase = Phase.Act))))
+    val rules = new OathRules(catalog)
+    val started = rules.startWalker(OathState.Ready(ready),
+      ActionRef.PlayFacedownAdviser, actor,
+      startArgs = Vector(DecisionOptionRef.Denizen(adviser)))
+    assert(started.isRight)
+    assert(started.toOption.get.continue
+      .isInstanceOf[OathContinue.AwaitingSearchDecision])
+    val parked = started.toOption.get
+    val other = ready.game.current.players.find(_.player != actor).get.player
+    val projector = new oathdigital.application.GameProjector(catalog)
+    val loaded = oathdigital.application.LoadedGame(parked.state, 10)
+    val owner = projector.project("facedown-walker", loaded, actor)
+    val hidden = projector.project("facedown-walker", loaded, other)
+    assert(owner.walkerDecision.nonEmpty)
+    assertEquals(hidden.walkerDecision, None)
+    assert(hidden.walkerWaiting.nonEmpty)
+  }
 }

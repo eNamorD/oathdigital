@@ -48,9 +48,14 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       // of -- and it must still be offered its modifiers, not skipped.
       GameIntent.StartWalker("travel", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:a"))),
+      GameIntent.StartWalker("search", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
+      GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "d1"))),
       GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "recover", "forge", "travel", "search"))
+      Vector("search", "recover", "forge", "travel", "search", "search",
+        "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
     // An UNREGISTERED walker action must not be swept into the same
     // modifier-offering path: only the keys the engine registers on the
@@ -182,5 +187,24 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(submitted,
       GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)))
     assertEquals(outerModifiers, Vector(invocation))
+  }
+
+  test("Search and facedown-adviser walker starts retain their card arguments") {
+    val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
+      "denizen.some-power")
+    Vector(
+      GameIntent.StartWalker("search", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
+      GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1"))))
+      .foreach { intent =>
+        val (submitted, outer) = ModifierWorkflow.submission(intent,
+          Vector(invocation))
+        assertEquals(submitted.asInstanceOf[GameIntent.StartWalker].startArgs,
+          intent.asInstanceOf[GameIntent.StartWalker].startArgs)
+        assertEquals(submitted.asInstanceOf[GameIntent.StartWalker].modifiers,
+          Vector("denizen.some-power"))
+        assertEquals(outer, Vector.empty)
+      }
   }
 }

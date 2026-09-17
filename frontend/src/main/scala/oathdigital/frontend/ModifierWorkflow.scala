@@ -33,7 +33,8 @@ private[frontend] object ModifierWorkflow {
     * `None`, which is the safe answer -- the server rejects a preview for
     * an action it does not recognise.
     */
-  private val walkerActions: Set[String] = Set("recover", "forge", "travel")
+  private val walkerActions: Set[String] = Set("search", "recover", "forge",
+    "travel")
 
   private val targetedActions = Map(
     "travel" -> ("travel" -> Map.empty[String, String]),
@@ -63,6 +64,8 @@ private[frontend] object ModifierWorkflow {
     // server would reject the preview for an action it does not know.
     case GameIntent.StartWalker(action, _, _) if walkerActions(action) =>
       Some(action -> Map.empty)
+    case GameIntent.StartWalker("play-facedown-adviser", _, _) =>
+      Some("search" -> Map("procedure" -> "facedown-adviser"))
     case GameIntent.ResolveFacedownAdviser(_, _) =>
       Some("search" -> Map("procedure" -> "facedown-adviser"))
     case _ => None

@@ -1,6 +1,6 @@
 package oathdigital.frontend
 
-import oathdigital.protocol.{CardRef, GameIntent, Placement, WorldCard}
+import oathdigital.protocol.{GameIntent, WalkerStartArgWire}
 
 private[frontend] final case class FacedownAdviserDraft(
     context: BoardSelectionContext,
@@ -11,18 +11,10 @@ private[frontend] final case class FacedownAdviserDraft(
   def choose(cardId: String): FacedownAdviserDraft =
     if (advisers.exists(_.card.cardId == cardId)) copy(selectedCardId = Some(cardId))
     else this
-  def command(placement: MinorAdviserPlacement): Option[GameIntent] = selected.flatMap {
-    adviser =>
-      val card = WorldCard(adviser.card.cardKind, adviser.card.cardId)
-      placement.kind match {
-        case "discard" => Some(GameIntent.ResolveFacedownAdviser(card, None))
-        case "play-adviser" => Some(GameIntent.ResolveFacedownAdviser(card,
-          Some(Placement("adviser-face-up", None))))
-        case "play-site" => Some(GameIntent.ResolveFacedownAdviser(card,
-          Some(Placement("site", placement.replacement.map(value =>
-            CardRef(value.cardKind, value.cardId))))))
-        case _ => None
-      }
+  def command: Option[GameIntent] = selected.map { adviser =>
+    GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
+      Vector(WalkerStartArgWire(adviser.card.cardKind,
+        adviser.card.cardId)))
   }
 }
 

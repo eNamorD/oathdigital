@@ -357,7 +357,9 @@ object ServerModeUi {
           facedownAdviserDraft = None
           boardSelectionState = None
           boardFormationState = None
-          submitTransport(command, workflow.selection.invocations)
+          val (submitted, modifiers) = ModifierWorkflow.submission(command,
+            workflow.selection.invocations)
+          submitTransport(submitted, modifiers)
         case None => submit(command)
       }
 

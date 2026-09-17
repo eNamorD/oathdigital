@@ -1535,6 +1535,35 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .load(gameId).toOption.flatten.get.state, completed.state)
   }
 
+  test("facedown adviser plays through the shared walker after reload") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val gameId = "game-walker-facedown-adviser"
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val adviser = ready.game.current.players.find(_.player == actor).get
+      .advisers.collectFirst {
+        case DenizenState(id, Orientation.FaceDown, _) => id
+      }.get
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val started = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty,
+          Vector(DecisionOptionRef.Denizen(adviser))))).toOption.get
+    val loaded = new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get
+    assertEquals(loaded.state, started.state)
+    val result = service.handle(gameId, loaded.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${adviser.kind}.${adviser.value}",
+        DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))))
+      .toOption.get
+    assertEquals(new GameApplicationService(catalog, repository)
+      .load(gameId).toOption.flatten.get.state, result.state)
+  }
+
   test("Wake projection is actor-private and Act boundary is informational") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)

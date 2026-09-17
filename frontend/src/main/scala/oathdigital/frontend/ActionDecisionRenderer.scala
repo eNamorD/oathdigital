@@ -238,8 +238,12 @@ private[frontend] object ActionDecisionRenderer {
          }
          val search = button(label, "act-action search-action")
          search.disabled = !canControl || !presentation.showGameplayControls
-         search.onclick = _ => submitCommand(GameCommand.BeginSearch(
-           SearchSource(source.kind, source.region)))
+         val key = source.kind match {
+           case "world" => "search:world"
+           case _ => s"search:regional-discard:${source.region.getOrElse("")}"
+         }
+         search.onclick = _ => submitCommand(GameCommand.StartWalker(
+           "search", Vector.empty, Vector(WalkerStartArgWire("button", key))))
          groups.appendKind("search", search)
        }
        if (value.legalControls.contains("beginRecover")) {

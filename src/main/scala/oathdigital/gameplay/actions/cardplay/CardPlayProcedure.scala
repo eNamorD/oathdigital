@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, ReadyGame}
+import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
@@ -21,6 +21,28 @@ object CardPlayProcedure {
   private val site = DecisionOptionRef.Button("site")
   private val adviserFaceUp = DecisionOptionRef.Button("adviser-faceup")
   private val adviserFaceDown = DecisionOptionRef.Button("adviser-facedown")
+
+  def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Operation] = for {
+    _ <- OathLifecycle.validateAct(OathState.Ready(ready), actor)
+    card <- facedownCard(args)
+    tree <- build(catalog, ready, actor, card, Origin.FacedownAdviser)
+  } yield tree
+
+  def rebuildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, args: Vector[DecisionOptionRef])
+      : Either[OathViolation, Operation] =
+    facedownCard(args).flatMap(build(catalog, ready, actor, _,
+      Origin.FacedownAdviser))
+
+  private def facedownCard(args: Vector[DecisionOptionRef])
+      : Either[OathViolation, WorldCardId] = args match {
+    case Vector(DecisionOptionRef.Denizen(id)) => Right(id)
+    case Vector(DecisionOptionRef.Vision(id)) => Right(id)
+    case _ => Left(OathViolation.InvalidEventOrder(
+      "facedown-adviser play requires exactly one held card"))
+  }
 
   /** Generic limit-aware placement seam. A power can replace children using
     * a different limit without placing its identity in the card-play rules.

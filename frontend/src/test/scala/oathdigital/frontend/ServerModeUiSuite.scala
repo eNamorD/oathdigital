@@ -258,16 +258,9 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(one.selectedCardId, Some("D1"))
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
       minor(Vector(MinorAdviser(card, placements)))), 1)
-    assertEquals(one.command(placements(0)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-      oathdigital.protocol.WorldCard("denizen", "D1"), None)))
-    assertEquals(one.command(placements(1)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-      oathdigital.protocol.WorldCard("denizen", "D1"),
-      Some(oathdigital.protocol.Placement("adviser-face-up", None)))))
-    assertEquals(one.command(placements(2)), Some(oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-      oathdigital.protocol.WorldCard("denizen", "D1"),
-      Some(oathdigital.protocol.Placement("site", Some(
-        oathdigital.protocol.CardRef("denizen", "D3")))))))
-    assertEquals(one.command(MinorAdviserPlacement("adviser-face-down")), None)
+    assertEquals(one.command, Some(oathdigital.protocol.GameIntent.StartWalker(
+      "play-facedown-adviser", Vector.empty,
+      Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1")))))
     val many = FacedownAdviserDraft.initial(context, minor(Vector(
       MinorAdviser(card, placements), MinorAdviser(other, placements)))).get
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(minor(Vector(
