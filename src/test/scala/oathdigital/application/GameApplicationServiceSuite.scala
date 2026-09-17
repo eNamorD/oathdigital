@@ -594,7 +594,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   test("all-Exile powered game persists and replays through round-eight victory") {
     val repository = new InMemoryEventStreamRepository
     val whenPlayedPower = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     def place(order: Vector[DenizenId], index: Int, id: DenizenId) = {
       val current = order.indexWhere(_.value == id.value)
       if (current < 0) order.updated(index, id)

@@ -250,7 +250,7 @@ class MinorActionsSuite extends munit.FunSuite {
     assert(MinorActions.evolve(catalog, Ready(base), WarbandsMoved(actor.player,
       siteId, toSite = true, 1, priorBoardWarbands = 99, priorSiteWarbands = 3)).isLeft)
     val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown, Tokens.empty))) else p))))
@@ -260,13 +260,13 @@ class MinorActionsSuite extends munit.FunSuite {
     assert(accepted.events.head.isInstanceOf[FacedownAdviserPlayed])
     val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
     assertEquals(diagnostic.action, MajorActionKind.WhenPlayed)
-    assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.dazzle"))
+    assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.revelation"))
   }
 
   test("site play records primary event before replay-valid When Played fallback") {
     val (base, actor, siteId, _, _) = ready()
     val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
       players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown,
@@ -295,7 +295,7 @@ class MinorActionsSuite extends munit.FunSuite {
     val (base, active, _, _, _) = ready()
     val other0 = base.game.current.players.find(_.player != active.player).get
     val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     val other = other0.copy(advisers = Vector(
       DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
     val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
@@ -304,7 +304,7 @@ class MinorActionsSuite extends munit.FunSuite {
     val source = RuleSourceRef.Adviser(other.player, powered)
     val expected = PowerRuntime.ignoredAtSource(catalog, changed, other.player,
       MajorActionKind.WhenPlayed, source).toOption.get
-    assertEquals(expected.map(_.handlerId), Vector("denizen.dazzle"))
+    assertEquals(expected.map(_.handlerId), Vector("denizen.revelation"))
     assertEquals(PowerRuntime.ignoredAtSource(catalog, changed, active.player,
       MajorActionKind.WhenPlayed, source).toOption.get, Vector.empty)
     val event = IgnoredRulesRecorded(other.player, MajorActionKind.WhenPlayed, expected)

@@ -116,7 +116,7 @@ class SearchSuite extends munit.FunSuite {
     val base = act
     val player = active(base)
     val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.dazzle")).get.id.value)
+      _.handlers.contains("denizen.revelation")).get.id.value)
     val origin = player.pawnSite.flatMap(base.game.current.map.regionOf).get
     val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
       temporaryHands = Map(player.player -> Vector(powered)),

@@ -4,7 +4,9 @@ import oathdigital.gameplay.powerresolver._
 
 object ActionPowers {
   private def played = Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayed))
-  object Dazzle extends ReviewedPower("denizen.dazzle", None, played)
+  object Dazzle extends ReviewedPower("denizen.dazzle", None,
+    Vector(ReviewedHandler.automatic(PowerWindow.ActionCardPlayed,
+      implemented = true)))
   object Revelation extends ReviewedPower("denizen.revelation", None, played)
   object ThreateningRoar extends ReviewedPower("denizen.threatening-roar", None, played)
   object AnimalHost extends ReviewedPower("denizen.animal-host", None, played)

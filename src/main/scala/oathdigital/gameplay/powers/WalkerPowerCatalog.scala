@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
+import oathdigital.gameplay.powers.whenplayed.Dazzle
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
@@ -28,5 +29,6 @@ object WalkerPowerCatalog {
     WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
       TravelSitePowers.forCatalog(catalog) ++
       LeagueTreatyContribution.forCatalog(catalog) ++
-      SilverTongue.forCatalog(catalog) :+ TakeWealthLimit)
+      SilverTongue.forCatalog(catalog) ++
+      Dazzle.forCatalog(catalog) :+ TakeWealthLimit)
 }
