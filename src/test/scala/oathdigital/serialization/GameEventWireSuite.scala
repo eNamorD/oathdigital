@@ -7,7 +7,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
   SearchCompleted, SearchStarted}
-import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location,
@@ -24,6 +24,27 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
   PartitionAnswer}
 
 class GameEventWireSuite extends munit.FunSuite {
+  test("recorded Visions Drawn advancement round trips without an amount") {
+    import oathdigital.model.TestGameFixtures.{game, lineageId, playerId}
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.OperationApplied("vision")), Vector(AdvanceVisionsDrawn),
+      Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    assertEquals(ujson.read(encoded)("payload")("ops")(0),
+      ujson.Obj("kind" -> "advance-visions-drawn"))
+    val decoded = GameEventWire.decode(encoded).toOption.get.event
+      .asInstanceOf[WalkerStepRecorded]
+    val base = ReadyGame(game, Map(playerId -> PlayerColor("red")),
+      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered,
+        playerId), MaterialBankState(Suit.all.map(_ -> 5).toMap,
+        Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+    val replayed = OperationPipeline.run(base, decoded.ops,
+      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+    assertEquals(replayed.game.current.tracks.visionsDrawn,
+      base.game.current.tracks.visionsDrawn + 1)
+  }
   test("reduced optional spend is canonical in memory and on the wire") {
     import oathdigital.model.TestGameFixtures.{game, lineageId, playerId}
     val base = ReadyGame(game, Map(playerId -> PlayerColor("red")),

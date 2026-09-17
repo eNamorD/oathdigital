@@ -53,6 +53,17 @@ class OperationExecutorSuite extends munit.FunSuite {
 
   private val executor = new OperationExecutor
 
+  test("Visions Drawn advances once and rejects integer overflow") {
+    val once = executor.execute(ready, AdvanceVisionsDrawn).toOption.get
+    assertEquals(once.game.current.tracks.visionsDrawn,
+      ready.game.current.tracks.visionsDrawn + 1)
+    val maximum = ready.copy(game = ready.game.copy(current =
+      ready.game.current.copy(tracks = ready.game.current.tracks.copy(
+        visionsDrawn = Int.MaxValue))))
+    assertEquals(rejectionCode(maximum, AdvanceVisionsDrawn),
+      "visions-drawn-overflow")
+  }
+
   /** Rejection code for a single operation through the authoritative pipeline
     * with a permissive allowlist (shape checks only).
     */

@@ -12,6 +12,10 @@ sealed trait OperationError extends Product with Serializable {
 }
 
 object OperationError {
+  case object VisionsDrawnOverflow extends OperationError {
+    override val code: String = "visions-drawn-overflow"
+    override val detail: String = "Visions Drawn cannot exceed Int.MaxValue"
+  }
   case object EmptyOperationBatch extends OperationError {
     override val code: String = "empty-operation-batch"
     override val detail: String = "operation batch must not be empty"

@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.gameplay.{DiceKind, DiceSpec}
-import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, CardPlayed, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
@@ -40,6 +40,7 @@ private[serialization] trait WalkerOperationCodec {
 
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
+      case AdvanceVisionsDrawn => ujson.Obj("kind" -> "advance-visions-drawn")
       case SpendSupply(player, amount, _) => ujson.Obj(
         "kind" -> "spend-supply", "playerId" -> player.value,
         "amount" -> amount)
@@ -194,6 +195,9 @@ private[serialization] trait WalkerOperationCodec {
       case _: Sequence => throw UnencodableOperation(InvalidValue(
         "$.payload.ops", "a Sequence node is a tree-control composite over " +
           "the non-sealed Operation type, never a recorded delta"))
+      case _: CardPlayed => throw UnencodableOperation(InvalidValue(
+        "$.payload.ops", "a CardPlayed hook is a tree-control composite, " +
+          "never a recorded delta"))
     }
 
   private def encodePowerTiming(timing: PowerTiming): String = timing match {
@@ -223,6 +227,7 @@ private[serialization] trait WalkerOperationCodec {
   protected final def decodeOperation(value: ujson.Value,
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
+      case "advance-visions-drawn" => Right(AdvanceVisionsDrawn)
       case "spend-supply" => decodePositiveInt(value("amount"), s"$path.amount")
         .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
       case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")

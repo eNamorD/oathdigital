@@ -674,6 +674,9 @@ object OperationShape {
         val (violations, updated) =
           adjustSupplyViolation(ready, player, amount, state)
         (result ++ violations, updated)
+      case ((result, state), AdvanceVisionsDrawn) =>
+        (result ++ Option.when(ready.game.current.tracks.visionsDrawn ==
+          Int.MaxValue)(OperationError.VisionsDrawnOverflow), state)
       case ((result, state), _) => (result, state)
     }
     reasons

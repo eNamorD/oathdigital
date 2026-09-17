@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame}
+import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame, RuleSourceRef}
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model._
 
@@ -523,6 +523,11 @@ final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperat
 final case class BeginTurn(player: PlayerId, phase: Phase)
     extends PrimitiveOperation
 
+/** Advances Visions Drawn by one after a world-deck Vision is drawn. */
+case object AdvanceVisionsDrawn extends PrimitiveOperation {
+  override val required: Boolean = true
+}
+
 /** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
   * state, faces ride the next command.
   */
@@ -609,6 +614,13 @@ final case class Branch(select: (ReadyGame, PendingTree) => Vector[Operation])
   */
 final case class Sequence(override val children: Vector[Operation],
     override val window: Option[PowerWindow] = None) extends CoreOperation
+
+/** Semantic played-card window. Powers supply its children; no hook is a delta. */
+final case class CardPlayed(card: WorldCardId, resultingSource: RuleSourceRef)
+    extends CoreOperation {
+  override val window: Option[PowerWindow] = Some(PowerWindow.ActionCardPlayed)
+  override val children: Vector[Operation] = Vector.empty
+}
 
 object Sequence {
   /** Vararg builder so action trees read `Sequence(a, b)`

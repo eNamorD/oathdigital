@@ -300,6 +300,15 @@ private[operations] object OperationStateMutation {
         result.flatMap(adjustSupply(_, player, -amount))
       case (result, GainSupply(player, amount)) =>
         result.flatMap(adjustSupply(_, player, amount))
+      case (result, AdvanceVisionsDrawn) =>
+        result.flatMap { state =>
+          val current = state.game.current
+          if (current.tracks.visionsDrawn == Int.MaxValue)
+            Left(OperationError.VisionsDrawnOverflow)
+          else Right(state.copy(game = state.game.copy(current = current.copy(
+            tracks = current.tracks.copy(
+              visionsDrawn = current.tracks.visionsDrawn + 1)))))
+        }
       case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(adjustDicePool(_, pool, delta))
       case (result, RecordPowerUse(power)) =>
