@@ -93,14 +93,10 @@ class HttpGameClientSuite extends FunSuite {
     assertEquals(decoded.minorActions.map(_.maxSiteToBoard), Some(2))
     val adviser = decoded.minorActions.get.advisers.head.card
     assert(GameJson.encodeCommand(40,
-      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId), None))
-      .contains("resolveFacedownAdviser"))
-    assert(GameJson.encodeCommand(40,
-      oathdigital.protocol.GameIntent.ResolveFacedownAdviser(
-        oathdigital.protocol.WorldCard(adviser.cardKind, adviser.cardId),
-        Some(oathdigital.protocol.Placement("adviser-face-up", None))))
-      .contains("adviser-face-up"))
+      oathdigital.protocol.GameIntent.StartWalker("play-facedown-adviser",
+        Vector.empty, Vector(oathdigital.protocol.WalkerStartArgWire(
+          adviser.cardKind, adviser.cardId))))
+      .contains("play-facedown-adviser"))
     assert(GameJson.encodeCommand(40, GameCommand.PeekSiteRelics(
       "red-exile")).contains("peekSiteRelics"))
     assert(GameJson.encodeCommand(40, GameCommand.MoveWarbands(
@@ -509,35 +505,27 @@ class HttpGameClientSuite extends FunSuite {
       "\"cardKind\":\"relic\"")).isLeft)
   }
 
-  test("Search encodes only source and decisions and decodes private controls") {
+  test("Search start uses walker arguments and decodes legal sources") {
     val begin = GameJson.encodeCommand(10L,
       GameCommand.BeginSearch("red-exile", "world", None))
-    assert(begin.contains("\"type\":\"beginSearch\""))
+    assert(begin.contains("\"type\":\"startWalker\""))
+    assert(begin.contains("search:world"))
     assert(!begin.contains("drawn"))
     val json = projectionJson(sequence = 11, choices = false).replace(
       "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":{" +
-        "\"decisionId\":\"search-10\",\"kind\":\"search\"," +
-        "\"actorPlayerId\":\"red-exile\",\"prompt\":\"Resolve Search\"," +
-        "\"instructions\":[],\"cards\":[" + cardJson("denizen:a", "denizen", "A") + "]," +
-        "\"keepMinimum\":1,\"keepMaximum\":1,\"orderingRequired\":true," +
-        "\"resolutionsByCard\":{\"denizen:a\":[{\"kind\":\"discard\"," +
-        "\"orientation\":null,\"replacementRequired\":false," +
-        "\"replacementTargets\":[]}]}} ," +
+      "\"pendingCardDecision\":null," +
         "\"legalSearchSources\":[{\"kind\":\"world\",\"region\":null," +
-        "\"supplyCost\":2}]" )
+        "\"supplyCost\":2}]")
     val projection = GameJson.decodeProjection(json).toOption.get
     assertEquals(projection.legalSearchSources,
       Vector(LegalSearchSource("world", None, 2)))
-    assertEquals(projection.pendingCardDecision.map(_.cards.map(_.cardId)),
-      Some(Vector("denizen:a")))
-    assertEquals(projection.pendingCardDecision.get
-      .resolutionsByCard("denizen:a").head.replacementRequired, false)
+    assertEquals(projection.pendingCardDecision, None)
     val complete = GameJson.encodeCommand(11L,
-      GameCommand.ResolveCardDecision("red-exile", "search-10",
-        DecisionResolution.Search(CardDetails("denizen:a", "denizen", "A"),
-          Vector.empty, "discard", None, None)))
-    assert(complete.contains("\"decisionId\":\"search-10\""))
+      GameCommand.ResolveWalker("red-exile", "search.cards",
+        oathdigital.protocol.DecisionAnswerWire.PartitionWire(Vector(
+          oathdigital.protocol.DecisionPlacementWire("denizen", "denizen:a",
+            "keep")))))
+    assert(complete.contains("\"decisionId\":\"search.cards\""))
   }
 
   test("Economy encodes typed intents and decodes authoritative yields") {

@@ -1,8 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules,
-  SearchRules}
+import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
@@ -12,16 +11,15 @@ private[application] final class PendingProcedureProjector(
     walkerDecisions: WalkerDecisionProjector
 ) {
   def project(context: ScopedProjectionContext): PendingProjection = {
-    val cardDecision = pendingCardDecision(context)
     val walkerDecision = walkerDecisions.project(context)
     val walkerWaiting = walkerDecisions.waiting(context)
     val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
     PendingProjection(
-      phase(context, cardDecision, challenge, campaign,
+      phase(context, challenge, campaign,
         relocation, walkerDecision),
-      cardDecision, campaign, relocation, challenge,
+      None, campaign, relocation, challenge,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -29,22 +27,6 @@ private[application] final class PendingProcedureProjector(
         case _ => false
       }, walkerDecision, walkerWaiting)
   }
-
-  private def pendingCardDecision(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case search: PendingProcedure.Search if context.viewer.contains(search.actor) =>
-        val drawn = context.current.temporaryHands
-          .getOrElse(search.actor, Vector.empty)
-        PendingCardDecisionProjection(search.decision.value, "search",
-          search.actor.value, "Resolve Search",
-          Vector("Move exactly one card to Keep.",
-            "Remaining cards are discarded from left to right."),
-          drawn.map(presentation.cardDetails(_,
-            Some(Orientation.FaceUp), hidden = false)),
-          1, 1, orderingRequired = true,
-          drawn.map(card => card.value -> groupedResolutions(
-            SearchRules.legalPlacements(catalog, context.ready, search, card))).toMap)
-    }
 
   private def challengeProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {
@@ -215,38 +197,7 @@ private[application] final class PendingProcedureProjector(
           }, siteRelicOffers)
     }
 
-  private def groupedResolutions(placements: Vector[SearchPlacement]) = {
-    val keys = placements.map {
-      case SearchPlacement.Discard => "discard" -> None
-      case SearchPlacement.Site(_) => "site" -> Some("face-up")
-      case SearchPlacement.Adviser(orientation, _) =>
-        "adviser" -> Some(presentation.orientationName(orientation))
-    }.distinct
-    keys.map { case (kind, orientation) =>
-      val matching = placements.filter {
-        case SearchPlacement.Discard => kind == "discard"
-        case SearchPlacement.Site(_) => kind == "site"
-        case SearchPlacement.Adviser(value, _) => kind == "adviser" &&
-          orientation.contains(presentation.orientationName(value))
-      }
-      val replacements = matching.flatMap {
-        case SearchPlacement.Site(replace) => replace
-        case SearchPlacement.Adviser(_, replace) => replace
-        case SearchPlacement.Discard => None
-      }.distinct
-      val required = matching.nonEmpty && matching.forall {
-        case SearchPlacement.Site(replace) => replace.nonEmpty
-        case SearchPlacement.Adviser(_, replace) => replace.nonEmpty
-        case SearchPlacement.Discard => false
-      }
-      CardResolutionProjection(kind, orientation, required,
-        if (required) replacements.map(presentation.cardDetails(_, None,
-          hidden = false)) else Vector.empty)
-    }
-  }
-
   private def phase(context: ScopedProjectionContext,
-      card: Option[PendingCardDecisionProjection],
       challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
@@ -274,8 +225,6 @@ private[application] final class PendingProcedureProjector(
         }
       }
     else context.current.pending match {
-      case Some(_: PendingProcedure.Search) if card.nonEmpty => "search-decision"
-      case Some(_: PendingProcedure.Search) => "search-waiting"
       case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"
       case Some(_: PendingProcedure.Challenge) => "challenge-waiting"
       case Some(_: PendingProcedure.Campaign)

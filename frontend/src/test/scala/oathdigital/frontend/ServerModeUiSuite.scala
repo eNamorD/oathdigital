@@ -258,6 +258,10 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(one.selectedCardId, Some("D1"))
     assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
       minor(Vector(MinorAdviser(card, placements)))), 1)
+    assertEquals(ServerUiSupport.facedownAdviserLaunchCount(
+      minor(Vector(MinorAdviser(card, Vector.empty)))), 1)
+    assert(FacedownAdviserDraft.initial(context,
+      minor(Vector(MinorAdviser(card, Vector.empty)))).nonEmpty)
     assertEquals(one.command, Some(oathdigital.protocol.GameIntent.StartWalker(
       "play-facedown-adviser", Vector.empty,
       Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "D1")))))
@@ -727,14 +731,9 @@ class ServerModeUiSuite extends FunSuite {
   test("card-decision zone helpers are specific to starting advisers") {
     val adviser = PendingCardDecision("d", "starting-adviser", "red", "Choose",
       Vector.empty, Vector(CardDetails("a", "denizen", "A")), 1, 1, false, Map.empty)
-    val search = adviser.copy(kind = "search", prompt = "Resolve search",
-      orderingRequired = true)
     assertEquals(ServerUiSupport.cardDecisionZoneHelpers(adviser),
       ServerUiSupport.CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
         "The remaining candidates are discarded in order."))
-    assertEquals(ServerUiSupport.cardDecisionZoneHelpers(search).discard,
-      "The remaining cards are discarded in order.")
-    assert(!ServerUiSupport.cardDecisionZoneHelpers(search).keep.contains("adviser"))
   }
 
   test("targetable players and banners render exactly one detail badge") {

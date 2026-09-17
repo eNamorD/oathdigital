@@ -21,7 +21,7 @@ private[frontend] final case class FacedownAdviserDraft(
 private[frontend] object FacedownAdviserDraft {
   def initial(context: BoardSelectionContext,
       minor: MinorActionsState): Option[FacedownAdviserDraft] = {
-    val legal = minor.advisers.filter(_.placements.nonEmpty)
+    val legal = minor.advisers
     Option.when(legal.nonEmpty)(FacedownAdviserDraft(context, legal,
       Option.when(legal.size == 1)(legal.head.card.cardId)))
   }

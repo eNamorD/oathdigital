@@ -26,10 +26,6 @@ private[protocol] object CommandNestedCodecs {
 
   def encodeDecision(value: DecisionResolution): ujson.Obj = value match {
     case DecisionResolution.StartingAdviser(id) => ujson.Obj("kind" -> "starting-adviser", "adviserId" -> id)
-    case DecisionResolution.Search(kept, discarded, placement) => ujson.Obj(
-      "kind" -> "search", "kept" -> world(kept),
-      "discardedInOrder" -> ujson.Arr.from(discarded.map(world)),
-      "placement" -> encodePlacement(placement))
   }
 
   def decodeDecision(value: ujson.Value, path: String)
@@ -37,14 +33,6 @@ private[protocol] object CommandNestedCodecs {
     string(root, "kind", path).flatMap {
       case "starting-adviser" => exact(root, Set("kind", "adviserId"), path)
         .flatMap(_ => string(root, "adviserId", path)).map(DecisionResolution.StartingAdviser)
-      case "search" => for {
-        _ <- exact(root, Set("kind", "kept", "discardedInOrder", "placement"), path)
-        kept <- field(root, "kept", path).flatMap(decodeWorld(_, s"$path.kept"))
-        raw <- field(root, "discardedInOrder", path).flatMap(array(_, s"$path.discardedInOrder"))
-        discarded <- traverse(raw.zipWithIndex) { case (v, i) => decodeWorld(v, s"$path.discardedInOrder[$i]") }
-        _ <- noDuplicates((kept +: discarded).map(v => s"${v.kind}/${v.id}"), s"$path.discardedInOrder")
-        placement <- field(root, "placement", path).flatMap(decodePlacement(_, s"$path.placement"))
-      } yield DecisionResolution.Search(kept, discarded, placement)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision resolution '$kind'"))
     }}
 
@@ -159,15 +147,4 @@ private[protocol] object CommandNestedCodecs {
   private def decodeWorld(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
     _ <- exact(row, Set("kind", "id"), path); kind <- string(row, "kind", path); id <- string(row, "id", path)
   } yield WorldCard(kind, id) }
-  private def encodePlacement(value: Placement) = ujson.Obj("kind" -> value.kind,
-    "replace" -> value.replace.map(v => ujson.Obj("kind" -> v.kind, "id" -> v.id)).getOrElse(ujson.Null))
-  private def decodePlacement(value: ujson.Value, path: String) = obj(value, path).flatMap { row => for {
-    _ <- exact(row, Set("kind", "replace"), path); kind <- string(row, "kind", path)
-    replacement <- field(row, "replace", path).flatMap {
-      case ujson.Null => Right(None)
-      case v => obj(v, s"$path.replace").flatMap { card => for {
-        _ <- exact(card, Set("kind", "id"), s"$path.replace"); k <- string(card, "kind", s"$path.replace"); id <- string(card, "id", s"$path.replace")
-      } yield Some(CardRef(k, id)) }
-    }
-  } yield Placement(kind, replacement) }
 }

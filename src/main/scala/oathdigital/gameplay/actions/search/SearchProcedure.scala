@@ -6,6 +6,8 @@ import oathdigital.gameplay.actions.{CardPlay, SearchRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
+  WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 
 /** Search's draw and card-selection tree; placement is the shared subtree. */
@@ -13,6 +15,36 @@ object SearchProcedure {
   val cardDecisionId: String = "search.cards"
   val keepKey: String = "keep"
   val discardKey: String = "discard"
+
+  /** Legal sources and their effective Supply cost under automatic powers.
+    * Projection reads this instead of duplicating unmodified cost gates.
+    */
+  def legalSources(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, powers: WalkerPowers): Vector[(SearchSource, Int)] =
+    actorRegion(ready, actor).toOption.toVector.flatMap { origin =>
+      Vector(SearchSource.WorldDeck,
+        SearchSource.RegionalDiscard(origin)).flatMap { source =>
+        val startArg = source match {
+          case SearchSource.WorldDeck => "search:world"
+          case SearchSource.RegionalDiscard(region) =>
+            s"search:regional-discard:${region.key}"
+        }
+        build(catalog, ready, actor, Vector(DecisionOptionRef.Button(startArg)))
+          .toOption.filter(tree => ProcedureWalker.restrictionViolations(
+            tree, powers, ready, actor).isEmpty)
+          .flatMap(tree => ProcedureWalker.advance(ready, tree, None, powers)
+            .toOption).flatMap { outcome =>
+            val steps = outcome match {
+              case WalkerOutcome.Parked(_, events) => events
+              case WalkerOutcome.Finished(_, events) => events
+            }
+            steps.collect { case step: WalkerStepRecorded => step.ops }
+              .flatten.collectFirst {
+                case SpendSupply(`actor`, amount, _) => source -> amount
+              }
+          }
+      }
+    }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] = for {
@@ -26,15 +58,12 @@ object SearchProcedure {
       .toRight(OathViolation.InvalidEventOrder("Search actor is not in the game"))
     origin <- player.pawnSite.flatMap(ready.game.current.map.regionOf)
       .toRight(OathViolation.PawnSiteMissing(actor))
-    cost <- SearchRules.cost(ready, source, origin)
     cards <- SearchRules.draw(ready, source, origin)
     _ <- Either.cond(cards.nonEmpty, (),
       OathViolation.SearchSourceUnavailable(source))
-    _ <- Either.cond(player.board.supply.supply >= cost, (),
-      OathViolation.InsufficientSupply(cost, player.board.supply.supply))
   } yield tree(catalog, actor, source)
 
-  /** Resume never re-runs the start-only affordability and empty-hand gates. */
+  /** Resume never re-runs the start-only source and empty-hand gates. */
   def rebuild(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =
     sourceOf(args).map(tree(catalog, actor, _))

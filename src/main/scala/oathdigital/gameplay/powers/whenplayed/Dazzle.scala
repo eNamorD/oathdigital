@@ -31,29 +31,34 @@ final case class Dazzle private (cardId: DenizenId,
     val current = ready.game.current
     val region = current.players.find(_.player == actor).flatMap(_.pawnSite)
       .flatMap(current.map.regionOf)
-    region.toRight(OathViolation.PawnSiteMissing(actor)).map { origin =>
+    region.toRight(OathViolation.PawnSiteMissing(actor)).flatMap { origin =>
       val destination = origin match {
         case Region.Cradle => Region.Provinces
         case Region.Provinces => Region.Hinterland
         case Region.Hinterland => Region.Cradle
       }
-      current.map.inPlay.filter(site =>
+      val candidates = current.map.inPlay.filter(site =>
         current.map.regionOf(site).contains(origin)).flatMap { siteId =>
-        current.map.sites.get(siteId).toVector.flatMap(_.denizens.flatMap {
-          case card: DenizenState => suitOf(card.id)
-            .filter(suit => suit == Suit.Hearth || suit == Suit.Order)
-            .map(suit => Discard.Denizen(card.id,
-              PositionedLocation(Location.Site(siteId)), destination,
-              suit, card.tokens.favor, card.tokens.secrets, actor))
-          case _ => None
+        current.map.sites.get(siteId).toVector.flatMap(_.denizens.collect {
+          case card: DenizenState => siteId -> card
         })
       }
+      candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
+        Right(Vector.empty)) { case (acc, (siteId, card)) => for {
+        operations <- acc
+        suit <- suitOf(card.id)
+      } yield if (suit == Suit.Hearth || suit == Suit.Order)
+        operations :+ Discard.Denizen(card.id,
+          PositionedLocation(Location.Site(siteId)), destination,
+          suit, card.tokens.favor, card.tokens.secrets, actor)
+      else operations }
     }
   }
 
-  private def suitOf(card: DenizenId): Option[Suit] =
+  private def suitOf(card: DenizenId): Either[OathViolation, Suit] =
     catalog.denizens.find(_.id.value == card.value)
       .flatMap(definition => Suit.all.find(_.key == definition.suit.value))
+      .toRight(OathViolation.UnknownWorldCard(card))
 }
 
 object Dazzle {

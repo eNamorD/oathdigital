@@ -8,12 +8,12 @@ class CommandProtocolSuite extends munit.FunSuite {
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     Muster(EconomyTarget("denizen", "d1")),
     Trade(EconomyTarget("edifice", "e1"), "secret"),
-    BeginSearch(SearchSource("world", None)),
+    StartWalker("search", Vector.empty,
+      Vector(WalkerStartArgWire("button", "search:world"))),
     BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
     CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
-    ResolveFacedownAdviser(WorldCard("denizen", "d1"), None),
-    ResolveFacedownAdviser(WorldCard("denizen", "d1"),
-      Some(Placement("adviser-face-up", None))),
+    StartWalker("play-facedown-adviser", Vector.empty,
+      Vector(WalkerStartArgWire("denizen", "d1"))),
     RevealVision("v1"), PlayConspiracy(Some(ConspiracyTarget.RelicSlot("p2", 0))),
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
@@ -31,9 +31,7 @@ class CommandProtocolSuite extends munit.FunSuite {
     FinishCampaignPlans("cp1"), ChooseCampaignSacrifice("cp1", 1),
     PlaceCampaignForce("cp1", Vector(CampaignForceAllocation("site:a", 2))),
     RelocateCampaignRaidPawn("cp1", "site:c"),
-    ResolveCardDecision("d1", DecisionResolution.Search(
-      WorldCard("vision", "v1"), Vector(WorldCard("denizen", "d2")),
-      Placement("adviser-face-down", Some(CardRef("denizen", "d3"))))),
+    ResolveCardDecision("d1", DecisionResolution.StartingAdviser("d1")),
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
     RollWalker("recover.pool"),
@@ -87,6 +85,8 @@ class CommandProtocolSuite extends munit.FunSuite {
 
   test("retired facedown adviser wire intents are rejected") {
     Vector(
+      """{"expectedNextSequence":0,"intent":{"type":"beginSearch","source":"world","region":null}}""",
+      """{"expectedNextSequence":0,"intent":{"type":"resolveFacedownAdviser","adviser":{"kind":"denizen","id":"d1"},"placement":null}}""",
       """{"expectedNextSequence":0,"intent":{"type":"discardFacedownAdviser","adviser":{"kind":"denizen","id":"d1"}}}""",
       """{"expectedNextSequence":0,"intent":{"type":"playFacedownAdviser","adviser":{"kind":"denizen","id":"d1"},"placement":{"kind":"site","replace":null}}}"""
     ).foreach { json =>
@@ -94,6 +94,11 @@ class CommandProtocolSuite extends munit.FunSuite {
       assertEquals(failure.path, "$.intent.type")
       assert(failure.message.contains("unknown intent type"))
     }
+  }
+
+  test("retired Search card resolution is rejected") {
+    val raw = ujson.read("""{"kind":"search","kept":{"kind":"denizen","id":"d1"},"discardedInOrder":[],"placement":{"kind":"discard","replace":null}}""")
+    assert(CommandNestedCodecs.decodeDecision(raw, "$.resolution").isLeft)
   }
 
   test("malformed fields and structural duplicates retain exact paths") {

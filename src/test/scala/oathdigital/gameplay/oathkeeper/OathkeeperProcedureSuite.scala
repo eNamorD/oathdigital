@@ -140,10 +140,10 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     // A legacy (non-walker) pending procedure is refused the same way.
     val actor = ready.game.current.players
       .find(_.player == ready.game.current.turn.activePlayer).get
-    val origin = actor.pawnSite.flatMap(ready.game.current.map.regionOf).get
     val legacy = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      pending = Some(PendingProcedure.Search(DecisionId("powered-search"),
-        actor.player, SearchSource.WorldDeck, origin, 2)))))
+      pending = Some(PendingProcedure.Conspiracy(DecisionId("powered-vision"),
+        actor.player, oathdigital.gameplay.actions.VisionRules.Conspiracy,
+        None)))))
     assertEquals(legacy.game.current.walkerPending, None)
     assertEquals(legacy.game.current.walkerProcedure, None)
     val refused = rules.startTriggered(OathTransition(Ready(legacy), Vector.empty,

@@ -14,14 +14,11 @@ object GameIntent {
       extends GameIntent
   final case class Muster(target: EconomyTarget) extends GameIntent
   final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
-  final case class BeginSearch(source: SearchSource) extends GameIntent
   final case class BeginChallenge(banner: String) extends GameIntent
   final case class ChooseChallengeSecretSite(decisionId: String, siteId: String)
       extends GameIntent
   final case class CompleteChallenge(decisionId: String, amount: Int) extends GameIntent
   final case class PlaceBannerResource(banner: String, amount: Int) extends GameIntent
-  final case class ResolveFacedownAdviser(adviser: WorldCard,
-      placement: Option[Placement]) extends GameIntent
   final case class RevealVision(visionId: String) extends GameIntent
   final case class PlayConspiracy(target: Option[ConspiracyTarget]) extends GameIntent
   case object PeekSiteRelics extends GameIntent
@@ -80,10 +77,7 @@ object GameIntent {
 final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
 final case class EconomyTarget(kind: String, id: String)
-final case class SearchSource(source: String, region: Option[String])
 final case class WorldCard(kind: String, id: String)
-final case class CardRef(kind: String, id: String)
-final case class Placement(kind: String, replace: Option[CardRef])
 final case class CampaignForceAllocation(siteId: String, count: Int)
 sealed trait ConspiracyTarget extends Product with Serializable
 object ConspiracyTarget {
@@ -128,8 +122,6 @@ object NegotiationInformation {
 sealed trait DecisionResolution extends Product with Serializable
 object DecisionResolution {
   final case class StartingAdviser(adviserId: String) extends DecisionResolution
-  final case class Search(kept: WorldCard, discardedInOrder: Vector[WorldCard],
-      placement: Placement) extends DecisionResolution
 }
 
 /** Wire form of a walker decision answer, generic over the engine's

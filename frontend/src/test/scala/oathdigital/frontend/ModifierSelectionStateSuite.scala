@@ -39,7 +39,6 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
       .flatMap(ModifierWorkflow.targeted).map(_._1),
       Vector("travel", "campaign", "campaign", "muster", "trade", "trade", "search"))
     val commands = Vector[GameIntent](
-      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),
       // Travel joined the walker at batch-1 Task 5. It is the first action
@@ -52,10 +51,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "d1"))),
-      GameIntent.ResolveFacedownAdviser(oathdigital.protocol.WorldCard("denizen", "d1"), None))
+      GameIntent.BeginChallenge("peoples-favor"))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("search", "recover", "forge", "travel", "search", "search",
-        "search"))
+      Vector("recover", "forge", "travel", "search", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
     // An UNREGISTERED walker action must not be swept into the same
     // modifier-offering path: only the keys the engine registers on the
@@ -182,10 +180,10 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     val (submitted, outerModifiers) = ModifierWorkflow.submission(
-      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)),
+      GameIntent.BeginChallenge("peoples-favor"),
       Vector(invocation))
     assertEquals(submitted,
-      GameIntent.BeginSearch(oathdigital.protocol.SearchSource("world", None)))
+      GameIntent.BeginChallenge("peoples-favor"))
     assertEquals(outerModifiers, Vector(invocation))
   }
 

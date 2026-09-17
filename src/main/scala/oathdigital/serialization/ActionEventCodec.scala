@@ -11,14 +11,10 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   protected final val actionDiscriminator: PartialFunction[OathEvent, String] = {
       case _: Mustered => MusteredType
       case _: Traded => TradedType
-      case _: SearchStarted => SearchStartedType
-      case _: SearchCompleted => SearchCompletedType
       case _: BannerChallengeStarted => BannerChallengeStartedType
       case _: BannerRibbonChoiceMade => BannerRibbonChoiceMadeType
       case _: BannerChallengeCompleted => BannerChallengeCompletedType
       case _: BannerResourcePlaced => BannerResourcePlacedType
-      case _: FacedownAdviserDiscarded => FacedownAdviserDiscardedType
-      case _: FacedownAdviserPlayed => FacedownAdviserPlayedType
       case _: SiteRelicsPeeked => SiteRelicsPeekedType
       case _: OwnedRelicRevealed => OwnedRelicRevealedType
       case _: WarbandsMoved => WarbandsMovedType
@@ -44,28 +40,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
             case TradeResource.Favor => "favor"
             case TradeResource.Secret => "secret"
           }), "supplySpent" -> spent, "gained" -> gained)
-      case SearchStarted(playerId, decision, source, origin, spent, drawn) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "decisionId" -> decision.value,
-          "source" -> encodeSearchSource(source),
-          "origin" -> origin.key,
-          "supplySpent" -> spent,
-          "drawn" -> ujson.Arr.from(drawn.map(encodeWorldCard))
-        )
-      case SearchCompleted(playerId, decision, kept, discarded, placement,
-          favorGained, discardedWorld, discardedEdifices) =>
-        ujson.Obj(
-          "playerId" -> playerId.value,
-          "decisionId" -> decision.value,
-          "kept" -> encodeWorldCard(kept),
-          "discardedInOrder" -> ujson.Arr.from(discarded.map(encodeWorldCard)),
-          "placement" -> encodeSearchPlacement(placement),
-          "favorGained" -> favorGained,
-          "discardedWorld" -> ujson.Arr.from(discardedWorld.map(encodeWorldCard)),
-          "discardedEdifices" -> ujson.Arr.from(discardedEdifices.map(id =>
-            ujson.Str(id.value)))
-        )
       case BannerChallengeStarted(player, decision, banner, holder, prior, spent,
           favor, sites) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -90,14 +64,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "secretsReturnedToHolder" -> returned)
       case BannerResourcePlaced(player, banner, amount) => ujson.Obj(
         "playerId" -> player.value, "banner" -> banner.key, "amount" -> amount)
-      case FacedownAdviserDiscarded(player, adviser, destination) =>
-        ujson.Obj("playerId" -> player.value, "adviser" -> encodeWorldCard(adviser),
-          "destination" -> destination.key)
-      case FacedownAdviserPlayed(player, adviser, placement, favor, world, edifices) =>
-        ujson.Obj("playerId" -> player.value, "adviser" -> encodeWorldCard(adviser),
-          "placement" -> encodeSearchPlacement(placement), "favorGained" -> favor,
-          "discardedWorld" -> ujson.Arr.from(world.map(encodeWorldCard)),
-          "discardedEdifices" -> ujson.Arr.from(edifices.map(e => ujson.Str(e.value))))
       case SiteRelicsPeeked(player, site, relics) =>
         ujson.Obj("playerId" -> player.value, "siteId" -> site.value,
           "relics" -> ujson.Arr.from(relics.map(r => ujson.Str(r.value))))
@@ -162,34 +128,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           gained <- safeIntField(payload.obj, "gained", path)
         } yield Traded(PlayerId(payload("playerId").str),
           SiteId(payload("siteId").str), target, suit, resource, spent, gained)
-        case SearchStartedType =>
-          for {
-            source <- decodeSearchSource(payload("source"), s"$path.source")
-            origin <- decodeRegion(payload("origin").str, s"$path.origin")
-            drawn <- traverse(payload("drawn").arr.toVector)(decodeWorldCard(_, s"$path.drawn"))
-            spent = payload("supplySpent").num
-            _ <- if (spent.isFinite && spent == Math.rint(spent) && spent >= 0 &&
-              spent <= Int.MaxValue) Right(()) else Left(InvalidValue(
-              s"$path.supplySpent", "must be a non-negative integer"))
-          } yield SearchStarted(
-            PlayerId(payload("playerId").str),
-            DecisionId(payload("decisionId").str), source, origin,
-            spent.toInt, drawn)
-        case SearchCompletedType =>
-          for {
-            kept <- decodeWorldCard(payload("kept"), s"$path.kept")
-            discarded <- traverse(payload("discardedInOrder").arr.toVector)(
-              decodeWorldCard(_, s"$path.discardedInOrder"))
-            placement <- decodeSearchPlacement(payload("placement"), s"$path.placement")
-            favor <- safeIntField(payload.obj, "favorGained", path)
-            discardedWorld <- traverse(payload("discardedWorld").arr.toVector)(
-              decodeWorldCard(_, s"$path.discardedWorld"))
-            discardedEdifices = payload("discardedEdifices").arr.toVector.map(value =>
-              EdificeId(value.str))
-          } yield SearchCompleted(
-            PlayerId(payload("playerId").str),
-            DecisionId(payload("decisionId").str), kept, discarded, placement,
-            favor, discardedWorld, discardedEdifices)
         case BannerChallengeStartedType => for {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           prior <- safeIntField(payload.obj, "priorResources", path)
@@ -229,21 +167,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           amount <- safeIntField(payload.obj, "amount", path)
         } yield BannerResourcePlaced(PlayerId(payload("playerId").str), banner, amount)
-        case FacedownAdviserDiscardedType => for {
-          adviser <- decodeWorldCard(payload("adviser"), s"$path.adviser")
-          destination <- decodeRegion(payload("destination").str, s"$path.destination")
-        } yield FacedownAdviserDiscarded(PlayerId(payload("playerId").str),
-          adviser, destination)
-        case FacedownAdviserPlayedType => for {
-          adviser <- decodeWorldCard(payload("adviser"), s"$path.adviser")
-          placement <- decodeSearchPlacement(payload("placement"), s"$path.placement")
-          favor <- safeIntField(payload.obj, "favorGained", path)
-          world <- traverse(payload("discardedWorld").arr.toVector)(value =>
-            decodeWorldCard(value, s"$path.discardedWorld"))
-          edifices = payload("discardedEdifices").arr.toVector.map(value =>
-            EdificeId(value.str))
-        } yield FacedownAdviserPlayed(PlayerId(payload("playerId").str), adviser,
-          placement, favor, world, edifices)
         case SiteRelicsPeekedType => Right(SiteRelicsPeeked(
           PlayerId(payload("playerId").str), SiteId(payload("siteId").str),
           payload("relics").arr.toVector.map(value => RelicId(value.str))))

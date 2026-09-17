@@ -33,8 +33,6 @@ object GameCommand {
       extends GameCommand
   final case class Trade(playerId: PlayerId, target: EconomyTargetRef,
       resource: TradeResource) extends GameCommand
-  final case class BeginSearch(playerId: PlayerId, source: SearchSource)
-      extends GameCommand
   final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
       site: SiteId) extends GameCommand
@@ -42,8 +40,6 @@ object GameCommand {
       amount: Int) extends GameCommand
   final case class PlaceBannerResource(playerId: PlayerId, banner: Banner,
       amount: Int) extends GameCommand
-  final case class ResolveFacedownAdviser(playerId: PlayerId, adviser: WorldCardId,
-      placement: Option[SearchPlacement]) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand
@@ -80,14 +76,6 @@ object GameCommand {
       allocations: Vector[CampaignForceAllocation]) extends GameCommand
   final case class RelocateCampaignRaidPawn(playerId: PlayerId,
       decision: DecisionId, destinationSiteId: SiteId) extends GameCommand
-  /** Internal Search adapter retained for rules tests; transports use ResolveCardDecision. */
-  final case class CompleteSearch(
-      playerId: PlayerId,
-      decision: DecisionId,
-      kept: WorldCardId,
-      discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement
-  ) extends GameCommand
   final case class ResolveCardDecision(
       playerId: PlayerId,
       decision: DecisionId,
@@ -127,9 +115,4 @@ sealed trait CardDecisionResolution extends Product with Serializable
 object CardDecisionResolution {
   final case class StartingAdviser(adviserId: DenizenId)
       extends CardDecisionResolution
-  final case class Search(
-      kept: WorldCardId,
-      discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement
-  ) extends CardDecisionResolution
 }

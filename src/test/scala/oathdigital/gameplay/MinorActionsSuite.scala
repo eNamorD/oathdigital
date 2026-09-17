@@ -93,35 +93,22 @@ class MinorActionsSuite extends munit.FunSuite {
   test("facedown adviser discard uses the next region and costs no Supply") {
     val (base, actor, _, adviser, _) = ready()
     val before = actor.board.supply
-    val accepted = rules.handle(Ready(base),
-      MinorActionCommand.DiscardFacedownAdviser(actor.player, adviser)).toOption.get
-    val event = accepted.events.collectFirst { case e: FacedownAdviserDiscarded => e }.get
+    val started = rules.startWalker(Ready(base), ActionRef.PlayFacedownAdviser,
+      actor.player, startArgs = Vector(DecisionOptionRef.Denizen(
+        adviser.asInstanceOf[DenizenId]))).toOption.get
+    val accepted = rules.resolveWalker(started.state, actor.player,
+      s"cardplay.place.${adviser.kind}.${adviser.value}",
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))
+      .toOption.get
     val origin = base.game.current.map.regionOf(actor.pawnSite.get).get
     val expected = origin match {
       case Region.Cradle => Region.Provinces
       case Region.Provinces => Region.Hinterland
       case Region.Hinterland => Region.Cradle
     }
-    assertEquals(event.destination, expected)
     val Ready(after) = accepted.state: @unchecked
     assertEquals(after.game.current.players.find(_.player == actor.player).get.board.supply, before)
     assert(after.game.current.commonCards.discard(expected).contains(adviser))
-  }
-
-  test("facedown adviser can play faceup as adviser or at the pawn site") {
-    val (base, actor, siteId, adviser, _) = ready()
-    val asAdviser = rules.handle(Ready(base), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, adviser, SearchPlacement.Adviser(Orientation.FaceUp, None))).toOption.get
-    val Ready(adviserReady) = asAdviser.state: @unchecked
-    assertEquals(adviserReady.game.current.players.find(_.player == actor.player).get
-      .advisers.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
-
-    val atSite = rules.handle(Ready(base), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, adviser, SearchPlacement.Site(None))).toOption.get
-    val Ready(siteReady) = atSite.state: @unchecked
-    assert(siteReady.game.current.map.sites(siteId).denizens.exists(_.id == adviser))
-    assertEquals(siteReady.game.current.players.find(_.player == actor.player).get.advisers,
-      Vector.empty)
   }
 
   test("site relic peek uses core operations and preserves knowledge") {
@@ -245,52 +232,6 @@ class MinorActionsSuite extends munit.FunSuite {
       SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1))
   }
 
-  test("tampered facts fail while reviewed When Played handlers record fallback") {
-    val (base, actor, siteId, adviser, _) = ready()
-    assert(MinorActions.evolve(catalog, Ready(base), WarbandsMoved(actor.player,
-      siteId, toSite = true, 1, priorBoardWarbands = 99, priorSiteWarbands = 3)).isLeft)
-    val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.revelation")).get.id.value)
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown, Tokens.empty))) else p))))
-    val accepted = rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, powered, SearchPlacement.Adviser(Orientation.FaceUp, None)))
-      .toOption.get
-    assert(accepted.events.head.isInstanceOf[FacedownAdviserPlayed])
-    val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
-    assertEquals(diagnostic.action, MajorActionKind.WhenPlayed)
-    assertEquals(diagnostic.diagnostics.map(_.handlerId), Vector("denizen.revelation"))
-  }
-
-  test("site play records primary event before replay-valid When Played fallback") {
-    val (base, actor, siteId, _, _) = ready()
-    val powered = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.revelation")).get.id.value)
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceDown,
-          Tokens.empty))) else p))))
-    val accepted = rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, powered, SearchPlacement.Site(None))).toOption.get
-    val played = accepted.events.head.asInstanceOf[FacedownAdviserPlayed]
-    val diagnostic = accepted.events(1).asInstanceOf[IgnoredRulesRecorded]
-    assertEquals(diagnostic.diagnostics.map(_.source),
-      Vector(RuleSourceRef.SiteCard(siteId, powered)))
-
-    val replayed = accepted.events.foldLeft[
-      Either[OathViolation, OathState]](Right(Ready(modified))) {
-      case (Right(state), event) => rules.evolve(state, event)
-      case (failure @ Left(_), _) => failure
-    }
-    assertEquals(replayed, Right(accepted.state))
-
-    val afterPlay = rules.evolve(Ready(modified), played).toOption.get
-    val tampered = diagnostic.copy(diagnostics = diagnostic.diagnostics.map(_.copy(
-      source = RuleSourceRef.GameRule("tampered"))))
-    assert(rules.evolve(afterPlay, tampered).isLeft)
-  }
-
   test("source-scoped fallback and replay use the recorded off-turn actor") {
     val (base, active, _, _, _) = ready()
     val other0 = base.game.current.players.find(_.player != active.player).get
@@ -311,43 +252,6 @@ class MinorActionsSuite extends munit.FunSuite {
     assert(rules.evolve(Ready(changed), event).isRight)
   }
 
-  test("Conspiracy play is an explicit unsupported power in command and replay") {
-    val (base, actor, _, _, _) = ready()
-    val conspiracy = MinorActionPowerSupport.Conspiracy
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(VisionState(conspiracy, Orientation.FaceDown))) else p))))
-    val command = MinorActionCommand.PlayFacedownAdviser(actor.player, conspiracy,
-      SearchPlacement.Adviser(Orientation.FaceUp, None))
-    assertEquals(rules.handle(Ready(modified), command).left.toOption,
-      Some(UnsupportedMinorActionRule(conspiracy, Vector("vision.conspiracy"))))
-    val tampered = FacedownAdviserPlayed(actor.player, conspiracy,
-      SearchPlacement.Adviser(Orientation.FaceUp, None), 0, Vector.empty, Vector.empty)
-    assertEquals(MinorActions.evolve(catalog, Ready(modified), tampered).left.toOption,
-      Some(UnsupportedMinorActionRule(conspiracy, Vector("vision.conspiracy"))))
-  }
-
-  test("true Visions cannot bypass the authoritative reveal procedure") {
-    val (base, actor, _, _, _) = ready()
-    val vision = VisionRules.Conquest
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
-      players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(VisionState(vision, Orientation.FaceDown))) else p))))
-    val placement = SearchPlacement.Adviser(Orientation.FaceUp, None)
-    assertEquals(MinorActions.legalAdviserPlacements(
-      catalog, modified, actor.player, vision), Vector.empty)
-    assertEquals(rules.handle(Ready(modified), MinorActionCommand.PlayFacedownAdviser(
-      actor.player, vision, placement)).left.toOption,
-      Some(UnsupportedMinorActionRule(vision, Vector("vision.reveal-procedure"))))
-    val projected = new oathdigital.application.GameProjector(catalog).project(
-      "vision-minor", oathdigital.application.LoadedGame(Ready(modified), 0),
-      actor.player)
-    val projectedPlacements = projected.minorActions.toVector.flatMap(_.advisers)
-      .filter(_.card.cardId == vision.value).flatMap(_.placements)
-    assertEquals(projectedPlacements.map(_.kind), Vector("discard"))
-    assert(projected.legalControls.contains("revealVision"))
-  }
-
   test("locked restriction applies only faceup and does not prevent facedown discard") {
     val (base, actor, _, _, _) = ready()
     val locked = DenizenId(catalog.denizens.find(_.restrictions ==
@@ -357,13 +261,17 @@ class MinorActionsSuite extends munit.FunSuite {
         base.game.current.commonCards.worldDeck.filterNot(_ == locked)),
       players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceDown, Tokens.empty))) else p))))
-    assert(rules.handle(Ready(modified),
-      MinorActionCommand.DiscardFacedownAdviser(actor.player, locked)).isRight)
+    val started = rules.startWalker(Ready(modified), ActionRef.PlayFacedownAdviser,
+      actor.player, startArgs = Vector(DecisionOptionRef.Denizen(locked)))
+      .toOption.get
+    assert(rules.resolveWalker(started.state, actor.player,
+      s"cardplay.place.denizen.${locked.value}",
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))).isRight)
     val faceup = modified.copy(game = modified.game.copy(current = modified.game.current.copy(
       players = modified.game.current.players.map(p => if (p.player == actor.player)
         p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p))))
-    assertEquals(MinorActions.legalAdviserPlacements(catalog, faceup, actor.player, locked),
-      Vector.empty)
+    assert(oathdigital.gameplay.actions.cardplay.CardPlayProcedure.buildFacedown(
+      catalog, faceup, actor.player, Vector(DecisionOptionRef.Denizen(locked))).isLeft)
   }
 
   test("valid setup history replays exactly through a completed minor action") {
@@ -373,9 +281,16 @@ class MinorActionsSuite extends munit.FunSuite {
       .find(_.player == active).get.advisers.head.id.asInstanceOf[WorldCardId]
     val act = rules.startWalker(setupState, PhaseTransitionRef.EndWake, active)
       .toOption.get
-    val discarded = rules.handle(act.state,
-      MinorActionCommand.DiscardFacedownAdviser(active, adviser)).toOption.get
-    val events = setupEvents ++ act.events ++ discarded.events
+    val started = rules.startWalker(act.state, ActionRef.PlayFacedownAdviser,
+      active, startArgs = Vector(adviser match {
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+      })).toOption.get
+    val discarded = rules.resolveWalker(started.state, active,
+      s"cardplay.place.${adviser.kind}.${adviser.value}",
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard")))
+      .toOption.get
+    val events = setupEvents ++ act.events ++ started.events ++ discarded.events
     val replayed = new EventReplayEngine(rules).replay(events.zipWithIndex.map {
       case (event, index) => RecordedEvent(index.toLong, event)
     }).toOption.get

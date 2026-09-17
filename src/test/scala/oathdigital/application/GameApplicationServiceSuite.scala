@@ -472,9 +472,14 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val emptied = service.handle(gameId, rolled.nextSequence,
       GameCommand.ResolveWalker(actor, TreeDecision(RecoverProcedure.relicDecisionId,
         ChooseOneAnswer(DecisionOptionRef.Relic(relic))))).toOption.get
-    val played = service.handle(gameId, emptied.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, catacombsId,
-        Some(SearchPlacement.Site(None)))).toOption.get
+    val selecting = service.handle(gameId, emptied.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty,
+          Vector(DecisionOptionRef.Denizen(catacombsId))))).toOption.get
+    val played = service.handle(gameId, selecting.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.denizen.${catacombsId.value}",
+        ChooseOneAnswer(DecisionOptionRef.Button("site"))))).toOption.get
     val Ready(atCatacombs) = played.state: @unchecked
     val site = atCatacombs.game.current.players.find(_.player == actor).get.pawnSite.get
     (played, actor, OrderedRuleInvocation(
@@ -631,8 +636,16 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         val adviser = act.game.current.players.find(_.player == actor).get.advisers.head.id
           .asInstanceOf[WorldCardId]
         accepted = service.handle("powered-playability", accepted.nextSequence,
-          GameCommand.ResolveFacedownAdviser(actor, adviser,
-            Some(SearchPlacement.Adviser(Orientation.FaceUp, None)))).toOption.get
+          GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+            StartPayload(actor, Vector.empty, Vector(adviser match {
+              case id: DenizenId => DecisionOptionRef.Denizen(id)
+              case id: VisionId => DecisionOptionRef.Vision(id)
+            })))).toOption.get
+        accepted = service.handle("powered-playability", accepted.nextSequence,
+          GameCommand.ResolveWalker(actor, TreeDecision(
+            s"cardplay.place.${adviser.kind}.${adviser.value}",
+            ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")))))
+          .toOption.get
         played += actor
       }
       accepted = service.handle("powered-playability", accepted.nextSequence,
@@ -687,9 +700,12 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
       .asInstanceOf[WorldCardId]
     assert(service.handle("game-preview", act.nextSequence,
-      GameCommand.WithModifiers(GameCommand.ResolveFacedownAdviser(actor, adviser,
-        Some(SearchPlacement.Adviser(Orientation.FaceUp, None))),
-        Vector(forged))).isLeft)
+      GameCommand.WithModifiers(GameCommand.StartWalker(
+        ActionRef.PlayFacedownAdviser, StartPayload(actor, Vector.empty,
+          Vector(adviser match {
+            case id: DenizenId => DecisionOptionRef.Denizen(id)
+            case id: VisionId => DecisionOptionRef.Vision(id)
+          }))), Vector(forged))).isLeft)
     val challenge = service.preview("game-preview", act.nextSequence, actor,
       oathdigital.gameplay.MajorActionKind.Challenge, Vector.empty).toOption.get
     assertEquals(challenge.options, Vector.empty)
@@ -705,11 +721,23 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       .asInstanceOf[WorldCardId]
     val act = service.handle("game-minor-replay", setup.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
-    val discarded = service.handle("game-minor-replay", act.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).toOption.get
+    val started = service.handle("game-minor-replay", act.nextSequence,
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty, Vector(adviser match {
+          case id: DenizenId => DecisionOptionRef.Denizen(id)
+          case id: VisionId => DecisionOptionRef.Vision(id)
+        })))).toOption.get
+    val discarded = service.handle("game-minor-replay", started.nextSequence,
+      GameCommand.ResolveWalker(actor, TreeDecision(
+        s"cardplay.place.${adviser.kind}.${adviser.value}",
+        ChooseOneAnswer(DecisionOptionRef.Button("discard"))))).toOption.get
     val beforeRetry = repository.load("game-minor-replay").toOption.flatten.get.records
     assert(service.handle("game-minor-replay", discarded.nextSequence,
-      GameCommand.ResolveFacedownAdviser(actor, adviser, None)).isLeft)
+      GameCommand.StartWalker(ActionRef.PlayFacedownAdviser,
+        StartPayload(actor, Vector.empty, Vector(adviser match {
+          case id: DenizenId => DecisionOptionRef.Denizen(id)
+          case id: VisionId => DecisionOptionRef.Vision(id)
+        })))).isLeft)
     assertEquals(repository.load("game-minor-replay").toOption.flatten.get.records,
       beforeRetry)
     val reloaded = new GameApplicationService(catalog, repository)
@@ -1441,39 +1469,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(record("payload")("target")("id").str, edificeId.value)
   }
 
-  test("Search persists and reloads pending private decision then completes in v4") {
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val setup = execute(service, "game-search")
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-search", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val started = service.handle("game-search", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck)).toOption.get
-    val reloadedPending = new GameApplicationService(catalog, repository)
-      .load("game-search").toOption.flatten.get
-    assertEquals(reloadedPending.state, started.state)
-    val Ready(pendingReady) = reloadedPending.state: @unchecked
-    val pending = pendingReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Search]
-    val drawn = pendingReady.game.current.temporaryHands(active)
-    assertEquals(service.handle("game-search", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck)),
-      Left(GameApplicationError.StaleClientPosition(
-        ended.nextSequence, started.nextSequence)))
-    val completed = service.handle("game-search", started.nextSequence,
-      GameCommand.CompleteSearch(active, pending.decision,
-        drawn.head, drawn.tail, SearchPlacement.Discard))
-      .toOption.get
-    val loaded = new GameApplicationService(catalog, repository)
-      .load("game-search").toOption.flatten.get
-    assertEquals(loaded.state, completed.state)
-    val versions = repository.load("game-search").toOption.flatten.get.records
-      .takeRight(2).map(record => ujson.read(record)("formatVersion").num.toInt)
-    assertEquals(versions, Vector(1, 1))
-  }
-
   test("Search draw port cannot inject card identities inconsistent with state") {
     val repository = new InMemoryEventStreamRepository
     val port = new SearchDrawPort {
@@ -1486,9 +1481,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val active = ready.game.current.turn.activePlayer
     val ended = service.handle("game-search-tamper", setup.nextSequence,
       GameCommand.EndWake(active)).toOption.get
-    assert(service.handle("game-search-tamper", ended.nextSequence,
-      GameCommand.BeginSearch(active, SearchSource.WorldDeck))
-      .left.toOption.get.isInstanceOf[GameApplicationError.CommandRejected])
     assert(service.handle("game-search-tamper", ended.nextSequence,
       GameCommand.StartWalker(ActionRef.Search, StartPayload(active,
         Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))

@@ -3,11 +3,12 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
-import oathdigital.gameplay.operations.{Operation, Sequence}
+import oathdigital.gameplay.operations.{Location, Operation, Play, Sequence}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
   PhasePowers, PowerResolution}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
-  WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry}
+  WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
+  WalkerStepRecorded}
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._
 
@@ -379,6 +380,7 @@ private[gameplay] trait OathRulesWalker {
       }
       continued.flatMap(continue => GameplayTransition(state,
           steps :+ WalkerCompleted(procedure), continue)(evolve)
+        .flatMap(recordCardPlayFallback(_, procedure, steps))
         .flatMap(transition =>
           if (conspiracy.nonEmpty) Right(transition)
           else if (runsActionBoundary(procedure)) completeAction(transition)
@@ -388,6 +390,43 @@ private[gameplay] trait OathRulesWalker {
           if (procedure == PhaseTransitionRef.BeginRest) autoFinishRest(transition)
           else Right(transition)))
   }
+
+  /** Diagnostics for unimplemented WHEN PLAYED handlers follow the recorded
+    * faceup placement, not the pre-play Search state. Implemented walker
+    * powers remain absent from the reviewed fallback registry.
+    */
+  private def recordCardPlayFallback(transition: OathTransition,
+      procedure: ProcedureRef, steps: Vector[OathEvent])
+      : Either[OathViolation, OathTransition] =
+    if (procedure != ActionRef.Search &&
+        procedure != ActionRef.PlayFacedownAdviser) Right(transition)
+    else transition.state match {
+      case Ready(ready) =>
+        val actor = ready.game.current.turn.activePlayer
+        val sources = steps.collect { case step: WalkerStepRecorded =>
+          step.ops.collect {
+            case Play(card: WorldCardId, _, Location.Site(site),
+                Orientation.FaceUp, _) =>
+              RuleSourceRef.SiteCard(site, card)
+            case Play(card: WorldCardId, _, Location.PlayArea(player),
+                Orientation.FaceUp, _) =>
+              RuleSourceRef.Adviser(player, card)
+          }
+        }.flatten.distinct
+        sources.foldLeft[Either[OathViolation,
+            Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
+          case (Right(found), source) => PowerRuntime.ignoredAtSource(catalog,
+            ready, actor, MajorActionKind.WhenPlayed, source)
+            .map(found ++ _)
+          case (failure @ Left(_), _) => failure
+        }.map { diagnostics =>
+          if (diagnostics.isEmpty) transition
+          else transition.copy(events = transition.events :+
+            OathEvent.IgnoredRulesRecorded(actor, MajorActionKind.WhenPlayed,
+              diagnostics))
+        }
+      case _ => Right(transition)
+    }
 
   /** Whether the action boundary follows a completed procedure. Only an
     * action runs it, in whatever phase it ran: Take Wealth does, End Wake (a

@@ -77,9 +77,6 @@ final case class AuthorizedPlayer private (
   def trade(target: EconomyTargetRef, resource: oathdigital.gameplay.TradeResource): GameCommand =
     GameCommand.Trade(access.playerId, target, resource)
 
-  def beginSearch(source: SearchSource): GameCommand =
-    GameCommand.BeginSearch(access.playerId, source)
-
   def beginChallenge(banner: Banner): GameCommand =
     GameCommand.BeginChallenge(access.playerId, banner)
   def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =
@@ -88,9 +85,6 @@ final case class AuthorizedPlayer private (
     GameCommand.CompleteChallenge(access.playerId, decision, amount)
   def placeBannerResource(banner: Banner, amount: Int): GameCommand =
     GameCommand.PlaceBannerResource(access.playerId, banner, amount)
-  def resolveFacedownAdviser(adviser: WorldCardId,
-      placement: Option[SearchPlacement]): GameCommand =
-    GameCommand.ResolveFacedownAdviser(access.playerId, adviser, placement)
   def revealVision(vision: VisionId): GameCommand =
     GameCommand.RevealVision(access.playerId, vision)
   def playConspiracy(target: Option[ConspiracyTargetRef]): GameCommand =
@@ -129,11 +123,6 @@ final case class AuthorizedPlayer private (
   def relocateCampaignRaidPawn(decision: DecisionId,
       destination: SiteId): GameCommand =
     GameCommand.RelocateCampaignRaidPawn(access.playerId, decision, destination)
-
-  def completeSearch(decision: DecisionId, kept: WorldCardId,
-      discarded: Vector[WorldCardId], placement: SearchPlacement): GameCommand =
-    GameCommand.CompleteSearch(
-      access.playerId, decision, kept, discarded, placement)
 
   def resolveCardDecision(
       decision: DecisionId,

@@ -42,7 +42,10 @@ private[frontend] object GameCommand {
   def PlayConspiracy(actor: String, target: Option[oathdigital.protocol.ConspiracyTarget]) = Intent.PlayConspiracy(target)
   def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))
   def Trade(actor: String, target: oathdigital.frontend.EconomyTarget, resource: String) = Intent.Trade(oathdigital.protocol.EconomyTarget(target.kind, target.id), resource)
-  def BeginSearch(actor: String, source: String, region: Option[String]) = Intent.BeginSearch(SearchSource(source, region))
+  def BeginSearch(actor: String, source: String, region: Option[String]) =
+    Intent.StartWalker("search", Vector.empty, Vector(WalkerStartArgWire(
+      "button", region.fold("search:world")(r =>
+        s"search:regional-discard:$r"))))
   def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
   def ChooseChallengeSecretSite(actor: String, id: String, site: String) = Intent.ChooseChallengeSecretSite(id, site)
   def CompleteChallenge(actor: String, id: String, amount: Int) = Intent.CompleteChallenge(id, amount)
@@ -72,11 +75,4 @@ private[frontend] object ConspiracyTarget {
 private[frontend] object DecisionResolution {
   sealed trait Value { def intent: oathdigital.protocol.DecisionResolution }
   final case class StartingAdviser(id: String) extends Value { val intent = oathdigital.protocol.DecisionResolution.StartingAdviser(id) }
-  final case class Search(kept: CardDetails, discarded: Vector[CardDetails], placement: String,
-      orientation: Option[String], replacement: Option[CardDetails]) extends Value {
-    val intent = oathdigital.protocol.DecisionResolution.Search(
-      WorldCard(kept.cardKind, kept.cardId), discarded.map(v => WorldCard(v.cardKind, v.cardId)),
-      Placement(orientation.fold(placement)(v => if (v == "face-up") "adviser-face-up" else "adviser-face-down"),
-        replacement.map(v => CardRef(v.cardKind, v.cardId))))
-  }
 }

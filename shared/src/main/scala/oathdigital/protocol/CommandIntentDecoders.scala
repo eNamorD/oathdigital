@@ -28,14 +28,6 @@ private[protocol] object CommandIntentDecoders {
       target <- field(value, "target", path).flatMap(economy(_, s"$path.target"))
       resource <- string(value, "resource", path)
     } yield Trade(target, resource)
-    case "beginSearch" => for {
-      _ <- exact(value, Set("type", "source", "region"), path)
-      source <- string(value, "source", path)
-      region <- field(value, "region", path).flatMap {
-        case ujson.Null => Right(None); case ujson.Str(v) if v.trim.nonEmpty => Right(Some(v))
-        case _ => Left(InvalidValue(s"$path.region", "expected string or null"))
-      }
-    } yield BeginSearch(SearchSource(source, region))
     case "beginChallenge" => one(value, path, "banner")(BeginChallenge)
     case "chooseChallengeSecretSite" => two(value, path, "decisionId", "siteId")(ChooseChallengeSecretSite)
     case "completeChallenge" => idInt(value, path, "amount")(CompleteChallenge)
@@ -44,14 +36,6 @@ private[protocol] object CommandIntentDecoders {
       banner <- string(value, "banner", path)
       amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield PlaceBannerResource(banner, amount)
-    case "resolveFacedownAdviser" => for {
-      _ <- exact(value, Set("type", "adviser", "placement"), path)
-      adviser <- field(value, "adviser", path).flatMap(world(_, s"$path.adviser"))
-      placement <- field(value, "placement", path).flatMap {
-        case ujson.Null => Right(None)
-        case selected => place(selected, s"$path.placement").map(Some(_))
-      }
-    } yield ResolveFacedownAdviser(adviser, placement)
     case "revealVision" => one(value, path, "visionId")(RevealVision)
     case "playConspiracy" => for {
       _ <- exact(value, Set("type", "target"), path)
@@ -147,15 +131,9 @@ private[protocol] object CommandIntentDecoders {
   private def nested[A](value: ujson.Obj, path: String, name: String)(f: (ujson.Value, String) => Either[ProtocolDecodeFailure, A]) =
     exact(value, Set("type", name), path).flatMap(_ => field(value, name, path)).flatMap(f(_, s"$path.$name"))
   private def economy(v: ujson.Value, p: String) = pair(v, p).map { case (k, id) => EconomyTarget(k, id) }
-  private def world(v: ujson.Value, p: String) = pair(v, p).map { case (k, id) => WorldCard(k, id) }
-  private def card(v: ujson.Value, p: String) = pair(v, p).map { case (k, id) => CardRef(k, id) }
   private def pair(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("kind", "id"), p); k <- string(o, "kind", p); id <- string(o, "id", p)
   } yield (k, id) }
-  private def place(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
-    _ <- exact(o, Set("kind", "replace"), p); k <- string(o, "kind", p)
-    replacement <- field(o, "replace", p).flatMap { case ujson.Null => Right(None); case x => card(x, s"$p.replace").map(Some(_)) }
-  } yield Placement(k, replacement) }
   private def allocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("siteId", "count"), p); s <- string(o, "siteId", p); c <- field(o, "count", p).flatMap(integer(_, s"$p.count"))
   } yield CampaignForceAllocation(s, c) }

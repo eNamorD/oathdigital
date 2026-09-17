@@ -105,4 +105,23 @@ class DazzleSuite extends munit.FunSuite {
     assertEquals(ops.collect { case value: Discard.Denizen => value.card },
       Vector(targets.head))
   }
+
+  test("Dazzle rejects a site denizen absent from the catalog") {
+    val OathState.Ready(base) = execute(setupRules)._1: @unchecked
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val siteId = current.players.find(_.player == actor).get.pawnSite.get
+    val unknown = DenizenId("denizen:missing-from-catalog")
+    val site = current.map.sites(siteId)
+    val prepared = base.copy(game = base.game.copy(current = current.copy(
+      map = current.map.copy(sites = current.map.sites.updated(siteId,
+        site.copy(denizens = site.denizens :+
+          DenizenState(unknown, Orientation.FaceUp, Tokens.empty)))))))
+    val dazzle = Dazzle.forCatalog(catalog).get
+    val dazzleId = catalog.denizens.find(_.powers.exists(_.id == Dazzle.id))
+      .map(d => DenizenId(d.id.value)).get
+    val hook = CardPlayed(dazzleId, RuleSourceRef.Adviser(actor, dazzleId))
+    assert(ProcedureWalker.advance(prepared, hook, None,
+      WalkerPowers(Vector(dazzle))).isLeft)
+  }
 }

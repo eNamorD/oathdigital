@@ -15,7 +15,7 @@ object ReviewedPowerCatalog {
     PowerId("foundation.altered"))
 
   val powers: Vector[Power] =
-    ActionPowers.powers ++ WakePowers.powers ++ SearchPowers.powers ++
+    ActionPowers.powers ++ WakePowers.powers ++
       TravelPowers.powers ++ CampaignPowers.powers ++ MusterPowers.powers ++
       TradePowers.powers ++ ForgePowers.powers ++ RecoverPowers.powers ++
       RestPowers.powers ++ NegotiationPowers.powers

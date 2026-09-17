@@ -187,30 +187,15 @@ private[frontend] object ServerUiSupport {
       state: CardDecisionState,
       cardId: String
   ): CardDecisionState =
-    if (state.keep.exists(_.cardId == cardId)) state.moveToDiscard(cardId)
-    else state.arrangeDrop(cardId, None)
-
-  private[frontend] def dropBeforeDiscard(
-      state: CardDecisionState,
-      cardId: String,
-      beforeCardId: String
-  ): CardDecisionState = {
-    val inDiscard = if (state.keep.exists(_.cardId == cardId))
-      state.moveToDiscard(cardId) else state
-    inDiscard.arrangeDrop(cardId, Some(beforeCardId))
-  }
+    state.moveToDiscard(cardId)
 
   private[frontend] final case class CardDecisionZoneHelpers(
       keep: String, discard: String)
 
   private[frontend] def cardDecisionZoneHelpers(
       decision: PendingCardDecision): CardDecisionZoneHelpers =
-    if (decision.kind == "starting-adviser") CardDecisionZoneHelpers(
-      "Move exactly one adviser to Keep.",
+    CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
       "The remaining candidates are discarded in order.")
-    else CardDecisionZoneHelpers(
-      "Move the card you want to resolve to Keep.",
-      "The remaining cards are discarded in order.")
 
   private[frontend] def cardDetailsPopover(card: CardDetails): dom.Element = {
     val node = element("button", "card-detail")
@@ -617,10 +602,7 @@ private[frontend] object ServerUiSupport {
   }
 
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
-    if (minor.advisers.exists(_.placements.nonEmpty)) 1 else 0
-
-  private[frontend] def protocolWorldCard(card: CardDetails): WorldCard =
-    WorldCard(card.cardKind, card.cardId)
+    if (minor.advisers.nonEmpty) 1 else 0
 
   private[frontend] def protocolRaidTarget(target: BoardTargetRef): CampaignRaidTarget = target match {
     case BoardTargetRef.PlayerPawn(player) => CampaignRaidTarget.Pawn(player)

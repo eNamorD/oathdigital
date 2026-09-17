@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.gameplay.actions.SearchRules
+import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.OathState.Ready
 
@@ -98,18 +98,29 @@ object ForgeWalkerFixture extends munit.Assertions {
 
     def searchOne(): Unit = {
       accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.BeginSearch(actor, SearchSource.WorldDeck))
+        GameCommand.StartWalker(ActionRef.Search, StartPayload(actor,
+          Vector.empty, Vector(DecisionOptionRef.Button("search:world")))))
         .fold(error => fail(s"Search fixture rejected: $error"), identity)
       val Ready(pendingReady) = accepted.state: @unchecked
-      val pending = pendingReady.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Search]
       val drawn = pendingReady.game.current.temporaryHands(actor)
-      val kept = drawn.find(card => SearchRules.legalPlacements(
-        cat, pendingReady, pending, card).contains(SearchPlacement.Site(None)))
+      val kept = drawn.find(card => CardPlay.plannedOperations(cat,
+        pendingReady, actor, card, SearchPlacement.Site(None),
+        CardPlay.Origin.TemporaryHand).isRight)
         .getOrElse(fail(s"no site-playable card in prepared draw $drawn"))
+      if (drawn.size > 1) {
+        val choices = drawn.map(card => DecisionPlacement(card match {
+          case id: DenizenId => DecisionOptionRef.Denizen(id)
+          case id: VisionId => DecisionOptionRef.Vision(id)
+        }, if (card == kept) "keep" else "discard"))
+        accepted = service.handle(gameId, accepted.nextSequence,
+          GameCommand.ResolveWalker(actor, TreeDecision("search.cards",
+            DecisionAnswer.PartitionAnswer(choices)))).toOption.get
+      }
       accepted = service.handle(gameId, accepted.nextSequence,
-        GameCommand.CompleteSearch(actor, pending.decision, kept,
-          drawn.filterNot(_ == kept), SearchPlacement.Site(None))).toOption.get
+        GameCommand.ResolveWalker(actor, TreeDecision(
+          s"cardplay.place.${kept.kind}.${kept.value}",
+          DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("site")))))
+        .toOption.get
     }
     searchOne(); searchOne()
     accepted = service.handle(gameId, accepted.nextSequence,

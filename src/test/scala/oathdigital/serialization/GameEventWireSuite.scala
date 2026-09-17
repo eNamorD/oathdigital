@@ -5,8 +5,7 @@ import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded,
-  SearchCompleted, SearchStarted}
+import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded}
 import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
@@ -144,11 +143,6 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("v10 minor actions preserve private identities and prior force facts") {
     val events = Vector[OathEvent](
-      OathEvent.FacedownAdviserDiscarded(PlayerId("red"), DenizenId("42"),
-        Region.Provinces),
-      OathEvent.FacedownAdviserPlayed(PlayerId("red"), DenizenId("43"),
-        SearchPlacement.Site(Some(DenizenId("44"))), 1,
-        Vector(DenizenId("44")), Vector.empty),
       OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),
         Vector(RelicId("R1"), RelicId("R2"))),
       OathEvent.OwnedRelicRevealed(PlayerId("red"), RelicId("R3")),
@@ -963,32 +957,6 @@ class GameEventWireSuite extends munit.FunSuite {
       case WireError.InvalidValue(path, _) => path.endsWith(".oathkeeperGoal")
       case _ => false
     })
-  }
-
-  test("v4 Search events round trip exact hidden outcome and player choices") {
-    val drawn = Vector[WorldCardId](DenizenId("denizen:a"), VisionId("vision:b"))
-    val started = SearchStarted(PlayerId("p2"), DecisionId("search-9"),
-      SearchSource.WorldDeck, Region.Cradle, 3, drawn)
-    val completed = SearchCompleted(PlayerId("p2"), DecisionId("search-9"),
-      drawn.head, Vector(drawn(1)),
-      SearchPlacement.Adviser(Orientation.FaceDown, None))
-    val encoded = Vector(started, completed).zipWithIndex.map {
-      case (event, index) => GameEventWire.encodeEvent(
-        "search", catalogRef, 9L + index, event).toOption.get
-    }
-    assertEquals(encoded.map(_("formatVersion").num.toInt), Vector(1, 1))
-    assertEquals(encoded.map(_("eventType").str),
-      Vector("gameplay.search-started", "gameplay.search-completed"))
-    assertEquals(encoded.map(value => GameEventWire.decode(value)
-      .toOption.get.event), Vector(started, completed))
-    val fixture = scala.io.Source.fromResource(
-      "serialization/search-event-stream-v4.json").mkString.trim
-    assertEquals(ujson.read(fixture), ujson.Arr.from(encoded))
-
-    encoded.head("payload")("drawn")(0)("id") = "denizen:tampered"
-    assert(GameEventWire.decode(encoded.head).isRight)
-    // Wire decoding preserves the recorded outcome; authoritative replay is
-    // responsible for rejecting disagreement with the deck.
   }
 
   test("format version and sequence reject fractional and nonfinite numbers") {

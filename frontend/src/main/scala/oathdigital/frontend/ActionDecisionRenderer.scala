@@ -25,8 +25,6 @@ private[frontend] object ActionDecisionRenderer {
              .map(_.replace('-', ' ')).getOrElse("winner")
            s"Game over — $winner wins ($reason)."
          }
-     case None if value.phase == "search-decision" =>
-       node.textContent = "Act phase — resolve your Search."
      case None if value.phase == "awaiting-adviser" =>
        node.textContent = "Setup — choose your starting adviser."
      case None if value.phase == "awaiting-pawn" =>
@@ -593,8 +591,6 @@ private[frontend] object ActionDecisionRenderer {
    shell.setAttribute("aria-labelledby", "card-decision-title")
    shell.setAttribute("data-decision-kind", decision.kind); shell.appendChild(text("h2", "", decision.prompt))
    shell.lastChild.asInstanceOf[dom.Element].id = "card-decision-title"
-   if (decision.kind != "starting-adviser") decision.instructions.foreach(instruction =>
-     shell.appendChild(text("p", "decision-instruction", instruction)))
    val state = currentCardDecision.filter(_.decisionId == decision.decisionId)
      .getOrElse(CardDecisionState.initial(decision))
    def update(next: CardDecisionState): Unit = {
@@ -617,30 +613,9 @@ private[frontend] object ActionDecisionRenderer {
      node.addEventListener("dragstart", (event: dom.Event) =>
        event.asInstanceOf[dom.DragEvent].dataTransfer
          .setData("text/plain", card.cardId))
-     if (zone == "discard") {
-       val left = button("‹", "move-left")
-       left.setAttribute("aria-label", s"Move ${card.name} left")
-       left.setAttribute("title", s"Move ${card.name} left")
-       left.disabled = state.discard.headOption.contains(card)
-       left.onclick = _ => update(state.move(card.cardId, -1))
-       val right = button("›", "move-right")
-       right.setAttribute("aria-label", s"Move ${card.name} right")
-       right.setAttribute("title", s"Move ${card.name} right")
-       right.disabled = state.discard.lastOption.contains(card)
-       right.onclick = _ => update(state.move(card.cardId, 1))
-       node.appendChild(left); node.appendChild(right)
-       node.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
-       node.addEventListener("drop", (event: dom.Event) => {
-         event.preventDefault()
-         event.stopPropagation()
-         update(dropBeforeDiscard(state,
-           event.asInstanceOf[dom.DragEvent].dataTransfer.getData("text/plain"),
-           card.cardId))
-       })
-     }
      node
    }
-   def arrangementZones(showDiscardOrder: Boolean): dom.Element = {
+   def arrangementZones(): dom.Element = {
      val helpers = cardDecisionZoneHelpers(decision)
      val zones = element("div", "decision-zones")
      val keep = element("section", "decision-zone keep-zone")
@@ -654,8 +629,7 @@ private[frontend] object ActionDecisionRenderer {
      })
      val discard = element("section", "decision-zone discard-zone"); val discardHeading = element("div", "decision-zone-heading")
      discardHeading.appendChild(text("h3", "", "Discard"))
-     if (showDiscardOrder || decision.kind == "starting-adviser")
-       discardHeading.appendChild(text("p", "decision-zone-helper", helpers.discard))
+     discardHeading.appendChild(text("p", "decision-zone-helper", helpers.discard))
      discard.appendChild(discardHeading)
      state.discard.foreach(card => discard.appendChild(cardNode(card, "discard")))
      discard.addEventListener("dragover", (event: dom.Event) => event.preventDefault())
@@ -667,72 +641,13 @@ private[frontend] object ActionDecisionRenderer {
      zones.appendChild(keep); zones.appendChild(discard)
      zones
    }
-   if (decision.kind == "starting-adviser") {
-     shell.appendChild(arrangementZones(showDiscardOrder = false))
-     val confirm = button("Confirm adviser", "decision-confirm")
-     confirm.disabled = !state.arrangementValid(decision.cards) || !canControl
-     confirm.onclick = _ => state.keep.headOption.foreach(card => submitCommand(
-       GameCommand.ResolveCardDecision(decision.decisionId,
-         DecisionResolution.StartingAdviser(card.cardId))))
-     shell.appendChild(confirm)
-   } else state.stage match {
-     case CardDecisionStage.Arrange =>
-       shell.appendChild(arrangementZones(showDiscardOrder = true))
-       val confirm = button("Confirm arrangement", "decision-confirm")
-       confirm.disabled = !state.arrangementValid(decision.cards)
-       confirm.onclick = _ => update(state.copy(stage = CardDecisionStage.Resolve))
-       shell.appendChild(confirm)
-     case CardDecisionStage.Resolve =>
-       val kept = state.keep.head
-       shell.appendChild(text("h3", "", s"Resolve ${kept.name}"))
-       decision.resolutionsByCard.getOrElse(kept.cardId, Vector.empty).foreach { resolution =>
-         val label = resolution.kind match {
-           case "discard" => "Discard"
-           case "site" => "Play at site"
-           case "adviser" if resolution.orientation.contains("face-down") => "Play facedown"
-           case "adviser" => "Play faceup"
-           case other => other
-         }
-         val choose = button(label, "resolution-choice")
-         choose.setAttribute("aria-pressed", state.selectedResolution.contains(resolution).toString)
-         choose.onclick = _ => update(state.chooseResolution(resolution))
-         shell.appendChild(choose)
-       }
-       state.selectedResolution.filter(_.replacementRequired).foreach { resolution =>
-         val select = dom.document.createElement("select").asInstanceOf[dom.html.Select]
-         select.setAttribute("aria-label", "Card to replace")
-         val placeholder = dom.document.createElement("option").asInstanceOf[dom.html.Option]
-         placeholder.value = ""; placeholder.text = "Choose a card to replace"
-         select.appendChild(placeholder)
-         resolution.replacementTargets.foreach { card =>
-           val option = dom.document.createElement("option").asInstanceOf[dom.html.Option]
-           option.value = card.cardId; option.text = card.name; select.appendChild(option)
-         }
-         select.onchange = _ => update(state.chooseReplacement(select.value))
-         shell.appendChild(select)
-       }
-       val back = button("Back", "decision-back")
-       back.onclick = _ => update(state.copy(stage = CardDecisionStage.Arrange,
-         selectedResolution = None, selectedReplacement = None))
-       val confirmRow = element("div", "decision-final-row")
-       confirmRow.appendChild(back)
-       val confirm = button("Final confirm", "decision-confirm")
-       confirm.disabled = !state.resolutionValid || !canControl
-       confirm.onclick = _ => state.selectedResolution.foreach { resolution =>
-         val placementKind = resolution.kind match {
-             case "adviser" if resolution.orientation.contains("face-up") => "adviser-face-up"
-             case "adviser" => "adviser-face-down"
-             case other => other
-         }
-         submitCommand(GameCommand.ResolveCardDecision(decision.decisionId,
-           DecisionResolution.Search(protocolWorldCard(kept),
-             state.discard.map(protocolWorldCard), Placement(placementKind,
-               state.selectedReplacement.map(card =>
-                 CardRef(card.cardKind, card.cardId))))))
-       }
-       confirmRow.appendChild(confirm)
-       shell.appendChild(confirmRow)
-   }
+   shell.appendChild(arrangementZones())
+   val confirm = button("Confirm adviser", "decision-confirm")
+   confirm.disabled = !state.arrangementValid(decision.cards) || !canControl
+   confirm.onclick = _ => state.keep.headOption.foreach(card => submitCommand(
+     GameCommand.ResolveCardDecision(decision.decisionId,
+       DecisionResolution.StartingAdviser(card.cardId))))
+   shell.appendChild(confirm)
    shell
  }
 }

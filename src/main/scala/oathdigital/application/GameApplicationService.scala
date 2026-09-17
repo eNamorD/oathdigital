@@ -6,7 +6,7 @@ import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
   PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
   OathTransition, OathViolation, OrderedRuleInvocation}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand, EconomyCommand, SearchCommand}
+  ChallengeCommand, EconomyCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -403,18 +403,6 @@ final class GameApplicationService(
         rules.handle(state, EconomyCommand.Muster(playerId, target))
       case GameCommand.Trade(playerId, target, resource) =>
         rules.handle(state, EconomyCommand.Trade(playerId, target, resource))
-      case GameCommand.BeginSearch(playerId, source) => state match {
-        case OathState.Ready(ready) =>
-          for {
-            region <- ready.game.current.players.find(_.player == playerId)
-              .flatMap(_.pawnSite).flatMap(ready.game.current.map.regionOf)
-              .toRight(OathViolation.PawnSiteMissing(playerId))
-            drawn <- searchDrawPort.prepare(ready, source, region)
-            result <- rules.handle(state, SearchCommand.Start(
-              playerId, DecisionId(s"search-$nextSequence"), source, drawn))
-          } yield result
-        case _ => Left(OathViolation.GameNotStarted)
-      }
       case GameCommand.BeginChallenge(playerId, banner) =>
         rules.handle(state, ChallengeCommand.Begin(playerId,
           DecisionId(s"challenge-$nextSequence"), banner))
@@ -424,11 +412,6 @@ final class GameApplicationService(
         rules.handle(state, ChallengeCommand.Complete(playerId, decision, amount))
       case GameCommand.PlaceBannerResource(playerId, banner, amount) =>
         rules.handle(state, ChallengeCommand.PlaceResource(playerId, banner, amount))
-      case GameCommand.ResolveFacedownAdviser(playerId, adviser, placement) =>
-        placement.fold(rules.handle(state,
-          MinorActionCommand.DiscardFacedownAdviser(playerId, adviser)))(selected =>
-          rules.handle(state, MinorActionCommand.PlayFacedownAdviser(
-            playerId, adviser, selected)))
       case GameCommand.PeekSiteRelics(playerId) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
       case GameCommand.RevealOwnedRelic(playerId, relic) =>
@@ -484,10 +467,6 @@ final class GameApplicationService(
       case GameCommand.RelocateCampaignRaidPawn(playerId, decision, destination) =>
         rules.handle(state, CampaignCommand.RelocateRaidPawn(
           playerId, decision, destination))
-      case GameCommand.CompleteSearch(playerId, decision, kept, discarded,
-          placement) =>
-        rules.handle(state, SearchCommand.Complete(
-          playerId, decision, kept, discarded, placement))
       case GameCommand.ResolveCardDecision(playerId, decision, resolution) =>
         resolution match {
           case CardDecisionResolution.StartingAdviser(adviserId) => state match {
@@ -502,9 +481,6 @@ final class GameApplicationService(
             case _ => Left(OathViolation.InvalidEventOrder(
               "starting-adviser resolution has the wrong decision kind"))
           }
-          case CardDecisionResolution.Search(kept, discarded, placement) =>
-            rules.handle(state, SearchCommand.Complete(
-              playerId, decision, kept, discarded, placement))
         }
       case GameCommand.BeginRest(playerId) =>
         rules.startWalker(state, PhaseTransitionRef.BeginRest, playerId)
@@ -521,9 +497,6 @@ final class GameApplicationService(
     command match {
       case GameCommand.Muster(actor, _) => Some(actor -> MajorActionKind.Muster)
       case GameCommand.Trade(actor, _, _) => Some(actor -> MajorActionKind.Trade)
-      case GameCommand.BeginSearch(actor, _) => Some(actor -> MajorActionKind.Search)
-      case GameCommand.ResolveFacedownAdviser(actor, _, _) =>
-        Some(actor -> MajorActionKind.Search)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>

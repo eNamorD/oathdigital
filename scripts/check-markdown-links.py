@@ -35,7 +35,22 @@ def anchors(path: Path):
 errors = []
 for source in MARKDOWN:
     text = source.read_text(encoding="utf-8")
-    for match in LINK.finditer(text):
+    visible = []
+    fence = None
+    for line in text.splitlines(keepends=True):
+        marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+        if marker:
+            run = marker.group(1)
+            if fence is None:
+                fence = (run[0], len(run))
+            elif run[0] == fence[0] and len(run) >= fence[1]:
+                fence = None
+            visible.append("\n")
+        elif fence is None:
+            visible.append(re.sub(r"(`+)(.*?)\1", "", line))
+        else:
+            visible.append("\n")
+    for match in LINK.finditer("".join(visible)):
         raw = match.group(1).strip().split()[0].strip("<>")
         if raw.startswith(("http://", "https://", "mailto:")):
             continue

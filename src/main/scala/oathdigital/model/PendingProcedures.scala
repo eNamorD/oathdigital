@@ -216,14 +216,6 @@ object PendingProcedure {
       effects: Vector[CampaignPlanEffect]
   )
 
-  final case class Search(
-      decision: DecisionId,
-      actor: PlayerId,
-      source: SearchSource = SearchSource.WorldDeck,
-      origin: Region = Region.Cradle,
-      supplySpent: Int = 0
-  ) extends PendingProcedure
-
   final case class Campaign(
       decision: DecisionId,
       actor: PlayerId,

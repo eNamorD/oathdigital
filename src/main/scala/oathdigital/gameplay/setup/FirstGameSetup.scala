@@ -243,11 +243,8 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         }
       case _: Mustered | _: Traded =>
         Left(InvalidEventOrder("Economy requires the gameplay evolution"))
-      case _: SearchStarted | _: SearchCompleted =>
-        Left(InvalidEventOrder("Search requires the gameplay evolution"))
       case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
-          _: FacedownAdviserDiscarded | _: FacedownAdviserPlayed |
           _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
           _: NegotiationStarted | _: NegotiationTermsReplaced |
           _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted |

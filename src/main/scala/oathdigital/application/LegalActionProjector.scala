@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.WakeResource
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, MinorActions, SearchRules, VisionRules, Visions}
+  Economy, ForgeRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -198,25 +198,13 @@ private[application] final class LegalActionProjector(
     }
 
   private def legalSearch(context: ScopedProjectionContext) =
-    context.active.pawnSite.flatMap(context.current.map.regionOf).toVector.flatMap {
-      origin => Vector(SearchSource.WorldDeck,
-        SearchSource.RegionalDiscard(origin)).flatMap { source =>
-        val argument = source match {
-          case SearchSource.WorldDeck => "search:world"
-          case SearchSource.RegionalDiscard(region) =>
-            s"search:regional-discard:${region.key}"
-        }
-        SearchProcedure.build(catalog, context.ready, context.active.player,
-          Vector(DecisionOptionRef.Button(argument))).toOption.flatMap(_ =>
-          SearchRules.cost(context.ready, source, origin).toOption)
-          .filter(_ <= context.active.board.supply.supply)
-          .filter(_ => SearchRules.draw(context.ready, source, origin).exists(_.nonEmpty))
-          .map(cost => source match {
-            case SearchSource.WorldDeck => LegalSearchSourceProjection("world", None, cost)
-            case SearchSource.RegionalDiscard(region) =>
-              LegalSearchSourceProjection("regional-discard", Some(region.key), cost)
-          })
-      }
+    SearchProcedure.legalSources(catalog, context.ready,
+      context.active.player, WalkerPowers.selected(walkerPowerCatalog,
+        Vector.empty)).map {
+      case (SearchSource.WorldDeck, cost) =>
+        LegalSearchSourceProjection("world", None, cost)
+      case (SearchSource.RegionalDiscard(region), cost) =>
+        LegalSearchSourceProjection("regional-discard", Some(region.key), cost)
     }
 
   private def minorActionsProjection(context: ScopedProjectionContext) = {
@@ -234,14 +222,7 @@ private[application] final class LegalActionProjector(
     }).getOrElse(0)
     MinorActionsProjection(facedown.map { id => MinorAdviserProjection(
       presentation.cardDetails(id, Some(Orientation.FaceDown), hidden = false),
-      MinorActions.legalAdviserPlacements(catalog, context.ready, active.player, id).map {
-        case SearchPlacement.Adviser(_, _) => CardResolutionProjection("play-adviser")
-        case SearchPlacement.Site(replace) => CardResolutionProjection("play-site",
-          replacementRequired = replace.nonEmpty,
-          replacementTargets = replace.toVector.map(presentation.cardDetails(_,
-            Some(Orientation.FaceUp), hidden = false)))
-        case _ => CardResolutionProjection("discard")
-      } :+ CardResolutionProjection("discard"))
+      Vector.empty)
     }, context.activeSite.exists(_.relics.nonEmpty), active.relics.filter(
       _.orientation == Orientation.FaceDown).map(r => presentation.cardDetails(r.id,
       Some(r.orientation), hidden = false)), active.pawnSite.map(_.value),

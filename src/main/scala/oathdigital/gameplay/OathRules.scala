@@ -3,8 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand,
-  Search, SearchCommand}
+  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
@@ -12,7 +11,6 @@ import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.powers.SearchPowers
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.phases.PhasePowerProcedure
@@ -76,45 +74,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     }
   }
 
-  def handle(
-      state: OathState,
-      command: SearchCommand
-  ): Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    (command match {
-      case start: SearchCommand.Start => withFallback(state, start.playerId,
-        MajorActionKind.Search)(Search.handle(catalog, state, command))
-      case _ => Search.handle(catalog, state, command)
-    }).flatMap(transition => recordSearchWhenPlayed(command, transition))
-      .flatMap { transition =>
-      command match {
-        case _: SearchCommand.Complete if (transition.state match {
-          case Ready(ready) => ready.game.current.pending.exists {
-            case p: PendingProcedure.Conspiracy => p.awaitingTarget
-            case _ => false
-          }
-          case _ => false
-        }) => Right(transition.copy(continue = transition.state match {
-          case Ready(ready) => ready.game.current.pending.collect {
-            case p: PendingProcedure.Conspiracy =>
-              OathContinue.AwaitingConspiracyDecision(p.actor, p.decision)
-          }.get
-          case _ => transition.continue
-        }))
-        case _: SearchCommand.Complete => completeAction(transition)
-        case _ => Right(transition)
-      }
-    }
-  }
-
-  private def recordSearchWhenPlayed(command: SearchCommand,
-      transition: OathTransition): Either[OathViolation, OathTransition] =
-    (command, transition.state) match {
-      case (complete: SearchCommand.Complete, Ready(ready)) =>
-        SearchPowers.recordPlayHooks(catalog, transition, ready, complete.playerId,
-          complete.kept, complete.placement)
-      case _ => Right(transition)
-    }
-
   def handle(state: OathState, command: ChallengeCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
@@ -130,14 +89,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
 
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    MinorActions.handle(catalog, state, command).flatMap { transition =>
-      (command, transition.state) match {
-        case (play: MinorActionCommand.PlayFacedownAdviser, Ready(ready)) =>
-          SearchPowers.recordPlayHooks(catalog, transition, ready, play.player,
-            play.adviser, play.placement)
-        case _ => Right(transition)
-      }
-    }.flatMap(completeAction _)
+    MinorActions.handle(catalog, state, command).flatMap(completeAction _)
   }
 
   def handle(state: OathState, command: VisionCommand)
@@ -211,8 +163,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       }
       case event: Mustered => Economy.evolve(catalog, state, event)
       case event: Traded => Economy.evolve(catalog, state, event)
-      case event: SearchStarted => Search.evolve(catalog, state, event)
-      case event: SearchCompleted => Search.evolve(catalog, state, event)
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
@@ -220,8 +170,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: BannerRibbonChoiceMade => Challenge.evolve(catalog, state, event)
       case event: BannerChallengeCompleted => Challenge.evolve(catalog, state, event)
       case event: BannerResourcePlaced => Challenge.evolve(catalog, state, event)
-      case event: FacedownAdviserDiscarded => MinorActions.evolve(catalog, state, event)
-      case event: FacedownAdviserPlayed => MinorActions.evolve(catalog, state, event)
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)

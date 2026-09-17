@@ -47,24 +47,6 @@ object OathEvent {
       supplySpent: Int,
       gained: Int
   ) extends OathEvent
-  final case class SearchStarted(
-      playerId: PlayerId,
-      decision: DecisionId,
-      source: SearchSource,
-      origin: Region,
-      supplySpent: Int,
-      drawn: Vector[WorldCardId]
-  ) extends OathEvent
-  final case class SearchCompleted(
-      playerId: PlayerId,
-      decision: DecisionId,
-      kept: WorldCardId,
-      discardedInOrder: Vector[WorldCardId],
-      placement: SearchPlacement,
-      favorGained: Int = 0,
-      discardedWorld: Vector[WorldCardId] = Vector.empty,
-      discardedEdifices: Vector[EdificeId] = Vector.empty
-  ) extends OathEvent
   final case class BannerChallengeStarted(
       playerId: PlayerId, decision: DecisionId, banner: Banner,
       priorHolder: Option[PlayerId], priorResources: Int, supplySpent: Int,
@@ -82,13 +64,6 @@ object OathEvent {
       extends OathEvent
   final case class BannerResourcePlaced(
       playerId: PlayerId, banner: Banner, amount: Int) extends OathEvent
-  final case class FacedownAdviserDiscarded(
-      playerId: PlayerId, adviserId: WorldCardId, destination: Region)
-      extends OathEvent
-  final case class FacedownAdviserPlayed(
-      playerId: PlayerId, adviserId: WorldCardId, placement: SearchPlacement,
-      favorGained: Int, discardedWorld: Vector[WorldCardId],
-      discardedEdifices: Vector[EdificeId]) extends OathEvent
   final case class VisionRevealed(
       playerId: PlayerId, visionId: VisionId, replaced: Option[VisionId],
       destination: Region) extends OathEvent

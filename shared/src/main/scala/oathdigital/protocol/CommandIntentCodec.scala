@@ -13,15 +13,10 @@ private[protocol] object CommandIntentCodec {
       "source" -> CommandNestedCodecs.encodeStartArgWire(source))
     case Muster(target) => tagged("muster", "target" -> economy(target))
     case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
-    case BeginSearch(source) => tagged("beginSearch", "source" -> source.source,
-      "region" -> source.region.map(ujson.Str(_)).getOrElse(ujson.Null))
     case BeginChallenge(banner) => tagged("beginChallenge", "banner" -> banner)
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
     case PlaceBannerResource(banner, amount) => tagged("placeBannerResource", "banner" -> banner, "amount" -> amount)
-    case ResolveFacedownAdviser(adviser, placement) => tagged(
-      "resolveFacedownAdviser", "adviser" -> world(adviser),
-      "placement" -> placement.map(place).getOrElse(ujson.Null))
     case RevealVision(id) => tagged("revealVision", "visionId" -> id)
     case PlayConspiracy(target) => tagged("playConspiracy", "target" -> target.map(conspiracy).getOrElse(ujson.Null))
     case PeekSiteRelics => tagged("peekSiteRelics")
@@ -58,10 +53,6 @@ private[protocol] object CommandIntentCodec {
   private def tagged(kind: String, values: (String, ujson.Value)*): ujson.Obj =
     ujson.Obj.from(("type" -> ujson.Str(kind)) +: values)
   private def economy(v: EconomyTarget) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
-  private def world(v: WorldCard) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
-  private def card(v: CardRef) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
-  private def place(v: Placement) = ujson.Obj("kind" -> v.kind,
-    "replace" -> v.replace.map(card).getOrElse(ujson.Null))
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
   private def conspiracy(v: ConspiracyTarget): ujson.Obj = v match {
     case ConspiracyTarget.RelicSlot(owner, slot) => ujson.Obj("kind" -> "relic-slot", "ownerPlayerId" -> owner, "slot" -> slot)

@@ -7,9 +7,7 @@ import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model._
 
-/** Embeddable card-placement tree. The legacy reducer and this tree share
-  * CardPlay's pure semantic operation planner during cutover.
-  */
+/** Embeddable card-placement tree using CardPlay's pure operation planner. */
 object CardPlayProcedure {
   sealed trait Origin
   object Origin {

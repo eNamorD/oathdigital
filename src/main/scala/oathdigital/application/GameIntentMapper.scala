@@ -26,15 +26,10 @@ object GameIntentMapper {
       } yield actor.usePower(power, ref)
       case Intent.Muster(target) => economy(target).map(actor.muster)
       case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
-      case Intent.BeginSearch(source) => searchSource(source).map(actor.beginSearch)
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
       case Intent.ChooseChallengeSecretSite(id, site) => Right(actor.chooseChallengeSecretSite(DecisionId(id), SiteId(site)))
       case Intent.CompleteChallenge(id, amount) => Right(actor.completeChallenge(DecisionId(id), amount))
       case Intent.PlaceBannerResource(value, amount) => banner(value).map(actor.placeBannerResource(_, amount))
-      case Intent.ResolveFacedownAdviser(value, selected) => for {
-        adviser <- world(value, "$.intent.adviser")
-        p <- option(selected)(placement)
-      } yield actor.resolveFacedownAdviser(adviser, p)
       case Intent.RevealVision(id) => Right(actor.revealVision(VisionId(id)))
       case Intent.PlayConspiracy(value) => option(value)(conspiracy).map(actor.playConspiracy)
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
@@ -103,20 +98,7 @@ object GameIntentMapper {
   private def trade(value: String): Result[TradeResource] = value match { case "favor" => Right(TradeResource.Favor); case "secret" => Right(TradeResource.Secret); case v => invalid("$.intent.resource", v, "trade resource") }
   private def banner(value: String): Result[Banner] = Banner.fromKey(value).toRight(GameIntentMappingFailure("$.intent.banner", s"unknown banner '$value'"))
   private def economy(value: EconomyTarget): Result[EconomyTargetRef] = value.kind match { case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(value.id))); case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(value.id))); case v => invalid("$.intent.target.kind", v, "economy target") }
-  private def searchSource(value: oathdigital.protocol.SearchSource): Result[oathdigital.model.SearchSource] = value.source match {
-    case "world" if value.region.isEmpty => Right(oathdigital.model.SearchSource.WorldDeck)
-    case "regional-discard" => value.region.flatMap(k => Region.all.find(_.key == k)).map(oathdigital.model.SearchSource.RegionalDiscard).toRight(GameIntentMappingFailure("$.intent.region", "unknown or missing region"))
-    case v => invalid("$.intent.source", v, "search source")
-  }
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
-  private def card(value: CardRef): Result[CardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case "edifice" => Right(EdificeId(value.id)); case v => invalid("$.intent.placement.replace.kind", v, "card kind") }
-  private def placement(value: Placement): Result[SearchPlacement] = option(value.replace)(card).flatMap { replace => value.kind match {
-    case "discard" if replace.isEmpty => Right(SearchPlacement.Discard)
-    case "site" => Right(SearchPlacement.Site(replace))
-    case "adviser-face-up" => Right(SearchPlacement.Adviser(Orientation.FaceUp, replace))
-    case "adviser-face-down" => Right(SearchPlacement.Adviser(Orientation.FaceDown, replace))
-    case v => invalid("$.intent.placement.kind", v, "placement")
-  }}
   private def conspiracy(value: oathdigital.protocol.ConspiracyTarget): Result[ConspiracyTargetRef] = value match {
     case oathdigital.protocol.ConspiracyTarget.RelicSlot(owner, slot) => Right(ConspiracyTargetRef.RelicSlot(PlayerId(owner), slot))
     case oathdigital.protocol.ConspiracyTarget.Banner(owner, key) => banner(key).map(ConspiracyTargetRef.Banner(PlayerId(owner), _))
@@ -185,7 +167,6 @@ object GameIntentMapper {
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
-    case DecisionResolution.Search(kept, discarded, p) => for { k <- world(kept, "$.intent.resolution.kept"); d <- traverse(discarded)(world(_, "$.intent.resolution.discardedInOrder")); selected <- placement(p) } yield CardDecisionResolution.Search(k, d, selected)
   }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
   private def option[A,B](value: Option[A])(f: A => Result[B]): Result[Option[B]] = value match { case Some(v) => f(v).map(Some(_)); case None => Right(None) }
