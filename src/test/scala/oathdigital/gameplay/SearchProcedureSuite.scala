@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.search.SearchProcedure
-import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.actions.{SearchCommand, SearchRules, VisionRules}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
@@ -119,6 +119,53 @@ class SearchProcedureSuite extends munit.FunSuite {
     assert(rules.startWalker(OathState.Ready(initial), ActionRef.Search, actor,
       modifiers = Vector(PowerId("unoffered.search")),
       startArgs = Vector(DecisionOptionRef.Button("search:world"))).isLeft)
+  }
+
+  test("legacy and walker Search agree on world and regional discard completion") {
+    val base = ready
+    val region = base.game.current.players.find(
+      _.player == base.game.current.turn.activePlayer).get.pawnSite
+      .flatMap(base.game.current.map.regionOf).get
+    val cards = base.game.current.commonCards.worldDeck.take(3)
+    val zones = base.game.current.commonCards
+    val regional = base.copy(game = base.game.copy(current =
+      base.game.current.copy(commonCards = zones.copy(
+        worldDeck = zones.worldDeck.drop(3),
+        regionalDiscards = zones.regionalDiscards.updated(region,
+          zones.discard(region) ++ cards)))))
+    Vector((base, SearchSource.WorldDeck,
+      DecisionOptionRef.Button("search:world")),
+      (regional, SearchSource.RegionalDiscard(region),
+        DecisionOptionRef.Button(s"search:regional-discard:${region.key}")))
+      .foreach { case (initial, source, startArg) =>
+    val actor = initial.game.current.turn.activePlayer
+    val origin = initial.game.current.players.find(_.player == actor).get
+      .pawnSite.flatMap(initial.game.current.map.regionOf).get
+    val drawn = SearchRules.draw(initial, source, origin)
+      .toOption.get
+    val legacyStarted = rules.handle(OathState.Ready(initial),
+      SearchCommand.Start(actor, DecisionId("parity-search"),
+        source, drawn)).toOption.get
+    val legacy = rules.handle(legacyStarted.state,
+      SearchCommand.Complete(actor, DecisionId("parity-search"), drawn.head,
+        drawn.tail, SearchPlacement.Discard)).toOption.get
+
+    val walkerStarted = rules.startWalker(OathState.Ready(initial),
+      ActionRef.Search, actor, startArgs = Vector(startArg)).toOption.get
+    val selected = if (drawn.size == 1) walkerStarted else {
+      val placements = Vector(DecisionPlacement(ref(drawn.head),
+        SearchProcedure.keepKey)) ++ drawn.tail.map(card =>
+        DecisionPlacement(ref(card), SearchProcedure.discardKey))
+      rules.resolveWalker(walkerStarted.state, actor,
+        SearchProcedure.cardDecisionId,
+        DecisionAnswer.PartitionAnswer(placements)).toOption.get
+    }
+    val walker = rules.resolveWalker(selected.state, actor,
+      s"cardplay.place.${drawn.head.kind}.${drawn.head.value}",
+      DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Button("discard"))).toOption.get
+    assertEquals(walker.state, legacy.state)
+    }
   }
 
   private def ref(card: WorldCardId): DecisionOptionRef = card match {
