@@ -63,8 +63,8 @@ object PowerWindow {
   case object SearchCost extends SearchWindow { val key = "search.cost" }
   case object SearchBeforeDraw extends SearchWindow { val key = "search.before-draw" }
   case object SearchPlayToSite extends SearchWindow { val key = "search.play-to-site" }
-  case object SearchPlayFacedownAdviser extends SearchWindow {
-    val key = "search.play-facedown-adviser"
+  case object SearchPlayAdviser extends SearchWindow {
+    val key = "search.play-adviser"
   }
   case object TravelCost extends TravelWindow { val key = "travel.cost" }
   case object CampaignBeforeTargets extends CampaignWindow {

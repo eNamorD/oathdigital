@@ -21,7 +21,7 @@ import oathdigital.gameplay.walker.WalkerPowers
   * since discovery keeps only powers that hook the window being gathered.
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
   * Silver Tongue's restriction is inert until Search walks
-  * `SearchPlayFacedownAdviser`.
+  * `SearchPlayAdviser`.
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =

@@ -4,8 +4,8 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.OathEvent.BanditsRefilled
 import oathdigital.gameplay.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.operations.{Location, Move, Piece,
-  PositionedLocation, Sequence}
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
@@ -64,22 +64,36 @@ class SilverTongueSuite extends munit.FunSuite {
       rested.continue.toString)
   }
 
-  test("adviser limit counts visible card moves into and out of the holder's area") {
-    val (ready, actor) = arranged(Vector(Suit.Arcane), Set(Suit.Arcane))
-    val holder = ready.game.current.players.find(_.player == actor).get
-    val hand = PositionedLocation(Location.Hand(actor))
-    val area = PositionedLocation(Location.PlayArea(actor))
-    val first = DenizenId("10")
-    val second = DenizenId("11")
-    val overLimit = Sequence(Vector(
-      Move(Piece.Card(first), hand, area),
-      Move(Piece.Card(second), hand, area)))
-    val backAtLimit = Sequence(Vector(
-      Move(Piece.Card(first), hand, area),
-      Move(Piece.Card(second), hand, area),
-      Move(Piece.Card(first), area, hand)))
-
-    assertEquals(SilverTongue.advisersAfter(holder, overLimit), 3)
-    assertEquals(SilverTongue.advisersAfter(holder, backAtLimit), 2)
+  test("Silver Tongue requires replacement when a third adviser is played") {
+    val (base, actor) = arranged(Vector.empty, Set.empty)
+    val current = base.game.current
+    val ids = current.commonCards.worldDeck.collect { case id: DenizenId => id }
+      .filter(id => catalog.denizens.find(_.id.value == id.value).exists(
+        _.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted))
+    val second = ids.head
+    val played = ids(1)
+    val ready = base.copy(game = base.game.copy(current = current.copy(
+      turn = current.turn.copy(phase = Phase.Act),
+      players = current.players.map(p => if (p.player == actor)
+        p.copy(advisers = p.advisers :+ DenizenState(second,
+          Orientation.FaceDown, Tokens.empty)) else p),
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(id => id == second || id == played)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(played)))))
+    val tree = CardPlayProcedure.build(catalog, ready, actor, played,
+      CardPlayProcedure.Origin.TemporaryHand).toOption.get
+    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))
+    val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
+      .asInstanceOf[WalkerOutcome.Parked].tree
+    val choice = ProcedureWalker.parkedDecide(ready, tree, parked, powers).get
+    assert(choice.query.asInstanceOf[DecisionQuery.ChooseOne].options.exists(
+      _.ref == DecisionOptionRef.Button("adviser-faceup")))
+    val afterChoice = ProcedureWalker.resolve(ready, tree, parked,
+      Answered(choice.decisionId, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Button("adviser-faceup")), actor), powers).toOption.get
+    val replacement = afterChoice.asInstanceOf[WalkerOutcome.Parked].tree
+    val query = ProcedureWalker.parkedDecide(ready, tree, replacement, powers).get
+    assert(query.query.asInstanceOf[DecisionQuery.ChooseOne].options.exists(
+      _.ref == DecisionOptionRef.Denizen(second)))
   }
 }

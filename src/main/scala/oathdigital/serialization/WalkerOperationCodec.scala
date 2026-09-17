@@ -1,7 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.gameplay.{DiceKind, DiceSpec}
-import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, CardPlayed, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
+import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, BeginConspiracy, CardPlayed, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
   Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
@@ -41,6 +41,9 @@ private[serialization] trait WalkerOperationCodec {
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
       case AdvanceVisionsDrawn => ujson.Obj("kind" -> "advance-visions-drawn")
+      case BeginConspiracy(player, decision, source) => ujson.Obj(
+        "kind" -> "begin-conspiracy", "playerId" -> player.value,
+        "decisionId" -> decision.value, "source" -> source.value)
       case SpendSupply(player, amount, _) => ujson.Obj(
         "kind" -> "spend-supply", "playerId" -> player.value,
         "amount" -> amount)
@@ -100,10 +103,10 @@ private[serialization] trait WalkerOperationCodec {
           "from" -> encodePositionedLocation(from), "to" -> to.key,
           "suit" -> suit.key, "favor" -> favor, "secrets" -> secrets,
           "actingPlayerId" -> actingPlayer.value)
-      case Discard.Vision(card, from, to) => ujson.Obj(
+      case Discard.Vision(card, from, to, _) => ujson.Obj(
         "kind" -> "discard-vision", "card" -> card.value,
         "from" -> encodePositionedLocation(from), "to" -> to.key)
-      case Discard.RuinedEdifice(card, from, suit, favor, secrets, actingPlayer) =>
+      case Discard.RuinedEdifice(card, from, suit, favor, secrets, actingPlayer, _) =>
         ujson.Obj("kind" -> "discard-ruined-edifice", "card" -> card.value,
           "from" -> encodePositionedLocation(from), "suit" -> suit.key,
           "favor" -> favor, "secrets" -> secrets,
@@ -228,6 +231,10 @@ private[serialization] trait WalkerOperationCodec {
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
       case "advance-visions-drawn" => Right(AdvanceVisionsDrawn)
+      case "begin-conspiracy" => Right(BeginConspiracy(
+        PlayerId(value("playerId").str),
+        DecisionId(value("decisionId").str),
+        VisionId(value("source").str)))
       case "spend-supply" => decodePositiveInt(value("amount"), s"$path.amount")
         .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
       case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")

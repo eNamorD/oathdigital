@@ -170,7 +170,8 @@ object BuryableCard {
 /** Adds a denizen, relic, or edifice to the bottom of its matching deck.
   * Bury explicitly ignores the locked restriction.
   */
-final case class Bury(card: BuryableCard, from: PositionedLocation)
+final case class Bury(card: BuryableCard, from: PositionedLocation,
+    override val required: Boolean = false)
     extends PrimitiveOperation {
   val to: PositionedLocation = PositionedLocation(
     Location.Deck(card.deck), StackPosition.Bottom)
@@ -195,14 +196,15 @@ object Discard {
 
   /** Visions carry no resources but otherwise use world-card discard rules. */
   final case class Vision(card: VisionId, from: PositionedLocation,
-      to: Region) extends Discard {
+      to: Region, override val required: Boolean = false) extends Discard {
     override val children: Vector[Operation] =
       discardWorld(card, from, to)
   }
 
   /** Only a ruined edifice can be discarded; intact edifices are locked. */
   final case class RuinedEdifice(card: EdificeId, from: PositionedLocation,
-      suit: Suit, favor: Int, secrets: Int, actingPlayer: PlayerId)
+      suit: Suit, favor: Int, secrets: Int, actingPlayer: PlayerId,
+      override val required: Boolean = false)
       extends Discard {
     require(favor >= 0, "discarded favor must be non-negative")
     require(secrets >= 0, "discarded secrets must be non-negative")
@@ -522,6 +524,15 @@ final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperat
   */
 final case class BeginTurn(player: PlayerId, phase: Phase)
     extends PrimitiveOperation
+
+/** Starts the existing Conspiracy continuation after walker card selection.
+  * The selected Vision remains in its temporary hand until that procedure
+  * completes. Replay restores this state from the recorded operation.
+  */
+final case class BeginConspiracy(player: PlayerId, decision: DecisionId,
+    source: VisionId) extends PrimitiveOperation {
+  override val required: Boolean = true
+}
 
 /** Advances Visions Drawn by one after a world-deck Vision is drawn. */
 case object AdvanceVisionsDrawn extends PrimitiveOperation {

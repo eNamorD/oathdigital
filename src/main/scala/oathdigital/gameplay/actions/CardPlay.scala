@@ -5,8 +5,9 @@ import oathdigital.gameplay._
 import oathdigital.gameplay.GameStateUpdates.updateCurrent
 import oathdigital.gameplay.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
-import oathdigital.gameplay.operations.{Bury, BuryableCard, CoreOperation,
+import oathdigital.gameplay.operations.{BeginConspiracy, Bury, BuryableCard, CoreOperation,
   Discard, Gain, Location, Move => CoreMove, OperationPipeline, OperationPolicy,
+  Play,
   Piece, PositionedLocation, StackPosition}
 import oathdigital.model._
 
@@ -20,6 +21,7 @@ object CardPlay {
   object Origin {
     final case class Search(decision: DecisionId) extends Origin
     case object FacedownAdviser extends Origin
+    case object TemporaryHand extends Origin
   }
 
   final case class Outcome(
@@ -57,9 +59,21 @@ object CardPlay {
       .toRight(InvalidSearchPlacement("player is not in the game"))
     _ <- validateOrigin(catalog, player, card, placement, origin)
     plan <- plan(catalog, ready, player, card, placement, origin)
-    outcome <- execute(ready, player, card, placement, origin,
+    outcome <- execute(catalog, ready, player, card, placement, origin,
       precedingDiscards, plan)
   } yield outcome
+
+  /** Pure semantic operation plan shared with the walker card-play subtree. */
+  def plannedOperations(catalog: ExecutableCatalog, ready: ReadyGame,
+      playerId: PlayerId, card: WorldCardId, placement: SearchPlacement,
+      origin: Origin, adviserLimit: Int = 3)
+      : Either[OathViolation, Vector[CoreOperation]] = for {
+    player <- ready.game.current.players.find(_.player == playerId)
+      .toRight(InvalidSearchPlacement("player is not in the game"))
+    _ <- validateOrigin(catalog, player, card, placement, origin)
+    plan <- plan(catalog, ready, player, card, placement, origin, adviserLimit)
+  } yield plannedOperations(catalog, ready, player, card, placement, origin,
+    Vector.empty, plan)
 
   def playedSource(ready: ReadyGame, playerId: PlayerId, card: WorldCardId,
       placement: SearchPlacement): Option[RuleSourceRef] = placement match {
@@ -73,19 +87,21 @@ object CardPlay {
 
   private def keptSource(origin: Origin, player: PlayerId): PositionedLocation =
     origin match {
-      case Origin.Search(_) => PositionedLocation(Location.Hand(player))
+      case Origin.Search(_) | Origin.TemporaryHand =>
+        PositionedLocation(Location.Hand(player))
       case Origin.FacedownAdviser => PositionedLocation(Location.PlayArea(player))
     }
 
   private def fromSearch(origin: Origin): Boolean = origin match {
     case Origin.Search(_) => true
+    case Origin.TemporaryHand => false
     case Origin.FacedownAdviser => false
   }
 
   private def validateOrigin(catalog: ExecutableCatalog, player: PlayerState,
       card: WorldCardId, placement: SearchPlacement,
       origin: Origin): Either[OathViolation, Unit] = origin match {
-    case Origin.Search(_) => Right(())
+    case Origin.Search(_) | Origin.TemporaryHand => Right(())
     case Origin.FacedownAdviser =>
       player.advisers.find(_.id == card).filter {
         case DenizenState(_, Orientation.FaceDown, _) => true
@@ -107,7 +123,8 @@ object CardPlay {
 
   private def plan(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerState, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin): Either[OathViolation, PlacementPlan] = placement match {
+      origin: Origin, adviserLimit: Int = 3)
+      : Either[OathViolation, PlacementPlan] = placement match {
     case SearchPlacement.Discard => Right(PlacementPlan(
       None, Vector.empty, 0, Vector.empty, Vector.empty,
       None, endSearchPending = fromSearch(origin)))
@@ -147,12 +164,13 @@ object CardPlay {
         // required; the vector below is validation-only (never written back).
         remaining = if (origin == Origin.FacedownAdviser)
           player.advisers.filter(_.id != card) else player.advisers
-        removed <- validateAdviserReplacement(catalog, remaining, replace)
+        removed <- validateAdviserReplacement(catalog, remaining, replace,
+          adviserLimit)
       } yield adviserPlan(origin, player, card, id, orientation, removed)
       case id: VisionId =>
         if (!FirstGameRulesData.visions.contains(id)) Left(UnknownWorldCard(id))
         else planVision(catalog, ready, player, origin, card, id, orientation,
-          replace)
+          replace, adviserLimit)
     }
   }
 
@@ -161,9 +179,8 @@ object CardPlay {
       suit: Suit, replacement: Option[SiteDenizenState])
       : Either[OathViolation, PlacementPlan] = {
     val from = keptSource(origin, player.player)
-    val kept = Some(CoreMove(
-      Piece.Card(id), from, PositionedLocation(Location.Site(siteId)),
-      resultingOrientation = Some(Orientation.FaceUp)))
+    val kept = Some(Play(id, from, Location.Site(siteId),
+      Orientation.FaceUp, required = true))
     val gain = LimitedResource.clamp(ready.banks.favor.getOrElse(suit, 0), 1)
     val favor = if (gain == 1)
       Vector(Gain.Favor(player.player, suit, 1)) else Vector.empty
@@ -208,9 +225,8 @@ object CardPlay {
       id: DenizenId, orientation: Orientation,
       removed: Option[WorldCardId]): PlacementPlan = {
     val from = keptSource(origin, player.player)
-    val kept = Some(CoreMove(
-      Piece.Card(id), from, PositionedLocation(Location.PlayArea(player.player)),
-      resultingOrientation = Some(orientation)))
+    val kept = Some(Play(id, from, Location.PlayArea(player.player),
+      orientation, required = true))
     PlacementPlan(kept, Vector.empty, 0,
       removed.toVector.map(value => value ->
         PositionedLocation(Location.PlayArea(player.player))),
@@ -219,7 +235,7 @@ object CardPlay {
 
   private def planVision(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerState, origin: Origin, card: WorldCardId, id: VisionId,
-      orientation: Orientation, replace: Option[CardId])
+      orientation: Orientation, replace: Option[CardId], adviserLimit: Int)
       : Either[OathViolation, PlacementPlan] = origin match {
     case Origin.FacedownAdviser =>
       Either.cond(orientation == Orientation.FaceUp && replace.isEmpty, (),
@@ -228,14 +244,21 @@ object CardPlay {
         .map { _ =>
           val from = PositionedLocation(Location.PlayArea(player.player))
           PlacementPlan(
-            Some(CoreMove(Piece.Card(id), from, from,
-              resultingOrientation = Some(Orientation.FaceUp))),
+            Some(Play(id, from, Location.PlayArea(player.player),
+              Orientation.FaceUp, required = true)),
             Vector.empty, 0,
             player.revealedVision.toVector.map { value =>
               (value.id: WorldCardId) -> from
             },
             Vector.empty, None, endSearchPending = false)
         }
+    case Origin.TemporaryHand if orientation == Orientation.FaceUp &&
+        id == VisionRules.Conspiracy =>
+      MinorActionPowerSupport.validateFaceupVision(catalog, ready,
+        player.player, id).map(_ => PlacementPlan(None, Vector.empty, 0,
+        Vector.empty, Vector.empty, Some(DecisionId(
+          s"conspiracy-${player.player.value}-${id.value}")),
+        endSearchPending = false))
     case Origin.Search(decisionId) if orientation == Orientation.FaceUp =>
       MinorActionPowerSupport.validateFaceupVision(catalog, ready,
         player.player, id).flatMap { _ =>
@@ -249,9 +272,8 @@ object CardPlay {
           else {
             val from = keptSource(origin, player.player)
             Right(PlacementPlan(
-              Some(CoreMove(Piece.Card(id), from,
-                PositionedLocation(Location.PlayArea(player.player)),
-                resultingOrientation = Some(Orientation.FaceUp))),
+              Some(Play(id, from, Location.PlayArea(player.player),
+                Orientation.FaceUp, required = true)),
               Vector.empty, 0,
               expected.toVector.map(value => value ->
                 PositionedLocation(Location.PlayArea(player.player))),
@@ -259,13 +281,13 @@ object CardPlay {
           }
         }
       }
-    case Origin.Search(_) =>
-      validateAdviserReplacement(catalog, player.advisers, replace).map { removed =>
+    case Origin.Search(_) | Origin.TemporaryHand =>
+      validateAdviserReplacement(catalog, player.advisers, replace,
+        adviserLimit).map { removed =>
         val from = keptSource(origin, player.player)
         PlacementPlan(
-          Some(CoreMove(Piece.Card(id), from,
-            PositionedLocation(Location.PlayArea(player.player)),
-            resultingOrientation = Some(Orientation.FaceDown))),
+          Some(Play(id, from, Location.PlayArea(player.player),
+            Orientation.FaceDown, required = true)),
           Vector.empty, 0,
           removed.toVector.map(value => value ->
             PositionedLocation(Location.PlayArea(player.player))),
@@ -274,6 +296,7 @@ object CardPlay {
   }
 
   private def execute(
+      catalog: ExecutableCatalog,
       ready: ReadyGame,
       player: PlayerState,
       card: WorldCardId,
@@ -282,47 +305,8 @@ object CardPlay {
       preceding: Vector[WorldCardId],
       plan: PlacementPlan
   ): Either[OathViolation, Outcome] = {
-    val current = ready.game.current
-    val destination = player.pawnSite.flatMap(current.map.regionOf).map(nextRegion)
-    val source = keptSource(origin, player.player)
-    val playedDiscard = if (placement == SearchPlacement.Discard)
-      Vector(card -> source) else Vector.empty
-    val tokenDenizenOps = for {
-      region <- destination.toVector
-      (denizenId, replacedSuit, favor, secrets) <- plan.tokenDenizen.toVector
-      siteId <- player.pawnSite.toVector
-    } yield Discard.Denizen(denizenId,
-      PositionedLocation(Location.Site(siteId)), region, replacedSuit, favor,
-      secrets, player.player)
-    val discardOps = destination.toVector.flatMap { region =>
-      val precedingOps = preceding.map(id => CoreMove(
-        Piece.Card(id), source,
-        PositionedLocation(Location.RegionalDiscard(region), StackPosition.Top)))
-      val replacedOps = plan.discardedWorld.map { case (id, from) =>
-        CoreMove(
-          Piece.Card(id), from,
-          PositionedLocation(Location.RegionalDiscard(region), StackPosition.Top))
-      }
-      val playedOps = playedDiscard.map { case (id, from) =>
-        CoreMove(
-          Piece.Card(id), from,
-          PositionedLocation(Location.RegionalDiscard(region), StackPosition.Top))
-      }
-      precedingOps ++ replacedOps ++ tokenDenizenOps ++ playedOps
-    }
-    val edificeOps = plan.discardedEdifices.map { case (id, from) =>
-      Bury(BuryableCard.Edifice(id), from)
-    } ++ plan.tokenEdifice.toVector.flatMap {
-      case (id, replacedSuit, favor, secrets) =>
-        player.pawnSite.toVector.map(siteId => Discard.RuinedEdifice(id,
-          PositionedLocation(Location.Site(siteId)), replacedSuit, favor,
-          secrets, player.player))
-    }
-    // Replacement and preceding-card removals run first so a kept card can
-    // enter a vacated container (for example the revealed-Vision slot) in a
-    // later staged operation.
-    val operations = edificeOps ++ discardOps ++
-      plan.kept.toVector ++ plan.favor
+    val operations = plannedOperations(catalog, ready, player, card, placement, origin,
+      preceding, plan)
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
       Right(updateCurrent(state) { existing =>
         existing.copy(pending = plan.startConspiracy match {
@@ -345,10 +329,82 @@ object CardPlay {
       plan.discardedEdifices.map(_._1) ++ plan.tokenEdifice.map(_._1).toVector))
   }
 
+  private def plannedOperations(catalog: ExecutableCatalog, ready: ReadyGame,
+      player: PlayerState,
+      card: WorldCardId, placement: SearchPlacement, origin: Origin,
+      preceding: Vector[WorldCardId], plan: PlacementPlan)
+      : Vector[CoreOperation] = {
+    val current = ready.game.current
+    val destination = player.pawnSite.flatMap(current.map.regionOf).map(nextRegion)
+    val source = keptSource(origin, player.player)
+    val playedDiscard = if (placement == SearchPlacement.Discard)
+      Vector(card -> source) else Vector.empty
+    val tokenDenizenOps = for {
+      region <- destination.toVector
+      (denizenId, replacedSuit, favor, secrets) <- plan.tokenDenizen.toVector
+      siteId <- player.pawnSite.toVector
+    } yield Discard.Denizen(denizenId,
+      PositionedLocation(Location.Site(siteId)), region, replacedSuit, favor,
+      secrets, player.player, required = true)
+    val discardOps = destination.toVector.flatMap { region =>
+      val precedingOps = preceding.map(id => CoreMove(
+        Piece.Card(id), source,
+        PositionedLocation(Location.RegionalDiscard(region), StackPosition.Top)))
+      val replacedOps = plan.discardedWorld.map { case (id, from) =>
+        selectedDiscard(catalog, ready, player.player, id, from, region)
+      }
+      val playedOps = playedDiscard.map { case (id, from) =>
+        selectedDiscard(catalog, ready, player.player, id, from, region)
+      }
+      precedingOps ++ replacedOps ++ tokenDenizenOps ++ playedOps
+    }
+    val edificeOps = plan.discardedEdifices.map { case (id, from) =>
+      Bury(BuryableCard.Edifice(id), from, required = true)
+    } ++ plan.tokenEdifice.toVector.flatMap {
+      case (id, replacedSuit, favor, secrets) =>
+        player.pawnSite.toVector.map(siteId => Discard.RuinedEdifice(id,
+          PositionedLocation(Location.Site(siteId)), replacedSuit, favor,
+          secrets, player.player, required = true))
+    }
+    // Replacement and preceding-card removals run first so a kept card can
+    // enter a vacated container (for example the revealed-Vision slot) in a
+    // later staged operation.
+    val handoff = (origin, plan.startConspiracy) match {
+      case (Origin.TemporaryHand, Some(decision)) =>
+        Vector(BeginConspiracy(player.player, decision, VisionRules.Conspiracy))
+      case _ => Vector.empty
+    }
+    edificeOps ++ discardOps ++ plan.kept.toVector ++ plan.favor ++ handoff
+  }
+
+  private def selectedDiscard(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, card: WorldCardId, from: PositionedLocation,
+      destination: Region): CoreOperation = card match {
+    case id: VisionId => Discard.Vision(id, from, destination, required = true)
+    case id: DenizenId =>
+      val suit = catalog.denizens.find(_.id.value == id.value)
+        .flatMap(value => Suit.all.find(_.key == value.suit.value))
+        .getOrElse(Suit.Discord)
+      val held = ready.game.current.players.find(_.player == actor)
+        .toVector.flatMap(_.advisers).collectFirst {
+          case value: DenizenState if value.id == id => value.tokens
+        }
+      val site = from.location match {
+        case Location.Site(siteId) => ready.game.current.map.sites.get(siteId)
+          .toVector.flatMap(_.denizens).collectFirst {
+            case value: DenizenState if value.id == id => value.tokens
+          }
+        case _ => None
+      }
+      val tokens = held.orElse(site).getOrElse(Tokens.empty)
+      Discard.Denizen(id, from, destination, suit, tokens.favor,
+        tokens.secrets, actor, required = true)
+  }
+
   private def validateAdviserReplacement(catalog: ExecutableCatalog,
-      advisers: Vector[AdviserState], replace: Option[CardId])
+      advisers: Vector[AdviserState], replace: Option[CardId], limit: Int)
       : Either[OathViolation, Option[WorldCardId]] = {
-    val mustReplace = advisers.size >= 3
+    val mustReplace = advisers.size >= limit
     if (mustReplace != replace.nonEmpty) Left(InvalidSearchPlacement(
       if (mustReplace) "a full adviser area requires a discard"
       else "an adviser cannot be discarded when there is free capacity"))

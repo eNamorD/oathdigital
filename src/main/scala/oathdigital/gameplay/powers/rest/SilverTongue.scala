@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.rest
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathViolation, ReadyGame, RuleSourceRef}
 import oathdigital.gameplay.operations._
+import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.phases.RestCleanupPlan
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -11,9 +12,8 @@ import oathdigital.model._
   * favor from a favor bank matching a card at your site."
   *
   * The REST power is a [[PhasePower]]. The adviser limit is a registered
-  * [[Restriction]] at `SearchPlayFacedownAdviser`, inert until Search walks
-  * that window. It counts the advisers the holder would have once the
-  * tree's visible card moves land (Corrections 12).
+  * transform at `SearchPlayAdviser` reduces the holder's limit in both
+  * adviser orientations and checks the resulting area after the card play.
   */
 final case class SilverTongue private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends PhasePower with ContributingPower {
@@ -44,10 +44,20 @@ final case class SilverTongue private (cardId: DenizenId,
   }
 
   def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map(PowerWindow.SearchPlayFacedownAdviser -> Vector(Restriction((ctx, tree) =>
-      holder(ctx.state).filter(advisersAfter(_, tree) > 2).map(player =>
-        OathViolation.InvalidEventOrder(s"${player.player.value} holds " +
-          "Silver Tongue and can have only two advisers")))))
+    Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
+      ctx.operation match {
+        case tree: CardPlayProcedure.PlacementTree
+            if holder(ctx.state).exists(_.player == ctx.activePlayer) =>
+          tree.withAdviserLimit(2) :+ BuildOps((state, _) => {
+            val count = state.game.current.players.find(
+              _.player == ctx.activePlayer).fold(0)(_.advisers.size)
+            if (count <= 2) Right(Vector.empty)
+            else Left(OathViolation.InvalidEventOrder(
+              s"${ctx.activePlayer.value} holds Silver Tongue and can have " +
+                "only two advisers"))
+          })
+        case _ => children
+      })))
 
   private def holder(ready: ReadyGame): Option[PlayerState] =
     ready.game.current.players.find(_.advisers.exists {
@@ -55,10 +65,6 @@ final case class SilverTongue private (cardId: DenizenId,
       case _ => false
     })
 
-  /** The holder's adviser count once the tree's statically visible world-card
-    * moves land. `BuildOps` leaves compute their operations at walk time, so
-    * a restriction cannot see them (Corrections 12).
-    */
   /** Suits of faceup denizens and edifices at the player's pawn site whose
     * bank holds favor, in suit order.
     */
@@ -89,17 +95,4 @@ object SilverTongue {
   def choiceDecisionId(ready: ReadyGame, player: PlayerId): String =
     s"silver-tongue-${ready.game.current.tracks.round}-${player.value}"
 
-  private[rest] def advisersAfter(holder: PlayerState, tree: Operation): Int = {
-    def leaves(operation: Operation): Vector[Operation] = operation match {
-      case leaf: PrimitiveOperation => Vector(leaf)
-      case composite => composite.children.flatMap(leaves)
-    }
-    val area = Location.PlayArea(holder.player)
-    leaves(tree).foldLeft(holder.advisers.size) {
-      case (count, Move(Piece.Card(_: WorldCardId), from, to, _)) =>
-        count + (if (to.location == area) 1 else 0) -
-          (if (from.location == area) 1 else 0)
-      case (count, _) => count
-    }
-  }
 }
