@@ -45,12 +45,16 @@ object CardPlayProcedure {
   /** Generic limit-aware placement seam. A power can replace children using
     * a different limit without placing its identity in the card-play rules.
     */
-  final class PlacementTree private[cardplay](childrenAt: Int => Vector[Operation])
+  final class PlacementTree private[cardplay](val card: WorldCardId,
+      childrenAt: (Int, Int) => Vector[Operation])
       extends Operation {
     override val window: Option[PowerWindow] =
       Some(PowerWindow.SearchPlayAdviser)
-    override val children: Vector[Operation] = childrenAt(3)
-    def withAdviserLimit(limit: Int): Vector[Operation] = childrenAt(limit)
+    override val children: Vector[Operation] = childrenAt(3, 3)
+    def withAdviserLimit(limit: Int): Vector[Operation] =
+      childrenAt(limit, limit)
+    def withFaceupAdviserLimit(limit: Int): Vector[Operation] =
+      childrenAt(limit, 3)
   }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
@@ -67,12 +71,13 @@ object CardPlayProcedure {
     }
     if (!present) Left(OathViolation.InvalidSearchPlacement(
       "card is not held at the selected origin"))
-    else Right(new PlacementTree(limit => childrenFor(catalog, ready, actor,
-      card, origin, limit)))
+    else Right(new PlacementTree(card, (faceup, facedown) =>
+      childrenFor(catalog, ready, actor, card, origin, faceup, facedown)))
   }
 
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, card: WorldCardId, origin: Origin, adviserLimit: Int)
+      actor: PlayerId, card: WorldCardId, origin: Origin, faceupLimit: Int,
+      facedownLimit: Int)
       : Vector[Operation] = {
       val player = ready.game.current.players.find(_.player == actor)
       val legacyOrigin = origin match {
@@ -85,12 +90,19 @@ object CardPlayProcedure {
         adviserFaceUp -> SearchPlacement.Adviser(Orientation.FaceUp, None),
         adviserFaceDown -> SearchPlacement.Adviser(Orientation.FaceDown, None))
       val candidates = placements.flatMap { case (ref, placement) =>
+        val adviserLimit = placement match {
+          case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
+          case _ => facedownLimit
+        }
         val direct = CardPlay.plannedOperations(catalog, ready, actor, card,
           placement, legacyOrigin, adviserLimit).isRight
         val replacementIds: Vector[CardId] = placement match {
           case _: SearchPlacement.Site => player.toVector.flatMap(_.pawnSite)
             .flatMap(ready.game.current.map.sites.get)
             .flatMap(_.denizens.map(_.id))
+          case SearchPlacement.Adviser(Orientation.FaceUp, _) if
+              card.isInstanceOf[VisionId] =>
+            player.toVector.flatMap(_.revealedVision).map(_.id)
           case _: SearchPlacement.Adviser => player.toVector.flatMap(_.advisers)
             .filterNot(value => origin == Origin.FacedownAdviser &&
               value.id == card).map(_.id)
@@ -123,6 +135,10 @@ object CardPlayProcedure {
         }
         candidates.find(pair => ref.contains(pair._1)).toVector.flatMap {
           case (_, placement, replacements) =>
+            val adviserLimit = placement match {
+              case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
+              case _ => facedownLimit
+            }
             val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
             val choice = if (replacements.isEmpty) Vector.empty else Vector(
               Decide(replacementId, actor, DecisionQuery.ChooseOne(

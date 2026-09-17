@@ -41,7 +41,9 @@ object CardPlay {
       .toRight(InvalidSearchPlacement("player is not in the game"))
     _ <- validateOrigin(catalog, player, card, placement, origin)
     plan <- plan(catalog, ready, player, card, placement, origin, adviserLimit)
-  } yield plannedOperations(catalog, ready, player, card, placement, origin, plan)
+    operations <- plannedOperations(catalog, ready, player, card, placement,
+      origin, plan)
+  } yield operations
 
   def playedSource(ready: ReadyGame, playerId: PlayerId, card: WorldCardId,
       placement: SearchPlacement): Option[RuleSourceRef] = placement match {
@@ -249,7 +251,7 @@ object CardPlay {
       player: PlayerState,
       card: WorldCardId, placement: SearchPlacement, origin: Origin,
       plan: PlacementPlan)
-      : Vector[CoreOperation] = {
+      : Either[OathViolation, Vector[CoreOperation]] = {
     val current = ready.game.current
     val destination = player.pawnSite.flatMap(current.map.regionOf).map(nextRegion)
     val source = keptSource(origin, player.player)
@@ -262,14 +264,15 @@ object CardPlay {
     } yield Discard.Denizen(denizenId,
       PositionedLocation(Location.Site(siteId)), region, replacedSuit, favor,
       secrets, player.player, required = true)
-    val discardOps = destination.toVector.flatMap { region =>
-      val replacedOps = plan.discardedWorld.map { case (id, from) =>
-        selectedDiscard(catalog, ready, player.player, id, from, region)
-      }
-      val playedOps = playedDiscard.map { case (id, from) =>
-        selectedDiscard(catalog, ready, player.player, id, from, region)
-      }
-      replacedOps ++ tokenDenizenOps ++ playedOps
+    val discardOps = destination.toVector.foldLeft[Either[OathViolation,
+        Vector[CoreOperation]]](Right(Vector.empty)) { (acc, region) =>
+      (plan.discardedWorld ++ playedDiscard).foldLeft(acc) {
+        case (previous, (id, from)) => for {
+          ops <- previous
+          discard <- selectedDiscard(catalog, ready, player.player, id,
+            from, region)
+        } yield ops :+ discard
+      }.map(_ ++ tokenDenizenOps)
     }
     val edificeOps = plan.discardedEdifices.map { case (id, from) =>
       Bury(BuryableCard.Edifice(id), from, required = true)
@@ -287,17 +290,19 @@ object CardPlay {
         Vector(BeginConspiracy(player.player, decision, VisionRules.Conspiracy))
       case _ => Vector.empty
     }
-    edificeOps ++ discardOps ++ plan.kept.toVector ++ plan.favor ++ handoff
+    discardOps.map(ops => edificeOps ++ ops ++ plan.kept.toVector ++
+      plan.favor ++ handoff)
   }
 
   private def selectedDiscard(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, from: PositionedLocation,
-      destination: Region): CoreOperation = card match {
-    case id: VisionId => Discard.Vision(id, from, destination, required = true)
+      destination: Region): Either[OathViolation, CoreOperation] = card match {
+    case id: VisionId => Right(Discard.Vision(id, from, destination,
+      required = true))
     case id: DenizenId =>
       val suit = catalog.denizens.find(_.id.value == id.value)
         .flatMap(value => Suit.all.find(_.key == value.suit.value))
-        .getOrElse(Suit.Discord)
+        .toRight(UnknownWorldCard(id))
       val held = ready.game.current.players.find(_.player == actor)
         .toVector.flatMap(_.advisers).collectFirst {
           case value: DenizenState if value.id == id => value.tokens
@@ -310,8 +315,8 @@ object CardPlay {
         case _ => None
       }
       val tokens = held.orElse(site).getOrElse(Tokens.empty)
-      Discard.Denizen(id, from, destination, suit, tokens.favor,
-        tokens.secrets, actor, required = true)
+      suit.map(value => Discard.Denizen(id, from, destination, value,
+        tokens.favor, tokens.secrets, actor, required = true))
   }
 
   private def validateAdviserReplacement(catalog: ExecutableCatalog,
@@ -325,15 +330,21 @@ object CardPlay {
       case None => Right(None)
       case Some(id) => advisers.find(_.id == id).toRight(
         InvalidSearchPlacement("replacement adviser is not held")).flatMap { _ =>
-        val locked = id match {
+        val discardable = id match {
           case d: DenizenId => catalog.denizens.find(_.id.value == d.value)
-            .exists(_.restrictions == CardRestrictions.LockedAdviserOnly)
-          case _ => false
+            .toRight(UnknownWorldCard(d)).map(
+              _.restrictions != CardRestrictions.LockedAdviserOnly)
+          case _: VisionId => Right(true)
+          case _ => Left(InvalidSearchPlacement(
+            "replacement adviser is not a world card"))
         }
-        if (locked) Left(LockedAdviserCannotBeDiscarded(id))
-        else id match {
-          case world: WorldCardId => Right(Some(world))
-          case _ => Left(InvalidSearchPlacement("replacement adviser is not a world card"))
+        discardable.flatMap { allowed =>
+          if (!allowed) Left(LockedAdviserCannotBeDiscarded(id))
+          else id match {
+            case world: WorldCardId => Right(Some(world))
+            case _ => Left(InvalidSearchPlacement(
+              "replacement adviser is not a world card"))
+          }
         }
       }
     }
@@ -348,9 +359,11 @@ object CardPlay {
     else if (!full) Left(InvalidSearchPlacement(
       "site replacement is allowed only at a full Homeland"))
     else {
-      val homelandMatches = site.denizens.collectFirst { case e: EdificeState =>
-        catalog.edifices.find(_.id.value == e.id.value).exists(_.suit.value == suit)
-      }.contains(true)
+      val homelandMatches = site.denizens.exists {
+        case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value)
+          .exists(_.suit.value == suit)
+        case _ => false
+      }
       if (!homelandMatches) Left(InvalidSearchPlacement(
         "full non-matching site cannot accept a denizen"))
       else replace.flatMap(id => site.denizens.find(_.id == id)).toRight(

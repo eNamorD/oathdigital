@@ -48,16 +48,20 @@ final case class SilverTongue private (cardId: DenizenId,
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree
             if holder(ctx.state).exists(_.player == ctx.activePlayer) =>
-          tree.withAdviserLimit(2) :+ BuildOps((state, _) => {
-            val count = state.game.current.players.find(
-              _.player == ctx.activePlayer).fold(0)(_.advisers.size)
-            if (count <= 2) Right(Vector.empty)
-            else Left(OathViolation.InvalidEventOrder(
-              s"${ctx.activePlayer.value} holds Silver Tongue and can have " +
-                "only two advisers"))
-          })
+          tree.withAdviserLimit(2) :+ limitGuard(ctx.activePlayer)
+        case tree: CardPlayProcedure.PlacementTree if tree.card == cardId =>
+          tree.withFaceupAdviserLimit(2) :+ limitGuard(ctx.activePlayer)
         case _ => children
       })))
+
+  private def limitGuard(actor: PlayerId): Operation = BuildOps((state, _) => {
+    val count = state.game.current.players.find(
+      _.player == actor).fold(0)(_.advisers.size)
+    val holds = holder(state).exists(_.player == actor)
+    if (!holds || count <= 2) Right(Vector.empty)
+    else Left(OathViolation.InvalidEventOrder(
+      s"${actor.value} holds Silver Tongue and can have only two advisers"))
+  })
 
   private def holder(ready: ReadyGame): Option[PlayerState] =
     ready.game.current.players.find(_.advisers.exists {

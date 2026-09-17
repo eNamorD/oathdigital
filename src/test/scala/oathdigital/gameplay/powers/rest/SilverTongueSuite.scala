@@ -96,4 +96,36 @@ class SilverTongueSuite extends munit.FunSuite {
     assert(query.query.asInstanceOf[DecisionQuery.ChooseOne].options.exists(
       _.ref == DecisionOptionRef.Denizen(second)))
   }
+
+  test("playing Silver Tongue itself as a third adviser requires replacement") {
+    val (base, actor) = arranged(Vector.empty, Set.empty)
+    val current = base.game.current
+    val others = current.commonCards.worldDeck.collect {
+      case id: DenizenId if id != tongue => id
+    }.take(2)
+    val ready = base.copy(game = base.game.copy(current = current.copy(
+      turn = current.turn.copy(phase = Phase.Act),
+      players = current.players.map(p => if (p.player == actor)
+        p.copy(advisers = others.map(id => DenizenState(id,
+          Orientation.FaceDown, Tokens.empty))) else p),
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(others.contains)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(tongue)))))
+    val tree = CardPlayProcedure.build(catalog, ready, actor, tongue,
+      CardPlayProcedure.Origin.TemporaryHand).toOption.get
+    val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))
+    val parked = ProcedureWalker.advance(ready, tree, None, powers).toOption.get
+      .asInstanceOf[WalkerOutcome.Parked].tree
+    val choice = ProcedureWalker.parkedDecide(ready, tree, parked, powers).get
+    assert(choice.query.asInstanceOf[DecisionQuery.ChooseOne].options.exists(
+      _.ref == DecisionOptionRef.Button("adviser-facedown")))
+    val afterChoice = ProcedureWalker.resolve(ready, tree, parked,
+      Answered(choice.decisionId, DecisionAnswer.ChooseOneAnswer(
+        DecisionOptionRef.Button("adviser-faceup")), actor), powers).toOption.get
+    assert(afterChoice.isInstanceOf[WalkerOutcome.Parked])
+    val replacement = ProcedureWalker.parkedDecide(ready, tree,
+      afterChoice.asInstanceOf[WalkerOutcome.Parked].tree, powers).get
+    assert(replacement.query.asInstanceOf[DecisionQuery.ChooseOne].options
+      .exists(_.ref == DecisionOptionRef.Denizen(others.head)))
+  }
 }
