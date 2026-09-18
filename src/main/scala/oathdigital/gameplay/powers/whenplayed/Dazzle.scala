@@ -7,8 +7,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
 /** Dazzle discards as many Hearth/Order site denizens in the actor's region
-  * as the generic discard rules permit. Immunity is a pipeline restriction,
-  * never filtered by this power.
+  * as the generic discard rules permit.
   */
 final case class Dazzle private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower {
