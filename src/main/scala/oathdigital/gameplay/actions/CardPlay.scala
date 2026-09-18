@@ -19,6 +19,49 @@ object CardPlay {
     case object TemporaryHand extends Origin
   }
 
+  final case class Choice(placement: SearchPlacement,
+      replacements: Vector[CardId])
+
+  def legalChoices(catalog: ExecutableCatalog, ready: ReadyGame,
+      actor: PlayerId, card: WorldCardId, origin: Origin,
+      faceupLimit: Int, facedownLimit: Int): Vector[Choice] = {
+    val player = ready.game.current.players.find(_.player == actor)
+    val placements = Vector[SearchPlacement](SearchPlacement.Discard,
+      SearchPlacement.Site(None),
+      SearchPlacement.Adviser(Orientation.FaceUp, None),
+      SearchPlacement.Adviser(Orientation.FaceDown, None))
+    placements.flatMap { placement =>
+      val limit = placement match {
+        case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
+        case _ => facedownLimit
+      }
+      val direct = plannedOperations(catalog, ready, actor, card,
+        placement, origin, limit).isRight
+      val candidateIds: Vector[CardId] = placement match {
+        case _: SearchPlacement.Site => player.toVector.flatMap(_.pawnSite)
+          .flatMap(ready.game.current.map.sites.get)
+          .flatMap(_.denizens.map(_.id))
+        case SearchPlacement.Adviser(Orientation.FaceUp, _)
+            if card.isInstanceOf[VisionId] =>
+          player.toVector.flatMap(_.revealedVision).map(_.id)
+        case _: SearchPlacement.Adviser => player.toVector.flatMap(_.advisers)
+          .filterNot(value => origin == Origin.FacedownAdviser &&
+            value.id == card).map(_.id)
+        case SearchPlacement.Discard => Vector.empty
+      }
+      val replacements = if (direct) Vector.empty else candidateIds.filter { id =>
+        val selected = placement match {
+          case _: SearchPlacement.Site => SearchPlacement.Site(Some(id))
+          case value: SearchPlacement.Adviser => value.copy(replace = Some(id))
+          case SearchPlacement.Discard => SearchPlacement.Discard
+        }
+        plannedOperations(catalog, ready, actor, card, selected,
+          origin, limit).isRight
+      }
+      Option.when(direct || replacements.nonEmpty)(Choice(placement, replacements))
+    }
+  }
+
   /** Physical intent of one placement. Replacement cards join the ordered
     * next-region discards or the edifice deck bottom after the kept card moves.
     */

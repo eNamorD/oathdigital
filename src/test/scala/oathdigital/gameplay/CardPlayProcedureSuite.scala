@@ -26,6 +26,17 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     (base.copy(game = base.game.copy(current = changed)), actor, card)
   }
 
+  test("CardPlay exposes legal placement choices in decision order") {
+    val (ready, actor, card) = handState
+    val choices = CardPlay.legalChoices(catalog, ready, actor, card,
+      CardPlay.Origin.TemporaryHand, 3, 3)
+    val expected = Vector[SearchPlacement](SearchPlacement.Discard,
+      SearchPlacement.Site(None),
+      SearchPlacement.Adviser(Orientation.FaceUp, None),
+      SearchPlacement.Adviser(Orientation.FaceDown, None))
+    assertEquals(choices.map(_.placement), expected)
+  }
+
   test("temporary-hand card builds a reusable placement decision") {
     val (ready, actor, card) = handState
     val tree = CardPlayProcedure.build(catalog, ready, actor, card,
@@ -70,6 +81,15 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .toOption.get.asInstanceOf[WalkerOutcome.Parked].tree
     val replacement = ProcedureWalker.parkedDecide(full, tree,
       replacementPark, WalkerPowers.empty).get
+    val faceup = CardPlay.legalChoices(catalog, full, actor, card,
+      CardPlay.Origin.TemporaryHand, 3, 3).find(_.placement ==
+      SearchPlacement.Adviser(Orientation.FaceUp, None)).get
+    assertEquals(replacement.query.asInstanceOf[DecisionQuery.ChooseOne]
+      .options.map(_.ref), faceup.replacements.map {
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+        case id => DecisionOptionRef.Button(s"replace:${id.kind}:${id.value}")
+      })
     val chosen = DecisionOptionRef.Denizen(added.head)
     assert(replacement.query.asInstanceOf[DecisionQuery.ChooseOne].options
       .exists(_.ref == chosen))
@@ -131,6 +151,9 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .asInstanceOf[DecisionQuery.ChooseOne]
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button(
       "adviser-faceup")))
+    assert(!CardPlay.legalChoices(catalog, full, actor, card,
+      CardPlay.Origin.TemporaryHand, 3, 3).exists(_.placement ==
+      SearchPlacement.Adviser(Orientation.FaceUp, None)))
   }
 
   test("faceup Conspiracy from Search hands off to existing pending procedure") {
