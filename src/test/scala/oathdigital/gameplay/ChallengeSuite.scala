@@ -5,9 +5,9 @@ import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.{BannerRules, ChallengeCommand, ChallengeRules}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
-import oathdigital.gameplay.OathEvent._
+import oathdigital.model.OathEvent._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.walker.WalkerCompleted
 
 class ChallengeSuite extends munit.FunSuite {

@@ -2,7 +2,6 @@ package oathdigital.server
 
 import oathdigital.application.{GameCommand, GameIntentMapper, StartPayload,
   TreeDecision}
-import oathdigital.gameplay.WakeResource
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{ActorlessCommandCodec, ActorlessCommandRequest,

@@ -1,8 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 import oathdigital.model._
 
 private[gameplay] object OathLifecycle {

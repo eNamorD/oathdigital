@@ -9,7 +9,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,
   ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepPayload,
   WalkerStepRecorded}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.model.DecisionAnswer.PartitionAnswer
 import oathdigital.model._
 

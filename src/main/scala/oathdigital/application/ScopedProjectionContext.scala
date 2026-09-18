@@ -1,7 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.ReadyGame
-import oathdigital.model.{PlayerId, PlayerState, SiteState}
+import oathdigital.model.{PlayerId, PlayerState, ReadyGame, SiteState}
 import oathdigital.protocol.projection._
 
 private[application] final case class ScopedProjectionContext(

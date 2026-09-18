@@ -194,7 +194,7 @@ class OperationValidatorSuite extends munit.FunSuite {
           assert(after.executed.nonEmpty || after.skipped.nonEmpty)
         case (Some(reason), Left(violation)) =>
           val code = violation match {
-            case oathdigital.gameplay.OathViolation
+            case oathdigital.model.OathViolation
                 .CoreOperationRejected(code, _) => code
             case other => fail(s"unexpected violation $other")
           }
@@ -218,7 +218,7 @@ class OperationValidatorSuite extends munit.FunSuite {
     val pipeline = OperationPipeline.run(ready, Vector(operation),
       OperationPolicy.exact(Vector.empty, "test batch not permitted"))(Right(_))
     val code = pipeline.left.toOption.get match {
-      case oathdigital.gameplay.OathViolation.CoreOperationRejected(code, _) =>
+      case oathdigital.model.OathViolation.CoreOperationRejected(code, _) =>
         code
       case other => fail(s"unexpected violation $other")
     }

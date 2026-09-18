@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
+import oathdigital.model.ReadyGame
+
 
 /** Resolves secret orientations for one atomic operation snapshot. */
 private[operations] object OperationSecretPlanner {

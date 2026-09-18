@@ -8,8 +8,8 @@ import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
 
 class StateBasedEvaluationSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

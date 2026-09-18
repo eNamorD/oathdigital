@@ -1,7 +1,6 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 /** Catalog-backed site-card discard restrictions for the acting player. */

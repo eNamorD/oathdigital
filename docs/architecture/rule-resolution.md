@@ -29,8 +29,9 @@ typed unsupported violation with handler and source identity.
 
 ## Registries and ordering
 
-`RuleResolution.scala` defines shared source/activation/query/outcome vocabulary
-and deterministic ordering. Small generic modifiers use explicit registries such
+`model/RuleSources.scala` defines the shared source/activation/query/outcome
+vocabulary, and `gameplay/RuleResolution.scala` holds the registry and
+deterministic ordering. Small generic modifiers use explicit registries such
 as `RuntimeRuleRegistry`. Action-specific systems may own narrower registries:
 Campaign plans author side/window-scoped options in
 `gameplay/actions/CampaignPlans.scala`; other bounded actions use exact-ID

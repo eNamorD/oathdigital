@@ -1,9 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.OathViolation
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef,
-  DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount,
-  DistributeSlot, RelicId, Suit}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, RelicId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.

@@ -1,7 +1,5 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, RuleSourceRef,
-  TradeResource}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}

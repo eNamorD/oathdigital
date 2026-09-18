@@ -1,7 +1,7 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{InPlayCardResources, PlayerResourceSources, ReadyGame}
+import oathdigital.gameplay.{InPlayCardResources, PlayerResourceSources}
 import oathdigital.model._
 
 /** One in-play card's planned Rest return. Denizens and edifices return both

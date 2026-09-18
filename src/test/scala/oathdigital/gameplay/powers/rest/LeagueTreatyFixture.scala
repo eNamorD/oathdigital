@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._

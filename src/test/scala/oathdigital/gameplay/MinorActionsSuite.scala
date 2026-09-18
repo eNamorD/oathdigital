@@ -6,9 +6,9 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation.{UnsupportedMinorActionCatalogInventory,
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule}
 import oathdigital.catalog.CatalogPower
 

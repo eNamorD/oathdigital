@@ -4,8 +4,8 @@ import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation._
 import oathdigital.catalog.CatalogPower
 
 /** `ForgeRules.validate` is Forge's start gate, consumed by

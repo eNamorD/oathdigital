@@ -1,9 +1,8 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathViolation._
-import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.model.{Region, SiteId}
+import oathdigital.model.OathViolation._
+import oathdigital.model.{OathViolation, ReadyGame, Region, SiteId}
 
 /** Travel's printed rules: the region-to-region Supply table, and nothing
   * else.

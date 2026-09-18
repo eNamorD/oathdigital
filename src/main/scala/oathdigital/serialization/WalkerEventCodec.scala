@@ -2,7 +2,6 @@ package oathdigital.serialization
 
 import scala.util.control.NonFatal
 
-import oathdigital.gameplay.OathEvent
 import oathdigital.gameplay.walker.{ChoicePayload, RollPayload, WalkerCompleted,
   DeltaMeaning, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,

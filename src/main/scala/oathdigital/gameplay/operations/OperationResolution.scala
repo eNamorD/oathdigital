@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.model._
 
 /** Pure command-time resolution. It never applies an operation to game state. */

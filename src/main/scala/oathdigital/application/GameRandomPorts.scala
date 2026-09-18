@@ -1,6 +1,5 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathViolation
 import oathdigital.gameplay.actions.SearchRules
 import oathdigital.model._
 
@@ -52,7 +51,7 @@ object CardDecisionIds {
 
 trait SearchDrawPort {
   def prepare(
-      ready: oathdigital.gameplay.ReadyGame,
+      ready: oathdigital.model.ReadyGame,
       source: SearchSource,
       origin: Region
   ): Either[OathViolation, Vector[WorldCardId]]
@@ -60,7 +59,7 @@ trait SearchDrawPort {
 
 object SearchDrawPort {
   val authoritative: SearchDrawPort = new SearchDrawPort {
-    def prepare(ready: oathdigital.gameplay.ReadyGame, source: SearchSource,
+    def prepare(ready: oathdigital.model.ReadyGame, source: SearchSource,
         origin: Region) = SearchRules.draw(ready, source, origin)
   }
 }

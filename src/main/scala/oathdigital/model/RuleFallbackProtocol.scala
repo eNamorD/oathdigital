@@ -1,4 +1,4 @@
-package oathdigital.gameplay
+package oathdigital.model
 
 /** Stable action labels used by modifier requests and durable fallback events.
   * Resolver relevance is determined by PowerWindow, never by these labels.

@@ -1,11 +1,9 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{CampaignTimingWindow, RuleActivation, RuleSourceRef}
 import oathdigital.model._
 import oathdigital.model.PendingProcedure._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 
 /** A server-authored, window-scoped Campaign option. Campaign orchestrates the
   * windows; registered handlers own printed availability, costs and effects.

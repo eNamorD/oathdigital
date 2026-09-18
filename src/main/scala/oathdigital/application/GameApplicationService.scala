@@ -2,9 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.{IgnoredRuleDiagnostic, MajorActionKind,
-  PowerRuntime, OathContinue, OathEvent, OathRules, OathState,
-  OathTransition, OathViolation, OrderedRuleInvocation}
+import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
   ChallengeCommand, EconomyCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -193,7 +191,7 @@ final class GameApplicationService(
     * names each action -- it is not a rule, and no engine code learns it.
     */
   private def walkerTargets(action: ActionRef,
-      ready: oathdigital.gameplay.ReadyGame,
+      ready: oathdigital.model.ReadyGame,
       actor: PlayerId, selected: Vector[OrderedRuleInvocation])
       : Vector[PreviewTarget] = action match {
     case ActionRef.Travel =>

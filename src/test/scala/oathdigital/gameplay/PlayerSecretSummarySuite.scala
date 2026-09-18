@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.{FirstGameSetupRules,
   FirstGameSetupFixture}
 import oathdigital.model._

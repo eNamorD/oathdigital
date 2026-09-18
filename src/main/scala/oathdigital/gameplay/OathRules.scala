@@ -18,9 +18,9 @@ import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 
 /** Deterministic aggregate boundary for setup and gameplay routing.
   *

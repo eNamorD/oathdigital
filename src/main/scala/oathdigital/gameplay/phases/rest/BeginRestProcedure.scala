@@ -2,8 +2,8 @@ package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.{CatalogHandlerInventory, ExecutableCatalog}
 import oathdigital.gameplay.operations.{EnterPhase, Operation, Sequence}
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
-import oathdigital.gameplay.OathViolation._
+import oathdigital.gameplay.OathLifecycle
+import oathdigital.model.OathViolation._
 import oathdigital.model._
 
 /** Begin Rest: the Act-phase gate and the phase change, nothing else.

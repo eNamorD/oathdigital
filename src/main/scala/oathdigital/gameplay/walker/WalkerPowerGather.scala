@@ -1,10 +1,9 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.operations.{Branch, Operation, PrimitiveOperation}
 import oathdigital.gameplay.powerresolver.{ContributingPower,
   ContributionCollector, PowerCtx, PowerWindow}
-import oathdigital.model.{PendingTree, PlayerId, PowerId}
+import oathdigital.model.{OathViolation, PendingTree, PlayerId, PowerId, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's

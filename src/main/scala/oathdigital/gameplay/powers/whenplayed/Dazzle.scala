@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, ReadyGame, RuleSourceRef}
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._

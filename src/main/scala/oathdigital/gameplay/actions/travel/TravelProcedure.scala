@@ -6,8 +6,8 @@ import oathdigital.gameplay.operations.{SpendSupply, CoreOperation, Location,
   Move, Operation, Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
-import oathdigital.model.{DecisionOptionRef, PlayerId, SiteId}
+import oathdigital.gameplay.OathLifecycle
+import oathdigital.model.{DecisionOptionRef, OathState, OathViolation, PlayerId, ReadyGame, SiteId}
 
 /** Declared Travel procedure tree for the walker (batch 1, Task 5).
   *

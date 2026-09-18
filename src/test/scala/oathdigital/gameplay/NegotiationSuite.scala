@@ -5,8 +5,8 @@ import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
 import oathdigital.catalog.CatalogPower
 
 class NegotiationSuite extends munit.FunSuite {
@@ -211,7 +211,7 @@ class NegotiationSuite extends munit.FunSuite {
     assert(Negotiation.handle(changed, Ready(base), NegotiationCommand.Begin(
       players.head.player, DecisionId("changed"), Vector(players(1).player)))
       .left.toOption.exists(_.isInstanceOf[
-        oathdigital.gameplay.OathViolation.UnsupportedNegotiationCatalogInventory]))
+        oathdigital.model.OathViolation.UnsupportedNegotiationCatalogInventory]))
   }
 
   test("accessible Negotiation edifices and held relics block with stable sources") {
@@ -224,7 +224,7 @@ class NegotiationSuite extends munit.FunSuite {
         edificeSite)))))
     assertEquals(Negotiation.handle(catalog, Ready(withEdifice), NegotiationCommand.Begin(
       players.head.player, DecisionId("edifice"), Vector(players(1).player))).left.toOption,
-      Some(oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(
+      Some(oathdigital.model.OathViolation.UnsupportedNegotiationRule(
         s"edifice:${site.value}:E21", "edifice.e21.intact")))
 
     val scepter = RelicId("grand-scepter")
@@ -234,7 +234,7 @@ class NegotiationSuite extends munit.FunSuite {
       else p))))
     assertEquals(Negotiation.handle(catalog, Ready(withRelic), NegotiationCommand.Begin(
       players.head.player, DecisionId("relic"), Vector(players(1).player))).left.toOption,
-      Some(oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(
+      Some(oathdigital.model.OathViolation.UnsupportedNegotiationRule(
         s"relic:${players(1).player.value}:grand-scepter", "relic.the-grand-scepter.negotiation")))
   }
 
@@ -247,7 +247,7 @@ class NegotiationSuite extends munit.FunSuite {
     val modified = base.copy(game = base.game.copy(campaign = campaign))
     assertEquals(Negotiation.handle(catalog, Ready(modified), NegotiationCommand.Begin(
       players.head.player, DecisionId("legacy"), Vector(players(1).player))).left.toOption,
-      Some(oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(
+      Some(oathdigital.model.OathViolation.UnsupportedNegotiationRule(
         s"legacy:${lineage.id.value}:L21", "legacy.high-priest")))
 
     val whisperingStone = RelicId("R34")
@@ -309,7 +309,7 @@ class NegotiationSuite extends munit.FunSuite {
     val failure = Negotiation.handle(catalog, Ready(modified), NegotiationCommand.Begin(
       players.head.player, DecisionId("powered"), Vector(players(1).player)))
       .left.toOption.get
-    assertEquals(failure, oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(
+    assertEquals(failure, oathdigital.model.OathViolation.UnsupportedNegotiationRule(
       s"adviser:${players(1).player.value}:denizen:${powered.value}",
       "denizen.council-arbiter"))
   }

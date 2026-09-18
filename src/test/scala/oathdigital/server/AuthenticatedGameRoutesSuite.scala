@@ -18,8 +18,8 @@ import oathdigital.gameplay.OathRules
 import oathdigital.persistence.HsqldbDatabaseOwner
 import oathdigital.serialization.GameEventWire
 import oathdigital.gameplay.setup.FirstGameSetupRules
-import oathdigital.gameplay.OathState
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model.OathState
 
 class AuthenticatedGameRoutesSuite extends munit.FunSuite {
   test("authenticated Negotiation lets a non-active member author decisions and rejects outsiders") {

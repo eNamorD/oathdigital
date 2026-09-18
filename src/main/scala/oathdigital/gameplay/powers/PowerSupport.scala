@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.gameplay._
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{PlayerId, PowerId, ReadyGame, RuleSourceRef}
 
 final case class ReviewedPowerFacts(
     catalog: oathdigital.catalog.ExecutableCatalog,

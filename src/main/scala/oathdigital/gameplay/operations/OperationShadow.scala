@@ -1,7 +1,7 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.model.CardIndex
+import oathdigital.model.{OathViolation, ReadyGame}
 
 private[gameplay] final case class OperationShadowComparison(
     candidateSucceeded: Boolean,

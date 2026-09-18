@@ -5,7 +5,7 @@ import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.gameplay.OathEvent.{FirstGameCompleted, Mustered, Traded}
+import oathdigital.model.OathEvent.{FirstGameCompleted, Mustered, Traded}
 import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
   BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
   Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
@@ -16,7 +16,7 @@ import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, GainSupply, SpendSu
   OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
-import oathdigital.gameplay.OathEvent.{UsurperFlipped, UsurperVictory,
+import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,

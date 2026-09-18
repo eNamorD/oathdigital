@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{CoreOperation, Operation}
-import oathdigital.gameplay.{OathViolation, ReadyGame}
+import oathdigital.model.{OathViolation, ReadyGame}
 
 /** Runs a declared action tree to completion against immutable state and
   * throws the result away, reporting only the operations it would have

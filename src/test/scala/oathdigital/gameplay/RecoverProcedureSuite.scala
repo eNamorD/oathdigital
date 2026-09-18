@@ -11,7 +11,7 @@ import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerStepRecorded}
 import oathdigital.gameplay.walker.DeltaMeaning.{RelicAcquired, SupplySpent}
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.model._
 
 /** Task 5: the declared Recover tree reproduces the legacy Recover flow on

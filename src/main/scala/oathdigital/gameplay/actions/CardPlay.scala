@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.operations.{BeginConspiracy, Bury, BuryableCard, CoreOperation,
   Discard, Gain, Location, Play,

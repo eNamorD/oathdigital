@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.operations.{BuildOps, Operation}
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.setup.FirstGameSetupRules

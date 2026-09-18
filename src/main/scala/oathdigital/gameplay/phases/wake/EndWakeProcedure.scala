@@ -2,7 +2,7 @@ package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.operations.{EnterPhase, Operation, Sequence}
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** Declared End Wake procedure tree for the walker (batch 1, Task 7).

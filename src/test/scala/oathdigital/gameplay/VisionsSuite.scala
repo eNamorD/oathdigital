@@ -4,9 +4,9 @@ import oathdigital.gameplay.actions.{VisionCommand, VisionRules, Visions}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation.UnsupportedVisionRule
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation.UnsupportedVisionRule
 
 class VisionsSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

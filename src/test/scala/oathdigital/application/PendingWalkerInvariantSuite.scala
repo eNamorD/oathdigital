@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import java.nio.file.{Files, Paths}
-import oathdigital.gameplay.{OathContinue, TradeResource}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.setup.FirstGameRulesData

@@ -2,12 +2,10 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.{CampaignTimingWindow,
-  RuleActivation, RuleOutcome, RuleQueryContext, RuleSourceRef, TypedRuleHandler,
-  RuleRegistry}
+import oathdigital.gameplay.{TypedRuleHandler, RuleRegistry}
 import oathdigital.model._
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 
 object CampaignRules {
   val Conspiracy: VisionId = VisionId("vision:conspiracy")

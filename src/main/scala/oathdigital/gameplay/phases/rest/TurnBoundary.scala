@@ -1,9 +1,9 @@
 package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathContinue, OathTransition, OathViolation,
-  StateBasedEvaluation}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.StateBasedEvaluation
+import oathdigital.model.OathState.Ready
+import oathdigital.model.{OathContinue, OathTransition, OathViolation}
 
 /** Round end after the last player's Rest, moved unchanged from
   * `Rest.finishRound`.

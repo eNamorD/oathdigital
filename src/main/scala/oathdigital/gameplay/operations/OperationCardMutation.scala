@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 /** Internal card-storage mutation boundary used by [[OperationStateMutation]]. */

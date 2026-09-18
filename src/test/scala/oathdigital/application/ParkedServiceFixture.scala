@@ -1,7 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathContinue
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.{CoreOperation, Kill, Location, Move,
@@ -87,7 +86,7 @@ object ParkedServiceFixture {
     Move(Piece.Card(card), PositionedLocation(Location.Deck(CardDeck.World),
       StackPosition.Top), PositionedLocation(to), Some(orientation))
 
-  def cleared(ready: oathdigital.gameplay.ReadyGame, site: SiteId)
+  def cleared(ready: oathdigital.model.ReadyGame, site: SiteId)
       : Vector[CoreOperation] = ready.game.current.map.sites(site).forces match {
     case SiteForces.Occupied(kind, count) => Vector(Kill(Piece.Warbands(kind,
       count), PositionedLocation(Location.Site(site))))

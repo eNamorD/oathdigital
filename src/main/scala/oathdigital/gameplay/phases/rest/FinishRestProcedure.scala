@@ -1,8 +1,7 @@
 package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps,
   CoreOperation, FlipSecrets, Location, Move, Operation, Piece,
   PositionedLocation, SecretSide, Sequence}

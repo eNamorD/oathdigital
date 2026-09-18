@@ -8,9 +8,9 @@ import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent.{Mustered, Traded}
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathEvent.{Mustered, Traded}
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation._
 
 class EconomySuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

@@ -1,8 +1,8 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathEvent.BanditsRefilled
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathEvent.BanditsRefilled
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}

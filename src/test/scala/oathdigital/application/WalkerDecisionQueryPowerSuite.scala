@@ -6,8 +6,8 @@ import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{WalkerParked, WalkerPowers}
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite, ReadyGame}
+import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.{OathRules, ProcedureWalkerSuite}
 import oathdigital.model._
 
 /** The point of Task 4, in one suite: a power that transforms a parked
@@ -109,7 +109,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
 
   /** Starts the walker under `powers` and returns the parked state. */
   private def parked(ready: ReadyGame, actor: PlayerId,
-      powers: WalkerPowers): oathdigital.gameplay.OathState = {
+      powers: WalkerPowers): oathdigital.model.OathState = {
     val started = rules(actor, powers).startWalker(Ready(ready),
       ActionRef.Recover, actor) match {
       case Right(transition) => transition
@@ -120,7 +120,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
   }
 
   /** The option keys the projector offers at the park. */
-  private def offered(state: oathdigital.gameplay.OathState, actor: PlayerId,
+  private def offered(state: oathdigital.model.OathState, actor: PlayerId,
       powers: WalkerPowers): Vector[String] = {
     val Ready(ready) = state: @unchecked
     projector(actor, powers)
@@ -130,7 +130,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
   }
 
   /** The heading the projector offers at the park, if any. */
-  private def titled(state: oathdigital.gameplay.OathState, actor: PlayerId,
+  private def titled(state: oathdigital.model.OathState, actor: PlayerId,
       powers: WalkerPowers): Option[String] = {
     val Ready(ready) = state: @unchecked
     projector(actor, powers)
@@ -139,7 +139,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
         fail("the parked actor must be offered the decision"))
   }
 
-  private def answering(state: oathdigital.gameplay.OathState,
+  private def answering(state: oathdigital.model.OathState,
       actor: PlayerId, powers: WalkerPowers,
       selected: DecisionOptionRef) =
     rules(actor, powers).resolveWalker(state, actor,
@@ -237,7 +237,7 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     assertEquals(rules(actor, powers).resolveWalker(state, actor,
       RecoverProcedure.choiceDecisionId,
       DecisionAnswer.ChooseOneAnswer(continueOption)),
-      Left(oathdigital.gameplay.OathViolation.WrongPlayer(other, actor)))
+      Left(oathdigital.model.OathViolation.WrongPlayer(other, actor)))
 
     val Ready(readyState) = state: @unchecked
     assert(projector(actor, powers).project(

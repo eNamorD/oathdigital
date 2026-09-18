@@ -1,10 +1,10 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.gameplay.{CatacombsContributionSuite, OathRules, ReadyGame}
+import oathdigital.gameplay.{CatacombsContributionSuite, OathRules}
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

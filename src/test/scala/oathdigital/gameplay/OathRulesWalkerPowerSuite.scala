@@ -9,7 +9,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   WalkerCompleted, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerStepRecorded}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.model._
 
 /** Task 3 wiring at the aggregate boundary: `OathRules` gathers restrictions

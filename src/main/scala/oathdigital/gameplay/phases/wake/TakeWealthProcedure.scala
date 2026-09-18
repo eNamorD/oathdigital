@@ -6,8 +6,7 @@ import oathdigital.gameplay.operations.{Location, Operation, Piece,
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation,
-  ReadyGame, WakeResource}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 
 /** Declared Take Wealth procedure tree for the walker (batch 1, Task 7).

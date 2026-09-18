@@ -1,10 +1,10 @@
 package oathdigital.gameplay
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.OathContinue._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathContinue._
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.{EnterPhase, Sequence}
 import oathdigital.gameplay.phases.wake.EndWakeProcedure
 import oathdigital.gameplay.setup._

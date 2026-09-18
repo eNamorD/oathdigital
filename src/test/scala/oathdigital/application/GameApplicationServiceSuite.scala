@@ -27,15 +27,13 @@ import oathdigital.server.GameHttpWire
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.application.ForgeWalkerFixture.{blankCampaignDice,
   forgeReadyGame, mixedForgeCostCatalog}
-import oathdigital.gameplay.OathEvent.{
+import oathdigital.model.OathEvent.{
   GamePawnPlaced,
   FirstGameStarted
 }
-import oathdigital.gameplay.OathViolation.{CatalogMismatch, WrongPlayer}
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.{MajorActionKind, OathContinue, OathRules,
-  OrderedRuleInvocation, RuleSourceRef}
+import oathdigital.model.OathViolation.{CatalogMismatch, WrongPlayer}
+import oathdigital.model.OathState.Ready
+import oathdigital.gameplay.OathRules
 
 class GameApplicationServiceSuite extends munit.FunSuite {
   private val catacombsId = DenizenId(catalog.denizens.find(_.powers.exists(
@@ -151,7 +149,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.Muster(actor, EconomyTargetRef.Denizen(
         DenizenId("any-denizen")))) match {
       case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => ()
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"legacy command should be blocked by walker park: $other")
     }
     assertEquals(walkerService.load("walker-recover").toOption.flatten.get
@@ -241,7 +239,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.StartWalker(ActionRef.Recover, StartPayload(actor,
         Vector(PowerId("power.does-not-exist"))))) match {
       case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => ()
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"expected an InvalidEventOrder rejection, got $other")
     }
     assertEquals(service.load("walker-unknown-modifier").toOption.flatten.get
@@ -328,7 +326,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
           RecoverProcedure.recoverPool)(_ => Right(
             Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))
         assert(rejected.left.toOption.exists(
-          _.isInstanceOf[oathdigital.gameplay.OathViolation.InvalidEventOrder]))
+          _.isInstanceOf[oathdigital.model.OathViolation.InvalidEventOrder]))
     }
   }
 
@@ -442,7 +440,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.RollWalker(actor, PoolKey("not-the-parked-pool")))
     assert(rejected match {
       case Left(GameApplicationError.CommandRejected(
-          _: oathdigital.gameplay.OathViolation.InvalidEventOrder)) => true
+          _: oathdigital.model.OathViolation.InvalidEventOrder)) => true
       case _ => false
     }, s"expected InvalidEventOrder, got $rejected")
     assertEquals(dice.calls, 0)
@@ -687,16 +685,16 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(actor)).toOption.get
     val before = repository.load("game-preview").toOption.flatten.get.records
     val preview = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).toOption.get
+      oathdigital.model.MajorActionKind.Travel, Vector.empty).toOption.get
     assertEquals(preview.loaded.nextSequence, act.nextSequence)
     assertEquals(repository.load("game-preview").toOption.flatten.get.records, before)
     assert(service.preview("game-preview", act.nextSequence - 1, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector.empty).left.toOption
+      oathdigital.model.MajorActionKind.Travel, Vector.empty).left.toOption
       .exists(_.isInstanceOf[GameApplicationError.StaleClientPosition]))
-    val forged = oathdigital.gameplay.OrderedRuleInvocation(
-      oathdigital.gameplay.RuleSourceRef.GameRule("forged"), "unknown")
+    val forged = oathdigital.model.OrderedRuleInvocation(
+      oathdigital.model.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Travel, Vector(forged)).isLeft)
+      oathdigital.model.MajorActionKind.Travel, Vector(forged)).isLeft)
     val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
       .asInstanceOf[WorldCardId]
     assert(service.handle("game-preview", act.nextSequence,
@@ -707,7 +705,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
             case id: VisionId => DecisionOptionRef.Vision(id)
           }))), Vector(forged))).isLeft)
     val challenge = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.gameplay.MajorActionKind.Challenge, Vector.empty).toOption.get
+      oathdigital.model.MajorActionKind.Challenge, Vector.empty).toOption.get
     assertEquals(challenge.options, Vector.empty)
     assertEquals(challenge.ignored, Vector.empty)
   }
@@ -1200,7 +1198,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val started = service.handle("campaign-persist", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 0)).toOption.get
     val startEvent = started.events.head.asInstanceOf[
-      oathdigital.gameplay.OathEvent.CampaignStarted]
+      oathdigital.model.OathEvent.CampaignStarted]
     assertEquals(startEvent.force, 0)
     val Ready(afterPartial) = started.state: @unchecked
     assertEquals(afterPartial.game.current.players.find(_.player == active).get
@@ -1210,8 +1208,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.FinishCampaignPlans(active,
         DecisionId(s"campaign-${act.nextSequence}"))).toOption.get
     assertEquals(chosen.events.head.asInstanceOf[
-      oathdigital.gameplay.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
-    assert(chosen.events.head.isInstanceOf[oathdigital.gameplay.OathEvent.CampaignPlansFinished])
+      oathdigital.model.OathEvent.CampaignPlansFinished].attackDice, Vector.empty)
+    assert(chosen.events.head.isInstanceOf[oathdigital.model.OathEvent.CampaignPlansFinished])
     val reloaded = new GameApplicationService(catalog, repository,
       campaignDicePort = dice).load("campaign-persist").toOption.flatten.get
     assertEquals(reloaded.state, chosen.state)

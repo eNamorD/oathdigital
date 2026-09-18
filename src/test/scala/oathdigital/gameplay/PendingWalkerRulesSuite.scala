@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{CampaignCommand, ChallengeCommand,
   EconomyCommand, MinorActionCommand, NegotiationCommand,
   VisionCommand}

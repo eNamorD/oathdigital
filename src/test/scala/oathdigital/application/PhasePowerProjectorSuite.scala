@@ -1,6 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.rest.{SilverTongue, SilverTongueFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -48,8 +48,7 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
 
   test("a phase power used from a held relic is projected and legal with the " +
       "relic's printed name and text") {
-    import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex,
-      RuleSourceRef}
+    import oathdigital.gameplay.{IndexedRuleSource, RuleSourceIndex}
     import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base}
     val current = base.game.current
     val relic = current.commonCards.relicDeck.find(id => catalog.relics.exists(

@@ -1,4 +1,4 @@
-package oathdigital.gameplay
+package oathdigital.model
 
 import oathdigital.model._
 

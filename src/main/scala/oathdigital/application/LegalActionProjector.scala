@@ -1,8 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.WakeResource
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -92,8 +91,8 @@ private[application] final class LegalActionProjector(
         context.active).map(result => LegalTradeProjection(result.target.kind,
           result.target.id.value, economyLabel(result.target), result.suit.key,
           result.resource match {
-            case oathdigital.gameplay.TradeResource.Favor => "favor"
-            case oathdigital.gameplay.TradeResource.Secret => "secret"
+            case oathdigital.model.TradeResource.Favor => "favor"
+            case oathdigital.model.TradeResource.Secret => "secret"
           }, result.supplySpent, result.gained)) else Vector.empty,
       context.current.pending match {
         case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
@@ -261,10 +260,10 @@ private[application] final class LegalActionProjector(
         BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
           defender.value, key), presentation.safeLabel(key))
     }
-    val favor = trades.filter(_.resource == oathdigital.gameplay.TradeResource.Favor)
+    val favor = trades.filter(_.resource == oathdigital.model.TradeResource.Favor)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
-    val secret = trades.filter(_.resource == oathdigital.gameplay.TradeResource.Secret)
+    val secret = trades.filter(_.resource == oathdigital.model.TradeResource.Secret)
       .map(result => economyCandidate(result.target, result.source,
         Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     val challenges = ChallengeRules.legal(catalog, ready, player.player).map { banner =>
@@ -317,7 +316,7 @@ private[application] final class LegalActionProjector(
         explicitConfirm = true)).flatten
   }
 
-  private def conspiracyTargetAction(ready: oathdigital.gameplay.ReadyGame,
+  private def conspiracyTargetAction(ready: oathdigital.model.ReadyGame,
       pending: PendingProcedure.Conspiracy) = {
     val targets = conspiracyTargetCandidates(ready, pending.actor)
     BoardTargetActionProjection("play-conspiracy",
@@ -325,7 +324,7 @@ private[application] final class LegalActionProjector(
       if (targets.isEmpty) 0 else 1, if (targets.isEmpty) 0 else 1,
       autoActivate = true, targets, decisionId = Some(pending.decision.value))
   }
-  private def conspiracyTargetCandidates(ready: oathdigital.gameplay.ReadyGame,
+  private def conspiracyTargetCandidates(ready: oathdigital.model.ReadyGame,
       actor: PlayerId) = Visions.legalTargetRefs(ready, actor).map {
     case ConspiracyTargetRef.RelicSlot(owner, slot) => BoardTargetCandidateProjection(
       BoardTargetRefProjection.PlayerRelic(owner.value, slot.toString),
@@ -348,10 +347,10 @@ private[application] final class LegalActionProjector(
     case EconomyTargetRef.Edifice(id) => presentation.edificeLabel(id, EdificeSide.Ruined)
   }
   private def economyCandidate(target: EconomyTargetRef,
-      source: oathdigital.gameplay.RuleSourceRef, details: Vector[String]) = {
+      source: oathdigital.model.RuleSourceRef, details: Vector[String]) = {
     val site = source match {
-      case oathdigital.gameplay.RuleSourceRef.SiteCard(id, _) => id
-      case oathdigital.gameplay.RuleSourceRef.Edifice(id, _) => id
+      case oathdigital.model.RuleSourceRef.SiteCard(id, _) => id
+      case oathdigital.model.RuleSourceRef.Edifice(id, _) => id
       case other => throw new IllegalStateException(
         s"Economy candidate has non-site source $other")
     }

@@ -3,9 +3,9 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.operations.{Location, Move => CoreMove,
   OperationPipeline, OperationPolicy, Piece, PositionedLocation}

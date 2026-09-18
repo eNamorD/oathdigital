@@ -4,11 +4,9 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.model.DecisionAnswer.PartitionAnswer
-import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef,
-  DecisionQuery, DecisionSection, DenizenId, DenizenState, Orientation,
-  PendingTree, PlayerId, PlayerState, SiteDenizenTarget, SiteId, Tokens}
+import oathdigital.model.{Answered, CardDeck, DecisionOption, DecisionOptionRef, DecisionQuery, DecisionSection, DenizenId, DenizenState, OathState, OathViolation, Orientation, PendingTree, PlayerId, PlayerState, ReadyGame, SiteDenizenTarget, SiteId, Tokens}
 
 /** Declared Forge procedure tree for the walker (batch 1, Task 2).
   *

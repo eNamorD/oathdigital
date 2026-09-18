@@ -1,11 +1,10 @@
 package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, RuleSourceRef}
 import oathdigital.gameplay.operations.{SpendSupply, Location, Move, Operation,
   Piece, PositionedLocation}
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{PlayerId, PowerId, SiteId, SiteRule, SiteRuler}
+import oathdigital.model.{OathViolation, PlayerId, PowerId, RuleSourceRef, SiteId, SiteRule, SiteRuler}
 
 private[travel] object TravelRoute {
   final case class PawnMove(player: PlayerId, source: SiteId, destination: SiteId)

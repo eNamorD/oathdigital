@@ -1,6 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.{DiceSpec, OathViolation, ReadyGame, RuleSourceRef}
+import oathdigital.gameplay.DiceSpec
 import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model._
 

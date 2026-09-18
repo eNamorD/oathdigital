@@ -1,8 +1,7 @@
 package oathdigital.serialization
 
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathEvent._
+import oathdigital.model.OathEvent._
 
 private[serialization] trait EndingEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._

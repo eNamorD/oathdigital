@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.gameplay.RuleSourceRef
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{PlayerId, PowerId, RuleSourceRef}
 
 sealed trait MajorActionType extends Product with Serializable { def key: String }
 object MajorActionType {

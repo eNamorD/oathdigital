@@ -350,7 +350,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
 
   test("generic power operations are not independently replayable events") {
     val protocol = Files.readString(Paths.get(
-      "src/main/scala/oathdigital/gameplay/model/GameEventProtocol.scala"))
+      "src/main/scala/oathdigital/model/GameEventProtocol.scala"))
     val aggregate = Files.readString(Paths.get(
       "src/main/scala/oathdigital/gameplay/OathRules.scala"))
     val codec = Files.readString(Paths.get(

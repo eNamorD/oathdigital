@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.model.PlayerId
+import oathdigital.model.{IgnoredRuleDiagnostic, MajorActionKind, OathViolation, OrderedRuleInvocation, ReadyGame, RuleSourceRef, RuleTiming}
 
 /** Compatibility projection from precise power windows into the current
   * command/event protocol. Matching and applicability are owned exclusively by

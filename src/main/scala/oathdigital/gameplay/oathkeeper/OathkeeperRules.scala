@@ -1,6 +1,5 @@
 package oathdigital.gameplay.oathkeeper
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 sealed trait OathkeeperOutcome extends Product with Serializable

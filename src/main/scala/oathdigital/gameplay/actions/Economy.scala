@@ -1,13 +1,12 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{PowerRuntime, OathLifecycle, RuleSourceRef}
+import oathdigital.gameplay.{PowerRuntime, OathLifecycle}
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathContinue.ActActionSelection
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathContinue.ActActionSelection
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.GameStateUpdates.updateCurrent
 import oathdigital.gameplay.operations._
 

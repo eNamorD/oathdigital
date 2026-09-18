@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
+import oathdigital.model.OathState.{InProgress, NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}

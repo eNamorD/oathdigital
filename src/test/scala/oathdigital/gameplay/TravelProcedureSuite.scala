@@ -8,8 +8,8 @@ import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
 

@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.OathViolation
 import oathdigital.model._
 
 sealed trait OperationError extends Product with Serializable {

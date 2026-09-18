@@ -1,10 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.WalkerEvent
 import oathdigital.gameplay.operations.CoreOperation
-import oathdigital.model.{Answered, DecisionAnswer,
-  DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, ProcedureRef,
-  RelicId, SiteId}
+import oathdigital.model.{Answered, DecisionAnswer, DecisionOptionRef, DieFace, PlayerId, PoolKey, PowerId, ProcedureRef, RelicId, SiteId, WalkerEvent}
 
 /** Payload of one recorded walker step (Task 3).
   *

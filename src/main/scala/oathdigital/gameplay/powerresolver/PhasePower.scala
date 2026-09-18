@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.operations.Operation
-import oathdigital.model.{DecisionOptionRef, PlayerId, PowerId, PowerTiming}
+import oathdigital.model.{DecisionOptionRef, OathViolation, PlayerId, PowerId, PowerTiming, ReadyGame}
 
 /** A WAKE, ACTION or REST power a player uses as an action.
   *

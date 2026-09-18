@@ -3,7 +3,6 @@ package oathdigital.gameplay.setup
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.GameplayTransition
-import oathdigital.gameplay._
 import oathdigital.model._
 
 object FirstGameRulesData {

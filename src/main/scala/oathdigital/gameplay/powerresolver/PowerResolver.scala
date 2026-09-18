@@ -2,9 +2,9 @@ package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.PowerId
 
-import oathdigital.gameplay.RuleSourceRef
 import oathdigital.gameplay.powerresolver.PowerResolution._
 import oathdigital.gameplay.powerresolver.PowerResolverError._
+import oathdigital.model.RuleSourceRef
 
 /** Resolves relevance solely from the exact requested window. Source discovery
   * supplies factual ability IDs; handlers alone decide dynamic applicability.

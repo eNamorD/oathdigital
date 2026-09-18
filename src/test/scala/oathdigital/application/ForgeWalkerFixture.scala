@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.model._
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 
 /** The one real board a walker Forge can be driven to, shared by every
   * suite that needs one.

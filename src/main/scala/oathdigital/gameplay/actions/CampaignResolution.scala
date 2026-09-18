@@ -1,8 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.model._
-import oathdigital.gameplay.{OathViolation, ReadyGame}
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 
 trait CampaignLosingForceResolver {
   def id: String

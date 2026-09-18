@@ -1,8 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.OathViolation
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef,
-  DecisionQuery, DistributeAmount, DistributeSlot}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DistributeAmount, DistributeSlot, OathViolation}
 
 /** The whole generic decision contract: whether a declared query is
   * answerable at all, and whether a submitted answer satisfies it.

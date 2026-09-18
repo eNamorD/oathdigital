@@ -1,9 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.{OathState, OathViolation, ReadyGame, WalkerEvent}
 import oathdigital.gameplay.operations.OperationExecutor
-import oathdigital.model.{Answered, DefenseDieFace, PendingTree,
-  RollOutcome}
+import oathdigital.model.{Answered, DefenseDieFace, OathState, OathViolation, PendingTree, ReadyGame, RollOutcome, WalkerEvent}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).

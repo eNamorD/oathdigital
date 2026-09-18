@@ -68,7 +68,7 @@ class OperationExecutorSuite extends munit.FunSuite {
   private def rejectionCode(state: ReadyGame, operation: CoreOperation): String =
     OperationPipeline.run(state, Vector(operation), OperationPolicy.Permissive)(
       Right(_)).left.toOption.get match {
-      case oathdigital.gameplay.OathViolation.CoreOperationRejected(code, _) =>
+      case oathdigital.model.OathViolation.CoreOperationRejected(code, _) =>
         code
       case other => fail(s"expected a CoreOperationRejected, got $other")
     }

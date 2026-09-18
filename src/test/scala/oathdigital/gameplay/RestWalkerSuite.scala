@@ -1,7 +1,7 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathEvent.IgnoredRulesRecorded
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathEvent.IgnoredRulesRecorded
+import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

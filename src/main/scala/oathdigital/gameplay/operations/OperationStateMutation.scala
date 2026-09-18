@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 /** Internal immutable mutation planner for counted pieces and primitive effects. */

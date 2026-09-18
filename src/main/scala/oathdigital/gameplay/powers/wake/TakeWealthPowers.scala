@@ -1,6 +1,5 @@
 package oathdigital.gameplay.powers.wake
 
-import oathdigital.gameplay.{OathViolation, RuleSourceRef}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 

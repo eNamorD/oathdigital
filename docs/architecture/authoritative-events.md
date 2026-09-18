@@ -17,7 +17,8 @@ from the stream.
 
 ## Current event boundary
 
-`OathEvent` and its supporting event facts live in `gameplay/model`.
+`OathEvent` and its supporting event facts live in `model`
+(`GameEventProtocol.scala`).
 Gameplay modules own validation and evolution. The application service loads,
 decodes, replays, handles one command, encodes emitted events, and requests one
 atomic expected-position append.

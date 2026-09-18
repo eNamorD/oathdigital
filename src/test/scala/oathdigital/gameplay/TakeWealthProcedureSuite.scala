@@ -1,9 +1,9 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.OathContinue._
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathContinue._
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.{Location, Move, Piece, Sequence,
   RecordPowerUse, Take}
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure

@@ -1,6 +1,5 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.gameplay.ReadyGame
 import oathdigital.model._
 
 /** One shape violation against an operation, mirroring the code/detail of the

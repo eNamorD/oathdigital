@@ -26,23 +26,23 @@ import oathdigital.protocol.projection.GameProjection
 import oathdigital.model.PlayerId
 
 private[server] object CommandRejectionMessage {
-  def text(violation: oathdigital.gameplay.OathViolation): String =
+  def text(violation: oathdigital.model.OathViolation): String =
     violation match {
-      case oathdigital.gameplay.OathViolation.NegotiationUnavailable(detail) => detail
-      case oathdigital.gameplay.OathViolation.NegotiationDecisionMismatch(expected, actual) =>
+      case oathdigital.model.OathViolation.NegotiationUnavailable(detail) => detail
+      case oathdigital.model.OathViolation.NegotiationDecisionMismatch(expected, actual) =>
         s"negotiation decision mismatch: expected $expected, actual $actual"
-      case oathdigital.gameplay.OathViolation.NegotiationOutcomeMismatch(detail) => detail
-      case oathdigital.gameplay.OathViolation.UnsupportedNegotiationRule(source, handler) =>
+      case oathdigital.model.OathViolation.NegotiationOutcomeMismatch(detail) => detail
+      case oathdigital.model.OathViolation.UnsupportedNegotiationRule(source, handler) =>
         s"unsupported negotiation rule $source ($handler)"
-      case oathdigital.gameplay.OathViolation.UnsupportedNegotiationCatalogInventory(_, _) =>
+      case oathdigital.model.OathViolation.UnsupportedNegotiationCatalogInventory(_, _) =>
         "negotiation requires an unaltered supported catalog"
-      case oathdigital.gameplay.OathViolation.InsufficientFavor(required, available) =>
+      case oathdigital.model.OathViolation.InsufficientFavor(required, available) =>
         s"required favor $required exceeds available $available"
-      case oathdigital.gameplay.OathViolation.InsufficientSupply(required, available) =>
+      case oathdigital.model.OathViolation.InsufficientSupply(required, available) =>
         s"required Supply $required exceeds available $available"
-      case oathdigital.gameplay.OathViolation.InsufficientSecrets(required, available) =>
+      case oathdigital.model.OathViolation.InsufficientSecrets(required, available) =>
         s"required secrets $required exceed available $available"
-      case oathdigital.gameplay.OathViolation.InvalidModifierInvocation(message) => message
+      case oathdigital.model.OathViolation.InvalidModifierInvocation(message) => message
       case other => other.toString
     }
 }
@@ -55,7 +55,7 @@ final class GameServerGateway(
   def preview(gameId: String, requestingPlayer: PlayerId,
       request: MajorActionPreviewRequest)
       : Either[GameApplicationError, MajorActionPreviewResponse] = for {
-    action <- oathdigital.gameplay.MajorActionKind.fromKey(request.action).toRight(
+    action <- oathdigital.model.MajorActionKind.fromKey(request.action).toRight(
       GameApplicationError.BootstrapFailure("unknown major action"))
     selected <- GameIntentMapper.bindModifiers(requestingPlayer,
       request.orderedModifiers).left.map(error =>
@@ -65,7 +65,7 @@ final class GameServerGateway(
     projection = projector.project(gameId, accepted.loaded, requestingPlayer)
     _ <- Either.cond(projection.activeParticipantId.contains(requestingPlayer.value) &&
       projection.actionSelectionOpen, (), GameApplicationError.CommandRejected(
-      oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+      oathdigital.model.OathViolation.InvalidModifierInvocation(
         "major-action preview is unavailable for this actor or phase")))
     _ <- MajorActionPreviewTargets.validate(projection, request)
   } yield MajorActionPreviewResponse(accepted.loaded.nextSequence, request.action,
@@ -128,10 +128,10 @@ private[server] object MajorActionPreviewTargets {
       case Some("facedown-adviser") if request.action == "search" =>
         Either.cond(projection.minorActions.exists(_.advisers.exists(
           _.placements.nonEmpty)), (), GameApplicationError.CommandRejected(
-          oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+          oathdigital.model.OathViolation.InvalidModifierInvocation(
             "no facedown adviser can legally be resolved")))
       case Some(_) => Left(GameApplicationError.CommandRejected(
-        oathdigital.gameplay.OathViolation.InvalidModifierInvocation(
+        oathdigital.model.OathViolation.InvalidModifierInvocation(
           "unknown major-action procedure")))
       case None => Right(())
     }

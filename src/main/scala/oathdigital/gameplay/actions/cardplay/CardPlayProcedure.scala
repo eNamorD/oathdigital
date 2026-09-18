@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathLifecycle, OathState, OathViolation, ReadyGame}
+import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.PowerWindow

@@ -3,10 +3,7 @@ package oathdigital.gameplay.walker
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
-  ReadyGame}
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
-  PhaseTransitionRef, PlayerId, PowerId, ProcedureRef, SiteId}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, ProcedureRef, ReadyGame, SiteId}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now

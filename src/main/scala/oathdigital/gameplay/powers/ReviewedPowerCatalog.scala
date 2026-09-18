@@ -3,7 +3,7 @@ package oathdigital.gameplay.powers
 import oathdigital.catalog.{CatalogHandlerInventory, ExecutableCatalog}
 import oathdigital.gameplay._
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{PlayerId, PowerId}
+import oathdigital.model.{OathViolation, PlayerId, PowerId, ReadyGame, RuleSourceRef}
 
 object ReviewedPowerCatalog {
   val AuditedCatalogFingerprint: String =

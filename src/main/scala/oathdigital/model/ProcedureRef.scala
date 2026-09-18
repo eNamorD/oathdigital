@@ -60,7 +60,7 @@ object ActionRef {
   }
   object UsePower { private[model] val Prefix = "use-power:" }
 
-  /** A key here that also names a [[oathdigital.gameplay.MajorActionKind]]
+  /** A key here that also names a [[oathdigital.model.MajorActionKind]]
     * bridges to it on the string alone -- `GameApplicationService
     * .walkerAction` and `GameIntentMapper.actionRef` both do that, and the
     * three major actions above rely on it.

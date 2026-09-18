@@ -11,7 +11,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ProcedureWalker,
   WalkerCompleted, WalkerOutcome, WalkerParked, WalkerPowers,
   WalkerStepRecorded}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model._
 

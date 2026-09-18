@@ -74,7 +74,7 @@ final case class AuthorizedPlayer private (
   def muster(target: EconomyTargetRef): GameCommand =
     GameCommand.Muster(access.playerId, target)
 
-  def trade(target: EconomyTargetRef, resource: oathdigital.gameplay.TradeResource): GameCommand =
+  def trade(target: EconomyTargetRef, resource: oathdigital.model.TradeResource): GameCommand =
     GameCommand.Trade(access.playerId, target, resource)
 
   def beginChallenge(banner: Banner): GameCommand =

@@ -9,8 +9,8 @@ import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerStepRecorded}
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 
 /** The walker command surface of [[OathRules]], mixed into it.
   *

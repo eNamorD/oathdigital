@@ -6,9 +6,9 @@ import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.OathEvent.IgnoredRulesRecorded
-import oathdigital.gameplay.OathState.Ready
-import oathdigital.gameplay.OathViolation.{UnsupportedRestState,
+import oathdigital.model.OathEvent.IgnoredRulesRecorded
+import oathdigital.model.OathState.Ready
+import oathdigital.model.OathViolation.{UnsupportedRestState,
   UnsupportedRoundEndCatalogInventory,
   UnsupportedRuleCatalog}
 import oathdigital.catalog.CatalogPower

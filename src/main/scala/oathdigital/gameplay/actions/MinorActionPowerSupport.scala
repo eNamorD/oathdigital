@@ -3,9 +3,7 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.model._
-import oathdigital.gameplay.ReadyGame
-import oathdigital.gameplay.OathViolation
-import oathdigital.gameplay.OathViolation.{UnsupportedMinorActionCatalogInventory,
+import oathdigital.model.OathViolation.{UnsupportedMinorActionCatalogInventory,
   UnsupportedMinorActionRule, UnsupportedVisionRule}
 
 /** Transitional audited seam for component behavior relevant to base minor
@@ -49,7 +47,7 @@ object MinorActionPowerSupport {
             foundation.alterationSources.nonEmpty => number }
     altered match {
       case Some(number) => Left(UnsupportedVisionRule(
-        oathdigital.gameplay.RuleSourceRef.Foundation(number).stableKey,
+        oathdigital.model.RuleSourceRef.Foundation(number).stableKey,
         "foundation.altered-vision-rules"))
       case None => validateInventory(catalog).flatMap { _ =>
       val current = ready.game.current
@@ -63,7 +61,7 @@ object MinorActionPowerSupport {
           case EdificeSide.Intact => definition.intact.handlers
           case EdificeSide.Ruined => definition.ruined.handlers
         }}
-      def reject(source: oathdigital.gameplay.RuleSourceRef, handler: String) =
+      def reject(source: oathdigital.model.RuleSourceRef, handler: String) =
         Left(UnsupportedVisionRule(source.stableKey, handler))
 
       val accessibleSites = current.map.inPlay.filter { siteId =>
@@ -72,21 +70,21 @@ object MinorActionPowerSupport {
       }
       val actorSources = actor.advisers.collect {
         case d: DenizenState if d.orientation == Orientation.FaceUp =>
-          oathdigital.gameplay.RuleSourceRef.Adviser(actorId, d.id) -> handlers(d.id)
+          oathdigital.model.RuleSourceRef.Adviser(actorId, d.id) -> handlers(d.id)
       } ++ accessibleSites.flatMap { siteId =>
         current.map.sites(siteId).denizens.map {
           case d: DenizenState =>
-            oathdigital.gameplay.RuleSourceRef.SiteCard(siteId, d.id) ->
+            oathdigital.model.RuleSourceRef.SiteCard(siteId, d.id) ->
               (if (d.orientation == Orientation.FaceUp) handlers(d.id) else Vector.empty)
           case e: EdificeState =>
-            oathdigital.gameplay.RuleSourceRef.Edifice(siteId, e.id) -> edificeHandlers(e)
+            oathdigital.model.RuleSourceRef.Edifice(siteId, e.id) -> edificeHandlers(e)
         }
       } ++ actor.relics.collect {
         case r if r.orientation == Orientation.FaceUp =>
-          oathdigital.gameplay.RuleSourceRef.Relic(actorId, r.id) -> catalog.relics
+          oathdigital.model.RuleSourceRef.Relic(actorId, r.id) -> catalog.relics
             .find(_.id.value == r.id.value).toVector.flatMap(_.handlers)
       } ++ ready.game.campaign.lineages(actor.lineage).legacies.filter(_.active).map { legacy =>
-        oathdigital.gameplay.RuleSourceRef.Legacy(actor.lineage, legacy.id) -> catalog.legacies
+        oathdigital.model.RuleSourceRef.Legacy(actor.lineage, legacy.id) -> catalog.legacies
           .find(_.id.value == legacy.id.value).toVector.flatMap(_.handlers)
       }
       actorSources.iterator.flatMap { case (source, ids) =>
@@ -101,7 +99,7 @@ object MinorActionPowerSupport {
             val sourceRuler = SiteRule.ruler(site.forces, current.players).toOption
             site.denizens.collect {
               case d: DenizenState if d.orientation == Orientation.FaceUp =>
-                (oathdigital.gameplay.RuleSourceRef.SiteCard(siteId, d.id),
+                (oathdigital.model.RuleSourceRef.SiteCard(siteId, d.id),
                   handlers(d.id), sourceRuler)
             }
           }.flatMap { case (source, ids, ruler) =>
@@ -115,7 +113,7 @@ object MinorActionPowerSupport {
             case None =>
               val edifices = current.map.inPlay.flatMap { siteId =>
                 current.map.sites(siteId).denizens.collect { case e: EdificeState =>
-                  (oathdigital.gameplay.RuleSourceRef.Edifice(siteId, e.id), siteId,
+                  (oathdigital.model.RuleSourceRef.Edifice(siteId, e.id), siteId,
                     edificeHandlers(e))
                 }
               }.flatMap { case (source, siteId, ids) =>
@@ -131,7 +129,7 @@ object MinorActionPowerSupport {
                   val enemyTriggers = current.players.filterNot(_.player == actorId).flatMap { p =>
                     val advisers = p.advisers.collect {
                       case d: DenizenState if d.orientation == Orientation.FaceUp =>
-                        oathdigital.gameplay.RuleSourceRef.Adviser(p.player, d.id) -> handlers(d.id)
+                        oathdigital.model.RuleSourceRef.Adviser(p.player, d.id) -> handlers(d.id)
                     }
                     val sites = current.map.inPlay.filter { siteId =>
                       p.pawnSite.contains(siteId) || SiteRule.ruledBy(
@@ -139,7 +137,7 @@ object MinorActionPowerSupport {
                         p.player).getOrElse(false)
                     }.flatMap { siteId => current.map.sites(siteId).denizens.collect {
                       case d: DenizenState if d.orientation == Orientation.FaceUp =>
-                        oathdigital.gameplay.RuleSourceRef.SiteCard(siteId, d.id) -> handlers(d.id)
+                        oathdigital.model.RuleSourceRef.SiteCard(siteId, d.id) -> handlers(d.id)
                     }}
                     advisers ++ sites
                   }.flatMap { case (source, ids) =>

@@ -4,6 +4,7 @@ import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.operations.Sequence
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.model.PowerId
+import oathdigital.model.{OathState, RuleSourceRef}
 
 /** Task 1: the contribution vocabulary and the `ContributingPower` shape.
   * Vocabulary only -- nothing here gathers, chains, or applies a

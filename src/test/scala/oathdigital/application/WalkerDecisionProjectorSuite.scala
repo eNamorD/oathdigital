@@ -6,8 +6,8 @@ import oathdigital.gameplay.operations.{Decide, Operation, Roll, Sequence}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerProcedureRegistry}
-import oathdigital.gameplay.{DiceKind, DiceSpec, OathViolation, ReadyGame}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.gameplay.{DiceKind, DiceSpec}
+import oathdigital.model.OathState.Ready
 import oathdigital.model._
 import oathdigital.protocol.projection.WalkerWaitingProjection
 

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.oathkeeper
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, ReadyGame}
 import oathdigital.gameplay.operations.{BuildOps, CoreOperation, Decide,
   Operation, Sequence, SetOathkeeper}
 import oathdigital.model._

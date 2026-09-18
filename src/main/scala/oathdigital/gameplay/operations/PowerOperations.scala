@@ -1,8 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 import oathdigital.model._
 
 final case class RelicPlacement(playerId: PlayerId, relicId: RelicId,

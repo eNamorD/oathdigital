@@ -3,11 +3,10 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
-import oathdigital.gameplay._
-import oathdigital.gameplay.OathContinue.ActActionSelection
-import oathdigital.gameplay.OathEvent._
-import oathdigital.gameplay.OathState._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathContinue.ActActionSelection
+import oathdigital.model.OathEvent._
+import oathdigital.model.OathState._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.{CoreOperation, Location,
   OperationPipeline, OperationPolicy, Piece, PositionedLocation,
   Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}

@@ -3,7 +3,7 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.gameplay._
-import oathdigital.gameplay.OathViolation._
+import oathdigital.model.OathViolation._
 import oathdigital.gameplay.operations.{Cost, Costs, Location}
 
 object ForgeRules {

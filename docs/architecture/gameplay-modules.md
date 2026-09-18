@@ -20,11 +20,6 @@ oathdigital/gameplay/
   StateBasedEvaluation.scala
   RuleSourceIndex.scala
   RuleResolution.scala
-  model/
-    GameStateProtocol.scala
-    GameProcedureProtocol.scala
-    GameEventProtocol.scala
-    GameViolation.scala
   setup/
     FirstGameSetup.scala
   phases/
@@ -72,8 +67,9 @@ exact-ID classifications then map relevant handlers to typed Scala behavior.
 Unknown relevant handlers fail with stable source/handler identity. Gameplay
 never reads `rulesText`.
 
-`RuleResolution` supplies shared source, activation, ordering, query, and
-outcome vocabulary. Specialized registries such as Campaign plans remain in
+`RuleResolution` supplies the handler registry and deterministic ordering over
+the shared source, activation, query, and outcome vocabulary in
+`model/RuleSources.scala`. Specialized registries such as Campaign plans remain in
 their owning module when their windows/effects are action-specific.
 `RuntimeRuleRegistry` is an empty stub kept for Negotiation's blocking
 boundary; the terrain travel path lives on TravelCost window powers under

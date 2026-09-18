@@ -1,6 +1,5 @@
 package oathdigital.application
 
-import oathdigital.gameplay.{OrderedRuleInvocation, TradeResource}
 import oathdigital.model._
 
 sealed trait GameCommand extends Product with Serializable

@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{OathViolation, PowerRuntime, ReadyGame}
+import oathdigital.gameplay.PowerRuntime
 import oathdigital.model._
 
 /** Pure Search source and cost rules shared by the walker and projections. */

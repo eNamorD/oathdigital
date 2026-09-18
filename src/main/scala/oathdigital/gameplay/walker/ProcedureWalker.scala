@@ -1,15 +1,13 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.{DiceKind, OathEvent, OathState, OathViolation,
-  ReadyGame, WalkerEvent}
+import oathdigital.gameplay.DiceKind
 import oathdigital.gameplay.operations.{SpendSupply, Branch, BuildOps,
   CoreOperation, Decide, Location, ModifyDicePool, Move, Operation,
   OperationPipeline, OperationPolicy, OperationRestriction, Piece,
   PositionedLocation, PrimitiveOperation, Repeat, Roll}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerResolution,
   PowerWindow}
-import oathdigital.model.{Answered, DefenseDieFace, DieFace,
-  PendingTree, PlayerId, PoolKey, PowerId, RelicId, RollOutcome}
+import oathdigital.model.{Answered, DefenseDieFace, DieFace, OathEvent, OathState, OathViolation, PendingTree, PlayerId, PoolKey, PowerId, ReadyGame, RelicId, RollOutcome, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 

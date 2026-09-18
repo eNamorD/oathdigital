@@ -9,7 +9,7 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerStepRecorded}
-import oathdigital.gameplay.OathState.Ready
+import oathdigital.model.OathState.Ready
 import oathdigital.model._
 
 /** Task 5: Catacombs as the first real walker contribution, exercised through

@@ -12,11 +12,7 @@ import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powerresolver.{PhasePowers, PowerWindow}
-import oathdigital.gameplay.{MajorActionKind, OathContinue, OathViolation,
-  ReadyGame}
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef,
-  PhaseTransitionRef, PlayerId, ProcedureRef, StartableRef,
-  PowerId, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
