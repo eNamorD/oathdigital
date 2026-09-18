@@ -76,11 +76,13 @@ private[application] final class LegalActionProjector(
     val ordinaryAct = context.viewerIsActive &&
       context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
       context.current.walkerPending.isEmpty
+    val travelFacts = if (ordinaryAct) travelCandidates(context)
+      else Vector.empty[(SiteId, Int)]
     LegalProjection(
       controls(context, minor, projectedPhasePowers),
-      if (ordinaryAct) travelCandidates(context).map { case (site, cost) =>
+      travelFacts.map { case (site, cost) =>
         LegalTravelDestinationProjection(site.value, cost)
-      } else Vector.empty,
+      },
       if (ordinaryAct) legalSearch(context) else Vector.empty,
       if (ordinaryAct) Economy.legalMuster(catalog, context.ready,
         context.active).map(result => LegalMusterProjection(result.target.kind,
@@ -97,7 +99,7 @@ private[application] final class LegalActionProjector(
         case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
             context.viewer.contains(p.actor) =>
           Vector(conspiracyTargetAction(context.ready, p))
-        case _ if ordinaryAct => boardTargetActions(context)
+        case _ if ordinaryAct => boardTargetActions(context, travelFacts)
         case _ => Vector.empty
       },
       minor)
@@ -229,9 +231,10 @@ private[application] final class LegalActionProjector(
       if (ruled) active.board.warbands else 0, math.max(0, siteWarbands - 1))
   }
 
-  private def boardTargetActions(context: ScopedProjectionContext) = {
+  private def boardTargetActions(context: ScopedProjectionContext,
+      travelFacts: Vector[(SiteId, Int)]) = {
     val ready = context.ready; val player = context.active
-    val travel = travelCandidates(context).map {
+    val travel = travelFacts.map {
       case (site, cost) => BoardTargetCandidateProjection(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))

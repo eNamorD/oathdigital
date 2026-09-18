@@ -1594,6 +1594,11 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assert(travel.candidates.forall(_.target.isInstanceOf[
       BoardTargetRefProjection.Site]))
     assert(travel.candidates.forall(_.details.exists(_.endsWith("Supply"))))
+    assertEquals(
+      travel.candidates.map(candidate => candidate.target -> candidate.details),
+      act.legalTravelDestinations.map(destination =>
+        BoardTargetRefProjection.Site(destination.siteId) ->
+          Vector(s"${destination.supplyCost} Supply")))
     assertEquals(projector.projectPublic("game-projection-wake",
       LoadedGame(ended.state, ended.nextSequence)).boardTargetActions,
       Vector.empty)
