@@ -53,12 +53,11 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       base.game.current.players.map(player =>
         if (player.player == actor) player.copy(pawnSite = Some(site))
         else player))
-    val ready: ReadyGame = base.copy(game = base.game.copy(
-      current = base.game.current.copy(
+    val ready: ReadyGame = base.updateCurrent(_.copy(
         players = moved,
         turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(action),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     (ScopedProjectionContext(ready, Some(actor)), actor)
   }
 
@@ -334,11 +333,10 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     val tree: Operation = Sequence(Decide("test.off-turn", owner,
       DecisionQuery.ChooseOne(Vector(DecisionOption.Button(
         DecisionOptionRef.Button("ok"), "OK")), heading = Some("Answer"))))
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         turn = base.game.current.turn.copy(phase = Phase.Act),
         walkerProcedure = Some(ActionRef.Recover),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     val projector = new WalkerDecisionProjector(catalog,
       new GamePresentationProjector(catalog), WalkerPowers.empty,
       (_, _, _, _, _) => Right(tree))
@@ -369,10 +367,9 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     val leaders = OathkeeperFixture.players.filterNot(_ == holder).take(2)
     val ruled = OathkeeperFixture.inPhase(OathkeeperFixture.ruled(base,
       leaders.map(Some(_)), holder = Some(holder)), Phase.Act)
-    val ready = ruled.copy(game = ruled.game.copy(current =
-      ruled.game.current.copy(
+    val ready = ruled.updateCurrent(_.copy(
         walkerProcedure = Some(TriggeredProcedureRef.Oathkeeper),
-        walkerPending = Some(PendingTree(Vector("0"), Vector.empty)))))
+        walkerPending = Some(PendingTree(Vector("0"), Vector.empty))))
     (ready, active, holder, leaders)
   }
 

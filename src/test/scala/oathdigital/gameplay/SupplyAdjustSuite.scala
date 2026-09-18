@@ -37,8 +37,7 @@ class SupplyAdjustSuite extends munit.FunSuite {
       if (existing.player != player) existing
       else existing.copy(board = existing.board.copy(
         supply = SupplyTrack(value))))
-    ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = fixed)))
+    ready.updateCurrent(_.copy(players = fixed))
   }
 
   test("an exact spend reduces supply") {

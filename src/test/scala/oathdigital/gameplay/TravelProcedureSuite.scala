@@ -55,10 +55,10 @@ class TravelProcedureSuite extends munit.FunSuite {
         board = if (player.player == active)
           player.board.copy(supply = SupplyTrack(supply)) else player.board)
     }
-    initial.copy(game = initial.game.copy(current = initial.game.current.copy(
+    initial.updateCurrent(_.copy(
       players = players,
       map = MapState(ids.take(2), ids.slice(2, 5), ids.slice(5, 8), states),
-      turn = initial.game.current.turn.copy(phase = Phase.Act))))
+      turn = initial.game.current.turn.copy(phase = Phase.Act)))
   }
 
   private def active(ready: ReadyGame): PlayerState =
@@ -70,9 +70,9 @@ class TravelProcedureSuite extends munit.FunSuite {
     val lineage = active(ready).lineage
     val ruled = ready.game.current.map.sites(pass).copy(
       forces = SiteForces.Occupied(ForceKind.Exile(lineage), 1))
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(pass, ruled)))))
+        ready.game.current.map.sites.updated(pass, ruled))))
   }
 
   private def simulate(ready: ReadyGame, destination: SiteId,
@@ -191,10 +191,9 @@ class TravelProcedureSuite extends munit.FunSuite {
     val actor = active(ready).player
     val destination = ready.game.current.map.cradle.find(
       _ != active(ready).pawnSite.get).get
-    val citizen = ready.copy(game = ready.game.copy(campaign =
-      ready.game.campaign.copy(lineages = ready.game.campaign.lineages.map {
+    val citizen = ready.updateCampaign(_.copy(lineages = ready.game.campaign.lineages.map {
         case (id, lineage) => id -> lineage.copy(role = Role.Citizen)
-      })))
+      }))
     assert(TravelProcedure.build(catalog, citizen, actor,
       Vector(DecisionOptionRef.Site(destination))).isRight)
   }

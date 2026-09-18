@@ -34,8 +34,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
         player.copy(pawnSite = Some(activeSite))
       else player
     }
-    Ready(value.copy(game = value.game.copy(current =
-      value.game.current.copy(players = players))))
+    Ready(value.updateCurrent(_.copy(players = players)))
   }
 
   private def endWake(state: OathState, actor: PlayerId) =
@@ -76,11 +75,10 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     val Ready(base) = ready(): @unchecked
     val empty = base.game.current.map.inPlay.find(id =>
       catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val state = Ready(base.copy(game = base.game.copy(current =
-      base.game.current.copy(map = base.game.current.map.copy(sites =
+    val state = Ready(base.updateCurrent(_.copy(map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(empty,
           base.game.current.map.sites(empty).copy(
-            forces = SiteForces.Empty)))))))
+            forces = SiteForces.Empty))))))
 
     assert(StateBasedEvaluation.banditRefill(catalog, state)
       .toOption.flatten.nonEmpty,
@@ -103,8 +101,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     val players = value.game.current.players.updated(other,
       value.game.current.players(other).copy(revealedVision =
         Some(VisionState(VisionId("V1"), Orientation.FaceUp))))
-    val visionRevealed = Ready(value.copy(game = value.game.copy(current =
-      value.game.current.copy(players = players))))
+    val visionRevealed = Ready(value.updateCurrent(_.copy(players = players)))
 
     val accepted = endWake(visionRevealed, active).toOption.get
     val Ready(after) = accepted.state: @unchecked
@@ -126,9 +123,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     assertEquals(endWake(ended, active).left.toOption.get,
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
     val Ready(value) = state: @unchecked
-    val titled = Ready(value.copy(game = value.game.copy(current =
-      value.game.current.copy(title =
-        OathkeeperState(Some(active), TitleSide.Oathkeeper)))))
+    val titled = Ready(value.updateCurrent(_.copy(title =
+        OathkeeperState(Some(active), TitleSide.Oathkeeper))))
     assert(endWake(titled, active).isRight)
   }
 
@@ -154,9 +150,8 @@ class EndWakeProcedureSuite extends munit.FunSuite {
     // pins: a gate added to one side and not the other shows up here.
     val inWake = ready()
     val Ready(value) = inWake: @unchecked
-    val inAct = Ready(value.copy(game = value.game.copy(current =
-      value.game.current.copy(turn = value.game.current.turn.copy(
-        phase = Phase.Act)))))
+    val inAct = Ready(value.updateCurrent(_.copy(turn = value.game.current.turn.copy(
+        phase = Phase.Act))))
     Vector(inWake, ready(sharedEnemy = true), inAct).foreach { state =>
       val projection = new oathdigital.application.GameProjector(catalog)
         .project("end-wake", oathdigital.application.LoadedGame(state, 9),

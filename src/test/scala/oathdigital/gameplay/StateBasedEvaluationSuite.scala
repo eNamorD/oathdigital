@@ -24,20 +24,19 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
   ): ReadyGame = {
     val Ready(base) = execute(setup)._1: @unchecked
     val ruled = OathkeeperFixture.ruled(base, owners, holder, side)
-    ruled.copy(game = ruled.game.copy(current = ruled.game.current.copy(
+    ruled.updateCurrent(_.copy(
       tracks = ruled.game.current.tracks.copy(round = round,
-        usurperLimited = limited))))
+        usurperLimited = limited)))
   }
 
-  private def atRoundEnd(ready: ReadyGame): ReadyGame = ready.copy(game =
-    ready.game.copy(current = ready.game.current.copy(
-      turn = ready.game.current.turn.copy(phase = Phase.RoundEnd))))
+  private def atRoundEnd(ready: ReadyGame): ReadyGame = ready.updateCurrent(_.copy(
+      turn = ready.game.current.turn.copy(phase = Phase.RoundEnd)))
 
   test("first-game Supremacy qualification transfers at a completed action boundary") {
     val base = prepared(Vector(Some(PlayerId("p2"))))
     val actor = base.game.current.turn.activePlayer
-    val act = base.copy(game = base.game.copy(current = base.game.current.copy(
-      turn = TurnState(actor, Phase.Act, Set.empty))))
+    val act = base.updateCurrent(_.copy(
+      turn = TurnState(actor, Phase.Act, Set.empty)))
     val destination = base.game.current.map.inPlay.find(
       _ != base.game.current.players.find(_.player == actor).get.pawnSite.get).get
     val accepted = rules.startWalker(Ready(act), ActionRef.Travel, actor,
@@ -68,16 +67,13 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
 
     val cases = Vector(
       OathkeeperGoal.Supremacy -> prepared(Vector(Some(players.head))),
-      OathkeeperGoal.Protection -> base.copy(game = base.game.copy(
-        current = base.game.current.copy(players = withRelics))),
-      OathkeeperGoal.ThePeople -> base.copy(game = base.game.copy(
-        current = base.game.current.copy(banners = base.game.current.banners.copy(
+      OathkeeperGoal.Protection -> base.updateCurrent(_.copy(players = withRelics)),
+      OathkeeperGoal.ThePeople -> base.updateCurrent(_.copy(banners = base.game.current.banners.copy(
           peoplesFavor = base.game.current.banners.peoplesFavor.copy(
-            holder = Some(players(2))))))),
-      OathkeeperGoal.Devotion -> base.copy(game = base.game.copy(
-        current = base.game.current.copy(banners = base.game.current.banners.copy(
+            holder = Some(players(2)))))),
+      OathkeeperGoal.Devotion -> base.updateCurrent(_.copy(banners = base.game.current.banners.copy(
           darkestSecret = base.game.current.banners.darkestSecret.copy(
-            holder = Some(players(0)))))))
+            holder = Some(players(0))))))
     )
 
     cases.foreach { case (goal, state) =>
@@ -87,8 +83,7 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
         case OathkeeperGoal.ThePeople => players(2)
         case OathkeeperGoal.Devotion => players(0)
       }
-      val scoped = state.copy(game = state.game.copy(
-        campaign = state.game.campaign.copy(oathkeeperGoal = goal)))
+      val scoped = state.updateCampaign(_.copy(oathkeeperGoal = goal))
       assertEquals(OathkeeperRules.outcome(scoped),
         OathkeeperOutcome.Transfer(Some(expected)), clue(goal))
       assertEquals(new GameProjector(catalog).projectPublic("goal",
@@ -100,9 +95,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
   test("Protection requires at least one relic and preserves highest-count ties") {
     val base = prepared(Vector.empty)
     val players = base.game.current.players
-    val protection = base.copy(game = base.game.copy(
-      campaign = base.game.campaign.copy(
-        oathkeeperGoal = OathkeeperGoal.Protection)))
+    val protection = base.updateCampaign(_.copy(
+        oathkeeperGoal = OathkeeperGoal.Protection))
     assertEquals(OathkeeperRules.outcome(protection), OathkeeperOutcome.NoChange)
 
     val tiedPlayers = players.zipWithIndex.map { case (player, index) =>
@@ -110,9 +104,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
         RelicId(s"tied-relic-$index"), Orientation.FaceDown, Tokens.empty)))
       else player
     }
-    val tied = protection.copy(game = protection.game.copy(
-      current = protection.game.current.copy(players = tiedPlayers,
-        title = OathkeeperState(Some(players.head.player), TitleSide.Oathkeeper))))
+    val tied = protection.updateCurrent(_.copy(players = tiedPlayers,
+        title = OathkeeperState(Some(players.head.player), TitleSide.Oathkeeper)))
     assertEquals(OathkeeperRules.outcome(tied), OathkeeperOutcome.NoChange)
   }
 
@@ -169,30 +162,28 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val base = prepared(Vector.empty)
     val active = base.game.current.turn.activePlayer
     val relic = RelicState(RelicId("vision-relic"), Orientation.FaceDown, Tokens.empty)
-    def bannerState(banner: Banner) = base.copy(game = base.game.copy(current =
-      base.game.current.copy(banners = banner match {
+    def bannerState(banner: Banner) = base.updateCurrent(_.copy(banners = banner match {
         case Banner.PeoplesFavor => base.game.current.banners.copy(
           peoplesFavor = base.game.current.banners.peoplesFavor.copy(holder = Some(active)))
         case Banner.DarkestSecret => base.game.current.banners.copy(
           darkestSecret = base.game.current.banners.darkestSecret.copy(holder = Some(active)))
-      })))
+      }))
     val cases = Vector(
       VisionRules.Conquest -> prepared(Vector(Some(active))),
-      VisionRules.Sanctuary -> base.copy(game = base.game.copy(current =
-        base.game.current.copy(players = base.game.current.players.map(p =>
-          if (p.player == active) p.copy(relics = Vector(relic)) else p)))),
+      VisionRules.Sanctuary -> base.updateCurrent(_.copy(players = base.game.current.players.map(p =>
+          if (p.player == active) p.copy(relics = Vector(relic)) else p))),
       VisionRules.Rebellion -> bannerState(Banner.PeoplesFavor),
       VisionRules.Faith -> bannerState(Banner.DarkestSecret)
     )
     cases.foreach { case (vision, state0) =>
-      val state = state0.copy(game = state0.game.copy(current = state0.game.current.copy(
+      val state = state0.updateCurrent(_.copy(
         players = state0.game.current.players.map(p => if (p.player == active)
           p.copy(revealedVision = Some(VisionState(vision, Orientation.FaceUp))) else p),
-        tracks = state0.game.current.tracks.copy(visionsDrawn = 3))))
+        tracks = state0.game.current.tracks.copy(visionsDrawn = 3)))
       assertEquals(StateBasedEvaluation.visionAtWake(Ready(state)),
         Right(Some(VisionVictory(active, vision))), clue(vision))
-      val below = state.copy(game = state.game.copy(current = state.game.current.copy(
-        tracks = state.game.current.tracks.copy(visionsDrawn = 2))))
+      val below = state.updateCurrent(_.copy(
+        tracks = state.game.current.tracks.copy(visionsDrawn = 2)))
       assertEquals(StateBasedEvaluation.visionAtWake(Ready(below)), Right(None), clue(vision))
     }
   }
@@ -201,11 +192,10 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val base = prepared(Vector.empty)
     val active = base.game.current.turn.activePlayer
     val qualifying = prepared(Vector(Some(active)), holder = Some(active), limited = false)
-    val withVision = qualifying.copy(game = qualifying.game.copy(current =
-      qualifying.game.current.copy(players = qualifying.game.current.players.map(p =>
+    val withVision = qualifying.updateCurrent(_.copy(players = qualifying.game.current.players.map(p =>
         if (p.player == active) p.copy(revealedVision = Some(VisionState(
           VisionRules.Conquest, Orientation.FaceUp))) else p), tracks =
-        qualifying.game.current.tracks.copy(visionsDrawn = 3))))
+        qualifying.game.current.tracks.copy(visionsDrawn = 3)))
     assertEquals(StateBasedEvaluation.atWake(Ready(withVision)),
       Right(Some(UsurperFlipped(active))))
     val flipped = rules.evolve(Ready(withVision), UsurperFlipped(active)).toOption.get
@@ -214,9 +204,8 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     assertEquals(StateBasedEvaluation.atWake(flipped),
       Right(Some(UsurperVictory(active))))
 
-    val noVision = qualifying.copy(game = qualifying.game.copy(current =
-      qualifying.game.current.copy(tracks = qualifying.game.current.tracks.copy(
-        visionsDrawn = 3))))
+    val noVision = qualifying.updateCurrent(_.copy(tracks = qualifying.game.current.tracks.copy(
+        visionsDrawn = 3)))
     val afterFlip = rules.evolve(Ready(noVision), UsurperFlipped(active)).toOption.get
     assertEquals(StateBasedEvaluation.visionAtWake(afterFlip), Right(None))
   }
@@ -233,13 +222,13 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
   test("round-eight War Exhaustion applies Usurper then Oathkeeper then random fallback") {
     val base = prepared(Vector.empty, round = 8)
     val players = base.game.current.players.map(_.player)
-    val usurper = base.copy(game = base.game.copy(current = base.game.current.copy(
-      title = OathkeeperState(Some(players(1)), TitleSide.Usurper))))
+    val usurper = base.updateCurrent(_.copy(
+      title = OathkeeperState(Some(players(1)), TitleSide.Usurper)))
     assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(usurper)), _.head).toOption.get.last,
       WarExhaustionResolved(players(1), VictoryKind.Usurper, None, Vector.empty))
 
-    val keeper = base.copy(game = base.game.copy(current = base.game.current.copy(
-      title = OathkeeperState(Some(players(2)), TitleSide.Oathkeeper))))
+    val keeper = base.updateCurrent(_.copy(
+      title = OathkeeperState(Some(players(2)), TitleSide.Oathkeeper)))
     assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(keeper)), _.head).toOption.get.last,
       WarExhaustionResolved(players(2), VictoryKind.Oathkeeper, None, Vector.empty))
 
@@ -264,24 +253,20 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       Tokens.empty)
     val cases = Vector(
       VisionRules.Conquest -> prepared(Vector(Some(players(0))), round = 8),
-      VisionRules.Rebellion -> base.copy(game = base.game.copy(current =
-        base.game.current.copy(banners = base.game.current.banners.copy(
+      VisionRules.Rebellion -> base.updateCurrent(_.copy(banners = base.game.current.banners.copy(
           peoplesFavor = base.game.current.banners.peoplesFavor.copy(
-            holder = Some(players(0))))))),
-      VisionRules.Sanctuary -> base.copy(game = base.game.copy(current =
-        base.game.current.copy(players = base.game.current.players.map(p =>
-          if (p.player == players(0)) p.copy(relics = Vector(relic)) else p)))),
-      VisionRules.Faith -> base.copy(game = base.game.copy(current =
-        base.game.current.copy(banners = base.game.current.banners.copy(
+            holder = Some(players(0)))))),
+      VisionRules.Sanctuary -> base.updateCurrent(_.copy(players = base.game.current.players.map(p =>
+          if (p.player == players(0)) p.copy(relics = Vector(relic)) else p))),
+      VisionRules.Faith -> base.updateCurrent(_.copy(banners = base.game.current.banners.copy(
           darkestSecret = base.game.current.banners.darkestSecret.copy(
-            holder = Some(players(0)))))))
+            holder = Some(players(0))))))
     )
     cases.foreach { case (vision, state0) =>
-      val state = state0.copy(game = state0.game.copy(current =
-        state0.game.current.copy(players = state0.game.current.players.map(p =>
+      val state = state0.updateCurrent(_.copy(players = state0.game.current.players.map(p =>
           if (p.player == players(0)) p.copy(revealedVision = Some(
             VisionState(vision, Orientation.FaceUp))) else p), tracks =
-          state0.game.current.tracks.copy(visionsDrawn = 3))))
+          state0.game.current.tracks.copy(visionsDrawn = 3)))
       assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(state)), _.head).toOption.get.last,
         WarExhaustionResolved(players(0), VictoryKind.Visionary,
           Some(vision), Vector.empty), clue(vision))
@@ -296,10 +281,9 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
         VisionRules.Rebellion, Orientation.FaceUp)))
       case (p, _) => p
     }
-    val combined = conquest.copy(game = conquest.game.copy(current =
-      conquest.game.current.copy(players = combinedPlayers,
+    val combined = conquest.updateCurrent(_.copy(players = combinedPlayers,
         banners = rebellion.game.current.banners,
-        tracks = conquest.game.current.tracks.copy(visionsDrawn = 3))))
+        tracks = conquest.game.current.tracks.copy(visionsDrawn = 3)))
     assertEquals(StateBasedEvaluation.endRound(Ready(atRoundEnd(combined)), _.head).toOption.get.last,
       WarExhaustionResolved(players(0), VictoryKind.Visionary,
         Some(VisionRules.Conquest), Vector.empty))
@@ -309,13 +293,12 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     val base = prepared(Vector.empty, round = 8)
     val player = base.game.current.players.head.player
     val qualified = prepared(Vector(Some(player)), round = 8)
-    def withCount(count: Int, holder: Option[PlayerId]) = qualified.copy(game =
-      qualified.game.copy(current = qualified.game.current.copy(
+    def withCount(count: Int, holder: Option[PlayerId]) = qualified.updateCurrent(_.copy(
         players = qualified.game.current.players.map(p => if (p.player == player)
           p.copy(revealedVision = Some(VisionState(VisionRules.Conquest,
             Orientation.FaceUp))) else p),
         tracks = qualified.game.current.tracks.copy(visionsDrawn = count),
-        title = OathkeeperState(holder, TitleSide.Oathkeeper))))
+        title = OathkeeperState(holder, TitleSide.Oathkeeper)))
 
     Vector(0, 2).foreach { count =>
       val keeper = base.game.current.players(1).player
@@ -344,17 +327,16 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
       .copy(current = prepared(Vector.empty).game.current.copy(
         result = Some(GameResult(PlayerId("p1"), VictoryKind.Usurper)))))
     val active = finished.game.current.turn.activePlayer
-    val act = finished.copy(game = finished.game.copy(current =
-      finished.game.current.copy(turn = finished.game.current.turn.copy(
-        phase = Phase.Act))))
+    val act = finished.updateCurrent(_.copy(turn = finished.game.current.turn.copy(
+        phase = Phase.Act)))
     val destination = act.game.current.map.inPlay.find(_ !=
       act.game.current.players.find(_.player == active).get.pawnSite.get).get
     assertEquals(rules.startWalker(Ready(act), ActionRef.Travel, active,
       Vector.empty, Vector(DecisionOptionRef.Site(destination))), Left(OathViolation.GameEnded))
     assertEquals(rules.startWalker(Ready(act), ActionRef.Forge, active),
       Left(OathViolation.GameEnded))
-    val wake = act.copy(game = act.game.copy(current = act.game.current.copy(
-      turn = act.game.current.turn.copy(phase = Phase.Wake))))
+    val wake = act.updateCurrent(_.copy(
+      turn = act.game.current.turn.copy(phase = Phase.Wake)))
     assertEquals(rules.startWalker(Ready(wake), PhaseTransitionRef.EndWake,
       active), Left(OathViolation.GameEnded))
   }

@@ -89,9 +89,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     val base = ReadyGames.of(game)
     val destination = base.game.current.map.sites(sites(2)).copy(
       forces = SiteForces.Empty)
-    base.copy(game = base.game.copy(current = base.game.current.copy(
+    base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(sites(2), destination)))))
+        base.game.current.map.sites.updated(sites(2), destination))))
   }
 
   private val move: Move = Move(Piece.Pawn(actor),
@@ -156,10 +156,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   }
 
   test("BuildOps records actual reduced count") {
-    val six = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val six = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
-      })))
+      }))
     val tree = BuildOps((_, _) => Right(Vector(GainSupply(actor, 3))))
     ProcedureWalker.advance(six, tree, None, noPowers) match {
       case Right(WalkerOutcome.Finished(_, events)) =>
@@ -177,11 +176,11 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       PositionedLocation(Location.Site(sites(1))), Region.Cradle,
       Suit.Order, 0, 0, actor)
     val current = ready.game.current
-    val source = ready.copy(game = ready.game.copy(current = current.copy(
+    val source = ready.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck = Vector.empty),
       map = current.map.copy(sites = current.map.sites.updated(sites(1),
         current.map.sites(sites(1)).copy(denizens = Vector(
-          DenizenState(worldDenizen, Orientation.FaceUp, Tokens.empty))))))))
+          DenizenState(worldDenizen, Orientation.FaceUp, Tokens.empty)))))))
     val immunity = new OperationRestriction {
       override def reason(state: ReadyGame, operation: CoreOperation) =
         Option.when(operation == first)(OperationReason("immune",
@@ -481,10 +480,9 @@ class ProcedureWalkerSuite extends munit.FunSuite {
   }
 
   test("Finished clears stored pending trees and dice pools from the resulting state") {
-    val dirty = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(
+    val dirty = ready.updateCurrent(_.copy(
         walkerPending = Some(PendingTree(Vector("0"), Vector.empty)),
-        rollPools = Map(PoolKey("recover") -> DicePoolState(3)))))
+        rollPools = Map(PoolKey("recover") -> DicePoolState(3))))
 
     val (finalState, events) = ProcedureWalker.advance(dirty, adjust, None,
         noPowers) match {

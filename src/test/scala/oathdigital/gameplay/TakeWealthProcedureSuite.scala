@@ -46,10 +46,10 @@ object TakeWealthFixture extends munit.Assertions {
         pawnSite = Some(site))
       else player
     }
-    from.copy(game = from.game.copy(current = current.copy(
+    from.updateCurrent(_.copy(
       players = players,
       map = current.map.copy(sites = current.map.sites.updated(site,
-        current.map.sites(site).copy(tokens = Tokens(favor, secrets)))))))
+        current.map.sites(site).copy(tokens = Tokens(favor, secrets))))))
   }
 
   private def actor(ready: ReadyGame): PlayerId =
@@ -144,11 +144,10 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
     val base = wake()
     val empty = base.game.current.map.inPlay.find(id =>
       catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(map = base.game.current.map.copy(sites =
+    val ready = base.updateCurrent(_.copy(map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(empty,
           base.game.current.map.sites(empty).copy(
-            forces = SiteForces.Empty))))))
+            forces = SiteForces.Empty)))))
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(ready))
       .toOption.flatten.nonEmpty,
       "precondition: the boundary would refill bandits in this state")
@@ -166,9 +165,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
 
   test("a take outside the Wake phase is rejected") {
     val ready = wake()
-    val inAct = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(turn = ready.game.current.turn.copy(
-        phase = Phase.Act))))
+    val inAct = ready.updateCurrent(_.copy(turn = ready.game.current.turn.copy(
+        phase = Phase.Act)))
     assertEquals(take(inAct).left.toOption.get,
       WrongPhase(Phase.Wake, Phase.Act): OathViolation)
   }

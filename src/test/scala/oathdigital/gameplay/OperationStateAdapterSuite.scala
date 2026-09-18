@@ -31,10 +31,9 @@ class OperationStateAdapterSuite extends munit.FunSuite {
   }
 
   test("temporary hands are not part of a player's play area") {
-    val inHand = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(
+    val inHand = ready.updateCurrent(_.copy(
         commonCards = ready.game.current.commonCards.copy(worldDeck = Vector.empty),
-        temporaryHands = Map(playerId -> Vector(worldDenizen)))))
+        temporaryHands = Map(playerId -> Vector(worldDenizen))))
 
     assert(OperationStateAdapter.card(inHand, worldDenizen,
       Location.Hand(playerId)).isRight)

@@ -39,10 +39,10 @@ class CampaignSuite extends munit.FunSuite {
     val site = base.game.current.map.sites(siteId).copy(
       forces = SiteForces.Occupied(ForceKind.Bandit, 2), denizens = Vector.empty)
     val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p => if (p.player == active.player) moved else p),
-      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site)))))
+      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site))))
     (ready, moved, siteId)
   }
 
@@ -91,12 +91,12 @@ class CampaignSuite extends munit.FunSuite {
       case v: VisionState => v.id: WorldCardId
     }.toSet
     val relicIds = actor.relics.map(_.id).toSet
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    ready.updateCurrent(_.copy(
       commonCards = ready.game.current.commonCards.copy(
         worldDeck = ready.game.current.commonCards.worldDeck.filterNot(worldIds),
         relicDeck = ready.game.current.commonCards.relicDeck.filterNot(relicIds)),
       players = ready.game.current.players.map(p =>
-        if (p.player == actor.player) actor else p))))
+        if (p.player == actor.player) actor else p)))
   }
 
   test("Raid targets require the co-located pawn and preserve canonical order") {
@@ -154,11 +154,10 @@ class CampaignSuite extends munit.FunSuite {
   test("successful Raid durably resolves losses and relocates without Travel") {
     val (ready0, attacker, defender, origin, relic) = raidReady
     val refillSite = ready0.game.current.map.inPlay.find(_ != origin).get
-    val ready = ready0.copy(game = ready0.game.copy(current =
-      ready0.game.current.copy(map = ready0.game.current.map.copy(sites =
+    val ready = ready0.updateCurrent(_.copy(map = ready0.game.current.map.copy(sites =
         ready0.game.current.map.sites.updated(refillSite,
           ready0.game.current.map.sites(refillSite).copy(
-            forces = SiteForces.Empty))))))
+            forces = SiteForces.Empty)))))
     val decision = DecisionId("raid-resolution")
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
@@ -299,9 +298,9 @@ class CampaignSuite extends munit.FunSuite {
       LoadedGame(Ready(ready), 1))
     assertEquals(hidden.boardTargetActions, Vector.empty)
 
-    val reduced = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val reduced = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player == player.player)
-        p.copy(board = p.board.copy(warbands = 2)) else p))))
+        p.copy(board = p.board.copy(warbands = 2)) else p)))
     val changed = new GameProjector(catalog).project("campaign",
       LoadedGame(Ready(reduced), 2), player.player).boardTargetActions
       .find(_.actionKind == "campaign-conquest").flatMap(_.formation).get
@@ -353,18 +352,16 @@ class CampaignSuite extends munit.FunSuite {
         board = player.board.copy(supply = SupplyTrack(Campaign.SupplyCost)))
       else player
     }
-    val base = initial.copy(game = initial.game.copy(current =
-      initial.game.current.copy(players = players,
+    val base = initial.updateCurrent(_.copy(players = players,
         map = MapState(ordered.take(2), ordered.slice(2, 5), ordered.slice(5, 8),
-          states), turn = initial.game.current.turn.copy(phase = Phase.Act))))
+          states), turn = initial.game.current.turn.copy(phase = Phase.Act)))
     assert(CampaignRules.passAllowsTarget(catalog, base, activeId, source, pass))
     assert(!CampaignRules.passAllowsTarget(catalog, base, activeId, source, blocked))
     val lineage = players.find(_.player == activeId).get.lineage
-    val controlledPass = base.copy(game = base.game.copy(current =
-      base.game.current.copy(map = base.game.current.map.copy(sites =
+    val controlledPass = base.updateCurrent(_.copy(map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(pass,
           base.game.current.map.sites(pass).copy(forces =
-            SiteForces.Occupied(ForceKind.Exile(lineage), 1)))))))
+            SiteForces.Occupied(ForceKind.Exile(lineage), 1))))))
     assert(CampaignRules.passAllowsTarget(catalog, controlledPass, activeId,
       source, blocked))
   }
@@ -372,10 +369,10 @@ class CampaignSuite extends munit.FunSuite {
   test("Campaign projection permits an empty force and requires full Supply cost") {
     val (ready, player, site) = campaignReady
     def withResources(warbands: Int, supply: Int): ReadyGame =
-      ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(p => if (p.player == player.player)
           p.copy(board = p.board.copy(warbands = warbands,
-            supply = SupplyTrack(supply))) else p))))
+            supply = SupplyTrack(supply))) else p)))
     def campaignAction(state: ReadyGame) = new GameProjector(catalog)
       .project("campaign-resources", LoadedGame(Ready(state), 2), player.player)
       .boardTargetActions.find(_.actionKind == "campaign-conquest")
@@ -574,20 +571,20 @@ class CampaignSuite extends munit.FunSuite {
   test("unimplemented optional facedown adviser does not block Campaign") {
     val (ready, player, site) = campaignReady
     val relevant = catalog.denizens.find(_.rulesText.toLowerCase.contains("campaign")).get
-    val withPower = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val withPower = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(relevant.id.value),
-          Orientation.FaceDown, Tokens.empty)))))))
+          Orientation.FaceDown, Tokens.empty))))))
     assert(CampaignRules.validateStart(catalog, withPower, player.player, site, 1).isRight)
   }
 
   test("faceup Vow of Peace is an exact-ID Campaign block") {
     val (ready, player, site) = campaignReady
     val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
-    val blocked = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val blocked = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(vow.id.value),
-          Orientation.FaceUp, Tokens.empty)))))))
+          Orientation.FaceUp, Tokens.empty))))))
     val error = CampaignRules.validateStart(catalog, blocked, player.player, site, 1)
       .left.toOption.get
     assert(error.isInstanceOf[CampaignUnavailable])
@@ -644,12 +641,12 @@ class CampaignSuite extends munit.FunSuite {
     // world deck so the fixture stays CardIndex-unique under operation
     // preflight (a card may not be duplicated across containers).
     val denizen = DenizenState(outridersId, Orientation.FaceDown, Tokens.empty)
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       commonCards = ready.game.current.commonCards.copy(
         worldDeck = ready.game.current.commonCards.worldDeck.filterNot(
           _ == (outridersId: WorldCardId))),
       map = ready.game.current.map.copy(sites = ready.game.current.map.sites.updated(
-        site, ready.game.current.map.sites(site).copy(denizens = Vector(denizen)))))))
+        site, ready.game.current.map.sites(site).copy(denizens = Vector(denizen))))))
     val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
       DecisionId("campaign-site-outriders"), site, 1)).toOption.get
     val Ready(pendingState) = declared.state: @unchecked
@@ -743,9 +740,9 @@ class CampaignSuite extends munit.FunSuite {
     def choices(orientation: Orientation, tokens: Tokens, secrets: Int) = {
       val actor = player.copy(board = player.board.copy(faceUpSecrets = secrets),
         relics = Vector(RelicState(id, orientation, tokens)))
-      val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      val state = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(p =>
-          if (p.player == player.player) actor else p))))
+          if (p.player == player.player) actor else p)))
       val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
         DecisionId(s"campaign-brass-$secrets-${tokens.favor}-${tokens.secrets}"),
         site, 1)).toOption.get
@@ -816,20 +813,20 @@ class CampaignSuite extends munit.FunSuite {
   test("facedown Vow of Peace has no active pre-Campaign restriction") {
     val (ready, player, site) = campaignReady
     val vow = catalog.denizens.find(_.handlers.contains("denizen.vow-of-peace")).get
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(vow.id.value),
-          Orientation.FaceDown, Tokens.empty)))))))
+          Orientation.FaceDown, Tokens.empty))))))
     assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
   }
 
   test("unimplemented Bag of Siegeworks does not block base Campaign") {
     val (ready, player, site) = campaignReady
     val bag = catalog.relics.find(_.handlers.contains("relic.bag-of-siegeworks")).get
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(relics = Vector(RelicState(RelicId(bag.id.value),
-          Orientation.FaceUp, Tokens.empty)))))))
+          Orientation.FaceUp, Tokens.empty))))))
     assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
   }
 
@@ -857,10 +854,10 @@ class CampaignSuite extends munit.FunSuite {
   test("bandit-irrelevant defender power does not block bounded Conquest") {
     val (ready, player, site) = campaignReady
     val honors = catalog.denizens.find(_.handlers.contains("denizen.extra-provisions")).get
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(honors.id.value),
-          Orientation.FaceUp, Tokens.empty)))))))
+          Orientation.FaceUp, Tokens.empty))))))
     assert(CampaignRules.validateStart(catalog, state, player.player, site, 1).isRight)
   }
 
@@ -876,11 +873,11 @@ class CampaignSuite extends munit.FunSuite {
       forces = SiteForces.Occupied(ForceKind.Bandit, 1),
       denizens = Vector(DenizenState(DenizenId(watchdog.id.value),
         Orientation.FaceUp, Tokens.empty)))
-    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val state = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player != player.player) p
         else p.copy(pawnSite = Some(site))),
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(site, target)))))
+        base.game.current.map.sites.updated(site, target))))
     val decision = DecisionId("campaign-bandit-watchdog")
     val started = rules.handle(Ready(state), CampaignCommand.Start(
       player.player, decision, site, 1)).toOption.get
@@ -907,10 +904,10 @@ class CampaignSuite extends munit.FunSuite {
     val changed = catalog.copy(denizens = catalog.denizens.updated(0,
       original.copy(powers = Vector(CatalogPower("denizen.future-plan",
         persistent = false, "+2 [attack-die]")))))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       players = ready.game.current.players.map(p => if (p.player != player.player) p else
         p.copy(advisers = Vector(DenizenState(DenizenId(original.id.value),
-          Orientation.FaceDown, Tokens.empty)))))))
+          Orientation.FaceDown, Tokens.empty))))))
     val error = CampaignRules.validateStart(changed, state, player.player, site, 1)
       .left.toOption.get.toString
     assert(error.contains("UnsupportedRuleCatalog") ||
@@ -925,9 +922,9 @@ class CampaignSuite extends munit.FunSuite {
       forces = SiteForces.Occupied(ForceKind.Exile(player.lineage), 1),
       denizens = Vector(DenizenState(DenizenId(relevant.id.value),
         Orientation.FaceDown, Tokens.empty)))
-    val withPower = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val withPower = ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(remote, remoteState)))))
+        ready.game.current.map.sites.updated(remote, remoteState))))
     assert(CampaignRules.validateStart(catalog, withPower, player.player, target, 1).isRight)
   }
 
@@ -936,9 +933,9 @@ class CampaignSuite extends munit.FunSuite {
     val remote = ready.game.current.map.inPlay.find(_ != target).get
     val corrupt = ready.game.current.map.sites(remote).copy(
       forces = SiteForces.Occupied(ForceKind.Exile(LineageId("absent")), 1))
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(remote, corrupt)))))
+        ready.game.current.map.sites.updated(remote, corrupt))))
     val error = CampaignRules.validateStart(catalog, state, player.player,
       target, 1).left.toOption.get
     assert(error.isInstanceOf[UnsupportedCampaignState])
@@ -968,10 +965,9 @@ class CampaignSuite extends munit.FunSuite {
 
   test("state-based operation policy permits only bandit-bank refills") {
     val (ready, _, site) = campaignReady
-    val empty = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+    val empty = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(site,
-          ready.game.current.map.sites(site).copy(forces = SiteForces.Empty))))))
+          ready.game.current.map.sites(site).copy(forces = SiteForces.Empty)))))
     val refill = CoreMove(
       Piece.Warbands(ForceKind.Bandit, 1),
       PositionedLocation(Location.WarbandBank(ForceKind.Bandit)),
@@ -987,10 +983,10 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, pawn) = campaignReady
     val other = CampaignRules.legalTargets(catalog, ready, player.player)(1)
     val targets = Vector(pawn, other)
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites = targets.foldLeft(
         ready.game.current.map.sites)((sites, site) => sites.updated(site,
-          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))))))))
+          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1)))))))
     val id = DecisionId("campaign-multi-resolution")
     val started = rules.handle(Ready(state), CampaignCommand.Start(player.player,
       id, targets, 3)).toOption.get
@@ -1031,10 +1027,10 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, pawn) = campaignReady
     val other = CampaignRules.legalTargets(catalog, ready, player.player)(1)
     val targets = Vector(pawn, other)
-    val state = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val state = ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites = targets.foldLeft(
         ready.game.current.map.sites)((sites, site) => sites.updated(site,
-          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))))))))
+          sites(site).copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1)))))))
     val id = DecisionId("campaign-allocation-validation")
     val started = rules.handle(Ready(state), CampaignCommand.Start(player.player,
       id, targets, 3)).toOption.get
@@ -1166,7 +1162,7 @@ class CampaignSuite extends munit.FunSuite {
       all.updated(site, all(site).copy(forces = SiteForces.Occupied(
         ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
     }
-    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val state = base.updateCurrent(_.copy(
       title = OathkeeperState(None, TitleSide.Oathkeeper),
       players = base.game.current.players.map {
         case p if p.player == attacker.player =>
@@ -1175,7 +1171,7 @@ class CampaignSuite extends munit.FunSuite {
           p.copy(board = p.board.copy(warbands = 10), advisers = Vector.empty,
             relics = Vector.empty)
         case p => p
-      }, map = base.game.current.map.copy(sites = targetStates))))
+      }, map = base.game.current.map.copy(sites = targetStates)))
     assertEquals(CampaignRules.validateStart(catalog, state, attacker.player,
       sites, 4), Right(CampaignDefender.Player(defender.player)))
     assertEquals(CampaignRules.defenderForce(state, sites), 3)
@@ -1195,9 +1191,8 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(new GameProjector(catalog).project("player-defender",
       LoadedGame(started.state, 4), defender.player).campaign, None)
     Vector(TitleSide.Oathkeeper -> 1, TitleSide.Usurper -> 2).foreach { case (side, bonus) =>
-      val titled = state.copy(game = state.game.copy(current =
-        state.game.current.copy(title = OathkeeperState(
-          Some(defender.player), side))))
+      val titled = state.updateCurrent(_.copy(title = OathkeeperState(
+          Some(defender.player), side)))
       assertEquals(CampaignRules.validateStart(catalog, titled,
         attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
       assert(CampaignRules.legalTargets(catalog, titled, attacker.player).nonEmpty)
@@ -1244,15 +1239,14 @@ class CampaignSuite extends munit.FunSuite {
       _.handlers.contains("denizen.vow-of-peace")).get
     val brass = catalog.relics.find(
       _.handlers.contains("relic.brass-army.campaign")).get
-    val attackerOnly = state.copy(game = state.game.copy(current =
-      state.game.current.copy(players = state.game.current.players.map {
+    val attackerOnly = state.updateCurrent(_.copy(players = state.game.current.players.map {
         case p if p.player == defender.player => p.copy(
           advisers = Vector(outriders, vow).map(card => DenizenState(
             DenizenId(card.id.value), Orientation.FaceUp, Tokens.empty)),
           relics = Vector(RelicState(RelicId(brass.id.value),
             Orientation.FaceUp, Tokens.empty)))
         case p => p
-      })))
+      }))
     assertEquals(CampaignRules.validateStart(catalog, attackerOnly,
       attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
 
@@ -1260,23 +1254,21 @@ class CampaignSuite extends munit.FunSuite {
     val changedCatalog = catalog.copy(denizens = catalog.denizens.updated(0,
       original.copy(powers = Vector(CatalogPower("denizen.future-defender-plan",
         persistent = false, "+2 [defense-die]")))))
-    val unsupported = state.copy(game = state.game.copy(current =
-      state.game.current.copy(players = state.game.current.players.map {
+    val unsupported = state.updateCurrent(_.copy(players = state.game.current.players.map {
         case p if p.player == defender.player => p.copy(advisers = Vector(
           DenizenState(DenizenId(original.id.value), Orientation.FaceUp,
             Tokens.empty)))
         case p => p
-      })))
+      }))
     assert(CampaignRules.validateStart(changedCatalog, unsupported,
       attacker.player, sites, 4).isLeft)
     assertEquals(CampaignRules.legalTargets(changedCatalog, unsupported,
       attacker.player), Vector.empty)
 
-    val mixed = state.copy(game = state.game.copy(current =
-      state.game.current.copy(map = state.game.current.map.copy(sites =
+    val mixed = state.updateCurrent(_.copy(map = state.game.current.map.copy(sites =
         state.game.current.map.sites.updated(other,
           state.game.current.map.sites(other).copy(forces =
-            SiteForces.Occupied(ForceKind.Bandit, 2)))))))
+            SiteForces.Occupied(ForceKind.Bandit, 2))))))
     assert(CampaignRules.validateStart(catalog, mixed, attacker.player,
       sites, 4).isLeft)
   }
@@ -1291,7 +1283,7 @@ class CampaignSuite extends munit.FunSuite {
       all.updated(site, all(site).copy(forces = SiteForces.Occupied(
         ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
     }
-    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val state = base.updateCurrent(_.copy(
       players = base.game.current.players.map {
         case p if p.player == attacker.player =>
           p.copy(board = p.board.copy(warbands = 4))
@@ -1299,7 +1291,7 @@ class CampaignSuite extends munit.FunSuite {
           p.copy(board = p.board.copy(warbands = 10), advisers = Vector.empty,
             relics = Vector.empty)
         case p => p
-      }, map = base.game.current.map.copy(sites = targetStates))))
+      }, map = base.game.current.map.copy(sites = targetStates)))
     val id = DecisionId("campaign-player-resolution")
     val lossId = DecisionId("campaign-player-attacker-loss")
     val lossStarted = rules.handle(Ready(state), CampaignCommand.Start(

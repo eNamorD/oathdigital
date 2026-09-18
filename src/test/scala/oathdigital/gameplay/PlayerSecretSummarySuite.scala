@@ -13,7 +13,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
       siteCommitted: Int): ReadyGame = {
     val site = actor.pawnSite.get
     val definition = catalog.denizens.head
-    base.copy(game = base.game.copy(current = base.game.current.copy(
+    base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == actor.player)
         p.copy(board = p.board.copy(faceUpSecrets = available,
           faceDownSecrets = facedown), advisers = Vector.empty, relics = Vector.empty)
@@ -22,7 +22,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
         site, base.game.current.map.sites(site).copy(denizens =
           Option.when(siteCommitted > 0)(DenizenState(
             DenizenId(definition.id.value), Orientation.FaceUp,
-            Tokens(0, siteCommitted))).toVector))))))
+            Tokens(0, siteCommitted))).toVector)))))
   }
 
   test("derived secret accounting reports available facedown committed and total") {
@@ -44,11 +44,10 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
     val ready = withState(0, 0, 1)
     val inactive = ready.game.current.players.find(_.player != actor.player).get
     val pawn = actor.pawnSite.get
-    val ruledByInactive = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+    val ruledByInactive = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(pawn,
           ready.game.current.map.sites(pawn).copy(forces = SiteForces.Occupied(
-            ForceKind.Exile(inactive.lineage), 1)))))))
+            ForceKind.Exile(inactive.lineage), 1))))))
     assertEquals(PlayerSecretSummary.derive(ruledByInactive,
       inactive.player).toOption.get.committed, 0)
     assertEquals(PlayerSecretSummary.derive(ruledByInactive,
@@ -59,9 +58,9 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val card = DenizenState(DenizenId(catalog.denizens.head.id.value),
       Orientation.FaceUp, Tokens(0, 1))
-    val corrupt = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val corrupt = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == inactive.player)
-        p.copy(advisers = Vector(card)) else p))))
+        p.copy(advisers = Vector(card)) else p)))
     assertEquals(PlayerSecretSummary.derive(corrupt,
       actor.player).toOption.get.committed, 1)
     assertEquals(PlayerSecretSummary.derive(corrupt,
@@ -72,9 +71,9 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
     val inactive = base.game.current.players.find(_.player != actor.player).get
     val relic = RelicState(RelicId(catalog.relics.head.id.value),
       Orientation.FaceUp, Tokens(0, 2))
-    val corrupt = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val corrupt = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == inactive.player)
-        p.copy(relics = Vector(relic)) else p))))
+        p.copy(relics = Vector(relic)) else p)))
     assertEquals(PlayerSecretSummary.derive(corrupt,
       actor.player).toOption.get.committed, 2)
     assertEquals(PlayerSecretSummary.derive(corrupt,

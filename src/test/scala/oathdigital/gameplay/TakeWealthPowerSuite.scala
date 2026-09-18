@@ -38,20 +38,19 @@ class TakeWealthPowerSuite extends munit.FunSuite {
   /** The pawn stands at `pawn` and this turn has already used `used`. */
   private def ready(pawn: Option[SiteId],
       used: Set[PowerUseRef] = Set.empty): ReadyGame =
-    baseReady.copy(game = baseReady.game.copy(
-      current = baseReady.game.current.copy(
+    baseReady.updateCurrent(_.copy(
         turn = baseReady.game.current.turn.copy(usedPowers = used),
         players = baseReady.game.current.players.map { player =>
           if (player.player == actor) player.copy(pawnSite = pawn)
           else player
-        })))
+        }))
 
   /** The turn advance, as `Rest` performs it: a whole new `TurnState`, which
     * is why `usedPowers` is turn-scoped without anything clearing it.
     */
   private def advanceTurn(state: ReadyGame): ReadyGame =
-    state.copy(game = state.game.copy(current = state.game.current.copy(
-      turn = TurnState(actor, Phase.Wake, Set.empty))))
+    state.updateCurrent(_.copy(
+      turn = TurnState(actor, Phase.Wake, Set.empty)))
 
   /** Task 7's root shape: the take, under the Wake take-wealth window. */
   private def takeNode(from: SiteId): Sequence =

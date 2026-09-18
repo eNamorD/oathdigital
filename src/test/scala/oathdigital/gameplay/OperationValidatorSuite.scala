@@ -50,9 +50,8 @@ class OperationValidatorSuite extends munit.FunSuite {
   }
 
   test("wrong requested stack source position is an invalid-stack-position") {
-    val source = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(commonCards = ready.game.current.commonCards.copy(
-        worldDeck = Vector(worldDenizen, extraDenizen)))))
+    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
+        worldDeck = Vector(worldDenizen, extraDenizen))))
     val operation = Move(
       Piece.Card(extraDenizen),
       PositionedLocation(Location.Deck(CardDeck.World), StackPosition.Top),
@@ -78,9 +77,8 @@ class OperationValidatorSuite extends munit.FunSuite {
 
   test("orienting an edifice into a site is an unsupported-orientation") {
     val edifice = EdificeId("E2")
-    val source = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(commonCards = ready.game.current.commonCards.copy(
-        edificeDeck = Vector(edifice)))))
+    val source = ready.updateCurrent(_.copy(commonCards = ready.game.current.commonCards.copy(
+        edificeDeck = Vector(edifice))))
     val operation = Move(
       Piece.Card(edifice),
       PositionedLocation(Location.Deck(CardDeck.Edifice), StackPosition.Top),

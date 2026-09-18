@@ -18,13 +18,13 @@ class PowerOperationsSuite extends munit.FunSuite {
       relics = Vector.empty)
     val changedActor = actor.copy(pawnSite = Some(siteId), board = actor.board.copy(
       favor = 3, faceUpSecrets = 3))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
         if (p.player == actor.player) changedActor else p),
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(_ == denizenId)),
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site)))))
+        base.game.current.map.sites.updated(siteId, site))))
     (ready, changedActor, siteId, denizenId)
   }
 
@@ -60,14 +60,13 @@ class PowerOperationsSuite extends munit.FunSuite {
     assertEquals(Operation.flatten(free), Vector.empty)
 
     val site = ready.game.current.map.sites(siteId)
-    val facedown = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(map = ready.game.current.map.copy(sites =
+    val facedown = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
         ready.game.current.map.sites.updated(siteId,
           site.copy(denizens = site.denizens.map {
             case card: DenizenState =>
               card.copy(orientation = Orientation.FaceDown)
             case other => other
-          }))))))
+          })))))
     assert(Costs.plan(facedown, actor.player, Location.OnCard(denizenId),
       Cost(secretBurnt = 1)).isRight)
   }

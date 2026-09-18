@@ -10,10 +10,9 @@ class OperationPipelineSuite extends munit.FunSuite {
   test("staged partial gain feeds a later required spend") {
     val operations = Vector[CoreOperation](
       GainSupply(playerId, 3), SpendSupply(playerId, 7))
-    val oneBelow = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val oneBelow = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
-      })))
+      }))
     val run = OperationPipeline.run(oneBelow, operations,
       OperationPolicy.Permissive)(Right(_)).toOption.get
     assertEquals(run.executed,
@@ -22,10 +21,9 @@ class OperationPipelineSuite extends munit.FunSuite {
   }
 
   test("optional short spend records actual count with default requiredness") {
-    val one = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val one = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(1)))
-      })))
+      }))
     val run = OperationPipeline.run(one,
       Vector(SpendSupply(playerId, 3, required = false)),
       OperationPolicy.Permissive)(Right(_)).toOption.get

@@ -22,12 +22,12 @@ object OathkeeperFixture {
         SiteForces.Occupied(ForceKind.Exile(byPlayer(player)), 1))
       id -> ready.game.current.map.sites(id).copy(forces = force)
     }.toMap
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites = sites),
-      title = OathkeeperState(holder, side))))
+      title = OathkeeperState(holder, side)))
   }
 
   def inPhase(ready: ReadyGame, phase: Phase): ReadyGame =
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      turn = ready.game.current.turn.copy(phase = phase))))
+    ready.updateCurrent(_.copy(
+      turn = ready.game.current.turn.copy(phase = phase)))
 }

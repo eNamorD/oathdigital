@@ -81,7 +81,7 @@ class DazzleSuite extends munit.FunSuite {
       denizens = current.map.sites(enemySite).denizens ++ Vector(
         DenizenState(targets(1), Orientation.FaceUp, Tokens.empty),
         EdificeState(hall, EdificeSide.Intact, Tokens.empty)))
-    val prepared = base.copy(game = base.game.copy(current = current.copy(
+    val prepared = base.updateCurrent(_.copy(
       players = current.players.map(p => if (p.player == actor)
         p.copy(advisers = p.advisers :+ DenizenState(dazzle,
           Orientation.FaceUp, Tokens.empty)) else p),
@@ -90,7 +90,7 @@ class DazzleSuite extends munit.FunSuite {
           id == dazzle || targets.contains(id)),
         edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall)),
       map = current.map.copy(sites = current.map.sites
-        .updated(actorSite, friendly).updated(enemySite, hostile)))))
+        .updated(actorSite, friendly).updated(enemySite, hostile))))
     val finished = ProcedureWalker.advance(prepared,
       CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle)), None,
       WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
@@ -111,10 +111,10 @@ class DazzleSuite extends munit.FunSuite {
     val siteId = current.players.find(_.player == actor).get.pawnSite.get
     val unknown = DenizenId("denizen:missing-from-catalog")
     val site = current.map.sites(siteId)
-    val prepared = base.copy(game = base.game.copy(current = current.copy(
+    val prepared = base.updateCurrent(_.copy(
       map = current.map.copy(sites = current.map.sites.updated(siteId,
         site.copy(denizens = site.denizens :+
-          DenizenState(unknown, Orientation.FaceUp, Tokens.empty)))))))
+          DenizenState(unknown, Orientation.FaceUp, Tokens.empty))))))
     val dazzle = Dazzle.forCatalog(catalog).get
     val dazzleId = catalog.denizens.find(_.powers.exists(_.id == Dazzle.id))
       .map(d => DenizenId(d.id.value)).get

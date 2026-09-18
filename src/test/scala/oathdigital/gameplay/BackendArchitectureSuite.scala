@@ -70,10 +70,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
       if (player.player == actor) player.copy(pawnSite = Some(siteId)) else player)
     val site = base.game.current.map.sites(siteId)
     val faceup = relic.copy(orientation = Orientation.FaceUp)
-    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val changed = base.updateCurrent(_.copy(
       players = players, map = base.game.current.map.copy(sites =
         base.game.current.map.sites.updated(siteId, site.copy(relics =
-          faceup +: site.relics.tail))))))
+          faceup +: site.relics.tail)))))
     val source = RuleSourceRef.SiteRelic(siteId, relic.id)
     val indexed = IndexedRuleSource(source, Vector(PowerId("test.site-relic")),
       RuleSourceFace.FaceUp)
@@ -96,11 +96,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
 
   test("both banners expose faces, holdings, and exact synthetic handlers") {
     val base = FirstGameSetupFixture.initialReady
-    val current = base.game.current
-    val changed = base.copy(game = base.game.copy(current = current.copy(banners =
+    val changed = base.updateCurrent(_.copy(banners =
       BannersState(
         PeoplesFavorState(PeoplesFavorFace.GrandCouncil, Some(PlayerId("p1")), 3),
-        DarkestSecretState(DarkestSecretFace.Festival, Some(PlayerId("p2")), 2)))))
+        DarkestSecretState(DarkestSecretFace.Festival, Some(PlayerId("p2")), 2))))
     val banners = RuleSourceIndex.enumerate(catalog, changed).filter(
       _.source.isInstanceOf[RuleSourceRef.Banner])
     assertEquals(banners.map(_.source.stableKey),
@@ -117,10 +116,9 @@ class BackendArchitectureSuite extends munit.FunSuite {
 
   test("all six Foundations expose ordered identities, faces, and state") {
     val base = FirstGameSetupFixture.initialReady
-    val altered = base.copy(game = base.game.copy(campaign =
-      base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
+    val altered = base.updateCampaign(_.copy(foundations = base.game.campaign.foundations.updated(
         FoundationNumber.III, FoundationState(FoundationFace.Altered,
-          Set(LegacyId("L23"), LegacyId("L01")))))))
+          Set(LegacyId("L23"), LegacyId("L01"))))))
     val foundations = RuleSourceIndex.enumerate(catalog, altered).filter(
       _.source.isInstanceOf[RuleSourceRef.Foundation])
     assertEquals(foundations.map(_.source.stableKey),
@@ -143,9 +141,8 @@ class BackendArchitectureSuite extends munit.FunSuite {
     val legacyDefinition = catalog.legacies.head
     val legacy = LegacyState(LegacyId(legacyDefinition.id.value), active = false)
     val lineage = base.game.campaign.lineages(lineageId)
-    val changed = base.copy(game = base.game.copy(campaign =
-      base.game.campaign.copy(lineages = base.game.campaign.lineages.updated(
-        lineageId, lineage.copy(legacies = Vector(legacy))))))
+    val changed = base.updateCampaign(_.copy(lineages = base.game.campaign.lineages.updated(
+        lineageId, lineage.copy(legacies = Vector(legacy)))))
     val indexed = RuleSourceIndex.enumerate(catalog, changed).find(
       _.source == RuleSourceRef.Legacy(lineageId, legacy.id)).get
     assertEquals(indexed.source.stableKey,

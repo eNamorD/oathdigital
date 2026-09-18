@@ -31,14 +31,14 @@ object PhasePowerFixture {
     }.get
     val empty = current.map.inPlay.find(id =>
       catalog.sites.find(_.id == id).exists(_.capacity > 0)).get
-    val arranged = ready.copy(game = ready.game.copy(current = current.copy(
+    val arranged = ready.updateCurrent(_.copy(
       players = current.players.map(p => if (p.player != actor) p else
         p.copy(advisers = Vector(DenizenState(card, Orientation.FaceUp,
           Tokens.empty)))),
       map = current.map.copy(sites = current.map.sites.updated(empty,
         current.map.sites(empty).copy(forces = SiteForces.Empty))),
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == card)))))
+        current.commonCards.worldDeck.filterNot(_ == card))))
     val powerId = RuleSourceIndex.enumerate(catalog, arranged).collectFirst {
       case IndexedRuleSource(RuleSourceRef.Adviser(`actor`, `card`), ids, _, _)
           if ids.nonEmpty => ids.head
@@ -46,7 +46,6 @@ object PhasePowerFixture {
     (arranged, actor, card, powerId)
   }
 
-  def inPhase(phase: Phase) = base.copy(game = base.game.copy(current =
-    base.game.current.copy(turn = TurnState(actor, phase, Set.empty))))
+  def inPhase(phase: Phase) = base.updateCurrent(_.copy(turn = TurnState(actor, phase, Set.empty)))
   val source = DecisionOptionRef.Denizen(card)
 }

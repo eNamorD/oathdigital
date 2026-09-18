@@ -18,11 +18,10 @@ class OperationResolutionSuite extends munit.FunSuite {
   }
 
   test("optional spend shrinks but required spend rejects") {
-    val oneSupply = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val oneSupply = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         if (player.player == playerId) player.copy(board = player.board.copy(
           supply = SupplyTrack(1))) else player
-      })))
+      }))
     assertEquals(OperationResolution.resolve(oneSupply,
       SpendSupply(playerId, 3, required = false), validator),
       Right(OperationResolution.Execute(
@@ -100,9 +99,8 @@ class OperationResolutionSuite extends munit.FunSuite {
       SecretSide.FaceDown)
     assertEquals(OperationResolution.resolve(ready, flip, validator),
       Right(OperationResolution.Execute(flip.copy(amount = 1))))
-    val dice = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(rollPools = Map(PoolKey("recover") ->
-        DicePoolState(2)))))
+    val dice = ready.updateCurrent(_.copy(rollPools = Map(PoolKey("recover") ->
+        DicePoolState(2))))
     assertEquals(OperationResolution.resolve(dice,
       ModifyDicePool(PoolKey("recover"), -4), validator),
       Right(OperationResolution.Execute(
@@ -118,17 +116,15 @@ class OperationResolutionSuite extends munit.FunSuite {
   }
 
   test("Supply gain shrinks at the track maximum") {
-    val six = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val six = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(6)))
-      })))
+      }))
     assertEquals(OperationResolution.resolve(six,
       GainSupply(playerId, 3), validator),
       Right(OperationResolution.Execute(GainSupply(playerId, 1))))
-    val full = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(players = ready.game.current.players.map { player =>
+    val full = ready.updateCurrent(_.copy(players = ready.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack.full))
-      })))
+      }))
     assert(OperationResolution.resolve(full,
       GainSupply(playerId, 1), validator).toOption.get
       .isInstanceOf[OperationResolution.Skip])

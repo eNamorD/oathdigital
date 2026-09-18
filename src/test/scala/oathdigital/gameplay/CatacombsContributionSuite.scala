@@ -232,7 +232,7 @@ object CatacombsContributionSuite {
         Tokens.empty)))
     val player = active.copy(pawnSite = Some(siteId),
       board = active.board.copy(faceUpSecrets = secrets))
-    val ready = base.copy(game = base.game.copy(current = current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = current.turn.copy(phase = Phase.Act),
       players = current.players.map(other =>
         if (other.player == player.player) player else other),
@@ -245,7 +245,7 @@ object CatacombsContributionSuite {
             region -> cards.filterNot(_ == catacombsCard)
         }),
       map = current.map.copy(sites =
-        current.map.sites.updated(siteId, site)))))
+        current.map.sites.updated(siteId, site))))
     Fixture(ready, player.player, siteId, remainingDeck.head)
   }
 }

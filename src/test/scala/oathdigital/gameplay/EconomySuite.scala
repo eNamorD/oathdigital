@@ -64,12 +64,12 @@ class EconomySuite extends munit.FunSuite {
       case (id, site) => id -> site.copy(
         denizens = site.denizens.filterNot(_.id == springId))
     }
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    ready.updateCurrent(_.copy(
       map = ready.game.current.map.copy(sites = withoutSpring.updated(
         siteId, ready.game.current.map.sites(siteId).copy(denizens = Vector(
           EdificeState(springId, side, Tokens.empty))))),
       commonCards = ready.game.current.commonCards.copy(edificeDeck =
-        ready.game.current.commonCards.edificeDeck.filterNot(_ == springId)))))
+        ready.game.current.commonCards.edificeDeck.filterNot(_ == springId))))
   }
 
   test("Muster costs one Supply and favor and uses NF adviser yield") {

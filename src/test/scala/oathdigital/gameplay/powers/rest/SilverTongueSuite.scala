@@ -72,14 +72,14 @@ class SilverTongueSuite extends munit.FunSuite {
         _.restrictions == oathdigital.catalog.CardRestrictions.Unrestricted))
     val second = ids.head
     val played = ids(1)
-    val ready = base.copy(game = base.game.copy(current = current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = current.turn.copy(phase = Phase.Act),
       players = current.players.map(p => if (p.player == actor)
         p.copy(advisers = p.advisers :+ DenizenState(second,
           Orientation.FaceDown, Tokens.empty)) else p),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(id => id == second || id == played)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(played)))))
+      temporaryHands = current.temporaryHands.updated(actor, Vector(played))))
     val tree = CardPlayProcedure.build(catalog, ready, actor, played,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
     val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))
@@ -103,14 +103,14 @@ class SilverTongueSuite extends munit.FunSuite {
     val others = current.commonCards.worldDeck.collect {
       case id: DenizenId if id != tongue => id
     }.take(2)
-    val ready = base.copy(game = base.game.copy(current = current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = current.turn.copy(phase = Phase.Act),
       players = current.players.map(p => if (p.player == actor)
         p.copy(advisers = others.map(id => DenizenState(id,
           Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(others.contains)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(tongue)))))
+      temporaryHands = current.temporaryHands.updated(actor, Vector(tongue))))
     val tree = CardPlayProcedure.build(catalog, ready, actor, tongue,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
     val powers = WalkerPowers(Vector(SilverTongue.forCatalog(catalog).get))

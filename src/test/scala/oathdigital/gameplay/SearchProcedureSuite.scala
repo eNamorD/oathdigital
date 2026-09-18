@@ -11,8 +11,8 @@ class SearchProcedureSuite extends munit.FunSuite {
 
   private def ready: ReadyGame = {
     val state = initialReady
-    state.copy(game = state.game.copy(current = state.game.current.copy(
-      turn = state.game.current.turn.copy(phase = Phase.Act))))
+    state.updateCurrent(_.copy(
+      turn = state.game.current.turn.copy(phase = Phase.Act)))
   }
 
   test("world Search starts from one generic source argument and parks on card selection") {
@@ -43,8 +43,7 @@ class SearchProcedureSuite extends munit.FunSuite {
       if (player.player == actor) player.copy(board = player.board.copy(
         supply = player.board.supply.copy(supply = 0))) else player
     }
-    val initial = base.copy(game = base.game.copy(current =
-      base.game.current.copy(players = players)))
+    val initial = base.updateCurrent(_.copy(players = players))
     assert(SearchProcedure.build(catalog, initial, actor,
       Vector(DecisionOptionRef.Button("search:world"))).isRight)
     assertEquals(SearchProcedure.legalSources(catalog, initial, actor,
@@ -58,11 +57,10 @@ class SearchProcedureSuite extends munit.FunSuite {
       .pawnSite.flatMap(base.game.current.map.regionOf).get
     val cards = base.game.current.commonCards.worldDeck.take(3)
     val zones = base.game.current.commonCards
-    val initial = base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards = zones.copy(
+    val initial = base.updateCurrent(_.copy(commonCards = zones.copy(
         worldDeck = zones.worldDeck.drop(3),
         regionalDiscards = zones.regionalDiscards.updated(region,
-          zones.discard(region) ++ cards)))))
+          zones.discard(region) ++ cards))))
     val started = rules.startWalker(OathState.Ready(initial), ActionRef.Search,
       actor, startArgs = Vector(DecisionOptionRef.Button(
         s"search:regional-discard:${region.key}"))).toOption.get
@@ -105,9 +103,8 @@ class SearchProcedureSuite extends munit.FunSuite {
     val vision = VisionRules.Conspiracy
     val deck = base.game.current.commonCards.worldDeck
     assert(deck.contains(vision))
-    val initial = base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards = base.game.current.commonCards.copy(
-        worldDeck = Vector(vision) ++ deck.filterNot(_ == vision)))))
+    val initial = base.updateCurrent(_.copy(commonCards = base.game.current.commonCards.copy(
+        worldDeck = Vector(vision) ++ deck.filterNot(_ == vision))))
     val started = rules.startWalker(OathState.Ready(initial), ActionRef.Search,
       actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
       .toOption.get

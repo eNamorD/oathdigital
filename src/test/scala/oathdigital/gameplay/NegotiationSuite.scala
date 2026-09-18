@@ -182,9 +182,9 @@ class NegotiationSuite extends munit.FunSuite {
   test("decline applies nothing and stale or tampered completion is rejected") {
     val (base, players, site, _, _) = ready()
     val emptySite = base.game.current.map.inPlay.find(_ != site).get
-    val boundaryBase = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val boundaryBase = base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
-        emptySite, base.game.current.map.sites(emptySite).copy(forces = SiteForces.Empty))))))
+        emptySite, base.game.current.map.sites(emptySite).copy(forces = SiteForces.Empty)))))
     val started = begin(boundaryBase, Vector(players(1).player))
     val decline = rules.handle(started.state,
       NegotiationCommand.Decline(players(1).player, DecisionId("deal")))
@@ -219,19 +219,19 @@ class NegotiationSuite extends munit.FunSuite {
     val edifice = EdificeId("E21")
     val edificeSite = base.game.current.map.sites(site).copy(denizens =
       Vector(EdificeState(edifice, EdificeSide.Intact, Tokens.empty)))
-    val withEdifice = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val withEdifice = base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(site,
-        edificeSite)))))
+        edificeSite))))
     assertEquals(Negotiation.handle(catalog, Ready(withEdifice), NegotiationCommand.Begin(
       players.head.player, DecisionId("edifice"), Vector(players(1).player))).left.toOption,
       Some(oathdigital.model.OathViolation.UnsupportedNegotiationRule(
         s"edifice:${site.value}:E21", "edifice.e21.intact")))
 
     val scepter = RelicId("grand-scepter")
-    val withRelic = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val withRelic = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == players(1).player)
         p.copy(relics = p.relics :+ RelicState(scepter, Orientation.FaceUp, Tokens.empty))
-      else p))))
+      else p)))
     assertEquals(Negotiation.handle(catalog, Ready(withRelic), NegotiationCommand.Begin(
       players.head.player, DecisionId("relic"), Vector(players(1).player))).left.toOption,
       Some(oathdigital.model.OathViolation.UnsupportedNegotiationRule(
@@ -251,10 +251,10 @@ class NegotiationSuite extends munit.FunSuite {
         s"legacy:${lineage.id.value}:L21", "legacy.high-priest")))
 
     val whisperingStone = RelicId("R34")
-    val separateAction = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val separateAction = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == players(1).player)
         p.copy(relics = p.relics :+ RelicState(
-          whisperingStone, Orientation.FaceUp, Tokens.empty)) else p))))
+          whisperingStone, Orientation.FaceUp, Tokens.empty)) else p)))
     assert(Negotiation.handle(catalog, Ready(separateAction), NegotiationCommand.Begin(
       players.head.player, DecisionId("separate-action"),
       Vector(players(1).player))).isRight)
@@ -262,9 +262,9 @@ class NegotiationSuite extends munit.FunSuite {
 
   test("projection derives accept legality and preserves public faceup relic identity") {
     val (base, players, _, actorRelic, _) = ready()
-    val faceup = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val faceup = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == players.head.player)
-        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp))) else p))))
+        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp))) else p)))
     val started = begin(faceup, Vector(players(1).player))
     val projector = new oathdigital.application.GameProjector(catalog)
     def projection(state: OathState, viewer: PlayerId) = projector.project(
@@ -292,8 +292,7 @@ class NegotiationSuite extends munit.FunSuite {
       NegotiationTerms(Vector(NegotiationTransfer(
         players(1).player, 99, Vector.empty))))
     val invalidPending = pending.copy(terms = staleTerms)
-    val invalid = changedReady.copy(game = changedReady.game.copy(current =
-      changedReady.game.current.copy(pending = Some(invalidPending))))
+    val invalid = changedReady.updateCurrent(_.copy(pending = Some(invalidPending)))
     assert(!projection(Ready(invalid), players.head.player).legalControls
       .contains("acceptNegotiation"))
   }
@@ -302,10 +301,10 @@ class NegotiationSuite extends munit.FunSuite {
     val (base, players, _, _, _) = ready()
     val powered = DenizenId(catalog.denizens.find(
       _.handlers.contains("denizen.council-arbiter")).get.id.value)
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val modified = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == players(1).player)
         p.copy(advisers = Vector(DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
-      else p))))
+      else p)))
     val failure = Negotiation.handle(catalog, Ready(modified), NegotiationCommand.Begin(
       players.head.player, DecisionId("powered"), Vector(players(1).player)))
       .left.toOption.get

@@ -34,11 +34,11 @@ class RecoverProcedureSuite extends munit.FunSuite
 
   private def withSupply(state: ReadyGame, player: PlayerId,
       amount: Int): ReadyGame =
-    state.copy(game = state.game.copy(current = state.game.current.copy(
+    state.updateCurrent(_.copy(
       players = state.game.current.players.map(p =>
         if (p.player == player)
           p.copy(board = p.board.copy(supply = SupplyTrack(amount)))
-        else p))))
+        else p)))
 
   /** Full setup finished; the active player's pawn sits on an in-play Recover
     * site whose difficulty a single two-dice roll can reach (<= 4), with
@@ -60,15 +60,14 @@ class RecoverProcedureSuite extends munit.FunSuite
       Orientation.FaceDown, Tokens.empty)
     val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
     val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>
           if (p.player == active.player) moved else p),
         map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site)))))
+          base.game.current.map.sites.updated(siteId, site))))
     (ready, moved, siteId, relic, difficulty)
   }
 
@@ -95,12 +94,12 @@ class RecoverProcedureSuite extends munit.FunSuite
     val lineage = campaign.lineages(actor.lineage)
     val altered = FoundationState(FoundationFace.Altered,
       Set(LegacyId("legacy:recover-unrelated")))
-    val ready = base.copy(game = base.game.copy(campaign = campaign.copy(
+    val ready = base.updateCampaign(_.copy(
       lineages = campaign.lineages.updated(actor.lineage,
         lineage.copy(role = Role.Chancellor)),
       foundations = campaign.foundations.map { case (number, _) =>
         number -> altered
-      })))
+      }))
 
     assert(RecoverProcedure.build(catalog, ready, actor.player).isRight)
   }
@@ -380,9 +379,8 @@ class RecoverProcedureSuite extends munit.FunSuite
     val (ready, actor, siteId, _, _) = recoverable
     val reliclessSite =
       ready.game.current.map.sites(siteId).copy(relics = Vector.empty)
-    val relicless = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(map = ready.game.current.map.copy(sites =
-        ready.game.current.map.sites.updated(siteId, reliclessSite)))))
+    val relicless = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(siteId, reliclessSite))))
 
     val tree = RecoverProcedure.build(catalog, relicless, actor.player)
       .toOption.get
@@ -463,13 +461,12 @@ class RecoverProcedureSuite extends munit.FunSuite
     val faceUp = RelicState(base.game.current.commonCards.relicDeck(1),
       Orientation.FaceUp, Tokens.empty)
     val site = base.game.current.map.sites(siteId)
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.drop(2)),
         map = base.game.current.map.copy(sites =
           base.game.current.map.sites.updated(siteId,
-            site.copy(relics = Vector(relic, second, faceUp)))))))
+            site.copy(relics = Vector(relic, second, faceUp))))))
 
     val tree = RecoverProcedure.build(catalog, ready, actor.player).toOption.get
     val (rollPark, setupEvents) = expectParked(
@@ -554,10 +551,9 @@ class RecoverProcedureSuite extends munit.FunSuite
     // already scored at/above the site's difficulty reaches the relic
     // Branch's Decide and the relic-moving BuildOps instead. Together the two
     // traversals cover every node the declared tree can ever produce.
-    val succeededState = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(rollOutcomes = Map(pool -> RollOutcome(pool, 2,
+    val succeededState = ready.updateCurrent(_.copy(rollOutcomes = Map(pool -> RollOutcome(pool, 2,
         Vector(DefenseDieFace.TwoShields, DefenseDieFace.TwoShields), 0,
-        difficulty)))))
+        difficulty))))
 
     val observed = allNodes(tree, ready, actor.player) ++
       allNodes(tree, succeededState, actor.player)

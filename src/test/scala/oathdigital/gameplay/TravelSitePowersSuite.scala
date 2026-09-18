@@ -37,12 +37,12 @@ class TravelSitePowersSuite extends munit.FunSuite {
 
   private def readyAt(source: SiteId, map: MapState = baseReady.game.current.map)
       : ReadyGame =
-    baseReady.copy(game = baseReady.game.copy(current = baseReady.game.current.copy(
+    baseReady.updateCurrent(_.copy(
       map = map,
       players = baseReady.game.current.players.map { player =>
         if (player.player == actor) player.copy(pawnSite = Some(source))
         else player
-      })))
+      }))
 
   private def costNode(source: SiteId, destination: SiteId, base: Int): Sequence =
     Sequence(Vector(
@@ -176,12 +176,11 @@ class TravelSitePowersSuite extends munit.FunSuite {
     val unknownReady = readyAt(plain, passMap(plain, destination,
       SiteForces.Occupied(ForceKind.Exile(LineageId("missing")), 1)))
     val actorState = unknownReady.game.current.players.find(_.player == actor).get
-    val duplicateReady = unknownReady.copy(game = unknownReady.game.copy(current =
-      unknownReady.game.current.copy(
+    val duplicateReady = unknownReady.updateCurrent(_.copy(
         map = passMap(plain, destination,
           SiteForces.Occupied(ForceKind.Exile(actorState.lineage), 1)),
         players = unknownReady.game.current.players :+ actorState.copy(
-          player = PlayerId("duplicate-lineage")))))
+          player = PlayerId("duplicate-lineage"))))
 
     Vector(unknownReady, duplicateReady).foreach { ready =>
       assertEquals(passViolation(ready, eligibilityTree(plain, destination)),

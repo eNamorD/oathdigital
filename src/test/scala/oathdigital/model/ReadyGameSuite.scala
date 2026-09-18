@@ -42,6 +42,15 @@ class ReadyGameSuite extends munit.FunSuite {
       ready)
   }
 
+  test("updateCampaign changes the campaign state and nothing else") {
+    val goal = OathkeeperGoal.ThePeople
+    val changed = ready.updateCampaign(_.copy(oathkeeperGoal = goal))
+
+    assertEquals(changed.game.campaign.oathkeeperGoal, goal)
+    assertEquals(
+      changed.updateCampaign(_ => ready.game.campaign), ready)
+  }
+
   test("the test builder seats players in order and starts the active player") {
     val table = ReadyGames.of(twoSeats, favorPerSuit = 2)
 

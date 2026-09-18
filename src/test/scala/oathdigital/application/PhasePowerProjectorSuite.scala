@@ -53,13 +53,13 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
     val current = base.game.current
     val relic = current.commonCards.relicDeck.find(id => catalog.relics.exists(
       r => r.id.value == id.value && r.powers.nonEmpty)).get
-    val held = base.copy(game = base.game.copy(current = current.copy(
+    val held = base.updateCurrent(_.copy(
       turn = TurnState(actor, Phase.Act, Set.empty),
       players = current.players.map(p => if (p.player != actor) p else
         p.copy(relics = p.relics :+ RelicState(relic, Orientation.FaceUp,
           Tokens.empty))),
       commonCards = current.commonCards.copy(relicDeck =
-        current.commonCards.relicDeck.filterNot(_ == relic)))))
+        current.commonCards.relicDeck.filterNot(_ == relic))))
     val powerId = RuleSourceIndex.enumerate(catalog, held).collectFirst {
       case IndexedRuleSource(RuleSourceRef.Relic(`actor`, `relic`), ids, _, _)
           if ids.nonEmpty => ids.head

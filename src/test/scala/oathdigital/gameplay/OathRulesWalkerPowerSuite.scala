@@ -56,9 +56,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
     */
   private def actable: (ReadyGame, PlayerId) = {
     val Ready(base) = execute(setup)._1: @unchecked
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(turn = base.game.current.turn.copy(
-        phase = Phase.Act))))
+    val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
+        phase = Phase.Act)))
     (ready, ready.game.current.turn.activePlayer)
   }
 
@@ -591,8 +590,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
 
   test("a walker parks and resumes outside the Act phase") {
     val (act, actor) = actable
-    val wake = act.copy(game = act.game.copy(current = act.game.current.copy(
-      turn = act.game.current.turn.copy(phase = Phase.Wake))))
+    val wake = act.updateCurrent(_.copy(
+      turn = act.game.current.turn.copy(phase = Phase.Wake)))
     val started = rules(actor, WalkerPowers.empty).startWalker(Ready(wake),
       ActionRef.Recover, actor).toOption.get
     assert(started.events.last.isInstanceOf[WalkerParked])
@@ -604,8 +603,8 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   test("a procedure completing in a phase with no walker continuation is " +
       "still a typed rejection") {
     val (act, actor) = actable
-    val roundEnd = act.copy(game = act.game.copy(current = act.game.current.copy(
-      turn = act.game.current.turn.copy(phase = Phase.RoundEnd))))
+    val roundEnd = act.updateCurrent(_.copy(
+      turn = act.game.current.turn.copy(phase = Phase.RoundEnd)))
     val flat = new OathRules(catalog, walkerTree = (_, _, _, _, _, _) =>
       Right(Sequence(Vector.empty)))
     assertEquals(flat.startWalker(Ready(roundEnd), ActionRef.Recover, actor),

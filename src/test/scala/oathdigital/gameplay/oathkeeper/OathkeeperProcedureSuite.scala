@@ -100,10 +100,9 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       catalog.sites.find(_.id == id).exists(_.capacity > 0) &&
         waiting.game.current.map.sites(id).forces ==
           SiteForces.Occupied(ForceKind.Bandit, 1)).get
-    val emptied = waiting.copy(game = waiting.game.copy(current =
-      waiting.game.current.copy(map = waiting.game.current.map.copy(sites =
+    val emptied = waiting.updateCurrent(_.copy(map = waiting.game.current.map.copy(sites =
         waiting.game.current.map.sites.updated(empty,
-          waiting.game.current.map.sites(empty).copy(forces = SiteForces.Empty))))))
+          waiting.game.current.map.sites(empty).copy(forces = SiteForces.Empty)))))
     assert(StateBasedEvaluation.banditRefill(catalog, Ready(emptied))
       .toOption.flatten.nonEmpty, "precondition: a boundary would refill here")
     val chosen = rules.resolveWalker(Ready(emptied), holder,
@@ -139,10 +138,10 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     // A legacy (non-walker) pending procedure is refused the same way.
     val actor = ready.game.current.players
       .find(_.player == ready.game.current.turn.activePlayer).get
-    val legacy = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+    val legacy = ready.updateCurrent(_.copy(
       pending = Some(PendingProcedure.Conspiracy(DecisionId("powered-vision"),
         actor.player, oathdigital.gameplay.actions.VisionRules.Conspiracy,
-        None)))))
+        None))))
     assertEquals(legacy.game.current.walkerPending, None)
     assertEquals(legacy.game.current.walkerProcedure, None)
     val refused = rules.startTriggered(OathTransition(Ready(legacy), Vector.empty,

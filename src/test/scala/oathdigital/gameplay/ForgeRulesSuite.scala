@@ -30,12 +30,12 @@ class ForgeRulesSuite extends munit.FunSuite {
       forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1),
       denizens = denizens)
     val moved = actor.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
       players = base.game.current.players.map(p => if (p.player == actor.player) moved else p),
-      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site)))))
+      map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(siteId, site))))
     val targets = ids.map(SiteDenizenTarget(siteId, _))
     (ready, moved, siteId, targets, ready.game.current.commonCards.relicDeck.head)
   }
@@ -46,10 +46,10 @@ class ForgeRulesSuite extends munit.FunSuite {
     def validate(s: SiteState, supply: Int = actor.board.supply.supply,
         deck: Vector[RelicId] = ready.game.current.commonCards.relicDeck) = {
       val p = actor.copy(board = actor.board.copy(supply = SupplyTrack(supply)))
-      val r = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      val r = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(x => if (x.player == actor.player) p else x),
         map = ready.game.current.map.copy(sites = ready.game.current.map.sites.updated(siteId, s)),
-        commonCards = ready.game.current.commonCards.copy(relicDeck = deck))))
+        commonCards = ready.game.current.commonCards.copy(relicDeck = deck)))
       ForgeRules.validate(catalog, r, p, siteId)
     }
     assert(validate(site.copy(forces = SiteForces.Occupied(ForceKind.Bandit, 1))).isLeft)
@@ -66,9 +66,9 @@ class ForgeRulesSuite extends munit.FunSuite {
     def withResources(favor: Int, secrets: Int) = {
       val p = actor.copy(board = actor.board.copy(favor = favor,
         faceUpSecrets = secrets))
-      val r = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      val r = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(x =>
-          if (x.player == actor.player) p else x))))
+          if (x.player == actor.player) p else x)))
       ForgeRules.validate(catalog, r, p, siteId)
     }
 
@@ -89,9 +89,9 @@ class ForgeRulesSuite extends munit.FunSuite {
     val hidden = actor.copy(board = actor.board.copy(favor = cost.favor,
       faceUpSecrets = 0, faceDownSecrets = cost.secrets + 3))
     if (cost.secrets > 0) {
-      val r = ready.copy(game = ready.game.copy(current = ready.game.current.copy(
+      val r = ready.updateCurrent(_.copy(
         players = ready.game.current.players.map(x =>
-          if (x.player == actor.player) hidden else x))))
+          if (x.player == actor.player) hidden else x)))
       assert(ForgeRules.validate(catalog, r, hidden, siteId).isLeft)
     }
   }

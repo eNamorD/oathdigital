@@ -29,11 +29,11 @@ class VisionsSuite extends munit.FunSuite {
   test("revealing a true Vision costs no Supply and discards the replaced Vision") {
     val (base0, actor, origin) = actWith(VisionRules.Faith)
     val old = VisionRules.Conquest
-    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val base = base0.updateCurrent(_.copy(
       commonCards = base0.game.current.commonCards.copy(worldDeck =
         base0.game.current.commonCards.worldDeck.filterNot(_ == old)),
       players = base0.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p))))
+        p.copy(revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p)))
     val before = actor.board.supply
     val accepted = rules.handle(Ready(base),
       VisionCommand.Reveal(actor.player, VisionRules.Faith)).toOption.get
@@ -58,9 +58,9 @@ class VisionsSuite extends munit.FunSuite {
     val relic = RelicState(RelicId("conspiracy-relic"), Orientation.FaceDown,
       Tokens.empty)
     val enemy = enemy0.copy(pawnSite = actor.pawnSite, relics = Vector(relic))
-    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val base = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p =>
-        if (p.player == enemy.player) enemy else p))))
+        if (p.player == enemy.player) enemy else p)))
     val legal = Visions.legalTargetRefs(base, actor.player)
     assertEquals(legal, Vector(ConspiracyTargetRef.RelicSlot(enemy.player, 0)))
     val accepted = rules.handle(Ready(base), VisionCommand.PlayConspiracy(
@@ -86,18 +86,18 @@ class VisionsSuite extends munit.FunSuite {
     val enemy = base0.game.current.players.find(_.player != actor.player).get
       .copy(pawnSite = actor.pawnSite, relics = Vector(RelicState(
         RelicId("eligible"), Orientation.FaceDown, Tokens.empty)))
-    val withTarget = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val withTarget = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p =>
-        if (p.player == enemy.player) enemy else p))))
+        if (p.player == enemy.player) enemy else p)))
     assert(rules.handle(Ready(withTarget), VisionCommand.PlayConspiracy(
       actor.player, DecisionId("missing"), None)).isLeft)
 
-    val none = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val none = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p => if (p.player == actor.player) p
         else p.copy(pawnSite = None, relics = Vector.empty)), banners =
         base0.game.current.banners.copy(
           peoplesFavor = base0.game.current.banners.peoplesFavor.copy(holder = None),
-          darkestSecret = base0.game.current.banners.darkestSecret.copy(holder = None)))))
+          darkestSecret = base0.game.current.banners.darkestSecret.copy(holder = None))))
     val accepted = rules.handle(Ready(none), VisionCommand.PlayConspiracy(
       actor.player, DecisionId("empty"), None)).toOption.get
     assert(accepted.events.last.isInstanceOf[ConspiracyCompleted])
@@ -110,15 +110,15 @@ class VisionsSuite extends munit.FunSuite {
     val banners = base0.game.current.banners.copy(peoplesFavor =
       base0.game.current.banners.peoplesFavor.copy(
         holder = Some(enemy.player), favor = 2))
-    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val base = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p =>
         if (p.player == enemy.player) enemy else p),
-      banners = banners)))
+      banners = banners))
     val target = Some(ConspiracyTarget.Banner(enemy.player, Banner.PeoplesFavor))
     val pending = PendingProcedure.Conspiracy(DecisionId("expected"), actor.player,
       VisionRules.Conspiracy, target)
-    val state = base.copy(game = base.game.copy(current = base.game.current.copy(
-      pending = Some(pending))))
+    val state = base.updateCurrent(_.copy(
+      pending = Some(pending)))
     // A completion for a different decision, target, or favor order is stale.
     assert(Visions.evolve(catalog, Ready(state), ConspiracyCompleted(actor.player,
       DecisionId("stale"), pending.source, pending.target,
@@ -142,10 +142,10 @@ class VisionsSuite extends munit.FunSuite {
     val banners = base0.game.current.banners.copy(darkestSecret =
       base0.game.current.banners.darkestSecret.copy(
         holder = Some(enemy.player), secrets = 3))
-    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val base = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p =>
         if (p.player == enemy.player) enemy else p),
-      banners = banners)))
+      banners = banners))
     val accepted = rules.handle(Ready(base), VisionCommand.PlayConspiracy(
       actor.player, DecisionId("conspiracy-ds"),
       Some(ConspiracyTargetRef.Banner(enemy.player, Banner.DarkestSecret))))
@@ -229,12 +229,12 @@ class VisionsSuite extends munit.FunSuite {
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
     val powered = DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
       Tokens.empty)
-    base.copy(game = base.game.copy(current = base.game.current.copy(
+    base.updateCurrent(_.copy(
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(
           _ == DenizenId(definition.id.value))),
       players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = p.advisers :+ powered) else p))))
+        p.copy(advisers = p.advisers :+ powered) else p)))
   }
 
   private def withEdifice(base: ReadyGame, siteId: SiteId, side: EdificeSide,
@@ -245,9 +245,9 @@ class VisionsSuite extends munit.FunSuite {
     }).contains(handler)).get
     val state = EdificeState(EdificeId(definition.id.value), side, Tokens.empty)
     val site = base.game.current.map.sites(siteId)
-    base.copy(game = base.game.copy(current = base.game.current.copy(map =
+    base.updateCurrent(_.copy(map =
       base.game.current.map.copy(sites = base.game.current.map.sites.updated(
-        siteId, site.copy(denizens = site.denizens :+ state))))))
+        siteId, site.copy(denizens = site.denizens :+ state)))))
   }
 
   test("actor and enemy Vision restrictions reject with stable source identities") {
@@ -269,9 +269,9 @@ class VisionsSuite extends munit.FunSuite {
     val site = base0.game.current.map.sites(siteId).copy(
       forces = SiteForces.Occupied(ForceKind.Exile(enemy.lineage), 1),
       denizens = Vector(DenizenState(policeId, Orientation.FaceUp, Tokens.empty)))
-    val police = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val police = base0.updateCurrent(_.copy(
       map = base0.game.current.map.copy(sites = base0.game.current.map.sites.updated(
-        siteId, site)))))
+        siteId, site))))
     assertEquals(rules.handle(Ready(police), VisionCommand.Reveal(
       actor.player, VisionRules.Faith)).left.toOption,
       Some(UnsupportedVisionRule(s"site-card:${siteId.value}:denizen:${policeId.value}",
@@ -279,10 +279,10 @@ class VisionsSuite extends munit.FunSuite {
 
     val triggerId = DenizenId(catalog.denizens.find(
       _.handlers.contains("denizen.book-binders")).get.id.value)
-    val trigger = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val trigger = base0.updateCurrent(_.copy(
       players = base0.game.current.players.map(p => if (p.player == enemy.player)
         p.copy(advisers = Vector(DenizenState(triggerId, Orientation.FaceUp,
-          Tokens.empty))) else p))))
+          Tokens.empty))) else p)))
     assertEquals(rules.handle(Ready(trigger), VisionCommand.Reveal(
       actor.player, VisionRules.Faith)).left.toOption,
       Some(UnsupportedVisionRule(
@@ -310,9 +310,8 @@ class VisionsSuite extends munit.FunSuite {
     val blocked = withActorAdviser(base0, actor, "denizen.vow-of-obedience")
     assert(rules.handle(Ready(blocked), VisionCommand.Reveal(
       actor.player, VisionRules.Sanctuary)).isLeft)
-    val searchState = blocked.copy(game = blocked.game.copy(current =
-      blocked.game.current.copy(
-        temporaryHands = Map(actor.player -> Vector(VisionRules.Sanctuary)))))
+    val searchState = blocked.updateCurrent(_.copy(
+        temporaryHands = Map(actor.player -> Vector(VisionRules.Sanctuary))))
     assert(oathdigital.gameplay.actions.CardPlay.plannedOperations(catalog,
       searchState, actor.player, VisionRules.Sanctuary,
       SearchPlacement.Adviser(Orientation.FaceUp, None),
@@ -326,9 +325,9 @@ class VisionsSuite extends munit.FunSuite {
   test("altered Foundations reject at the bounded Vision boundary") {
     val (base, actor, _) = actWith(VisionRules.Rebellion)
     val number = FoundationNumber.I
-    val changed = base.copy(game = base.game.copy(campaign = base.game.campaign.copy(
+    val changed = base.updateCampaign(_.copy(
       foundations = base.game.campaign.foundations.updated(number,
-        FoundationState(FoundationFace.Altered, Set(LegacyId("legacy:vision-change")))))))
+        FoundationState(FoundationFace.Altered, Set(LegacyId("legacy:vision-change"))))))
     assertEquals(rules.handle(Ready(changed), VisionCommand.Reveal(
       actor.player, VisionRules.Rebellion)).left.toOption,
       Some(UnsupportedVisionRule("foundation:1",

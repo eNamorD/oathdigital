@@ -34,10 +34,9 @@ class GameEventWireSuite extends munit.FunSuite {
   }
   test("reduced optional spend is canonical in memory and on the wire") {
     import oathdigital.model.TestGameFixtures.{playerId, ready => base}
-    val one = base.copy(game = base.game.copy(current =
-      base.game.current.copy(players = base.game.current.players.map { player =>
+    val one = base.updateCurrent(_.copy(players = base.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(1)))
-      })))
+      }))
     val run = OperationPipeline.run(one,
       Vector(SpendSupply(playerId, 3, required = false)),
       OperationPolicy.Permissive)(Right(_)).toOption.get

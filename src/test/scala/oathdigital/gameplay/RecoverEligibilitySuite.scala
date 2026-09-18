@@ -24,10 +24,10 @@ class RecoverEligibilitySuite extends munit.FunSuite {
       RecoverRules.difficulty(catalog, id).nonEmpty
     }.get
     val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       turn = base.game.current.turn.copy(phase = Phase.Act),
       players = base.game.current.players.map(p =>
-        if (p.player == active.player) moved else p))))
+        if (p.player == active.player) moved else p)))
     (ready, moved, siteId)
   }
 
@@ -40,11 +40,11 @@ class RecoverEligibilitySuite extends munit.FunSuite {
     val relic = RelicState(base.game.current.commonCards.relicDeck.head,
       Orientation.FaceDown, Tokens.empty)
     val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       commonCards = base.game.current.commonCards.copy(
         relicDeck = base.game.current.commonCards.relicDeck.tail),
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site)))))
+        base.game.current.map.sites.updated(siteId, site))))
 
     assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
@@ -58,7 +58,7 @@ class RecoverEligibilitySuite extends munit.FunSuite {
     val active = active0.copy(board = active0.board.copy(faceUpSecrets = 2))
     val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty,
       denizens = Vector(DenizenState(cardId, Orientation.FaceUp, Tokens.empty)))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p =>
         if (p.player == active.player) active else p),
       commonCards = base.game.current.commonCards.copy(
@@ -67,7 +67,7 @@ class RecoverEligibilitySuite extends munit.FunSuite {
           case (region, cards) => region -> cards.filterNot(_ == cardId)
         }),
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site)))))
+        base.game.current.map.sites.updated(siteId, site))))
 
     assert(RecoverProcedure.build(catalog, ready, active.player).isRight)
     assert(legalControls(ready, active.player).contains("beginRecover"))
@@ -82,9 +82,9 @@ class RecoverEligibilitySuite extends munit.FunSuite {
     // than relying on the setup's incidental relic/denizen placement.
     val site = base.game.current.map.sites(siteId).copy(relics = Vector.empty,
       denizens = base.game.current.map.sites(siteId).denizens.filterNot(_.id == catacombsId))
-    val ready = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites =
-        base.game.current.map.sites.updated(siteId, site)))))
+        base.game.current.map.sites.updated(siteId, site))))
 
     assert(ready.game.current.map.sites(siteId).relics.isEmpty)
     assert(legalControls(ready, active.player).contains("beginRecover"))

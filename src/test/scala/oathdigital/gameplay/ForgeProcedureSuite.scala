@@ -63,15 +63,14 @@ class ForgeProcedureSuite extends munit.FunSuite
       forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 1),
       denizens = denizens)
     val moved = actor.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(worldDeck =
           base.game.current.commonCards.worldDeck.filterNot(ids.toSet)),
         players = base.game.current.players.map(p =>
           if (p.player == actor.player) moved else p),
         map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site)))))
+          base.game.current.map.sites.updated(siteId, site))))
     Forgeable(ready, moved, siteId, ids.map(SiteDenizenTarget(siteId, _)),
       definition.forgeRequirements.get,
       ready.game.current.commonCards.relicDeck.head)
@@ -82,15 +81,15 @@ class ForgeProcedureSuite extends munit.FunSuite
 
   private def withSite(state: ReadyGame, siteId: SiteId,
       site: SiteState): ReadyGame =
-    state.copy(game = state.game.copy(current = state.game.current.copy(
+    state.updateCurrent(_.copy(
       map = state.game.current.map.copy(sites =
-        state.game.current.map.sites.updated(siteId, site)))))
+        state.game.current.map.sites.updated(siteId, site))))
 
   private def mapPlayer(state: ReadyGame, player: PlayerId)(
       update: PlayerState => PlayerState): ReadyGame =
-    state.copy(game = state.game.copy(current = state.game.current.copy(
+    state.updateCurrent(_.copy(
       players = state.game.current.players.map(p =>
-        if (p.player == player) update(p) else p))))
+        if (p.player == player) update(p) else p)))
 
   private def withSupply(state: ReadyGame, player: PlayerId,
       amount: Int): ReadyGame = mapPlayer(state, player)(p =>
@@ -593,10 +592,9 @@ class ForgeProcedureSuite extends munit.FunSuite
 
     // The same tree, walked against a state whose deck top changed after the
     // park, forges the NEW top.
-    val restacked = atPark.copy(game = atPark.game.copy(current =
-      atPark.game.current.copy(commonCards =
+    val restacked = atPark.updateCurrent(_.copy(commonCards =
         atPark.game.current.commonCards.copy(relicDeck =
-          atPark.game.current.commonCards.relicDeck.reverse))))
+          atPark.game.current.commonCards.relicDeck.reverse)))
     val newTop = restacked.game.current.commonCards.relicDeck.head
     assertNotEquals(newTop, f.relic)
     val (_, steps) =
@@ -607,9 +605,8 @@ class ForgeProcedureSuite extends munit.FunSuite
       Orientation.FaceDown): CoreOperation)
 
     // An emptied deck fails the leaf rather than forging nothing silently.
-    val emptied = atPark.copy(game = atPark.game.copy(current =
-      atPark.game.current.copy(commonCards =
-        atPark.game.current.commonCards.copy(relicDeck = Vector.empty))))
+    val emptied = atPark.updateCurrent(_.copy(commonCards =
+        atPark.game.current.commonCards.copy(relicDeck = Vector.empty)))
     assertEquals(resolveWith(f, emptied, tree, pending, legal),
       Left(OathViolation.ForgeUnavailable("relic deck is empty")):
         Either[OathViolation, WalkerOutcome])

@@ -8,17 +8,16 @@ class SearchSuite extends munit.FunSuite {
 
   private def ready: ReadyGame = {
     val state = initialReady
-    state.copy(game = state.game.copy(current = state.game.current.copy(
-      turn = state.game.current.turn.copy(phase = Phase.Act))))
+    state.updateCurrent(_.copy(
+      turn = state.game.current.turn.copy(phase = Phase.Act)))
   }
 
   test("world Search cost follows Visions Drawn track bands") {
     val base = ready
     Vector(0 -> 2, 1 -> 3, 2 -> 3, 3 -> 4, 4 -> 4, 5 -> 4).foreach {
       case (visions, expected) =>
-        val state = base.copy(game = base.game.copy(current =
-          base.game.current.copy(tracks = base.game.current.tracks.copy(
-            visionsDrawn = visions))))
+        val state = base.updateCurrent(_.copy(tracks = base.game.current.tracks.copy(
+            visionsDrawn = visions)))
         assertEquals(SearchRules.cost(state, SearchSource.WorldDeck,
           Region.Cradle), Right(expected))
         assertEquals(SearchRules.cost(state,
@@ -34,9 +33,8 @@ class SearchSuite extends munit.FunSuite {
     val vision = base.game.current.commonCards.worldDeck.collectFirst {
       case id: VisionId => id
     }.get
-    val state = base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards = base.game.current.commonCards.copy(
-        worldDeck = Vector(denizens.head, vision) ++ denizens.tail))))
+    val state = base.updateCurrent(_.copy(commonCards = base.game.current.commonCards.copy(
+        worldDeck = Vector(denizens.head, vision) ++ denizens.tail)))
     assertEquals(SearchRules.draw(state, SearchSource.WorldDeck, Region.Cradle),
       Right(Vector(denizens.head, vision)))
   }

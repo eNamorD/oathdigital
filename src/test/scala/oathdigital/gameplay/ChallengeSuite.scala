@@ -27,9 +27,9 @@ class ChallengeSuite extends munit.FunSuite {
       case Banner.DarkestSecret => base.game.current.banners.copy(darkestSecret =
         base.game.current.banners.darkestSecret.copy(holder = holder, secrets = resources))
     }
-    val value = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val value = base.updateCurrent(_.copy(
       players = base.game.current.players.map(p => if (p.player == actor.player) actor else p),
-      banners = banners, turn = base.game.current.turn.copy(phase = Phase.Act))))
+      banners = banners, turn = base.game.current.turn.copy(phase = Phase.Act)))
     value -> actor
   }
 
@@ -57,8 +57,7 @@ class ChallengeSuite extends munit.FunSuite {
 
   test("People's Favor resolves every least-bank tie leftmost and proceeds to replacement") {
     val (initial, actor) = ready(resources = 2)
-    val base = initial.copy(game = initial.game.copy(campaign =
-      initial.game.campaign.copy(oathkeeperGoal = OathkeeperGoal.ThePeople)))
+    val base = initial.updateCampaign(_.copy(oathkeeperGoal = OathkeeperGoal.ThePeople))
     val id = DecisionId("challenge-favor")
     val started = rules.handle(Ready(base), ChallengeCommand.Begin(
       actor.player, id, Banner.PeoplesFavor)).toOption.get
@@ -107,9 +106,9 @@ class ChallengeSuite extends munit.FunSuite {
   test("base banner placement moves only faceup resources and costs no Supply") {
     val (base0, actor) = ready(banner = Banner.DarkestSecret, resources = 1,
       holder = None)
-    val base = base0.copy(game = base0.game.copy(current = base0.game.current.copy(
+    val base = base0.updateCurrent(_.copy(
       banners = base0.game.current.banners.copy(darkestSecret =
-        base0.game.current.banners.darkestSecret.copy(holder = Some(actor.player))))))
+        base0.game.current.banners.darkestSecret.copy(holder = Some(actor.player)))))
     val transition = rules.handle(Ready(base), ChallengeCommand.PlaceResource(
       actor.player, Banner.DarkestSecret, 2)).toOption.get
     val Ready(after) = transition.state: @unchecked
@@ -141,10 +140,10 @@ class ChallengeSuite extends munit.FunSuite {
 
     val enemy = bank.game.current.players.find(_.player != actor.player).get
     val colocated = enemy.copy(pawnSite = actor.pawnSite)
-    val enemyHeld = bank.copy(game = bank.game.copy(current = bank.game.current.copy(
+    val enemyHeld = bank.updateCurrent(_.copy(
       players = bank.game.current.players.map(p => if (p.player == enemy.player) colocated else p),
       banners = bank.game.current.banners.copy(darkestSecret =
-        bank.game.current.banners.darkestSecret.copy(holder = Some(enemy.player), secrets = 3)))))
+        bank.game.current.banners.darkestSecret.copy(holder = Some(enemy.player), secrets = 3))))
     val started = rules.handle(Ready(enemyHeld), ChallengeCommand.Begin(
       actor.player, DecisionId("enemy-secret"), Banner.DarkestSecret)).toOption.get
     val Ready(pending) = started.state: @unchecked
@@ -156,11 +155,11 @@ class ChallengeSuite extends munit.FunSuite {
     val (bank, actor) = ready(banner = Banner.DarkestSecret, resources = 3)
     val enemy0 = bank.game.current.players.find(_.player != actor.player).get
     val enemy = enemy0.copy(pawnSite = actor.pawnSite)
-    val enemyHeld = bank.copy(game = bank.game.copy(current = bank.game.current.copy(
+    val enemyHeld = bank.updateCurrent(_.copy(
       players = bank.game.current.players.map(p => if (p.player == enemy.player) enemy else p),
       banners = bank.game.current.banners.copy(darkestSecret =
         bank.game.current.banners.darkestSecret.copy(
-          holder = Some(enemy.player), secrets = 3)))))
+          holder = Some(enemy.player), secrets = 3))))
     val id = DecisionId("enemy-secret")
     var transition = rules.handle(Ready(enemyHeld), ChallengeCommand.Begin(
       actor.player, id, Banner.DarkestSecret)).toOption.get

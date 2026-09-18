@@ -51,9 +51,8 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
                     case face: DefenseDieFace => face
                   }))
             }
-          current.copy(game = current.game.copy(current =
-            current.game.current.copy(rollOutcomes =
-              current.game.current.rollOutcomes.updated(pool, accumulated))))
+          current.updateCurrent(_.copy(rollOutcomes =
+              current.game.current.rollOutcomes.updated(pool, accumulated)))
         case _ if step.ops.isEmpty => current
         case _ =>
           OperationPipeline.run(current, step.ops,

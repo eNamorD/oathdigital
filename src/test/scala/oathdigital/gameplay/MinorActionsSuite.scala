@@ -52,8 +52,7 @@ class MinorActionsSuite extends munit.FunSuite {
       ready: ReadyGame,
       playerId: PlayerId,
       relicId: RelicId
-  ): ReadyGame = ready.copy(game = ready.game.copy(current =
-    ready.game.current.copy(players = ready.game.current.players.map {
+  ): ReadyGame = ready.updateCurrent(_.copy(players = ready.game.current.players.map {
       case player if player.player == playerId => player.copy(
         relics = player.relics.map {
           case relic if relic.id == relicId =>
@@ -61,7 +60,7 @@ class MinorActionsSuite extends munit.FunSuite {
           case relic => relic
         })
       case player => player
-    })))
+    }))
 
   private def withMovedWarbands(
       ready: ReadyGame,
@@ -84,10 +83,10 @@ class MinorActionsSuite extends munit.FunSuite {
         occupied.copy(count = occupied.count + siteDelta)
       case SiteForces.Empty => fail("fixture site must have warbands")
     }
-    ready.copy(game = ready.game.copy(current = current.copy(
+    ready.updateCurrent(_.copy(
       players = players,
       map = current.map.copy(sites = current.map.sites.updated(siteId,
-        site.copy(forces = forces))))))
+        site.copy(forces = forces)))))
   }
 
   test("facedown adviser discard uses the next region and costs no Supply") {
@@ -239,9 +238,9 @@ class MinorActionsSuite extends munit.FunSuite {
       _.handlers.contains("denizen.revelation")).get.id.value)
     val other = other0.copy(advisers = Vector(
       DenizenState(powered, Orientation.FaceUp, Tokens.empty)))
-    val changed = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val changed = base.updateCurrent(_.copy(
       players = base.game.current.players.map(player =>
-        if (player.player == other.player) other else player))))
+        if (player.player == other.player) other else player)))
     val source = RuleSourceRef.Adviser(other.player, powered)
     val expected = PowerRuntime.ignoredAtSource(catalog, changed, other.player,
       MajorActionKind.WhenPlayed, source).toOption.get
@@ -256,20 +255,20 @@ class MinorActionsSuite extends munit.FunSuite {
     val (base, actor, _, _, _) = ready()
     val locked = DenizenId(catalog.denizens.find(_.restrictions ==
       oathdigital.catalog.CardRestrictions.LockedAdviserOnly).get.id.value)
-    val modified = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val modified = base.updateCurrent(_.copy(
       commonCards = base.game.current.commonCards.copy(worldDeck =
         base.game.current.commonCards.worldDeck.filterNot(_ == locked)),
       players = base.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceDown, Tokens.empty))) else p))))
+        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceDown, Tokens.empty))) else p)))
     val started = rules.startWalker(Ready(modified), ActionRef.PlayFacedownAdviser,
       actor.player, startArgs = Vector(DecisionOptionRef.Denizen(locked)))
       .toOption.get
     assert(rules.resolveWalker(started.state, actor.player,
       s"cardplay.place.denizen.${locked.value}",
       DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("discard"))).isRight)
-    val faceup = modified.copy(game = modified.game.copy(current = modified.game.current.copy(
+    val faceup = modified.updateCurrent(_.copy(
       players = modified.game.current.players.map(p => if (p.player == actor.player)
-        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p))))
+        p.copy(advisers = Vector(DenizenState(locked, Orientation.FaceUp, Tokens.empty))) else p)))
     assert(oathdigital.gameplay.actions.cardplay.CardPlayProcedure.buildFacedown(
       catalog, faceup, actor.player, Vector(DecisionOptionRef.Denizen(locked))).isLeft)
   }

@@ -39,6 +39,9 @@ final case class ReadyGame(
 ) {
   def updateCurrent(f: CurrentGameState => CurrentGameState): ReadyGame =
     copy(game = game.copy(current = f(game.current)))
+
+  def updateCampaign(f: CampaignState => CampaignState): ReadyGame =
+    copy(game = game.copy(campaign = f(game.campaign)))
 }
 
 object ReadyGame {

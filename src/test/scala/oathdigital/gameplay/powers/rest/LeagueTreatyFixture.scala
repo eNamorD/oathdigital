@@ -11,8 +11,8 @@ object LeagueTreatyFixture {
 
   def act: ReadyGame = {
     val initial = initialReady
-    initial.copy(game = initial.game.copy(current = initial.game.current.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act))))
+    initial.updateCurrent(_.copy(
+      turn = initial.game.current.turn.copy(phase = Phase.Act)))
   }
 
   def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get

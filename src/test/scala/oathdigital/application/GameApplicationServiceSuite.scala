@@ -315,9 +315,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val rules = new OathRules(catalog)
     Vector(Vector("not-a-node"), Vector("999999999999999999999")).foreach {
       path =>
-        val malformed = ready.copy(game = ready.game.copy(current =
-          ready.game.current.copy(walkerPending = ready.game.current.walkerPending
-            .map(_.copy(at = path)))))
+        val malformed = ready.updateCurrent(_.copy(walkerPending = ready.game.current.walkerPending
+            .map(_.copy(at = path))))
         val rejected = rules.rollWalkerPrepared(Ready(malformed), actor,
           RecoverProcedure.recoverPool)(_ => Right(
             Vector(DefenseDieFace.Blank, DefenseDieFace.Blank)))

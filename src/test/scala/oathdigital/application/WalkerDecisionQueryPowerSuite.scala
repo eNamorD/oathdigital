@@ -44,9 +44,8 @@ class WalkerDecisionQueryPowerSuite extends munit.FunSuite {
     */
   private def actable: (ReadyGame, PlayerId) = {
     val Ready(base) = execute(setup)._1: @unchecked
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(turn = base.game.current.turn.copy(
-        phase = Phase.Act))))
+    val ready = base.updateCurrent(_.copy(turn = base.game.current.turn.copy(
+        phase = Phase.Act)))
     (ready, ready.game.current.turn.activePlayer)
   }
 

@@ -19,8 +19,8 @@ class RestSuite extends munit.FunSuite {
 
   private def act: ReadyGame = {
     val Ready(initial) = execute(setup)._1: @unchecked
-    initial.copy(game = initial.game.copy(current = initial.game.current.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act))))
+    initial.updateCurrent(_.copy(
+      turn = initial.game.current.turn.copy(phase = Phase.Act)))
   }
 
   private def rest(state: OathState, player: PlayerId,
@@ -46,9 +46,8 @@ class RestSuite extends munit.FunSuite {
     val chosen = (representatives ++ remainder).take(count)
     val worldDeck = base.game.current.commonCards.worldDeck.filterNot(
       id => chosen.contains(id))
-    chosen -> base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards =
-        base.game.current.commonCards.copy(worldDeck = worldDeck))))
+    chosen -> base.updateCurrent(_.copy(commonCards =
+        base.game.current.commonCards.copy(worldDeck = worldDeck)))
   }
 
   /** Picks `count` relics still in the relic deck and removes them from it. */
@@ -57,9 +56,8 @@ class RestSuite extends munit.FunSuite {
     val chosen = base.game.current.commonCards.relicDeck.take(count)
     val relicDeck = base.game.current.commonCards.relicDeck.filterNot(
       id => chosen.contains(id))
-    chosen -> base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards =
-        base.game.current.commonCards.copy(relicDeck = relicDeck))))
+    chosen -> base.updateCurrent(_.copy(commonCards =
+        base.game.current.commonCards.copy(relicDeck = relicDeck)))
   }
 
   /** Picks an edifice still in the edifice deck and removes it. */
@@ -68,9 +66,8 @@ class RestSuite extends munit.FunSuite {
     val chosen = base.game.current.commonCards.edificeDeck.head
     val edificeDeck = base.game.current.commonCards.edificeDeck.filterNot(
       _ == chosen)
-    chosen -> base.copy(game = base.game.copy(current =
-      base.game.current.copy(commonCards =
-        base.game.current.commonCards.copy(edificeDeck = edificeDeck))))
+    chosen -> base.updateCurrent(_.copy(commonCards =
+        base.game.current.commonCards.copy(edificeDeck = edificeDeck)))
   }
 
   test("Rest returns controlled resources reveals secrets refreshes and wakes next") {
@@ -91,8 +88,7 @@ class RestSuite extends munit.FunSuite {
     val site = withRelics.game.current.map.sites(siteId).copy(
       forces = SiteForces.Occupied(ForceKind.Exile(actor.lineage), 2),
       denizens = Vector(DenizenState(siteCardId, Orientation.FaceUp, Tokens(2, 1))))
-    val prepared = withRelics.copy(game = withRelics.game.copy(current =
-      withRelics.game.current.copy(
+    val prepared = withRelics.updateCurrent(_.copy(
         map = withRelics.game.current.map.copy(sites =
           withRelics.game.current.map.sites.updated(siteId, site)),
         players = withRelics.game.current.players.map { player =>
@@ -104,7 +100,7 @@ class RestSuite extends munit.FunSuite {
               Tokens(1, 2))),
             relics = Vector(RelicState(heldRelic,
               Orientation.FaceUp, Tokens(0, 3))))
-        })))
+        }))
 
     val completed = rest(Ready(prepared), actor.player).toOption.get
     assertEquals(completed.events.collect { case WalkerCompleted(p) => p },
@@ -157,7 +153,7 @@ class RestSuite extends munit.FunSuite {
     val otherAdviser = DenizenState(denizenPool(4), Orientation.FaceUp, Tokens(5, 5))
     val otherRelic = RelicState(relicPool(1), Orientation.FaceUp, Tokens(0, 6))
     val siteRelic = RelicState(relicPool(2), Orientation.FaceDown, Tokens(0, 7))
-    val prepared = withRelics.copy(game = withRelics.game.copy(current = withRelics.game.current.copy(
+    val prepared = withRelics.updateCurrent(_.copy(
       map = withRelics.game.current.map.copy(sites = withRelics.game.current.map.sites
         .updated(pawn, withRelics.game.current.map.sites(pawn).copy(
           forces = SiteForces.Occupied(ForceKind.Bandit, 1),
@@ -175,7 +171,7 @@ class RestSuite extends munit.FunSuite {
         else if (p.player == otherBefore.player)
           p.copy(advisers = Vector(otherAdviser), relics = Vector(otherRelic))
         else p
-      })))
+      }))
     val plan = RestCleanupPlan.derive(catalog, prepared, actor.player).toOption.get
     assertEquals(plan.returnedSecrets, 31)
     assertEquals(plan.returnedFavor.values.sum, 16)
@@ -268,9 +264,9 @@ class RestSuite extends munit.FunSuite {
       val definition = catalog.denizens.find(_.handlers.contains(handler)).get
       val adviser = DenizenState(DenizenId(definition.id.value),
         Orientation.FaceUp, Tokens.empty)
-      val state = base.copy(game = base.game.copy(current = base.game.current.copy(
+      val state = base.updateCurrent(_.copy(
         players = base.game.current.players.map(p => if (p.player == actor.player)
-          p.copy(advisers = Vector(adviser)) else p))))
+          p.copy(advisers = Vector(adviser)) else p)))
       val accepted = rest(Ready(state), actor.player).toOption.get
       val recorded = accepted.events.head.asInstanceOf[IgnoredRulesRecorded]
       assertEquals(recorded.diagnostics.head.handlerId, handler)
@@ -284,11 +280,11 @@ class RestSuite extends munit.FunSuite {
     val handler = "denizen.insomnia"
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
     val siteId = actor.pawnSite.get
-    val siteState = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val siteState = base.updateCurrent(_.copy(
       map = base.game.current.map.copy(sites = base.game.current.map.sites.updated(
         siteId, base.game.current.map.sites(siteId).copy(denizens = Vector(
           DenizenState(DenizenId(definition.id.value), Orientation.FaceUp,
-            Tokens.empty))))))))
+            Tokens.empty)))))))
     val siteAccepted = rest(Ready(siteState), actor.player)
       .toOption.get.events.head.asInstanceOf[IgnoredRulesRecorded]
     assert(siteAccepted.diagnostics.head.source.stableKey
@@ -332,16 +328,15 @@ class RestSuite extends munit.FunSuite {
     def diagnostic(ready: ReadyGame) = rest(Ready(ready), actor)
       .toOption.get.events.head
       .asInstanceOf[IgnoredRulesRecorded].diagnostics.head
-    val banner = base.copy(game = base.game.copy(current = base.game.current.copy(
+    val banner = base.updateCurrent(_.copy(
       banners = base.game.current.banners.copy(peoplesFavor =
         base.game.current.banners.peoplesFavor.copy(
-          active = PeoplesFavorFace.GrandCouncil)))))
+          active = PeoplesFavorFace.GrandCouncil))))
     assertEquals(diagnostic(banner).source.stableKey, "banner:peoples-favor")
 
     val number = base.game.campaign.foundations.keys.head
-    val foundation = base.copy(game = base.game.copy(campaign =
-      base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
-        number, FoundationState(FoundationFace.Altered, Set.empty)))))
+    val foundation = base.updateCampaign(_.copy(foundations = base.game.campaign.foundations.updated(
+        number, FoundationState(FoundationFace.Altered, Set.empty))))
     assertEquals(diagnostic(foundation).source.stableKey,
       s"foundation:${number.value}")
   }
@@ -351,10 +346,9 @@ class RestSuite extends munit.FunSuite {
     val participants = base.game.current.players.map(_.player)
     val start = participants.indexOf(base.setup.firstPlayer)
     val last = (participants.drop(start) ++ participants.take(start)).last
-    val unsupported = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val unsupported = base.updateCurrent(_.copy(
         tracks = base.game.current.tracks.copy(round = 8),
-        turn = TurnState(last, Phase.Act, Set.empty))))
+        turn = TurnState(last, Phase.Act, Set.empty)))
 
     val deterministic = new OathRules(catalog, warExhaustionRandomPort =
       new WarExhaustionRandomPort {

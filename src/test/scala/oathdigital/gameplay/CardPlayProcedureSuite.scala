@@ -58,8 +58,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
 
   test("card absent from temporary hand cannot build card play") {
     val (ready, actor, card) = handState
-    val absent = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(temporaryHands = Map.empty)))
+    val absent = ready.updateCurrent(_.copy(temporaryHands = Map.empty))
     assert(CardPlayProcedure.build(catalog, absent, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).isLeft)
   }
@@ -72,12 +71,12 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     }.take(3)
     val player = current.players.find(_.player == actor).get
     val added = extras.take(3 - player.advisers.size)
-    val full = base.copy(game = base.game.copy(current = current.copy(
+    val full = base.updateCurrent(_.copy(
       players = current.players.map(p => if (p.player == actor)
         p.copy(advisers = p.advisers ++ added.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(added.contains)))))
+        current.commonCards.worldDeck.filterNot(added.contains))))
     val tree = CardPlayProcedure.build(catalog, full, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
     val decision = tree.children.head.asInstanceOf[Decide]
@@ -149,12 +148,12 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val locked = catalog.denizens.filter(
       _.restrictions == oathdigital.catalog.CardRestrictions.LockedAdviserOnly)
       .map(d => DenizenId(d.id.value)).filterNot(_ == card).take(3)
-    val full = base.copy(game = base.game.copy(current = current.copy(
+    val full = base.updateCurrent(_.copy(
       players = current.players.map(p => if (p.player == actor)
         p.copy(advisers = locked.map(id =>
           DenizenState(id, Orientation.FaceDown, Tokens.empty))) else p),
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(locked.contains)))))
+        current.commonCards.worldDeck.filterNot(locked.contains))))
     val tree = CardPlayProcedure.build(catalog, full, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
     val query = tree.children.head.asInstanceOf[Decide].query
@@ -170,10 +169,10 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val (base, actor, _) = handState
     val current = base.game.current
     val vision = VisionRules.Conspiracy
-    val ready = base.copy(game = base.game.copy(current = current.copy(
+    val ready = base.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
         current.commonCards.worldDeck.filterNot(_ == vision)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(vision)))))
+      temporaryHands = current.temporaryHands.updated(actor, Vector(vision))))
     val tree = CardPlayProcedure.build(catalog, ready, actor, vision,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get
     val query = tree.children.head.asInstanceOf[Decide].query
@@ -209,10 +208,10 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     }.take(capacity)
     val site = current.map.sites(siteId).copy(denizens = fillers.map(id =>
       DenizenState(id, Orientation.FaceUp, Tokens.empty)))
-    val full = base.copy(game = base.game.copy(current = current.copy(
+    val full = base.updateCurrent(_.copy(
       map = current.map.copy(sites = current.map.sites.updated(siteId, site)),
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(fillers.contains)))))
+        current.commonCards.worldDeck.filterNot(fillers.contains))))
     val query = CardPlayProcedure.build(catalog, full, actor, card,
       CardPlayProcedure.Origin.TemporaryHand).toOption.get.children.head
       .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
@@ -245,9 +244,8 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       .advisers.collectFirst {
         case DenizenState(id, Orientation.FaceDown, _) => id
       }.get
-    val ready = setup.copy(game = setup.game.copy(current =
-      setup.game.current.copy(turn = setup.game.current.turn.copy(
-        phase = Phase.Act))))
+    val ready = setup.updateCurrent(_.copy(turn = setup.game.current.turn.copy(
+        phase = Phase.Act)))
     val rules = new OathRules(catalog)
     val started = rules.startWalker(OathState.Ready(ready),
       ActionRef.PlayFacedownAdviser, actor,

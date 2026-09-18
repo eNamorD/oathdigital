@@ -37,8 +37,8 @@ class OperationStateMutationSuite extends munit.FunSuite {
   private def titled(holder: Option[PlayerId], side: TitleSide): ReadyGame = {
     val Ready(base) = FirstGameSetupFixture.execute(
       new FirstGameSetupRules(FirstGameSetupFixture.catalog))._1: @unchecked
-    base.copy(game = base.game.copy(current = base.game.current.copy(
-      title = OathkeeperState(holder, side))))
+    base.updateCurrent(_.copy(
+      title = OathkeeperState(holder, side)))
   }
   private def set(ready: ReadyGame, holder: Option[PlayerId]) =
     new OperationExecutor().executeAll(ready, Vector(SetOathkeeper(holder)))
@@ -71,9 +71,8 @@ class OperationStateMutationSuite extends munit.FunSuite {
   test("BeginTurn hands the turn to a seated player and clears used powers") {
     val used = PowerUseRef(PowerTiming.Rest,
       PowerSourceRef.Card(DenizenId("92")), PowerId("denizen.silver-tongue"))
-    val resting = ready.copy(game = ready.game.copy(current =
-      ready.game.current.copy(turn = TurnState(playerId, Phase.Rest,
-        Set(used)))))
+    val resting = ready.updateCurrent(_.copy(turn = TurnState(playerId, Phase.Rest,
+        Set(used))))
     assertEquals(begin(resting, BeginTurn(playerId, Phase.Wake)),
       Right(TurnState(playerId, Phase.Wake, Set.empty)))
     assertEquals(begin(resting, BeginTurn(playerId, Phase.RoundEnd)),

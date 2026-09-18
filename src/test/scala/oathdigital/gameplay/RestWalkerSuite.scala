@@ -13,13 +13,12 @@ class RestWalkerSuite extends munit.FunSuite {
 
   private val act: ReadyGame = {
     val initial = initialReady
-    initial.copy(game = initial.game.copy(current = initial.game.current.copy(
-      turn = initial.game.current.turn.copy(phase = Phase.Act))))
+    initial.updateCurrent(_.copy(
+      turn = initial.game.current.turn.copy(phase = Phase.Act)))
   }
   private val actor = act.game.current.turn.activePlayer
-  private def inRest(ready: ReadyGame) = ready.copy(game = ready.game.copy(
-    current = ready.game.current.copy(turn = ready.game.current.turn.copy(
-      phase = Phase.Rest))))
+  private def inRest(ready: ReadyGame) = ready.updateCurrent(_.copy(turn = ready.game.current.turn.copy(
+      phase = Phase.Rest)))
   private def rest(state: OathState, player: PlayerId, using: OathRules = rules) =
     using.startWalker(state, PhaseTransitionRef.BeginRest, player)
   private def ready(state: OathState) = state.asInstanceOf[Ready].value
@@ -58,8 +57,8 @@ class RestWalkerSuite extends munit.FunSuite {
       val start = participants.indexOf(act.setup.firstPlayer)
       participants.drop(start) ++ participants.take(start)
     }
-    val last = act.copy(game = act.game.copy(current = act.game.current.copy(
-      turn = TurnState(order.last, Phase.Act, Set.empty))))
+    val last = act.updateCurrent(_.copy(
+      turn = TurnState(order.last, Phase.Act, Set.empty)))
     val rested = rest(Ready(last), order.last).toOption.get
     assert(rested.events.exists(_.isInstanceOf[OathEvent.RoundEnded]))
     val after = ready(rested.state).game.current
@@ -74,9 +73,9 @@ class RestWalkerSuite extends munit.FunSuite {
       val start = participants.indexOf(act.setup.firstPlayer)
       participants.drop(start) ++ participants.take(start)
     }
-    val eighth = act.copy(game = act.game.copy(current = act.game.current.copy(
+    val eighth = act.updateCurrent(_.copy(
       tracks = act.game.current.tracks.copy(round = 8),
-      turn = TurnState(order.last, Phase.Act, Set.empty))))
+      turn = TurnState(order.last, Phase.Act, Set.empty)))
     val deterministic = new OathRules(catalog, warExhaustionRandomPort =
       new WarExhaustionRandomPort {
         def choose(candidates: Vector[PlayerId]) = candidates.last
@@ -89,10 +88,10 @@ class RestWalkerSuite extends munit.FunSuite {
   test("walker Begin Rest records the Rest fallback diagnostics first") {
     val definition = catalog.denizens.find(_.handlers.contains(
       "denizen.naysayers")).get
-    val advised = act.copy(game = act.game.copy(current = act.game.current.copy(
+    val advised = act.updateCurrent(_.copy(
       players = act.game.current.players.map(p => if (p.player != actor) p
         else p.copy(advisers = Vector(DenizenState(DenizenId(definition.id.value),
-          Orientation.FaceUp, Tokens.empty)))))))
+          Orientation.FaceUp, Tokens.empty))))))
     val rested = rest(Ready(advised), actor).toOption.get
     assertEquals(rested.events.head.asInstanceOf[IgnoredRulesRecorded]
       .diagnostics.head.handlerId, "denizen.naysayers")

@@ -53,13 +53,13 @@ class PhasePowerSuite extends munit.FunSuite {
       else d))
     val usedFromFirst = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card),
       powerId)
-    val state = base.copy(game = base.game.copy(current = current.copy(
+    val state = base.updateCurrent(_.copy(
       turn = TurnState(actor, Phase.Wake, Set(usedFromFirst)),
       players = current.players.map(p => if (p.player != actor) p else
         p.copy(advisers = p.advisers :+ DenizenState(second,
           Orientation.FaceUp, Tokens.empty))),
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == second)))))
+        current.commonCards.worldDeck.filterNot(_ == second))))
     val power = TestPower(powerId, PowerTiming.Wake)
     val secondSource = DecisionOptionRef.Denizen(second)
     assertEquals(PhasePowerProcedure.check(twice, state, actor, power, source),
@@ -94,14 +94,13 @@ class PhasePowerSuite extends munit.FunSuite {
     val current = base.game.current
     val holder = current.players.find(_.player == actor).get
     val far = current.map.inPlay.find(id => !holder.pawnSite.contains(id)).get
-    def withCardAt(forces: SiteForces) = base.copy(game = base.game.copy(
-      current = current.copy(
+    def withCardAt(forces: SiteForces) = base.updateCurrent(_.copy(
         turn = TurnState(actor, Phase.Act, Set.empty),
         players = current.players.map(p =>
           if (p.player != actor) p else p.copy(advisers = Vector.empty)),
         map = current.map.copy(sites = current.map.sites.updated(far,
           current.map.sites(far).copy(forces = forces, denizens = Vector(
-            DenizenState(card, Orientation.FaceUp, Tokens.empty))))))))
+            DenizenState(card, Orientation.FaceUp, Tokens.empty)))))))
     val powers = PhasePowers(Vector(power))
     assertEquals(PhasePowerProcedure.usable(catalog, withCardAt(
       SiteForces.Occupied(ForceKind.Exile(holder.lineage), 1)), actor, powers)

@@ -144,15 +144,14 @@ class WalkerReplayDriftSuite extends munit.FunSuite
       Orientation.FaceDown, Tokens.empty)
     val site = base.game.current.map.sites(siteId).copy(relics = Vector(relic))
     val moved = active.copy(pawnSite = Some(siteId))
-    val ready = base.copy(game = base.game.copy(current =
-      base.game.current.copy(
+    val ready = base.updateCurrent(_.copy(
         turn = base.game.current.turn.copy(phase = Phase.Act),
         commonCards = base.game.current.commonCards.copy(
           relicDeck = base.game.current.commonCards.relicDeck.tail),
         players = base.game.current.players.map(p =>
           if (p.player == active.player) moved else p),
         map = base.game.current.map.copy(sites =
-          base.game.current.map.sites.updated(siteId, site)))))
+          base.game.current.map.sites.updated(siteId, site))))
     (ready, active.player, siteId, relic)
   }
 

@@ -31,10 +31,9 @@ class WalkerStateSuite extends munit.FunSuite {
     val tree = PendingTree(at = Vector("recover.roll"),
       answered = Vector(answered))
 
-    val ready = baseReady.copy(game = baseReady.game.copy(current =
-      baseReady.game.current.copy(
+    val ready = baseReady.updateCurrent(_.copy(
         walkerPending = Some(tree),
-        rollPools = Map(PoolKey("recover") -> DicePoolState(2)))))
+        rollPools = Map(PoolKey("recover") -> DicePoolState(2))))
 
     assertEquals(ready.game.current.walkerPending, Some(tree))
     assertEquals(ready.game.current.walkerPending.get.at,
