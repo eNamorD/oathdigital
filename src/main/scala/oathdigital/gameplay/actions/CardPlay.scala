@@ -146,11 +146,9 @@ object CardPlay {
         site <- ready.game.current.map.sites.get(siteId)
           .toRight(InvalidSearchPlacement("pawn site is not in play"))
         replacement <- validateSiteReplacement(catalog, siteId, site,
-          definition.suit.value, replace)
-        suit <- Suit.all.find(_.key == definition.suit.value)
-          .toRight(InvalidSearchPlacement("catalog suit is unknown"))
-        sitePlan <- sitePlan(catalog, ready, origin, player, id, siteId, suit,
-          replacement)
+          definition.suit, replace)
+        sitePlan <- sitePlan(catalog, ready, origin, player, id, siteId,
+          definition.suit, replacement)
       } yield sitePlan
     }
     case SearchPlacement.Adviser(orientation, replace) => card match {
@@ -217,9 +215,7 @@ object CardPlay {
 
   private def suitOf(catalog: ExecutableCatalog, id: CardId)
       : Either[OathViolation, Suit] =
-    (catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
-      .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
-      .flatMap(key => Suit.all.find(_.key == key)))
+    catalog.suitOf(id)
       .toRight(InvalidSearchPlacement("catalog suit is unknown"))
 
   private def adviserPlan(origin: Origin, player: PlayerState, card: WorldCardId,
@@ -343,9 +339,7 @@ object CardPlay {
     case id: VisionId => Right(Discard.Vision(id, from, destination,
       required = true))
     case id: DenizenId =>
-      val suit = catalog.denizens.find(_.id.value == id.value)
-        .flatMap(value => Suit.all.find(_.key == value.suit.value))
-        .toRight(UnknownWorldCard(id))
+      val suit = catalog.suitOf(id).toRight(UnknownWorldCard(id))
       val held = ready.game.current.players.find(_.player == actor)
         .toVector.flatMap(_.advisers).collectFirst {
           case value: DenizenState if value.id == id => value.tokens
@@ -394,7 +388,7 @@ object CardPlay {
   }
 
   private def validateSiteReplacement(catalog: ExecutableCatalog, siteId: SiteId,
-      site: SiteState, suit: String, replace: Option[CardId])
+      site: SiteState, suit: Suit, replace: Option[CardId])
       : Either[OathViolation, Option[SiteDenizenState]] = {
     val capacity = catalog.sites.find(_.id == siteId).map(_.capacity).getOrElse(0)
     val full = site.denizens.size >= capacity
@@ -404,7 +398,7 @@ object CardPlay {
     else {
       val homelandMatches = site.denizens.exists {
         case e: EdificeState => catalog.edifices.find(_.id.value == e.id.value)
-          .exists(_.suit.value == suit)
+          .exists(_.suit == suit)
         case _ => false
       }
       if (!homelandMatches) Left(InvalidSearchPlacement(

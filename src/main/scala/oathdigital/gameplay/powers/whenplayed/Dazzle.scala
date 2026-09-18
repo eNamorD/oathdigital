@@ -45,7 +45,7 @@ final case class Dazzle private (cardId: DenizenId,
       candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
         Right(Vector.empty)) { case (acc, (siteId, card)) => for {
         operations <- acc
-        suit <- suitOf(card.id)
+        suit <- catalog.suitOf(card.id).toRight(OathViolation.UnknownWorldCard(card.id))
       } yield if (suit == Suit.Hearth || suit == Suit.Order)
         operations :+ Discard.Denizen(card.id,
           PositionedLocation(Location.Site(siteId)), destination,
@@ -53,11 +53,6 @@ final case class Dazzle private (cardId: DenizenId,
       else operations }
     }
   }
-
-  private def suitOf(card: DenizenId): Either[OathViolation, Suit] =
-    catalog.denizens.find(_.id.value == card.value)
-      .flatMap(definition => Suit.all.find(_.key == definition.suit.value))
-      .toRight(OathViolation.UnknownWorldCard(card))
 }
 
 object Dazzle {

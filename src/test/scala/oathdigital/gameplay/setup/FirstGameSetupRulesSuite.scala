@@ -42,9 +42,9 @@ object FirstGameSetupFixture {
     )
   )
   val sites = catalog.sites.take(8).map(_.id)
-  val denizens = oathdigital.catalog.Suit.values.toVector.sorted.flatMap {
+  val denizens = oathdigital.model.Suit.all.sortBy(_.key).flatMap {
     suit =>
-      catalog.denizens.filter(_.suit.value == suit).take(10)
+      catalog.denizens.filter(_.suit == suit).take(10)
         .map(d => DenizenId(d.id.value))
   }
   private val remaining = denizens.drop(6 + participants.size * 3)
@@ -58,8 +58,9 @@ object FirstGameSetupFixture {
   val homelandEdifices = sites.flatMap { siteId =>
     catalog.sites.find(_.id == siteId).get.handlers.collectFirst {
       case handler if handler.contains(".homeland-") =>
-        val suit = handler.substring(handler.indexOf(".homeland-") + 10)
-        val edifice = catalog.edifices.find(_.suit.value == suit).get
+        val suit = Suit.fromKey(
+          handler.substring(handler.indexOf(".homeland-") + 10)).get
+        val edifice = catalog.edifices.find(_.suit == suit).get
         siteId -> EdificeId(edifice.id.value)
     }
   }
@@ -130,12 +131,12 @@ class FirstGameSetupRulesSuite extends munit.FunSuite {
       )
     )
     val selectedEdificeSuits = homelandEdifices.map { case (_, id) =>
-      catalog.edifices.find(_.id.value == id.value).get.suit.value
+      catalog.edifices.find(_.id.value == id.value).get.suit
     }
     oathdigital.model.Suit.all.foreach { suit =>
       assertEquals(
         ready.banks.favor(suit),
-        3 + selectedEdificeSuits.count(_ == suit.key)
+        3 + selectedEdificeSuits.count(_ == suit)
       )
     }
   }

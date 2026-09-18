@@ -151,7 +151,7 @@ object Economy {
         card <- site.denizens.find(_.id == target.id)
           .toRight(EconomyCardUnavailable(siteId, target.id))
         _ <- Either.cond(card.tokens.isEmpty, (), EconomyCardNotEmpty(target.id))
-        suit <- suitOf(catalog, card.id).toRight(
+        suit <- catalog.suitOf(card.id).toRight(
           UnsupportedEconomyState(s"no catalog suit for ${card.id}"))
       } yield (ready, player, siteId, card, suit)
     }
@@ -190,11 +190,11 @@ object Economy {
     validateSupportedState(catalog, ready, player).toOption.toVector.flatMap(_ =>
       player.pawnSite.toVector.flatMap(site => ready.game.current.map.sites.get(site)
         .toVector.flatMap(_.denizens.filter(_.tokens.isEmpty).flatMap(card =>
-          suitOf(catalog, card.id).map(suit => (site, card, suit))))))
+          catalog.suitOf(card.id).map(suit => (site, card, suit))))))
 
   private def matchingAdvisers(catalog: ExecutableCatalog,
       player: PlayerState, suit: Suit): Int = player.advisers.count {
-    case DenizenState(id, Orientation.FaceUp, _) => suitOf(catalog, id).contains(suit)
+    case DenizenState(id, Orientation.FaceUp, _) => catalog.suitOf(id).contains(suit)
     case _ => false
   }
   private def availableWarbands(ready: ReadyGame, player: PlayerState): Int = {
@@ -255,8 +255,4 @@ object Economy {
       case value: DenizenState => RuleSourceRef.SiteCard(siteId, value.id)
       case value: EdificeState => RuleSourceRef.Edifice(siteId, value.id)
     }
-  private def suitOf(catalog: ExecutableCatalog, id: CardId): Option[Suit] =
-    catalog.denizens.find(_.id.value == id.value).map(_.suit.value)
-      .orElse(catalog.edifices.find(_.id.value == id.value).map(_.suit.value))
-      .flatMap(key => Suit.all.find(_.key == key))
 }

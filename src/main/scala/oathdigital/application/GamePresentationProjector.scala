@@ -39,7 +39,7 @@ private[application] final class GamePresentationProjector(
       case EdificeSide.Ruined => e.ruined
     })
     CardDetailsProjection(value.id.value, "edifice", edificeLabel(value.id, value.side),
-      suit = definition.map(_.suit.value),
+      suit = definition.map(_.suit.key),
       restrictions = face.map(e => restrictionName(e.restrictions)),
       rulesText = face.map(_.rulesText),
       side = Some(value.side match {
@@ -312,7 +312,7 @@ private[application] final class GamePresentationProjector(
     case value: DenizenId => catalog.denizens.find(_.id.value == value.value).fold(
       CardDetailsProjection(value.value, "denizen", worldCardLabel(value),
         orientation = orientation.map(orientationName), hidden = hidden)) { d =>
-      CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.value),
+      CardDetailsProjection(value.value, "denizen", d.name, Some(d.suit.key),
         Some(restrictionName(d.restrictions)), Some(d.rulesText),
         orientation.map(orientationName), hidden = hidden)
     }

@@ -1,6 +1,6 @@
 package oathdigital.gameplay.setup
 
-import oathdigital.catalog.{ExecutableCatalog, Suit => CatalogSuit}
+import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.GameplayTransition
 import oathdigital.gameplay._
@@ -309,14 +309,14 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
   private def validateSuitCounts(
       plan: FirstGameSetupPlan
   ): Either[OathViolation, Unit] =
-    CatalogSuit.values.toVector.sorted
+    Suit.all
       .collectFirst {
         case suit
             if plan.denizenOrder.count(
-              id => denizensById(id).suit.value == suit
+              id => denizensById(id).suit == suit
             ) != 10 =>
           val actual = plan.denizenOrder.count(
-            id => denizensById(id).suit.value == suit
+            id => denizensById(id).suit == suit
           )
           WrongDenizenSuitCount(suit, actual)
       }
@@ -392,16 +392,16 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         case (site, edificeId) if !edificesById.contains(edificeId) =>
           InvalidHomelandEdifice(site, s"unknown edifice ${edificeId.value}")
         case (site, edificeId)
-            if edificesById(edificeId).suit.value != homelandSuit(site).get =>
+            if !homelandSuit(site).contains(edificesById(edificeId).suit) =>
           InvalidHomelandEdifice(site, "edifice suit does not match Homeland")
       }.toLeft(())
   }
 
-  private def homelandSuit(siteId: SiteId): Option[String] =
+  private def homelandSuit(siteId: SiteId): Option[Suit] =
     sitesById(siteId).handlers.collectFirst {
       case handler if handler.contains(".homeland-") =>
         handler.substring(handler.indexOf(".homeland-") + 10)
-    }
+    }.flatMap(Suit.fromKey)
 
   private def turnOrder(
       plan: FirstGameSetupPlan

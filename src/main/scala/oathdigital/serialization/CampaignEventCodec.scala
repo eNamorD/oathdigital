@@ -190,7 +190,7 @@ private[serialization] trait CampaignEventCodec { this: GameEventJsonSupport =>
           burned <- safeIntField(payload.obj, "favorBurned", path)
           darkestSecretBurned <- safeIntField(payload.obj, "darkestSecretBurned", path)
           favorEntries <- traverse(payload("bannerFavorReturned").obj.toVector) {
-            case (key, value) => Suit.all.find(_.key == key).toRight(InvalidValue(
+            case (key, value) => Suit.fromKey(key).toRight(InvalidValue(
               s"$path.bannerFavorReturned.$key", "unknown suit")).flatMap(suit =>
               safeInt(value, s"$path.bannerFavorReturned.$key").map(suit -> _))
           }

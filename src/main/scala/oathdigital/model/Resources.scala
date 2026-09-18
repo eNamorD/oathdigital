@@ -95,3 +95,36 @@ final case class SupplyRules(
     }
   }
 }
+
+/** The six suits. `all` is the rules order (Discord, Arcane, Order, Hearth,
+  * Beast, Nomad); some powers resolve suit by suit in that order, so never
+  * sort by `key` where order matters. */
+sealed trait Suit extends Product with Serializable {
+  def key: String
+}
+object Suit {
+  case object Discord extends Suit {
+    override val key: String = "discord"
+  }
+  case object Arcane extends Suit {
+    override val key: String = "arcane"
+  }
+  case object Order extends Suit {
+    override val key: String = "order"
+  }
+  case object Hearth extends Suit {
+    override val key: String = "hearth"
+  }
+  case object Beast extends Suit {
+    override val key: String = "beast"
+  }
+  case object Nomad extends Suit {
+    override val key: String = "nomad"
+  }
+
+  val all: Vector[Suit] =
+    Vector(Discord, Arcane, Order, Hearth, Beast, Nomad)
+
+  /** Safe parse for untrusted (catalog or wire) input. */
+  def fromKey(key: String): Option[Suit] = all.find(_.key == key)
+}

@@ -588,7 +588,7 @@ private[serialization] trait GameEventJsonSupport {
     Region.all.find(_.key == value).toRight(InvalidValue(path, s"unknown region '$value'"))
 
   protected final def decodeSuit(value: String, path: String): Either[WireError, Suit] =
-    Suit.all.find(_.key == value).toRight(InvalidValue(path, s"unknown suit '$value'"))
+    Suit.fromKey(value).toRight(InvalidValue(path, s"unknown suit '$value'"))
 
   protected final def encodeCardRef(id: CardId): ujson.Value = id match {
     case value: DenizenId => encodeWorldCard(value)

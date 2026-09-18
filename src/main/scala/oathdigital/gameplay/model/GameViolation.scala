@@ -129,7 +129,7 @@ object OathViolation {
       extends OathViolation
   final case class UnknownComponent(field: String, id: String)
       extends OathViolation
-  final case class WrongDenizenSuitCount(suit: String, actual: Int)
+  final case class WrongDenizenSuitCount(suit: Suit, actual: Int)
       extends OathViolation
   final case class InvalidWorldDeck(detail: String)
       extends OathViolation

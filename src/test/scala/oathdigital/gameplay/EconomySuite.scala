@@ -41,7 +41,7 @@ class EconomySuite extends munit.FunSuite {
     val inserted = advisers.map(_.id).toSet + plainId
     initial.copy(
       banks = initial.banks.copy(favor = initial.banks.favor.updated(
-        Suit.all.find(_.key == plain.suit.value).get, bank)),
+        plain.suit, bank)),
       game = initial.game.copy(current = initial.game.current.copy(
         turn = initial.game.current.turn.copy(phase = Phase.Act),
         commonCards = initial.game.current.commonCards.copy(worldDeck =
@@ -132,7 +132,7 @@ class EconomySuite extends munit.FunSuite {
     assertEquals(player(after).board.faceUpSecrets, 1)
     assertEquals(player(after).board.favor, 5)
     assertEquals(after.banks.favor(
-      Suit.all.find(_.key == plain.suit.value).get), 0)
+      plain.suit), 0)
   }
 
   test("NF Trade for secrets places one favor burns one and yields matches") {
@@ -160,7 +160,7 @@ class EconomySuite extends munit.FunSuite {
       InsufficientFavor(2, 1))
     val ready = act()
     val p = player(ready)
-    val suit = Suit.all.find(_.key == plain.suit.value).get
+    val suit = plain.suit
     assert(rules.evolve(Ready(ready), Mustered(p.player, p.pawnSite.get,
       plainTarget, suit, 1, 9)).left.toOption.get
       .isInstanceOf[EconomyOutcomeMismatch])

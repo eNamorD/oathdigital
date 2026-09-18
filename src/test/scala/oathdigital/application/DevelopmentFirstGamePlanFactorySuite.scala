@@ -40,10 +40,10 @@ class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
       FirstGameSetupCommand.Begin(derived)
     ).isRight)
     assertEquals(derived.orderedSites.size, 8)
-    oathdigital.catalog.Suit.values.foreach { suit =>
+    oathdigital.model.Suit.all.foreach { suit =>
       assertEquals(
         derived.denizenOrder.count(id =>
-          catalog.denizens.find(_.id.value == id.value).get.suit.value == suit),
+          catalog.denizens.find(_.id.value == id.value).get.suit == suit),
         10
       )
     }

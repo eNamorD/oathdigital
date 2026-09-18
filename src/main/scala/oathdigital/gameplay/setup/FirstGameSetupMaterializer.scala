@@ -103,7 +103,7 @@ final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
   private def favorBanks(plan: FirstGameSetupPlan): Map[Suit, Int] = {
     val bonus = if (plan.participants.size >= 5) 1 else 0
     val edificeSuits = plan.homelandEdifices.map { case (_, id) =>
-      Suit.all.find(_.key == edificesById(id).suit.value).get
+      edificesById(id).suit
     }
     Suit.all.map(suit => suit -> (3 + bonus + edificeSuits.count(_ == suit))).toMap
   }

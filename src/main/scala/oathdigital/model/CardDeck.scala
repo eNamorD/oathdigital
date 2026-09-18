@@ -22,6 +22,6 @@ object CardDeck {
 
   val all: Vector[CardDeck] = Vector(World, Relic, Edifice, Legacy)
 
-  /** Safe parse for untrusted (wire) input, mirroring `Suit.all.find`. */
+  /** Safe parse for untrusted (wire) input, mirroring `Suit.fromKey`. */
   def fromKey(value: String): Option[CardDeck] = all.find(_.key == value)
 }

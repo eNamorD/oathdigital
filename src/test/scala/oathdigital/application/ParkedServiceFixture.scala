@@ -57,11 +57,11 @@ object ParkedServiceFixture {
         val target = dealt + offset
         val existing = current.indexOf(card)
         val at = if (existing >= 0) existing else {
-          val suit = catalog.denizens.find(_.id.value == card.value).get.suit.value
+          val suit = catalog.denizens.find(_.id.value == card.value).get.suit
           current.indices.find(index => !targets(index) &&
             !cards.contains(current(index)) && catalog.denizens.exists(denizen =>
               denizen.id.value == current(index).value &&
-                denizen.suit.value == suit)).get
+                denizen.suit == suit)).get
         }
         current.updated(target, card).updated(at, current(target))
     }
@@ -112,8 +112,7 @@ object ParkedServiceFixture {
     val ruler = current.players.map(_.player).find(_ != active).get
     val lineage = current.players.find(_.player == ruler).get.lineage
     val site = current.map.cradle.head
-    val suit = Suit.all.find(s => catalog.denizens.exists(d =>
-      d.id.value == treatyCard.value && d.suit.value == s.key)).get
+    val suit = catalog.suitOf(treatyCard).get
     seed(repository, gameId, setup.nextSequence, cleared(base, site) ++ Vector(
       topOfWorldDeck(treatyCard, Location.Site(site)),
       Move(Piece.Warbands(ForceKind.Exile(lineage), 1),
@@ -206,7 +205,7 @@ object ParkedServiceFixture {
   def silverTonguePark(service: GameApplicationService,
       repository: InMemoryEventStreamRepository, gameId: String)
       : (GameAccepted, PlayerId, Suit) = {
-    val bySuit = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit.value)
+    val bySuit = catalog.denizens.map(d => DenizenId(d.id.value) -> d.suit)
       .filterNot { case (id, _) => id == silverTongueCard || id == treatyCard }
     val first = bySuit.head
     val second = bySuit.find(_._2 != first._2).get
@@ -233,6 +232,6 @@ object ParkedServiceFixture {
         DecisionOptionRef.Denizen(silverTongueCard))).toOption.get
     assert(parked.continue.isInstanceOf[OathContinue.AwaitingPowerDecision],
       parked.continue.toString)
-    (parked, active, Suit.all.find(_.key == first._2).get)
+    (parked, active, first._2)
   }
 }

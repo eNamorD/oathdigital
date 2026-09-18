@@ -107,7 +107,7 @@ object DecisionOptionRef {
       case "relic" => Some(Relic(RelicId(wireId)))
       case "vision" => Some(Vision(VisionId(wireId)))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
-      case "favor-bank" => Suit.all.find(_.key == wireId).map(FavorBank(_))
+      case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case _ => None
     }
 }

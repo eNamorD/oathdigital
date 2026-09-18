@@ -3,7 +3,6 @@ package oathdigital.gameplay.powers.rest
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathViolation, ReadyGame, RuleSourceRef}
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.phases.RestCleanupPlan
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -53,7 +52,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
           case EdificeState(card, _, tokens) if tokens.favor > 0 =>
             card -> tokens.favor
         }.flatMap { case (card, favor) =>
-          RestCleanupPlan.suitOf(catalog, card).map(Holding(card, _, favor))
+          catalog.suitOf(card).map(Holding(card, _, favor))
         }
       }
       if holdings.nonEmpty

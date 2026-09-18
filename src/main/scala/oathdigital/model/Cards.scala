@@ -87,33 +87,6 @@ object Region {
   val all: Vector[Region] = Vector(Cradle, Provinces, Hinterland)
 }
 
-sealed trait Suit extends Product with Serializable {
-  def key: String
-}
-object Suit {
-  case object Discord extends Suit {
-    override val key: String = "discord"
-  }
-  case object Arcane extends Suit {
-    override val key: String = "arcane"
-  }
-  case object Order extends Suit {
-    override val key: String = "order"
-  }
-  case object Hearth extends Suit {
-    override val key: String = "hearth"
-  }
-  case object Beast extends Suit {
-    override val key: String = "beast"
-  }
-  case object Nomad extends Suit {
-    override val key: String = "nomad"
-  }
-
-  val all: Vector[Suit] =
-    Vector(Discord, Arcane, Order, Hearth, Beast, Nomad)
-}
-
 final case class CardZones(
     worldDeck: Vector[WorldCardId],
     relicDeck: Vector[RelicId],

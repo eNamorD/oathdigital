@@ -42,13 +42,13 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     _.id.value == "denizen.catacombs")).get.id.value)
 
   test("withWorldDeckTop preserves two absent requested denizens of one suit") {
-    val (suit, absent) = catalog.denizens.groupBy(_.suit.value).iterator
+    val (suit, absent) = catalog.denizens.groupBy(_.suit).iterator
       .map { case (suit, definitions) => suit -> definitions
         .map(definition => DenizenId(definition.id.value))
         .filterNot(plan.denizenOrder.contains) }
       .find(_._2.size >= 2).get
     val (otherSuits, sameSuit) = plan.denizenOrder.partition(id =>
-      catalog.denizens.find(_.id.value == id.value).forall(_.suit.value != suit))
+      catalog.denizens.find(_.id.value == id.value).forall(_.suit != suit))
     val base = plan.copy(denizenOrder = otherSuits ++ sameSuit)
     val requested = absent.take(2).toVector
     val changed = ParkedServiceFixture.withWorldDeckTop(base, requested)

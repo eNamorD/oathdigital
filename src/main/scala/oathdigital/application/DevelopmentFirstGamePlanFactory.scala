@@ -1,10 +1,6 @@
 package oathdigital.application
 
-import oathdigital.catalog.{
-  ExecutableCatalog,
-  RelicRole,
-  Suit => CatalogSuit
-}
+import oathdigital.catalog.{ExecutableCatalog, RelicRole}
 import oathdigital.model._
 import oathdigital.gameplay.setup.{
   FirstGameParticipant,
@@ -85,19 +81,23 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
     ))
   }
 
+  /** The dev plan deals from suits in key order. This is a fixed selection
+    * order for reproducible dev games, not the rules order in `Suit.all`. */
+  private val alphabeticalSuits: Vector[Suit] = Suit.all.sortBy(_.key)
+
   private def selectedDenizens
       : Either[BootstrapPlanFailure, Vector[DenizenId]] = {
-    val selected = CatalogSuit.values.toVector.sorted.flatMap { suit =>
-      catalog.denizens.filter(_.suit.value == suit)
+    val selected = alphabeticalSuits.flatMap { suit =>
+      catalog.denizens.filter(_.suit == suit)
         .sortBy(_.id.value)
         .take(10)
         .map(denizen => DenizenId(denizen.id.value))
     }
-    CatalogSuit.values.toVector.sorted.collectFirst {
+    alphabeticalSuits.collectFirst {
       case suit
-          if catalog.denizens.count(_.suit.value == suit) < 10 =>
+          if catalog.denizens.count(_.suit == suit) < 10 =>
         BootstrapPlanFailure(
-          s"catalog suit '$suit' has fewer than 10 denizens"
+          s"catalog suit '${suit.key}' has fewer than 10 denizens"
         )
     }.toLeft(selected)
   }
@@ -113,22 +113,22 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
         homelandSuit(site.handlers) match {
           case None => Right(accumulated)
           case Some(suit) =>
-            catalog.edifices.filter(_.suit.value == suit)
+            catalog.edifices.filter(_.suit == suit)
               .sortBy(_.id.value).headOption match {
               case Some(edifice) =>
                 Right(accumulated :+ (siteId -> EdificeId(edifice.id.value)))
               case None =>
                 Left(BootstrapPlanFailure(
-                  s"no edifice exists for Homeland suit '$suit'"
+                  s"no edifice exists for Homeland suit '${suit.key}'"
                 ))
             }
         }
       case (failure @ Left(_), _) => failure
     }
 
-  private def homelandSuit(handlers: Vector[String]): Option[String] =
+  private def homelandSuit(handlers: Vector[String]): Option[Suit] =
     handlers.collectFirst {
       case handler if handler.contains(".homeland-") =>
         handler.substring(handler.indexOf(".homeland-") + 10)
-    }
+    }.flatMap(Suit.fromKey)
 }

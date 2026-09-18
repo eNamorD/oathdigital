@@ -207,7 +207,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         case ConspiracyStartedType => for {
           target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
           favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
-            Suit.all.find(_.key == v.str).toRight(InvalidValue(
+            Suit.fromKey(v.str).toRight(InvalidValue(
               s"$path.automaticFavorReturns", "unknown suit")))
         } yield ConspiracyStarted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str),
@@ -215,7 +215,7 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         case ConspiracyCompletedType => for {
           target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
           favor <- traverse(payload("favorReturnOrder").arr.toVector)(v =>
-            Suit.all.find(_.key == v.str).toRight(InvalidValue(
+            Suit.fromKey(v.str).toRight(InvalidValue(
               s"$path.favorReturnOrder", "unknown suit")))
         } yield ConspiracyCompleted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str),

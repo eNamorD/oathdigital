@@ -18,8 +18,7 @@ object LeagueTreatyFixture {
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }
 
-  def suitOf(id: DenizenId): Suit = Suit.all.find(suit => catalog
-    .denizens.find(_.id.value == id.value).exists(_.suit.value == suit.key)).get
+  def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
 
   /** Places League Treaty and `favor` (suit -> amounts per card) on the
     * treaty site's region, with every placed card pulled out of the decks

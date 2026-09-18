@@ -16,8 +16,8 @@ class DazzleSuite extends munit.FunSuite {
     val actor = base.game.current.turn.activePlayer
     val dazzle = catalog.denizens.find(_.powers.exists(
       _.id == Dazzle.id)).map(d => DenizenId(d.id.value)).get
-    val targets = Vector("hearth", "order").map(suit =>
-      catalog.denizens.find(d => d.suit.value == suit &&
+    val targets = Vector(Suit.Hearth, Suit.Order).map(suit =>
+      catalog.denizens.find(d => d.suit == suit &&
         d.id.value != dazzle.value).map(d => DenizenId(d.id.value)).get)
     val current = base.game.current
     val siteId = current.players.find(_.player == actor).get.pawnSite.get
@@ -68,10 +68,10 @@ class DazzleSuite extends munit.FunSuite {
       current.map.regionOf(site).contains(region)).get
     val dazzle = catalog.denizens.find(_.powers.exists(
       _.id == Dazzle.id)).map(d => DenizenId(d.id.value)).get
-    val targets = Vector("hearth", "order").map(suit =>
+    val targets = Vector(Suit.Hearth, Suit.Order).map(suit =>
       current.commonCards.worldDeck.collectFirst { case id: DenizenId
           if catalog.denizens.exists(d => d.id.value == id.value &&
-            d.suit.value == suit) => id }.get)
+            d.suit == suit) => id }.get)
     val hall = EdificeId("E16")
     assert(current.commonCards.edificeDeck.contains(hall))
     val friendly = current.map.sites(actorSite).copy(

@@ -39,7 +39,7 @@ class RestSuite extends munit.FunSuite {
       case id: DenizenId => id
     }
     val groups = deck.groupBy { id => catalog.denizens
-      .find(_.id.value == id.value).map(_.suit.value).getOrElse("") }
+      .find(_.id.value == id.value).map(_.suit.key).getOrElse("") }
       .toVector.sortBy(_._1).map(_._2)
     val representatives = groups.take(minSuits).flatMap(_.headOption)
     val remainder = groups.flatten.filterNot(representatives.toSet)

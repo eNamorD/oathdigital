@@ -4,7 +4,6 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathViolation, ReadyGame, RuleSourceRef}
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.phases.RestCleanupPlan
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -79,7 +78,7 @@ final case class SilverTongue private (cardId: DenizenId,
         case DenizenState(card, Orientation.FaceUp, _) => card: CardId
         case EdificeState(card, _, _) => card: CardId
       })
-    val suits = cards.flatMap(RestCleanupPlan.suitOf(catalog, _)).toSet
+    val suits = cards.flatMap(catalog.suitOf(_)).toSet
     Suit.all.filter(suit => suits(suit) && ready.banks.favor.getOrElse(suit, 0) > 0)
   }
 

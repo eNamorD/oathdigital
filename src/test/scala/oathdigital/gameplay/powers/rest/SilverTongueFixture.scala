@@ -12,8 +12,7 @@ import oathdigital.model._
 object SilverTongueFixture {
   val tongue: DenizenId = DenizenId("92")
 
-  def suitOf(id: DenizenId): Suit = Suit.all.find(suit => catalog
-    .denizens.find(_.id.value == id.value).exists(_.suit.value == suit.key)).get
+  def suitOf(id: DenizenId): Suit = catalog.suitOf(id).get
 
   /** The Rest phase, with Silver Tongue as the active player's only adviser.
     * The pawn site shows one faceup denizen per suit in `siteSuits`, every
