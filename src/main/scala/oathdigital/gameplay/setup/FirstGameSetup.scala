@@ -438,20 +438,11 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
     if (problems.nonEmpty) Left(InvalidAggregate(problems))
     else
       Right(
-        ReadyGame(
+        ReadyGame.start(
           game,
           plan.participants.map(p => p.playerId -> p.color).toMap,
-          FirstGameSupportState(
-            FirstGameFoundationProfile.FixedUnaltered,
-            plan.firstPlayer
-          ),
-          MaterialBankState(
-            material.favorBanks,
-            Map[ForceKind, Int](ForceKind.Bandit -> 24) ++
-              plan.participants.map { participant =>
-                ForceKind.Exile(participant.lineageId) -> 14
-              }
-          )
+          plan.firstPlayer,
+          material.favorBanks
         )
       )
   }

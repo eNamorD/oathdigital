@@ -5,11 +5,7 @@ import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
 class OperationPipelineSuite extends munit.FunSuite {
-  private val ready = ReadyGame(game,
-    Map(playerId -> PlayerColor("red")),
-    FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered, playerId),
-    MaterialBankState(Suit.all.map(_ -> 5).toMap,
-      Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+  private val ready = ReadyGames.of(game)
 
   test("staged partial gain feeds a later required spend") {
     val operations = Vector[CoreOperation](

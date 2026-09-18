@@ -25,7 +25,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
   private val rules = new OathRules(catalog)
 
   private def ready(sharedEnemy: Boolean = false): OathState = {
-    val Ready(value) = execute(setupRules)._1: @unchecked
+    val value = initialReady
     val active = value.game.current.turn.activePlayer
     val activeSite = value.game.current.players.find(_.player == active)
       .flatMap(_.pawnSite).get

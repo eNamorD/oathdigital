@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, OathLifecycle}
 import oathdigital.model._
 import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
@@ -182,7 +182,7 @@ object Visions {
       }.getOrElse(Vector.empty)
       _ <- Either.cond(e.automaticFavorReturns == expectedFavor, (),
         ConspiracyOutcomeMismatch("recorded automatic favor returns changed"))
-    } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
+    } yield Ready(ready.updateCurrent(_.copy(
       pending = Some(PendingProcedure.Conspiracy(e.decision, e.playerId,
         e.source, e.target, e.automaticFavorReturns)))))
 
@@ -245,7 +245,7 @@ object Visions {
     }
     val operations = taken ++ bannerOps
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
-      Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+      Right(state.updateCurrent(_.copy(pending = None)))
     val evolved = if (operations.isEmpty) update(ready)
     else OperationPipeline.run(
       ready, operations, OperationPolicy.exact(
@@ -258,7 +258,7 @@ object Visions {
     // executor bypass: Conspiracy leaves the game only after the batch validates.
     evolved.map { state =>
       if (!sourceHeldInAdvisers && !sourceHeldInHand) state
-      else GameStateUpdates.updateCurrent(state) { gameState =>
+      else state.updateCurrent { gameState =>
         val players = gameState.players.map { player =>
           if (player.player != pending.actor) player
           else player.copy(advisers =

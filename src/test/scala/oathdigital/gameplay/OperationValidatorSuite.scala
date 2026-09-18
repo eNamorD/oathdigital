@@ -8,7 +8,6 @@ class OperationValidatorSuite extends munit.FunSuite {
   private val blueId = PlayerId("player-blue")
   private val blueLineage = LineageId("blue")
   private val redForce = ForceKind.Exile(lineageId)
-  private val blueForce = ForceKind.Exile(blueLineage)
   private val extraDenizen = DenizenId("D5")
 
   private val bluePlayer = PlayerState(
@@ -33,18 +32,7 @@ class OperationValidatorSuite extends munit.FunSuite {
       LineageState(blueLineage, Some(blueId), Role.Exile,
         Vector.empty, Vector.empty)
     ))
-    ReadyGame(
-      game.copy(campaign = campaign, current = current),
-      Map(playerId -> PlayerColor("red"), blueId -> PlayerColor("blue")),
-      FirstGameSupportState(
-        FirstGameFoundationProfile.FixedUnaltered,
-        playerId
-      ),
-      MaterialBankState(
-        Suit.all.map(_ -> 5).toMap,
-        Map(redForce -> 14, blueForce -> 14, ForceKind.Bandit -> 24)
-      )
-    )
+    ReadyGames.of(game.copy(campaign = campaign, current = current))
   }
 
   private val codes = (values: Vector[OperationReason]) =>

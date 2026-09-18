@@ -8,7 +8,7 @@ import oathdigital.gameplay.actions.CampaignRules
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{ReviewedPowerCatalog, ReviewedPowerFacts,
   ReviewedPowerInspector}
-import oathdigital.gameplay.setup.{FirstGameSetupRules, FirstGameSetupFixture}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -27,8 +27,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("factual source index enumerates every source category deterministically") {
-    val OathState.Ready(ready) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = FirstGameSetupFixture.initialReady
     val facts = RuleSourceIndex.enumerate(catalog, ready)
     val printed = facts.collectFirst {
       case value @ IndexedRuleSource(RuleSourceRef.Site(id), _, _, _)
@@ -44,8 +43,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("site relics retain site identity, orientation, and declared handlers") {
-    val OathState.Ready(ready) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = FirstGameSetupFixture.initialReady
     val (siteId, relic) = ready.game.current.map.inPlay.iterator.flatMap(id =>
       ready.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
     val indexed = RuleSourceIndex.enumerate(catalog, ready).find(
@@ -64,8 +62,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("resolver treats a faceup relic at the actor pawn site as accessible") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val actor = base.game.current.turn.activePlayer
     val (siteId, relic) = base.game.current.map.inPlay.iterator.flatMap(id =>
       base.game.current.map.sites(id).relics.headOption.map(id -> _)).next()
@@ -98,8 +95,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("both banners expose faces, holdings, and exact synthetic handlers") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val current = base.game.current
     val changed = base.copy(game = base.game.copy(current = current.copy(banners =
       BannersState(
@@ -120,8 +116,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("all six Foundations expose ordered identities, faces, and state") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val altered = base.copy(game = base.game.copy(campaign =
       base.game.campaign.copy(foundations = base.game.campaign.foundations.updated(
         FoundationNumber.III, FoundationState(FoundationFace.Altered,
@@ -143,8 +138,7 @@ class BackendArchitectureSuite extends munit.FunSuite {
   }
 
   test("legacy inventory remains declared and lineage-qualified") {
-    val OathState.Ready(base) =
-      FirstGameSetupFixture.execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val lineageId = base.game.campaign.lineages.keys.toVector.sortBy(_.value).head
     val legacyDefinition = catalog.legacies.head
     val legacy = LegacyState(LegacyId(legacyDefinition.id.value), active = false)

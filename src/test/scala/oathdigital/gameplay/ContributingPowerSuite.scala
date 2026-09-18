@@ -1,9 +1,9 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model.PowerId
-import oathdigital.model.{OathState, PowerWindow, RuleSourceRef, Sequence}
+import oathdigital.model.{PowerWindow, RuleSourceRef, Sequence}
 
 /** Task 1: the contribution vocabulary and the `ContributingPower` shape.
   * Vocabulary only -- nothing here gathers, chains, or applies a
@@ -42,11 +42,7 @@ class ContributingPowerSuite extends munit.FunSuite {
 
   test("a power declaring only id/source/contributions gets the trait defaults") {
     val power = minimalPower("power.trivial", "trivial")
-    val ready = FirstGameSetupFixture
-      .execute(new FirstGameSetupRules(FirstGameSetupFixture.catalog))._1 match {
-      case OathState.Ready(state) => state
-      case other => fail(s"expected Ready state, got $other")
-    }
+    val ready = FirstGameSetupFixture.initialReady
     val ctx = PowerCtx(
       state = ready,
       activePlayer = ready.game.current.turn.activePlayer,

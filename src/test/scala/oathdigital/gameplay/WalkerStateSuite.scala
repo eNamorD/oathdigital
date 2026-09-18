@@ -16,13 +16,7 @@ class WalkerStateSuite extends munit.FunSuite {
       DecisionOption.Button(DecisionOptionRef.Button("continue"), "Continue"),
       DecisionOption.Button(DecisionOptionRef.Button("stop"), "Stop"))))
 
-  private val baseReady = ReadyGame(
-    game,
-    Map(actor -> PlayerColor("red")),
-    FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered, actor),
-    MaterialBankState(
-      Suit.all.map(_ -> 5).toMap,
-      Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+  private val baseReady = ReadyGames.of(game)
 
   test("a walker PendingTree with a dice pool slot stores in state and reads back") {
     // Legacy game state carries neither walkerPending nor pools by default.

@@ -7,8 +7,6 @@ import oathdigital.model.TestGameFixtures._
 class SupplyAdjustSuite extends munit.FunSuite {
   private val blueId = PlayerId("player-blue")
   private val blueLineage = LineageId("blue")
-  private val redForce = ForceKind.Exile(lineageId)
-  private val blueForce = ForceKind.Exile(blueLineage)
 
   private val bluePlayer = PlayerState(
     blueId, blueLineage, Some(sites(1)),
@@ -26,13 +24,7 @@ class SupplyAdjustSuite extends munit.FunSuite {
       blueLineage,
       LineageState(blueLineage, Some(blueId), Role.Exile,
         Vector.empty, Vector.empty)))
-    ReadyGame(
-      game.copy(campaign = campaign, current = current),
-      Map(playerId -> PlayerColor("red"), blueId -> PlayerColor("blue")),
-      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered, playerId),
-      MaterialBankState(
-        Suit.all.map(_ -> 5).toMap,
-        Map(redForce -> 14, blueForce -> 14, ForceKind.Bandit -> 24)))
+    ReadyGames.of(game.copy(campaign = campaign, current = current))
   }
 
   private val executor = new OperationExecutor()

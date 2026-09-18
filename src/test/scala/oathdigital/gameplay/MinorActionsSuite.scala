@@ -17,7 +17,7 @@ class MinorActionsSuite extends munit.FunSuite {
   private val rules = new OathRules(catalog)
 
   private def ready(): (ReadyGame, PlayerState, SiteId, WorldCardId, RelicId) = {
-    val Ready(base) = execute(setupRules)._1: @unchecked
+    val base = initialReady
     val active0 = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val siteId = base.game.current.map.inPlay.find(id =>

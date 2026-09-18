@@ -6,23 +6,11 @@ import oathdigital.model.TestGameFixtures._
 
 class OperationStateAdapterSuite extends munit.FunSuite {
   private val exile = ForceKind.Exile(lineageId)
-  private val ready = ReadyGame(
-    game,
-    Map(playerId -> PlayerColor("red")),
-    FirstGameSupportState(
-      FirstGameFoundationProfile.FixedUnaltered,
-      playerId
-    ),
-    MaterialBankState(
-      Suit.all.map(_ -> 5).toMap,
-      Map(exile -> 14, ForceKind.Bandit -> 24)
-    ),
-    CardKnowledge(
+  private val ready = ReadyGames.of(game).copy(knowledge = CardKnowledge(
       siteRelics = Map(playerId -> Map(sites(1) -> Vector(siteRelic.id))),
       advisers = Map(playerId -> Vector(adviser.id)),
       heldRelics = Map(playerId -> Vector(reliquaryRelic))
-    )
-  )
+    ))
 
   test("card lookup maps precise containers to semantic locations") {
     assert(OperationStateAdapter.card(ready, worldDenizen,

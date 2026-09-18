@@ -16,7 +16,6 @@ import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer,
 
 class GameEventWireSuite extends munit.FunSuite {
   test("recorded Visions Drawn advancement round trips without an amount") {
-    import oathdigital.model.TestGameFixtures.{game, lineageId, playerId}
     val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
       DeltaMeaning.OperationApplied("vision")), Vector(AdvanceVisionsDrawn),
       Vector.empty)
@@ -27,21 +26,14 @@ class GameEventWireSuite extends munit.FunSuite {
       ujson.Obj("kind" -> "advance-visions-drawn"))
     val decoded = GameEventWire.decode(encoded).toOption.get.event
       .asInstanceOf[WalkerStepRecorded]
-    val base = ReadyGame(game, Map(playerId -> PlayerColor("red")),
-      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered,
-        playerId), MaterialBankState(Suit.all.map(_ -> 5).toMap,
-        Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+    val base = TestGameFixtures.ready
     val replayed = OperationPipeline.run(base, decoded.ops,
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
     assertEquals(replayed.game.current.tracks.visionsDrawn,
       base.game.current.tracks.visionsDrawn + 1)
   }
   test("reduced optional spend is canonical in memory and on the wire") {
-    import oathdigital.model.TestGameFixtures.{game, lineageId, playerId}
-    val base = ReadyGame(game, Map(playerId -> PlayerColor("red")),
-      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered,
-        playerId), MaterialBankState(Suit.all.map(_ -> 5).toMap,
-        Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+    import oathdigital.model.TestGameFixtures.{playerId, ready => base}
     val one = base.copy(game = base.game.copy(current =
       base.game.current.copy(players = base.game.current.players.map { player =>
         player.copy(board = player.board.copy(supply = SupplyTrack(1)))

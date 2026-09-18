@@ -12,7 +12,6 @@ private[operations] object OperationCardMutation {
     semanticLocation,
     sequence,
     updateCommonCards,
-    updateCurrent,
     updatePlayer,
     updateSite
   }
@@ -54,7 +53,7 @@ private[operations] object OperationCardMutation {
       cards.copy(regionalDiscards = cards.regionalDiscards.updated(region,
         cards.discard(region).filterNot(_ == located.id)))
     }
-    case CardContainer.Player(player, PlayerCardArea.Hand) => Right(updateCurrent(ready) {
+    case CardContainer.Player(player, PlayerCardArea.Hand) => Right(ready.updateCurrent {
       current => current.copy(temporaryHands = current.temporaryHands.updated(
         player, current.temporaryHands.getOrElse(player, Vector.empty)
           .filterNot(_ == located.id)))
@@ -72,7 +71,7 @@ private[operations] object OperationCardMutation {
     case CardContainer.Reliquary => Right(ready.copy(game = ready.game.copy(
       campaign = ready.game.campaign.copy(reliquary =
         ready.game.campaign.reliquary.filterNot(_ == located.id)))))
-    case CardContainer.SetAsideRelics => Right(updateCurrent(ready)(current =>
+    case CardContainer.SetAsideRelics => Right(ready.updateCurrent(current =>
       current.copy(setAsideRelics = current.setAsideRelics.filterNot(_ == located.id))))
     case CardContainer.Dispossessed => Right(ready.copy(game = ready.game.copy(
       campaign = ready.game.campaign.copy(dispossessed =
@@ -111,7 +110,7 @@ private[operations] object OperationCardMutation {
       } yield updated
       case Location.RegionalDiscard(region) => for {
         _ <- ensureEmptyTokens(original.state, id)
-      } yield updateCurrent(ready) { current =>
+      } yield ready.updateCurrent { current =>
         val cards = current.commonCards
         val existing = cards.discard(region)
         val inserted = insertStack(existing, id.asInstanceOf[WorldCardId],
@@ -120,7 +119,7 @@ private[operations] object OperationCardMutation {
           cards.regionalDiscards.updated(region, inserted)))
       }
       case Location.Hand(player) => ensureEmptyTokens(original.state, id).map {
-        _ => updateCurrent(ready) { current =>
+        _ => ready.updateCurrent { current =>
           current.copy(temporaryHands = current.temporaryHands.updated(player,
             current.temporaryHands.getOrElse(player, Vector.empty) :+
               id.asInstanceOf[WorldCardId]))
@@ -130,7 +129,7 @@ private[operations] object OperationCardMutation {
         ready.copy(game = ready.game.copy(campaign = ready.game.campaign.copy(
           reliquary = ready.game.campaign.reliquary :+ id.asInstanceOf[RelicId]))))
       case Location.SetAsideRelics => ensureEmptyTokens(original.state, id).map(_ =>
-        updateCurrent(ready)(current => current.copy(
+        ready.updateCurrent(current => current.copy(
           setAsideRelics = current.setAsideRelics :+ id.asInstanceOf[RelicId])))
       case Location.Dispossessed => ensureEmptyTokens(original.state, id).map(_ =>
         ready.copy(game = ready.game.copy(campaign = ready.game.campaign.copy(
@@ -203,7 +202,7 @@ private[operations] object OperationCardMutation {
 
   private def insertDeck(ready: ReadyGame, deck: CardDeck, id: CardId,
       position: StackPosition): Either[OperationError, ReadyGame] =
-    Right(updateCurrent(ready) { current =>
+    Right(ready.updateCurrent { current =>
       val cards = current.commonCards
       val updated = deck match {
         case CardDeck.World => cards.copy(worldDeck = insertStack(

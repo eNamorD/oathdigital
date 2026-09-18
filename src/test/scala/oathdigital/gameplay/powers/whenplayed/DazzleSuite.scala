@@ -8,10 +8,9 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
 import oathdigital.model._
 
 class DazzleSuite extends munit.FunSuite {
-  private val setupRules = new oathdigital.gameplay.setup.FirstGameSetupRules(catalog)
 
   test("Dazzle discards Hearth and Order site cards from the actor region") {
-    val OathState.Ready(base) = execute(setupRules)._1: @unchecked
+    val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val dazzle = catalog.denizens.find(_.powers.exists(
       _.id == Dazzle.id)).map(d => DenizenId(d.id.value)).get
@@ -56,7 +55,7 @@ class DazzleSuite extends munit.FunSuite {
   }
 
   test("Dazzle skips a rule-immune target and still discards another") {
-    val OathState.Ready(base) = execute(setupRules)._1: @unchecked
+    val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
     val player = current.players.find(_.player == actor).get
@@ -106,7 +105,7 @@ class DazzleSuite extends munit.FunSuite {
   }
 
   test("Dazzle rejects a site denizen absent from the catalog") {
-    val OathState.Ready(base) = execute(setupRules)._1: @unchecked
+    val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
     val siteId = current.players.find(_.player == actor).get.pawnSite.get

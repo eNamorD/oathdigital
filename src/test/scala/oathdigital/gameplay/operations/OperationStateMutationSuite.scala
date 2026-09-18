@@ -6,16 +6,10 @@ import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
 class OperationStateMutationSuite extends munit.FunSuite {
-  private val ready = ReadyGame(
-    game.copy(current = game.current.copy(players = game.current.players.map {
+  private val ready = ReadyGames.of(game.copy(current = game.current.copy(players = game.current.players.map {
       player => player.copy(board = player.board.copy(
         faceUpSecrets = 1, faceDownSecrets = 1))
-    })),
-    Map(playerId -> PlayerColor("red")),
-    FirstGameSupportState(
-      FirstGameFoundationProfile.FixedUnaltered, playerId),
-    MaterialBankState(Map.empty, Map.empty)
-  )
+    }))).copy(banks = MaterialBankState(Map.empty, Map.empty))
 
   test("secret planning resolves one aggregate solution independent of order") {
     val other = PlayerId("other")

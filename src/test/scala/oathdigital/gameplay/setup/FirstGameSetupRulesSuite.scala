@@ -74,6 +74,12 @@ object FirstGameSetupFixture {
     homelandEdifices
   )
 
+  /** The game the default plan sets up. Immutable, so suites share one. */
+  lazy val initialReady: ReadyGame = {
+    val Ready(value) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    value
+  }
+
   def execute(
       rules: FirstGameSetupRules,
       setupPlan: FirstGameSetupPlan = plan

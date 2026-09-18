@@ -7,7 +7,6 @@ import oathdigital.model.OathContinue.ActActionSelection
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.GameStateUpdates.updateCurrent
 import oathdigital.gameplay.operations._
 
 sealed trait EconomyCommand extends Product with Serializable

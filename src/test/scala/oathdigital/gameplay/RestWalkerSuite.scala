@@ -3,7 +3,6 @@ package oathdigital.gameplay
 import oathdigital.model.OathEvent.IgnoredRulesRecorded
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerCompleted
 import oathdigital.model._
@@ -13,7 +12,7 @@ class RestWalkerSuite extends munit.FunSuite {
   private val rules = new OathRules(catalog)
 
   private val act: ReadyGame = {
-    val Ready(initial) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val initial = initialReady
     initial.copy(game = initial.game.copy(current = initial.game.current.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }

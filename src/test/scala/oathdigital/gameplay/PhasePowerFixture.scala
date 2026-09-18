@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.powerresolver.PhasePower
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -23,7 +21,7 @@ object PhasePowerFixture {
     * bandits.
     */
   val (base, actor, card, powerId) = {
-    val Ready(ready) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = initialReady
     val current = ready.game.current
     val actor = current.turn.activePlayer
     val deck = current.commonCards.worldDeck.collect { case id: DenizenId => id }

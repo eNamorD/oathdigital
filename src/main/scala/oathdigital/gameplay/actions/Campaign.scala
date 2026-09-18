@@ -1,7 +1,7 @@
 package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, OathLifecycle}
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model._
 import oathdigital.model.OathContinue._
@@ -291,7 +291,7 @@ object Campaign {
         // battle; it leaves the board only when it dies or is placed during
         // resolution. `pending.force` tracks how many board warbands are
         // committed so battle arithmetic and the plan projections stay exact.
-        Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
+        Ready(ready.updateCurrent(_.copy(
           players = current.players.map(p => if (p.player != e.playerId) p else
             p.copy(board = p.board.copy(
               supply = SupplyTrack(p.board.supply.supply - SupplyCost)))),
@@ -340,7 +340,7 @@ object Campaign {
             e.attackDice, c.force, CampaignPlanEffects.ignoreAttackSkulls(allEffects))
           _ <- Either.cond(!rollsNow || (e.attack, e.skullLosses) == expectedResult, (),
             CampaignOutcomeMismatch("recorded attack roll result is invalid"))
-        } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(
+        } yield Ready(ready.updateCurrent(_.copy(
           pending = Some(c.copy(
             attackerPlansFinished = c.attackerPlansFinished ||
               e.side == PendingProcedure.CampaignPlanSide.Attacker,
@@ -437,7 +437,7 @@ object Campaign {
             OperationPipeline.run(
               ready, Vector(operation), OperationPolicy.exact(
                 Vector(operation), "Raid pawn relocation is not permitted"))(
-              evolved => Right(GameStateUpdates.updateCurrent(evolved)(current =>
+              evolved => Right(evolved.updateCurrent(current =>
                 current.copy(pending = None))))
               .flatMap(_.expectEffects(Vector(operation), "Raid relocation mismatch"))
               .map(Ready(_))
@@ -510,7 +510,7 @@ object Campaign {
         }
         execute(ready, payments ++ reveal,
           "Campaign plan choice is not permitted") { state =>
-          Right(GameStateUpdates.updateCurrent(state)(current => current.copy(
+          Right(state.updateCurrent(current => current.copy(
             pending = Some(c.copy(plans = c.plans :+ resolution)))))
         }
       case PendingProcedure.CampaignPlanSide.Defender =>
@@ -519,7 +519,7 @@ object Campaign {
         // defender secrets flip facedown in the play area (Q11/Q12).
         execute(ready, Vector.empty,
           "Campaign plan choice is not permitted") { state =>
-          Right(GameStateUpdates.updateCurrent(state)(current => current.copy(
+          Right(state.updateCurrent(current => current.copy(
             pending = Some(c.copy(plans = c.plans :+ resolution)))))
         }
     }
@@ -553,7 +553,7 @@ object Campaign {
       c: PendingProcedure.Campaign, losses: Vector[CampaignLosingForceEffect],
       surviving: Int): Either[OathViolation, ReadyGame] = {
     val current = ready.game.current
-    if (e.victorious) Right(GameStateUpdates.updateCurrent(ready)(_.copy(
+    if (e.victorious) Right(ready.updateCurrent(_.copy(
       pending = Some(c.copy(sacrificed = Some(e.sacrificed), defenseDice = e.defenseDice,
         defense = Some(e.defense), victorious = Some(true))))))
     else {
@@ -582,7 +582,7 @@ object Campaign {
               Location.Site(site))
           }.flatten
         evolved <- execute(ready, ops, "Campaign defeat is not permitted") { state =>
-          Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+          Right(state.updateCurrent(_.copy(pending = None)))
         }
       } yield evolved
     }
@@ -703,7 +703,7 @@ object Campaign {
         killAt(actorForce, deaths, Location.PlayArea(c.actor)) ++
           forceOps ++ placements,
         "Campaign conquest is not permitted") { state =>
-        Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+        Right(state.updateCurrent(_.copy(pending = None)))
       }
     } yield evolved
   }
@@ -779,14 +779,14 @@ object Campaign {
       (defenderKills: Vector[oathdigital.model.CoreOperation]) ++
       (attackerDeaths: Vector[oathdigital.model.CoreOperation])
     execute(ready, ops, "Campaign raid is not permitted") { state =>
-      Right(GameStateUpdates.updateCurrent(state)(current =>
+      Right(state.updateCurrent(current =>
         current.copy(pending = Some(relocation))))
     }.map { state =>
       // Conspiracy leaves the game only after the batch validates (the
       // executor conserves card inventory), mirroring the Visions slice.
       // executor bypass: Conspiracy is removed from the game after the batch.
       e.boxedConspiracy.fold(state) { conspiracy =>
-        GameStateUpdates.updateCurrent(state)(current =>
+        state.updateCurrent(current =>
           current.copy(players = current.players.map(p =>
             if (p.player != defenderId) p else p.copy(advisers =
               p.advisers.filterNot(_.id == conspiracy)))))

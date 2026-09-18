@@ -2,14 +2,12 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.SearchRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.model._
 
 class SearchSuite extends munit.FunSuite {
-  private val setupRules = new FirstGameSetupRules(catalog)
 
   private def ready: ReadyGame = {
-    val OathState.Ready(state) = execute(setupRules)._1: @unchecked
+    val state = initialReady
     state.copy(game = state.game.copy(current = state.game.current.copy(
       turn = state.game.current.turn.copy(phase = Phase.Act))))
   }

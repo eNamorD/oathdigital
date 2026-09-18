@@ -1,8 +1,6 @@
 package oathdigital.gameplay.oathkeeper
 
-import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.model._
 
 /** Title and site-ruler setups for the Supremacy goal the first game uses:
@@ -10,10 +8,7 @@ import oathdigital.model._
   * one bandit), so leaders are whoever rules the most sites.
   */
 object OathkeeperFixture {
-  def base: ReadyGame = {
-    val Ready(ready) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
-    ready
-  }
+  def base: ReadyGame = initialReady
 
   def players: Vector[PlayerId] = base.game.current.players.map(_.player)
 

@@ -7,11 +7,10 @@ import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers
 import oathdigital.model._
 
 class SearchProcedureSuite extends munit.FunSuite {
-  private val setupRules = new oathdigital.gameplay.setup.FirstGameSetupRules(catalog)
   private val rules = new OathRules(catalog)
 
   private def ready: ReadyGame = {
-    val OathState.Ready(state) = execute(setupRules)._1: @unchecked
+    val state = initialReady
     state.copy(game = state.game.copy(current = state.game.current.copy(
       turn = state.game.current.turn.copy(phase = Phase.Act))))
   }

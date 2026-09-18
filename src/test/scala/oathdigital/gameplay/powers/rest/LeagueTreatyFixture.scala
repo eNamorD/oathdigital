@@ -1,7 +1,5 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -12,7 +10,7 @@ object LeagueTreatyFixture {
   val treatyCard = DenizenId("237")
 
   def act: ReadyGame = {
-    val Ready(initial) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val initial = initialReady
     initial.copy(game = initial.game.copy(current = initial.game.current.copy(
       turn = initial.game.current.turn.copy(phase = Phase.Act))))
   }

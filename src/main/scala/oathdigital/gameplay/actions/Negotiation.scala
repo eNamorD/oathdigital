@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, RuntimeRuleRegistry}
+import oathdigital.gameplay.{OathLifecycle, RuntimeRuleRegistry}
 import oathdigital.model._
 import oathdigital.model.OathContinue.ActActionSelection
 import oathdigital.model.OathEvent._
@@ -85,7 +85,7 @@ object Negotiation {
         NegotiationOutcomeMismatch("recorded site or participant order is invalid"))
       _ <- NegotiationPowerSupport.validate(catalog, ready, site, participants)
       terms = participants.map(_ -> NegotiationTerms()).toMap
-    } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(
+    } yield Ready(ready.updateCurrent(_.copy(pending = Some(
       PendingProcedure.Negotiation(e.decision, e.playerId, site, participants,
         terms, Set.empty)))))
 
@@ -93,7 +93,7 @@ object Negotiation {
       current <- pending(state, e.playerId, e.decision)
       ready = state.asInstanceOf[Ready].value
       _ <- validateTerms(ready, current, e.playerId, e.terms)
-    } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(
+    } yield Ready(ready.updateCurrent(_.copy(pending = Some(
       current.copy(terms = current.terms.updated(e.playerId, e.terms),
         accepted = Set.empty)))))
 
@@ -105,12 +105,12 @@ object Negotiation {
         NegotiationOutcomeMismatch("recorded acceptance has an empty deal"))
       _ <- Either.cond(!current.accepted.contains(e.playerId), (),
         NegotiationOutcomeMismatch("participant already accepted this deal"))
-    } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(
+    } yield Ready(ready.updateCurrent(_.copy(pending = Some(
       current.copy(accepted = current.accepted + e.playerId)))))
 
     case e: NegotiationDeclined => pending(state, e.playerId, e.decision).map { _ =>
       val ready = state.asInstanceOf[Ready].value
-      Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = None)))
+      Ready(ready.updateCurrent(_.copy(pending = None)))
     }
 
     case e: NegotiationCompleted => for {
@@ -262,7 +262,7 @@ object Negotiation {
     val operations = knowledgeOps ++ transferOps
     OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "Negotiation semantic root is not permitted")) { evolved =>
-      Right(GameStateUpdates.updateCurrent(evolved)(_.copy(pending = None)))
+      Right(evolved.updateCurrent(_.copy(pending = None)))
     }.flatMap(_.expectEffects(operations,
       "Negotiation transfer differs from recorded outcome"))
   }

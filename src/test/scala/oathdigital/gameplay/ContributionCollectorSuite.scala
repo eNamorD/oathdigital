@@ -1,9 +1,9 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model.PowerId
-import oathdigital.model.{MajorActionType, OathState, PowerWindow, RuleSourceRef, Sequence}
+import oathdigital.model.{MajorActionType, PowerWindow, RuleSourceRef, Sequence}
 
 /** Task 2: the gather protocol as a pure collector. Exercises each of the
   * five decision-10 steps in isolation, with hand-built fixture powers --
@@ -11,11 +11,7 @@ import oathdigital.model.{MajorActionType, OathState, PowerWindow, RuleSourceRef
   */
 class ContributionCollectorSuite extends munit.FunSuite {
 
-  private val ready = FirstGameSetupFixture
-    .execute(new FirstGameSetupRules(FirstGameSetupFixture.catalog))._1 match {
-    case OathState.Ready(state) => state
-    case other => fail(s"expected Ready state, got $other")
-  }
+  private val ready = FirstGameSetupFixture.initialReady
 
   private def ctxFor(power: ContributingPower, window: PowerWindow): PowerCtx =
     PowerCtx(

@@ -339,7 +339,7 @@ private[operations] object OperationStateMutation {
     * which is why nothing here has to expire anything.
     */
   private def recordPowerUse(ready: ReadyGame, power: PowerUseRef): ReadyGame =
-    updateCurrent(ready)(current => current.copy(turn = current.turn.copy(
+    ready.updateCurrent(current => current.copy(turn = current.turn.copy(
       usedPowers = current.turn.usedPowers + power)))
 
   /** A write, not an advance: which phase may follow which belongs to the
@@ -350,14 +350,14 @@ private[operations] object OperationStateMutation {
     */
   private def enterPhase(ready: ReadyGame,
       phase: Phase): Either[OperationError, ReadyGame] =
-    Either.cond(ready.game.current.turn.phase != phase, updateCurrent(ready)(
+    Either.cond(ready.game.current.turn.phase != phase, ready.updateCurrent(
       current => current.copy(turn = current.turn.copy(phase = phase))),
       PhaseAlreadyEntered(phase))
 
   private def setOathkeeper(ready: ReadyGame,
       holder: Option[PlayerId]): Either[OperationError, ReadyGame] =
     Either.cond(ready.game.current.title.holder != holder,
-      updateCurrent(ready)(current => current.copy(
+      ready.updateCurrent(current => current.copy(
         title = OathkeeperState(holder, TitleSide.Oathkeeper))),
       OathkeeperUnchanged(holder))
 
@@ -367,7 +367,7 @@ private[operations] object OperationStateMutation {
       Left(UnknownPlayer(player))
     else if (phase != Phase.Wake && phase != Phase.RoundEnd)
       Left(InvalidTurnPhase(phase))
-    else Right(updateCurrent(ready)(current =>
+    else Right(ready.updateCurrent(current =>
       current.copy(turn = TurnState(player, phase, Set.empty))))
 
   private def adjustSupply(ready: ReadyGame, player: PlayerId,
@@ -399,7 +399,7 @@ private[operations] object OperationStateMutation {
     val next = current + delta
     require(next >= 0,
       s"dice pool '${pool.value}' count must not go below zero")
-    Right(updateCurrent(ready)(state => state.copy(
+    Right(ready.updateCurrent(state => state.copy(
       rollPools = pools.updated(pool, DicePoolState(next)))))
   }
 
@@ -479,25 +479,21 @@ private[operations] object OperationStateMutation {
         appendDistinct(sites.getOrElse(site, Vector.empty), relic)))))
   }
 
-  private[operations] def updateCurrent(ready: ReadyGame)(
-      f: CurrentGameState => CurrentGameState): ReadyGame =
-    ready.copy(game = ready.game.copy(current = f(ready.game.current)))
-
   private[operations] def updateCommonCards(ready: ReadyGame)(
       f: CardZones => CardZones): Either[OperationError, ReadyGame] =
-    Right(updateCurrent(ready)(current =>
+    Right(ready.updateCurrent(current =>
       current.copy(commonCards = f(current.commonCards))))
 
   private[operations] def updatePlayer(ready: ReadyGame, player: PlayerId)(
       f: PlayerState => PlayerState): Either[OperationError, ReadyGame] =
-    playerState(ready, player).map { _ => updateCurrent(ready) { current =>
+    playerState(ready, player).map { _ => ready.updateCurrent { current =>
       current.copy(players = current.players.map(value =>
         if (value.player == player) f(value) else value))
     }}
 
   private[operations] def updateSite(ready: ReadyGame, site: SiteId)(
       f: SiteState => SiteState): Either[OperationError, ReadyGame] =
-    siteState(ready, site).map { state => updateCurrent(ready) { current =>
+    siteState(ready, site).map { state => ready.updateCurrent { current =>
       current.copy(map = current.map.copy(sites =
         current.map.sites.updated(site, f(state))))
     }}

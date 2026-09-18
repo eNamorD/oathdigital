@@ -1,16 +1,14 @@
 package oathdigital.gameplay
 
-import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.operations._
-import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
 class PowerOperationsSuite extends munit.FunSuite {
-  private val rules = new FirstGameSetupRules(catalog)
 
   private def operationReady: (ReadyGame, PlayerState, SiteId, DenizenId) = {
-    val Ready(base) = FirstGameSetupFixture.execute(rules)._1: @unchecked
+    val base = FirstGameSetupFixture.initialReady
     val actor = base.game.current.players.find(
       _.player == base.game.current.turn.activePlayer).get
     val siteId = catalog.sites.find(_.relicSlots > 0).get.id

@@ -9,10 +9,9 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
 class CardPlayProcedureSuite extends munit.FunSuite {
-  private val setupRules = new oathdigital.gameplay.setup.FirstGameSetupRules(catalog)
 
   private def handState: (ReadyGame, PlayerId, DenizenId) = {
-    val OathState.Ready(base) = execute(setupRules)._1: @unchecked
+    val base = initialReady
     val actor = base.game.current.turn.activePlayer
     val card = base.game.current.commonCards.worldDeck.collectFirst {
       case id: DenizenId => id
@@ -240,7 +239,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
   }
 
   test("facedown adviser starts the shared walker placement tree") {
-    val OathState.Ready(setup) = execute(setupRules)._1: @unchecked
+    val setup = initialReady
     val actor = setup.game.current.turn.activePlayer
     val adviser = setup.game.current.players.find(_.player == actor).get
       .advisers.collectFirst {

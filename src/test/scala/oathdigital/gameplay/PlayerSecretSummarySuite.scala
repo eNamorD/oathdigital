@@ -1,13 +1,11 @@
 package oathdigital.gameplay
 
-import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.setup.{FirstGameSetupRules,
-  FirstGameSetupFixture}
+import oathdigital.gameplay.setup.FirstGameSetupFixture
 import oathdigital.model._
 
 class PlayerSecretSummarySuite extends munit.FunSuite {
   import FirstGameSetupFixture._
-  private val Ready(base) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+  private val base = initialReady
   private val actor = base.game.current.players.find(
     _.player == base.game.current.turn.activePlayer).get
 
@@ -82,7 +80,7 @@ class PlayerSecretSummarySuite extends munit.FunSuite {
     assertEquals(PlayerSecretSummary.derive(corrupt,
       inactive.player).toOption.get.committed, 0)
     val projected = new oathdigital.application.GameProjector(catalog).projectPublic(
-      "cross-player-secrets", oathdigital.application.LoadedGame(Ready(corrupt), 9L))
+      "cross-player-secrets", oathdigital.application.LoadedGame(OathState.Ready(corrupt), 9L))
     assertEquals(projected.playerBoards.find(_.playerId == actor.player.value)
       .map(_.committedSecrets), Some(2))
   }

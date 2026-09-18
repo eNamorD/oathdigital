@@ -1,7 +1,5 @@
 package oathdigital.gameplay.powers.rest
 
-import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
@@ -20,7 +18,7 @@ object SilverTongueFixture {
     */
   def arranged(siteSuits: Vector[Suit], stocked: Set[Suit])
       : (ReadyGame, PlayerId) = {
-    val Ready(ready) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val ready = initialReady
     val current = ready.game.current
     val actor = current.turn.activePlayer
     val pawn = current.players.find(_.player == actor).get.pawnSite.get

@@ -125,4 +125,7 @@ object TestGameFixtures {
     campaign,
     current
   )
+
+  /** `game` seated at the table: see [[ReadyGames.of]]. */
+  val ready: ReadyGame = ReadyGames.of(game)
 }

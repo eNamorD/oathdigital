@@ -331,10 +331,3 @@ object OathRules {
       else WalkerProcedureRegistry.rebuild(procedure, catalog, ready, actor,
         args)
 }
-
-private[gameplay] object GameStateUpdates {
-  def updateCurrent(
-      ready: ReadyGame
-  )(f: CurrentGameState => CurrentGameState): ReadyGame =
-    ready.copy(game = ready.game.copy(current = f(ready.game.current)))
-}

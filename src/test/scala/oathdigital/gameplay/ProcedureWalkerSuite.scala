@@ -86,13 +86,7 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     * there is unambiguously legal (mirrors the OperationExecutorSuite fixture).
     */
   private val ready: ReadyGame = {
-    val base = ReadyGame(
-      game,
-      Map(actor -> PlayerColor("red")),
-      FirstGameSupportState(FirstGameFoundationProfile.FixedUnaltered, actor),
-      MaterialBankState(
-        Suit.all.map(_ -> 5).toMap,
-        Map(ForceKind.Exile(lineageId) -> 14, ForceKind.Bandit -> 24)))
+    val base = ReadyGames.of(game)
     val destination = base.game.current.map.sites(sites(2)).copy(
       forces = SiteForces.Empty)
     base.copy(game = base.game.copy(current = base.game.current.copy(

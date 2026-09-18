@@ -7,7 +7,6 @@ import oathdigital.model.OathViolation._
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._
@@ -25,7 +24,7 @@ object TakeWealthFixture extends munit.Assertions {
     DecisionOptionRef.Button("secret"))
 
   private def freshBase: ReadyGame = {
-    val Ready(value) = execute(new FirstGameSetupRules(catalog))._1: @unchecked
+    val value = initialReady
     value
   }
 

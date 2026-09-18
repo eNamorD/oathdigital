@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
+import oathdigital.gameplay.{GameplayTransition, OathLifecycle}
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model._
 import oathdigital.model.OathContinue._
@@ -190,7 +190,7 @@ object Challenge {
       expected = initialAutomatic(ready, e.banner, e.priorHolder, e.priorResources)
       _ <- Either.cond(expected == (e.automaticFavorReturns -> e.automaticSecretSites), (), ChallengeOutcomeMismatch("recorded automatic ribbon distribution is invalid"))
       total = ribbonCount(e.banner, e.priorHolder, e.priorResources)
-    } yield Ready(GameStateUpdates.updateCurrent(ready) { c =>
+    } yield Ready(ready.updateCurrent { c =>
       c.copy(players = c.players.map(p => if (p.player != e.playerId) p else
         p.copy(board = p.board.copy(supply = SupplyTrack(p.board.supply.supply - 1)))),
         pending = Some(PendingProcedure.Challenge(e.decision, e.playerId, e.banner,
@@ -210,7 +210,7 @@ object Challenge {
           chosen = p.secretsPlaced :+ site
           expected = BannerRules.automaticSitePrefix(ready.game.current, chosen, p.remainingRibbonResources - 1)
           _ <- Either.cond(expected == e.automaticSecretSites, (), ChallengeOutcomeMismatch("recorded site automatic suffix is invalid"))
-        } yield Ready(GameStateUpdates.updateCurrent(ready)(_.copy(pending = Some(p.copy(
+        } yield Ready(ready.updateCurrent(_.copy(pending = Some(p.copy(
           remainingRibbonResources = p.remainingRibbonResources - 1 - expected.size,
           secretsPlaced = chosen ++ expected)))))
       }
@@ -308,7 +308,7 @@ object Challenge {
       PositionedLocation(Location.PlayArea(player)))
     val operations = drains ++ Vector(payment, custody)
     def update(state: ReadyGame): Either[OathViolation, ReadyGame] =
-      Right(GameStateUpdates.updateCurrent(state)(_.copy(pending = None)))
+      Right(state.updateCurrent(_.copy(pending = None)))
     OperationPipeline.run(ready, operations, OperationPolicy.exact(
       operations, "Banner Challenge semantic root is not permitted"))(update)
       .flatMap(_.expectEffects(operations,
