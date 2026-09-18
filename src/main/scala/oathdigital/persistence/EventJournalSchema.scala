@@ -5,7 +5,7 @@ import java.sql.Connection
 import slick.dbio.DBIO
 import slick.jdbc.HsqldbProfile.api._
 
-private[persistence] final class EventJournalSchema {
+private[persistence] final class EventJournalSchema(nowMillis: () => Long) {
   val TargetVersion: Int = 3
 
   val initialize: DBIO[Unit] =
@@ -89,7 +89,7 @@ private[persistence] final class EventJournalSchema {
     )
     try {
       statement.setInt(1, version)
-      statement.setLong(2, System.currentTimeMillis())
+      statement.setLong(2, nowMillis())
       statement.executeUpdate()
       ()
     } finally statement.close()

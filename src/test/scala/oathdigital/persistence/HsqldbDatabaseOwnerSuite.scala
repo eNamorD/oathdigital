@@ -1,6 +1,7 @@
 package oathdigital.persistence
 
 import java.nio.file.{Files, Path}
+import java.sql.DriverManager
 import java.util.concurrent.CountDownLatch
 
 import scala.concurrent.duration._
@@ -20,6 +21,23 @@ class HsqldbDatabaseOwnerSuite extends munit.FunSuite {
   private def open(databasePath: Path): HsqldbDatabaseOwner =
     HsqldbDatabaseOwner.open(databasePath)
       .fold(error => fail(s"database open failed: $error"), identity)
+
+  test("schema ledger records applied-at times from the injected clock") {
+    val databasePath = path("clock")
+    HsqldbDatabaseOwner.open(databasePath, () => 1234L)
+      .fold(error => fail(s"database open failed: $error"), identity).close()
+
+    val connection = DriverManager.getConnection(
+      s"jdbc:hsqldb:file:${databasePath.toAbsolutePath}", "SA", "")
+    try {
+      val rows = connection.createStatement().executeQuery(
+        "SELECT version, applied_at_epoch_millis FROM schema_versions " +
+          "ORDER BY version")
+      val ledger = Iterator.continually(rows).takeWhile(_.next())
+        .map(row => row.getInt(1) -> row.getLong(2)).toVector
+      assertEquals(ledger, Vector(1 -> 1234L, 2 -> 1234L, 3 -> 1234L))
+    } finally connection.close()
+  }
 
   test("one owner serves identity and journal adapters concurrently") {
     val owner = open(path("concurrent"))
