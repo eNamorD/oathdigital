@@ -45,11 +45,11 @@ private[operations] object OperationCardMutation {
       ready: ReadyGame,
       located: LocatedCard
   ): Either[OperationError, ReadyGame] = located.location.container match {
-    case CardContainer.Deck(kind) => updateCommonCards(ready) { cards => kind match {
-      case DeckKind.World => cards.copy(worldDeck = cards.worldDeck.filterNot(_ == located.id))
-      case DeckKind.Relic => cards.copy(relicDeck = cards.relicDeck.filterNot(_ == located.id))
-      case DeckKind.Edifice => cards.copy(edificeDeck = cards.edificeDeck.filterNot(_ == located.id))
-      case DeckKind.Legacy => cards.copy(legacyDeck = cards.legacyDeck.filterNot(_ == located.id))
+    case CardContainer.Deck(deck) => updateCommonCards(ready) { cards => deck match {
+      case CardDeck.World => cards.copy(worldDeck = cards.worldDeck.filterNot(_ == located.id))
+      case CardDeck.Relic => cards.copy(relicDeck = cards.relicDeck.filterNot(_ == located.id))
+      case CardDeck.Edifice => cards.copy(edificeDeck = cards.edificeDeck.filterNot(_ == located.id))
+      case CardDeck.Legacy => cards.copy(legacyDeck = cards.legacyDeck.filterNot(_ == located.id))
     }}
     case CardContainer.RegionalDiscard(region) => updateCommonCards(ready) { cards =>
       cards.copy(regionalDiscards = cards.regionalDiscards.updated(region,

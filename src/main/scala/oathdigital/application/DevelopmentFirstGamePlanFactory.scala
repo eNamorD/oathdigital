@@ -9,14 +9,8 @@ import oathdigital.gameplay.setup.{
   PlayerColor
 }
 
-final case class BootstrapParticipant(
-    playerId: PlayerId,
-    lineageId: LineageId,
-    color: PlayerColor
-)
-
 final case class FirstGameBootstrapConfig(
-    participants: Vector[BootstrapParticipant],
+    participants: Vector[FirstGameParticipant],
     firstPlayer: PlayerId
 )
 
@@ -57,12 +51,7 @@ final class DevelopmentFirstGamePlanFactory(catalog: ExecutableCatalog)
 
       FirstGameSetupPlan(
         catalog.ref,
-        config.participants.map(participant =>
-          FirstGameParticipant(
-            participant.playerId,
-            participant.lineageId,
-            participant.color
-          )),
+        config.participants,
         config.firstPlayer,
         sites,
         denizens,

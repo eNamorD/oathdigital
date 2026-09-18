@@ -294,8 +294,8 @@ class GameEventWireSuite extends munit.FunSuite {
       CampaignRaidTarget.Pawn(defender),
       CampaignRaidTarget.Relic(defender, RelicId("R03")),
       CampaignRaidTarget.Relic(defender, RelicId("R12")),
-      CampaignRaidTarget.Banner(defender, CampaignBanner.PeoplesFavor),
-      CampaignRaidTarget.Banner(defender, CampaignBanner.DarkestSecret))
+      CampaignRaidTarget.Banner(defender, Banner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender, Banner.DarkestSecret))
     assertEquals(targets.map(_.stableKey), Vector(
       "pawn:blue", "relic:blue:R03", "relic:blue:R12",
       "banner:blue:peoples-favor", "banner:blue:darkest-secret"))
@@ -324,7 +324,7 @@ class GameEventWireSuite extends munit.FunSuite {
       OathEvent.CampaignRaided(PlayerId("red"), DecisionId("raid-1"),
         CampaignLosingForceResolver.default.id,
         CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
-        Vector(RelicId("R1")), Vector(CampaignBanner.PeoplesFavor),
+        Vector(RelicId("R1")), Vector(Banner.PeoplesFavor),
         Vector(DenizenId("D1"), VisionId("V1")), Region.Provinces,
         Some(CampaignRules.Conspiracy), Vector(RelicId("R2")),
         favorBurned = 2, bannerFavorReturned = Map(Suit.Order -> 2),

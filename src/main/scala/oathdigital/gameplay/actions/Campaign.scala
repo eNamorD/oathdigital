@@ -219,7 +219,7 @@ object Campaign {
     val facedownRelics = defender.relics.collect {
       case r if r.orientation == Orientation.FaceDown => r.id
     }
-    val returned = if (banners.contains(CampaignBanner.PeoplesFavor))
+    val returned = if (banners.contains(Banner.PeoplesFavor))
       CampaignRules.returnBannerFavor(ready.banks.favor,
         ready.game.current.banners.peoplesFavor.favor)
     else Map.empty[Suit, Int]
@@ -231,7 +231,7 @@ object Campaign {
     } yield CampaignRaided(c.actor, c.decision, registry.selected.id, loss,
       relics, banners, ordinaryAdvisers, CampaignRules.nextRegion(region),
       conspiracy, facedownRelics, defender.board.favor / 2, returned,
-      Option.when(banners.contains(CampaignBanner.DarkestSecret))(
+      Option.when(banners.contains(Banner.DarkestSecret))(
         ready.game.current.banners.darkestSecret.secrets).getOrElse(0))
   }
 
@@ -732,7 +732,7 @@ object Campaign {
     }
     val bannerOps: Vector[oathdigital.gameplay.operations.CoreOperation] =
       e.takenBanners.flatMap {
-        case CampaignBanner.PeoplesFavor =>
+        case Banner.PeoplesFavor =>
           val favorReturns = e.bannerFavorReturned.toVector.flatMap {
             case (suit, amount) => Option.when(amount > 0)(CoreMove(
               Piece.Favor(amount),
@@ -741,7 +741,7 @@ object Campaign {
           }
           favorReturns :+ Take(Piece.Banner(Banner.PeoplesFavor), c.actor,
             Location.PlayArea(defenderId), Location.PlayArea(c.actor))
-        case CampaignBanner.DarkestSecret =>
+        case Banner.DarkestSecret =>
           val burn = Option.when(e.darkestSecretBurned > 0)(
             oathdigital.gameplay.operations.Burn.secrets(e.darkestSecretBurned,
               PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))).toVector

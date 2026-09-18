@@ -21,12 +21,7 @@ import oathdigital.gameplay.setup.FirstGameSetupFixture._
 
 class DevelopmentFirstGamePlanFactorySuite extends munit.FunSuite {
   private val config = FirstGameBootstrapConfig(
-    participants.map(participant =>
-      BootstrapParticipant(
-        participant.playerId,
-        participant.lineageId,
-        participant.color
-      )),
+    participants,
     PlayerId("p2")
   )
 

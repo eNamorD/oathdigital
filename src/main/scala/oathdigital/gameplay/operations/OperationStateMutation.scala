@@ -589,12 +589,7 @@ private[operations] object OperationStateMutation {
   }
 
   private[operations] def semanticLocation(container: CardContainer): Location = container match {
-    case CardContainer.Deck(kind) => Location.Deck(kind match {
-      case DeckKind.World => CardDeck.World
-      case DeckKind.Relic => CardDeck.Relic
-      case DeckKind.Edifice => CardDeck.Edifice
-      case DeckKind.Legacy => CardDeck.Legacy
-    })
+    case CardContainer.Deck(deck) => Location.Deck(deck)
     case CardContainer.RegionalDiscard(region) => Location.RegionalDiscard(region)
     case CardContainer.Player(player, PlayerCardArea.Hand) => Location.Hand(player)
     case CardContainer.Player(player, _) => Location.PlayArea(player)

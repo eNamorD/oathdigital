@@ -51,21 +51,6 @@ object CampaignKind {
   case object Raid extends CampaignKind { val key = "raid" }
 }
 
-sealed trait CampaignBanner extends Product with Serializable {
-  def key: String
-  private[model] def order: Int
-}
-object CampaignBanner {
-  case object PeoplesFavor extends CampaignBanner {
-    val key = "peoples-favor"
-    private[model] val order = 0
-  }
-  case object DarkestSecret extends CampaignBanner {
-    val key = "darkest-secret"
-    private[model] val order = 1
-  }
-}
-
 sealed trait CampaignRaidTarget extends Product with Serializable {
   def playerId: PlayerId
   def stableKey: String
@@ -81,11 +66,11 @@ object CampaignRaidTarget {
     def stableKey: String = s"relic:${playerId.value}:${relicId.value}"
     private[model] def canonicalOrder = 1 -> s"${playerId.value}:${relicId.value}"
   }
-  final case class Banner(playerId: PlayerId, banner: CampaignBanner)
+  final case class Banner(playerId: PlayerId, banner: oathdigital.model.Banner)
       extends CampaignRaidTarget {
     def stableKey: String = s"banner:${playerId.value}:${banner.key}"
     private[model] def canonicalOrder =
-      (2 + banner.order) -> playerId.value
+      (2 + oathdigital.model.Banner.all.indexOf(banner)) -> playerId.value
   }
 
   def canonical(targets: Iterable[CampaignRaidTarget]): Vector[CampaignRaidTarget] =

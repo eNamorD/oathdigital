@@ -179,8 +179,8 @@ object OperationStateAdapter {
 
   private def matches(container: CardContainer, location: Location): Boolean =
     (container, location) match {
-      case (CardContainer.Deck(kind), Location.Deck(deck)) =>
-        deckKind(deck) == kind
+      case (CardContainer.Deck(left), Location.Deck(right)) =>
+        left == right
       case (CardContainer.RegionalDiscard(left), Location.RegionalDiscard(right)) =>
         left == right
       case (CardContainer.Player(left, PlayerCardArea.Hand), Location.Hand(right)) =>
@@ -194,11 +194,4 @@ object OperationStateAdapter {
       case (_: CardContainer.AtlasSite, Location.Atlas) => true
       case _ => false
     }
-
-  private def deckKind(deck: CardDeck): DeckKind = deck match {
-    case CardDeck.World => DeckKind.World
-    case CardDeck.Relic => DeckKind.Relic
-    case CardDeck.Edifice => DeckKind.Edifice
-    case CardDeck.Legacy => DeckKind.Legacy
-  }
 }

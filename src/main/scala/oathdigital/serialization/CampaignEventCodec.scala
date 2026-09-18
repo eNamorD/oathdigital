@@ -170,14 +170,8 @@ private[serialization] trait CampaignEventCodec { this: GameEventJsonSupport =>
           returnedCount <- safeIntField(payload("defenderLoss").obj, "returned",
             s"$path.defenderLoss")
           relics = payload("takenRelics").arr.toVector.map(v => RelicId(v.str))
-          banners <- traverse(payload("takenBanners").arr.toVector) { value =>
-            value.str match {
-              case "peoples-favor" => Right(CampaignBanner.PeoplesFavor)
-              case "darkest-secret" => Right(CampaignBanner.DarkestSecret)
-              case other => Left(InvalidValue(s"$path.takenBanners",
-                s"unknown Campaign banner '$other'"))
-            }
-          }
+          banners <- traverse(payload("takenBanners").arr.toVector)(value =>
+            decodeBanner(value.str, s"$path.takenBanners"))
           advisers <- traverse(payload("discardedAdvisers").arr.toVector)(value =>
             decodeWorldCard(value, s"$path.discardedAdvisers"))
           adviserRegion <- decodeRegion(payload("adviserDiscardRegion").str,

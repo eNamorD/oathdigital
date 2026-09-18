@@ -405,13 +405,13 @@ object OperationShape {
       ready: ReadyGame,
       container: CardContainer
   ): Option[Vector[CardId]] = container match {
-    case CardContainer.Deck(DeckKind.World) =>
+    case CardContainer.Deck(CardDeck.World) =>
       Some(ready.game.current.commonCards.worldDeck)
-    case CardContainer.Deck(DeckKind.Relic) =>
+    case CardContainer.Deck(CardDeck.Relic) =>
       Some(ready.game.current.commonCards.relicDeck)
-    case CardContainer.Deck(DeckKind.Edifice) =>
+    case CardContainer.Deck(CardDeck.Edifice) =>
       Some(ready.game.current.commonCards.edificeDeck)
-    case CardContainer.Deck(DeckKind.Legacy) =>
+    case CardContainer.Deck(CardDeck.Legacy) =>
       Some(ready.game.current.commonCards.legacyDeck)
     case CardContainer.RegionalDiscard(region) =>
       Some(ready.game.current.commonCards.discard(region).reverse)

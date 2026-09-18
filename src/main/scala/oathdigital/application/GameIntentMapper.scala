@@ -106,9 +106,9 @@ object GameIntentMapper {
   private def raid(value: oathdigital.protocol.CampaignRaidTarget): Result[oathdigital.model.CampaignRaidTarget] = value match {
     case oathdigital.protocol.CampaignRaidTarget.Pawn(p) => Right(oathdigital.model.CampaignRaidTarget.Pawn(PlayerId(p)))
     case oathdigital.protocol.CampaignRaidTarget.Relic(p, r) => Right(oathdigital.model.CampaignRaidTarget.Relic(PlayerId(p), RelicId(r)))
-    case oathdigital.protocol.CampaignRaidTarget.Banner(p, "peoples-favor") => Right(oathdigital.model.CampaignRaidTarget.Banner(PlayerId(p), CampaignBanner.PeoplesFavor))
-    case oathdigital.protocol.CampaignRaidTarget.Banner(p, "darkest-secret") => Right(oathdigital.model.CampaignRaidTarget.Banner(PlayerId(p), CampaignBanner.DarkestSecret))
-    case oathdigital.protocol.CampaignRaidTarget.Banner(_, v) => invalid("$.intent.targets.banner", v, "campaign banner")
+    case oathdigital.protocol.CampaignRaidTarget.Banner(p, key) => Banner.fromKey(key)
+      .map(oathdigital.model.CampaignRaidTarget.Banner(PlayerId(p), _))
+      .toRight(GameIntentMappingFailure("$.intent.targets.banner", s"unknown campaign banner '$key'"))
   }
   private def plan(value: oathdigital.protocol.CampaignPlanSource): Result[PendingProcedure.CampaignPlanSource] = value match {
     case oathdigital.protocol.CampaignPlanSource.Adviser(p,c) => Right(PendingProcedure.CampaignPlanSource.Adviser(PlayerId(p), DenizenId(c)))

@@ -302,9 +302,9 @@ object CampaignRules {
               CampaignRaidTarget.Relic(defender.player, r.id)) ++
             Vector(
               Option.when(current.banners.peoplesFavor.holder.contains(defender.player))(
-                CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor)),
+                CampaignRaidTarget.Banner(defender.player, Banner.PeoplesFavor)),
               Option.when(current.banners.darkestSecret.holder.contains(defender.player))(
-                CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
+                CampaignRaidTarget.Banner(defender.player, Banner.DarkestSecret))
             ).flatten
           Option.when(validateRaidStart(catalog, ready, playerId,
             Vector(targets.head), Campaign.MinimumForce).isRight)(targets).toVector.flatten
@@ -344,9 +344,9 @@ object CampaignRules {
       defender.relics.filter(_.orientation == Orientation.FaceUp).map(r =>
         CampaignRaidTarget.Relic(defender.player, r.id)) ++ Vector(
         Option.when(current.banners.peoplesFavor.holder.contains(defender.player))(
-          CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor)),
+          CampaignRaidTarget.Banner(defender.player, Banner.PeoplesFavor)),
         Option.when(current.banners.darkestSecret.holder.contains(defender.player))(
-          CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))).flatten
+          CampaignRaidTarget.Banner(defender.player, Banner.DarkestSecret))).flatten
 
   def legalRaidRelocationSites(ready: ReadyGame, defender: PlayerId): Vector[SiteId] = {
     val origin = ready.game.current.players.find(_.player == defender).flatMap(_.pawnSite)

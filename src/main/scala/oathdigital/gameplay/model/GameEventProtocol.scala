@@ -163,7 +163,7 @@ object OathEvent {
       losingForcePolicyId: String,
       defenderLoss: CampaignRaidBoardLoss,
       takenRelics: Vector[RelicId],
-      takenBanners: Vector[CampaignBanner],
+      takenBanners: Vector[Banner],
       discardedAdvisers: Vector[WorldCardId],
       adviserDiscardRegion: Region,
       boxedConspiracy: Option[VisionId],

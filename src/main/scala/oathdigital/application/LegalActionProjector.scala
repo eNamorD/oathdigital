@@ -257,10 +257,7 @@ private[application] final class LegalActionProjector(
         BoardTargetRefProjection.PlayerRelic(defender.value, relic.value),
         presentation.relicLabel(relic))
       case CampaignRaidTarget.Banner(defender, banner) =>
-        val key = banner match {
-          case CampaignBanner.PeoplesFavor => "peoples-favor"
-          case CampaignBanner.DarkestSecret => "darkest-secret"
-        }
+        val key = banner.key
         BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
           defender.value, key), presentation.safeLabel(key))
     }

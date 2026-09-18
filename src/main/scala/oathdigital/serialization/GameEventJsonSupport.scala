@@ -481,14 +481,8 @@ private[serialization] trait GameEventJsonSupport {
       PlayerId(value("playerId").str)))
     case "relic" => Right(CampaignRaidTarget.Relic(
       PlayerId(value("playerId").str), RelicId(value("relicId").str)))
-    case "banner" => value("banner").str match {
-      case "peoples-favor" => Right(CampaignRaidTarget.Banner(
-        PlayerId(value("playerId").str), CampaignBanner.PeoplesFavor))
-      case "darkest-secret" => Right(CampaignRaidTarget.Banner(
-        PlayerId(value("playerId").str), CampaignBanner.DarkestSecret))
-      case other => Left(InvalidValue(s"$path.banner",
-        s"unknown Campaign banner '$other'"))
-    }
+    case "banner" => decodeBanner(value("banner").str, s"$path.banner")
+      .map(CampaignRaidTarget.Banner(PlayerId(value("playerId").str), _))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown Campaign Raid target '$other'"))
   } catch { case error: Exception => Left(InvalidValue(path,

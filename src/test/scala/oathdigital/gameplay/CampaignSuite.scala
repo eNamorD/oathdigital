@@ -105,10 +105,10 @@ class CampaignSuite extends munit.FunSuite {
     val pawn = CampaignRaidTarget.Pawn(defender.player)
     val relicTarget = CampaignRaidTarget.Relic(defender.player, relic)
     val banner = CampaignRaidTarget.Banner(defender.player,
-      CampaignBanner.PeoplesFavor)
+      Banner.PeoplesFavor)
     assertEquals(CampaignRules.legalRaidTargets(catalog, ready, attacker.player),
       Vector(pawn, relicTarget, banner,
-        CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret)))
+        CampaignRaidTarget.Banner(defender.player, Banner.DarkestSecret)))
     assertEquals(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
       Vector(pawn), 0), Right(CampaignDefender.Player(defender.player)))
     assert(CampaignRules.validateRaidStart(catalog, ready, attacker.player,
@@ -122,8 +122,8 @@ class CampaignSuite extends munit.FunSuite {
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
       CampaignRaidTarget.Relic(defender.player, relic),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
+      CampaignRaidTarget.Banner(defender.player, Banner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender.player, Banner.DarkestSecret))
     val campaign = PendingProcedure.Campaign(DecisionId("raid-pool"), attacker.player,
       Vector.empty, CampaignDefender.Player(defender.player), 4, Vector.empty,
       attackerPlansFinished = true, defenderPlansFinished = true, Vector.empty,
@@ -164,8 +164,8 @@ class CampaignSuite extends munit.FunSuite {
     val targets = Vector[CampaignRaidTarget](
       CampaignRaidTarget.Pawn(defender.player),
       CampaignRaidTarget.Relic(defender.player, relic),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.PeoplesFavor),
-      CampaignRaidTarget.Banner(defender.player, CampaignBanner.DarkestSecret))
+      CampaignRaidTarget.Banner(defender.player, Banner.PeoplesFavor),
+      CampaignRaidTarget.Banner(defender.player, Banner.DarkestSecret))
     val started = rules.handle(Ready(ready), CampaignCommand.StartRaid(
       attacker.player, decision, targets, 4)).toOption.get
     val attackerDone = rules.handle(started.state, CampaignCommand.FinishPlans(
