@@ -1,8 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.setup.{FirstGameSetupPlan, FirstGameSupportState,
-  PawnPlacement, PlayerColor}
 
 final case class MaterialBankState(
     favor: Map[Suit, Int],

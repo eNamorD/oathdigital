@@ -1,7 +1,6 @@
 package oathdigital.application
 
-import oathdigital.gameplay.setup.{FirstGameParticipant, PlayerColor}
-import oathdigital.model.{LineageId, PlayerId}
+import oathdigital.model.{FirstGameParticipant, LineageId, PlayerColor, PlayerId}
 import oathdigital.protocol.FirstGameBootstrapRequest
 
 object FirstGameBootstrapMapper {

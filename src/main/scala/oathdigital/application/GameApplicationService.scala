@@ -17,10 +17,7 @@ import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
-import oathdigital.gameplay.setup.{
-  FirstGameSetupCommand,
-  FirstGameSetupRules
-}
+import oathdigital.gameplay.setup.FirstGameSetupRules
 
 
 final case class GameAccepted(

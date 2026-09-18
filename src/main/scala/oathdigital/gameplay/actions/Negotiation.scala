@@ -5,7 +5,6 @@ import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameStateUpdates, OathLifecycle, RuleActivation,
   RuleOutcome, RuleQueryContext, RuleSourceRef, RuntimeRuleRegistry}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._

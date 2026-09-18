@@ -1,8 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.gameplay.{MaterialBankState, ReadyGame}
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSetupFixture, FirstGameSetupRules, FirstGameSupportState, PlayerColor}
+import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.gameplay.OathState._
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._

@@ -2,12 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.{ExecutableCatalog, RelicRole}
 import oathdigital.model._
-import oathdigital.gameplay.setup.{
-  FirstGameParticipant,
-  FirstGameRulesData,
-  FirstGameSetupPlan,
-  PlayerColor
-}
+import oathdigital.gameplay.setup.FirstGameRulesData
 
 final case class FirstGameBootstrapConfig(
     participants: Vector[FirstGameParticipant],

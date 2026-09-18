@@ -2,8 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.setup.FirstGameSetupFixture
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 

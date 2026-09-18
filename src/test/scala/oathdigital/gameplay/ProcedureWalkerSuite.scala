@@ -3,8 +3,6 @@ package oathdigital.gameplay
 import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution,
   PowerCtx, PowerResolution, PowerWindow, Restriction, Transform}
-import oathdigital.gameplay.setup.{FirstGameFoundationProfile,
-  FirstGameSupportState, PlayerColor}
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,
   RollPayload, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._

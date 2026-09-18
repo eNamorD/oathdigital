@@ -5,7 +5,7 @@ import oathdigital.gameplay.OathState.{InProgress, NoGame, Ready}
 import oathdigital.gameplay.PlayerSecretSummary
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterializer}
+import oathdigital.gameplay.setup.FirstGameSetupMaterializer
 import oathdigital.model._
 import oathdigital.protocol.projection._
 

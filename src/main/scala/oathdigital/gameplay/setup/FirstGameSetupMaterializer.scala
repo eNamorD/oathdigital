@@ -3,16 +3,6 @@ package oathdigital.gameplay.setup
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 
-/** Pure CR pp. 6-7 table setup shared by setup projection and completion. */
-final case class FirstGameSetupMaterial(
-    players: Vector[PlayerState],
-    map: MapState,
-    commonCards: CardZones,
-    banners: BannersState,
-    tracks: GameTracks,
-    favorBanks: Map[Suit, Int]
-)
-
 final class FirstGameSetupMaterializer(catalog: ExecutableCatalog) {
   private val sitesById = catalog.sites.map(site => site.id -> site).toMap
   private val edificesById = catalog.edifices.map(e => EdificeId(e.id.value) -> e).toMap

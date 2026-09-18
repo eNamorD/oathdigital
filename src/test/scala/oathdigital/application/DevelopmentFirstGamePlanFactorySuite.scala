@@ -3,8 +3,7 @@ package oathdigital.application
 import java.nio.file.Files
 
 import oathdigital.catalog.RelicRole
-import oathdigital.model.{EdificeId, EdificeSide, EdificeState, PlayerId, RelicId,
-  Tokens, VisionId}
+import oathdigital.model.{EdificeId, EdificeSide, EdificeState, FirstGameSetupCommand, PlayerId, RelicId, Tokens, VisionId}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.protocol.{
   BootstrapParticipantRequest,
@@ -12,10 +11,7 @@ import oathdigital.protocol.{
 }
 import oathdigital.protocol.projection.BoardTargetRefProjection
 import oathdigital.server.{GameHttpWire, GameServerGateway}
-import oathdigital.gameplay.setup.{
-  FirstGameSetupCommand,
-  FirstGameSetupRules
-}
+import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.OathState
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 

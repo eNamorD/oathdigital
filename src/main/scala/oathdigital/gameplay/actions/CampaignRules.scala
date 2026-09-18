@@ -6,7 +6,6 @@ import oathdigital.gameplay.{CampaignTimingWindow,
   RuleActivation, RuleOutcome, RuleQueryContext, RuleSourceRef, TypedRuleHandler,
   RuleRegistry}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathViolation._
 

@@ -2,7 +2,6 @@ package oathdigital.application
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay.{PlayerSecretSummary, ReadyGame}
-import oathdigital.gameplay.setup.{FirstGameParticipant, FirstGameSetupMaterial}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 

@@ -8,7 +8,7 @@ import oathdigital.catalog._
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.gameplay.OathContinue._
-import oathdigital.gameplay.setup.FirstGameSetupCommand._
+import oathdigital.model.FirstGameSetupCommand._
 import oathdigital.gameplay.OathEvent._
 import oathdigital.gameplay.OathState._
 import oathdigital.gameplay.OathViolation._

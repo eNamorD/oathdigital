@@ -84,7 +84,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
       service: GameApplicationService,
       gameId: String,
       placementSites: Vector[SiteId],
-      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan
+      setupPlan: oathdigital.model.FirstGameSetupPlan
   ): GameAccepted = {
     var accepted = service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
       .toOption.get

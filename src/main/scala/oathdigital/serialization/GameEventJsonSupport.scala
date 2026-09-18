@@ -3,7 +3,6 @@ package oathdigital.serialization
 import scala.util.control.NonFatal
 import oathdigital.model._
 import oathdigital.gameplay._
-import oathdigital.gameplay.setup._
 import oathdigital.gameplay.OathEvent._
 
 /** Shared primitive and nested-model JSON vocabulary for v1 event families. */

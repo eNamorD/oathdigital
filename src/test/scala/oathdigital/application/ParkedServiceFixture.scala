@@ -7,7 +7,7 @@ import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.operations.{CoreOperation, Kill, Location, Move,
   Piece, PositionedLocation, SetOathkeeper, StackPosition}
 import oathdigital.gameplay.powers.rest.SilverTongue
-import oathdigital.gameplay.setup.{FirstGameRulesData, FirstGameSetupPlan}
+import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.DeltaMeaning.OperationApplied
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded

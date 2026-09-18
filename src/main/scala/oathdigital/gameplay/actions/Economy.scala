@@ -3,7 +3,6 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{PowerRuntime, OathLifecycle, RuleSourceRef}
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameFoundationProfile
 import oathdigital.gameplay._
 import oathdigital.gameplay.OathContinue.ActActionSelection
 import oathdigital.gameplay.OathEvent._

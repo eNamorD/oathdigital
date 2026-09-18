@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.setup.PlayerColor
 
 sealed trait OathViolation extends Product with Serializable
 object OathViolation {

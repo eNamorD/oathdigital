@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.setup.FirstGameSetupPlan
 
 sealed trait OathEvent extends Product with Serializable
 

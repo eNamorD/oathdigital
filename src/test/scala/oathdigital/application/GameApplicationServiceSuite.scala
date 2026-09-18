@@ -449,7 +449,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
   }
 
   private def prepareCatacombs(service: GameApplicationService, gameId: String,
-      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan)
+      setupPlan: oathdigital.model.FirstGameSetupPlan)
       : (GameAccepted, PlayerId, OrderedRuleInvocation) = {
     val setup = execute(service, gameId, setupPlan.orderedSites.take(3), setupPlan)
     val Ready(ready) = setup.state: @unchecked
@@ -1222,7 +1222,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       service: GameApplicationService,
       gameId: String,
       placementSites: Vector[oathdigital.model.SiteId] = sites,
-      setupPlan: oathdigital.gameplay.setup.FirstGameSetupPlan = plan
+      setupPlan: oathdigital.model.FirstGameSetupPlan = plan
   ): GameAccepted = {
     var accepted =
       service.handle(gameId, 0L, GameCommand.Begin(setupPlan))
