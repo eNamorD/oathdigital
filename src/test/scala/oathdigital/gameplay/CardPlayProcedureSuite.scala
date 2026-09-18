@@ -44,6 +44,18 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val decision = tree.children.head.asInstanceOf[Decide]
     assert(decision.query.asInstanceOf[DecisionQuery.ChooseOne]
       .options.exists(_.ref == DecisionOptionRef.Button("discard")))
+    val domain = CardPlay.legalChoices(catalog, ready, actor, card,
+      CardPlay.Origin.TemporaryHand, 3, 3)
+    val expected = domain.map(_.placement).map {
+      case SearchPlacement.Discard => DecisionOptionRef.Button("discard")
+      case _: SearchPlacement.Site => DecisionOptionRef.Button("site")
+      case SearchPlacement.Adviser(Orientation.FaceUp, _) =>
+        DecisionOptionRef.Button("adviser-faceup")
+      case SearchPlacement.Adviser(Orientation.FaceDown, _) =>
+        DecisionOptionRef.Button("adviser-facedown")
+    }
+    assertEquals(decision.query.asInstanceOf[DecisionQuery.ChooseOne]
+      .options.map(_.ref), expected)
   }
 
   test("card absent from temporary hand cannot build card play") {

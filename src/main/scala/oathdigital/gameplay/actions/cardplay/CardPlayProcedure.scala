@@ -79,48 +79,20 @@ object CardPlayProcedure {
       actor: PlayerId, card: WorldCardId, origin: Origin, faceupLimit: Int,
       facedownLimit: Int)
       : Vector[Operation] = {
-      val player = ready.game.current.players.find(_.player == actor)
       val legacyOrigin = origin match {
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
         case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
       }
-      val placements = Vector(
-        discard -> SearchPlacement.Discard,
-        site -> SearchPlacement.Site(None),
-        adviserFaceUp -> SearchPlacement.Adviser(Orientation.FaceUp, None),
-        adviserFaceDown -> SearchPlacement.Adviser(Orientation.FaceDown, None))
-      val candidates = placements.flatMap { case (ref, placement) =>
-        val adviserLimit = placement match {
-          case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
-          case _ => facedownLimit
+      val candidates = CardPlay.legalChoices(catalog, ready, actor, card,
+        legacyOrigin, faceupLimit, facedownLimit).map { choice =>
+        val ref = choice.placement match {
+          case SearchPlacement.Discard => discard
+          case _: SearchPlacement.Site => site
+          case SearchPlacement.Adviser(Orientation.FaceUp, _) => adviserFaceUp
+          case SearchPlacement.Adviser(Orientation.FaceDown, _) => adviserFaceDown
         }
-        val direct = CardPlay.plannedOperations(catalog, ready, actor, card,
-          placement, legacyOrigin, adviserLimit).isRight
-        val replacementIds: Vector[CardId] = placement match {
-          case _: SearchPlacement.Site => player.toVector.flatMap(_.pawnSite)
-            .flatMap(ready.game.current.map.sites.get)
-            .flatMap(_.denizens.map(_.id))
-          case SearchPlacement.Adviser(Orientation.FaceUp, _) if
-              card.isInstanceOf[VisionId] =>
-            player.toVector.flatMap(_.revealedVision).map(_.id)
-          case _: SearchPlacement.Adviser => player.toVector.flatMap(_.advisers)
-            .filterNot(value => origin == Origin.FacedownAdviser &&
-              value.id == card).map(_.id)
-          case SearchPlacement.Discard => Vector.empty
-        }
-        val replacements = if (direct) Vector.empty else replacementIds.flatMap {
-          id =>
-            val withReplacement = placement match {
-              case _: SearchPlacement.Site => SearchPlacement.Site(Some(id))
-              case value: SearchPlacement.Adviser => value.copy(replace = Some(id))
-              case SearchPlacement.Discard => SearchPlacement.Discard
-            }
-            Option.when(CardPlay.plannedOperations(catalog, ready, actor,
-              card, withReplacement, legacyOrigin, adviserLimit).isRight)(
-                replacementOption(id) -> id)
-        }
-        Option.when(direct || replacements.nonEmpty)(
-          (ref, placement, replacements))
+        (ref, choice.placement,
+          choice.replacements.map(id => replacementOption(id) -> id))
       }
       val options = candidates.map { case (ref, _, _) =>
         DecisionOption.Button(ref, ref.key.replace('-', ' '))
