@@ -3,6 +3,7 @@ package oathdigital.gameplay.actions.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
+import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */
@@ -17,6 +18,14 @@ object CardPlayProcedure {
   private val site = DecisionOptionRef.Button("site")
   private val adviserFaceUp = DecisionOptionRef.Button("adviser-faceup")
   private val adviserFaceDown = DecisionOptionRef.Button("adviser-facedown")
+
+  private def label(ref: DecisionOptionRef.Button): String = ref match {
+    case `discard` => "Discard"
+    case `site` => "Play at site"
+    case `adviserFaceUp` => "Play faceup"
+    case `adviserFaceDown` => "Play facedown"
+    case other => other.key
+  }
 
   def buildFacedown(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, args: Vector[DecisionOptionRef])
@@ -93,7 +102,7 @@ object CardPlayProcedure {
           choice.replacements.map(id => replacementOption(id) -> id))
       }
       val options = candidates.map { case (ref, _, _) =>
-        DecisionOption.Button(ref, ref.key.replace('-', ' '))
+        DecisionOption.Button(ref, label(ref))
       }
       val decisionId = s"cardplay.place.${card.kind}.${card.value}"
       val choose = Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
@@ -129,7 +138,8 @@ object CardPlayProcedure {
                   }}
               chosen.flatMap(CardPlay.plannedOperations(catalog, state, actor,
                 card, _, legacyOrigin, adviserLimit))
-            })
+            }, restrictions = (_, _) => Vector(
+              new DiscardRestrictions(catalog, actor)))
             val hook = Option.when(card != VisionRules.Conspiracy)(placement)
               .flatMap(CardPlay.playedSource(ready, actor, card, _))
               .map(CardPlayed(card, _)).toVector

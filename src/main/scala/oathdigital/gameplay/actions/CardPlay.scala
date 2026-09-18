@@ -2,6 +2,7 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay._
+import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.model._
@@ -23,6 +24,11 @@ object CardPlay {
       actor: PlayerId, card: WorldCardId, origin: Origin,
       faceupLimit: Int, facedownLimit: Int): Vector[Choice] = {
     val player = ready.game.current.players.find(_.player == actor)
+    val restriction = new DiscardRestrictions(catalog, actor)
+    // A placement whose plan discards a card the actor may not discard (a
+    // site protected by an enemy's intact Hall of Ministers) is not a choice.
+    def permitted(operations: Vector[CoreOperation]): Boolean =
+      operations.forall(restriction.reason(ready, _).isEmpty)
     val placements = Vector[SearchPlacement](SearchPlacement.Discard,
       SearchPlacement.Site(None),
       SearchPlacement.Adviser(Orientation.FaceUp, None),
@@ -33,7 +39,7 @@ object CardPlay {
         case _ => facedownLimit
       }
       val direct = plannedOperations(catalog, ready, actor, card,
-        placement, origin, limit).isRight
+        placement, origin, limit).exists(permitted)
       val candidateIds: Vector[CardId] = placement match {
         case _: SearchPlacement.Site => player.toVector.flatMap(_.pawnSite)
           .flatMap(ready.game.current.map.sites.get)
@@ -53,7 +59,7 @@ object CardPlay {
           case SearchPlacement.Discard => SearchPlacement.Discard
         }
         plannedOperations(catalog, ready, actor, card, selected,
-          origin, limit).isRight
+          origin, limit).exists(permitted)
       }
       Option.when(direct || replacements.nonEmpty)(Choice(placement, replacements))
     }

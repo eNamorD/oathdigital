@@ -218,6 +218,54 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button("site")))
   }
 
+  test("placement buttons use the retired renderer labels") {
+    val (ready, actor, card) = handState
+    val query = CardPlayProcedure.build(catalog, ready, actor, card,
+      CardPlayProcedure.Origin.TemporaryHand).toOption.get.children.head
+      .asInstanceOf[Decide].query.asInstanceOf[DecisionQuery.ChooseOne]
+    val labels = query.options.collect {
+      case DecisionOption.Button(ref, label) => ref.key -> label
+    }.toMap
+    assertEquals(labels, Map("discard" -> "Discard", "site" -> "Play at site",
+      "adviser-faceup" -> "Play faceup", "adviser-facedown" -> "Play facedown"))
+  }
+
+  test("Hall of Ministers hides site-card replacement from the ruler's enemy") {
+    val (base, actor, _) = handState
+    val current = base.game.current
+    val player = current.players.find(_.player == actor).get
+    val enemy = current.players.find(_.player != actor).get
+    val hall = EdificeId("E16")
+    val hallSuit = catalog.edifices.find(_.id.value == hall.value).get.suit
+    val siteId = player.pawnSite.get
+    val capacity = catalog.sites.find(_.id == siteId).get.capacity
+    val denizens = current.commonCards.worldDeck.collect { case id: DenizenId => id }
+    val card = denizens.find(id => catalog.suitOf(id).contains(hallSuit)).get
+    val fillers = denizens.filter(_ != card).take(capacity - 1)
+    def prepared(ruler: LineageId) = base.updateCurrent(_.copy(
+      temporaryHands = current.temporaryHands.updated(actor, Vector(card)),
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck
+          .filterNot(id => id == card || fillers.contains(id)),
+        edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall)),
+      map = current.map.copy(sites = current.map.sites.updated(siteId,
+        current.map.sites(siteId).copy(
+          forces = SiteForces.Occupied(ForceKind.Exile(ruler), 1),
+          denizens = fillers.map(id =>
+            DenizenState(id, Orientation.FaceUp, Tokens.empty)) :+
+            EdificeState(hall, EdificeSide.Intact, Tokens.empty))))))
+    def siteReplacements(ready: ReadyGame): Vector[CardId] =
+      CardPlay.legalChoices(catalog, ready, actor, card,
+        CardPlay.Origin.TemporaryHand, 3, 3).collectFirst {
+          case choice if choice.placement.isInstanceOf[SearchPlacement.Site] =>
+            choice.replacements
+        }.getOrElse(Vector.empty)
+    assertEquals(siteReplacements(prepared(player.lineage))
+      .collect { case id: DenizenId => id }.toSet, fillers.toSet)
+    assertEquals(siteReplacements(prepared(enemy.lineage))
+      .collect { case id: DenizenId => id }, Vector.empty)
+  }
+
   test("Search Vision can replace an existing revealed Vision") {
     val (base, actor, _) = handState
     val incoming = VisionRules.Faith
