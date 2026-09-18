@@ -1,7 +1,6 @@
 package oathdigital.gameplay
 
 import oathdigital.model._
-import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 

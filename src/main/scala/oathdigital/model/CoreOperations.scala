@@ -1,8 +1,4 @@
-package oathdigital.gameplay.operations
-
-import oathdigital.gameplay.DiceSpec
-import oathdigital.gameplay.powerresolver.PowerWindow
-import oathdigital.model._
+package oathdigital.model
 
 /** Core operations occurring in a game of Oath.
   *
@@ -61,7 +57,7 @@ object Location {
   case object Atlas extends Location
   case object Dispossessed extends Location
 
-  private[operations] def ownedBy(location: Location,
+  private[model] def ownedBy(location: Location,
       player: PlayerId): Boolean = location match {
     case Hand(owner) => owner == player
     case PlayArea(owner) => owner == player

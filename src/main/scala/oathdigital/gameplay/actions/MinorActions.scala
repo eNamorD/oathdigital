@@ -7,9 +7,8 @@ import oathdigital.model.OathContinue.ActActionSelection
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{CoreOperation, Location,
-  OperationPipeline, OperationPolicy, Piece, PositionedLocation,
-  Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.model.{Move => CoreMove, Peek => CorePeek, Reveal => CoreReveal}
 
 sealed trait MinorActionCommand extends Product with Serializable
 object MinorActionCommand {

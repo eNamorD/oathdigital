@@ -1,7 +1,6 @@
 package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.{CatalogHandlerInventory, ExecutableCatalog}
-import oathdigital.gameplay.operations.{EnterPhase, Operation, Sequence}
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model.OathViolation._
 import oathdigital.model._

@@ -2,7 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.operations.Decide
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

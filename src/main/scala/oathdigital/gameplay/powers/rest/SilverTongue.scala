@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations._
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._

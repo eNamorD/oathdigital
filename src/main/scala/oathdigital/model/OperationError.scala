@@ -1,6 +1,4 @@
-package oathdigital.gameplay.operations
-
-import oathdigital.model._
+package oathdigital.model
 
 sealed trait OperationError extends Product with Serializable {
   def code: String

@@ -2,9 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerWindow, Restriction}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Restriction}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._

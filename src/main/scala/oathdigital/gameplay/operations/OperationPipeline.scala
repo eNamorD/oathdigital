@@ -1,7 +1,6 @@
 package oathdigital.gameplay.operations
 
-import oathdigital.model.{OathViolation, ReadyGame}
-
+import oathdigital.model._
 
 final case class SkippedOperation(requested: CoreOperation,
     reasons: Vector[OperationReason])

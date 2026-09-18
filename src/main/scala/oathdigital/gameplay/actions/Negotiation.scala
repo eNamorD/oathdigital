@@ -8,9 +8,8 @@ import oathdigital.model.OathContinue.ActActionSelection
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{CoreOperation, Give, Location,
-  OperationPipeline, OperationPolicy, Piece,
-  Peek => CorePeek}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.model.{Peek => CorePeek}
 
 sealed trait NegotiationCommand extends Product with Serializable
 object NegotiationCommand {

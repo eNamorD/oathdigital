@@ -3,14 +3,13 @@ package oathdigital.gameplay.actions
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.catalog.CatalogHandlerInventory
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
-import oathdigital.gameplay.operations.{Location,
-  Move => CoreMove, OperationPipeline, OperationPolicy,
-  Piece, PositionedLocation}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model._
 import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
+import oathdigital.model.{Move => CoreMove}
 
 sealed trait ChallengeCommand extends Product with Serializable
 object ChallengeCommand {

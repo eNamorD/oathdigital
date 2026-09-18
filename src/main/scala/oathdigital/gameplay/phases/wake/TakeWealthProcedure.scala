@@ -1,9 +1,6 @@
 package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations.{Location, Operation, Piece,
-  RecordPowerUse, Sequence, Take}
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.OathLifecycle

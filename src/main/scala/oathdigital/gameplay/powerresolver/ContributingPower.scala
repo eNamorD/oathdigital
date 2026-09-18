@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.gameplay.operations.Operation
-import oathdigital.model.{OathViolation, PlayerId, PowerId, ReadyGame, RuleSourceRef}
+import oathdigital.model.{OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs

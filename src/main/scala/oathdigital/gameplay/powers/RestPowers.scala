@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.PowerWindow
 
 /** Reviewed Rest classifications and their procedure-specific callables.
   * League Treaty is audited through its walker contribution and catalog handler.

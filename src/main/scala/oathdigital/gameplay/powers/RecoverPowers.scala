@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.gameplay.powerresolver._
+import oathdigital.model.{MajorActionType, PowerWindow}
 
 /** Reviewed-but-unimplemented Recover classifications. Every power that
   * actually contributes to a Recover procedure -- Catacombs today -- is a

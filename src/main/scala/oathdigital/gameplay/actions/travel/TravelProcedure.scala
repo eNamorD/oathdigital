@@ -2,12 +2,9 @@ package oathdigital.gameplay.actions.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.TravelRules
-import oathdigital.gameplay.operations.{SpendSupply, CoreOperation, Location,
-  Move, Operation, Piece, PositionedLocation, Sequence}
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.model.{DecisionOptionRef, OathState, OathViolation, PlayerId, ReadyGame, SiteId}
+import oathdigital.model.{CoreOperation, DecisionOptionRef, Location, Move, OathState, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerWindow, ReadyGame, Sequence, SiteId, SpendSupply}
 
 /** Declared Travel procedure tree for the walker (batch 1, Task 5).
   *

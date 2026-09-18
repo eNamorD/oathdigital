@@ -2,15 +2,13 @@ package oathdigital.gameplay.actions
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{GameplayTransition, GameStateUpdates, OathLifecycle}
-import oathdigital.gameplay.operations.{Burn, Kill,
-  Location, Move => CoreMove, OperationPipeline, OperationPolicy,
-  Piece, PositionedLocation, Reveal,
-  StackPosition, Take}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.model._
 import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
+import oathdigital.model.{Move => CoreMove}
 
 sealed trait CampaignCommand extends Product with Serializable
 object CampaignCommand {
@@ -528,7 +526,7 @@ object Campaign {
   }
   /** Runs the CoreOperations vector as one authoritative pipeline run. */
   private def execute(ready: ReadyGame,
-      operations: Vector[oathdigital.gameplay.operations.CoreOperation],
+      operations: Vector[oathdigital.model.CoreOperation],
       detail: String)(
       update: ReadyGame => Either[OathViolation, ReadyGame])
       : Either[OathViolation, ReadyGame] =
@@ -537,13 +535,13 @@ object Campaign {
       OperationPolicy.exact(operations, detail))(update)
       .flatMap(_.expectEffects(operations, detail))
   private def warbandMove(kind: ForceKind, count: Int, from: Location,
-      to: Location): Vector[oathdigital.gameplay.operations.CoreOperation] =
+      to: Location): Vector[oathdigital.model.CoreOperation] =
     Option.when(count > 0)(CoreMove(
       Piece.Warbands(kind, count),
       PositionedLocation(from), PositionedLocation(to))).toVector
 
   private def killAt(kind: ForceKind, count: Int, at: Location) =
-    Option.when(count > 0)(oathdigital.gameplay.operations.Kill(
+    Option.when(count > 0)(oathdigital.model.Kill(
       Piece.Warbands(kind, count), PositionedLocation(at))).toVector
 
   /** CampaignSacrificed: a victory only records the pending procedure. A
@@ -678,7 +676,7 @@ object Campaign {
       // Physical: defender losing forces (site warbands and returns to board).
       forceOps <- losses.foldLeft[
         Either[OathViolation,
-          Vector[oathdigital.gameplay.operations.CoreOperation]]](Right(Vector.empty)) {
+          Vector[oathdigital.model.CoreOperation]]](Right(Vector.empty)) {
         case (result, effect) => result.flatMap { ops => effect match {
           case CampaignLosingForceEffect.Remove(site, force, count) =>
             Right(ops ++ killAt(force, count, Location.Site(site)))
@@ -726,10 +724,10 @@ object Campaign {
     val attackerForce = exileForce(ready, c.actor)
     val taken = defender.relics.filter(r => e.takenRelics.contains(r.id))
     val relicTakes = taken.map { relic =>
-      oathdigital.gameplay.operations.Take(Piece.Card(relic.id), c.actor,
+      oathdigital.model.Take(Piece.Card(relic.id), c.actor,
         Location.PlayArea(defenderId), Location.PlayArea(c.actor))
     }
-    val bannerOps: Vector[oathdigital.gameplay.operations.CoreOperation] =
+    val bannerOps: Vector[oathdigital.model.CoreOperation] =
       e.takenBanners.flatMap {
         case Banner.PeoplesFavor =>
           val favorReturns = e.bannerFavorReturned.toVector.flatMap {
@@ -742,7 +740,7 @@ object Campaign {
             Location.PlayArea(defenderId), Location.PlayArea(c.actor))
         case Banner.DarkestSecret =>
           val burn = Option.when(e.darkestSecretBurned > 0)(
-            oathdigital.gameplay.operations.Burn.secrets(e.darkestSecretBurned,
+            oathdigital.model.Burn.secrets(e.darkestSecretBurned,
               PositionedLocation(Location.OnBanner(Banner.DarkestSecret)))).toVector
           burn :+ Take(Piece.Banner(Banner.DarkestSecret), c.actor,
             Location.PlayArea(defenderId), Location.PlayArea(c.actor))
@@ -763,7 +761,7 @@ object Campaign {
         PositionedLocation(Location.SetAsideRelics))
     }
     val favorBurn = Option.when(e.favorBurned > 0)(
-      oathdigital.gameplay.operations.Burn.favor(e.favorBurned,
+      oathdigital.model.Burn.favor(e.favorBurned,
         PositionedLocation(Location.PlayArea(defenderId)))).toVector
     val defenderKills = killAt(defenderForce, e.defenderLoss.killed,
       Location.PlayArea(defenderId))
@@ -772,14 +770,14 @@ object Campaign {
     val relocation = PendingProcedure.CampaignRaidRelocation(c.decision,
       c.actor, defenderId, defender.pawnSite.get,
       CampaignRules.legalRaidRelocationSites(ready, defenderId))
-    val ops: Vector[oathdigital.gameplay.operations.CoreOperation] =
-      (relicTakes: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (bannerOps: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (adviserDiscards: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (setAside: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (favorBurn: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (defenderKills: Vector[oathdigital.gameplay.operations.CoreOperation]) ++
-      (attackerDeaths: Vector[oathdigital.gameplay.operations.CoreOperation])
+    val ops: Vector[oathdigital.model.CoreOperation] =
+      (relicTakes: Vector[oathdigital.model.CoreOperation]) ++
+      (bannerOps: Vector[oathdigital.model.CoreOperation]) ++
+      (adviserDiscards: Vector[oathdigital.model.CoreOperation]) ++
+      (setAside: Vector[oathdigital.model.CoreOperation]) ++
+      (favorBurn: Vector[oathdigital.model.CoreOperation]) ++
+      (defenderKills: Vector[oathdigital.model.CoreOperation]) ++
+      (attackerDeaths: Vector[oathdigital.model.CoreOperation])
     execute(ready, ops, "Campaign raid is not permitted") { state =>
       Right(GameStateUpdates.updateCurrent(state)(current =>
         current.copy(pending = Some(relocation))))

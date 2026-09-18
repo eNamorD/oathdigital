@@ -2,18 +2,10 @@ package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
-import oathdigital.gameplay._
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.model.OathEvent.{FirstGameCompleted, Mustered, Traded}
-import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
-  BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
-  Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
-  Location,
-  ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
-  PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll,
-  Sacrifice, SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take,
-  OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,

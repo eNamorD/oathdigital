@@ -3,7 +3,6 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,

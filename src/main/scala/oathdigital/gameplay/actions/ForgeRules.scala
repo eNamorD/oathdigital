@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.gameplay._
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{Cost, Costs, Location}
+import oathdigital.gameplay.operations.Costs
 
 object ForgeRules {
   /** The complete pre-release component corpus was audited against CR p.25 / NF

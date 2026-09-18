@@ -1,7 +1,6 @@
 package oathdigital.gameplay.powers.recover
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations._
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 

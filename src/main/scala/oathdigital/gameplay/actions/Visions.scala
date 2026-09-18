@@ -7,9 +7,8 @@ import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{Burn, Give, Location, Move => CoreMove,
-  OperationPipeline, OperationPolicy, Piece,
-  PositionedLocation, StackPosition}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.model.{Move => CoreMove}
 
 sealed trait VisionCommand extends Product with Serializable
 object VisionCommand {

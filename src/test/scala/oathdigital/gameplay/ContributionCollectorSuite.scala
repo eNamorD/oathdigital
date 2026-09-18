@@ -1,10 +1,9 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.operations.Sequence
 import oathdigital.gameplay.setup.{FirstGameSetupFixture, FirstGameSetupRules}
 import oathdigital.model.PowerId
-import oathdigital.model.{OathState, RuleSourceRef}
+import oathdigital.model.{MajorActionType, OathState, PowerWindow, RuleSourceRef, Sequence}
 
 /** Task 2: the gather protocol as a pure collector. Exercises each of the
   * five decision-10 steps in isolation, with hand-built fixture powers --

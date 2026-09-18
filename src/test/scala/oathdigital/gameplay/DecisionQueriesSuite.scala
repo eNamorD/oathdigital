@@ -2,8 +2,7 @@ package oathdigital.gameplay
 
 import munit.FunSuite
 import oathdigital.gameplay.walker.DecisionQueries
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef,
-  DecisionPlacement, DecisionQuery, DecisionSection}
+import oathdigital.model._
 
 class DecisionQueriesSuite extends FunSuite {
   private val first = DecisionOption.Button(DecisionOptionRef.Button("first"), "First")

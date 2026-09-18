@@ -2,8 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.forge.ForgeProcedure
-import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, DecisionQueries,

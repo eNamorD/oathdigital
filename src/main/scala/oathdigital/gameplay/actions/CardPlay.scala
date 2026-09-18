@@ -4,9 +4,6 @@ import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay._
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.setup.FirstGameRulesData
-import oathdigital.gameplay.operations.{BeginConspiracy, Bury, BuryableCard, CoreOperation,
-  Discard, Gain, Location, Play,
-  PositionedLocation}
 import oathdigital.model._
 
 /** Pure placement planner shared by Search and facedown-adviser walker trees.

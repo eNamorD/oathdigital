@@ -1,8 +1,7 @@
 package oathdigital.gameplay.powers.whenplayed
 
 import oathdigital.gameplay._
-import oathdigital.gameplay.operations.{CardPlayed, Discard,
-  OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
   WalkerPowers, WalkerStepRecorded}

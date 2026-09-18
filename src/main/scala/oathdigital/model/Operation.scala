@@ -1,6 +1,4 @@
-package oathdigital.gameplay.operations
-
-import oathdigital.gameplay.powerresolver.PowerWindow
+package oathdigital.model
 
 /** Root of the unified operation tree.
   *

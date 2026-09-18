@@ -38,8 +38,8 @@ oathdigital/gameplay/
     Negotiation.scala
     Visions.scala
   operations/
-    CoreOperations.scala
-    PowerOperations.scala
+    OperationExecutor.scala, OperationPipeline.scala, OperationValidator.scala,
+    OperationStateMutation.scala, PowerOperations.scala, ...
 ```
 
 `OathRules` is the small aggregate router. Common lifecycle checks belong in

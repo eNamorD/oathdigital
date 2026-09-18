@@ -3,7 +3,6 @@ package oathdigital.gameplay.phases
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{IndexedRuleSource, RuleSourceAccess, RuleSourceFace, RuleSourceIndex}
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{Operation, RecordPowerUse, Sequence}
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.model._
 

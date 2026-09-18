@@ -1,10 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.travel.TravelProcedure
-import oathdigital.gameplay.operations.{SpendSupply, Location, Move, Operation,
-  Piece, PositionedLocation, Sequence}
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerCtx, PowerResolution, PowerWindow, Transform}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, Transform}
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

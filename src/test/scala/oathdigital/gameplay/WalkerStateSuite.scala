@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations._
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
 import oathdigital.model.TestGameFixtures._

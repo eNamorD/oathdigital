@@ -1,7 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{Location, Operation, Piece, Sequence,
-  Take}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit

@@ -1,6 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations._
 import oathdigital.model._
 
 class CoreOperationsSuite extends munit.FunSuite {

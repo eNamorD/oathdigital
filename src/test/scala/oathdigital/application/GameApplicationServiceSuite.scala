@@ -9,14 +9,10 @@ import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations.{SpendSupply, CoreOperation,
-  Cost, Location, ModifyDicePool, Move, PayCost, Piece,
-  PositionedLocation, StackPosition}
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
   WalkerParked, WalkerStepRecorded}
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powers.WalkerPowerCatalog
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}

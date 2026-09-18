@@ -4,10 +4,7 @@ import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{Location, Move, Piece, Sequence,
-  RecordPowerUse, Take}
 import oathdigital.gameplay.phases.wake.TakeWealthProcedure
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.setup._
@@ -266,8 +263,8 @@ class TakeWealthProcedureSuite extends munit.FunSuite {
       case step: oathdigital.gameplay.walker.WalkerStepRecorded => step.ops
     }.flatten
     assertEquals(recorded, Vector(
-      Move(Piece.Favor(1), operations.PositionedLocation(Location.Site(site)),
-        operations.PositionedLocation(Location.PlayArea(actor(ready)))),
+      Move(Piece.Favor(1), PositionedLocation(Location.Site(site)),
+        PositionedLocation(Location.PlayArea(actor(ready)))),
       RecordPowerUse(TakeWealthLimit.useRef(site))))
   }
 }

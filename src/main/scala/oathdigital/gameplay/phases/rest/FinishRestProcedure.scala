@@ -2,11 +2,7 @@ package oathdigital.gameplay.phases.rest
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{GainSupply, SpendSupply, BeginTurn, BuildOps,
-  CoreOperation, FlipSecrets, Location, Move, Operation, Piece,
-  PositionedLocation, SecretSide, Sequence}
 import oathdigital.gameplay.phases.RestCleanupPlan
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model._
 
 /** Finish Rest (rest-walker spec, `FinishRest`).

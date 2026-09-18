@@ -1,10 +1,10 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powerresolver._
-import oathdigital.gameplay.powerresolver.MajorActionType._
-import oathdigital.gameplay.powerresolver.PowerResolution._
-import oathdigital.gameplay.powerresolver.PowerWindow._
-import oathdigital.model.{PlayerId, PowerId, RuleSourceRef, SiteId}
+import oathdigital.model.MajorActionType._
+import oathdigital.model.PowerResolution._
+import oathdigital.model.PowerWindow._
+import oathdigital.model.{MajorActionType, PlayerId, PowerId, PowerResolution, PowerWindow, RuleSourceRef, SiteId}
 
 private object PowerResolverSuiteFixtures {
   final case class RecoverFacts(actor: PlayerId, emptySlot: Boolean)

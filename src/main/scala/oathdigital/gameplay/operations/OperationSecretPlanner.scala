@@ -1,6 +1,7 @@
 package oathdigital.gameplay.operations
 
 import oathdigital.model.ReadyGame
+import oathdigital.model.{Location, Move, OperationError, Piece}
 
 
 /** Resolves secret orientations for one atomic operation snapshot. */

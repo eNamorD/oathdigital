@@ -25,7 +25,8 @@ game logic outside the operation algebra.
 
 ## Current state
 
-`CoreOperations.scala` defines typed locations, pieces, primitive operations,
+`model/CoreOperations.scala` (data only; execution lives in
+`gameplay/operations`) defines typed locations, pieces, primitive operations,
 and glossary composites. Composite operations retain their semantic identity
 and expose primitive mutations. For example, Swap contains two reciprocal
 Moves, Draw contains ordered Takes, Exchange contains two Gives, and Sacrifice

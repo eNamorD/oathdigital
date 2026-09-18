@@ -3,9 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
-import oathdigital.gameplay.operations.{Location, Operation, Play, Sequence}
-import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx,
-  PhasePowers, PowerResolution}
+import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx, PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerStepRecorded}

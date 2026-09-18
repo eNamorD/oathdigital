@@ -1,4 +1,4 @@
-package oathdigital.gameplay
+package oathdigital.model
 
 /** Family of a rolled die, matching the two physical die kinds in Oath. */
 sealed trait DiceKind extends Product with Serializable

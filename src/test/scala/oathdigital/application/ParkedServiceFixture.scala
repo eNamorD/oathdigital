@@ -3,8 +3,6 @@ package oathdigital.application
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.operations.{CoreOperation, Kill, Location, Move,
-  Piece, PositionedLocation, SetOathkeeper, StackPosition}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.setup.FirstGameSetupFixture._

@@ -3,8 +3,6 @@ package oathdigital.gameplay.actions.cardplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
-import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.PowerWindow
 import oathdigital.model._
 
 /** Embeddable card-placement tree using CardPlay's pure operation planner. */

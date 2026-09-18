@@ -5,7 +5,6 @@ import oathdigital.model.OathContinue._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{EnterPhase, Sequence}
 import oathdigital.gameplay.phases.wake.EndWakeProcedure
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
@@ -57,7 +56,7 @@ class EndWakeProcedureSuite extends munit.FunSuite {
       Vector("WalkerStepRecorded", "WalkerCompleted"))
     assertEquals(accepted.events.collect {
       case step: WalkerStepRecorded => step.ops
-    }.flatten, Vector[oathdigital.gameplay.operations.CoreOperation](
+    }.flatten, Vector[oathdigital.model.CoreOperation](
       EnterPhase(Phase.Act)))
     assertEquals(accepted.events.last,
       WalkerCompleted(PhaseTransitionRef.EndWake): OathEvent)

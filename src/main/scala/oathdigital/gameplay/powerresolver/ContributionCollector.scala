@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powerresolver
 
 import oathdigital.model.PowerId
+import oathdigital.model.PowerWindow
 
 /** The result of one gather at a hooked node: transforms and restrictions
   * declared by the surviving powers, tagged with the power that declared

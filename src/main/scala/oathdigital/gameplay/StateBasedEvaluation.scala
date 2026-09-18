@@ -7,8 +7,8 @@ import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.actions.VisionRules
-import oathdigital.gameplay.operations.{Location, Move => CoreMove,
-  OperationPipeline, OperationPolicy, Piece, PositionedLocation}
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.model.{Move => CoreMove}
 
 /**
  * State-based checks for the fixed, unaltered all-Exile game only.

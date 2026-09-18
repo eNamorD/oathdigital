@@ -1,12 +1,5 @@
 package oathdigital.serialization
 
-import oathdigital.gameplay.{DiceKind, DiceSpec}
-import oathdigital.gameplay.operations.{AdvanceVisionsDrawn, BeginConspiracy, CardPlayed, GainSupply, SpendSupply, BeginTurn, BuildOps, Branch, Burn,
-  BuryableCard, Bury, ClearDicePool, CoreOperation, Cost, Decide,
-  Discard, Draw, EnterPhase, Exchange, Flip, FlipSecrets, Gain, Give, Kill,
-  Location, ModifyDicePool, ModifyRollOutcome, Move, PayCost, Peek, Piece, Play,
-  PositionedLocation, RecordPowerUse, Repeat, Replace, Reveal, Roll, Sacrifice,
-  SecretSide, Sequence, SetOathkeeper, StackPosition, Swap, Take}
 import oathdigital.model._
 
 /** Operation spellings for recorded walker steps, split out of

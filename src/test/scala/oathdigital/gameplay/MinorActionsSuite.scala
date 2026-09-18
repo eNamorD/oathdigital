@@ -191,10 +191,10 @@ class MinorActionsSuite extends munit.FunSuite {
   test("minor-action operation policy permits roots only in validated context") {
     val (base, actor, _, _, _) = ready()
     val relic = actor.relics.head.id
-    val reveal = oathdigital.gameplay.operations.Reveal(relic,
-      oathdigital.gameplay.operations.Location.PlayArea(actor.player))
-    val directFlip = oathdigital.gameplay.operations.Flip(relic,
-      oathdigital.gameplay.operations.Location.PlayArea(actor.player),
+    val reveal = oathdigital.model.Reveal(relic,
+      oathdigital.model.Location.PlayArea(actor.player))
+    val directFlip = oathdigital.model.Flip(relic,
+      oathdigital.model.Location.PlayArea(actor.player),
       Orientation.FaceUp)
 
     assert(MinorActionOperationPolicy.validate(base, reveal).isRight)

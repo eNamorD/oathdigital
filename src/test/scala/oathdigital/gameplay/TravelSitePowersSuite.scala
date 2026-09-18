@@ -1,7 +1,5 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.operations.{SpendSupply, Location, Move, Operation,
-  Piece, PositionedLocation, Sequence}
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.powers.travel.TravelSitePowers

@@ -1,7 +1,6 @@
 package oathdigital.gameplay.phases.wake
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.operations.{EnterPhase, Operation, Sequence}
 import oathdigital.gameplay.OathLifecycle
 import oathdigital.model._
 

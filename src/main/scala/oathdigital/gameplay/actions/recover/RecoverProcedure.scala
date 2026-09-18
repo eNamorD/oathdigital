@@ -2,11 +2,9 @@ package oathdigital.gameplay.actions.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.RecoverRules
-import oathdigital.gameplay.operations._
-import oathdigital.gameplay.{DiceKind, DiceSpec, OathLifecycle}
-import oathdigital.gameplay.powerresolver.PowerWindow
+import oathdigital.gameplay.OathLifecycle
+import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
-import oathdigital.model.{Answered, DecisionOption, DecisionOptionRef, DecisionQuery, OathViolation, Orientation, PendingTree, PlayerId, PoolKey, ReadyGame, RelicState, SiteId}
 
 /** Declared Recover procedure tree for the [[oathdigital.gameplay.walker.ProcedureWalker]]}.
   *

@@ -3,7 +3,6 @@ package oathdigital.gameplay.oathkeeper
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent.BanditsRefilled
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.operations.SetOathkeeper
 import oathdigital.gameplay.oathkeeper.OathkeeperFixture._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,

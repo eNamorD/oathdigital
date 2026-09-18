@@ -1,9 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.gameplay.operations._
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower,
-  PowerCtx, PowerResolution, PowerWindow}
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.walker.{ChoicePayload, ProcedureWalker,

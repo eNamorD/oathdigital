@@ -23,11 +23,12 @@ model/engine -> no outer adapter packages
 - `oathdigital.model` owns immutable domain values and structural invariants:
   identities, cards, world and campaign state, first-game setup data,
   `ReadyGame`/`OathState`, the `OathEvent` and `OathViolation` vocabularies,
+  the operation algebra (`CoreOperation`, `Location`, `Piece`), power windows,
   and rule-source identities. It holds data only, never rules.
 - `oathdigital.catalog` owns typed, source-verified component definitions.
 - `oathdigital.engine` owns generic event evolution and replay machinery.
-- `oathdigital.gameplay` owns legality, procedures, events, and deterministic
-  evolution. `actions`, `phases`, and `setup` group cohesive behavior.
+- `oathdigital.gameplay` owns legality, procedures, and deterministic
+  evolution over the model's events and operations. `actions`, `phases`, and `setup` group cohesive behavior.
 - `oathdigital.application` owns orchestration and ports. It loads/replays,
   obtains server-owned random outcomes, appends events, authorizes scopes, maps
   intents, and builds redacted projections.

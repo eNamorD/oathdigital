@@ -10,9 +10,8 @@ import oathdigital.gameplay.phases.wake.{EndWakeProcedure, TakeWealthProcedure}
 import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.operations.Operation
-import oathdigital.gameplay.powerresolver.{PhasePowers, PowerWindow}
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.gameplay.powerresolver.PhasePowers
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
@@ -73,7 +72,7 @@ object WalkerProcedureRegistry {
     *
     * It is `Option` because not every procedure has such a window:
     * `PowerWindow` carries a `*ModifierSelection` case for each of the eight
-    * [[oathdigital.gameplay.powerresolver.MajorActionType]]s and Take Wealth
+    * [[oathdigital.model.MajorActionType]]s and Take Wealth
     * is not one of them -- its only window is `WakeTakeWealth`, an
     * `OtherWindow` whose `associatedMajorAction` is `None`. `None` here means
     * the procedure offers no player-selected powers at all: `offerableWalkerPowers`

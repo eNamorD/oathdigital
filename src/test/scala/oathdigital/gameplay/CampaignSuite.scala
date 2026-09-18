@@ -12,9 +12,8 @@ import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
 import oathdigital.catalog.CatalogPower
 import oathdigital.model.OathViolation._
-import oathdigital.gameplay.operations.{Location, Move => CoreMove, Piece,
-  PositionedLocation}
 import oathdigital.gameplay.walker.{WalkerCompleted, WalkerParked}
+import oathdigital.model.{Move => CoreMove}
 
 class CampaignSuite extends munit.FunSuite {
   private val setup = new FirstGameSetupRules(catalog)

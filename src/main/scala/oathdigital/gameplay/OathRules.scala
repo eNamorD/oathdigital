@@ -12,7 +12,6 @@ import oathdigital.gameplay.phases.rest.{TurnBoundary,
 import oathdigital.model._
 import oathdigital.gameplay.setup.FirstGameSetupRules
 import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
-import oathdigital.gameplay.operations.Operation
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
