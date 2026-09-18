@@ -45,7 +45,8 @@ lazy val root = (project in file("."))
       "com.typesafe.akka" %% "akka-stream" % "2.8.5",
       "com.typesafe.akka" %% "akka-http" % "10.5.3",
       "ch.qos.logback" % "logback-classic" % "1.5.18",
-      "org.scalameta" %% "munit" % "1.0.4" % Test
+      "org.scalameta" %% "munit" % "1.0.4" % Test,
+      "org.scalameta" %% "munit-scalacheck" % "1.0.0" % Test
     ),
     scalacOptions ++= Seq(
       "-deprecation",
@@ -53,6 +54,11 @@ lazy val root = (project in file("."))
       "-unchecked",
       "-Xlint"
     ),
+    // Ratchet: pinned at the baseline measured when scoverage was adopted
+    // (stmt 84.11%). Raise it as coverage improves; the goal is 100% with
+    // justified $COVERAGE-OFF$ exemptions. Enforced by `coverageReport`.
+    coverageMinimumStmtTotal := 84.0,
+    coverageFailOnMinimum := true,
     Universal / packageName := "oathdigital",
     executableScriptName := "oathdigital",
     Universal / mappings ++= Seq(
@@ -193,6 +199,9 @@ lazy val frontend = (project in file("frontend"))
   .enablePlugins(ScalaJSPlugin)
   .settings(
     name := "oathdigital-frontend",
+    // scoverage instruments JVM code only; `coverage` would otherwise switch
+    // it on for this Scala.js project too.
+    coverageEnabled := false,
     scalaJSUseMainModuleInitializer := true,
     Compile / mainClass := Some("oathdigital.frontend.Main"),
     Compile / unmanagedSources ++= {
