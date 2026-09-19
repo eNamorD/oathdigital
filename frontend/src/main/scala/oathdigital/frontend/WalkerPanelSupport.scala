@@ -209,6 +209,8 @@ private[frontend] object WalkerPanelSupport {
           choose.onclick = _ => ui.submitCommand(
             resolveChooseOneCommand(decision, option))
           panel.appendChild(choose)
+          if (option.details.nonEmpty) panel.appendChild(text("p",
+            "walker-choice-details", option.details.mkString(" · ")))
         }
       }
 

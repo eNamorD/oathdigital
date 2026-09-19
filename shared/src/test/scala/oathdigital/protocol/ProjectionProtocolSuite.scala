@@ -112,6 +112,18 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(without))
   }
 
+  test("a choose-one option round-trips its details and defaults them to none") {
+    val annotated = DecisionQueryProjection("choose-one", Vector(
+      DecisionOptionProjection("denizen", "d1", "Old Oak", None,
+        Vector("1 Supply", "+2 warbands")),
+      DecisionOptionProjection("denizen", "d2", "Rowdy Pub")))
+    assertEquals(annotated.options.last.details, Vector.empty)
+    val carrying = projection.copy(walkerDecision =
+      projection.walkerDecision.map(_.copy(query = Some(annotated))))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
+  }
+
   test("a distribute query round-trips its slots, suggestions and total") {
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
     val distribute = DecisionQueryProjection("distribute", Vector.empty,

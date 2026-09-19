@@ -151,9 +151,14 @@ final case class DecisionQueryProjection(
   * by the action. Every other option's label is a game-object name resolved
   * at projection time from the reference, which is why no naming logic
   * enters gameplay.
+  *
+  * `details` are the consequences the engine annotated on the option (for
+  * example the Supply an answer costs and what it yields), already worded
+  * for display; empty for an option nothing was annotated on.
   */
 final case class DecisionOptionProjection(kind: String, id: String,
-    label: String, card: Option[CardDetailsProjection] = None)
+    label: String, card: Option[CardDetailsProjection] = None,
+    details: Vector[String] = Vector.empty)
 
 /** One named bucket a partition spreads its options across: the stable
   * `key` a placement names, the section's prompt copy, and the fewest
