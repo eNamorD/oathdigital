@@ -1,6 +1,6 @@
 # Visions and Conspiracy on the Procedure Walker
 
-> Status: approved design, not yet planned. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the recipe of the [Muster and Trade design](2026-09-18-economy-walker-design.md): move the behaviour onto the walker and delete the legacy path in the same slice.
+> Status: implemented by [the plan](../plans/2026-09-19-visions-conspiracy-walker.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the recipe of the [Muster and Trade design](2026-09-18-economy-walker-design.md): move the behaviour onto the walker and delete the legacy path in the same slice.
 
 ## Goal and scope
 

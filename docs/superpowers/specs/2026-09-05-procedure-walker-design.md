@@ -1,6 +1,6 @@
 # Procedure Walker: Operations as Data, Powers as Contributors
 
-> Status: approved; partly implemented. Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)). Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
+> Status: approved; partly implemented. Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)), and so have Reveal Vision and Conspiracy (see the [Visions and Conspiracy design](2026-09-19-visions-conspiracy-walker-design.md)). Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
 
 ## Problem
 
@@ -448,12 +448,14 @@ actions migrated. They were not; both kept a job:
    Wake). Remaining: Search, Economy, Challenge, Campaign, Negotiation,
    CardPlay, Rest, Visions.
    Economy (Muster and Trade) is ported and its legacy path deleted; see
-   the Muster and Trade design.
+   the Muster and Trade design. Visions (Reveal Vision and Conspiracy) are
+   ported and their legacy path deleted; see the Visions and Conspiracy
+   design.
 4. Delete retired machinery (per-action integration seams, typed-fact
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel
    and Wake have no legacy path left, and the typed-cost vocabulary is gone.
-   Eight `PendingProcedure` cases remain (see Migration status); the ninth,
+   Four `PendingProcedure` cases remain (see Migration status); the ninth,
    `OathkeeperRecipient`, was ported to the triggered `Oathkeeper` procedure
    by `2026-09-12-walker-ownership-and-phases-design.md`.
 5. Author MVP power set on the new framework.
@@ -638,20 +640,16 @@ decide the shape.
 ### What remains
 
 Step 3: Search, Economy (Muster/Trade), Challenge, Campaign, Negotiation,
-CardPlay, Rest and Visions. Step 5 has not started.
+CardPlay and Rest. Step 5 has not started.
 
-Eight `PendingProcedure` cases remain, and their owners are the starting
+Four `PendingProcedure` cases remain, and their owners are the starting
 inventory for the next plan (the file-level table is in the batch-1 plan,
 Task 8):
 
-- `Search`: Search.
 - `Campaign` and `CampaignRaidRelocation`: Campaign. The `CampaignPlan*` types
   nested beside them are Campaign's supporting vocabulary, not cases.
 - `Challenge`: Challenge.
 - `Negotiation`: Negotiation.
-- `Conspiracy`: CardPlay and Visions.
-- `RestPowerDecision` and `RestPowerContinuation`: Rest's power integration,
-  which is itself one of step 4's per-action seams.
 
 The ninth case this list once carried, `OathkeeperRecipient` — state-based
 evaluation that parks a player decision, which decision 6 did not cover —
