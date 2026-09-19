@@ -257,6 +257,7 @@ private[frontend] object ActionDecisionRenderer {
            GameCommand.StartWalker("forge", Vector.empty))
          groups.appendKind("forge", forge)
        }
+       EconomyControls.render(value, canControl, groups, submitCommand)
        if (value.legalControls.contains("placeBannerResource")) {
          value.banners.filter(_.holderPlayerId.contains(currentPlayerId)).foreach { banner =>
            val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]

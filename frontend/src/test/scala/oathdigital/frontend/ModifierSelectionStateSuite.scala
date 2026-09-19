@@ -41,6 +41,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val commands = Vector[GameIntent](
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),
+      GameIntent.StartWalker("muster", Vector.empty),
+      GameIntent.StartWalker("trade", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("button", "favor"))),
       // Travel joined the walker at batch-1 Task 5. It is the first action
       // that is both walker-registered and board-targeted, so it reaches this
       // path carrying a destination its two predecessors have no equivalent
@@ -53,7 +56,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
         Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "d1"))),
       GameIntent.BeginChallenge("peoples-favor"))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
-      Vector("recover", "forge", "travel", "search", "search"))
+      Vector("recover", "forge", "muster", "trade", "travel", "search", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
     // An UNREGISTERED walker action must not be swept into the same
     // modifier-offering path: only the keys the engine registers on the
