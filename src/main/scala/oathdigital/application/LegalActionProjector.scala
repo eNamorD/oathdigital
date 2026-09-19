@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
   Economy, ForgeRules, VisionRules, Visions}
+import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -54,6 +55,20 @@ private[application] final class LegalActionProjector(
     TakeWealthProcedure.candidates(catalog, context.ready,
       context.active.player,
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  /** Whether a Muster or Trade could start now: at least one source survives
+    * the same preview a start runs. Asked of the procedures that own them.
+    */
+  private def musterStartable(context: ScopedProjectionContext): Boolean =
+    MusterProcedure.startOptions(catalog, context.ready, context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+      .exists(_.outcome.isRight)
+
+  private def tradeStartable(context: ScopedProjectionContext,
+      resource: TradeResource): Boolean =
+    TradeProcedure.startOptions(catalog, context.ready, context.active.player,
+      resource, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+      .exists(_.outcome.isRight)
 
   /** The control a resource is offered as. A name the client binds a button
     * to is presentation, which is why this mapping is here and the question
@@ -144,6 +159,11 @@ private[application] final class LegalActionProjector(
             recoverEligible(context, active)))("beginRecover"),
           Option.when(active.pawnSite.exists(site => ForgeRules.validate(
             catalog, context.ready, active, site).isRight))("beginForge"),
+          Option.when(musterStartable(context))("beginMuster"),
+          Option.when(tradeStartable(context, TradeResource.Favor))(
+            "beginTradeFavor"),
+          Option.when(tradeStartable(context, TradeResource.Secret))(
+            "beginTradeSecret"),
           Option.when(ChallengeRules.legal(catalog, context.ready,
             active.player).nonEmpty)("beginChallenge"),
           Option.when(Banner.all.exists(b => BannerRules.holder(current, b)

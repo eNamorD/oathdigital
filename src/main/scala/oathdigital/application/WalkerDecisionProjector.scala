@@ -6,7 +6,7 @@ import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers,
-  WalkerProcedureRegistry}
+  WalkerProcedureRegistry, WalkerSimulation}
 import oathdigital.model._
 import oathdigital.protocol.projection.{CardDetailsProjection,
   DecisionOptionProjection, DecisionQueryProjection,
@@ -126,11 +126,40 @@ private[application] final class WalkerDecisionProjector(
       // `flatMap`, not `map`: an unpresentable option omits the whole
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
-        .flatMap(decide => queryProjection(ready, Some(awaited),
-          decide.query).map(query =>
-          WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
-            query = Some(query),
-            rollOutcome = rollOutcome(ready, awaited))))
+        .flatMap { decide =>
+          val (query, details) = playable(procedure, ready, tree, pending,
+            powers, decide)
+          queryProjection(ready, Some(awaited), query, details).map(projected =>
+            WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
+              query = Some(projected),
+              rollOutcome = rollOutcome(ready, awaited)))
+        }
+    }
+
+  /** The decision's query as this viewer is offered it. For a procedure that
+    * opts in (`Entry.requiresPlayableOption`), only the options its own
+    * preview accepts, each with the consequences that answering it records;
+    * for every other procedure the declared query, untouched. A preview that
+    * cannot run leaves the declared query, so a projection is never lost to
+    * it.
+    */
+  private def playable(procedure: ProcedureRef, ready: ReadyGame,
+      tree: Operation, pending: PendingTree, powers: WalkerPowers,
+      decide: Decide): (DecisionQuery, Map[DecisionOptionRef, Vector[String]]) =
+    if (!WalkerProcedureRegistry.requiresPlayableOption(procedure))
+      (decide.query, Map.empty)
+    else WalkerSimulation.previewParked(ready, tree, pending, powers) match {
+      case Left(_) => (decide.query, Map.empty)
+      case Right(previewed) =>
+        val accepted = previewed.flatMap(option => option.outcome.toOption
+          .map(outcome => option.option -> outcome))
+        val query = decide.query match {
+          case one: DecisionQuery.ChooseOne =>
+            one.copy(options = accepted.map(_._1))
+          case other => other
+        }
+        (query, accepted.map { case (option, outcome) =>
+          option.ref -> OperationDetails.of(outcome.operations) }.toMap)
     }
 
   /** Describes a declared query, or `None` when any single option's identity
@@ -147,15 +176,22 @@ private[application] final class WalkerDecisionProjector(
     * rebuilt against `ready` on this very command, so an option that no
     * longer exists is absent from the query and never reaches here. What
     * remains is the genuine authoring bug, and that suppresses.
+    *
+    * One exception is by declaration: a procedure whose registry entry sets
+    * `requiresPlayableOption` has its query narrowed by `playable` to the
+    * options its own preview accepts.
     */
   private def queryProjection(ready: ReadyGame, viewer: Option[PlayerId],
-      query: DecisionQuery): Option[DecisionQueryProjection] = {
+      query: DecisionQuery,
+      details: Map[DecisionOptionRef, Vector[String]] = Map.empty)
+      : Option[DecisionQueryProjection] = {
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.
     val index = CardIndex.from(ready.game).toOption
     def described(options: Vector[DecisionOption])
         : Option[Vector[DecisionOptionProjection]] = {
-      val projected = options.flatMap(optionProjection(ready, viewer, index, _))
+      val projected = options.flatMap(option => optionProjection(ready, viewer,
+        index, option, details.getOrElse(option.ref, Vector.empty)))
       Option.when(projected.size == options.size)(projected)
     }
     // The panel copy rides through untouched, exactly as the options do:
@@ -202,11 +238,11 @@ private[application] final class WalkerDecisionProjector(
     * so none can be absent.
     */
   private[application] def optionProjection(ready: ReadyGame, viewer: Option[PlayerId],
-      index: Option[CardIndex],
-      option: DecisionOption): Option[DecisionOptionProjection] = {
+      index: Option[CardIndex], option: DecisionOption,
+      details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] = {
     val ref = option.ref
     def row(label: String, card: Option[CardDetailsProjection] = None) =
-      Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card))
+      Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card, details))
     option match {
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
