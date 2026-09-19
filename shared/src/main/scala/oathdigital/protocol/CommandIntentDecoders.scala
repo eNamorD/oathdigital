@@ -22,14 +22,6 @@ private[protocol] object CommandIntentDecoders {
             "expected one power source"))
         }
     } yield UsePower(power, source)
-    case "beginChallenge" => one(value, path, "banner")(BeginChallenge)
-    case "chooseChallengeSecretSite" => two(value, path, "decisionId", "siteId")(ChooseChallengeSecretSite)
-    case "completeChallenge" => idInt(value, path, "amount")(CompleteChallenge)
-    case "placeBannerResource" => for {
-      _ <- exact(value, Set("type", "banner", "amount"), path)
-      banner <- string(value, "banner", path)
-      amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
-    } yield PlaceBannerResource(banner, amount)
     case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
     case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic)
     case "moveWarbands" => for {

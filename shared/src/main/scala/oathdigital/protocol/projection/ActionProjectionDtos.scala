@@ -245,10 +245,6 @@ final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
   def banner: String = key
 }
-final case class ChallengeProjection(decisionId: String, actorPlayerId: String,
-    banner: String, priorHolderPlayerId: Option[String], priorResources: Int,
-    legalSecretSiteIds: Vector[String],
-    minimumPlacement: Int, maximumPlacement: Int)
 final case class CampaignProjection(
     decisionId: String, targetSiteIds: Vector[String], force: Int,
     plansFinished: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],

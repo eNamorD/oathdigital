@@ -492,8 +492,6 @@ private[frontend] object ServerUiSupport {
                 _: BoardTargetRef.PlayerBanner => true
             case _ => false
           } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), attackDiceCount))
-      case ("challenge", Vector(BoardTargetRef.PlayerBanner(_, banner))) =>
-        Some(GameCommand.BeginChallenge(banner))
       case ("negotiation", players) if players.nonEmpty &&
           players.forall(_.isInstanceOf[BoardTargetRef.Player]) =>
         Some(GameCommand.BeginNegotiation(players.collect {
@@ -526,19 +524,6 @@ private[frontend] object ServerUiSupport {
     if (decision.actorPlayerId != playerId) Vector.empty
     else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
       decision.decisionId, site))
-
-  private[frontend] def challengeSiteCommands(decision: ChallengeState,
-      playerId: String): Vector[GameCommand.ChooseChallengeSecretSite] =
-    if (decision.actorPlayerId != playerId) Vector.empty
-    else decision.legalSecretSiteIds.map(site =>
-      GameCommand.ChooseChallengeSecretSite(decision.decisionId, site))
-
-  private[frontend] def completeChallengeCommand(decision: ChallengeState,
-      playerId: String, amount: Int): Option[GameCommand.CompleteChallenge] =
-    Option.when(decision.actorPlayerId == playerId &&
-      decision.legalSecretSiteIds.isEmpty && amount >= decision.minimumPlacement &&
-      amount <= decision.maximumPlacement)(GameCommand.CompleteChallenge(
-        decision.decisionId, amount))
 
   private def takeWealth(resource: String): GameCommand =
     GameCommand.StartWalker("take-wealth", Vector.empty,

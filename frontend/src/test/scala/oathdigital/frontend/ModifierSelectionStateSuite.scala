@@ -53,7 +53,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
         Vector(oathdigital.protocol.WalkerStartArgWire("button", "search:world"))),
       GameIntent.StartWalker("play-facedown-adviser", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("denizen", "d1"))),
-      GameIntent.BeginChallenge("peoples-favor"))
+      GameIntent.StartWalker("place-banner-resource", Vector.empty))
     assertEquals(commands.flatMap(ModifierWorkflow.action).map(_._1),
       Vector("recover", "forge", "muster", "trade", "travel", "search", "search"))
     assertEquals(ModifierWorkflow.action(GameIntent.BeginRest), None)
@@ -182,10 +182,10 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     val invocation = ModifierInvocation("site-card", "201", Some("site:a"),
       "denizen.some-power")
     val (submitted, outerModifiers) = ModifierWorkflow.submission(
-      GameIntent.BeginChallenge("peoples-favor"),
+      GameIntent.PeekSiteRelics,
       Vector(invocation))
     assertEquals(submitted,
-      GameIntent.BeginChallenge("peoples-favor"))
+      GameIntent.PeekSiteRelics)
     assertEquals(outerModifiers, Vector(invocation))
   }
 

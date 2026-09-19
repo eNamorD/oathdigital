@@ -393,15 +393,6 @@ final class GameApplicationService(
       case GameCommand.UsePower(playerId, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), playerId,
           Vector.empty, Vector(source))
-      case GameCommand.BeginChallenge(playerId, banner) =>
-        rules.handle(state, ChallengeCommand.Begin(playerId,
-          DecisionId(s"challenge-$nextSequence"), banner))
-      case GameCommand.ChooseChallengeSecretSite(playerId, decision, site) =>
-        rules.handle(state, ChallengeCommand.ChooseSecretSite(playerId, decision, site))
-      case GameCommand.CompleteChallenge(playerId, decision, amount) =>
-        rules.handle(state, ChallengeCommand.Complete(playerId, decision, amount))
-      case GameCommand.PlaceBannerResource(playerId, banner, amount) =>
-        rules.handle(state, ChallengeCommand.PlaceResource(playerId, banner, amount))
       case GameCommand.PeekSiteRelics(playerId) =>
         rules.handle(state, MinorActionCommand.PeekSiteRelics(playerId))
       case GameCommand.RevealOwnedRelic(playerId, relic) =>
@@ -475,8 +466,6 @@ final class GameApplicationService(
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
     command match {
-      case GameCommand.BeginChallenge(actor, _) =>
-        Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>
         Some(actor -> MajorActionKind.Campaign)
       case GameCommand.BeginCampaignRaid(actor, _, _) =>

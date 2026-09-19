@@ -105,8 +105,6 @@ package object frontend {
   val CampaignPlanChoice = protocol.projection.CampaignPlanChoiceProjection
   type BannerState = protocol.projection.BannerProjection
   val BannerState = protocol.projection.BannerProjection
-  type ChallengeState = protocol.projection.ChallengeProjection
-  val ChallengeState = protocol.projection.ChallengeProjection
   type MinorAdviser = protocol.projection.MinorAdviserProjection
   val MinorAdviser = protocol.projection.MinorAdviserProjection
   type MinorActionsState = protocol.projection.MinorActionsProjection

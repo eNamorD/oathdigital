@@ -182,9 +182,6 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
       raidTargets.tail, "red", 2), None)
-    assertEquals(ServerUiSupport.commandForSelection(action("challenge"), Vector(
-      BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")), "red"),
-      Some(GameCommand.BeginChallenge("red", "peoples-favor")))
     val negotiation = BoardTargetAction("negotiation", "Choose negotiators", 1, 2,
       false, Vector("blue", "yellow").map(id => BoardTargetCandidate(
         BoardTargetRef.Player(id), id, Vector.empty)))
@@ -194,20 +191,7 @@ class ServerModeUiSuite extends FunSuite {
 
   }
 
-  test("Challenge controls render only owner-authorized site or replacement commands") {
-    val sites = ChallengeState("challenge-9", "red", "darkest-secret", None,
-      3, Vector("site:a", "site:b"), 4, 6)
-    assertEquals(ServerUiSupport.challengeSiteCommands(sites, "red"), Vector(
-      GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:a"),
-      GameCommand.ChooseChallengeSecretSite("red", "challenge-9", "site:b")))
-    assertEquals(ServerUiSupport.challengeSiteCommands(sites, "blue"), Vector.empty)
-    assertEquals(ServerUiSupport.completeChallengeCommand(sites, "red", 4), None)
-    val replacement = sites.copy(banner = "peoples-favor",
-      legalSecretSiteIds = Vector.empty)
-    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "red", 4),
-      Some(GameCommand.CompleteChallenge("red", "challenge-9", 4)))
-    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "blue", 4), None)
-    assertEquals(ServerUiSupport.completeChallengeCommand(replacement, "red", 3), None)
+  test("banner and Challenge action labels are presentable") {
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
     assertEquals(ServerUiSupport.actionLabel("peoples-favor"), "People's Favor")
   }

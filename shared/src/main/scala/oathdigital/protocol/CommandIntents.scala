@@ -12,11 +12,6 @@ object GameIntent {
   case object FinishRest extends GameIntent
   final case class UsePower(powerId: String, source: WalkerStartArgWire)
       extends GameIntent
-  final case class BeginChallenge(banner: String) extends GameIntent
-  final case class ChooseChallengeSecretSite(decisionId: String, siteId: String)
-      extends GameIntent
-  final case class CompleteChallenge(decisionId: String, amount: Int) extends GameIntent
-  final case class PlaceBannerResource(banner: String, amount: Int) extends GameIntent
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent

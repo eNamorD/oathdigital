@@ -71,14 +71,6 @@ final case class AuthorizedPlayer private (
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
   def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
     GameCommand.UsePower(access.playerId, power, source)
-  def beginChallenge(banner: Banner): GameCommand =
-    GameCommand.BeginChallenge(access.playerId, banner)
-  def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =
-    GameCommand.ChooseChallengeSecretSite(access.playerId, decision, site)
-  def completeChallenge(decision: DecisionId, amount: Int): GameCommand =
-    GameCommand.CompleteChallenge(access.playerId, decision, amount)
-  def placeBannerResource(banner: Banner, amount: Int): GameCommand =
-    GameCommand.PlaceBannerResource(access.playerId, banner, amount)
   def peekSiteRelics: GameCommand = GameCommand.PeekSiteRelics(access.playerId)
   def revealOwnedRelic(relic: RelicId): GameCommand =
     GameCommand.RevealOwnedRelic(access.playerId, relic)

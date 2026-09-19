@@ -13,13 +13,12 @@ private[application] final class PendingProcedureProjector(
   def project(context: ScopedProjectionContext): PendingProjection = {
     val walkerDecision = walkerDecisions.project(context)
     val walkerWaiting = walkerDecisions.waiting(context)
-    val challenge = challengeProjection(context)
     val campaign = campaignProjection(context)
     val relocation = campaignRaidRelocation(context)
     PendingProjection(
-      phase(context, challenge, campaign,
+      phase(context, campaign,
         relocation, walkerDecision),
-      None, campaign, relocation, challenge,
+      None, campaign, relocation,
       negotiationProjection(context),
       context.current.pending.exists {
         case n: PendingProcedure.Negotiation =>
@@ -27,19 +26,6 @@ private[application] final class PendingProcedureProjector(
         case _ => false
       }, walkerDecision, walkerWaiting)
   }
-
-  private def challengeProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case c: PendingProcedure.Challenge if context.viewer.contains(c.actor) =>
-        val actor = context.current.players.find(_.player == c.actor).get
-        val legalSites = if (c.banner == Banner.DarkestSecret &&
-            c.remainingRibbonResources > 0)
-          BannerRules.leastSites(context.current, c.secretsPlaced).map(_.value)
-        else Vector.empty
-        ChallengeProjection(c.decision.value, c.actor.value, c.banner.key,
-          c.priorHolder.map(_.value), c.priorResources, legalSites,
-          c.priorResources + 1, BannerRules.playerResources(actor, c.banner))
-    }
 
   private def campaignProjection(context: ScopedProjectionContext) =
     context.current.pending.collect {
@@ -198,7 +184,6 @@ private[application] final class PendingProcedureProjector(
     }
 
   private def phase(context: ScopedProjectionContext,
-      challenge: Option[ChallengeProjection],
       campaign: Option[CampaignProjection],
       relocation: Option[CampaignRaidRelocationProjection],
       walkerDecision: Option[WalkerDecisionProjection]): String =
@@ -225,8 +210,6 @@ private[application] final class PendingProcedureProjector(
         }
       }
     else context.current.pending match {
-      case Some(_: PendingProcedure.Challenge) if challenge.nonEmpty => "challenge-decision"
-      case Some(_: PendingProcedure.Challenge) => "challenge-waiting"
       case Some(_: PendingProcedure.Campaign)
           if campaign.exists(_.victorious.contains(true)) => "campaign-placement"
       case Some(c: PendingProcedure.Campaign) if campaign.nonEmpty &&

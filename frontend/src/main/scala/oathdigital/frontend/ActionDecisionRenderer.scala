@@ -336,31 +336,6 @@ private[frontend] object ActionDecisionRenderer {
    DistributePanelRenderer.render(value, presentation, canControl, panel, ui)
    WalkerSelectionPanels.render(value, presentation, canControl, panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
-   value.challenge.filter(_ => presentation.showGameplayControls).foreach { challenge =>
-     panel.appendChild(text("h2", "", s"Challenge ${actionLabel(challenge.banner)}"))
-     challengeSiteCommands(challenge, currentPlayerId).foreach { command =>
-       val site = command.siteId
-       val choose = button(s"Place secret at $site", "challenge-secret-site")
-       choose.disabled = !canControl
-       choose.onclick = _ => submitCommand(command)
-       panel.appendChild(choose)
-     }
-     if (challenge.legalSecretSiteIds.isEmpty) {
-       val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-       label.textContent = "Resources to place "
-       val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
-       amount.`type` = "number"; amount.min = challenge.minimumPlacement.toString
-       amount.max = challenge.maximumPlacement.toString
-       amount.value = challenge.minimumPlacement.toString
-       amount.setAttribute("aria-label", "Banner replacement resources")
-       label.appendChild(amount); panel.appendChild(label)
-       val complete = button("Take banner", "challenge-complete")
-       complete.disabled = !canControl || challenge.minimumPlacement > challenge.maximumPlacement
-       complete.onclick = _ => completeChallengeCommand(challenge,
-         currentPlayerId, amount.value.toInt).foreach(submitCommand)
-       panel.appendChild(complete)
-     }
-   }
    value.negotiation match {
      case Some(deal) if showNegotiationControls(value, presentation) =>
        panel.appendChild(text("h2", "", "Negotiation"))

@@ -11,10 +11,6 @@ private[protocol] object CommandIntentCodec {
     case FinishRest => tagged("finishRest")
     case UsePower(power, source) => tagged("usePower", "powerId" -> power,
       "source" -> CommandNestedCodecs.encodeStartArgWire(source))
-    case BeginChallenge(banner) => tagged("beginChallenge", "banner" -> banner)
-    case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
-    case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
-    case PlaceBannerResource(banner, amount) => tagged("placeBannerResource", "banner" -> banner, "amount" -> amount)
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)

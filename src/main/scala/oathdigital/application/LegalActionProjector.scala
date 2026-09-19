@@ -136,9 +136,6 @@ private[application] final class LegalActionProjector(
       case Some(r: PendingProcedure.CampaignRaidRelocation)
           if context.viewer.contains(r.actor) => Vector("relocateCampaignRaidPawn")
       case _ if !context.viewerIsActive => Vector.empty
-      case Some(c: PendingProcedure.Challenge) if context.viewer.contains(c.actor) =>
-        if (c.remainingRibbonResources == 0) Vector("completeChallenge")
-        else Vector("chooseChallengeSecretSite")
       case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
         Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
           else "placeCampaignForce")

@@ -27,7 +27,6 @@ final case class GameProjection(
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,
     oathkeeper: Option[OathkeeperProjection] = None
     ,banners: Vector[BannerProjection] = Vector.empty
-    ,challenge: Option[ChallengeProjection] = None
     ,minorActions: Option[MinorActionsProjection] = None
     ,negotiation: Option[NegotiationProjection] = None
     ,negotiationWaiting: Boolean = false

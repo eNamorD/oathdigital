@@ -27,13 +27,6 @@ object GameCommand {
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
       extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
-  final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
-  final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
-      site: SiteId) extends GameCommand
-  final case class CompleteChallenge(playerId: PlayerId, decision: DecisionId,
-      amount: Int) extends GameCommand
-  final case class PlaceBannerResource(playerId: PlayerId, banner: Banner,
-      amount: Int) extends GameCommand
   final case class PeekSiteRelics(playerId: PlayerId) extends GameCommand
   final case class RevealOwnedRelic(playerId: PlayerId, relic: RelicId)
       extends GameCommand

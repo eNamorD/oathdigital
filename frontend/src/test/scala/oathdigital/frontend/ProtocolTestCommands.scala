@@ -42,9 +42,6 @@ private[frontend] object GameCommand {
     Intent.StartWalker("search", Vector.empty, Vector(WalkerStartArgWire(
       "button", region.fold("search:world")(r =>
         s"search:regional-discard:$r"))))
-  def BeginChallenge(actor: String, banner: String) = Intent.BeginChallenge(banner)
-  def ChooseChallengeSecretSite(actor: String, id: String, site: String) = Intent.ChooseChallengeSecretSite(id, site)
-  def CompleteChallenge(actor: String, id: String, amount: Int) = Intent.CompleteChallenge(id, amount)
   def PeekSiteRelics(actor: String) = Intent.PeekSiteRelics
   def BeginNegotiation(actor: String, participants: Vector[String]) = Intent.BeginNegotiation(participants)
   def MoveWarbands(actor: String, toSite: Boolean, amount: Int) = Intent.MoveWarbands(toSite, amount)

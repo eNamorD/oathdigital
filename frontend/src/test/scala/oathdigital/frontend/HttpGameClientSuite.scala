@@ -21,7 +21,7 @@ class HttpGameClientSuite extends FunSuite {
       Map("resource" -> "favor"))).flatMap { result =>
       assertEquals(result.toOption.get.modifiers.map(_.handlerId), Vector("h.one", "h.two"))
       client.submit("game-1", "red-exile", 7,
-        GameIntent.BeginChallenge("peoples-favor"),
+        GameIntent.PeekSiteRelics,
         ordered)
     }.map { _ =>
       assert(transport.requests.head._2.endsWith("/preview?playerId=red-exile"))
@@ -75,28 +75,16 @@ class HttpGameClientSuite extends FunSuite {
       "red-exile", toSite = false, 2)).contains("\"amount\":2"))
   }
 
-  test("Challenge projection decodes owner choices and commands omit PF tie controls") {
-    val json = projectionJson(sequence = 21, phase = "challenge-decision",
+  test("an unclaimed banner projection decodes") {
+    val json = projectionJson(sequence = 21, phase = "act-action-selection",
       ready = true, completed = true, choices = false).replace(
       "\"pendingCardDecision\":null",
       "\"pendingCardDecision\":null,\"banners\":[{" +
         "\"banner\":\"peoples-favor\",\"face\":\"mob\"," +
-        "\"holderPlayerId\":null,\"resources\":2}],\"challenge\":{" +
-        "\"decisionId\":\"challenge-20\",\"actorPlayerId\":\"red-exile\"," +
-        "\"banner\":\"peoples-favor\",\"priorHolderPlayerId\":null," +
-        "\"priorResources\":2,\"legalSecretSiteIds\":[]," +
-        "\"minimumPlacement\":3,\"maximumPlacement\":5}")
+        "\"holderPlayerId\":null,\"resources\":2}]")
     val decoded = GameJson.decodeProjection(json).toOption.get
     assertEquals(decoded.banners.head,
       BannerState("peoples-favor", "mob", None, 2))
-    assertEquals(decoded.challenge, Some(ChallengeState("challenge-20",
-      "red-exile", "peoples-favor", None, 2, Vector.empty, 3, 5)))
-    assert(GameJson.encodeCommand(20, GameCommand.BeginChallenge(
-      "red-exile", "peoples-favor")).contains("\"type\":\"beginChallenge\""))
-    assert(GameJson.encodeCommand(21, GameCommand.CompleteChallenge(
-      "red-exile", "challenge-20", 3)).contains("\"amount\":3"))
-    assert(!GameJson.encodeCommand(21, GameCommand.CompleteChallenge(
-      "red-exile", "challenge-20", 3)).contains("FavorBank"))
   }
 
   test("projection decodes scoped Oathkeeper and Usurper victory status") {

@@ -151,7 +151,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         current.result.map(_.kind.key))),
       campaignRaidRelocation = pending.campaignRaidRelocation,
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
-      challenge = pending.challenge,
       minorActions = legal.minorActions,
       negotiation = pending.negotiation,
       negotiationWaiting = current.result.isEmpty && pending.negotiationWaiting,

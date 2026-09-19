@@ -176,24 +176,4 @@ class ChallengeSuite extends munit.FunSuite {
     val challenger = after.game.current.players.find(_.player == actor.player).get
     assertEquals(challenger.board.faceUpSecrets, actor.board.faceUpSecrets - 4)
   }
-
-  test("pending Challenge projection and controls are owner-only") {
-    val (base, actor) = ready(resources = 3, banner = Banner.DarkestSecret)
-    val other = base.game.current.players.find(_.player != actor.player).get.player
-    val started = rules.handle(Ready(base), ChallengeCommand.Begin(actor.player,
-      DecisionId("private-challenge"), Banner.DarkestSecret)).toOption.get
-    val loaded = LoadedGame(started.state, 12)
-    val projector = new GameProjector(catalog)
-    val owner = projector.project("challenge", loaded, actor.player)
-    val waiting = projector.project("challenge", loaded, other)
-    val public = projector.projectPublic("challenge", loaded)
-    assert(owner.challenge.nonEmpty)
-    assert(owner.legalControls.forall(Set("chooseChallengeSecretSite",
-      "completeChallenge")))
-    assertEquals(waiting.challenge, None)
-    assertEquals(waiting.legalControls, Vector.empty)
-    assertEquals(waiting.phase, "challenge-waiting")
-    assertEquals(public.challenge, None)
-    assertEquals(public.legalControls, Vector.empty)
-  }
 }

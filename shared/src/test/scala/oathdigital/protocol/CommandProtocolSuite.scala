@@ -8,8 +8,6 @@ class CommandProtocolSuite extends munit.FunSuite {
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
     StartWalker("search", Vector.empty,
       Vector(WalkerStartArgWire("button", "search:world"))),
-    BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),
-    CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
     StartWalker("play-facedown-adviser", Vector.empty,
       Vector(WalkerStartArgWire("denizen", "d1"))),
     PeekSiteRelics,
