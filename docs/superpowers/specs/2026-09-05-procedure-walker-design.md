@@ -445,19 +445,19 @@ actions migrated. They were not; both kept a job:
 3. Port remaining actions in batches: Search, Economy (Muster/Trade), Forge,
    Challenge, Campaign, Negotiation, CardPlay, Rest, Wake, Visions.
    *In progress:* batch 1 ported Forge, Travel and Wake (Take Wealth and End
-   Wake). Remaining: Search, Economy, Challenge, Campaign, Negotiation,
-   CardPlay, Rest, Visions.
+   Wake). Remaining: Campaign and Negotiation.
    Economy (Muster and Trade) is ported and its legacy path deleted; see
    the Muster and Trade design. Visions (Reveal Vision and Conspiracy) are
    ported and their legacy path deleted; see the Visions and Conspiracy
-   design.
+   design. Challenge and Place Banner Resource are ported and their legacy
+   path deleted; see the Challenge design.
 4. Delete retired machinery (per-action integration seams, typed-fact
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel
    and Wake have no legacy path left, and the typed-cost vocabulary is gone.
-   Four `PendingProcedure` cases remain (see Migration status); the ninth,
-   `OathkeeperRecipient`, was ported to the triggered `Oathkeeper` procedure
-   by `2026-09-12-walker-ownership-and-phases-design.md`.
+   Three `PendingProcedure` cases remain (see Migration status).
+   The former ninth case, `OathkeeperRecipient`, was ported to the triggered
+   `Oathkeeper` procedure by `2026-09-12-walker-ownership-and-phases-design.md`.
 5. Author MVP power set on the new framework.
 
 Existing phase plans (phases 1-4 under `docs/superpowers/plans/`) describe
@@ -639,16 +639,14 @@ decide the shape.
 
 ### What remains
 
-Step 3: Search, Economy (Muster/Trade), Challenge, Campaign, Negotiation,
-CardPlay and Rest. Step 5 has not started.
+Step 3: Campaign and Negotiation. Step 5 has not started.
 
-Four `PendingProcedure` cases remain, and their owners are the starting
+Three `PendingProcedure` cases remain, and their owners are the starting
 inventory for the next plan (the file-level table is in the batch-1 plan,
 Task 8):
 
 - `Campaign` and `CampaignRaidRelocation`: Campaign. The `CampaignPlan*` types
   nested beside them are Campaign's supporting vocabulary, not cases.
-- `Challenge`: Challenge.
 - `Negotiation`: Negotiation.
 
 The ninth case this list once carried, `OathkeeperRecipient` — state-based

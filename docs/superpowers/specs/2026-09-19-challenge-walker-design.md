@@ -1,6 +1,6 @@
 # Challenge and Place Banner Resource on the Procedure Walker
 
-> Status: design, not yet planned. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and follows the recipe of the Economy, Search and Visions ports ([Muster and Trade](2026-09-18-economy-walker-design.md), [Visions and Conspiracy](2026-09-19-visions-conspiracy-walker-design.md)).
+> Status: implemented by [the plan](../plans/2026-09-19-challenge-walker.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and follows the recipe of the Economy, Search and Visions ports ([Muster and Trade](2026-09-18-economy-walker-design.md), [Visions and Conspiracy](2026-09-19-visions-conspiracy-walker-design.md)).
 
 ## Goal and scope
 
@@ -32,9 +32,11 @@ Sequence(                                             // ChallengeActionEligibil
       Sequence(window = ChallengePlacement, payment, custody)) })
 ```
 
+As built, the tree has three sibling `Branch`es after the Supply step (banner, amount, effects). The walker re-runs every enclosing `Branch.select` on each resume, so each `Branch` is selected only when reached and reads only answered values or state no earlier step changes. Everything derived from state that an earlier step changes (the ribbon, the payment and the custody source) is built inside a `BuildOps` or a lazily selected `Branch`.
+
 **Supply.** `SpendSupply(actor, 1)` in `ChallengeCost` is the first step, so the walk spends it before the first decision, as legacy `Begin` did. Supply affordability is not a build gate: the transformed `SpendSupply` owns it, so a start with no Supply fails at the first step before anything is persisted, and a power that rewrites the cost does so in `ChallengeCost`. Because the Supply is already spent when every decision is built or rebuilt, no decision reads Supply.
 
-**Banner decision.** Its options are the banners that pass every start check: the actor does not already hold the banner, is co-located with the holder when the banner is enemy-held, and has strictly more relevant resources than the banner (faceup secrets for Darkest Secret, favor for People's Favor). `Challenge.legalBanners(state, actor)` is one predicate, used to build this query and by the projector to decide whether to offer the start control. If it returns no banner, `StartWalker` rejects with a typed violation before anything is persisted. Cost text ("1 Supply", "Currently N resources") is authored on the option when the query is built. The Economy preview gate is not used: answering a banner option runs no operations, so a preview would read no cost from it, and legality belongs in the query build. `requiresPlayableOption` stays off.
+**Banner decision.** Its options are the banners that pass every start check: the actor does not already hold the banner, is co-located with the holder when the banner is enemy-held, and has strictly more relevant resources than the banner (faceup secrets for Darkest Secret, favor for People's Favor). `Challenge.legalBanners(state, actor)` is one predicate, used to build this query and by the projector to decide whether to offer the start control. If it returns no banner, `StartWalker` rejects with a typed violation before anything is persisted. The option's cost text is projected from state (`Currently N resources`, and `Unclaimed` for a banner with no holder), not authored on the option, and a start control is offered when `WalkerSimulation.starts` accepts the same first walk a start performs. The Economy preview gate is not used: answering a banner option runs no operations, so a preview would read no cost from it, and legality belongs in the query build. `requiresPlayableOption` stays off.
 
 **Amount decision.** `ChooseAmount(priorResources + 1, actorResources)`, where `priorResources` is the banner's current total and `actorResources` is the actor's relevant resources. It is asked before any move runs, so both bounds come from pre-drain state. The heading states the banner's current total. The answer is stored in `PendingTree.answered` and read by the placement step.
 
@@ -76,7 +78,7 @@ Start gates stay in `build` because they are facts about state, not costs: the a
 
 ## New decision shapes
 
-- `DecisionQuery.ChooseMany(count, options, heading)`: pick exactly `count` distinct options. Answer `DecisionAnswer.ChooseManyAnswer(selected: Vector[DecisionOptionRef])`, accepted only when the selection has exactly `count` distinct references, each from the query. Well-formed only if `count` is at least 1 and no more than the option count.
+- `DecisionQuery.ChooseMany(count, options, heading)`: pick exactly `count` distinct options. Answer `DecisionAnswer.ChooseManyAnswer(selected: Vector[DecisionOptionRef])`, accepted only when the selection has exactly `count` distinct references, each from the query. Well-formed only if `1 <= count < options.size`: a count that takes every option is a forced answer, which no decision shape may park on. Challenge parks it only when secrets are fewer than the tied sites.
 - `DecisionQuery.ChooseAmount(min, max, heading, confirmLabel)`: pick an integer. Answer `DecisionAnswer.ChooseAmountAnswer(amount: Int)`, accepted exactly when `min <= amount <= max`. Well-formed only if `min <= max`, and `heading` and `confirmLabel` are required, as on `Distribute`. No `suggested` field. A single-value range stays a decision the player confirms.
 
 The `DecisionAnswer` family is sealed, so each shape needs, with a round-trip test: `DecisionQueries` validation and its exhaustive match; the walker's answer acceptance; the projector's option and answer projection; the protocol DTO and codec; the journal answer codec (`DecisionAnswerCodec`); and a generic frontend control in `WalkerPanelSupport` (a multi-select with a confirm control, and a dropdown with a confirm control that opens on `min`). A dropdown carries no per-option annotation, so context goes in the authored heading. The frontend builds the answer from the control's value, and neither control names a procedure.
@@ -102,11 +104,11 @@ Deleted in step 5:
 - The `OathRules` Challenge dispatch and evolve cases, and the matching `FirstGameSetup` case.
 - `GameCommand.BeginChallenge`, `ChooseChallengeSecretSite`, `CompleteChallenge` and `PlaceBannerResource`, their `Authorization` helpers, their `GameApplicationService` dispatch and action-kind lines, and the `Intent` cases with decoders, codec cases and mapper entries.
 - The events `BannerChallengeStarted`, `BannerRibbonChoiceMade`, `BannerChallengeCompleted` and `BannerResourcePlaced` with their wire and journal codecs.
-- `PendingProcedure.Challenge` and `OathContinue.AwaitingBannerDecision`, the `PendingProcedureProjector` challenge projection and `ChallengeProjection` with its DTO and codec, and the `LegalActionProjector` entries (`beginChallenge`, `chooseChallengeSecretSite`, `completeChallenge`, `placeBannerResource` and the challenge board-target selection).
+- `PendingProcedure.Challenge`, the `PendingProcedureProjector` challenge projection and `ChallengeProjection` with its DTO and codec, and the `LegalActionProjector` entries (`beginChallenge`, `chooseChallengeSecretSite`, `completeChallenge`, `placeBannerResource` and the challenge board-target selection).
 - The frontend Challenge panel and its `ServerUiSupport` intents.
 - Any violation left without a user (candidates: `ChallengeUnavailable`, `ChallengeOutcomeMismatch`, `ChallengeDecisionMismatch`, `InsufficientFavor`, `InsufficientSecrets`, if nothing else reads them).
 
-Kept: `BannerRules`, moved to its own file as `VisionRules` was (Campaign and Conspiracy use it), `UnsupportedBannerState` for the face gate, and `PowerRuntime`'s Challenge fallback kind. Pre-release history compatibility is not required by the approved walker design.
+Kept: `OathContinue.AwaitingBannerDecision` (reused as the walker continuation for both procedures), `BannerRules`, moved to its own file as `VisionRules` was (Campaign and Conspiracy use it), `UnsupportedBannerState` for the face gate, and `PowerRuntime`'s Challenge fallback kind. Pre-release history compatibility is not required by the approved walker design.
 
 After the slice, three `PendingProcedure` cases remain: `Campaign`, `CampaignRaidRelocation` and `Negotiation`. The walker roadmap and the remaining-cases list are updated in the same slice.
 
