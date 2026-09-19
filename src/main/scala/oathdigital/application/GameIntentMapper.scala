@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.model._
-import oathdigital.model.DecisionAnswer.{ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
+import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseManyAnswer, ChooseOneAnswer, DistributeAnswer, PartitionAnswer}
 import oathdigital.protocol.{GameIntent => Intent, _}
 
 final case class GameIntentMappingFailure(path: String, message: String)
@@ -152,6 +152,11 @@ object GameIntentMapper {
       traverse(amounts)(row => optionRef(row.optionKind, row.optionId,
         "$.intent.payload.amounts.option").map(
           DistributeAmount(_, row.amount))).map(DistributeAnswer)
+    case DecisionAnswerWire.ChooseManyWire(options) =>
+      traverse(options)(row => optionRef(row.optionKind, row.optionId,
+        "$.intent.payload.options")).map(ChooseManyAnswer)
+    case DecisionAnswerWire.ChooseAmountWire(amount) =>
+      Right(ChooseAmountAnswer(amount))
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

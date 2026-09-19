@@ -143,6 +143,45 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(query.confirmLabel, Some("Move favor"))
   }
 
+  test("a parked choose-many projects its options and count") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val siteIds = context.ready.game.current.map.sites.keys.toVector.take(3)
+    val tree = Sequence(Decide("test.many", actor, DecisionQuery.ChooseMany(2,
+      siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
+      Some("Choose sites"))))
+    val query = projectorFor(tree).project(context).flatMap(_.query)
+      .getOrElse(fail("a parked choose-many must project"))
+    assertEquals(query.form, "choose-many")
+    assertEquals(query.count, Some(2))
+    assertEquals(query.options.map(_.id), siteIds.map(_.value))
+    assertEquals(query.heading, Some("Choose sites"))
+  }
+
+  test("a parked choose-amount projects its bounds and confirm label") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.amount", actor, DecisionQuery.ChooseAmount(
+      3, 6, Some("Place more than 2 favor"), "Take banner")))
+    val query = projectorFor(tree).project(context).flatMap(_.query)
+      .getOrElse(fail("a parked choose-amount must project"))
+    assertEquals(query.form, "choose-amount")
+    assertEquals((query.minimum, query.maximum), (Some(3), Some(6)))
+    assertEquals(query.confirmLabel, Some("Take banner"))
+    assertEquals(query.options, Vector.empty)
+  }
+
+  test("an unclaimed banner is presentable and every banner shows its resources") {
+    val (base, actor) = parked(ActionRef.Recover)
+    val option = DecisionOption.Banner(DecisionOptionRef.Banner(Banner.DarkestSecret))
+    val unclaimed = base.copy(ready = base.ready.updateCurrent(current =>
+      current.copy(banners = current.banners.copy(darkestSecret =
+        current.banners.darkestSecret.copy(holder = None, secrets = 3)))))
+    val query = projects(unclaimed, actor, Vector(option))
+      .getOrElse(fail("an unclaimed banner must project"))
+    assertEquals(query.options.map(row => (row.kind, row.id, row.label,
+      row.details)), Vector(("banner", "darkest-secret",
+      "Unclaimed Darkest Secret", Vector("Currently 3 resources"))))
+  }
+
   /** Whether the tree below projects at all, for the given options. */
   private def projects(context: ScopedProjectionContext, actor: PlayerId,
       options: Vector[DecisionOption]) =
@@ -238,12 +277,12 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assert(query.options.forall(row => row.card.isEmpty && row.label.nonEmpty))
     assert(query.options.head.label.contains("facedown relic"))
 
-    // Controls: a slot past the owner's relics and a banner nobody holds have
-    // no live state to describe, so each suppresses the whole decision.
+    // Control: a slot past the owner's relics has no live state to describe,
+    // so it suppresses the whole decision. An unclaimed banner is presentable.
     assertEquals(projects(placed, actor, Vector(DecisionOption.RelicSlot(
       DecisionOptionRef.RelicSlot(enemy.player, 1)))), None)
-    assertEquals(projects(placed, actor, Vector(DecisionOption.Banner(
-      DecisionOptionRef.Banner(Banner.DarkestSecret)))), None)
+    assert(projects(placed, actor, Vector(DecisionOption.Banner(
+      DecisionOptionRef.Banner(Banner.DarkestSecret)))).nonEmpty)
   }
 
   /** The other half of "cannot be presented": a card that IS in

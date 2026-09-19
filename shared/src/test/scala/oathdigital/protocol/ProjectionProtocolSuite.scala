@@ -122,6 +122,22 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(carrying))
   }
 
+  test("choose-many and choose-amount queries round-trip their counts and bounds") {
+    def site(id: String) = DecisionOptionProjection("site", id, id)
+    val many = DecisionQueryProjection("choose-many",
+      Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
+      count = Some(2))
+    val amount = DecisionQueryProjection("choose-amount", Vector.empty,
+      heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
+      minimum = Some(3), maximum = Some(6))
+    Vector(many, amount).foreach { query =>
+      val carrying = projection.copy(walkerDecision =
+        projection.walkerDecision.map(_.copy(query = Some(query))))
+      assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+        Right(carrying))
+    }
+  }
+
   test("a distribute query round-trips its slots, suggestions and total") {
     def bank(id: String) = DecisionOptionProjection("favor-bank", id, id)
     val distribute = DecisionQueryProjection("distribute", Vector.empty,

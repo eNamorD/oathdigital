@@ -45,7 +45,10 @@ class CommandProtocolSuite extends munit.FunSuite {
         DecisionPlacementWire("denizen", "d3", "pay-secret")))),
     ResolveWalker("rest.distribution", DecisionAnswerWire.DistributeWire(Vector(
       DistributeAmountWire("favor-bank", "arcane", 0),
-      DistributeAmountWire("favor-bank", "nomad", 3))))
+      DistributeAmountWire("favor-bank", "nomad", 3)))),
+    ResolveWalker("challenge.ribbon-site", DecisionAnswerWire.ChooseManyWire(
+      Vector(DecisionOptionWire("site", "a"), DecisionOptionWire("site", "c")))),
+    ResolveWalker("challenge.amount", DecisionAnswerWire.ChooseAmountWire(4))
   )
 
   test("usePower names exactly one power and one source") {
@@ -146,6 +149,15 @@ class CommandProtocolSuite extends munit.FunSuite {
     // The engine rejects a duplicated placement too (`DecisionQueries`);
     // catching it at the transport keeps the two rules the same shape.
     assert(failure.isInstanceOf[ProtocolDecodeFailure.InvalidValue])
+  }
+
+  test("a choose-many wire answer rejects duplicate options and unknown keys") {
+    val duplicate = ujson.Obj("kind" -> "choose-many", "options" -> ujson.Arr(
+      ujson.Obj("optionKind" -> "site", "optionId" -> "a"),
+      ujson.Obj("optionKind" -> "site", "optionId" -> "a")))
+    assert(CommandNestedCodecs.decodeDecisionAnswerWire(duplicate, "$").isLeft)
+    val extra = ujson.Obj("kind" -> "choose-amount", "amount" -> 2, "x" -> 1)
+    assert(CommandNestedCodecs.decodeDecisionAnswerWire(extra, "$").isLeft)
   }
 
   test("a distribute payload naming one option twice is rejected at its path") {

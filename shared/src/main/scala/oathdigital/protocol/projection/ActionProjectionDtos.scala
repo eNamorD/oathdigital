@@ -106,8 +106,11 @@ final case class PhasePowerProjection(powerId: String,
   * agreed with the engine only by convention -- are gone.
   *
   * `form` is the query shape: `"choose-one"` (pick exactly one option),
-  * `"partition"` (spread every option across the declared sections), or
-  * `"distribute"` (assign amounts across the declared slots). A choose-one
+  * `"partition"` (spread every option across the declared sections),
+  * `"distribute"` (assign amounts across the declared slots),
+  * `"choose-many"` (pick exactly `count` of the options), or
+  * `"choose-amount"` (pick an integer from `minimum` to `maximum`, with no
+  * options). A choose-one
   * query carries no `sections` at all. `slots` and `total` are a distribute
   * form's whole content. That form's `options` is empty, because every
   * option it offers sits on a slot.
@@ -139,7 +142,10 @@ final case class DecisionQueryProjection(
     heading: Option[String] = None,
     confirmLabel: Option[String] = None,
     slots: Vector[DecisionSlotProjection] = Vector.empty,
-    total: Option[Int] = None)
+    total: Option[Int] = None,
+    count: Option[Int] = None,
+    minimum: Option[Int] = None,
+    maximum: Option[Int] = None)
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a

@@ -74,6 +74,12 @@ private[protocol] object CommandNestedCodecs {
       "amounts" -> ujson.Arr.from(amounts.map(row => ujson.Obj(
         "optionKind" -> row.optionKind, "optionId" -> row.optionId,
         "amount" -> row.amount))))
+    case DecisionAnswerWire.ChooseManyWire(options) => ujson.Obj(
+      "kind" -> "choose-many",
+      "options" -> ujson.Arr.from(options.map(row => ujson.Obj(
+        "optionKind" -> row.optionKind, "optionId" -> row.optionId))))
+    case DecisionAnswerWire.ChooseAmountWire(amount) =>
+      ujson.Obj("kind" -> "choose-amount", "amount" -> amount)
   }
 
   def decodeDecisionAnswerWire(value: ujson.Value, path: String)
@@ -100,6 +106,18 @@ private[protocol] object CommandNestedCodecs {
         _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
           s"$path.amounts")
       } yield DecisionAnswerWire.DistributeWire(rows)
+      case "choose-many" => for {
+        _ <- exact(root, Set("kind", "options"), path)
+        raw <- field(root, "options", path).flatMap(array(_, s"$path.options"))
+        rows <- traverse(raw.zipWithIndex) { case (v, i) =>
+          decodeDecisionOption(v, s"$path.options[$i]") }
+        _ <- noDuplicates(rows.map(row => s"${row.optionKind}/${row.optionId}"),
+          s"$path.options")
+      } yield DecisionAnswerWire.ChooseManyWire(rows)
+      case "choose-amount" => for {
+        _ <- exact(root, Set("kind", "amount"), path)
+        amount <- field(root, "amount", path).flatMap(integer(_, s"$path.amount"))
+      } yield DecisionAnswerWire.ChooseAmountWire(amount)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision answer '$kind'"))
     }}
 
@@ -110,6 +128,14 @@ private[protocol] object CommandNestedCodecs {
     optionId <- string(row, "optionId", path)
     sectionKey <- string(row, "sectionKey", path)
   } yield DecisionPlacementWire(optionKind, optionId, sectionKey) }
+
+  private def decodeDecisionOption(value: ujson.Value, path: String)
+      : Either[ProtocolDecodeFailure, DecisionOptionWire] =
+    obj(value, path).flatMap { row => for {
+      _ <- exact(row, Set("optionKind", "optionId"), path)
+      optionKind <- string(row, "optionKind", path)
+      optionId <- string(row, "optionId", path)
+    } yield DecisionOptionWire(optionKind, optionId) }
 
   private def decodeDistributeAmount(value: ujson.Value, path: String)
       : Either[ProtocolDecodeFailure, DistributeAmountWire] =

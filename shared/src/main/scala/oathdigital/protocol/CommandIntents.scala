@@ -136,7 +136,17 @@ object DecisionAnswerWire {
 
   final case class DistributeWire(amounts: Vector[DistributeAmountWire])
       extends DecisionAnswerWire
+
+  /** Answers a choose-many decision with the options selected. */
+  final case class ChooseManyWire(options: Vector[DecisionOptionWire])
+      extends DecisionAnswerWire
+
+  /** Answers a choose-amount decision with the amount picked. */
+  final case class ChooseAmountWire(amount: Int) extends DecisionAnswerWire
 }
+
+/** One option named in a [[DecisionAnswerWire.ChooseManyWire]]. */
+final case class DecisionOptionWire(optionKind: String, optionId: String)
 
 /** One option placed in one section of a [[DecisionAnswerWire.PartitionWire]].
   */

@@ -206,6 +206,13 @@ private[application] final class WalkerDecisionProjector(
       case DecisionQuery.ChooseOne(options, heading) =>
         described(options).map(DecisionQueryProjection("choose-one", _,
           heading = heading))
+      case DecisionQuery.ChooseMany(count, options, heading) =>
+        described(options).map(DecisionQueryProjection("choose-many", _,
+          heading = heading, count = Some(count)))
+      case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
+        Some(DecisionQueryProjection("choose-amount", Vector.empty,
+          heading = heading, confirmLabel = Some(confirmLabel),
+          minimum = Some(min), maximum = Some(max)))
       case DecisionQuery.Partition(sections, options, heading, confirmLabel) =>
         described(options).map(DecisionQueryProjection("partition", _,
           sections.map(section => DecisionSectionProjection(section.key,
@@ -244,8 +251,10 @@ private[application] final class WalkerDecisionProjector(
       index: Option[CardIndex], option: DecisionOption,
       details: Vector[String] = Vector.empty): Option[DecisionOptionProjection] = {
     val ref = option.ref
-    def row(label: String, card: Option[CardDetailsProjection] = None) =
-      Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card, details))
+    def row(label: String, card: Option[CardDetailsProjection] = None,
+        extra: Vector[String] = Vector.empty) =
+      Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card,
+        details ++ extra))
     option match {
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
@@ -274,9 +283,12 @@ private[application] final class WalkerDecisionProjector(
           row(s"${presentation.safeLabel(slot.owner.value)} facedown relic")
         else None
       case DecisionOption.Banner(held) =>
-        BannerRules.holder(ready.game.current, held.banner).flatMap(holder =>
-          row(s"${presentation.safeLabel(holder.value)} " +
-            presentation.safeLabel(held.banner.key)))
+        val current = ready.game.current
+        val owner = BannerRules.holder(current, held.banner)
+          .fold("Unclaimed")(holder => presentation.safeLabel(holder.value))
+        row(s"$owner ${presentation.safeLabel(held.banner.key)}",
+          extra = Vector(
+            s"Currently ${BannerRules.resources(current, held.banner)} resources"))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>
