@@ -30,8 +30,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val AdviserChosenType = "setup.starting-adviser-chosen"
   val FirstGameCompletedType = "setup.first-game-completed"
   val IgnoredRulesRecordedType = "diagnostic.ignored-rules-recorded"
-  val MusteredType = "gameplay.mustered"
-  val TradedType = "gameplay.traded"
   val BannerChallengeStartedType = "gameplay.banner-challenge-started"
   val BannerRibbonChoiceMadeType = "gameplay.banner-ribbon-choice-made"
   val BannerChallengeCompletedType = "gameplay.banner-challenge-completed"

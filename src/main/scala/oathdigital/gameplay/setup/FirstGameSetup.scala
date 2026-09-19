@@ -196,8 +196,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
-      case _: Mustered | _: Traded =>
-        Left(InvalidEventOrder("Economy requires the gameplay evolution"))
       case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
           _: BannerChallengeCompleted | _: BannerResourcePlaced |
           _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |

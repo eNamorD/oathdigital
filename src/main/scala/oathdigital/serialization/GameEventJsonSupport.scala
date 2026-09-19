@@ -601,13 +601,6 @@ private[serialization] trait GameEventJsonSupport {
     } catch { case NonFatal(error) => Left(InvalidValue(path,
       Option(error.getMessage).getOrElse("invalid card reference"))) }
 
-  protected final def decodeEconomyTarget(value: ujson.Value, path: String)
-      : Either[WireError, EconomyTargetRef] =
-    decodeCardRef(value, path).flatMap { id =>
-      EconomyTargetRef.fromCard(id).toRight(InvalidValue(path,
-        "Economy target must be a denizen or edifice"))
-    }
-
   protected final def encodeSearchPlacement(value: SearchPlacement): ujson.Value = value match {
     case SearchPlacement.Discard => ujson.Obj("kind" -> "discard")
     case SearchPlacement.Site(replace) => ujson.Obj(

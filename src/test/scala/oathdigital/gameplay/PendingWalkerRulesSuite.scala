@@ -2,8 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{CampaignCommand, ChallengeCommand,
-  EconomyCommand, MinorActionCommand, NegotiationCommand,
-  VisionCommand}
+  MinorActionCommand, NegotiationCommand, VisionCommand}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyFixture, SilverTongue,
   SilverTongueFixture}
@@ -56,8 +55,6 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
             Some(pending), ref.key)
         }
         Vector(
-          "economy" -> rules.handle(state, EconomyCommand.Muster(actor,
-            EconomyTargetRef.Denizen(DenizenId("92")))),
           "challenge" -> rules.handle(state, ChallengeCommand.Begin(actor,
             DecisionId("c1"), Banner.PeoplesFavor)),
           "minor action" -> rules.handle(state,

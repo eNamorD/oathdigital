@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Challenge, ChallengeCommand, Economy, EconomyCommand}
+  CampaignLosingForceRegistry, Challenge, ChallengeCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Visions, VisionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
@@ -59,18 +59,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         ready.game.current.walkerProcedure.nonEmpty =>
       Left(InvalidEventOrder("a walker procedure is already pending"))
     case _ => handled
-  }
-
-  def handle(state: OathState, command: EconomyCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    command match {
-      case value: EconomyCommand.Muster => withFallback(state, value.playerId,
-        MajorActionKind.Muster)(Economy.handle(catalog, state, command))
-        .flatMap(completeAction _)
-      case value: EconomyCommand.Trade => withFallback(state, value.playerId,
-        MajorActionKind.Trade)(Economy.handle(catalog, state, command))
-        .flatMap(completeAction _)
-    }
   }
 
   def handle(state: OathState, command: ChallengeCommand)
@@ -160,8 +148,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
             InvalidEventOrder("ignored-rule diagnostics do not match authoritative discovery")))
         case _ => Left(GameNotStarted)
       }
-      case event: Mustered => Economy.evolve(catalog, state, event)
-      case event: Traded => Economy.evolve(catalog, state, event)
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)

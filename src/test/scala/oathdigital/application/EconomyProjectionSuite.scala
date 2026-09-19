@@ -1,7 +1,6 @@
 package oathdigital.application
 
 import oathdigital.gameplay.{EconomyFixture, OathRules}
-import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.WalkerPowers
 import oathdigital.model._

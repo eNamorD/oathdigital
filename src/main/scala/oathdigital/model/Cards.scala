@@ -51,25 +51,6 @@ final case class RelicState(
 
 final case class LegacyState(id: LegacyId, active: Boolean) extends CardState
 
-sealed trait EconomyTargetRef extends Product with Serializable {
-  def id: CardId
-  def kind: String
-}
-object EconomyTargetRef {
-  final case class Denizen(id: DenizenId) extends EconomyTargetRef {
-    val kind = "denizen"
-  }
-  final case class Edifice(id: EdificeId) extends EconomyTargetRef {
-    val kind = "edifice"
-  }
-
-  def fromCard(id: CardId): Option[EconomyTargetRef] = id match {
-    case value: DenizenId => Some(Denizen(value))
-    case value: EdificeId => Some(Edifice(value))
-    case _ => None
-  }
-}
-
 sealed trait Region extends Product with Serializable {
   def key: String
 }

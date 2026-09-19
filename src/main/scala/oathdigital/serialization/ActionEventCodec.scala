@@ -8,8 +8,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   import WireError._
 
   protected final val actionDiscriminator: PartialFunction[OathEvent, String] = {
-      case _: Mustered => MusteredType
-      case _: Traded => TradedType
       case _: BannerChallengeStarted => BannerChallengeStartedType
       case _: BannerRibbonChoiceMade => BannerRibbonChoiceMadeType
       case _: BannerChallengeCompleted => BannerChallengeCompletedType
@@ -28,17 +26,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   }
 
   protected final val actionEncoder: PartialFunction[OathEvent, ujson.Value] = {
-      case Mustered(playerId, site, target, suit, spent, gained) =>
-        ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
-          "target" -> encodeCardRef(target.id), "suit" -> suit.key,
-          "supplySpent" -> spent, "warbandsGained" -> gained)
-      case Traded(playerId, site, target, suit, resource, spent, gained) =>
-        ujson.Obj("playerId" -> playerId.value, "siteId" -> site.value,
-          "target" -> encodeCardRef(target.id), "suit" -> suit.key,
-          "resource" -> (resource match {
-            case TradeResource.Favor => "favor"
-            case TradeResource.Secret => "secret"
-          }), "supplySpent" -> spent, "gained" -> gained)
       case BannerChallengeStarted(player, decision, banner, holder, prior, spent,
           favor, sites) => ujson.Obj(
         "playerId" -> player.value, "decisionId" -> decision.value,
@@ -107,26 +94,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   protected final def actionDecode(eventType: String, payload: ujson.Value,
       path: String, envelopeCatalog: CatalogRef): Option[Either[WireError, OathEvent]] = {
     val decoder: PartialFunction[String, Either[WireError, OathEvent]] = {
-        case MusteredType => for {
-          target <- decodeEconomyTarget(payload("target"), s"$path.target")
-          suit <- decodeSuit(payload("suit").str, s"$path.suit")
-          spent <- safeIntField(payload.obj, "supplySpent", path)
-          gained <- safeIntField(payload.obj, "warbandsGained", path)
-        } yield Mustered(PlayerId(payload("playerId").str),
-          SiteId(payload("siteId").str), target, suit, spent, gained)
-        case TradedType => for {
-          target <- decodeEconomyTarget(payload("target"), s"$path.target")
-          suit <- decodeSuit(payload("suit").str, s"$path.suit")
-          resource <- payload("resource").str match {
-            case "favor" => Right(TradeResource.Favor)
-            case "secret" => Right(TradeResource.Secret)
-            case other => Left(InvalidValue(s"$path.resource",
-              s"unknown Trade resource '$other'"))
-          }
-          spent <- safeIntField(payload.obj, "supplySpent", path)
-          gained <- safeIntField(payload.obj, "gained", path)
-        } yield Traded(PlayerId(payload("playerId").str),
-          SiteId(payload("siteId").str), target, suit, resource, spent, gained)
         case BannerChallengeStartedType => for {
           banner <- decodeBanner(payload("banner").str, s"$path.banner")
           prior <- safeIntField(payload.obj, "priorResources", path)

@@ -29,23 +29,6 @@ object OathEvent {
       adviserId: DenizenId
   ) extends OathEvent
   case object FirstGameCompleted extends OathEvent
-  final case class Mustered(
-      playerId: PlayerId,
-      siteId: SiteId,
-      target: EconomyTargetRef,
-      suit: Suit,
-      supplySpent: Int,
-      warbandsGained: Int
-  ) extends OathEvent
-  final case class Traded(
-      playerId: PlayerId,
-      siteId: SiteId,
-      target: EconomyTargetRef,
-      suit: Suit,
-      resource: TradeResource,
-      supplySpent: Int,
-      gained: Int
-  ) extends OathEvent
   final case class BannerChallengeStarted(
       playerId: PlayerId, decision: DecisionId, banner: Banner,
       priorHolder: Option[PlayerId], priorResources: Int, supplySpent: Int,

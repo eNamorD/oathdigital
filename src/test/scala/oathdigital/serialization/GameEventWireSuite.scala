@@ -4,7 +4,7 @@ import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.gameplay.setup._
 import oathdigital.model._
-import oathdigital.model.OathEvent.{FirstGameCompleted, Mustered, Traded}
+import oathdigital.model.OathEvent.FirstGameCompleted
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
@@ -709,28 +709,6 @@ class GameEventWireSuite extends munit.FunSuite {
           s"got $value")
       }
     }
-  }
-
-  test("v6 Economy events round-trip source cost yield and NF resource mode") {
-    val denizen = DenizenId(catalog.denizens.head.id.value)
-    val edifice = EdificeId(catalog.edifices.head.id.value)
-    val site = catalog.sites.head.id
-    val events = Vector[OathEvent](
-      Mustered(PlayerId("red"), site, EconomyTargetRef.Denizen(denizen),
-        Suit.Order, 1, 3),
-      Traded(PlayerId("red"), site, EconomyTargetRef.Edifice(edifice),
-        Suit.Hearth, TradeResource.Secret, 1, 2))
-    val encoded = GameEventWire.encodeStream("economy", catalogRef,
-      events.zipWithIndex.map { case (event, index) =>
-        RecordedEvent(index.toLong, event)
-      }).fold(error => fail(error.toString), identity)
-    val decoded = GameEventWire.decodeStream(encoded)
-      .fold(error => fail(error.toString), identity)
-    assertEquals(decoded.map(_.formatVersion), Vector(1, 1))
-    assertEquals(decoded.map(_.event), events)
-    val invalid = ujson.read(encoded).arr
-    invalid.head("payload")("target")("kind") = "relic"
-    assert(GameEventWire.decodeStream(ujson.write(invalid)).isLeft)
   }
 
   test("v2 serialized replay equals command state and preserves ordering") {
