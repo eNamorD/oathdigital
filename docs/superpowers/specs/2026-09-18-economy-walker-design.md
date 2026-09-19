@@ -26,9 +26,9 @@ Sequence(                                            // window = <Action>ActionE
         Gain.Warbands(actor, kind, 1 + matching))) })
 ```
 
-`MusterSource` is a value resolved from the answered reference each command and never persisted: the card the cost is placed on, its suit, and its `RuleSourceRef`. Provenance is enforced by the existing answer validation, because only a reference in the folded query can be answered; `resolve` accepts any card the actor may draw on and the plan settles its exact rule. `matching` is the actor's faceup advisers of `source.suit`, including the source if it is one.
+`MusterSource` is a value resolved from the answered reference each command and never persisted: the card the cost is placed on, its suit, and its `RuleSourceRef`. Provenance is enforced by the existing answer validation, because only a reference in the folded query can be answered; `resolve` accepts a card the actor may draw on. The token-free rule applies to every source, whatever added it: `resolve` rejects a source carrying tokens, and the preview therefore drops a power-added option that carries tokens. This slice has no exception mechanism. A rule that lifts the check for a kind of source (Battle plans are the main example in the game) adds one with its first user, as the `Edifice` reference and the offer hook are added. `matching` is the actor's faceup advisers of `source.suit`, including the source if it is one.
 
-Costs match the legacy operations: Muster pays 1 Favor on the card; Trade for Favor pays 1 Secret; Trade for Secrets pays 2 Favor, one of them burnt. Gains: Muster `Gain.Warbands` of `min(1 + matching, available warbands)`; Trade for Favor `Gain.Favor` of `min(1 + matching, bank favor of the source's suit)`; Trade for Secrets `Gain.Secrets` of `matching`. The gain is a concrete operation inside a windowed node, not an opaque `BuildOps`, so a power can see and rewrite the amount. Legacy computes the gain from pre-cost state and no cost feeds a gain input, so the gain is built from state at the `Branch`. A zero gain runs nothing and records nothing. Whether the best-effort `Gain` shrink can replace the manual `min` is settled in the plan: `availableWarbands` subtracts the player's board and site warbands from the lineage supply, which may differ from the bank shrink.
+Costs match the legacy operations: Muster pays 1 Favor on the card; Trade for Favor pays 1 Secret; Trade for Secrets pays 2 Favor, one of them burnt. Gains are requested at their unclamped amount and the best-effort `Gain` takes as much as the supply or bank has: Muster `Gain.Warbands` of `1 + matching`, Trade for Favor `Gain.Favor` of `1 + matching`, Trade for Secrets `Gain.Secrets` of `matching`. There is no manual `min` against available warbands or bank favor. The gain is a concrete operation inside a windowed node, not an opaque `BuildOps`, so a power can see and rewrite the requested amount. Legacy computes the gain from pre-cost state and no cost feeds a gain input, so the gain is built from state at the `Branch`. A zero gain runs nothing and records nothing. The parity scenarios with a warband or bank shortage (Verification) prove the shrink reproduces the legacy `min`.
 
 Start gates stay in `build`, because they are facts about state and not costs: the act-phase gate, a pawn site, the first-game exile-only and Foundation-profile checks, a bounded warband supply for the lineage, and `PowerRuntime.requireAudited`. Supply and resource affordability are not build gates: the transformed `SpendSupply` and `PayCost` own them.
 
@@ -70,10 +70,14 @@ Before deletion, compare legacy and walker results for the same legal scenarios:
 
 Also test: the preview per option, including a dropped option and an all-dropped start; journal round trip and replay through the recorded-operations path; the option set and order equal to the legacy candidate set; preview costing with a selected modifier; wrong start arity or kind; the `Edifice` reference and the option annotation through every codec; and the test-only transform above. Existing Muster/Trade projection, protocol and frontend tests are migrated to the walker forms, not deleted.
 
-## Open items for the plan to verify
+## Settled by review and by reading the code
 
-- Gain shrink versus the manual warband `min` (above).
-- `MusterSource.resolve`'s exact provenance rule, and whether the token-free check applies to a non-site source.
-- That a rejected start leaves no journal entry and no pending state.
-- That the generic walker-decision UI renders Denizen and Edifice options with annotations without a bespoke renderer.
-- The journal shape of the `muster.source` answer and its replay.
+- The best-effort `Gain` takes as many warbands from the supply as it can, so the tree requests `1 + matching` and carries no manual `min` (see Procedure composition).
+- The token-free check applies to every source unless a rule states otherwise; this slice has no exception (see Procedure composition).
+- A rejected start leaves no journal entry and no pending state. The plan still adds a test for the all-dropped start.
+- Generic rendering: the frontend's `WalkerPanelSupport` already renders any choose-one decision no action-specific panel claims and builds the answer from the option's `kind` and `id`, so Denizen and Edifice options need no bespoke panel. Showing the new per-option `details` there is new work in this slice.
+- Journal shape: the answer is the generic `ChooseOneAnswer` carrying a `DecisionOptionRef` as its `kind` and `wireId` pair (`DecisionAnswerCodec`), so it round-trips once the `Edifice` variant is in `fromWire`; replay applies the recorded operations only.
+
+## Left for the plan
+
+- The exact rule `MusterSource.resolve` uses to accept a card the actor may draw on, and the exact state that makes a start reject when no option survives (the registry opt-in and its violation).
