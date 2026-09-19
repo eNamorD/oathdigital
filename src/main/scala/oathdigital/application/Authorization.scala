@@ -79,10 +79,6 @@ final case class AuthorizedPlayer private (
     GameCommand.CompleteChallenge(access.playerId, decision, amount)
   def placeBannerResource(banner: Banner, amount: Int): GameCommand =
     GameCommand.PlaceBannerResource(access.playerId, banner, amount)
-  def revealVision(vision: VisionId): GameCommand =
-    GameCommand.RevealVision(access.playerId, vision)
-  def playConspiracy(target: Option[ConspiracyTargetRef]): GameCommand =
-    GameCommand.PlayConspiracy(access.playerId, target)
   def peekSiteRelics: GameCommand = GameCommand.PeekSiteRelics(access.playerId)
   def revealOwnedRelic(relic: RelicId): GameCommand =
     GameCommand.RevealOwnedRelic(access.playerId, relic)

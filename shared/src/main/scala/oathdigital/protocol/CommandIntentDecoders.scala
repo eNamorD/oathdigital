@@ -30,13 +30,6 @@ private[protocol] object CommandIntentDecoders {
       banner <- string(value, "banner", path)
       amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield PlaceBannerResource(banner, amount)
-    case "revealVision" => one(value, path, "visionId")(RevealVision)
-    case "playConspiracy" => for {
-      _ <- exact(value, Set("type", "target"), path)
-      target <- field(value, "target", path).flatMap {
-        case ujson.Null => Right(None); case v => conspiracy(v, s"$path.target").map(Some(_))
-      }
-    } yield PlayConspiracy(target)
     case "peekSiteRelics" => empty(value, path, PeekSiteRelics)
     case "revealOwnedRelic" => one(value, path, "relicId")(RevealOwnedRelic)
     case "moveWarbands" => for {
@@ -125,12 +118,6 @@ private[protocol] object CommandIntentDecoders {
   private def allocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("siteId", "count"), p); s <- string(o, "siteId", p); c <- field(o, "count", p).flatMap(integer(_, s"$p.count"))
   } yield CampaignForceAllocation(s, c) }
-  private def conspiracy(v: ujson.Value, p: String): Either[ProtocolDecodeFailure, ConspiracyTarget] = obj(v, p).flatMap { o =>
-    string(o, "kind", p).flatMap {
-      case "relic-slot" => for { _ <- exact(o, Set("kind", "ownerPlayerId", "slot"), p); owner <- string(o, "ownerPlayerId", p); slot <- field(o, "slot", p).flatMap(integer(_, s"$p.slot")) } yield ConspiracyTarget.RelicSlot(owner, slot)
-      case "banner" => for { _ <- exact(o, Set("kind", "ownerPlayerId", "banner"), p); owner <- string(o, "ownerPlayerId", p); banner <- string(o, "banner", p) } yield ConspiracyTarget.Banner(owner, banner)
-      case k => Left(InvalidValue(s"$p.kind", s"unknown conspiracy target '$k'"))
-    }}
   private def campaignRaid(v: ujson.Value, p: String): Either[ProtocolDecodeFailure, CampaignRaidTarget] = obj(v, p).flatMap { o => string(o, "kind", p).flatMap {
     case "pawn" => exact(o, Set("kind", "playerId"), p).flatMap(_ => string(o, "playerId", p)).map(CampaignRaidTarget.Pawn)
     case "relic" => for { _ <- exact(o, Set("kind", "playerId", "relicId"), p); player <- string(o, "playerId", p); relic <- string(o, "relicId", p) } yield CampaignRaidTarget.Relic(player, relic)

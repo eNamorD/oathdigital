@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  ForgeRules, VisionRules, Visions}
+  ForgeRules}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -98,13 +98,8 @@ private[application] final class LegalActionProjector(
         LegalTravelDestinationProjection(site.value, cost)
       },
       if (ordinaryAct) legalSearch(context) else Vector.empty,
-      context.current.pending match {
-        case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
-            context.viewer.contains(p.actor) =>
-          Vector(conspiracyTargetAction(context.ready, p))
-        case _ if ordinaryAct => boardTargetActions(context, travelFacts)
-        case _ => Vector.empty
-      },
+      if (ordinaryAct) boardTargetActions(context, travelFacts)
+      else Vector.empty,
       minor)
   }
 
@@ -122,9 +117,6 @@ private[application] final class LegalActionProjector(
           context.viewer.filter(oathdigital.gameplay.actions.Negotiation
             .canAccept(context.ready, n, _)).map(_ => "acceptNegotiation")
       case Some(_: PendingProcedure.Negotiation) => Vector.empty
-      case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
-          context.viewer.contains(p.actor) => Vector("playConspiracy")
-      case Some(_: PendingProcedure.Conspiracy) => Vector.empty
       case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
           context.viewer.contains(CampaignRules.planDecisionOwner(c)) =>
         Vector("chooseCampaignPlan", "finishCampaignPlans")
@@ -160,16 +152,6 @@ private[application] final class LegalActionProjector(
             "placeBannerResource"),
           Option.when(active.advisers.exists(presentation.adviserOrientation(_) ==
             Orientation.FaceDown))("facedownAdviserMinorAction"),
-          Option.when(active.advisers.exists {
-            case VisionState(id, Orientation.FaceDown) =>
-              Visions.canReveal(catalog, context.ready, active.player, id)
-            case _ => false
-          })("revealVision"),
-          Option.when(active.advisers.exists {
-            case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
-            case _ => false
-          } && Visions.canPlayConspiracy(catalog, context.ready, active.player))(
-            "playConspiracy"),
           Option.when(context.activeSite.exists(_.relics.nonEmpty))("peekSiteRelics"),
           Option.when(active.relics.exists(_.orientation == Orientation.FaceDown))(
             "revealOwnedRelic"),
@@ -276,16 +258,6 @@ private[application] final class LegalActionProjector(
       .legalParticipants(ready, player.player).map(candidate =>
         BoardTargetCandidateProjection(BoardTargetRefProjection.Player(candidate.value),
           presentation.safeLabel(candidate.value), Vector("Co-located negotiator")))
-    val visions = player.advisers.collect {
-      case VisionState(id, Orientation.FaceDown) if VisionRules.trueGoal(id).nonEmpty =>
-        BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerAdviser(
-          player.player.value, id.value), presentation.safeLabel(id.value))
-    }
-    val hasConspiracy = player.advisers.exists {
-      case VisionState(id, Orientation.FaceDown) => id == VisionRules.Conspiracy
-      case _ => false
-    }
-    val conspiracy = conspiracyTargetCandidates(ready, player.player)
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites",
@@ -301,31 +273,9 @@ private[application] final class LegalActionProjector(
         raid.headOption.map(_.target).toVector),
       selection("challenge", "Choose a banner to Challenge", challenges),
       selection("negotiation", "Choose one or more co-located negotiators",
-        negotiators, minimum = 1, maximum = negotiators.size),
-      selection("reveal-vision", "Choose a Vision to reveal", visions),
-      Option.when(hasConspiracy)(BoardTargetActionProjection("play-conspiracy",
-        if (conspiracy.isEmpty) "Play Conspiracy" else "Choose an enemy asset for Conspiracy",
-        if (conspiracy.isEmpty) 0 else 1, if (conspiracy.isEmpty) 0 else 1,
-        autoActivate = false, conspiracy))).flatten
+        negotiators, minimum = 1, maximum = negotiators.size)).flatten
   }
 
-  private def conspiracyTargetAction(ready: oathdigital.model.ReadyGame,
-      pending: PendingProcedure.Conspiracy) = {
-    val targets = conspiracyTargetCandidates(ready, pending.actor)
-    BoardTargetActionProjection("play-conspiracy",
-      if (targets.isEmpty) "Play Conspiracy" else "Choose an enemy asset for Conspiracy",
-      if (targets.isEmpty) 0 else 1, if (targets.isEmpty) 0 else 1,
-      autoActivate = true, targets, decisionId = Some(pending.decision.value))
-  }
-  private def conspiracyTargetCandidates(ready: oathdigital.model.ReadyGame,
-      actor: PlayerId) = Visions.legalTargetRefs(ready, actor).map {
-    case ConspiracyTargetRef.RelicSlot(owner, slot) => BoardTargetCandidateProjection(
-      BoardTargetRefProjection.PlayerRelic(owner.value, slot.toString),
-      s"${presentation.safeLabel(owner.value)} facedown relic")
-    case ConspiracyTargetRef.Banner(owner, banner) => BoardTargetCandidateProjection(
-      BoardTargetRefProjection.PlayerBanner(owner.value, banner.key),
-      s"${presentation.safeLabel(owner.value)} ${presentation.safeLabel(banner.key)}")
-  }
   private def selection(kind: String, prompt: String,
       candidates: Vector[BoardTargetCandidateProjection],
       formation: Option[BoardTargetFormationProjection] = None,

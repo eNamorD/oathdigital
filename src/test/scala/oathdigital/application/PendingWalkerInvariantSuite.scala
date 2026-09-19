@@ -3,7 +3,6 @@ package oathdigital.application
 import java.nio.file.{Files, Paths}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
-import oathdigital.gameplay.setup.FirstGameRulesData
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer.ChooseOneAnswer
@@ -17,9 +16,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
   private val site = plan.orderedSites.head
   private val denizen = plan.denizenOrder.head
   private val relic = plan.relicOrder.head
-  private val vision = FirstGameRulesData.visions.collectFirst {
-    case id: VisionId => id
-  }.get
   private val decision = DecisionId("d1")
 
   /** One instance of every `GameCommand` constructor, bound to `actor`. */
@@ -40,8 +36,6 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
     GameCommand.PeekSiteRelics(actor),
     GameCommand.RevealOwnedRelic(actor, relic),
     GameCommand.MoveWarbands(actor, toSite = true, 1),
-    GameCommand.RevealVision(actor, vision),
-    GameCommand.PlayConspiracy(actor, None),
     GameCommand.BeginNegotiation(actor, Vector(PlayerId("p2"))),
     GameCommand.ReplaceNegotiationTerms(actor, decision, NegotiationTerms()),
     GameCommand.AcceptNegotiation(actor, decision),

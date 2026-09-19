@@ -12,7 +12,6 @@ class CommandProtocolSuite extends munit.FunSuite {
     CompleteChallenge("c1", 2), PlaceBannerResource("darkest-secret", 1),
     StartWalker("play-facedown-adviser", Vector.empty,
       Vector(WalkerStartArgWire("denizen", "d1"))),
-    RevealVision("v1"), PlayConspiracy(Some(ConspiracyTarget.RelicSlot("p2", 0))),
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
     BeginNegotiation(Vector("p2", "p3")),

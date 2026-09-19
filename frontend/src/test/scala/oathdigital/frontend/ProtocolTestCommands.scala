@@ -38,8 +38,6 @@ private[frontend] object GameCommand {
   def ChooseCampaignSacrifice(actor: String, id: String, count: Int) = Intent.ChooseCampaignSacrifice(id, count)
   def PlaceCampaignForce(actor: String, id: String, values: Vector[CampaignPlacement]) = Intent.PlaceCampaignForce(id, values.map(v => CampaignForceAllocation(v.siteId, v.count)))
   def RelocateCampaignRaidPawn(actor: String, id: String, site: String) = Intent.RelocateCampaignRaidPawn(id, site)
-  def RevealVision(actor: String, id: String) = Intent.RevealVision(id)
-  def PlayConspiracy(actor: String, target: Option[oathdigital.protocol.ConspiracyTarget]) = Intent.PlayConspiracy(target)
   def BeginSearch(actor: String, source: String, region: Option[String]) =
     Intent.StartWalker("search", Vector.empty, Vector(WalkerStartArgWire(
       "button", region.fold("search:world")(r =>
@@ -63,11 +61,6 @@ private[frontend] object GameCommand {
   def RollWalker(actor: String, pool: String) = Intent.RollWalker(pool)
   def ResolveWalker(actor: String, id: String, payload: DecisionAnswerWire) =
     Intent.ResolveWalker(id, payload)
-}
-
-private[frontend] object ConspiracyTarget {
-  def RelicSlot(owner: String, slot: Int) = oathdigital.protocol.ConspiracyTarget.RelicSlot(owner, slot)
-  def Banner(owner: String, banner: String) = oathdigital.protocol.ConspiracyTarget.Banner(owner, banner)
 }
 
 private[frontend] object DecisionResolution {

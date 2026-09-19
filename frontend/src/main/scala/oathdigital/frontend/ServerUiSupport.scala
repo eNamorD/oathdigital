@@ -345,8 +345,6 @@ private[frontend] object ServerUiSupport {
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
     case "darkest-secret" => "Darkest Secret"
-    case "reveal-vision" => "Reveal Vision"
-    case "play-conspiracy" => "Play Conspiracy"
     case other => other
   }
 
@@ -354,7 +352,7 @@ private[frontend] object ServerUiSupport {
     case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
         "challenge" => "major"
-    case "negotiation" | "reveal-vision" | "play-conspiracy" |
+    case "negotiation" |
         "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
         "reveal-owned-relic" | "move-warbands" => "minor"
     case _ => "powers"
@@ -499,18 +497,6 @@ private[frontend] object ServerUiSupport {
         Some(GameCommand.BeginNegotiation(players.collect {
           case BoardTargetRef.Player(id) => id
         }))
-      case ("reveal-vision", Vector(BoardTargetRef.PlayerAdviser(owner, vision)))
-          if owner == playerId =>
-        Some(GameCommand.RevealVision(vision))
-      case ("play-conspiracy", Vector(BoardTargetRef.PlayerRelic(owner, relic))) =>
-        relic.toIntOption.map(slot => GameCommand.PlayConspiracy(
-          Some(ConspiracyTarget.RelicSlot(owner, slot))))
-      case ("play-conspiracy", Vector(BoardTargetRef.PlayerBanner(owner, banner))) =>
-        Some(GameCommand.PlayConspiracy(
-          Some(ConspiracyTarget.Banner(owner, banner))))
-      case ("play-conspiracy", Vector()) if action.minimum == 0 &&
-          action.maximum == 0 =>
-        Some(GameCommand.PlayConspiracy(None))
       case _ => None
     }
 

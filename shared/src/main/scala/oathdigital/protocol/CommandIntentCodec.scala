@@ -15,8 +15,6 @@ private[protocol] object CommandIntentCodec {
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
     case PlaceBannerResource(banner, amount) => tagged("placeBannerResource", "banner" -> banner, "amount" -> amount)
-    case RevealVision(id) => tagged("revealVision", "visionId" -> id)
-    case PlayConspiracy(target) => tagged("playConspiracy", "target" -> target.map(conspiracy).getOrElse(ujson.Null))
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)
@@ -51,10 +49,6 @@ private[protocol] object CommandIntentCodec {
   private def tagged(kind: String, values: (String, ujson.Value)*): ujson.Obj =
     ujson.Obj.from(("type" -> ujson.Str(kind)) +: values)
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
-  private def conspiracy(v: ConspiracyTarget): ujson.Obj = v match {
-    case ConspiracyTarget.RelicSlot(owner, slot) => ujson.Obj("kind" -> "relic-slot", "ownerPlayerId" -> owner, "slot" -> slot)
-    case ConspiracyTarget.Banner(owner, banner) => ujson.Obj("kind" -> "banner", "ownerPlayerId" -> owner, "banner" -> banner)
-  }
   private def raid(v: CampaignRaidTarget): ujson.Obj = v match {
     case CampaignRaidTarget.Pawn(player) => ujson.Obj("kind" -> "pawn", "playerId" -> player)
     case CampaignRaidTarget.Relic(player, relic) => ujson.Obj("kind" -> "relic", "playerId" -> player, "relicId" -> relic)

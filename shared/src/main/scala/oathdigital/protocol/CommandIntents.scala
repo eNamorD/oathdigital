@@ -17,8 +17,6 @@ object GameIntent {
       extends GameIntent
   final case class CompleteChallenge(decisionId: String, amount: Int) extends GameIntent
   final case class PlaceBannerResource(banner: String, amount: Int) extends GameIntent
-  final case class RevealVision(visionId: String) extends GameIntent
-  final case class PlayConspiracy(target: Option[ConspiracyTarget]) extends GameIntent
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
@@ -76,12 +74,6 @@ final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
 final case class WorldCard(kind: String, id: String)
 final case class CampaignForceAllocation(siteId: String, count: Int)
-sealed trait ConspiracyTarget extends Product with Serializable
-object ConspiracyTarget {
-  final case class RelicSlot(ownerPlayerId: String, slot: Int) extends ConspiracyTarget
-  final case class Banner(ownerPlayerId: String, banner: String) extends ConspiracyTarget
-}
-
 sealed trait CampaignRaidTarget extends Product with Serializable
 object CampaignRaidTarget {
   final case class Pawn(playerId: String) extends CampaignRaidTarget

@@ -192,26 +192,6 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetRef.Player("blue"), BoardTargetRef.Player("yellow")), "red"),
       Some(GameCommand.BeginNegotiation("red", Vector("blue", "yellow"))))
 
-    val reveal = action("reveal-vision")
-    assertEquals(ServerUiSupport.commandForSelection(reveal, Vector(
-      BoardTargetRef.PlayerAdviser("red", "vision-conquest")), "red"),
-      Some(GameCommand.RevealVision("red", "vision-conquest")))
-    assertEquals(ServerUiSupport.commandForSelection(reveal, Vector(
-      BoardTargetRef.PlayerAdviser("blue", "vision-conquest")), "red"), None)
-    val conspiracy = action("play-conspiracy")
-    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
-      BoardTargetRef.PlayerRelic("blue", "1")), "red"),
-      Some(GameCommand.PlayConspiracy("red",
-        Some(ConspiracyTarget.RelicSlot("blue", 1)))))
-    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
-      BoardTargetRef.PlayerBanner("blue", "darkest-secret")), "red"),
-      Some(GameCommand.PlayConspiracy("red",
-        Some(ConspiracyTarget.Banner("blue", "darkest-secret")))))
-    assertEquals(ServerUiSupport.commandForSelection(conspiracy, Vector(
-      BoardTargetRef.PlayerRelic("blue", "hidden-id")), "red"), None)
-    val noTarget = conspiracy.copy(minimum = 0, maximum = 0)
-    assertEquals(ServerUiSupport.commandForSelection(noTarget, Vector.empty, "red"),
-      Some(GameCommand.PlayConspiracy("red", None)))
   }
 
   test("Challenge controls render only owner-authorized site or replacement commands") {
@@ -287,10 +267,8 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetRef.Site("b"), "Site B",
       Vector("2 Supply", "Commit all 4 board warbands"))),
       "Site B · 2 Supply · Commit all 4 board warbands")
-    assertEquals(ServerUiSupport.actionLabel("reveal-vision"), "Reveal Vision")
-    assertEquals(ServerUiSupport.actionLabel("play-conspiracy"), "Play Conspiracy")
     assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
-      actionKind = "play-conspiracy", minimum = 0, maximum = 0)),
+      actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
   }
 

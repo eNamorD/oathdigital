@@ -1442,7 +1442,7 @@ Expected: PASS, possibly with warnings. Fix, in this order:
 - [ ] **Step 4: Run the suites**
 
 Run: `./sbtw -no-colors test` and `./sbtw -no-colors frontend/test`.
-Expected: PASS for both. Note that `VisionsSuite` still calls `Visions.handle` and `Visions.evolve` directly and still passes; Task 6 deletes it.
+Expected: PASS for both. `VisionsSuite` drives the removed `OathRules.handle(VisionCommand)`, so it no longer compiles: `git rm src/test/scala/oathdigital/gameplay/VisionsSuite.scala` in this task (its coverage is listed under Task 6) and delete the `FirstGameRulesData` import that `PendingWalkerInvariantSuite` and `PendingWalkerRulesSuite` no longer use.
 
 - [ ] **Step 5: Commit**
 
@@ -1464,7 +1464,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/VisionRules.scala`
-- Delete: `src/main/scala/oathdigital/gameplay/actions/Visions.scala`, `src/main/scala/oathdigital/gameplay/actions/MinorActionPowerSupport.scala`, `src/test/scala/oathdigital/gameplay/VisionsSuite.scala`
+- Delete: `src/main/scala/oathdigital/gameplay/actions/Visions.scala`, `src/main/scala/oathdigital/gameplay/actions/MinorActionPowerSupport.scala` (`VisionsSuite` went in Task 5)
 - Modify: `OathRules.scala`, `OathRulesWalker.scala`, `model/GameEventProtocol.scala`, `model/PendingProcedures.scala`, `model/GameProcedureProtocol.scala`, `model/GameViolation.scala`, `serialization/GameEventWire.scala`, `serialization/ActionEventCodec.scala`, `serialization/GameEventJsonSupport.scala`
 - Test: `src/test/scala/oathdigital/serialization/GameEventWireSuite.scala`, `src/test/scala/oathdigital/gameplay/MinorActionsSuite.scala`, `src/test/scala/oathdigital/gameplay/oathkeeper/OathkeeperProcedureSuite.scala`
 
@@ -1505,7 +1505,7 @@ Then remove the same `object VisionRules { ... }` from `Visions.scala`, and run 
 - [ ] **Step 2: Delete the rules and their tests**
 
 ```bash
-git rm src/main/scala/oathdigital/gameplay/actions/Visions.scala src/main/scala/oathdigital/gameplay/actions/MinorActionPowerSupport.scala src/test/scala/oathdigital/gameplay/VisionsSuite.scala
+git rm src/main/scala/oathdigital/gameplay/actions/Visions.scala src/main/scala/oathdigital/gameplay/actions/MinorActionPowerSupport.scala
 ```
 
 In `OathRules.scala`, delete the import `import oathdigital.gameplay.actions.Visions` and the three evolve cases:

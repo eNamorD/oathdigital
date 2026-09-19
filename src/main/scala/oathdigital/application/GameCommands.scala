@@ -39,10 +39,6 @@ object GameCommand {
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
-  final case class RevealVision(playerId: PlayerId, visionId: VisionId)
-      extends GameCommand
-  final case class PlayConspiracy(playerId: PlayerId,
-      target: Option[ConspiracyTargetRef]) extends GameCommand
   final case class BeginNegotiation(playerId: PlayerId,
       participants: Vector[PlayerId]) extends GameCommand
   final case class ReplaceNegotiationTerms(playerId: PlayerId,

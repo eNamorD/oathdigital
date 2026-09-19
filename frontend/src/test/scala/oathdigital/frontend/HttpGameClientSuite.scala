@@ -30,34 +30,6 @@ class HttpGameClientSuite extends FunSuite {
     }
   }
 
-  test("Vision and Conspiracy controls preserve opaque targets and pending decisions") {
-    val actions = """[{"actionKind":"play-conspiracy","decisionId":"conspiracy-12","prompt":"Choose an enemy asset for Conspiracy","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"formation":null,"candidates":[{"target":{"kind":"player-relic","playerId":"blue-exile","relicId":"0"},"label":"Blue facedown relic","details":[]}]}]"""
-    val json = projectionJson(sequence = 13, phase = "conspiracy-target",
-      ready = true, completed = false, choices = false)
-      .replace("\"boardTargetActions\":[]", s"\"boardTargetActions\":$actions")
-    val action = GameJson.decodeProjection(json).toOption.get.boardTargetActions.head
-    assertEquals(action.decisionId, Some("conspiracy-12"))
-    assertEquals(action.candidates.map(_.target), Vector(
-      BoardTargetRef.PlayerRelic("blue-exile", "0")))
-
-    val reveal = GameJson.encodeCommand(13,
-      GameCommand.RevealVision("red-exile", "vision-faith"))
-    assert(reveal.contains("\"type\":\"revealVision\""))
-    assert(reveal.contains("\"visionId\":\"vision-faith\""))
-    val relic = GameJson.encodeCommand(13, GameCommand.PlayConspiracy(
-      "red-exile", Some(ConspiracyTarget.RelicSlot("blue-exile", 1))))
-    assert(relic.contains("\"kind\":\"relic-slot\""))
-    assert(relic.contains("\"slot\":1"))
-    assert(!relic.contains("relicId"))
-    val banner = GameJson.encodeCommand(13, GameCommand.PlayConspiracy(
-      "red-exile", Some(ConspiracyTarget.Banner(
-        "blue-exile", "darkest-secret"))))
-    assert(banner.contains("\"banner\":\"darkest-secret\""))
-    val noTarget = GameJson.encodeCommand(13,
-      GameCommand.PlayConspiracy("red-exile", None))
-    assert(noTarget.contains("\"target\":null"))
-  }
-
   test("Negotiation projection decodes redacted ledger and encodes authored terms") {
     val card = """{"cardId":"R1","cardKind":"relic","name":"Old Crown","suit":null,"restrictions":null,"rulesText":null,"orientation":"face-down","side":null,"favor":0,"secrets":0,"relicValue":2,"defense":1,"hidden":false}"""
     val deal = s"""{"decisionId":"negotiation-50","actorPlayerId":"red-exile","siteId":"site:a","participantPlayerIds":["red-exile","blue-exile"],"acceptedPlayerIds":["blue-exile"],"transfers":[{"authorPlayerId":"red-exile","recipientPlayerId":"blue-exile","favor":2,"relicCount":1,"relics":[$card]}],"disclosures":[{"authorPlayerId":"blue-exile","recipientPlayerId":"red-exile","kind":"adviser","card":null}],"editableFavor":4,"editableRelics":[$card],"editableAdvisers":[],"editableSiteRelics":[]}"""

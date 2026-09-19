@@ -5,7 +5,7 @@ import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
-import oathdigital.gameplay.actions.{Visions, VisionCommand}
+import oathdigital.gameplay.actions.Visions
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
@@ -77,19 +77,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
   def handle(state: OathState, command: MinorActionCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     MinorActions.handle(catalog, state, command).flatMap(completeAction _)
-  }
-
-  def handle(state: OathState, command: VisionCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    Visions.handle(catalog, state, command).flatMap { transition => command match {
-      case _: VisionCommand.PlayConspiracy
-          if (transition.state match {
-            case Ready(ready) => ready.game.current.pending.isEmpty
-            case _ => false
-          }) => completeAction(transition)
-      case _: VisionCommand.Reveal => completeAction(transition)
-      case _ => Right(transition)
-    }}
   }
 
   def handle(state: OathState, command: NegotiationCommand)

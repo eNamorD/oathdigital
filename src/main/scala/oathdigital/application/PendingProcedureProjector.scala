@@ -237,9 +237,6 @@ private[application] final class PendingProcedureProjector(
         "campaign-raid-relocation"
       case Some(_: PendingProcedure.CampaignRaidRelocation) =>
         "campaign-raid-relocation-waiting"
-      case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
-          context.viewer.contains(p.actor) => "conspiracy-target"
-      case Some(_: PendingProcedure.Conspiracy) => "conspiracy-waiting"
       case _ => context.current.turn.phase match {
         case Phase.Wake => "wake"
         case Phase.Act => "act-action-selection"
