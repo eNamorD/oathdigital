@@ -21,7 +21,7 @@ class HttpGameClientSuite extends FunSuite {
       Map("resource" -> "favor"))).flatMap { result =>
       assertEquals(result.toOption.get.modifiers.map(_.handlerId), Vector("h.one", "h.two"))
       client.submit("game-1", "red-exile", 7,
-        GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "10"), "favor"),
+        GameIntent.BeginChallenge("peoples-favor"),
         ordered)
     }.map { _ =>
       assert(transport.requests.head._2.endsWith("/preview?playerId=red-exile"))

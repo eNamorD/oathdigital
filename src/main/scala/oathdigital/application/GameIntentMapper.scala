@@ -22,8 +22,6 @@ object GameIntentMapper {
           "$.intent.powerId", s"invalid power id '$value'"))
         ref <- optionRef(source.optionKind, source.optionId, "$.intent.source")
       } yield actor.usePower(power, ref)
-      case Intent.Muster(target) => economy(target).map(actor.muster)
-      case Intent.Trade(target, resource) => for { t <- economy(target); r <- trade(resource) } yield actor.trade(t, r)
       case Intent.BeginChallenge(value) => banner(value).map(actor.beginChallenge)
       case Intent.ChooseChallengeSecretSite(id, site) => Right(actor.chooseChallengeSecretSite(DecisionId(id), SiteId(site)))
       case Intent.CompleteChallenge(id, amount) => Right(actor.completeChallenge(DecisionId(id), amount))
@@ -93,9 +91,7 @@ object GameIntentMapper {
   }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
-  private def trade(value: String): Result[TradeResource] = value match { case "favor" => Right(TradeResource.Favor); case "secret" => Right(TradeResource.Secret); case v => invalid("$.intent.resource", v, "trade resource") }
   private def banner(value: String): Result[Banner] = Banner.fromKey(value).toRight(GameIntentMappingFailure("$.intent.banner", s"unknown banner '$value'"))
-  private def economy(value: EconomyTarget): Result[EconomyTargetRef] = value.kind match { case "denizen" => Right(EconomyTargetRef.Denizen(DenizenId(value.id))); case "edifice" => Right(EconomyTargetRef.Edifice(EdificeId(value.id))); case v => invalid("$.intent.target.kind", v, "economy target") }
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
   private def conspiracy(value: oathdigital.protocol.ConspiracyTarget): Result[ConspiracyTargetRef] = value match {
     case oathdigital.protocol.ConspiracyTarget.RelicSlot(owner, slot) => Right(ConspiracyTargetRef.RelicSlot(PlayerId(owner), slot))

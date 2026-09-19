@@ -143,8 +143,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       DecisionId(RecoverProcedure.rollDecisionId)))
 
     walkerService.handle("walker-recover", started.nextSequence,
-      GameCommand.Muster(actor, EconomyTargetRef.Denizen(
-        DenizenId("any-denizen")))) match {
+      GameCommand.BeginChallenge(actor, Banner.PeoplesFavor)) match {
       case Left(GameApplicationError.CommandRejected(
           _: oathdigital.model.OathViolation.InvalidEventOrder)) => ()
       case other => fail(s"legacy command should be blocked by walker park: $other")
@@ -1434,33 +1433,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val reloadedResolved = service.load(gameId).toOption.flatten.get
     assertEquals(reloadedResolved.state, resolved.state)
     assertEquals(reloadedResolved.nextSequence, resolved.nextSequence)
-  }
-
-  test("ruined edifice Economy target persists and replays with its kind") {
-    val repository = new InMemoryEventStreamRepository
-    val service = new GameApplicationService(catalog, repository)
-    val (siteId, edificeId) = plan.homelandEdifices.head
-    val placements = siteId +: sites.filterNot(_ == siteId).take(2)
-    val setup = execute(service, "game-economy-edifice", placements)
-    val Ready(ready) = setup.state: @unchecked
-    val active = ready.game.current.turn.activePlayer
-    val ended = service.handle("game-economy-edifice", setup.nextSequence,
-      GameCommand.EndWake(active)).toOption.get
-    val target = EconomyTargetRef.Edifice(edificeId)
-    val mustered = service.handle("game-economy-edifice", ended.nextSequence,
-      GameCommand.Muster(active, target)).toOption.get
-    val loaded = new GameApplicationService(catalog, repository)
-      .load("game-economy-edifice").toOption.flatten.get
-    assertEquals(loaded.state, mustered.state)
-    val Ready(after) = loaded.state: @unchecked
-    assertEquals(after.game.current.map.sites(siteId).denizens.collectFirst {
-      case value: EdificeState if value.id == edificeId => value.tokens
-    }, Some(Tokens(1, 0)))
-    val record = ujson.read(repository.load("game-economy-edifice")
-      .toOption.flatten.get.records.last)
-    assertEquals(record("formatVersion").num.toInt, 1)
-    assertEquals(record("payload")("target")("kind").str, "edifice")
-    assertEquals(record("payload")("target")("id").str, edificeId.value)
   }
 
   test("a walker Muster on an edifice persists, reloads and replays with its kind") {

@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand, EconomyCommand}
+  ChallengeCommand}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
@@ -152,7 +152,7 @@ final class GameApplicationService(
     * `MajorActionKind` match of its own. `MajorActionKind` and `ActionRef`
     * share their key strings by convention (see `GameIntentMapper.actionRef`,
     * which bridges the same way from the wire intent), so a legacy-only kind
-    * like `Muster` simply has no matching `ActionRef` and falls through to
+    * like `Campaign` simply has no matching `ActionRef` and falls through to
     * the `None` branch.
     */
   private def walkerAction(action: MajorActionKind): Option[ActionRef] =
@@ -394,10 +394,6 @@ final class GameApplicationService(
       case GameCommand.UsePower(playerId, power, source) =>
         rules.startWalker(state, ActionRef.UsePower(power), playerId,
           Vector.empty, Vector(source))
-      case GameCommand.Muster(playerId, target) =>
-        rules.handle(state, EconomyCommand.Muster(playerId, target))
-      case GameCommand.Trade(playerId, target, resource) =>
-        rules.handle(state, EconomyCommand.Trade(playerId, target, resource))
       case GameCommand.BeginChallenge(playerId, banner) =>
         rules.handle(state, ChallengeCommand.Begin(playerId,
           DecisionId(s"challenge-$nextSequence"), banner))
@@ -490,8 +486,6 @@ final class GameApplicationService(
 
   private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
     command match {
-      case GameCommand.Muster(actor, _) => Some(actor -> MajorActionKind.Muster)
-      case GameCommand.Trade(actor, _, _) => Some(actor -> MajorActionKind.Trade)
       case GameCommand.BeginChallenge(actor, _) =>
         Some(actor -> MajorActionKind.Challenge)
       case GameCommand.BeginCampaignConquest(actor, _, _) =>

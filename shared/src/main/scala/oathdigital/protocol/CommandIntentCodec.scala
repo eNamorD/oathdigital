@@ -11,8 +11,6 @@ private[protocol] object CommandIntentCodec {
     case FinishRest => tagged("finishRest")
     case UsePower(power, source) => tagged("usePower", "powerId" -> power,
       "source" -> CommandNestedCodecs.encodeStartArgWire(source))
-    case Muster(target) => tagged("muster", "target" -> economy(target))
-    case Trade(target, resource) => tagged("trade", "target" -> economy(target), "resource" -> resource)
     case BeginChallenge(banner) => tagged("beginChallenge", "banner" -> banner)
     case ChooseChallengeSecretSite(id, site) => tagged("chooseChallengeSecretSite", "decisionId" -> id, "siteId" -> site)
     case CompleteChallenge(id, amount) => tagged("completeChallenge", "decisionId" -> id, "amount" -> amount)
@@ -52,7 +50,6 @@ private[protocol] object CommandIntentCodec {
 
   private def tagged(kind: String, values: (String, ujson.Value)*): ujson.Obj =
     ujson.Obj.from(("type" -> ujson.Str(kind)) +: values)
-  private def economy(v: EconomyTarget) = ujson.Obj("kind" -> v.kind, "id" -> v.id)
   private def allocation(v: CampaignForceAllocation) = ujson.Obj("siteId" -> v.siteId, "count" -> v.count)
   private def conspiracy(v: ConspiracyTarget): ujson.Obj = v match {
     case ConspiracyTarget.RelicSlot(owner, slot) => ujson.Obj("kind" -> "relic-slot", "ownerPlayerId" -> owner, "slot" -> slot)

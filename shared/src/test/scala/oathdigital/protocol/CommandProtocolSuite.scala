@@ -6,8 +6,6 @@ class CommandProtocolSuite extends munit.FunSuite {
   private val examples: Vector[GameIntent] = Vector(
     PlacePawn("site:a"), EndWake, BeginRest, FinishRest,
     UsePower("denizen.silver-tongue", WalkerStartArgWire("denizen", "92")),
-    Muster(EconomyTarget("denizen", "d1")),
-    Trade(EconomyTarget("edifice", "e1"), "secret"),
     StartWalker("search", Vector.empty,
       Vector(WalkerStartArgWire("button", "search:world"))),
     BeginChallenge("peoples-favor"), ChooseChallengeSecretSite("c1", "site:a"),

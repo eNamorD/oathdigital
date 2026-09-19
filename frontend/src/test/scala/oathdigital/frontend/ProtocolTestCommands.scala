@@ -40,8 +40,6 @@ private[frontend] object GameCommand {
   def RelocateCampaignRaidPawn(actor: String, id: String, site: String) = Intent.RelocateCampaignRaidPawn(id, site)
   def RevealVision(actor: String, id: String) = Intent.RevealVision(id)
   def PlayConspiracy(actor: String, target: Option[oathdigital.protocol.ConspiracyTarget]) = Intent.PlayConspiracy(target)
-  def Muster(actor: String, target: oathdigital.frontend.EconomyTarget) = Intent.Muster(oathdigital.protocol.EconomyTarget(target.kind, target.id))
-  def Trade(actor: String, target: oathdigital.frontend.EconomyTarget, resource: String) = Intent.Trade(oathdigital.protocol.EconomyTarget(target.kind, target.id), resource)
   def BeginSearch(actor: String, source: String, region: Option[String]) =
     Intent.StartWalker("search", Vector.empty, Vector(WalkerStartArgWire(
       "button", region.fold("search:world")(r =>

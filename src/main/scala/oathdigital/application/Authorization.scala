@@ -71,12 +71,6 @@ final case class AuthorizedPlayer private (
   def finishRest: GameCommand = GameCommand.FinishRest(access.playerId)
   def usePower(power: PowerId, source: DecisionOptionRef): GameCommand =
     GameCommand.UsePower(access.playerId, power, source)
-  def muster(target: EconomyTargetRef): GameCommand =
-    GameCommand.Muster(access.playerId, target)
-
-  def trade(target: EconomyTargetRef, resource: oathdigital.model.TradeResource): GameCommand =
-    GameCommand.Trade(access.playerId, target, resource)
-
   def beginChallenge(banner: Banner): GameCommand =
     GameCommand.BeginChallenge(access.playerId, banner)
   def chooseChallengeSecretSite(decision: DecisionId, site: SiteId): GameCommand =

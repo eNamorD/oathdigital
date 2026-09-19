@@ -27,10 +27,6 @@ object GameCommand {
   final case class ChooseAdviser(playerId: PlayerId, adviserId: DenizenId)
       extends GameCommand
   final case class EndWake(playerId: PlayerId) extends GameCommand
-  final case class Muster(playerId: PlayerId, target: EconomyTargetRef)
-      extends GameCommand
-  final case class Trade(playerId: PlayerId, target: EconomyTargetRef,
-      resource: TradeResource) extends GameCommand
   final case class BeginChallenge(playerId: PlayerId, banner: Banner) extends GameCommand
   final case class ChooseChallengeSecretSite(playerId: PlayerId, decision: DecisionId,
       site: SiteId) extends GameCommand

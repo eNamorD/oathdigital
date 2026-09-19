@@ -22,12 +22,6 @@ private[protocol] object CommandIntentDecoders {
             "expected one power source"))
         }
     } yield UsePower(power, source)
-    case "muster" => nested(value, path, "target")(economy).map(Muster)
-    case "trade" => for {
-      _ <- exact(value, Set("type", "target", "resource"), path)
-      target <- field(value, "target", path).flatMap(economy(_, s"$path.target"))
-      resource <- string(value, "resource", path)
-    } yield Trade(target, resource)
     case "beginChallenge" => one(value, path, "banner")(BeginChallenge)
     case "chooseChallengeSecretSite" => two(value, path, "decisionId", "siteId")(ChooseChallengeSecretSite)
     case "completeChallenge" => idInt(value, path, "amount")(CompleteChallenge)
@@ -130,7 +124,6 @@ private[protocol] object CommandIntentDecoders {
   } yield f(id, number)
   private def nested[A](value: ujson.Obj, path: String, name: String)(f: (ujson.Value, String) => Either[ProtocolDecodeFailure, A]) =
     exact(value, Set("type", name), path).flatMap(_ => field(value, name, path)).flatMap(f(_, s"$path.$name"))
-  private def economy(v: ujson.Value, p: String) = pair(v, p).map { case (k, id) => EconomyTarget(k, id) }
   private def pair(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("kind", "id"), p); k <- string(o, "kind", p); id <- string(o, "id", p)
   } yield (k, id) }

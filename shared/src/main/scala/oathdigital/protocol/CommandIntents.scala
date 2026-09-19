@@ -12,8 +12,6 @@ object GameIntent {
   case object FinishRest extends GameIntent
   final case class UsePower(powerId: String, source: WalkerStartArgWire)
       extends GameIntent
-  final case class Muster(target: EconomyTarget) extends GameIntent
-  final case class Trade(target: EconomyTarget, resource: String) extends GameIntent
   final case class BeginChallenge(banner: String) extends GameIntent
   final case class ChooseChallengeSecretSite(decisionId: String, siteId: String)
       extends GameIntent
@@ -76,7 +74,6 @@ object GameIntent {
   */
 final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
-final case class EconomyTarget(kind: String, id: String)
 final case class WorldCard(kind: String, id: String)
 final case class CampaignForceAllocation(siteId: String, count: Int)
 sealed trait ConspiracyTarget extends Product with Serializable

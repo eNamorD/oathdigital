@@ -54,9 +54,10 @@ class GameHttpWireSuite extends munit.FunSuite {
 
   test("domain conversion rejects unknown protocol identifiers without throwing") {
     val failure = GameIntentMapper.bind(PlayerId("trusted"),
-      GameIntent.Trade(oathdigital.protocol.EconomyTarget("denizen", "d1"),
-        "injected-resource")).left.toOption.get
-    assertEquals(failure.path, "$.intent.resource")
+      GameIntent.StartWalker("search", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("teleport", "x"))))
+      .left.toOption.get
+    assertEquals(failure.path, "$.intent.startArgs[0]")
   }
 
   test("walker intents map onto Task 4's StartWalker/RollWalker/ResolveWalker " +
