@@ -82,6 +82,16 @@ object DecisionQueries {
             "nothing to decide")
       } yield ()
 
+    case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
+      for {
+        _ <- require(heading.exists(_.trim.nonEmpty), decisionId,
+          "declares no heading")
+        _ <- require(confirmLabel.trim.nonEmpty, decisionId,
+          "declares a blank confirm label")
+        _ <- require(min >= 0 && min <= max, decisionId,
+          s"declares an amount range $min..$max")
+      } yield ()
+
     case DecisionQuery.Partition(sections, options, _, _) =>
       val refs = options.map(_.ref)
       val keys = sections.map(_.key)
@@ -192,6 +202,14 @@ object DecisionQueries {
         } yield ()
       case _ =>
         reject(decisionId, "expects a multiple-choice answer")
+    }
+
+    case DecisionQuery.ChooseAmount(min, max, _, _) => answer match {
+      case DecisionAnswer.ChooseAmountAnswer(amount) =>
+        require(amount >= min && amount <= max, decisionId,
+          s"amount $amount is outside $min..$max")
+      case _ =>
+        reject(decisionId, "expects an amount answer")
     }
 
     case DecisionQuery.Partition(sections, options, _, _) => answer match {

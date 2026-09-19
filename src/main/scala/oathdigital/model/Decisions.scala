@@ -254,6 +254,14 @@ object DecisionQuery {
   final case class ChooseMany(count: Int, options: Vector[DecisionOption],
       heading: Option[String] = None) extends DecisionQuery
 
+  /** Pick an integer from `min` to `max` inclusive. Both labels are required,
+    * as on [[Distribute]]: the panel has a confirm step, and a range with no
+    * heading says nothing about what is being chosen. A single-value range is
+    * still a decision the player confirms.
+    */
+  final case class ChooseAmount(min: Int, max: Int, heading: Option[String],
+      confirmLabel: String) extends DecisionQuery
+
   /** Spread every option across the declared sections, respecting each
     * section's minimum.
     *
@@ -320,6 +328,9 @@ object DecisionAnswer {
     */
   final case class ChooseManyAnswer(selected: Vector[DecisionOptionRef])
       extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.ChooseAmount]]: the amount picked. */
+  final case class ChooseAmountAnswer(amount: Int) extends DecisionAnswer
 
   /** Answer to a [[DecisionQuery.Partition]]: every declared option
     * reference, each placed in exactly one declared section.

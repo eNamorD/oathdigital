@@ -25,6 +25,7 @@ import oathdigital.serialization.WireError.InvalidValue
 private[serialization] object DecisionAnswerCodec {
   private val ChooseOneTag = "choose-one"
   private val ChooseManyTag = "choose-many"
+  private val ChooseAmountTag = "choose-amount"
   private val PartitionTag = "partition"
   private val DistributeTag = "distribute"
 
@@ -34,6 +35,8 @@ private[serialization] object DecisionAnswerCodec {
     case DecisionAnswer.ChooseManyAnswer(selected) => ujson.Obj(
       "kind" -> ChooseManyTag,
       "options" -> ujson.Arr.from(selected.map(encodeRef)))
+    case DecisionAnswer.ChooseAmountAnswer(amount) => ujson.Obj(
+      "kind" -> ChooseAmountTag, "amount" -> amount)
     case DecisionAnswer.PartitionAnswer(placements) => ujson.Obj(
       "kind" -> PartitionTag,
       "placements" -> ujson.Arr.from(placements.map(placement => ujson.Obj(
@@ -54,6 +57,10 @@ private[serialization] object DecisionAnswerCodec {
         traverse(value("options").arr.toVector.zipWithIndex) {
           case (entry, index) => decodeRef(entry, s"$path.options[$index]")
         }.map(DecisionAnswer.ChooseManyAnswer)
+      case ChooseAmountTag =>
+        val raw = value("amount").num
+        Either.cond(raw.isValidInt, DecisionAnswer.ChooseAmountAnswer(raw.toInt),
+          InvalidValue(s"$path.amount", s"amount '$raw' is not an integer"))
       case PartitionTag =>
         traverse(value("placements").arr.toVector.zipWithIndex) {
           case (entry, index) =>

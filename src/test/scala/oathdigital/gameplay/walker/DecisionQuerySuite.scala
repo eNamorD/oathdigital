@@ -444,4 +444,32 @@ class DecisionQuerySuite extends munit.FunSuite {
     assertEquals(accepts(q, DecisionAnswer.ChooseOneAnswer(siteRef("a"))),
       invalid("decision recover.choice expects a multiple-choice answer"))
   }
+
+  private def amount(min: Int, max: Int, heading: Option[String] = Some("Amount"),
+      confirm: String = "Place") = DecisionQuery.ChooseAmount(min, max, heading, confirm)
+
+  test("a choose-amount query needs a heading, a confirm label and 0 <= min <= max") {
+    assertEquals(wellFormed(amount(3, 3)), Right(()))
+    assertEquals(wellFormed(amount(1, 6)), Right(()))
+    assertEquals(wellFormed(amount(4, 3)), invalid(
+      "decision recover.choice declares an amount range 4..3"))
+    assertEquals(wellFormed(amount(-1, 3)), invalid(
+      "decision recover.choice declares an amount range -1..3"))
+    assertEquals(wellFormed(amount(1, 3, heading = None)),
+      invalid("decision recover.choice declares no heading"))
+    assertEquals(wellFormed(amount(1, 3, confirm = " ")),
+      invalid("decision recover.choice declares a blank confirm label"))
+  }
+
+  test("a choose-amount answer is accepted exactly inside its range") {
+    val q = amount(3, 5)
+    assertEquals(accepts(q, DecisionAnswer.ChooseAmountAnswer(3)), Right(()))
+    assertEquals(accepts(q, DecisionAnswer.ChooseAmountAnswer(5)), Right(()))
+    assertEquals(accepts(q, DecisionAnswer.ChooseAmountAnswer(2)), invalid(
+      "decision recover.choice amount 2 is outside 3..5"))
+    assertEquals(accepts(q, DecisionAnswer.ChooseAmountAnswer(6)), invalid(
+      "decision recover.choice amount 6 is outside 3..5"))
+    assertEquals(accepts(q, DecisionAnswer.ChooseOneAnswer(siteRef("a"))),
+      invalid("decision recover.choice expects an amount answer"))
+  }
 }
