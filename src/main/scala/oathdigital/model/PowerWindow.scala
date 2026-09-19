@@ -86,6 +86,29 @@ object PowerWindow {
     val key = "trade.source-selection"
   }
   case object TradeGain extends TradeWindow { val key = "trade.gain" }
+  case object ChallengeBannerSelection extends ChallengeWindow {
+    val key = "challenge.banner-selection"
+  }
+  case object ChallengeAmountSelection extends ChallengeWindow {
+    val key = "challenge.amount-selection"
+  }
+  case object ChallengeCost extends ChallengeWindow { val key = "challenge.cost" }
+  case object ChallengeRibbon extends ChallengeWindow { val key = "challenge.ribbon" }
+  case object ChallengePlacement extends ChallengeWindow {
+    val key = "challenge.placement"
+  }
+  case object PlaceBannerResourceEligibility extends OtherWindow {
+    val key = "place-banner-resource.eligibility"
+  }
+  case object PlaceBannerResourceBannerSelection extends OtherWindow {
+    val key = "place-banner-resource.banner-selection"
+  }
+  case object PlaceBannerResourceAmountSelection extends OtherWindow {
+    val key = "place-banner-resource.amount-selection"
+  }
+  case object PlaceBannerResourcePlacement extends OtherWindow {
+    val key = "place-banner-resource.placement"
+  }
   case object ForgeCost extends ForgeWindow { val key = "forge.cost" }
   case object RecoverEligibility extends RecoverWindow { val key = "recover.eligibility" }
   case object RecoverBeforeFirstRoll extends RecoverWindow {
