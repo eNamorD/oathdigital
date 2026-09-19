@@ -1,6 +1,6 @@
 # Procedure Walker: Operations as Data, Powers as Contributors
 
-> Status: approved; partly implemented. Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
+> Status: approved; partly implemented. Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)). Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
 
 ## Problem
 
@@ -447,6 +447,8 @@ actions migrated. They were not; both kept a job:
    *In progress:* batch 1 ported Forge, Travel and Wake (Take Wealth and End
    Wake). Remaining: Search, Economy, Challenge, Campaign, Negotiation,
    CardPlay, Rest, Visions.
+   Economy (Muster and Trade) is ported and its legacy path deleted; see
+   the Muster and Trade design.
 4. Delete retired machinery (per-action integration seams, typed-fact
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel

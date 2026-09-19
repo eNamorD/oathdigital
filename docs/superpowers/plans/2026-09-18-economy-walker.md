@@ -2658,3 +2658,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Placeholder scan.** No "TBD", "TODO" or "similar to Task N". Every code step shows code; deletion steps name the symbol, the file and the surrounding lines.
 
 **Type consistency.** `PreviewedOption` and `PreviewOutcome` are nested in `WalkerSimulation` and imported as `WalkerSimulation.PreviewedOption`. `startOptions` returns `Vector[PreviewedOption]` for both procedures and is the only thing `LegalActionProjector`, the parity suite and the tests consume. `requiresPlayableOption` is spelled the same in `Entry`, the accessor, `OathRulesWalker` and `WalkerDecisionProjector`. `MusterProcedure.decisionId` and `TradeProcedure.decisionId` are the values the registry's `continuationFor` compares against. The control strings `beginMuster`, `beginTradeFavor` and `beginTradeSecret` are identical in `LegalActionProjector`, `EconomyProjectionSuite` and `EconomyControls`.
+
+## Execution notes
+
+Where execution departed from the plan's code samples. Each was found by a failing test, not by inspection.
+
+1. **Affordability is checked before the walk, not by `PayCost`.** A bare `PayCost` leaf in the walker shrinks to nothing when the favor or secrets are short, because `required` only bites inside a `BuildOps` batch. `EconomyTree` therefore builds the payment through `Costs.plan`, which rejects with the same `InsufficientFavor`/`InsufficientSecrets` violations legacy used. `SpendSupply` is required and rejects on its own.
+2. **Recorded gains are moves.** The walker records the `Move` a `Gain` expands into, not the `Gain`. `OperationDetails` and the parity suite read a move from a bank to the actor's play area; a `Gain` is worded the same way for a caller holding the requested operation.
+3. **Test-only power.** `WalkerPreviewSuite` uses the existing `ProcedureWalkerSuite.TestTransformPower` instead of a new power class.
+4. **Task 8 to 12 counts.** The parity suite (39 tests) passed on its first run and was checked with a mutation of the Muster gain, which made 8 of them fail. It was deleted with the code it compared against.

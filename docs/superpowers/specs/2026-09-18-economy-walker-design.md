@@ -1,6 +1,6 @@
 # Muster and Trade on the Procedure Walker
 
-> Status: design, amended after review. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and follows the recipe of the Forge, Travel and Search ports. No implementation is authorized by this document alone.
+> Status: implemented by [the plan](../plans/2026-09-18-economy-walker.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md), and follows the recipe of the Forge, Travel and Search ports.
 
 ## Goal and scope
 
