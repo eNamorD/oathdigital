@@ -129,12 +129,8 @@ private[operations] object OperationStateInvariant {
   private def validateWarbands(
       ready: ReadyGame
   ): Either[OperationError, Unit] = {
-    val playerKinds = ready.game.current.players.flatMap { player =>
-      ready.game.campaign.lineages.get(player.lineage).map { lineage =>
-        if (lineage.role.isImperial) ForceKind.Imperial
-        else ForceKind.Exile(player.lineage)
-      }
-    }
+    val playerKinds = ready.game.current.players.flatMap(player =>
+      PlayerForceKind.of(ready, player))
     val siteKinds = ready.game.current.map.sites.valuesIterator.flatMap {
       _.forces match {
         case SiteForces.Occupied(kind, _) => Some(kind)

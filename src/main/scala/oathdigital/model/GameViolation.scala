@@ -46,6 +46,8 @@ object OathViolation {
   final case class EconomyCardNotEmpty(cardId: CardId) extends OathViolation
   final case class EconomySourceMismatch(detail: String) extends OathViolation
   final case class EconomyOutcomeMismatch(detail: String) extends OathViolation
+  /** A start whose first decision offers nothing the procedure would accept. */
+  final case class NoPlayableOption(procedure: String) extends OathViolation
   final case class InsufficientFavor(required: Int, available: Int)
       extends OathViolation
   final case class InsufficientSecrets(required: Int, available: Int)

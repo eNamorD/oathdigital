@@ -78,6 +78,14 @@ object PowerWindow {
   }
   case object MusterCost extends MusterWindow { val key = "muster.cost" }
   case object TradeCost extends TradeWindow { val key = "trade.cost" }
+  case object MusterSourceSelection extends MusterWindow {
+    val key = "muster.source-selection"
+  }
+  case object MusterGain extends MusterWindow { val key = "muster.gain" }
+  case object TradeSourceSelection extends TradeWindow {
+    val key = "trade.source-selection"
+  }
+  case object TradeGain extends TradeWindow { val key = "trade.gain" }
   case object ForgeCost extends ForgeWindow { val key = "forge.cost" }
   case object RecoverEligibility extends RecoverWindow { val key = "recover.eligibility" }
   case object RecoverBeforeFirstRoll extends RecoverWindow {

@@ -23,6 +23,8 @@ object OathContinue {
       decision: DecisionId) extends OathContinue
   final case class AwaitingSearchDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+  final case class AwaitingEconomyDecision(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingRecoverRoll(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingRecoverRelic(playerId: PlayerId, decision: DecisionId)

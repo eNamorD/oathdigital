@@ -165,10 +165,7 @@ object OperationStateAdapter {
   private def playerForceKind(
       ready: ReadyGame,
       player: PlayerState
-  ): Option[ForceKind] = ready.game.campaign.lineages.get(player.lineage).map {
-    case lineage if lineage.role.isImperial => ForceKind.Imperial
-    case _ => ForceKind.Exile(player.lineage)
-  }
+  ): Option[ForceKind] = PlayerForceKind.of(ready, player)
 
   private[operations] def bannerHolder(ready: ReadyGame, banner: Banner): Option[PlayerId] =
     banner match {
