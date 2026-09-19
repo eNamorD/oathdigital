@@ -9,6 +9,7 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
     extends ServerUiView {
   var partition: Option[WalkerPartitionDraft] = None
   var distribution: Option[WalkerDistributeDraft] = None
+  var selection: Option[WalkerSelectionDraft] = None
   var submitted: Vector[Intent] = Vector.empty
   var rerenders: Int = 0
 
@@ -18,6 +19,9 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
   def currentWalkerDistribution: Option[WalkerDistributeDraft] = distribution
   def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit =
     distribution = value
+  def currentWalkerSelection: Option[WalkerSelectionDraft] = selection
+  def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit =
+    selection = value
   def rerender(): Unit = rerenders += 1
   def submitCommand(command: Intent): Unit = submitted :+= command
 

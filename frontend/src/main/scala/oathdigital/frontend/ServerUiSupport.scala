@@ -19,6 +19,8 @@ private[frontend] trait ServerUiView {
   def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
   def currentWalkerDistribution: Option[WalkerDistributeDraft]
   def currentWalkerDistribution_=(value: Option[WalkerDistributeDraft]): Unit
+  def currentWalkerSelection: Option[WalkerSelectionDraft]
+  def currentWalkerSelection_=(value: Option[WalkerSelectionDraft]): Unit
   def currentCardDecision: Option[CardDecisionState]
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit
   def currentModifierWorkflow: Option[ModifierWorkflow]
