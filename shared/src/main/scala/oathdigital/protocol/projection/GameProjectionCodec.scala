@@ -13,7 +13,7 @@ object GameProjectionCodec {
     "gameId", "nextSequence", "phase", "activeParticipantId", "players", "world",
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
     "currentSiteResources", "actionSelectionOpen", "actionFamilies",
-    "legalTravelDestinations", "legalSearchSources", "legalMusters", "legalTrades",
+    "legalTravelDestinations", "legalSearchSources",
     "boardTargetActions", "pendingCardDecision", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "challenge", "minorActions",
@@ -49,14 +49,6 @@ object GameProjectionCodec {
       ujson.Obj("siteId" -> d.siteId, "supplyCost" -> d.supplyCost)),
     "legalSearchSources" -> encoded(value.legalSearchSources)(s => ujson.Obj(
       "kind" -> s.kind, "region" -> stringOption(s.region), "supplyCost" -> s.supplyCost)),
-    "legalMusters" -> encoded(value.legalMusters)(m => ujson.Obj(
-      "target" -> ujson.Obj("kind" -> m.targetKind, "id" -> m.targetId),
-      "label" -> m.label, "suit" -> m.suit, "supplyCost" -> m.supplyCost,
-      "warbandsGained" -> m.warbandsGained)),
-    "legalTrades" -> encoded(value.legalTrades)(t => ujson.Obj(
-      "target" -> ujson.Obj("kind" -> t.targetKind, "id" -> t.targetId),
-      "label" -> t.label, "suit" -> t.suit, "resource" -> t.resource,
-      "supplyCost" -> t.supplyCost, "gained" -> t.gained)),
     "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
     "pendingCardDecision" -> option(value.pendingCardDecision)(encodePending),
     "campaign" -> option(value.campaign)(CampaignProjectionCodec.encode),
@@ -118,10 +110,6 @@ object GameProjectionCodec {
     destinations <- traverse(destinationRaws, s"$path.legalTravelDestinations")(decodeDestination)
     sourceRaws <- default(value, "legalSearchSources", path, Vector.empty[ujson.Value])(array)
     sources <- traverse(sourceRaws, s"$path.legalSearchSources")(decodeSearchSource)
-    musterRaws <- default(value, "legalMusters", path, Vector.empty[ujson.Value])(array)
-    musters <- traverse(musterRaws, s"$path.legalMusters")((raw, child) => decodeMuster(raw, child))
-    tradeRaws <- default(value, "legalTrades", path, Vector.empty[ujson.Value])(array)
-    trades <- traverse(tradeRaws, s"$path.legalTrades")((raw, child) => decodeTrade(raw, child))
     actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
     actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
     pending <- optionalAbsent(value, "pendingCardDecision", path)(decodePending)
@@ -161,7 +149,7 @@ object GameProjectionCodec {
       decodePhasePower(raw, child) }
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
-    sources, musters, trades, actions, pending, campaign, relocation,
+    sources, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, banners, challenge, minor,
     negotiation, waiting, banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers)
@@ -187,25 +175,6 @@ object GameProjectionCodec {
     kind <- string(v, "kind", path); region <- optionalString(v, "region", path)
     cost <- int(v, "supplyCost", path)
   } yield LegalSearchSourceProjection(kind, region, cost)
-  private def decodeEconomy(raw: ujson.Value, path: String): Result[(String, String)] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("kind", "id"), path)
-    kind <- string(v, "kind", path); id <- string(v, "id", path)
-    _ <- Either.cond(Set("denizen", "edifice").contains(kind), (),
-      oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(s"$path.kind",
-        "expected denizen or edifice"))
-  } yield kind -> id
-  private def decodeMuster(raw: ujson.Value, path: String): Result[LegalMusterProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("target", "label", "suit", "supplyCost", "warbandsGained"), path)
-    targetRaw <- field(v, "target", path); target <- decodeEconomy(targetRaw, s"$path.target")
-    label <- string(v, "label", path); suit <- string(v, "suit", path)
-    cost <- int(v, "supplyCost", path); gained <- int(v, "warbandsGained", path)
-  } yield LegalMusterProjection(target._1, target._2, label, suit, cost, gained)
-  private def decodeTrade(raw: ujson.Value, path: String): Result[LegalTradeProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("target", "label", "suit", "resource", "supplyCost", "gained"), path)
-    targetRaw <- field(v, "target", path); target <- decodeEconomy(targetRaw, s"$path.target")
-    label <- string(v, "label", path); suit <- string(v, "suit", path)
-    resource <- string(v, "resource", path); cost <- int(v, "supplyCost", path); gained <- int(v, "gained", path)
-  } yield LegalTradeProjection(target._1, target._2, label, suit, resource, cost, gained)
   private def decodeRelocation(raw: ujson.Value, path: String): Result[CampaignRaidRelocationProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "defenderPlayerId", "originSiteId", "legalSiteIds"), path)
     decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)

@@ -345,9 +345,6 @@ private[frontend] object ServerUiSupport {
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
     case "darkest-secret" => "Darkest Secret"
-    case "muster" => "Muster"
-    case "trade-favor" => "Trade for favor"
-    case "trade-secret" => "Trade for secrets"
     case "reveal-vision" => "Reveal Vision"
     case "play-conspiracy" => "Play Conspiracy"
     case other => other
@@ -514,12 +511,6 @@ private[frontend] object ServerUiSupport {
       case ("play-conspiracy", Vector()) if action.minimum == 0 &&
           action.maximum == 0 =>
         Some(GameCommand.PlayConspiracy(None))
-      case ("muster", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Muster(oathdigital.protocol.EconomyTarget(kind, id)))
-      case ("trade-favor", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "favor"))
-      case ("trade-secret", Vector(BoardTargetRef.SiteCard(_, kind, id))) =>
-        Some(GameCommand.Trade(oathdigital.protocol.EconomyTarget(kind, id), "secret"))
       case _ => None
     }
 

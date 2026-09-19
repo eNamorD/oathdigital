@@ -48,8 +48,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       BoardSelectionResult.Submit(challenge, Vector(banner.target)))
   }
 
-  test("Economy target mode requires explicit confirmation and supports cancel") {
-    val action = BoardTargetAction("trade-favor", "Trade", 1, 1,
+  test("explicit-confirm target mode requires confirmation and supports cancel") {
+    val action = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA), explicitConfirm = true)
     val active = BoardTargetSelectionState.reconcile(None, context,
       Vector(action)).activate(action.actionKind)

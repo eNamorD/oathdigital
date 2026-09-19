@@ -31,8 +31,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     actionSelectionOpen = true, actionFamilies = Vector("campaign"),
     legalTravelDestinations = Vector(LegalTravelDestinationProjection("site:b", 2)),
     legalSearchSources = Vector(LegalSearchSourceProjection("region", Some("cradle"), 1)),
-    legalMusters = Vector(LegalMusterProjection("denizen", "known", "Known", "beast", 1, 2)),
-    legalTrades = Vector(LegalTradeProjection("denizen", "known", "Known", "beast", "favor", 1, 2)),
     boardTargetActions = Vector(BoardTargetActionProjection("campaign", "Choose", 1, 1,
       false, Vector(BoardTargetCandidateProjection(target, "Known", Vector("detail"))),
       Some(BoardTargetFormationProjection(1, 2, 2, 1)), Vector(target), Some("decision"))),

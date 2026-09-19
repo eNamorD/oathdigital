@@ -164,15 +164,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
       Vector(BoardTargetRef.Site("site:b")), "red", 4),
       Some(GameCommand.CampaignConquest("red", "site:b", 4)))
-    assertEquals(ServerUiSupport.commandForSelection(action("muster"), Vector(
-      BoardTargetRef.SiteCard("site", "edifice", "E26")), "red"),
-      Some(GameCommand.Muster("red", EconomyTarget("edifice", "E26"))))
-    assertEquals(ServerUiSupport.commandForSelection(action("trade-favor"), Vector(
-      BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
-      Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "favor")))
-    assertEquals(ServerUiSupport.commandForSelection(action("trade-secret"), Vector(
-      BoardTargetRef.SiteCard("site", "denizen", "D1")), "red"),
-      Some(GameCommand.Trade("red", EconomyTarget("denizen", "D1"), "secret")))
     assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
       BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
@@ -296,7 +287,6 @@ class ServerModeUiSuite extends FunSuite {
       BoardTargetRef.Site("b"), "Site B",
       Vector("2 Supply", "Commit all 4 board warbands"))),
       "Site B · 2 Supply · Commit all 4 board warbands")
-    assertEquals(ServerUiSupport.actionLabel("trade-secret"), "Trade for secrets")
     assertEquals(ServerUiSupport.actionLabel("reveal-vision"), "Reveal Vision")
     assertEquals(ServerUiSupport.actionLabel("play-conspiracy"), "Play Conspiracy")
     assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
@@ -635,11 +625,7 @@ class ServerModeUiSuite extends FunSuite {
     val value = projection(Set("beginRest"), phase = "act-action-selection")
       .copy(actionSelectionOpen = true,
         legalSearchSources = Vector(LegalSearchSource("world", None, 2)),
-        legalTravelDestinations = Vector(LegalTravelDestination("site:1", 2)),
-        legalMusters = Vector(LegalMuster(EconomyTarget("denizen", "d1"),
-          "Muster target", "order", 1, 2)),
-        legalTrades = Vector(LegalTrade(EconomyTarget("denizen", "d1"),
-          "Trade target", "order", "favor", 1, 2)))
+        legalTravelDestinations = Vector(LegalTravelDestination("site:1", 2)))
     val inactive = ServerUiSupport.viewerPresentation(value, "blue-exile")
     val active = ServerUiSupport.viewerPresentation(value, "red-exile")
 

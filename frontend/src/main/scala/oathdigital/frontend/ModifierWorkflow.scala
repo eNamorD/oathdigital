@@ -40,9 +40,6 @@ private[frontend] object ModifierWorkflow {
     "travel" -> ("travel" -> Map.empty[String, String]),
     "campaign-conquest" -> ("campaign" -> Map("kind" -> "conquest")),
     "campaign-raid" -> ("campaign" -> Map("kind" -> "raid")),
-    "muster" -> ("muster" -> Map.empty[String, String]),
-    "trade-favor" -> ("trade" -> Map("resource" -> "favor")),
-    "trade-secret" -> ("trade" -> Map("resource" -> "secret")),
     "play-facedown-adviser" -> ("search" -> Map("procedure" -> "facedown-adviser")))
 
   def targeted(actionKind: String): Option[(String, Map[String, String])] =

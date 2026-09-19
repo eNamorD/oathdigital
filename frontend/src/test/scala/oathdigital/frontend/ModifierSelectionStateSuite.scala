@@ -34,10 +34,9 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
   }
 
   test("targeted actions preview before commands while direct actions retain their stage") {
-    assertEquals(Vector("travel", "campaign-conquest", "campaign-raid", "muster",
-      "trade-favor", "trade-secret", "play-facedown-adviser")
-      .flatMap(ModifierWorkflow.targeted).map(_._1),
-      Vector("travel", "campaign", "campaign", "muster", "trade", "trade", "search"))
+    assertEquals(Vector("travel", "campaign-conquest", "campaign-raid",
+      "play-facedown-adviser").flatMap(ModifierWorkflow.targeted).map(_._1),
+      Vector("travel", "campaign", "campaign", "search"))
     val commands = Vector[GameIntent](
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),
@@ -103,35 +102,35 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
     assertEquals(targets.cancel, None)
   }
 
-  test("zero modifiers skip ordering and Economy still requires explicit confirmation") {
+  test("zero modifiers skip ordering and a targeted action still requires explicit confirmation") {
     val target = BoardTargetCandidate(
       BoardTargetRef.SiteCard("site", "denizen", "d1"), "D1", Vector.empty)
-    val action = BoardTargetAction("trade-secret", "Trade", 1, 1, false,
+    val action = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(target))
-    val response = MajorActionPreviewResponse(4, "trade", Vector.empty, Vector.empty,
+    val response = MajorActionPreviewResponse(4, "travel", Vector.empty, Vector.empty,
       Vector(PreviewTarget("denizen:d1", 1, "D1")))
     val selection = ModifierSelectionState.reconcile(None, context,
       Vector.empty, "empty")
-    val workflow = ModifierWorkflow(None, Some("trade-secret"),
-      Map("resource" -> "secret"), response, selection,
+    val workflow = ModifierWorkflow(None, Some("travel"),
+      Map.empty[String, String], response, selection,
       ModifierWorkflowStage.Targets)
     assert(!workflow.ordering)
-    val authorized = ModifierWorkflow.targetAction("trade-secret", response,
+    val authorized = ModifierWorkflow.targetAction("travel", response,
       Vector(action)).get
     val chosen = BoardTargetSelectionState.reconcile(None,
       BoardSelectionContext("g", "p", 4), Vector(authorized))
-      .activate("trade-secret").choose(target.target)
+      .activate("travel").choose(target.target)
     assert(chosen.isInstanceOf[BoardSelectionResult.Updated])
     assert(chosen.asInstanceOf[BoardSelectionResult.Updated].state.canConfirm)
   }
 
   test("target Back restores ordering only when present and stale context clears flow") {
-    val response = MajorActionPreviewResponse(4, "trade", Vector(first),
+    val response = MajorActionPreviewResponse(4, "travel", Vector(first),
       Vector.empty, Vector.empty)
     val selected = ModifierSelectionState.reconcile(None, context,
       Vector(first), "preview").toggle(first)
-    val targets = ModifierWorkflow(None, Some("trade-favor"),
-      Map("resource" -> "favor"), response, selected,
+    val targets = ModifierWorkflow(None, Some("travel"),
+      Map.empty[String, String], response, selected,
       ModifierWorkflowStage.Targets)
     assert(targets.backFromTargets.exists(_.ordering))
     assertEquals(targets.cancel, None)

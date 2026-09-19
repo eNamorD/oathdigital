@@ -18,8 +18,6 @@ private[application] final case class LegalProjection(
     controls: Vector[String],
     travel: Vector[LegalTravelDestinationProjection],
     search: Vector[LegalSearchSourceProjection],
-    musters: Vector[LegalMusterProjection],
-    trades: Vector[LegalTradeProjection],
     boardTargets: Vector[BoardTargetActionProjection],
     minorActions: Option[MinorActionsProjection]
 )

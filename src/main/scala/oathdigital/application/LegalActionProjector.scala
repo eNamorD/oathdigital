@@ -3,7 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  Economy, ForgeRules, VisionRules, Visions}
+  ForgeRules, VisionRules, Visions}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -98,17 +98,6 @@ private[application] final class LegalActionProjector(
         LegalTravelDestinationProjection(site.value, cost)
       },
       if (ordinaryAct) legalSearch(context) else Vector.empty,
-      if (ordinaryAct) Economy.legalMuster(catalog, context.ready,
-        context.active).map(result => LegalMusterProjection(result.target.kind,
-          result.target.id.value, economyLabel(result.target), result.suit.key,
-          result.supplySpent, result.warbandsGained)) else Vector.empty,
-      if (ordinaryAct) Economy.legalTrades(catalog, context.ready,
-        context.active).map(result => LegalTradeProjection(result.target.kind,
-          result.target.id.value, economyLabel(result.target), result.suit.key,
-          result.resource match {
-            case oathdigital.model.TradeResource.Favor => "favor"
-            case oathdigital.model.TradeResource.Secret => "secret"
-          }, result.supplySpent, result.gained)) else Vector.empty,
       context.current.pending match {
         case Some(p: PendingProcedure.Conspiracy) if p.awaitingTarget &&
             context.viewer.contains(p.actor) =>
@@ -258,10 +247,6 @@ private[application] final class LegalActionProjector(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))
     }
-    val musters = Economy.legalMuster(catalog, ready, player).map(result =>
-      economyCandidate(result.target, result.source,
-        Vector(s"${result.supplySpent} Supply", s"+${result.warbandsGained} warbands")))
-    val trades = Economy.legalTrades(catalog, ready, player)
     val campaign = CampaignRules.legalTargets(catalog, ready, player.player).map(site =>
       BoardTargetCandidateProjection(BoardTargetRefProjection.Site(site.value),
         presentation.siteLabel(site), Vector(
@@ -280,12 +265,6 @@ private[application] final class LegalActionProjector(
         BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
           defender.value, key), presentation.safeLabel(key))
     }
-    val favor = trades.filter(_.resource == oathdigital.model.TradeResource.Favor)
-      .map(result => economyCandidate(result.target, result.source,
-        Vector(s"${result.supplySpent} Supply", s"+${result.gained} favor")))
-    val secret = trades.filter(_.resource == oathdigital.model.TradeResource.Secret)
-      .map(result => economyCandidate(result.target, result.source,
-        Vector(s"${result.supplySpent} Supply", s"+${result.gained} secrets")))
     val challenges = ChallengeRules.legal(catalog, ready, player.player).map { banner =>
       val holder = BannerRules.holder(ready.game.current, banner)
       BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
@@ -327,13 +306,7 @@ private[application] final class LegalActionProjector(
       Option.when(hasConspiracy)(BoardTargetActionProjection("play-conspiracy",
         if (conspiracy.isEmpty) "Play Conspiracy" else "Choose an enemy asset for Conspiracy",
         if (conspiracy.isEmpty) 0 else 1, if (conspiracy.isEmpty) 0 else 1,
-        autoActivate = false, conspiracy)),
-      selection("muster", "Choose a card to Muster from", musters,
-        explicitConfirm = true),
-      selection("trade-favor", "Choose a card to Trade for favor", favor,
-        explicitConfirm = true),
-      selection("trade-secret", "Choose a card to Trade for secrets", secret,
-        explicitConfirm = true)).flatten
+        autoActivate = false, conspiracy))).flatten
   }
 
   private def conspiracyTargetAction(ready: oathdigital.model.ReadyGame,
@@ -362,19 +335,4 @@ private[application] final class LegalActionProjector(
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(kind, prompt,
       minimum, maximum, autoActivate = false, candidates, formation, requiredTargets,
       explicitConfirm = explicitConfirm))
-  private def economyLabel(target: EconomyTargetRef) = target match {
-    case EconomyTargetRef.Denizen(id) => presentation.denizenLabel(id)
-    case EconomyTargetRef.Edifice(id) => presentation.edificeLabel(id, EdificeSide.Ruined)
-  }
-  private def economyCandidate(target: EconomyTargetRef,
-      source: oathdigital.model.RuleSourceRef, details: Vector[String]) = {
-    val site = source match {
-      case oathdigital.model.RuleSourceRef.SiteCard(id, _) => id
-      case oathdigital.model.RuleSourceRef.Edifice(id, _) => id
-      case other => throw new IllegalStateException(
-        s"Economy candidate has non-site source $other")
-    }
-    BoardTargetCandidateProjection(BoardTargetRefProjection.SiteCard(site.value,
-      target.kind, target.id.value), economyLabel(target), details)
-  }
 }

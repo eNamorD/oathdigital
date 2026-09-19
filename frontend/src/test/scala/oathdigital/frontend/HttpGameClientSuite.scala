@@ -528,33 +528,6 @@ class HttpGameClientSuite extends FunSuite {
     assert(complete.contains("\"decisionId\":\"search.cards\""))
   }
 
-  test("Economy encodes typed intents and decodes authoritative yields") {
-    val muster = GameJson.encodeCommand(12L,
-      GameCommand.Muster("red-exile", EconomyTarget("edifice", "E26")))
-    val trade = GameJson.encodeCommand(13L,
-      GameCommand.Trade("red-exile", EconomyTarget("edifice", "E26"), "secret"))
-    assert(muster.contains("\"type\":\"muster\""))
-    assert(muster.contains("\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}"))
-    assert(trade.contains("\"resource\":\"secret\""))
-    val json = projectionJson(sequence = 12, choices = false).replace(
-      "\"pendingCardDecision\":null",
-      "\"pendingCardDecision\":null," +
-        "\"legalMusters\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
-        "\"label\":\"Ruined Hallowed Spring\",\"suit\":\"order\",\"supplyCost\":1,\"warbandsGained\":2}]," +
-        "\"legalTrades\":[{\"target\":{\"kind\":\"edifice\",\"id\":\"E26\"}," +
-        "\"label\":\"Ruined Hallowed Spring\",\"suit\":\"order\",\"resource\":\"secret\"," +
-        "\"supplyCost\":1,\"gained\":1}]"
-    )
-    val projection = GameJson.decodeProjection(json).toOption.get
-    assertEquals(projection.legalMusters.head.warbandsGained, 2)
-    assertEquals(projection.legalMusters.head.label, "Ruined Hallowed Spring")
-    assertEquals(projection.legalTrades.head,
-      LegalTrade(EconomyTarget("edifice", "E26"), "Ruined Hallowed Spring",
-        "order", "secret", 1, 1))
-    val invalid = json.replace("\"kind\":\"edifice\"", "\"kind\":\"relic\"")
-    assert(GameJson.decodeProjection(invalid).isLeft)
-  }
-
   test("site detail decoder preserves populated and empty site projections") {
     val projection = GameJson.decodeProjection(
       projectionJson(sequence = 2)

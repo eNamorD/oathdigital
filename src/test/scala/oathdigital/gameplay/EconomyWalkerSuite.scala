@@ -122,4 +122,22 @@ class EconomyWalkerSuite extends munit.FunSuite {
       DecisionOptionRef.Denizen(matchingId)).isLeft)
     assert(answer(started.state, actor, MusterProcedure.decisionId, card).isRight)
   }
+
+  test("a lineage with no warband supply cannot Muster") {
+    val board = act()
+    val actor = player(board)
+    val malformed = board.copy(banks = board.banks.copy(warbandSupply =
+      board.banks.warbandSupply - ForceKind.Exile(actor.lineage)))
+    assert(start(malformed).isLeft)
+  }
+
+  test("an unimplemented optional Economy power does not block a base Trade") {
+    val board = spring(act(), EdificeSide.Intact)
+    val actor = player(board).player
+    val started = start(board, ActionRef.Trade, secret)
+      .getOrElse(fail("the Trade must start"))
+    val finished = answer(started.state, actor, TradeProcedure.decisionId,
+      DecisionOptionRef.Edifice(springId))
+    assert(finished.isRight, finished.toString)
+  }
 }

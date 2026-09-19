@@ -42,20 +42,6 @@ package object frontend {
   val LegalTravelDestination = protocol.projection.LegalTravelDestinationProjection
   type LegalSearchSource = protocol.projection.LegalSearchSourceProjection
   val LegalSearchSource = protocol.projection.LegalSearchSourceProjection
-  type LegalMuster = protocol.projection.LegalMusterProjection
-  object LegalMuster {
-    def apply(target: EconomyTarget, label: String, suit: String,
-        supplyCost: Int, warbandsGained: Int): LegalMuster =
-      protocol.projection.LegalMusterProjection(target.kind, target.id, label,
-        suit, supplyCost, warbandsGained)
-  }
-  type LegalTrade = protocol.projection.LegalTradeProjection
-  object LegalTrade {
-    def apply(target: EconomyTarget, label: String, suit: String,
-        resource: String, supplyCost: Int, gained: Int): LegalTrade =
-      protocol.projection.LegalTradeProjection(target.kind, target.id, label,
-        suit, resource, supplyCost, gained)
-  }
   type BoardTargetRef = protocol.projection.BoardTargetRefProjection
   val BoardTargetRef = protocol.projection.BoardTargetRefProjection
   type BoardTargetCandidate = protocol.projection.BoardTargetCandidateProjection

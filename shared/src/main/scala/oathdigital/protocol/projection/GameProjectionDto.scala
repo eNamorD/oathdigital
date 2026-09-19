@@ -18,8 +18,6 @@ final case class GameProjection(
     legalTravelDestinations: Vector[LegalTravelDestinationProjection] =
       Vector.empty,
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
-    legalMusters: Vector[LegalMusterProjection] = Vector.empty,
-    legalTrades: Vector[LegalTradeProjection] = Vector.empty,
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
     campaign: Option[CampaignProjection] = None,

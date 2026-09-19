@@ -135,8 +135,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
           "Recover", "Challenge", "Minor Actions") else Vector.empty,
       legalTravelDestinations = legal.travel,
       legalSearchSources = legal.search,
-      legalMusters = legal.musters,
-      legalTrades = legal.trades,
       boardTargetActions = legal.boardTargets,
       pendingCardDecision = pending.cardDecision,
       campaign = pending.campaign,
