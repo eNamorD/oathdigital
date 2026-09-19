@@ -318,19 +318,6 @@ private[operations] object OperationStateMutation {
         result.flatMap(setOathkeeper(_, holder))
       case (result, BeginTurn(player, phase)) =>
         result.flatMap(beginTurn(_, player, phase))
-      case (result, BeginConspiracy(player, decision, source)) =>
-        result.flatMap { state =>
-          val current = state.game.current
-          if (current.pending.nonEmpty) Left(OperationError.InvalidDescription(
-            "a legacy procedure is already pending"))
-          else if (!current.temporaryHands.getOrElse(player, Vector.empty)
-              .contains(source))
-            Left(OperationError.MissingPiece(Piece.Card(source),
-              Location.Hand(player)))
-          else Right(state.copy(game = state.game.copy(current = current.copy(
-            pending = Some(PendingProcedure.Conspiracy(decision, player,
-              source, None, awaitingTarget = true))))))
-        }
       case (result, _) => result
     }
 

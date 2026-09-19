@@ -34,9 +34,6 @@ private[serialization] trait WalkerOperationCodec {
   protected final def encodeOperation(operation: CoreOperation): ujson.Value =
     operation match {
       case AdvanceVisionsDrawn => ujson.Obj("kind" -> "advance-visions-drawn")
-      case BeginConspiracy(player, decision, source) => ujson.Obj(
-        "kind" -> "begin-conspiracy", "playerId" -> player.value,
-        "decisionId" -> decision.value, "source" -> source.value)
       case SpendSupply(player, amount, _) => ujson.Obj(
         "kind" -> "spend-supply", "playerId" -> player.value,
         "amount" -> amount)
@@ -224,10 +221,6 @@ private[serialization] trait WalkerOperationCodec {
       path: String): Either[WireError, CoreOperation] =
     value("kind").str match {
       case "advance-visions-drawn" => Right(AdvanceVisionsDrawn)
-      case "begin-conspiracy" => Right(BeginConspiracy(
-        PlayerId(value("playerId").str),
-        DecisionId(value("decisionId").str),
-        VisionId(value("source").str)))
       case "spend-supply" => decodePositiveInt(value("amount"), s"$path.amount")
         .map(amount => SpendSupply(PlayerId(value("playerId").str), amount))
       case "gain-supply" => decodePositiveInt(value("amount"), s"$path.amount")

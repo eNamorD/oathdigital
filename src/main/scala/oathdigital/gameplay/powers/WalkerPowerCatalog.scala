@@ -5,7 +5,7 @@ import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.travel.TravelSitePowers
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
-import oathdigital.gameplay.powers.whenplayed.Dazzle
+import oathdigital.gameplay.powers.whenplayed.{ConspiracyWhenPlayed, Dazzle}
 import oathdigital.gameplay.walker.WalkerPowers
 
 /** The real catalog of `ContributingPower`s wired onto the generic walker
@@ -23,6 +23,9 @@ import oathdigital.gameplay.walker.WalkerPowers
   * League Treaty is inert until Finish Rest walks its `RestReturnFavor` window.
   * Silver Tongue's restriction is inert until Search walks
   * `SearchPlayAdviser`.
+  * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
+  * so like Take Wealth's limit it is always present and inert until a card
+  * play runs `ActionCardPlayed` for Conspiracy.
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =
@@ -30,5 +33,5 @@ object WalkerPowerCatalog {
       TravelSitePowers.forCatalog(catalog) ++
       LeagueTreatyContribution.forCatalog(catalog) ++
       SilverTongue.forCatalog(catalog) ++
-      Dazzle.forCatalog(catalog) :+ TakeWealthLimit)
+      Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }

@@ -165,37 +165,30 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       SearchPlacement.Adviser(Orientation.FaceUp, None)))
   }
 
-  test("faceup Conspiracy from Search hands off to existing pending procedure") {
-    val (base, actor, _) = handState
+  test("a faceup Conspiracy is planned as no placement and offers no replacement") {
+    val base = initialReady
     val current = base.game.current
+    val actor = current.turn.activePlayer
     val vision = VisionRules.Conspiracy
+    val revealed = VisionRules.Faith
     val ready = base.updateCurrent(_.copy(
       commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == vision)),
-      temporaryHands = current.temporaryHands.updated(actor, Vector(vision))))
-    val tree = CardPlayProcedure.build(catalog, ready, actor, vision,
-      CardPlayProcedure.Origin.TemporaryHand).toOption.get
-    val query = tree.children.head.asInstanceOf[Decide].query
-      .asInstanceOf[DecisionQuery.ChooseOne]
-    assert(query.options.exists(_.ref == DecisionOptionRef.Button(
-      "adviser-faceup")))
-    val parked = ProcedureWalker.advance(ready, tree, None, WalkerPowers.empty)
-      .toOption.get.asInstanceOf[WalkerOutcome.Parked].tree
-    val decision = tree.children.head.asInstanceOf[Decide]
-    val finished = ProcedureWalker.resolve(ready, tree, parked,
-      Answered(decision.decisionId, DecisionAnswer.ChooseOneAnswer(
-        DecisionOptionRef.Button("adviser-faceup")), actor),
-      WalkerPowers.empty).toOption.get.asInstanceOf[WalkerOutcome.Finished]
-    assert(finished.treeless.game.current.pending.exists(
-      _.isInstanceOf[PendingProcedure.Conspiracy]))
-    assertEquals(finished.treeless.game.current.temporaryHands(actor),
-      Vector(vision))
-    val ops = finished.events.collect { case step: WalkerStepRecorded =>
-      step.ops }.flatten
-    assert(ops.exists(_.isInstanceOf[BeginConspiracy]))
-    val replayed = OperationPipeline.run(ready, ops,
-      OperationPolicy.Permissive)(Right(_)).toOption.get.state
-    assertEquals(replayed, finished.treeless)
+        current.commonCards.worldDeck.filterNot(id =>
+          id == vision || id == revealed)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(vision)),
+      players = current.players.map(player =>
+        if (player.player == actor) player.copy(revealedVision =
+          Some(VisionState(revealed, Orientation.FaceUp))) else player)))
+    val faceup = SearchPlacement.Adviser(Orientation.FaceUp, None)
+    val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
+      CardPlay.Origin.TemporaryHand, 3, 3)
+    assertEquals(choices.find(_.placement == faceup).map(_.replacements),
+      Some(Vector.empty))
+    assertEquals(CardPlay.plannedOperations(catalog, ready, actor, vision,
+      faceup, CardPlay.Origin.TemporaryHand), Right(Vector.empty))
+    assert(CardPlay.plannedOperations(catalog, ready, actor, vision,
+      SearchPlacement.Adviser(Orientation.FaceUp, Some(revealed)),
+      CardPlay.Origin.TemporaryHand).isLeft)
   }
 
   test("full site without Homeland permission offers no site placement") {

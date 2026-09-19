@@ -167,63 +167,6 @@ class VisionsSuite extends munit.FunSuite {
       .advisers.exists(_.id == VisionRules.Conspiracy))
   }
 
-  test("a Conspiracy kept faceup from Search immediately enters its target procedure") {
-    val (base0, actor, _) = actWith(VisionRules.Faith)
-    val enemy0 = base0.game.current.players.find(_.player != actor.player).get
-    val enemy = enemy0.copy(pawnSite = actor.pawnSite)
-    val players = base0.game.current.players.map(p =>
-        if (p.player == actor.player) p.copy(advisers = Vector.empty)
-        else if (p.player == enemy.player) enemy else p)
-    val banners = base0.game.current.banners.copy(peoplesFavor =
-      base0.game.current.banners.peoplesFavor.copy(holder = Some(enemy.player)))
-    val current = base0.game.current.copy(players = players,
-      commonCards = base0.game.current.commonCards.copy(
-        worldDeck = Vector(VisionRules.Conspiracy)), banners = banners)
-    val base = base0.copy(game = base0.game.copy(current = current))
-    val started = rules.startWalker(Ready(base), ActionRef.Search, actor.player,
-      startArgs = Vector(DecisionOptionRef.Button("search:world"))).toOption.get
-    val completed = rules.resolveWalker(started.state, actor.player,
-      s"cardplay.place.${VisionRules.Conspiracy.kind}.${VisionRules.Conspiracy.value}",
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Button("adviser-faceup")))
-      .toOption.get
-    val Ready(awaiting) = completed.state: @unchecked
-    val decision = awaiting.game.current.pending.collect {
-      case p: PendingProcedure.Conspiracy => p.decision
-    }.get
-    assert(awaiting.game.current.pending.exists {
-      case p: PendingProcedure.Conspiracy => p.awaitingTarget && p.decision == decision
-      case _ => false
-    })
-    // The Search-kept Conspiracy stays in the actor's temporary hand (always
-    // keyed) until ConspiracyCompleted boxes it, so the pending window still
-    // holds the card in the hand.
-    assertEquals(awaiting.game.current.temporaryHands.get(actor.player),
-      Some(Vector[WorldCardId](VisionRules.Conspiracy)))
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(completed.state, 11)
-    val owner = projector.project("searched-conspiracy", loaded, actor.player)
-    val hidden = projector.project("searched-conspiracy", loaded, enemy.player)
-    assertEquals(owner.legalControls, Vector("playConspiracy"))
-    assertEquals(owner.boardTargetActions.map(_.actionKind),
-      Vector("play-conspiracy"))
-    assertEquals(owner.boardTargetActions.head.decisionId, Some(decision.value))
-    assertEquals(hidden.legalControls, Vector.empty)
-    assertEquals(hidden.boardTargetActions, Vector.empty)
-    val resolved = rules.handle(completed.state, VisionCommand.PlayConspiracy(
-      actor.player, decision, Some(ConspiracyTargetRef.Banner(enemy.player,
-        Banner.PeoplesFavor))))
-      .toOption.get
-    val Ready(after) = resolved.state: @unchecked
-    assertEquals(after.game.current.banners.peoplesFavor.holder, Some(actor.player))
-    assertEquals(after.game.current.pending, None)
-    // ConspiracyCompleted boxed the card: it is gone from the hand (the key
-    // remains, empty under the always-key temporary-hand invariant).
-    assertEquals(after.game.current.temporaryHands.get(actor.player),
-      Some(Vector.empty[WorldCardId]))
-    assert(!after.game.current.players.find(_.player == actor.player).get
-      .advisers.exists(_.id == VisionRules.Conspiracy))
-  }
-
   private def withActorAdviser(base: ReadyGame, actor: PlayerState,
       handler: String): ReadyGame = {
     val definition = catalog.denizens.find(_.handlers.contains(handler)).get
@@ -305,17 +248,11 @@ class VisionsSuite extends munit.FunSuite {
       Some(UnsupportedVisionRule(s"edifice:${local.value}:E08", "edifice.e08.ruined")))
   }
 
-  test("direct and Search faceup routes share the audit while unrelated powers do not block") {
+  test("the direct Reveal audit blocks a blocking power while unrelated powers do not") {
     val (base0, actor, _) = actWith(VisionRules.Sanctuary)
     val blocked = withActorAdviser(base0, actor, "denizen.vow-of-obedience")
     assert(rules.handle(Ready(blocked), VisionCommand.Reveal(
       actor.player, VisionRules.Sanctuary)).isLeft)
-    val searchState = blocked.updateCurrent(_.copy(
-        temporaryHands = Map(actor.player -> Vector(VisionRules.Sanctuary))))
-    assert(oathdigital.gameplay.actions.CardPlay.plannedOperations(catalog,
-      searchState, actor.player, VisionRules.Sanctuary,
-      SearchPlacement.Adviser(Orientation.FaceUp, None),
-      oathdigital.gameplay.actions.CardPlay.Origin.TemporaryHand).isLeft)
 
     val revelation = withActorAdviser(base0, actor, "denizen.revelation")
     assert(rules.handle(Ready(revelation), VisionCommand.Reveal(

@@ -521,15 +521,6 @@ final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperat
 final case class BeginTurn(player: PlayerId, phase: Phase)
     extends PrimitiveOperation
 
-/** Starts the existing Conspiracy continuation after walker card selection.
-  * The selected Vision remains in its temporary hand until that procedure
-  * completes. Replay restores this state from the recorded operation.
-  */
-final case class BeginConspiracy(player: PlayerId, decision: DecisionId,
-    source: VisionId) extends PrimitiveOperation {
-  override val required: Boolean = true
-}
-
 /** Advances Visions Drawn by one after a world-deck Vision is drawn. */
 case object AdvanceVisionsDrawn extends PrimitiveOperation {
   override val required: Boolean = true

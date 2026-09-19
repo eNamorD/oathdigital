@@ -476,7 +476,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
   private val placeId = s"cardplay.place.${conspiracy.kind}.${conspiracy.value}"
   private val faceup = DecisionOptionRef.Button("adviser-faceup")
 
-  private final case class Fixture(ready: ReadyGame, actor: PlayerId,
+  private final case class Staged(ready: ReadyGame, actor: PlayerId,
       enemy: PlayerId, origin: CardPlayProcedure.Origin)
 
   /** The actor holds Conspiracy at `origin`. The enemy stands on the actor's
@@ -487,7 +487,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
       shared: Boolean = true,
       origin: CardPlayProcedure.Origin = CardPlayProcedure.Origin.TemporaryHand)
       (edit: (ReadyGame, PlayerId) => ReadyGame = (ready, _) => ready)
-      : Fixture = {
+      : Staged = {
     val base = initialReady
     val current = base.game.current
     val actor = current.turn.activePlayer
@@ -510,10 +510,10 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
       temporaryHands = if (fromHand)
         current.temporaryHands.updated(actor, Vector(conspiracy))
       else current.temporaryHands))
-    Fixture(edit(staged, enemy), actor, enemy, origin)
+    Staged(edit(staged, enemy), actor, enemy, origin)
   }
 
-  private def treeFor(f: Fixture): Operation = (f.origin match {
+  private def treeFor(f: Staged): Operation = (f.origin match {
     case CardPlayProcedure.Origin.TemporaryHand =>
       CardPlayProcedure.build(catalog, f.ready, f.actor, conspiracy, f.origin)
     case CardPlayProcedure.Origin.FacedownAdviser =>
@@ -528,7 +528,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
       : WalkerOutcome.Finished =
     outcome.toOption.get.asInstanceOf[WalkerOutcome.Finished]
 
-  private def answer(f: Fixture, tree: Operation, at: PendingTree, id: String,
+  private def answer(f: Staged, tree: Operation, at: PendingTree, id: String,
       ref: DecisionOptionRef) =
     ProcedureWalker.resolve(f.ready, tree, at, Answered(id,
       DecisionAnswer.ChooseOneAnswer(ref), f.actor), powers)
@@ -536,13 +536,13 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
   /** Plays Conspiracy faceup and returns the tree with the position parked on
     * the target decision.
     */
-  private def atTarget(f: Fixture): (Operation, PendingTree) = {
+  private def atTarget(f: Staged): (Operation, PendingTree) = {
     val tree = treeFor(f)
     val place = parked(ProcedureWalker.advance(f.ready, tree, None, powers))
     (tree, parked(answer(f, tree, place, placeId, faceup)))
   }
 
-  private def targetOptions(f: Fixture, tree: Operation, at: PendingTree) =
+  private def targetOptions(f: Staged, tree: Operation, at: PendingTree) =
     ProcedureWalker.parkedDecide(f.ready, tree, at, powers).map(decide =>
       (decide.decisionId, decide.owner, decide.query
         .asInstanceOf[DecisionQuery.ChooseOne].options.map(_.ref)))
@@ -550,7 +550,7 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
   private def recorded(done: WalkerOutcome.Finished): Vector[CoreOperation] =
     done.events.collect { case step: WalkerStepRecorded => step.ops }.flatten
 
-  private def replayed(f: Fixture, done: WalkerOutcome.Finished): ReadyGame =
+  private def replayed(f: Staged, done: WalkerOutcome.Finished): ReadyGame =
     OperationPipeline.run(f.ready, recorded(done),
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
 
@@ -686,11 +686,13 @@ package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 
 class VisionPlaySuite extends munit.FunSuite {
-  private val rules = new OathRules(catalog)
+  private val rules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
   private val conspiracy = VisionRules.Conspiracy
   private val faceup = DecisionAnswer.ChooseOneAnswer(
     DecisionOptionRef.Button("adviser-faceup"))

@@ -2,6 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.VisionRules
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers}
 import oathdigital.model._
@@ -97,29 +98,32 @@ class SearchProcedureSuite extends munit.FunSuite {
     assertEquals(finalReady.game.current.walkerPending, None)
   }
 
-  test("faceup Conspiracy keeps its hand and hands off to legacy continuation") {
+  test("a faceup Conspiracy from Search with nothing to take is played and boxed") {
     val base = ready
     val actor = base.game.current.turn.activePlayer
     val vision = VisionRules.Conspiracy
-    val deck = base.game.current.commonCards.worldDeck
+    val current = base.game.current
+    val deck = current.commonCards.worldDeck
     assert(deck.contains(vision))
-    val initial = base.updateCurrent(_.copy(commonCards = base.game.current.commonCards.copy(
-        worldDeck = Vector(vision) ++ deck.filterNot(_ == vision))))
-    val started = rules.startWalker(OathState.Ready(initial), ActionRef.Search,
+    val initial = base.updateCurrent(_.copy(
+      players = current.players.map(player =>
+        if (player.player == actor) player else player.copy(pawnSite = None)),
+      commonCards = current.commonCards.copy(worldDeck =
+        Vector(vision) ++ deck.filterNot(_ == vision))))
+    val withPowers = new OathRules(catalog,
+      walkerPowerCatalog = WalkerPowerCatalog.default(catalog))
+    val started = withPowers.startWalker(OathState.Ready(initial), ActionRef.Search,
       actor, startArgs = Vector(DecisionOptionRef.Button("search:world")))
       .toOption.get
-    val OathState.Ready(afterDraw) = started.state: @unchecked
-    assertEquals(afterDraw.game.current.tracks.visionsDrawn,
-      initial.game.current.tracks.visionsDrawn + 1)
-    val result = rules.resolveWalker(started.state, actor,
+    val result = withPowers.resolveWalker(started.state, actor,
       s"cardplay.place.${vision.kind}.${vision.value}",
       DecisionAnswer.ChooseOneAnswer(
         DecisionOptionRef.Button("adviser-faceup"))).toOption.get
     val OathState.Ready(after) = result.state: @unchecked
-    assertEquals(after.game.current.temporaryHands(actor), Vector(vision))
-    assert(after.game.current.pending.exists(
-      _.isInstanceOf[PendingProcedure.Conspiracy]))
-    assert(result.continue.isInstanceOf[OathContinue.AwaitingConspiracyDecision])
+    assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
+    assertEquals(after.game.current.walkerPending, None)
+    assertEquals(after.game.current.pending, None)
+    assert(!result.continue.isInstanceOf[OathContinue.AwaitingSearchDecision])
   }
 
   test("Search uses its registered modifier-selection window") {

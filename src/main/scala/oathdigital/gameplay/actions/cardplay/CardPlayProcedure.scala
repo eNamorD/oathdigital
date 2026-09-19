@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.actions.{CardPlay, VisionRules}
+import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
@@ -140,8 +140,7 @@ object CardPlayProcedure {
                 card, _, legacyOrigin, adviserLimit))
             }, restrictions = (_, _) => Vector(
               new DiscardRestrictions(catalog, actor)))
-            val hook = Option.when(card != VisionRules.Conspiracy)(placement)
-              .flatMap(CardPlay.playedSource(ready, actor, card, _))
+            val hook = CardPlay.playedSource(ready, actor, card, placement)
               .map(CardPlayed(card, _)).toVector
             choice ++ Vector(apply) ++ hook
         }
