@@ -122,11 +122,6 @@ private[protocol] object CommandIntentDecoders {
     _ <- exact(value, Set("type", "decisionId", name), path); id <- string(value, "decisionId", path)
     number <- field(value, name, path).flatMap(integer(_, s"$path.$name"))
   } yield f(id, number)
-  private def nested[A](value: ujson.Obj, path: String, name: String)(f: (ujson.Value, String) => Either[ProtocolDecodeFailure, A]) =
-    exact(value, Set("type", name), path).flatMap(_ => field(value, name, path)).flatMap(f(_, s"$path.$name"))
-  private def pair(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
-    _ <- exact(o, Set("kind", "id"), p); k <- string(o, "kind", p); id <- string(o, "id", p)
-  } yield (k, id) }
   private def allocation(v: ujson.Value, p: String) = obj(v, p).flatMap { o => for {
     _ <- exact(o, Set("siteId", "count"), p); s <- string(o, "siteId", p); c <- field(o, "count", p).flatMap(integer(_, s"$p.count"))
   } yield CampaignForceAllocation(s, c) }

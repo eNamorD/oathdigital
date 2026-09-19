@@ -60,9 +60,9 @@ class TradeProcedureSuite extends munit.FunSuite {
       player(poor).player, TradeResource.Secret, WalkerPowers.empty)
     assert(previewed.nonEmpty && previewed.forall(_.outcome.isLeft))
     val noSecrets = act(secrets = 0)
-    assert(TradeProcedure.startOptions(catalog, noSecrets,
+    val unaffordable = TradeProcedure.startOptions(catalog, noSecrets,
       player(noSecrets).player, TradeResource.Favor, WalkerPowers.empty)
-      .forall(_.outcome.isLeft))
+    assert(unaffordable.nonEmpty && unaffordable.forall(_.outcome.isLeft))
   }
 
   test("the start selection must be exactly one resource button") {

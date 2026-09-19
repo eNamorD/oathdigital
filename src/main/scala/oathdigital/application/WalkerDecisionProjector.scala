@@ -85,7 +85,7 @@ private[application] final class WalkerDecisionProjector(
     parked <- parkedPosition(context)
     if !context.viewer.contains(parked.awaited)
     _ <- this.parked(parked.procedure, parked.tree, context.ready,
-      parked.pending, parked.powers, parked.awaited)
+      parked.pending, parked.powers, parked.awaited, previewed = false)
   } yield WalkerWaitingProjection(parked.awaited.value,
     ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
       parked.powers).flatMap(_.query.heading))
@@ -103,7 +103,8 @@ private[application] final class WalkerDecisionProjector(
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
-      awaited: PlayerId): Option[WalkerDecisionProjection] =
+      awaited: PlayerId, previewed: Boolean = true)
+      : Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
       // R18: a procedure whose entry declares no roll decision id has no
       // answer to "which id is this Roll park", so the accessor's typed
@@ -127,8 +128,10 @@ private[application] final class WalkerDecisionProjector(
       // projection (see [[queryProjection]]).
       case None => ProcedureWalker.parkedDecide(ready, tree, pending, powers)
         .flatMap { decide =>
-          val (query, details) = playable(procedure, ready, tree, pending,
-            powers, decide)
+          val (query, details) =
+            if (previewed) playable(procedure, ready, tree, pending, powers,
+              decide)
+            else (decide.query, Map.empty[DecisionOptionRef, Vector[String]])
           queryProjection(ready, Some(awaited), query, details).map(projected =>
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
               query = Some(projected),
@@ -183,7 +186,7 @@ private[application] final class WalkerDecisionProjector(
     */
   private def queryProjection(ready: ReadyGame, viewer: Option[PlayerId],
       query: DecisionQuery,
-      details: Map[DecisionOptionRef, Vector[String]] = Map.empty)
+      details: Map[DecisionOptionRef, Vector[String]])
       : Option[DecisionQueryProjection] = {
     // One index per projection, shared by every option: a Forge partition
     // asks about three denizens and a Recover pick about every site relic.

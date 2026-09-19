@@ -93,4 +93,16 @@ object EconomyFixture {
           case other => other
         })))
   }
+
+  /** Removes the payment from a Muster's cost window, keeping the Supply. */
+  final case class FreePayment(id: PowerId) extends ContributingPower {
+    def source: RuleSourceRef = RuleSourceRef.Banner("test")
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(PowerWindow.MusterCost -> Vector(Transform((ctx, operations) =>
+        operations.map {
+          case _: BuildOps => BuildOps((_, _) => Right(Vector[CoreOperation](
+            SpendSupply(ctx.activePlayer, 1))))
+          case other => other
+        })))
+  }
 }

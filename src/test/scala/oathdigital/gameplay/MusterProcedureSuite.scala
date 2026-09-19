@@ -70,8 +70,32 @@ class MusterProcedureSuite extends munit.FunSuite {
 
   test("a card carrying tokens is not offered, so there is nothing to start") {
     val ready = act(tokens = Tokens(0, 1))
-    assertEquals(MusterProcedure.startOptions(catalog, ready,
-      player(ready).player, WalkerPowers.empty), Vector.empty)
+    val actor = player(ready).player
+    // The start itself is legal, so an empty preview is the absence of a
+    // source and not a build failure swallowed by `startOptions`.
+    assert(MusterProcedure.build(catalog, ready, actor).isRight)
+    assertEquals(MusterProcedure.startOptions(catalog, ready, actor,
+      WalkerPowers.empty), Vector.empty)
+    assert(MusterProcedure.startOptions(catalog, act(), player(act()).player,
+      WalkerPowers.empty).nonEmpty)
+  }
+
+  test("a power that removes the cost lets an unaffordable Muster start") {
+    val ready = act(favor = 0)
+    val actor = player(ready).player
+    assert(MusterProcedure.startOptions(catalog, ready, actor,
+      WalkerPowers.empty).forall(_.outcome.isLeft))
+    val previewed = MusterProcedure.startOptions(catalog, ready, actor,
+      WalkerPowers(Vector(FreePayment(PowerId("test.free-payment")))))
+    assertEquals(previewed.map(_.option.ref),
+      Vector(DecisionOptionRef.Denizen(plainId)))
+    previewed.head.outcome match {
+      case Right(outcome) =>
+        assertEquals(outcome.operations.collect { case SpendSupply(_, n, _) => n },
+          Vector(1))
+        assert(!outcome.operations.exists(_.isInstanceOf[PayCost]))
+      case Left(error) => fail(s"the free Muster must be playable: $error")
+    }
   }
 
   test("an option the actor cannot pay for is previewed as dropped") {
