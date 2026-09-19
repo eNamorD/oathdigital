@@ -71,6 +71,17 @@ object DecisionQueries {
           "declares duplicate options")
       } yield ()
 
+    case DecisionQuery.ChooseMany(count, options, _) =>
+      val refs = options.map(_.ref)
+      for {
+        _ <- require(refs.distinct.size == refs.size, decisionId,
+          "declares duplicate options")
+        _ <- require(count >= 1, decisionId, "declares no selection to make")
+        _ <- require(count < refs.size, decisionId,
+          "declares a count that already takes every option, leaving " +
+            "nothing to decide")
+      } yield ()
+
     case DecisionQuery.Partition(sections, options, _, _) =>
       val refs = options.map(_.ref)
       val keys = sections.map(_.key)
@@ -167,6 +178,20 @@ object DecisionQueries {
           "does not offer the selected option")
       case _ =>
         reject(decisionId, "expects a single-choice answer")
+    }
+
+    case DecisionQuery.ChooseMany(count, options, _) => answer match {
+      case DecisionAnswer.ChooseManyAnswer(selected) =>
+        for {
+          _ <- require(selected.forall(options.map(_.ref).contains),
+            decisionId, "does not offer a selected option")
+          _ <- require(selected.distinct.size == selected.size, decisionId,
+            "selects an option more than once")
+          _ <- require(selected.size == count, decisionId,
+            s"selects ${selected.size} options instead of $count")
+        } yield ()
+      case _ =>
+        reject(decisionId, "expects a multiple-choice answer")
     }
 
     case DecisionQuery.Partition(sections, options, _, _) => answer match {

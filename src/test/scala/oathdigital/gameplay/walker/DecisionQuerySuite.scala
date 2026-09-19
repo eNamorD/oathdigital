@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, RelicId, Suit}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -409,5 +409,39 @@ class DecisionQuerySuite extends munit.FunSuite {
       violation("expects a distribution answer"))
     assertEquals(DecisionQueries.accepts(decisionId, chooseOne,
       amounts(full: _*)), violation("expects a single-choice answer"))
+  }
+
+  private def siteRef(id: String) = DecisionOptionRef.Site(SiteId(id))
+  private val sites = Vector("a", "b", "c").map(id =>
+    DecisionOption.Site(siteRef(id)))
+  private def many(count: Int, options: Vector[DecisionOption] = sites) =
+    DecisionQuery.ChooseMany(count, options, Some("Choose sites"))
+
+  test("a choose-many query needs a count of at least one and fewer than its options") {
+    assertEquals(wellFormed(many(1)), Right(()))
+    assertEquals(wellFormed(many(2)), Right(()))
+    assertEquals(wellFormed(many(0)),
+      invalid("decision recover.choice declares no selection to make"))
+    assertEquals(wellFormed(many(3)), invalid("decision recover.choice " +
+      "declares a count that already takes every option, leaving nothing to decide"))
+    assertEquals(wellFormed(many(1, sites :+ sites.head)),
+      invalid("decision recover.choice declares duplicate options"))
+  }
+
+  test("a choose-many answer must name exactly count distinct offered options") {
+    val q = many(2)
+    assertEquals(accepts(q, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("c")))), Right(()))
+    assertEquals(accepts(q, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a")))), invalid(
+      "decision recover.choice selects 1 options instead of 2"))
+    assertEquals(accepts(q, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("a")))), invalid(
+      "decision recover.choice selects an option more than once"))
+    assertEquals(accepts(q, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("z")))), invalid(
+      "decision recover.choice does not offer a selected option"))
+    assertEquals(accepts(q, DecisionAnswer.ChooseOneAnswer(siteRef("a"))),
+      invalid("decision recover.choice expects a multiple-choice answer"))
   }
 }

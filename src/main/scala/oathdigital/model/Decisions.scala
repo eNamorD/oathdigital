@@ -247,6 +247,13 @@ object DecisionQuery {
   final case class ChooseOne(options: Vector[DecisionOption],
       heading: Option[String] = None) extends DecisionQuery
 
+  /** Pick exactly `count` distinct options. Well-formed only when
+    * `1 <= count < options.size`: a count that takes every option is a forced
+    * answer, which no shape may park on.
+    */
+  final case class ChooseMany(count: Int, options: Vector[DecisionOption],
+      heading: Option[String] = None) extends DecisionQuery
+
   /** Spread every option across the declared sections, respecting each
     * section's minimum.
     *
@@ -291,7 +298,7 @@ final case class DistributeAmount(ref: DecisionOptionRef, amount: Int)
   * The family used to be open so a power could declare its own answer case.
   * That freedom is now unreachable: [[DecisionQuery]] is sealed, and
   * `DecisionQueries.accepts` is total over it and rejects anything that is
-  * not one of the three cases below. A fourth case could therefore be
+  * not one of the cases below. A fourth case could therefore be
   * constructed but never recorded — while every encoder over the family had
   * to carry a runtime throw for a case the walker cannot produce. Sealing
   * turns that structural fact into a compile-time one: the journal codec's
@@ -306,6 +313,12 @@ object DecisionAnswer {
     * player selected.
     */
   final case class ChooseOneAnswer(selected: DecisionOptionRef)
+      extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.ChooseMany]]: the distinct option
+    * references the player selected, exactly the query's `count` of them.
+    */
+  final case class ChooseManyAnswer(selected: Vector[DecisionOptionRef])
       extends DecisionAnswer
 
   /** Answer to a [[DecisionQuery.Partition]]: every declared option

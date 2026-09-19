@@ -160,6 +160,19 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
+  test("a choose-many answer round trips through the journal") {
+    val player = PlayerId("red")
+    val answer = DecisionAnswer.ChooseManyAnswer(Vector(
+      DecisionOptionRef.Site(SiteId("a")), DecisionOptionRef.Site(SiteId("c"))))
+    val events = Vector[OathEvent](WalkerStepRecorded("1",
+      ChoicePayload("challenge.ribbon-site", answer, player), Vector.empty,
+      Vector.empty))
+    val encoded = GameEventWire.encodeStream("forge", catalogRef,
+      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
+      .toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
+  }
+
   test("every generic walker decision answer round trips on the step and on " +
       "the park") {
     // The answer fact rides a walker `ChoicePayload` and the parked

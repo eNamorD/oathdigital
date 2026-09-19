@@ -24,12 +24,16 @@ import oathdigital.serialization.WireError.InvalidValue
   */
 private[serialization] object DecisionAnswerCodec {
   private val ChooseOneTag = "choose-one"
+  private val ChooseManyTag = "choose-many"
   private val PartitionTag = "partition"
   private val DistributeTag = "distribute"
 
   def encode(answer: DecisionAnswer): ujson.Value = answer match {
     case DecisionAnswer.ChooseOneAnswer(selected) => ujson.Obj(
       "kind" -> ChooseOneTag, "option" -> encodeRef(selected))
+    case DecisionAnswer.ChooseManyAnswer(selected) => ujson.Obj(
+      "kind" -> ChooseManyTag,
+      "options" -> ujson.Arr.from(selected.map(encodeRef)))
     case DecisionAnswer.PartitionAnswer(placements) => ujson.Obj(
       "kind" -> PartitionTag,
       "placements" -> ujson.Arr.from(placements.map(placement => ujson.Obj(
@@ -46,6 +50,10 @@ private[serialization] object DecisionAnswerCodec {
     value("kind").str match {
       case ChooseOneTag => decodeRef(value("option"), s"$path.option")
         .map(DecisionAnswer.ChooseOneAnswer)
+      case ChooseManyTag =>
+        traverse(value("options").arr.toVector.zipWithIndex) {
+          case (entry, index) => decodeRef(entry, s"$path.options[$index]")
+        }.map(DecisionAnswer.ChooseManyAnswer)
       case PartitionTag =>
         traverse(value("placements").arr.toVector.zipWithIndex) {
           case (entry, index) =>
