@@ -9,12 +9,13 @@ object OperationResolution {
   final case class Skip(reasons: Vector[OperationReason]) extends Result
 
   def resolve(ready: ReadyGame, requested: CoreOperation,
-      validator: OperationValidator): Either[OathViolation, Result] = {
+      validator: OperationValidator,
+      requireAll: Boolean = false): Either[OathViolation, Result] = {
     val reasons = validator.validateOne(ready, requested)
     val invalid = reasons.find(_.kind == OperationReasonKind.Invalid)
     invalid match {
       case Some(reason) => Left(rejection(reason))
-      case None if requested.required =>
+      case None if requested.required || requireAll =>
         reasons.headOption match {
           case Some(reason) => Left(rejection(reason))
           case None => Right(Execute(requested))

@@ -182,9 +182,13 @@ private[walker] object WalkerPowerGather {
   *    guard, walking that vector would gather the same window forever. A
   *    composite's fold cannot reproduce the composite (a transform only ever
   *    sees the children), so composites add nothing here.
+  *  - `strict` is set inside a `required` composite (`PayCost`, `Draw`, ...).
+  *    The walker runs such a composite as its `Move` children, which are
+  *    best-effort on their own, so the composite's `required` has to ride down
+  *    to the leaves it is walked as.
   */
 private[walker] final case class WalkerHooks(inherited: Vector[PowerId],
-    gathered: Set[PowerWindow]) {
+    gathered: Set[PowerWindow], strict: Boolean = false) {
   def withOrder(order: Vector[PowerId]): WalkerHooks =
     if (order.isEmpty) this
     else copy(inherited = (inherited ++ order).distinct)

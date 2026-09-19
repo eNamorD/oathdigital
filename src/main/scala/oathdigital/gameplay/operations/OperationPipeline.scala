@@ -38,13 +38,18 @@ object OperationRun {
   * so aggregated whole-batch validation is exposed through [[report]] and the
   * authoritative rejection is the staged `validateOne` per operation — the
   * same first-fail, atomic behavior the executor performed.
+  *
+  * `requireAll` treats every operation as `required` (a reduced or skipped
+  * effect rejects the batch). The walker sets it for the `Move` children of a
+  * required composite, which carry no flag of their own.
   */
 object OperationPipeline {
   def run(
       ready: ReadyGame,
       operations: Vector[CoreOperation],
       allowlist: OperationPolicy,
-      restrictions: Vector[OperationRestriction] = Vector.empty
+      restrictions: Vector[OperationRestriction] = Vector.empty,
+      requireAll: Boolean = false
   )(
       update: ReadyGame => Either[OathViolation, ReadyGame]
   ): Either[OathViolation, OperationRun] = {
@@ -57,7 +62,8 @@ object OperationPipeline {
         staged <- operations.foldLeft[Either[OathViolation, OperationRun]](
           Right(OperationRun(ready, Vector.empty, Vector.empty))) {
           (result, operation) => result.flatMap { current =>
-            OperationResolution.resolve(current.state, operation, validator)
+            OperationResolution.resolve(current.state, operation, validator,
+              requireAll)
               .flatMap {
                 case OperationResolution.Skip(reasons) =>
                   Right(current.copy(skipped = current.skipped :+

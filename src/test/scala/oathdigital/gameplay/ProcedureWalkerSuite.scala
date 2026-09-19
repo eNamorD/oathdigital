@@ -224,6 +224,48 @@ class ProcedureWalkerSuite extends munit.FunSuite {
       tree(discard.copy(required = true)), None, noPowers).isLeft)
   }
 
+  // `required` lives on the composite (PayCost, Draw, Exchange, a required
+  // Play/Replace/Discard), but the walker walks a composite's `Move` children
+  // one by one and a bare `Move` is best-effort. The flag must survive the
+  // walk, or an unaffordable payment silently shrinks instead of rejecting.
+  private val tooMuchFavor: Int =
+    ready.game.current.players.find(_.player == actor).get.board.favor + 1
+
+  test("a required composite in the tree rejects when it cannot fully execute") {
+    val payment = PayCost(actor, Location.SharedBank,
+      Cost(favorBurnt = tooMuchFavor))
+    assert(payment.required)
+    assert(ProcedureWalker.advance(ready, Sequence(payment), None,
+      noPowers).isLeft)
+    assert(ProcedureWalker.advance(ready, Sequence(Vector[Operation](payment)),
+      None, noPowers).isLeft)
+    // The same payment as a batch item was already strict.
+    assert(ProcedureWalker.advance(ready,
+      BuildOps((_, _) => Right(Vector(payment))), None, noPowers).isLeft)
+  }
+
+  test("a required composite that can execute records its children and finishes") {
+    val payment = PayCost(actor, Location.SharedBank, Cost(favorBurnt = 1))
+    ProcedureWalker.advance(ready, Sequence(payment), None, noPowers) match {
+      case Right(WalkerOutcome.Finished(state, events)) =>
+        assertEquals(events.collect { case step: WalkerStepRecorded => step.ops },
+          Vector(payment.children.collect { case child: Move => child }))
+        assertEquals(state.game.current.players.find(_.player == actor).get
+          .board.favor, tooMuchFavor - 2)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
+  test("an optional composite still shrinks best-effort") {
+    val gain = Gain.Favor(actor, Suit.Order, 99)
+    ProcedureWalker.advance(ready, Sequence(gain), None, noPowers) match {
+      case Right(WalkerOutcome.Finished(state, _)) =>
+        assert(state.game.current.players.find(_.player == actor).get
+          .board.favor > tooMuchFavor - 1)
+      case other => fail(s"expected a Finished walk, got $other")
+    }
+  }
+
   test("a Decide at the head parks with no events, then the answered resume finishes") {
     val tree: Operation = Sequence(decide, adjust)
 

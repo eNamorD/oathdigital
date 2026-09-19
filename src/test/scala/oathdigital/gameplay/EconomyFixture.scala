@@ -98,11 +98,7 @@ object EconomyFixture {
   final case class FreePayment(id: PowerId) extends ContributingPower {
     def source: RuleSourceRef = RuleSourceRef.Banner("test")
     def contributions: Map[PowerWindow, Vector[Contribution]] =
-      Map(PowerWindow.MusterCost -> Vector(Transform((ctx, operations) =>
-        operations.map {
-          case _: BuildOps => BuildOps((_, _) => Right(Vector[CoreOperation](
-            SpendSupply(ctx.activePlayer, 1))))
-          case other => other
-        })))
+      Map(PowerWindow.MusterCost -> Vector(Transform((_, operations) =>
+        operations.filterNot(_.isInstanceOf[PayCost]))))
   }
 }

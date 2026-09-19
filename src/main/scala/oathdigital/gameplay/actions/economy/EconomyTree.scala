@@ -10,7 +10,7 @@ import oathdigital.model._
   * Sequence(                                       // window = <Action>ActionEligibility
   *   Decide(source),                               // window = <Action>SourceSelection
   *   Branch { after the answer:
-  *     Sequence(BuildOps(PayCost, SpendSupply(1))), // window = <Action>Cost
+  *     Sequence(PayCost, SpendSupply(1)),           // window = <Action>Cost
   *     Sequence(the gain) })                       // window = <Action>Gain
   * }}}
   *
@@ -80,15 +80,13 @@ private[economy] object EconomyTree {
       OathViolation.UnsupportedEconomyState(
         s"no warband kind for lineage ${player.lineage.value}"))
   } yield Vector[Operation](
-    // `PayCost` is a composite, so as a bare child the walker would walk its
-    // best-effort `Move`s one by one and let an unaffordable payment shrink
-    // to nothing. Inside a `BuildOps` batch it is validated whole, which is
-    // what makes an unaffordable payment a rejection. The batch is the
-    // window's child, so a power that changes or removes the cost rewrites
-    // the node, and whatever payment remains is enforced after the fold.
-    Sequence(Vector[Operation](BuildOps((_, _) => Right(Vector[CoreOperation](
+    // The payment is a required `PayCost`, so an unaffordable one rejects
+    // rather than shrinking, and the preview drops the option. Both operations
+    // are the window's own children, so a power that changes or removes the
+    // cost rewrites them, and whatever payment remains is still enforced.
+    Sequence(Vector[Operation](
       PayCost(actor, Location.OnCard(source.card), kind.payment),
-      SpendSupply(actor, 1))))), Some(kind.cost)),
+      SpendSupply(actor, 1)), Some(kind.cost)),
     Sequence(kind.yields(actor, source,
       MusterSource.matching(catalog, ready, actor, source.suit), force).toVector,
       Some(kind.gain)))

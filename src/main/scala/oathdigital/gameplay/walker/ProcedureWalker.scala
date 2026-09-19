@@ -331,9 +331,17 @@ object ProcedureWalker {
 
   private def walkComposite(composite: Operation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
-      resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] =
+      resume: Resume, hooks: WalkerHooks): Either[OathViolation, Step] = {
+    // The composite is walked as its children, and a bare child is
+    // best-effort: without this its own `required` would be lost, and an
+    // unaffordable `PayCost` would shrink to what the player holds.
+    val required = composite match {
+      case core: CoreOperation => core.required
+      case _ => false
+    }
     walkFolded(composite.window, composite, composite.children, ctx, path, cursor,
-      resume, hooks)
+      resume, if (required) hooks.copy(strict = true) else hooks)
+  }
 
   /** A `Branch` has no static children: its `select` chooses the children to
     * walk at walk time, and a resume cursor addresses the selected vector the
@@ -402,7 +410,8 @@ object ProcedureWalker {
     case Some(w) if !hooks.gathered.contains(w) =>
       walkFolded(Some(w), leaf, Vector(leaf), ctx, path, cursor, resume,
         hooks.copy(gathered = hooks.gathered + w))
-    case _ => runLeaf(leaf, ctx, path, cursor, resume, hooks.inherited)
+    case _ => runLeaf(leaf, ctx, path, cursor, resume, hooks.inherited,
+      hooks.strict)
   }
 
   /** Executes or parks one leaf at its own position, recording
@@ -411,8 +420,8 @@ object ProcedureWalker {
     */
   private def runLeaf(leaf: PrimitiveOperation, ctx: WalkCtx,
       path: Vector[String], cursor: Option[Vector[String]],
-      resume: Resume,
-      contributions: Vector[PowerId]): Either[OathViolation, Step] =
+      resume: Resume, contributions: Vector[PowerId],
+      strict: Boolean): Either[OathViolation, Step] =
     cursor match {
       case Some(remaining) =>
         if (remaining.nonEmpty)
@@ -463,7 +472,8 @@ object ProcedureWalker {
           case _: Decide | _: Roll => Right(Park(path, ctx))
           case build: BuildOps =>
             runBuildOps(build, ctx, path, contributions).map(Done(_))
-          case delta => record(delta, ctx, path, contributions).map(Done(_))
+          case delta =>
+            record(delta, ctx, path, contributions, strict).map(Done(_))
         }
     }
 
@@ -509,8 +519,10 @@ object ProcedureWalker {
 
   /** Executes one delta leaf through the pipeline and records its step. */
   private def record(delta: CoreOperation, ctx: WalkCtx, path: Vector[String],
-      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] =
-    recordBatch(Vector(delta), contributions, ctx, path, leafLabel(delta))
+      contributions: Vector[PowerId],
+      strict: Boolean): Either[OathViolation, WalkCtx] =
+    recordBatch(Vector(delta), contributions, ctx, path, leafLabel(delta),
+      requireAll = strict)
 
   /** Executes a [[BuildOps]] leaf: `build(state, pending)` returns the delta
     * batch to run through the pipeline, recorded as the node's step ops. An
@@ -538,10 +550,11 @@ object ProcedureWalker {
   private def recordBatch(ops: Vector[CoreOperation],
       contributions: Vector[PowerId], ctx: WalkCtx, path: Vector[String],
       label: String,
-      restrictions: Vector[OperationRestriction] = Vector.empty)
+      restrictions: Vector[OperationRestriction] = Vector.empty,
+      requireAll: Boolean = false)
       : Either[OathViolation, WalkCtx] =
     OperationPipeline.run(ctx.state, ops, OperationPolicy.Permissive,
-      restrictions)(
+      restrictions, requireAll)(
       Right(_)).map { updated =>
       val nodeId = if (path.isEmpty) label else path.mkString(".")
       val events = if (updated.executed.isEmpty) ctx.events else
