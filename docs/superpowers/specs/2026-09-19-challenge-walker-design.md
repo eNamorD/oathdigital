@@ -21,22 +21,22 @@ The tree is a `Sequence` whose window is `ChallengeActionEligibility`. Decision 
 
 ```
 Sequence(                                             // ChallengeActionEligibility
+  Sequence(window = ChallengeCost, SpendSupply(actor, 1)),
   Decide("challenge.banner", actor,                   // ChallengeBannerSelection
     ChooseOne(Challenge.legalBanners(state, actor))),
   Branch { (state, pending) =>                        // banner read from the answer
     Vector(
       Decide("challenge.amount", actor,               // ChallengeAmountSelection
         ChooseAmount(prior + 1, actorResources)),
-      Sequence(window = ChallengeCost, SpendSupply(actor, 1)),
       Sequence(window = ChallengeRibbon, <ribbon steps for the banner>),
       Sequence(window = ChallengePlacement, payment, custody)) })
 ```
 
-**Banner decision.** Its options are the banners that pass every start check: the actor has at least 1 Supply, does not already hold the banner, is co-located with the holder when the banner is enemy-held, and has strictly more relevant resources than the banner (faceup secrets for Darkest Secret, favor for People's Favor). `Challenge.legalBanners(state, actor)` is one predicate, used to build this query and by the projector to decide whether to offer the start control. If it returns no banner, `StartWalker` rejects with a typed violation before anything is persisted. Cost text ("1 Supply", "Currently N resources") is authored on the option when the query is built. The Economy preview gate is not used: answering a banner option runs no operations, so a preview would read no cost from it, and legality belongs in the query build. `requiresPlayableOption` stays off.
+**Supply.** `SpendSupply(actor, 1)` in `ChallengeCost` is the first step, so the walk spends it before the first decision, as legacy `Begin` did. Supply affordability is not a build gate: the transformed `SpendSupply` owns it, so a start with no Supply fails at the first step before anything is persisted, and a power that rewrites the cost does so in `ChallengeCost`. Because the Supply is already spent when every decision is built or rebuilt, no decision reads Supply.
+
+**Banner decision.** Its options are the banners that pass every start check: the actor does not already hold the banner, is co-located with the holder when the banner is enemy-held, and has strictly more relevant resources than the banner (faceup secrets for Darkest Secret, favor for People's Favor). `Challenge.legalBanners(state, actor)` is one predicate, used to build this query and by the projector to decide whether to offer the start control. If it returns no banner, `StartWalker` rejects with a typed violation before anything is persisted. Cost text ("1 Supply", "Currently N resources") is authored on the option when the query is built. The Economy preview gate is not used: answering a banner option runs no operations, so a preview would read no cost from it, and legality belongs in the query build. `requiresPlayableOption` stays off.
 
 **Amount decision.** `ChooseAmount(priorResources + 1, actorResources)`, where `priorResources` is the banner's current total and `actorResources` is the actor's relevant resources. It is asked before any move runs, so both bounds come from pre-drain state. The heading states the banner's current total. The answer is stored in `PendingTree.answered` and read by the placement step.
-
-**Supply.** `SpendSupply(actor, 1)` in `ChallengeCost`. Supply is checked by the banner decision's option filter and again by the operation.
 
 **Ribbon, People's Favor.** One `BuildOps` in `ChallengeRibbon` that returns every favor on the banner to the least-favor banks, using `BannerRules.raidFavorReturn` on the bank state at build time. The holder, if any, receives nothing.
 
@@ -72,7 +72,7 @@ There is no Supply cost and no ribbon. The action gate is the act-phase gate. Re
 
 ## Start gates
 
-Start gates stay in `build` because they are facts about state, not costs: the act-phase gate, `PowerRuntime.requireAudited`, and the active-face gate. The face gate is kept: the ribbon logic in this design is correct only for People's Favor `Mob` and Darkest Secret `WanderingFlame`, so any other active face rejects the start with `UnsupportedBannerState`. Dropped: the altered-Foundation, non-Exile and active-legacy gates and the handler-fingerprint gate. The "banner already held", co-location, Supply and strictly-more-resources checks are option filters of the banner decision, not separate gates.
+Start gates stay in `build` because they are facts about state, not costs: the act-phase gate, `PowerRuntime.requireAudited`, and the active-face gate. Supply is a cost, owned by `SpendSupply`, not a gate. The face gate is kept: the ribbon logic in this design is correct only for People's Favor `Mob` and Darkest Secret `WanderingFlame`, so any other active face rejects the start with `UnsupportedBannerState`. Dropped: the altered-Foundation, non-Exile and active-legacy gates and the handler-fingerprint gate. The "banner already held", co-location and strictly-more-resources checks are option filters of the banner decision, not separate gates.
 
 ## New decision shapes
 
@@ -91,7 +91,7 @@ Each window is audited vocabulary that no Challenge power uses yet. The slice ad
 
 ## Start flow
 
-One start control per action, as for Recover and Forge: `challenge` and `place-banner-resource` send `StartWalker` with no arguments, the walk parks at the banner decision, and the generic walker-decision UI renders it. The legacy board-target selection "Choose a banner to Challenge" and the `placeBannerResource` control are replaced. A start control is offered only if the same predicate the banner query uses returns at least one banner. Control strings and option labels are preserved where a control survives.
+One start control per action, as for Recover and Forge: `challenge` and `place-banner-resource` send `StartWalker` with no arguments, the walk parks at the banner decision, and the generic walker-decision UI renders it. The legacy board-target selection "Choose a banner to Challenge" and the `placeBannerResource` control are replaced. A start control is offered only if the same predicate the banner query uses returns at least one banner and the actor can afford the Supply. The plan decides how the projector reads affordability without duplicating `SpendSupply`'s rule (a dry run of the start walk is the candidate). Control strings and option labels are preserved where a control survives.
 
 ## Cutover and deletion
 
@@ -116,7 +116,7 @@ Before deletion, compare legacy and walker results for the same legal scenarios,
 - People's Favor: unclaimed, and enemy-held.
 - Darkest Secret: unclaimed, and enemy-held with a retained half.
 - Wandering Flame with a unique least site, with tied sites and enough secrets, and with tied sites and fewer secrets than tied sites (choose a subset).
-- Each illegal state (no Supply, actor already holds the banner, enemy-held without co-location, not strictly more resources), which must offer no control and reject a forced start with no state change.
+- Each illegal state (no Supply, which fails the start at `ChallengeCost`; actor already holds the banner, enemy-held without co-location, not strictly more resources), which must offer no control and reject a forced start with no state change.
 - Place Banner Resource for each banner.
 
 Legacy asked a site question the walker no longer asks, so parity answers the legacy question with any legal site and compares final state.
@@ -127,5 +127,6 @@ Also test: each new decision shape through every codec, the journal round trip a
 
 - The mechanism that authors cost text on a build-time `ChooseOne` option (whether `DecisionOption` gains a field, or the existing `details` annotation is set at build).
 - The exact typed violation for a start with no legal banner.
+- How the projector decides a start control is affordable (see Start flow).
 - Whether `ChooseMany` validation and projection share a helper with `Partition` or stand alone.
 - File split points, so no source file passes 800 lines.
