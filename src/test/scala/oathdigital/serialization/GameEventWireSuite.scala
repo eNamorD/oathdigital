@@ -241,6 +241,7 @@ class GameEventWireSuite extends munit.FunSuite {
       DecisionOptionRef.Denizen(DenizenId("denizen:d1")),
       DecisionOptionRef.Relic(RelicId("R01")),
       DecisionOptionRef.Vision(VisionId("vision:v1")),
+      DecisionOptionRef.Edifice(EdificeId("E16")),
       DecisionOptionRef.Deck(CardDeck.Relic),
       DecisionOptionRef.FavorBank(Suit.Hearth))
     val events = refs.zipWithIndex.map { case (ref, index) =>

@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable {
-  /** Which of the eight variants this is, as a stable wire string. */
+  /** Which of the nine variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -76,6 +76,10 @@ object DecisionOptionRef {
     val kind: String = "vision"
     def wireId: String = id.value
   }
+  final case class Edifice(id: EdificeId) extends DecisionOptionRef {
+    val kind: String = "edifice"
+    def wireId: String = id.value
+  }
   final case class Deck(id: CardDeck) extends DecisionOptionRef {
     val kind: String = "deck"
     def wireId: String = id.key
@@ -92,7 +96,7 @@ object DecisionOptionRef {
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the eight variants, and the exact inverse of the two
+    * Total over the nine variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -106,6 +110,7 @@ object DecisionOptionRef {
       case "denizen" => Some(Denizen(DenizenId(wireId)))
       case "relic" => Some(Relic(RelicId(wireId)))
       case "vision" => Some(Vision(VisionId(wireId)))
+      case "edifice" => Some(Edifice(EdificeId(wireId)))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case _ => None
@@ -133,6 +138,7 @@ object DecisionOption {
       extends DecisionOption
   final case class Relic(ref: DecisionOptionRef.Relic) extends DecisionOption
   final case class Vision(ref: DecisionOptionRef.Vision) extends DecisionOption
+  final case class Edifice(ref: DecisionOptionRef.Edifice) extends DecisionOption
   final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
   final case class FavorBank(ref: DecisionOptionRef.FavorBank)
       extends DecisionOption
@@ -148,6 +154,7 @@ object DecisionOption {
     case value: DecisionOptionRef.Denizen => Some(Denizen(value))
     case value: DecisionOptionRef.Relic => Some(Relic(value))
     case value: DecisionOptionRef.Vision => Some(Vision(value))
+    case value: DecisionOptionRef.Edifice => Some(Edifice(value))
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
   }

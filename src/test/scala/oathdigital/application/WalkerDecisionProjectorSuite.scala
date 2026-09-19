@@ -181,6 +181,35 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
       DecisionOption.Relic(DecisionOptionRef.Relic(absent)))), None)
   }
 
+  test("an edifice option projects its label and details from the card's side, " +
+      "and one that is not at a site suppresses the decision") {
+    val (base, actor) = parked(ActionRef.Recover)
+    val hall = EdificeId("E16")
+    val current = base.ready.game.current
+    assert(current.commonCards.edificeDeck.contains(hall),
+      "the fixture must still hold the hall in the edifice deck")
+    val siteId = current.players.find(_.player == actor).get.pawnSite.get
+    val site = current.map.sites(siteId)
+    val placed = base.copy(ready = base.ready.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(
+        edificeDeck = current.commonCards.edificeDeck.filterNot(_ == hall)),
+      map = current.map.copy(sites = current.map.sites.updated(siteId,
+        site.copy(denizens = site.denizens :+
+          EdificeState(hall, EdificeSide.Intact, Tokens.empty)))))))
+    val option = DecisionOption.Edifice(DecisionOptionRef.Edifice(hall))
+
+    val query = projects(placed, actor, Vector(option))
+      .getOrElse(fail("an edifice at a site must project"))
+    assertEquals(query.options.map(row => (row.kind, row.id)),
+      Vector(("edifice", "E16")))
+    assert(query.options.head.label.nonEmpty)
+    assert(query.options.head.card.nonEmpty)
+
+    // Control: the same option while the hall still sits in the deck has no
+    // located state to describe, so the whole decision is suppressed.
+    assertEquals(projects(base, actor, Vector(option)), None)
+  }
+
   /** The other half of "cannot be presented": a card that IS in
     * authoritative state but that this viewer may not identify.
     *

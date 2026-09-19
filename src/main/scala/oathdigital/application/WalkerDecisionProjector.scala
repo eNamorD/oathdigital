@@ -224,6 +224,11 @@ private[application] final class WalkerDecisionProjector(
       case DecisionOption.Vision(vision) =>
         card(ready, viewer, index, vision.id)
           .flatMap(details => row(details.name, Some(details)))
+      case DecisionOption.Edifice(edifice) =>
+        index.flatMap(_.stateOf(edifice.id)).collect {
+          case state: EdificeState => state
+        }.flatMap(state => row(presentation.edificeLabel(state.id, state.side),
+          Some(presentation.edificeCardDetails(state))))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>
