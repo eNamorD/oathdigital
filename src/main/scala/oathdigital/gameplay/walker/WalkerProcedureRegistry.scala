@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.challenge.ChallengeProcedure
+import oathdigital.gameplay.actions.challenge.{ChallengeProcedure, PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -252,6 +252,19 @@ object WalkerProcedureRegistry {
           OathContinue.AwaitingBannerDecision(actor, decision)),
       build = ChallengeProcedure.build,
       rebuild = ChallengeProcedure.rebuild),
+
+    /** Place Banner Resource is not a major action: it has no fallback kind
+      * and, like Take Wealth, no modifier window.
+      */
+    ActionRef.PlaceBannerResource -> Entry(
+      fallbackKind = None,
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(PlaceBannerResourceProcedure.decisionIds.contains(decisionId))(
+          OathContinue.AwaitingBannerDecision(actor, decision)),
+      build = PlaceBannerResourceProcedure.build,
+      rebuild = PlaceBannerResourceProcedure.rebuild),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
