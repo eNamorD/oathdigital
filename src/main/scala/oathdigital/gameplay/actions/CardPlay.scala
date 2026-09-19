@@ -84,7 +84,7 @@ object CardPlay {
       : Either[OathViolation, Vector[CoreOperation]] = for {
     player <- ready.game.current.players.find(_.player == playerId)
       .toRight(InvalidSearchPlacement("player is not in the game"))
-    _ <- validateOrigin(catalog, player, card, placement, origin)
+    _ <- validateOrigin(player, card, origin)
     plan <- plan(catalog, ready, player, card, placement, origin, adviserLimit)
     operations <- plannedOperations(catalog, ready, player, card, placement,
       origin, plan)
@@ -107,8 +107,7 @@ object CardPlay {
       case Origin.FacedownAdviser => PositionedLocation(Location.PlayArea(player))
     }
 
-  private def validateOrigin(catalog: ExecutableCatalog, player: PlayerState,
-      card: WorldCardId, placement: SearchPlacement,
+  private def validateOrigin(player: PlayerState, card: WorldCardId,
       origin: Origin): Either[OathViolation, Unit] = origin match {
     case Origin.TemporaryHand => Right(())
     case Origin.FacedownAdviser =>
@@ -117,17 +116,7 @@ object CardPlay {
         case VisionState(_, Orientation.FaceDown) => true
         case _ => false
       }.toRight(MinorActionUnavailable(
-        "adviser is not held facedown by the actor")).flatMap { _ => placement match {
-        case SearchPlacement.Discard => Right(())
-        case _ => card match {
-        case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
-          .toRight(UnknownWorldCard(id)).flatMap(definition =>
-            MinorActionPowerSupport.validateAdviserPlay(catalog, id,
-              definition.handlers))
-        case id: VisionId =>
-          if (!FirstGameRulesData.visions.contains(id)) Left(UnknownWorldCard(id))
-          else MinorActionPowerSupport.validateVisionPlay(catalog, id)
-      }}}
+        "adviser is not held facedown by the actor")).map(_ => ())
   }
 
   private def plan(catalog: ExecutableCatalog, ready: ReadyGame,

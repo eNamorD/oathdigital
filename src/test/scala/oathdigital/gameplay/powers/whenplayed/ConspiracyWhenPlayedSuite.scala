@@ -213,4 +213,24 @@ class ConspiracyWhenPlayedSuite extends munit.FunSuite {
     assert(CardIndex.from(done.treeless.game).toOption.get.ids
       .contains(conspiracy))
   }
+
+  test("a Conspiracy played from a facedown adviser takes its target and " +
+      "leaves the revealed Vision alone") {
+    val relic = RelicState(RelicId("facedown-route-relic"), Orientation.FaceDown,
+      Tokens.empty)
+    val f = fixture(Vector(relic),
+      origin = CardPlayProcedure.Origin.FacedownAdviser)()
+    val revealedBefore = player(f.ready, f.actor).revealedVision
+    val (tree, at) = atTarget(f)
+    assertEquals(targetOptions(f, tree, at).map(_._3), Some(Vector[DecisionOptionRef](
+      DecisionOptionRef.RelicSlot(f.enemy, 0))))
+    val done = finished(answer(f, tree, at, ConspiracyWhenPlayed.decisionId,
+      DecisionOptionRef.RelicSlot(f.enemy, 0)))
+    val after = done.treeless
+    assert(player(after, f.actor).relics.exists(_.id == relic.id))
+    assert(!player(after, f.actor).advisers.exists(_.id == conspiracy))
+    assertEquals(player(after, f.actor).revealedVision, revealedBefore)
+    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
+    assertEquals(replayed(f, done), after)
+  }
 }

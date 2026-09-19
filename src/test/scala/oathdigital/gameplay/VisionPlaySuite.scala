@@ -70,4 +70,62 @@ class VisionPlaySuite extends munit.FunSuite {
     assertEquals(after.game.current.walkerPending, None)
     assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
   }
+
+  test("Reveal is a facedown Vision played faceup: it replaces the revealed " +
+      "Vision and costs no Supply") {
+    val base = acting
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val old = VisionRules.Conquest
+    val revealed = VisionRules.Faith
+    val staged = base.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(id =>
+          id == old || id == revealed)),
+      players = current.players.map(p => if (p.player == actor) p.copy(
+        advisers = p.advisers :+ VisionState(revealed, Orientation.FaceDown),
+        revealedVision = Some(VisionState(old, Orientation.FaceUp))) else p)))
+    val before = player(staged, actor)
+    val origin = staged.game.current.map.regionOf(before.pawnSite.get).get
+    val destination = origin match {
+      case Region.Cradle => Region.Provinces
+      case Region.Provinces => Region.Hinterland
+      case Region.Hinterland => Region.Cradle
+    }
+    val started = rules.startWalker(OathState.Ready(staged),
+      ActionRef.PlayFacedownAdviser, actor,
+      startArgs = Vector(DecisionOptionRef.Vision(revealed))).toOption.get
+    val done = rules.resolveWalker(started.state, actor, placeId(revealed),
+      faceup).toOption.get
+    val OathState.Ready(after) = done.state: @unchecked
+    val updated = player(after, actor)
+    assertEquals(updated.board.supply, before.board.supply)
+    assertEquals(updated.revealedVision.map(_.id), Some(revealed))
+    assert(!updated.advisers.exists(_.id == revealed))
+    assert(after.game.current.commonCards.discard(destination).contains(old))
+    assertEquals(after.game.current.walkerPending, None)
+  }
+
+  test("a Conspiracy played from a facedown adviser through the service " +
+      "with nothing to take is boxed") {
+    val base = acting
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val staged = base.updateCurrent(_.copy(
+      players = current.players.map(p =>
+        if (p.player == actor) p.copy(advisers = p.advisers :+
+          VisionState(conspiracy, Orientation.FaceDown))
+        else p.copy(pawnSite = None)),
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(_ == conspiracy))))
+    val started = rules.startWalker(OathState.Ready(staged),
+      ActionRef.PlayFacedownAdviser, actor,
+      startArgs = Vector(DecisionOptionRef.Vision(conspiracy))).toOption.get
+    val done = rules.resolveWalker(started.state, actor, placeId(conspiracy),
+      faceup).toOption.get
+    val OathState.Ready(after) = done.state: @unchecked
+    assert(!player(after, actor).advisers.exists(_.id == conspiracy))
+    assertEquals(after.game.current.walkerPending, None)
+    assert(!CardIndex.from(after.game).toOption.get.ids.contains(conspiracy))
+  }
 }

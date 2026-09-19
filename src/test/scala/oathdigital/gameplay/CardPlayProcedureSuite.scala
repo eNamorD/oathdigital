@@ -191,6 +191,33 @@ class CardPlayProcedureSuite extends munit.FunSuite {
       CardPlay.Origin.TemporaryHand).isLeft)
   }
 
+  test("a facedown Vision is offered discard and faceup play only, with no replacement") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val held = Vector(VisionRules.Faith, VisionRules.Conspiracy)
+    val revealed = VisionRules.Conquest
+    val ready = base.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(id =>
+          held.contains(id) || id == revealed)),
+      players = current.players.map(player =>
+        if (player.player == actor) player.copy(
+          advisers = player.advisers ++ held.map(VisionState(_,
+            Orientation.FaceDown)),
+          revealedVision = Some(VisionState(revealed, Orientation.FaceUp)))
+        else player)))
+    held.foreach { vision =>
+      val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
+        CardPlay.Origin.FacedownAdviser, 3, 3)
+      assertEquals(choices.map(_.placement), Vector[SearchPlacement](
+        SearchPlacement.Discard, SearchPlacement.Adviser(Orientation.FaceUp, None)),
+        vision.value)
+      assertEquals(choices.map(_.replacements), Vector(Vector.empty, Vector.empty),
+        vision.value)
+    }
+  }
+
   test("full site without Homeland permission offers no site placement") {
     val (base, actor, card) = handState
     val current = base.game.current
