@@ -266,7 +266,9 @@ class GameEventWireSuite extends munit.FunSuite {
       DecisionOptionRef.Vision(VisionId("vision:v1")),
       DecisionOptionRef.Edifice(EdificeId("E16")),
       DecisionOptionRef.Deck(CardDeck.Relic),
-      DecisionOptionRef.FavorBank(Suit.Hearth))
+      DecisionOptionRef.FavorBank(Suit.Hearth),
+      DecisionOptionRef.RelicSlot(PlayerId("blue"), 0),
+      DecisionOptionRef.Banner(Banner.PeoplesFavor))
     val events = refs.zipWithIndex.map { case (ref, index) =>
       WalkerStepRecorded(index.toString,
         ChoicePayload("d", ChooseOneAnswer(ref), player), Vector.empty,

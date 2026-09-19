@@ -210,6 +210,42 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(projects(base, actor, Vector(option)), None)
   }
 
+  test("a relic slot and a banner project from live state, and one the state " +
+      "no longer holds suppresses the decision") {
+    val (base, actor) = parked(ActionRef.Recover)
+    val current = base.ready.game.current
+    val enemy = current.players.find(_.player != actor).get
+    val relic = RelicState(RelicId("slot-relic"), Orientation.FaceDown,
+      Tokens.empty)
+    val placed = base.copy(ready = base.ready.updateCurrent(_.copy(
+      players = current.players.map(player =>
+        if (player.player == enemy.player) player.copy(relics = Vector(relic))
+        else player),
+      banners = current.banners.copy(
+        peoplesFavor = current.banners.peoplesFavor.copy(
+          holder = Some(enemy.player)),
+        darkestSecret = current.banners.darkestSecret.copy(holder = None)))))
+    val slot = DecisionOption.RelicSlot(
+      DecisionOptionRef.RelicSlot(enemy.player, 0))
+    val held = DecisionOption.Banner(
+      DecisionOptionRef.Banner(Banner.PeoplesFavor))
+
+    val query = projects(placed, actor, Vector(slot, held))
+      .getOrElse(fail("a held relic slot and banner must project"))
+    assertEquals(query.options.map(row => (row.kind, row.id)),
+      Vector(("relic-slot", s"${enemy.player.value}:0"),
+        ("banner", "peoples-favor")))
+    assert(query.options.forall(row => row.card.isEmpty && row.label.nonEmpty))
+    assert(query.options.head.label.contains("facedown relic"))
+
+    // Controls: a slot past the owner's relics and a banner nobody holds have
+    // no live state to describe, so each suppresses the whole decision.
+    assertEquals(projects(placed, actor, Vector(DecisionOption.RelicSlot(
+      DecisionOptionRef.RelicSlot(enemy.player, 1)))), None)
+    assertEquals(projects(placed, actor, Vector(DecisionOption.Banner(
+      DecisionOptionRef.Banner(Banner.DarkestSecret)))), None)
+  }
+
   /** The other half of "cannot be presented": a card that IS in
     * authoritative state but that this viewer may not identify.
     *

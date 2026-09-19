@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.RecoverRules
+import oathdigital.gameplay.actions.{BannerRules, RecoverRules}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powerresolver.PhasePowers
@@ -268,6 +268,15 @@ private[application] final class WalkerDecisionProjector(
           case state: EdificeState => state
         }.flatMap(state => row(presentation.edificeLabel(state.id, state.side),
           Some(presentation.edificeCardDetails(state))))
+      case DecisionOption.RelicSlot(slot) =>
+        if (ready.game.current.players.find(_.player == slot.owner)
+            .exists(_.relics.isDefinedAt(slot.slot)))
+          row(s"${presentation.safeLabel(slot.owner.value)} facedown relic")
+        else None
+      case DecisionOption.Banner(held) =>
+        BannerRules.holder(ready.game.current, held.banner).flatMap(holder =>
+          row(s"${presentation.safeLabel(holder.value)} " +
+            presentation.safeLabel(held.banner.key)))
       case DecisionOption.Deck(deck) =>
         row(presentation.safeLabel(deck.id.key))
       case DecisionOption.FavorBank(bank) =>

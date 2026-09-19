@@ -34,7 +34,7 @@ package oathdigital.model
   * part of a card's identity.
   */
 sealed trait DecisionOptionRef extends Product with Serializable {
-  /** Which of the nine variants this is, as a stable wire string. */
+  /** Which of the eleven variants this is, as a stable wire string. */
   def kind: String
 
   /** The variant's identity as a stable wire string, paired with [[kind]].
@@ -80,6 +80,25 @@ object DecisionOptionRef {
     val kind: String = "edifice"
     def wireId: String = id.value
   }
+  /** One relic of another player, named by its position in their relic
+    * vector rather than by the card, so a facedown relic's identity is never
+    * disclosed by an option. The owner may contain a colon; the slot is
+    * always the text after the last one.
+    */
+  final case class RelicSlot(owner: PlayerId, slot: Int)
+      extends DecisionOptionRef {
+    require(slot >= 0, "a relic slot must be non-negative")
+    val kind: String = "relic-slot"
+    def wireId: String = s"${owner.value}:$slot"
+  }
+  /** A banner. It names no holder: who holds it is read from live state, so
+    * an answer cannot name a holder that has since changed.
+    */
+  final case class Banner(banner: oathdigital.model.Banner)
+      extends DecisionOptionRef {
+    val kind: String = "banner"
+    def wireId: String = banner.key
+  }
   final case class Deck(id: CardDeck) extends DecisionOptionRef {
     val kind: String = "deck"
     def wireId: String = id.key
@@ -96,7 +115,7 @@ object DecisionOptionRef {
     * pair from untrusted input: `None` for an unknown kind or an id that
     * variant cannot carry, never a thrown `require`.
     *
-    * Total over the nine variants, and the exact inverse of the two
+    * Total over the eleven variants, and the exact inverse of the two
     * accessors above — a new variant that forgets this method fails to
     * compile, because the match below is exhaustive over nothing and the
     * accessors are abstract.
@@ -111,6 +130,12 @@ object DecisionOptionRef {
       case "relic" => Some(Relic(RelicId(wireId)))
       case "vision" => Some(Vision(VisionId(wireId)))
       case "edifice" => Some(Edifice(EdificeId(wireId)))
+      case "relic-slot" =>
+        val at = wireId.lastIndexOf(':')
+        Option.when(at > 0)(wireId.take(at)).filter(_.trim.nonEmpty)
+          .flatMap(owner => wireId.drop(at + 1).toIntOption
+            .filter(_ >= 0).map(RelicSlot(PlayerId(owner), _)))
+      case "banner" => oathdigital.model.Banner.fromKey(wireId).map(Banner(_))
       case "deck" => CardDeck.fromKey(wireId).map(Deck(_))
       case "favor-bank" => Suit.fromKey(wireId).map(FavorBank(_))
       case _ => None
@@ -139,6 +164,9 @@ object DecisionOption {
   final case class Relic(ref: DecisionOptionRef.Relic) extends DecisionOption
   final case class Vision(ref: DecisionOptionRef.Vision) extends DecisionOption
   final case class Edifice(ref: DecisionOptionRef.Edifice) extends DecisionOption
+  final case class RelicSlot(ref: DecisionOptionRef.RelicSlot)
+      extends DecisionOption
+  final case class Banner(ref: DecisionOptionRef.Banner) extends DecisionOption
   final case class Deck(ref: DecisionOptionRef.Deck) extends DecisionOption
   final case class FavorBank(ref: DecisionOptionRef.FavorBank)
       extends DecisionOption
@@ -155,6 +183,8 @@ object DecisionOption {
     case value: DecisionOptionRef.Relic => Some(Relic(value))
     case value: DecisionOptionRef.Vision => Some(Vision(value))
     case value: DecisionOptionRef.Edifice => Some(Edifice(value))
+    case value: DecisionOptionRef.RelicSlot => Some(RelicSlot(value))
+    case value: DecisionOptionRef.Banner => Some(Banner(value))
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
   }
