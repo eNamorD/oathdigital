@@ -277,31 +277,6 @@ private[serialization] trait GameEventJsonSupport {
   protected final def stringArray(values: Vector[String]): ujson.Value =
     ujson.Arr.from(values.map(ujson.Str(_)))
 
-  protected final def encodeConspiracyTarget(target: ConspiracyTarget): ujson.Value =
-    target match {
-      case ConspiracyTarget.Relic(owner, relic) => ujson.Obj(
-        "kind" -> "relic", "ownerPlayerId" -> owner.value,
-        "relicId" -> relic.value)
-      case ConspiracyTarget.Banner(owner, banner) => ujson.Obj(
-        "kind" -> "banner", "ownerPlayerId" -> owner.value,
-        "banner" -> banner.key)
-    }
-
-  protected final def decodeOptionalConspiracyTarget(value: ujson.Value, path: String)
-      : Either[WireError, Option[ConspiracyTarget]] = value match {
-    case ujson.Null => Right(None)
-    case other => try other("kind").str match {
-      case "relic" => Right(Some(ConspiracyTarget.Relic(
-        PlayerId(other("ownerPlayerId").str), RelicId(other("relicId").str))))
-      case "banner" => decodeBanner(other("banner").str, s"$path.banner").map(
-        banner => Some(ConspiracyTarget.Banner(
-          PlayerId(other("ownerPlayerId").str), banner)))
-      case kind => Left(InvalidValue(s"$path.kind",
-        s"unknown Conspiracy target '$kind'"))
-    } catch { case NonFatal(error) => Left(InvalidValue(path,
-      Option(error.getMessage).getOrElse("invalid Conspiracy target"))) }
-  }
-
   protected final def encodeForceKind(force: ForceKind): ujson.Value = force match {
     case ForceKind.Bandit => ujson.Obj("kind" -> "bandit")
     case ForceKind.Imperial => ujson.Obj("kind" -> "imperial")

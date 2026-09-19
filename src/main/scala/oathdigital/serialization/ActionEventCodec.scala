@@ -5,7 +5,6 @@ import oathdigital.model.OathEvent._
 
 private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
   import GameEventWire._
-  import WireError._
 
   protected final val actionDiscriminator: PartialFunction[OathEvent, String] = {
       case _: BannerChallengeStarted => BannerChallengeStartedType
@@ -20,9 +19,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
       case _: NegotiationAccepted => NegotiationAcceptedType
       case _: NegotiationDeclined => NegotiationDeclinedType
       case _: NegotiationCompleted => NegotiationCompletedType
-      case _: VisionRevealed => VisionRevealedType
-      case _: ConspiracyStarted => ConspiracyStartedType
-      case _: ConspiracyCompleted => ConspiracyCompletedType
   }
 
   protected final val actionEncoder: PartialFunction[OathEvent, ujson.Value] = {
@@ -75,20 +71,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
         "terms" -> ujson.Arr.from(participants.map(author => ujson.Obj(
           "authorPlayerId" -> author.value,
           "terms" -> encodeNegotiationTerms(terms(author))))))
-      case VisionRevealed(player, vision, replaced, destination) => ujson.Obj(
-        "playerId" -> player.value, "visionId" -> vision.value,
-        "replacedVisionId" -> replaced.fold[ujson.Value](ujson.Null)(v => ujson.Str(v.value)),
-        "discardRegion" -> destination.key)
-      case ConspiracyStarted(player, decision, source, target, favor) => ujson.Obj(
-        "playerId" -> player.value, "decisionId" -> decision.value,
-        "sourceVisionId" -> source.value,
-        "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
-        "automaticFavorReturns" -> stringArray(favor.map(_.key)))
-      case ConspiracyCompleted(player, decision, source, target, favor) => ujson.Obj(
-        "playerId" -> player.value, "decisionId" -> decision.value,
-        "sourceVisionId" -> source.value,
-        "target" -> target.fold[ujson.Value](ujson.Null)(encodeConspiracyTarget),
-        "favorReturnOrder" -> stringArray(favor.map(_.key)))
   }
 
   protected final def actionDecode(eventType: String, payload: ujson.Value,
@@ -162,30 +144,6 @@ private[serialization] trait ActionEventCodec { this: GameEventJsonSupport =>
               PlayerId(row("authorPlayerId").str) -> _))
         } yield NegotiationCompleted(PlayerId(payload("playerId").str),
           DecisionId(payload("decisionId").str), participants, rows.toMap)
-        case VisionRevealedType => for {
-          destination <- decodeRegion(payload("discardRegion").str,
-            s"$path.discardRegion")
-        } yield VisionRevealed(PlayerId(payload("playerId").str),
-          VisionId(payload("visionId").str), payload("replacedVisionId") match {
-            case ujson.Null => None
-            case value => Some(VisionId(value.str))
-          }, destination)
-        case ConspiracyStartedType => for {
-          target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
-          favor <- traverse(payload("automaticFavorReturns").arr.toVector)(v =>
-            Suit.fromKey(v.str).toRight(InvalidValue(
-              s"$path.automaticFavorReturns", "unknown suit")))
-        } yield ConspiracyStarted(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str),
-          VisionId(payload("sourceVisionId").str), target, favor)
-        case ConspiracyCompletedType => for {
-          target <- decodeOptionalConspiracyTarget(payload("target"), s"$path.target")
-          favor <- traverse(payload("favorReturnOrder").arr.toVector)(v =>
-            Suit.fromKey(v.str).toRight(InvalidValue(
-              s"$path.favorReturnOrder", "unknown suit")))
-        } yield ConspiracyCompleted(PlayerId(payload("playerId").str),
-          DecisionId(payload("decisionId").str),
-          VisionId(payload("sourceVisionId").str), target, favor)
     }
     decoder.lift(eventType)
   }

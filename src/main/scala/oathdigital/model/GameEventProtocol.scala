@@ -46,17 +46,6 @@ object OathEvent {
       extends OathEvent
   final case class BannerResourcePlaced(
       playerId: PlayerId, banner: Banner, amount: Int) extends OathEvent
-  final case class VisionRevealed(
-      playerId: PlayerId, visionId: VisionId, replaced: Option[VisionId],
-      destination: Region) extends OathEvent
-  final case class ConspiracyStarted(
-      playerId: PlayerId, decision: DecisionId, source: VisionId,
-      target: Option[ConspiracyTarget], automaticFavorReturns: Vector[Suit])
-      extends OathEvent
-  final case class ConspiracyCompleted(
-      playerId: PlayerId, decision: DecisionId, source: VisionId,
-      target: Option[ConspiracyTarget], favorReturnOrder: Vector[Suit])
-      extends OathEvent
   final case class SiteRelicsPeeked(
       playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
       extends OathEvent

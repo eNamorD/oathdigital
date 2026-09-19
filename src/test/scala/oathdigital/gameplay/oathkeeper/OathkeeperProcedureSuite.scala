@@ -139,9 +139,8 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
     val actor = ready.game.current.players
       .find(_.player == ready.game.current.turn.activePlayer).get
     val legacy = ready.updateCurrent(_.copy(
-      pending = Some(PendingProcedure.Conspiracy(DecisionId("powered-vision"),
-        actor.player, oathdigital.gameplay.actions.VisionRules.Conspiracy,
-        None))))
+      pending = Some(PendingProcedure.Challenge(DecisionId("legacy-pending"),
+        actor.player, Banner.PeoplesFavor, None, 0, 1))))
     assertEquals(legacy.game.current.walkerPending, None)
     assertEquals(legacy.game.current.walkerProcedure, None)
     val refused = rules.startTriggered(OathTransition(Ready(legacy), Vector.empty,

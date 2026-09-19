@@ -390,22 +390,15 @@ private[gameplay] trait OathRulesWalker {
 
     case WalkerOutcome.Finished(treeless, steps) =>
       val turn = treeless.game.current.turn
-      val conspiracy = treeless.game.current.pending.collect {
-        case value: PendingProcedure.Conspiracy if value.awaitingTarget => value
-      }
-      val continued = conspiracy match {
-        case Some(value) => Right(OathContinue.AwaitingConspiracyDecision(
-          value.actor, value.decision))
-        case None if runsTurnBoundary(procedure) =>
+      val continued =
+        if (runsTurnBoundary(procedure))
           Right(OathContinue.AwaitingWakeAction(turn.activePlayer))
-        case None => continuationIn(turn.phase, turn.activePlayer)
-      }
+        else continuationIn(turn.phase, turn.activePlayer)
       continued.flatMap(continue => GameplayTransition(state,
           steps :+ WalkerCompleted(procedure), continue)(evolve)
         .flatMap(recordCardPlayFallback(_, procedure, steps))
         .flatMap(transition =>
-          if (conspiracy.nonEmpty) Right(transition)
-          else if (runsActionBoundary(procedure)) completeAction(transition)
+          if (runsActionBoundary(procedure)) completeAction(transition)
           else if (runsTurnBoundary(procedure)) turnBoundary(transition)
           else Right(transition))
         .flatMap(transition =>

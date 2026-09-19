@@ -68,17 +68,7 @@ object OathViolation {
       extends OathViolation
   final case class MinorActionOutcomeMismatch(detail: String)
       extends OathViolation
-  final case class UnsupportedMinorActionRule(source: CardId, handlers: Vector[String])
-      extends OathViolation
-  final case class UnsupportedVisionRule(source: String, handler: String)
-      extends OathViolation
-  final case class VisionUnavailable(detail: String) extends OathViolation
   final case class ConspiracyUnavailable(detail: String) extends OathViolation
-  final case class ConspiracyDecisionMismatch(expected: DecisionId, actual: DecisionId)
-      extends OathViolation
-  final case class ConspiracyOutcomeMismatch(detail: String) extends OathViolation
-  final case class UnsupportedMinorActionCatalogInventory(expected: String, actual: String)
-      extends OathViolation
   final case class NegotiationUnavailable(detail: String) extends OathViolation
   final case class NegotiationDecisionMismatch(expected: DecisionId, actual: DecisionId)
       extends OathViolation

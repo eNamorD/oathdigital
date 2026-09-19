@@ -1,16 +1,13 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.actions.{MinorActionCommand, MinorActionPowerSupport,
-  MinorActionOperationPolicy, MinorActions, VisionRules}
+import oathdigital.gameplay.actions.{MinorActionCommand,
+  MinorActionOperationPolicy, MinorActions}
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.model._
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState.Ready
-import oathdigital.model.OathViolation.{UnsupportedMinorActionCatalogInventory,
-  UnsupportedMinorActionRule}
-import oathdigital.catalog.CatalogPower
 
 class MinorActionsSuite extends munit.FunSuite {
   private val setupRules = new FirstGameSetupRules(catalog)
@@ -294,41 +291,5 @@ class MinorActionsSuite extends munit.FunSuite {
       case (event, index) => RecordedEvent(index.toLong, event)
     }).toOption.get
     assertEquals(replayed, discarded.state)
-  }
-
-  test("audited minor-action power inventory rejects changed handler vocabulary") {
-    val first = catalog.denizens.head
-    val changed = catalog.copy(denizens = first.copy(powers = first.powers :+
-      CatalogPower("denizen.future-handler", persistent = false, "Future power.")) +:
-      catalog.denizens.tail)
-    assert(MinorActionPowerSupport.validateInventory(changed).left.toOption.exists(
-      _.isInstanceOf[UnsupportedMinorActionCatalogInventory]))
-  }
-
-  test("Vision inventory fingerprint covers every runtime handler family and edifice face") {
-    val changed = Vector(
-      catalog.copy(relics = catalog.relics.head.copy(
-        powers = catalog.relics.head.powers :+ CatalogPower(
-          "relic.future-vision", persistent = false, "Future power.")) +:
-          catalog.relics.tail),
-      catalog.copy(edifices = catalog.edifices.head.copy(intact =
-        catalog.edifices.head.intact.copy(powers =
-          catalog.edifices.head.intact.powers :+ CatalogPower(
-            "edifice.future-vision", persistent = false, "Future power."))) +:
-          catalog.edifices.tail),
-      catalog.copy(edifices = catalog.edifices.head.copy(ruined =
-        catalog.edifices.head.ruined.copy(powers =
-          catalog.edifices.head.ruined.powers :+ CatalogPower(
-            "edifice.future-ruined-vision", persistent = false, "Future power."))) +:
-          catalog.edifices.tail),
-      catalog.copy(legacies = catalog.legacies.head.copy(
-        powers = catalog.legacies.head.powers :+ CatalogPower(
-          "legacy.future-vision", persistent = false, "Future power.")) +:
-          catalog.legacies.tail),
-      catalog.copy(sites = catalog.sites.head.copy(
-        handlers = catalog.sites.head.handlers :+ "site.future-vision") +:
-          catalog.sites.tail))
-    changed.foreach(value => assert(
-      MinorActionPowerSupport.validateInventory(value).isLeft))
   }
 }

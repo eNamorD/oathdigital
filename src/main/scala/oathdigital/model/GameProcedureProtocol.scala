@@ -33,8 +33,6 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingBannerDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
-  final case class AwaitingConspiracyDecision(playerId: PlayerId,
-      decision: DecisionId) extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)

@@ -2,9 +2,8 @@ package oathdigital.gameplay
 
 import oathdigital.gameplay.actions.{CardPlay, VisionRules}
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
-import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome,
-  WalkerPowers, WalkerStepRecorded}
+  WalkerPowers}
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model._
 

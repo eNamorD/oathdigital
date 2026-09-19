@@ -5,7 +5,6 @@ import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry, Challenge, ChallengeCommand}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
-import oathdigital.gameplay.actions.Visions
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
@@ -145,9 +144,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
-      case event: VisionRevealed => Visions.evolve(catalog, state, event)
-      case event: ConspiracyStarted => Visions.evolve(catalog, state, event)
-      case event: ConspiracyCompleted => Visions.evolve(catalog, state, event)
       case event: NegotiationStarted => Negotiation.evolve(catalog, state, event)
       case event: NegotiationTermsReplaced => Negotiation.evolve(catalog, state, event)
       case event: NegotiationAccepted => Negotiation.evolve(catalog, state, event)
