@@ -1,7 +1,7 @@
 package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.actions.{BannerRules, CampaignPlanOption, CampaignRules}
+import oathdigital.gameplay.actions.{CampaignPlanOption, CampaignRules}
 import oathdigital.model._
 import oathdigital.protocol.projection._
 

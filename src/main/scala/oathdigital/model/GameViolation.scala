@@ -93,10 +93,6 @@ object OathViolation {
   final case class UnsupportedForgeState(reason: String) extends OathViolation
   final case class ForgeUnavailable(detail: String) extends OathViolation
   final case class UnsupportedBannerState(reason: String) extends OathViolation
-  final case class ChallengeUnavailable(detail: String) extends OathViolation
-  final case class ChallengeDecisionMismatch(expected: DecisionId, actual: DecisionId)
-      extends OathViolation
-  final case class ChallengeOutcomeMismatch(detail: String) extends OathViolation
   final case class UnsupportedRestState(reason: String)
       extends OathViolation
   final case class UnsupportedRoundEndRule(sourceKey: String, handlerId: String)

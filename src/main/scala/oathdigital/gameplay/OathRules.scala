@@ -3,7 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry, Challenge, ChallengeCommand}
+  CampaignLosingForceRegistry}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
@@ -58,19 +58,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         ready.game.current.walkerProcedure.nonEmpty =>
       Left(InvalidEventOrder("a walker procedure is already pending"))
     case _ => handled
-  }
-
-  def handle(state: OathState, command: ChallengeCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    (command match {
-      case begin: ChallengeCommand.Begin => withFallback(state, begin.player,
-        MajorActionKind.Challenge)(Challenge.handle(catalog, state, command))
-      case _ => Challenge.handle(catalog, state, command)
-    }).flatMap { transition => command match {
-      case _: ChallengeCommand.Complete | _: ChallengeCommand.PlaceResource =>
-        completeAction(transition)
-      case _ => Right(transition)
-    }}
   }
 
   def handle(state: OathState, command: MinorActionCommand)
@@ -137,10 +124,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: WalkerStepRecorded => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerParked => ProcedureWalker.applyRecorded(state, event)
       case event: WalkerCompleted => ProcedureWalker.applyRecorded(state, event)
-      case event: BannerChallengeStarted => Challenge.evolve(catalog, state, event)
-      case event: BannerRibbonChoiceMade => Challenge.evolve(catalog, state, event)
-      case event: BannerChallengeCompleted => Challenge.evolve(catalog, state, event)
-      case event: BannerResourcePlaced => Challenge.evolve(catalog, state, event)
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)

@@ -209,18 +209,6 @@ object PendingProcedure {
       "Raid relocation sites must be distinct and exclude the origin")
   }
 
-  /** Owner-scoped, replay-stable continuation of the printed banner procedure. */
-  final case class Challenge(
-      decision: DecisionId,
-      actor: PlayerId,
-      banner: Banner,
-      priorHolder: Option[PlayerId],
-      priorResources: Int,
-      remainingRibbonResources: Int,
-      favorReturned: Vector[Suit] = Vector.empty,
-      secretsPlaced: Vector[SiteId] = Vector.empty
-  ) extends PendingProcedure
-
   final case class Negotiation(
       decision: DecisionId,
       actor: PlayerId,

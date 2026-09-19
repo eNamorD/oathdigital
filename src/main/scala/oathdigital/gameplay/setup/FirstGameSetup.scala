@@ -196,15 +196,13 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case NoGame => Left(GameNotStarted)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
-      case _: BannerChallengeStarted | _: BannerRibbonChoiceMade |
-          _: BannerChallengeCompleted | _: BannerResourcePlaced |
-          _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
+      case _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
           _: NegotiationStarted | _: NegotiationTermsReplaced |
           _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>
-        Left(InvalidEventOrder("Challenge requires the gameplay evolution"))
+        Left(InvalidEventOrder("gameplay events require the gameplay evolution"))
       case _: UsurperFlipped | _: UsurperVictory =>
         Left(InvalidEventOrder("state-based checks require gameplay evolution"))
     }

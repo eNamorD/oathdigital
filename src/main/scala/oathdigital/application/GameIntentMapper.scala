@@ -85,7 +85,6 @@ object GameIntentMapper {
   }
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
-  private def banner(value: String): Result[Banner] = Banner.fromKey(value).toRight(GameIntentMappingFailure("$.intent.banner", s"unknown banner '$value'"))
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
   private def raid(value: oathdigital.protocol.CampaignRaidTarget): Result[oathdigital.model.CampaignRaidTarget] = value match {
     case oathdigital.protocol.CampaignRaidTarget.Pawn(p) => Right(oathdigital.model.CampaignRaidTarget.Pawn(PlayerId(p)))
@@ -158,5 +157,4 @@ object GameIntentMapper {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))
   }
   private def traverse[A,B](values: Vector[A])(f: A => Result[B]): Result[Vector[B]] = values.foldLeft[Result[Vector[B]]](Right(Vector.empty)) { case (Right(acc), v) => f(v).map(acc :+ _); case (l @ Left(_), _) => l }
-  private def option[A,B](value: Option[A])(f: A => Result[B]): Result[Option[B]] = value match { case Some(v) => f(v).map(Some(_)); case None => Right(None) }
 }

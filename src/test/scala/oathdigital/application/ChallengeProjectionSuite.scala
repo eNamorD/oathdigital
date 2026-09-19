@@ -6,8 +6,6 @@ import oathdigital.model._
 import oathdigital.model.OathState.Ready
 
 class ChallengeProjectionSuite extends munit.FunSuite {
-  import ChallengeFixture._
-
   private def projection(board: ReadyGame, viewer: PlayerId) =
     new GameProjector(catalog).project("challenge", LoadedGame(Ready(board), 9),
       viewer)

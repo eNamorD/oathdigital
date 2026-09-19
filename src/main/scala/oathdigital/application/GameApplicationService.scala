@@ -3,8 +3,7 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules,
-  ChallengeCommand}
+import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}

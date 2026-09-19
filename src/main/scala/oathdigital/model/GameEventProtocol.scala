@@ -29,23 +29,6 @@ object OathEvent {
       adviserId: DenizenId
   ) extends OathEvent
   case object FirstGameCompleted extends OathEvent
-  final case class BannerChallengeStarted(
-      playerId: PlayerId, decision: DecisionId, banner: Banner,
-      priorHolder: Option[PlayerId], priorResources: Int, supplySpent: Int,
-      automaticFavorReturns: Vector[Suit] = Vector.empty,
-      automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
-  final case class BannerRibbonChoiceMade(
-      playerId: PlayerId, decision: DecisionId, banner: Banner,
-      secretSite: SiteId,
-      automaticSecretSites: Vector[SiteId] = Vector.empty) extends OathEvent
-  final case class BannerChallengeCompleted(
-      playerId: PlayerId, decision: DecisionId, banner: Banner,
-      priorHolder: Option[PlayerId], priorResources: Int,
-      placedResources: Int, favorReturnOrder: Vector[Suit],
-      secretSiteOrder: Vector[SiteId], secretsReturnedToHolder: Int)
-      extends OathEvent
-  final case class BannerResourcePlaced(
-      playerId: PlayerId, banner: Banner, amount: Int) extends OathEvent
   final case class SiteRelicsPeeked(
       playerId: PlayerId, siteId: SiteId, relics: Vector[RelicId])
       extends OathEvent
