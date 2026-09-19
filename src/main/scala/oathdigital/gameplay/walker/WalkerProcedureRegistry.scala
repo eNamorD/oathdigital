@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -107,6 +108,12 @@ object WalkerProcedureRegistry {
     * the durable `CurrentGameState.walkerStartArgs`, for the same reason
     * `walkerModifiers` is carried: a resumed command must rebuild the tree the
     * start built, and a selection is not re-derivable from state.
+    *
+    * `requiresPlayableOption` opts a procedure in to the preview gate:
+    * `StartWalker` rejects a start whose first decision has no option the
+    * procedure's own answer would accept, and the parked decision is shown
+    * with only such options, each annotated with what answering it records.
+    * Procedures that do not opt in are untouched.
     */
   private[gameplay] final case class Entry(
       fallbackKind: Option[MajorActionKind],
@@ -116,7 +123,8 @@ object WalkerProcedureRegistry {
       build: (ExecutableCatalog, ReadyGame, PlayerId,
         Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
       rebuild: (ExecutableCatalog, ReadyGame, PlayerId,
-        Vector[DecisionOptionRef]) => Either[OathViolation, Operation])
+        Vector[DecisionOptionRef]) => Either[OathViolation, Operation],
+      requiresPlayableOption: Boolean = false)
 
   /** `private[gameplay]`, not `private`: [[WalkerProcedureRegistrySuite]]
     * asserts this map's keys cover `ProcedureRef.all` (catching a registered
@@ -201,6 +209,34 @@ object WalkerProcedureRegistry {
       continuationFor = (_, _, _) => None,
       build = TravelProcedure.build,
       rebuild = TravelProcedure.build),
+
+    /** Economy. The first walker actions whose first node is a `Decide`
+      * and that opt in to the playable-option gate: nothing runs before the
+      * source decision, so the start can be previewed from the fresh tree.
+      */
+    ActionRef.Muster -> Entry(
+      fallbackKind = Some(MajorActionKind.Muster),
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.MusterModifierSelection),
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(decisionId == MusterProcedure.decisionId)(
+          OathContinue.AwaitingEconomyDecision(actor, decision)),
+      build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
+        args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
+      rebuild = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
+        args).flatMap(_ => MusterProcedure.rebuild(catalog, state, activePlayer)),
+      requiresPlayableOption = true),
+
+    ActionRef.Trade -> Entry(
+      fallbackKind = Some(MajorActionKind.Trade),
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.TradeModifierSelection),
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(decisionId == TradeProcedure.decisionId)(
+          OathContinue.AwaitingEconomyDecision(actor, decision)),
+      build = TradeProcedure.build,
+      rebuild = TradeProcedure.rebuild,
+      requiresPlayableOption = true),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
@@ -416,4 +452,8 @@ object WalkerProcedureRegistry {
     */
   def isRegistered(procedure: ProcedureRef): Boolean =
     procedure.isInstanceOf[ActionRef.UsePower] || entries.contains(procedure)
+
+  /** Whether `procedure` opts in to the playable-option gate (see `Entry`). */
+  def requiresPlayableOption(procedure: ProcedureRef): Boolean =
+    lookup(procedure, entries).exists(_.requiresPlayableOption)
 }

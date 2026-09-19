@@ -6,7 +6,7 @@ import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx, PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
-  WalkerStepRecorded}
+  WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
 import oathdigital.model.OathViolation._
 
@@ -70,6 +70,7 @@ private[gameplay] trait OathRulesWalker {
             _ <- checkRestrictions(tree, powers, ready, activePlayer)
             outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
               powers))
+            _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
             transition <- walkerTransition(state, procedure, tree,
               outcome, powers, modifiers, startArgs)
           } yield transition
@@ -329,6 +330,29 @@ private[gameplay] trait OathRulesWalker {
       case _: ActionRef.UsePower => WalkerProcedureRegistry.rebuild(
         procedure, catalog, ready, actor, startArgs, phasePowerCatalog)
       case _ => walkerTree(catalog, procedure, ready, actor, startArgs, starting)
+    }
+
+  /** A procedure that opts in (`Entry.requiresPlayableOption`) is rejected at
+    * start when its first decision offers no option its own answer would
+    * accept, before anything is persisted. The decision must be the first
+    * thing the tree does, because the preview answers it against the state
+    * before the start.
+    */
+  private def requirePlayableOption(procedure: ProcedureRef, ready: ReadyGame,
+      tree: Operation, outcome: WalkerOutcome, powers: WalkerPowers)
+      : Either[OathViolation, Unit] =
+    if (!WalkerProcedureRegistry.requiresPlayableOption(procedure)) Right(())
+    else outcome match {
+      case WalkerOutcome.Parked(pending, events) =>
+        if (events.exists {
+          case step: WalkerStepRecorded => step.ops.nonEmpty
+          case _ => false
+        }) Left(InvalidEventOrder(s"${procedure.key} runs operations before " +
+          "its first decision, so its start cannot be previewed"))
+        else WalkerSimulation.previewParked(ready, tree, pending, powers)
+          .flatMap(options => Either.cond(options.exists(_.outcome.isRight), (),
+            NoPlayableOption(procedure.key)))
+      case _ => Right(())
     }
 
   private def walkerCall[A](result: => Either[OathViolation, A])

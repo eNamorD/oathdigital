@@ -51,6 +51,8 @@ object ActionRef {
   case object Forge extends ActionRef { val key = "forge" }
   case object Travel extends ActionRef { val key = "travel" }
   case object TakeWealth extends ActionRef { val key = "take-wealth" }
+  case object Muster extends ActionRef { val key = "muster" }
+  case object Trade extends ActionRef { val key = "trade" }
 
   /** Uses one phase power. Parameterized, so `all` cannot list it; the key
     * parses directly.
@@ -63,7 +65,7 @@ object ActionRef {
   /** A key here that also names a [[oathdigital.model.MajorActionKind]]
     * bridges to it on the string alone -- `GameApplicationService
     * .walkerAction` and `GameIntentMapper.actionRef` both do that, and the
-    * three major actions above rely on it.
+    * major actions above rely on it.
     *
     * `TakeWealth` deliberately does not: it is one of the two things a
     * player does in the Wake phase (the other, End Wake, is a
@@ -76,7 +78,7 @@ object ActionRef {
     * existing path rather than being answered as Take Wealth.
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
-    Recover, Forge, Travel, TakeWealth)
+    Recover, Forge, Travel, TakeWealth, Muster, Trade)
 
   def usePower(key: String): Option[UsePower] =
     Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))

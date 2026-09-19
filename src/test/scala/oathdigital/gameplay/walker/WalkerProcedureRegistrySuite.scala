@@ -189,4 +189,10 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
       }
     }
   }
+
+  test("only Muster and Trade require a playable option") {
+    assertEquals(ProcedureRef.all.filter(
+      WalkerProcedureRegistry.requiresPlayableOption).toSet,
+      Set[ProcedureRef](ActionRef.Muster, ActionRef.Trade))
+  }
 }

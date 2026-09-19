@@ -7,6 +7,7 @@ import java.nio.file.Files
 
 import oathdigital.model._
 import oathdigital.gameplay.actions.{CampaignRules, RecoverRules}
+import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.walker.{ChoicePayload, WalkerCompleted,
@@ -1460,6 +1461,36 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(record("formatVersion").num.toInt, 1)
     assertEquals(record("payload")("target")("kind").str, "edifice")
     assertEquals(record("payload")("target")("id").str, edificeId.value)
+  }
+
+  test("a walker Muster on an edifice persists, reloads and replays with its kind") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository)
+    val (siteId, edificeId) = plan.homelandEdifices.head
+    val placements = siteId +: sites.filterNot(_ == siteId).take(2)
+    val setup = execute(service, "game-walker-economy", placements)
+    val Ready(ready) = setup.state: @unchecked
+    val active = ready.game.current.turn.activePlayer
+    val ended = service.handle("game-walker-economy", setup.nextSequence,
+      GameCommand.EndWake(active)).toOption.get
+    val started = service.handle("game-walker-economy", ended.nextSequence,
+      GameCommand.StartWalker(ActionRef.Muster, StartPayload(active))).toOption.get
+    assertEquals(started.continue, OathContinue.AwaitingEconomyDecision(active,
+      DecisionId(MusterProcedure.decisionId)))
+    val mustered = service.handle("game-walker-economy", started.nextSequence,
+      GameCommand.ResolveWalker(active, TreeDecision(MusterProcedure.decisionId,
+        ChooseOneAnswer(DecisionOptionRef.Edifice(edificeId))))).toOption.get
+    val loaded = new GameApplicationService(catalog, repository)
+      .load("game-walker-economy").toOption.flatten.get
+    assertEquals(loaded.state, mustered.state)
+    val Ready(after) = loaded.state: @unchecked
+    assertEquals(after.game.current.map.sites(siteId).denizens.collectFirst {
+      case value: EdificeState if value.id == edificeId => value.tokens
+    }, Some(Tokens(1, 0)))
+    val records = repository.load("game-walker-economy").toOption.flatten.get.records
+    assert(records.exists(record => record.contains("edifice") &&
+      record.contains(edificeId.value)),
+      "the journalled answer must spell the edifice kind and id")
   }
 
   test("Search draw port cannot inject card identities inconsistent with state") {
