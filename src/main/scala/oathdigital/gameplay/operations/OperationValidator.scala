@@ -349,6 +349,10 @@ object OperationShape {
           statefulMaterializationViolation(located, transfer)
         case _ => Some(InvalidDestination(transfer.piece, destination))
       }
+      case Location.SharedBank => id match {
+        case _: VisionId => None
+        case _ => Some(InvalidDestination(transfer.piece, destination))
+      }
       case Location.Atlas => Some(AmbiguousLocation(
         Location.Atlas,
         "Atlas destination requires a stored-site identity"

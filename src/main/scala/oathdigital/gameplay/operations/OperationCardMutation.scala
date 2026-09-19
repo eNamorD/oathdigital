@@ -135,6 +135,8 @@ private[operations] object OperationCardMutation {
         ready.copy(game = ready.game.copy(campaign = ready.game.campaign.copy(
           dispossessed = ready.game.campaign.dispossessed :+
             id.asInstanceOf[WorldCardId]))))
+      case Location.SharedBank => ensureEmptyTokens(original.state, id)
+        .map(_ => ready)
       case Location.Site(site) => adjustedState.flatMap {
         case state: SiteDenizenState => updateSite(ready, site)(value =>
           value.copy(denizens = value.denizens :+ state))

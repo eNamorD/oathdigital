@@ -48,6 +48,29 @@ class GameEventWireSuite extends munit.FunSuite {
     assert(!ujson.read(encoded)("payload")("ops")(0).obj.contains("required"))
   }
 
+  test("a recorded move of a Vision to the shared bank round trips and replays") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val card = VisionId("vision:conspiracy")
+    val prepared = base.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(_ == card)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(card))))
+    val box = Move(Piece.Card(card), PositionedLocation(Location.Hand(actor)),
+      PositionedLocation(Location.SharedBank))
+    val event = WalkerStepRecorded("0", WalkerStepPayload.DeltaRecorded(
+      DeltaMeaning.OperationApplied("box")), Vector(box), Vector.empty)
+    val encoded = GameEventWire.encodeEvent("walker", catalog.ref, 0, event)
+      .toOption.get
+    assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))
+    val decoded = GameEventWire.decode(encoded).toOption.get.event
+      .asInstanceOf[WalkerStepRecorded]
+    val replayed = OperationPipeline.run(prepared, decoded.ops,
+      OperationPolicy.Permissive)(Right(_)).toOption.get.state
+    assertEquals(replayed.game.current.temporaryHands(actor), Vector.empty)
+  }
+
   test("ignored-rule diagnostics round trip durable source timing and reason") {
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
       MajorActionKind.Rest, Vector(IgnoredRuleDiagnostic(

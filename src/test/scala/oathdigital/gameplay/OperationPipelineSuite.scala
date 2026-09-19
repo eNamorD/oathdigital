@@ -1,6 +1,8 @@
 package oathdigital.gameplay
 
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.operations._
+import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
 import oathdigital.model._
 import oathdigital.model.TestGameFixtures._
 
@@ -65,5 +67,53 @@ class OperationPipelineSuite extends munit.FunSuite {
       OperationPolicy.Permissive, Vector(restriction))(Right(_)).toOption.get
     assertEquals(run.executed, Vector[CoreOperation](legal))
     assertEquals(run.skipped.map(_.requested), Vector[CoreOperation](blocked))
+  }
+
+  private def holding(card: WorldCardId): (ReadyGame, PlayerId) = {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    (base.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(_ == card)),
+      temporaryHands = current.temporaryHands.updated(actor, Vector(card)))),
+      actor)
+  }
+
+  test("a Vision moved to the shared bank leaves the game and the card " +
+      "inventory allows it") {
+    val card = VisionRules.Conspiracy
+    val (state, actor) = holding(card)
+    val box = Move(Piece.Card(card), PositionedLocation(Location.Hand(actor)),
+      PositionedLocation(Location.SharedBank))
+    val run = OperationPipeline.run(state, Vector(box),
+      OperationPolicy.Permissive)(Right(_)).toOption.get
+    assertEquals(run.executed, Vector[CoreOperation](box))
+    assertEquals(run.state.game.current.temporaryHands(actor), Vector.empty)
+    assert(!CardIndex.from(run.state.game).toOption.get.ids.contains(card))
+    assertEquals(OperationRun.boxed(run.executed), Set[CardId](card))
+  }
+
+  test("a card that is not a Vision cannot be moved to the shared bank") {
+    val base = initialReady
+    val denizen = base.game.current.commonCards.worldDeck.collectFirst {
+      case id: DenizenId => id
+    }.get
+    val (state, actor) = holding(denizen)
+    val box = Move(Piece.Card(denizen), PositionedLocation(Location.Hand(actor)),
+      PositionedLocation(Location.SharedBank))
+    assert(OperationPipeline.run(state, Vector(box),
+      OperationPolicy.Permissive)(Right(_)).isLeft)
+  }
+
+  test("a card that leaves the game without a boxing move still fails the " +
+      "inventory check") {
+    val card = VisionRules.Conspiracy
+    val (state, actor) = holding(card)
+    val vanish: ReadyGame => Either[OathViolation, ReadyGame] = ready =>
+      Right(ready.updateCurrent(current => current.copy(temporaryHands =
+        current.temporaryHands.updated(actor, Vector.empty))))
+    assert(OperationPipeline.run(state, Vector(GainSupply(actor, 1)),
+      OperationPolicy.Permissive)(vanish).isLeft)
   }
 }

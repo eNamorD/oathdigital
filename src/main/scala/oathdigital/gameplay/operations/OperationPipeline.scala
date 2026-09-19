@@ -22,6 +22,15 @@ object OperationRun {
     case value: Replace => value.copy(required = false)
     case other => other
   }
+
+  /** The cards this run took out of the game: every card whose executed move
+    * ends at the shared bank. The pipeline's card-inventory check allows a
+    * card to be missing afterwards only if a declared operation removed it.
+    */
+  def boxed(executed: Vector[CoreOperation]): Set[CardId] = executed.collect {
+    case Move(Piece.Card(id), _, to, _) if to.location == Location.SharedBank =>
+      id
+  }.toSet
 }
 
 /** Sole public orchestrator of an operation batch. It owns the per-run
@@ -38,6 +47,10 @@ object OperationRun {
   * so aggregated whole-batch validation is exposed through [[report]] and the
   * authoritative rejection is the staged `validateOne` per operation — the
   * same first-fail, atomic behavior the executor performed.
+  *
+  * A card may leave the game only through a `Move` to `Location.SharedBank`
+  * that the batch declares; its id is then removed from the expected card
+  * set. Any other change to the card inventory still fails the batch.
   *
   * `requireAll` treats every operation as `required` (a reduced or skipped
   * effect rejects the batch). The walker sets it for the `Move` children of a
@@ -81,7 +94,8 @@ object OperationPipeline {
         // Decision 5: the invariant runs once after the module update, not
         // between operations — intermediate states within a legal batch are
         // not invariant-checked (matching the retired post-`update` check).
-        _ <- OperationStateInvariant.validate(updated, expected)
+        _ <- OperationStateInvariant.validate(updated,
+          expected -- OperationRun.boxed(staged.executed))
           .left.map(_.toViolation)
       } yield staged.copy(state = updated)
   }
