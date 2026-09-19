@@ -53,6 +53,7 @@ object ActionRef {
   case object TakeWealth extends ActionRef { val key = "take-wealth" }
   case object Muster extends ActionRef { val key = "muster" }
   case object Trade extends ActionRef { val key = "trade" }
+  case object Challenge extends ActionRef { val key = "challenge" }
 
   /** Uses one phase power. Parameterized, so `all` cannot list it; the key
     * parses directly.
@@ -78,7 +79,7 @@ object ActionRef {
     * existing path rather than being answered as Take Wealth.
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
-    Recover, Forge, Travel, TakeWealth, Muster, Trade)
+    Recover, Forge, Travel, TakeWealth, Muster, Trade, Challenge)
 
   def usePower(key: String): Option[UsePower] =
     Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))

@@ -1,6 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.challenge.ChallengeProcedure
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
@@ -237,6 +238,20 @@ object WalkerProcedureRegistry {
       build = TradeProcedure.build,
       rebuild = TradeProcedure.rebuild,
       requiresPlayableOption = true),
+
+    /** Challenge. Its first step spends the Supply, so a start runs an
+      * operation before its first decision and cannot use the playable-option
+      * preview gate; the banner decision's own option filter is the gate.
+      */
+    ActionRef.Challenge -> Entry(
+      fallbackKind = Some(MajorActionKind.Challenge),
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(ChallengeProcedure.decisionIds.contains(decisionId))(
+          OathContinue.AwaitingBannerDecision(actor, decision)),
+      build = ChallengeProcedure.build,
+      rebuild = ChallengeProcedure.rebuild),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
