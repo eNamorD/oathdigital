@@ -34,7 +34,7 @@ private[frontend] object ModifierWorkflow {
     * an action it does not recognise.
     */
   private val walkerActions: Set[String] = Set("search", "recover", "forge",
-    "travel", "muster", "trade")
+    "travel", "muster", "trade", "challenge")
 
   private val targetedActions = Map(
     "travel" -> ("travel" -> Map.empty[String, String]),

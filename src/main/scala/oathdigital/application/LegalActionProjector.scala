@@ -2,8 +2,9 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.actions.{BannerRules, CampaignRules, ChallengeRules,
-  ForgeRules}
+import oathdigital.gameplay.actions.{CampaignRules, ForgeRules}
+import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
+  PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -69,6 +70,18 @@ private[application] final class LegalActionProjector(
     TradeProcedure.startOptions(catalog, context.ready, context.active.player,
       resource, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
       .exists(_.outcome.isRight)
+
+  /** Whether Challenge or Place Banner Resource could start now: the same
+    * dry run a start performs, asked of the procedures that own them.
+    */
+  private def challengeStartable(context: ScopedProjectionContext): Boolean =
+    ChallengeProcedure.startable(catalog, context.ready, context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  private def placeBannerResourceStartable(
+      context: ScopedProjectionContext): Boolean =
+    PlaceBannerResourceProcedure.startable(catalog, context.ready,
+      context.active.player, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   /** The control a resource is offered as. A name the client binds a button
     * to is presentation, which is why this mapping is here and the question
@@ -145,11 +158,8 @@ private[application] final class LegalActionProjector(
             "beginTradeFavor"),
           Option.when(tradeStartable(context, TradeResource.Secret))(
             "beginTradeSecret"),
-          Option.when(ChallengeRules.legal(catalog, context.ready,
-            active.player).nonEmpty)("beginChallenge"),
-          Option.when(Banner.all.exists(b => BannerRules.holder(current, b)
-            .contains(active.player) && BannerRules.playerResources(active, b) > 0))(
-            "placeBannerResource"),
+          Option.when(challengeStartable(context))("beginChallenge"),
+          Option.when(placeBannerResourceStartable(context))("placeBannerResource"),
           Option.when(active.advisers.exists(presentation.adviserOrientation(_) ==
             Orientation.FaceDown))("facedownAdviserMinorAction"),
           Option.when(context.activeSite.exists(_.relics.nonEmpty))("peekSiteRelics"),
@@ -247,13 +257,6 @@ private[application] final class LegalActionProjector(
         BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
           defender.value, key), presentation.safeLabel(key))
     }
-    val challenges = ChallengeRules.legal(catalog, ready, player.player).map { banner =>
-      val holder = BannerRules.holder(ready.game.current, banner)
-      BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
-        holder.map(_.value).getOrElse("shared-bank"), banner.key),
-        presentation.safeLabel(banner.key), Vector("1 Supply",
-          s"Currently ${BannerRules.resources(ready.game.current, banner)} resources"))
-    }
     val negotiators = oathdigital.gameplay.actions.Negotiation
       .legalParticipants(ready, player.player).map(candidate =>
         BoardTargetCandidateProjection(BoardTargetRefProjection.Player(candidate.value),
@@ -271,7 +274,6 @@ private[application] final class LegalActionProjector(
           player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
         Option.when(raid.nonEmpty)(1).getOrElse(0), raid.size,
         raid.headOption.map(_.target).toVector),
-      selection("challenge", "Choose a banner to Challenge", challenges),
       selection("negotiation", "Choose one or more co-located negotiators",
         negotiators, minimum = 1, maximum = negotiators.size)).flatten
   }

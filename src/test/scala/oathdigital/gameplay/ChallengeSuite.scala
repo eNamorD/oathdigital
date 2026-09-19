@@ -42,19 +42,6 @@ class ChallengeSuite extends munit.FunSuite {
       Banner.DarkestSecret).isLeft)
   }
 
-  test("legal unclaimed banners project as shared-bank targets and illegal banners do not") {
-    val (base, actor) = ready(resources = 2, favor = 6, faceup = 0,
-      banner = Banner.PeoplesFavor, holder = None)
-    val projection = new GameProjector(catalog).project("challenge-targets",
-      LoadedGame(Ready(base), 9), actor.player)
-    val challenge = projection.boardTargetActions.find(_.actionKind == "challenge").get
-    assertEquals(challenge.candidates.map(_.target), Vector(
-      oathdigital.protocol.projection.BoardTargetRefProjection.PlayerBanner(
-        "shared-bank", "peoples-favor")))
-    assertEquals(projection.banners.map(_.key).toSet,
-      Set("peoples-favor", "darkest-secret"))
-  }
-
   test("People's Favor resolves every least-bank tie leftmost and proceeds to replacement") {
     val (initial, actor) = ready(resources = 2)
     val base = initial.updateCampaign(_.copy(oathkeeperGoal = OathkeeperGoal.ThePeople))

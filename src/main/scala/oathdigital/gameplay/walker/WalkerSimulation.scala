@@ -61,6 +61,20 @@ object WalkerSimulation {
         }
     }
 
+  /** Whether a freshly built tree could start now: the same restriction check
+    * and first walk a start performs, with nothing persisted. A tree that
+    * parks and one that finishes both start; a rejected cost or restriction
+    * does not. This is how a start control learns Supply affordability without
+    * a second rule beside `SpendSupply`.
+    */
+  def starts(tree: Operation, state: ReadyGame, powers: WalkerPowers): Boolean =
+    guarded {
+      ProcedureWalker.restrictionViolations(tree, powers, state,
+        state.game.current.turn.activePlayer)
+        .headOption.toLeft(())
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers))
+    }.isRight
+
   /** Previews a freshly built tree: walks it to its first park and previews
     * that decision. The tree must park before it runs any operation, because
     * the state after an executed prefix is not reported by `advance`.

@@ -103,4 +103,12 @@ class WalkerPreviewSuite extends munit.FunSuite {
       WalkerSimulation.previewParked(ready, action, parked.tree, WalkerPowers.empty),
       WalkerSimulation.preview(action, ready, WalkerPowers.empty))
   }
+
+  test("starts is true for a tree a start would walk and false for one it rejects") {
+    val (ready, actor) = withSupply(2)
+    val spend = Sequence(Vector[Operation](SpendSupply(actor, 1)))
+    assert(WalkerSimulation.starts(spend, ready, WalkerPowers.empty))
+    val unaffordable = Sequence(Vector[Operation](SpendSupply(actor, 3)))
+    assert(!WalkerSimulation.starts(unaffordable, ready, WalkerPowers.empty))
+  }
 }

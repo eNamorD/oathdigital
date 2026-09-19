@@ -3,6 +3,7 @@ package oathdigital.gameplay.actions.challenge
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{OathLifecycle, PowerRuntime}
 import oathdigital.gameplay.actions.BannerRules
+import oathdigital.gameplay.walker.{WalkerPowers, WalkerSimulation}
 import oathdigital.model._
 
 /** Challenge on the walker: spend one Supply, choose a banner, choose how many
@@ -28,6 +29,14 @@ object ChallengeProcedure {
     _ <- Either.cond(legalBanners(state, actor).nonEmpty, (),
       OathViolation.NoPlayableOption(ActionRef.Challenge.key))
   } yield tree(actor)
+
+  /** Whether Challenge could start now: the gates pass and the first walk
+    * (the Supply cost, up to the banner decision) is accepted.
+    */
+  def startable(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
+      powers: WalkerPowers): Boolean =
+    build(catalog, state, actor, Vector.empty)
+      .exists(WalkerSimulation.starts(_, state, powers))
 
   def rebuild(catalog: ExecutableCatalog, state: ReadyGame, actor: PlayerId,
       args: Vector[DecisionOptionRef]): Either[OathViolation, Operation] =

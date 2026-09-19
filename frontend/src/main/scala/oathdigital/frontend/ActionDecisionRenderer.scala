@@ -258,21 +258,7 @@ private[frontend] object ActionDecisionRenderer {
          groups.appendKind("forge", forge)
        }
        EconomyControls.render(value, canControl, groups, submitCommand)
-       if (value.legalControls.contains("placeBannerResource")) {
-         value.banners.filter(_.holderPlayerId.contains(currentPlayerId)).foreach { banner =>
-           val label = dom.document.createElement("label").asInstanceOf[dom.html.Label]
-           label.textContent = s"Add to ${actionLabel(banner.banner)} "
-           val amount = dom.document.createElement("input").asInstanceOf[dom.html.Input]
-           amount.`type` = "number"; amount.min = "1"; amount.value = "1"
-           amount.setAttribute("aria-label", s"Resources to add to ${actionLabel(banner.banner)}")
-           label.appendChild(amount); groups.appendKind("place-banner-resource", label)
-           val place = button("Place resources (0 Supply)", "banner-place-resource")
-           place.disabled = !canControl
-           place.onclick = _ => submitCommand(GameCommand.PlaceBannerResource(
-             banner.banner, amount.value.toInt))
-           groups.appendKind("place-banner-resource", place)
-         }
-       }
+       BannerControls.render(value, canControl, groups, submitCommand)
        value.minorActions.foreach { minor =>
          if (facedownAdviserLaunchCount(minor) == 1) {
            val play = button("Play facedown adviser", "minor-adviser-launch")
