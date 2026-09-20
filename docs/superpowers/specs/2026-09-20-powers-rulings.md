@@ -19,8 +19,8 @@
 
 | Card | Check |
 | --- | --- |
-| 35 Dazzle | Discards every Hearth and Order card at sites in your region, as far as the generic discard rules permit. |
-| 201 Catacombs | Recover modifier, 1 secret placed, relic drawn and placed facedown at the card's site if it has an empty relic slot. Likely mismatch: `applicable` reads only the pawn's site, not ruled sites. |
+| 35 Dazzle | Discards every Hearth and Order denizen and every ruined Hearth or Order edifice at sites in your region, as far as the generic discard rules permit. Intact edifices are locked. |
+| 201 Catacombs | Recover modifier, 1 secret placed, relic drawn and placed facedown at the card's site if it has an empty relic slot. Usable from a card at your site, at a site you rule, or held as an adviser. Recover continues at the pawn's site, and if no relic is recovered as a result, that is permitted. |
 | 237 League Treaty | Off-turn Rest decision by the ruler; moves favor from cards in its region to one bank. |
 
 ## Slice 1: When Played
@@ -111,7 +111,7 @@ Plans are chosen at the plan step, only by the source's ruler, and may pay onto 
 | E20 Cracked Rampart | defender | +1 defense die if this site is a Conquest target. A Raid never targets a site. |
 | 25 Warning Signals | defender | A `Distribute.exactly` over the defender's board and every site they rule, total conserved, each ruled site's minimum 1. It applies when chosen, before the defender's force is recorded. Player defenders only. After the Campaign fully resolves it is discarded, unconditionally. |
 | 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. |
-| R01 Sticky Fire | either | If its user wins, a second prompt at `CampaignLosses`, owned by the winner, asks whether to kill all warbands in the enemy's force. Attacker wins a Conquest: the defender's half-return is cancelled. Attacker wins a Raid: every warband on the defender's board dies, not half. Defender wins: every warband on the attacker's board dies, committed or not. Then the winner gives the loser 1 favor if able, a non-required `Give`. Against bandits it burns the favor. |
+| R01 Sticky Fire | either | If its user wins, a second prompt at `CampaignLosses`, owned by the winner, asks whether to kill all warbands in the enemy's force. Attacker wins a Conquest: the defender's half-return is cancelled. Attacker wins a Raid: every warband on the defender's board dies, not half. Defender wins: every warband on the attacker's board dies, committed or not. Then the winner gives the loser 1 favor if able, a non-required `Give`. Against bandits it burns the favor, as a `Give` to `Location.SharedBank`. |
 
 Persistent modifier, not a plan:
 

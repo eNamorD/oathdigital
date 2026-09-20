@@ -11,7 +11,7 @@ In scope: 30 denizens, 12 edifice faces, 15 relics and the two banner powers Wan
 Out of scope, recorded so they are not lost:
 - **Parked**: the six setup/explore edifices (Great Market, Bandit Market, Great Forge, Broken Forge, Proving Grounds, Empty Grounds). No exploration procedure exists to hook. Marble Fountains, Murky Fountain, Towering and Cracked Rampart, Oaken and Rotting Fortress are in scope.
 - **Deferred**: the card-slot redesign of card play (see [ROADMAP.md](../../ROADMAP.md), Phase 3), the player-chosen sign of Mercenaries, defender-side activation of non-plan modifiers, Empire rulers (Toll Roads, Oaken Fortress) and Peace Envoy.
-- **Verify only**: Dazzle, Catacombs and League Treaty already exist. Slice 0 checks them against the appendix and reports mismatches. It does not rebuild them.
+- **Verify only**: Dazzle, Catacombs and League Treaty already exist. Slice 0 checks them against the appendix and reports mismatches. It does not rebuild them. The one exception is Dazzle, which gains ruled edifices (product ruling).
 
 ## How the rulings were gathered
 
@@ -65,7 +65,7 @@ Known code deviations it removes: `PhasePowerProcedure.accessible` covers ruled-
 
 - `Give` gains `override val required: Boolean = false`. Toll Roads passes `true`. Sticky Fire's "must give if able" stays non-required.
 - `BuryableCard.Vision` (deck: world). Edifices already have `BuryableCard.Edifice`.
-- `giveOrBurn`: giving favor to bandits equals burning it. Used by Sticky Fire and the Toll Roads bandit case.
+- Giving favor to bandits equals burning it, and needs no new operation: a `Give` whose `to` is `Location.SharedBank` does it. Sticky Fire uses that. Toll Roads' bandit case uses a required `PayCost` with a burnt favor.
 - A standard-returns bury helper: `Bury` alone does not return resources. The helper returns favor to the suit bank and secrets to the acting player, facedown, as `Discard.Denizen` does.
 
 ### E6. Card play

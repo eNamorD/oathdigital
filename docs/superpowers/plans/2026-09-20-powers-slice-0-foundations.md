@@ -4,7 +4,7 @@
 
 **Goal:** Land the shared engine changes E1 to E5 that every power in the first powers batch relies on, then check Dazzle, Catacombs and League Treaty against the agreed rulings.
 
-**Architecture:** The engine gains a typed access rule (`PowerAccess`), phase-power costs and card-or-banner sources, a `PayCost` that enforces "place costs only onto empty cards" and settles off-turn payments immediately, and a few operation-vocabulary additions (`Give.required`, `BuryableCard.Vision`, a standard-returns bury helper, `GiveOrBurn`). No new power is implemented in this slice.
+**Architecture:** The engine gains a typed access rule (`PowerAccess`), phase-power costs and card-or-banner sources, a `PayCost` that enforces "place costs only onto empty cards" and settles off-turn payments immediately, and a few operation-vocabulary additions (`Give.required`, `BuryableCard.Vision`, a standard-returns bury helper). No new power is implemented in this slice.
 
 **Tech Stack:** Scala 2.13, sbt via `./sbtw`, munit, the procedure walker (`gameplay.walker`), `OperationPipeline`.
 
@@ -25,7 +25,7 @@
 2. **The empty-card rule lives in the validator, not in Muster/Trade.** `MusterSource` keeps its own earlier check because it produces the friendlier `EconomyCardNotEmpty` rejection and drops the option from the projection. Both use the same definition (`Tokens.isEmpty` on the card), and the validator is now the enforcement point for every `PayCost`.
 3. **The legacy resolver keeps `RuleSourceAccess`.** `ReviewedPowerInspector` (the pre-walker resolver, still used by `PowerRuntime.requireAudited` and `IgnoredRulesRecorded`) is not changed. `PowerAccess` is used by phase powers and by walker contributions. Unifying the two is deferred.
 4. **Catacombs places the relic at the card's own site.** The rulings say "at the card's site". For a site card at a ruled site that differs from the pawn's site, the relic goes to that site. A Catacombs held as an adviser has no site, so it uses the pawn's site.
-5. **`giveOrBurn` takes `Option[PlayerId]`.** `Some(player)` gives, `None` (Bandits) burns. The caller decides what an Empire ruler means (unsupported in this batch).
+5. **No `giveOrBurn` operation.** Giving favor to Bandits equals burning it, and a `Give` whose `to` is `Location.SharedBank` already does that. A power that gives to "the ruler" picks `to` itself (`Location.PlayArea(player)` or `Location.SharedBank`). The spec's `giveOrBurn` helper is dropped. The caller decides what an Empire ruler means (unsupported in this batch).
 
 ## File Structure
 
@@ -33,7 +33,6 @@ Create:
 - `src/main/scala/oathdigital/gameplay/PowerAccess.scala`: E1, the access rule.
 - `src/main/scala/oathdigital/gameplay/operations/PayCostRules.scala`: the empty-card check.
 - `src/main/scala/oathdigital/gameplay/operations/PayCostSettlement.scala`: off-turn settlement.
-- `src/main/scala/oathdigital/gameplay/operations/GiveOrBurn.scala`.
 - `src/main/scala/oathdigital/gameplay/powers/CatalogResolution.scala`: E2.
 - Tests: `PayCostSuite`, `PayCostSettlementSuite`, `PowerAccessSuite`, `PowerKindsCatalogSuite`, `OperationVocabularySuite` (all under `src/test/scala/oathdigital/gameplay/`), `PayCostWireSuite` (`src/test/scala/oathdigital/serialization/`), and Slice 0 conformance additions to the existing Dazzle, Catacombs and League Treaty suites.
 
@@ -53,7 +52,6 @@ Modify:
 - Modify: `src/main/scala/oathdigital/model/CoreOperations.scala` (`Give`, `BuryableCard`, `Bury`, `Discard`)
 - Modify: `src/main/scala/oathdigital/gameplay/operations/OperationPipeline.scala` (`OperationRun.canonical`)
 - Modify: `src/main/scala/oathdigital/serialization/WalkerOperationCodec.scala` (`encodeBuryableCard`, `decodeBuryableCard`)
-- Create: `src/main/scala/oathdigital/gameplay/operations/GiveOrBurn.scala`
 - Test: `src/test/scala/oathdigital/gameplay/OperationVocabularySuite.scala`
 
 **Interfaces:**
@@ -61,7 +59,6 @@ Modify:
   - `Give(piece, giver, from, to, required: Boolean = false)`.
   - `BuryableCard.Vision(id: VisionId)` with `deck = CardDeck.World`.
   - `Bury.standard(card: BuryableCard, from: PositionedLocation, suit: Option[Suit], favor: Int, secrets: Int, actingPlayer: PlayerId): Vector[CoreOperation]`.
-  - `GiveOrBurn.favor(amount: Int, giver: PlayerId, from: Location, recipient: Option[PlayerId], required: Boolean = false): CoreOperation`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -159,15 +156,14 @@ class OperationVocabularySuite extends munit.FunSuite {
       Some(denizen.id))
   }
 
-  test("GiveOrBurn gives to a player and burns for Bandits") {
-    val from = Location.PlayArea(actor)
-    assertEquals(GiveOrBurn.favor(1, actor, from, Some(other)),
-      Give(Piece.Favor(1), actor, from, Location.PlayArea(other)))
-    assertEquals(GiveOrBurn.favor(1, actor, from, Some(other), required = true),
-      Give(Piece.Favor(1), actor, from, Location.PlayArea(other),
-        required = true))
-    assertEquals(GiveOrBurn.favor(1, actor, from, None),
-      Burn.favor(1, PositionedLocation(from)))
+  test("a Give to the shared bank moves the favor out of the giver's hands, " +
+      "which is how giving to Bandits is modelled") {
+    val funded = base.updateCurrent(_.copy(players = current.players.map(p =>
+      if (p.player == actor) p.copy(board = p.board.copy(favor = 2)) else p)))
+    val given = run(funded, Give(Piece.Favor(1), actor,
+      Location.PlayArea(actor), Location.SharedBank)).toOption.get
+    assertEquals(given.state.game.current.players.find(_.player == actor).get
+      .board.favor, 1)
   }
 }
 ```
@@ -175,7 +171,7 @@ class OperationVocabularySuite extends munit.FunSuite {
 - [ ] **Step 2: Run the suite to confirm it fails to compile**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.OperationVocabularySuite"`
-Expected: compile errors for `Give(... required)`, `BuryableCard.Vision`, `Bury.standard`, `GiveOrBurn`.
+Expected: compile errors for `Give(... required)`, `BuryableCard.Vision`, `Bury.standard`.
 
 - [ ] **Step 3: Implement in `CoreOperations.scala`**
 
@@ -247,41 +243,16 @@ Mirror the exact shape of the neighbouring `BuryableCard.Edifice` case (read it 
     case "vision" => Right(BuryableCard.Vision(VisionId(value("id").str)))
 ```
 
-- [ ] **Step 5: Create `GiveOrBurn.scala`**
-
-```scala
-package oathdigital.gameplay.operations
-
-import oathdigital.model._
-
-/** Giving favor to Bandits is burning it (product ruling). A power that
-  * gives to "the ruler" builds its operation here, so a bandit ruler is
-  * handled in one place. `recipient` is `None` for Bandits. Empire rulers are
-  * unsupported: the caller decides what to do before it calls this.
-  *
-  * A burn has no `required` flag, so `required` applies only to the give.
-  */
-object GiveOrBurn {
-  def favor(amount: Int, giver: PlayerId, from: Location,
-      recipient: Option[PlayerId], required: Boolean = false): CoreOperation =
-    recipient match {
-      case Some(player) => Give(Piece.Favor(amount), giver, from,
-        Location.PlayArea(player), required)
-      case None => Burn.favor(amount, PositionedLocation(from))
-    }
-}
-```
-
-- [ ] **Step 6: Run the suite and the neighbouring suites**
+- [ ] **Step 5: Run the suite and the neighbouring suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.OperationVocabularySuite oathdigital.gameplay.CoreOperationsSuite oathdigital.gameplay.OperationPipelineSuite oathdigital.serialization.GameEventWireSuite"`
 Expected: PASS. If the Vision bury test fails on a card-index or location rule, read `OperationValidator.cardViolations` and `OperationStateMutation` (`case bury: Bury`) and fix the vision case there. Do not weaken the test.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/main src/test
-git commit -m "feat: add Give.required, BuryableCard.Vision, Bury.standard and GiveOrBurn"
+git commit -m "feat: add Give.required, BuryableCard.Vision and Bury.standard"
 ```
 
 ---
@@ -1697,15 +1668,93 @@ git commit -m "feat: derive modifier and persistent-rule resolution from the cat
 
 ### Task 7: Verify Dazzle, Catacombs and League Treaty
 
-The design says slice 0 checks these three against the rulings and reports mismatches. It does not rebuild them. Write conformance tests for the clear rulings. Put anything ambiguous in the report for the product owner.
+The design says slice 0 checks these three against the rulings and reports mismatches. It does not rebuild them. The product owner has since ruled on the two open questions:
+- **Dazzle discards ruined edifices** (Hearth and Order, in the actor's region) as well as denizens. This is a small fix to `Dazzle`, done in Step 1. Intact edifices are locked and stay.
+- **Catacombs runs as written.** When the card is at a ruled site other than the pawn's, the relic goes to Catacombs' site and Recover continues at the pawn's site. If no relic ends up recovered, that is permitted. It needs no change.
+
+Write conformance tests for the rulings. A test that fails for any other reason is a finding to report.
 
 **Files:**
+- Modify: `src/main/scala/oathdigital/gameplay/powers/whenplayed/Dazzle.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/whenplayed/DazzleSuite.scala`, `src/test/scala/oathdigital/gameplay/CatacombsContributionSuite.scala`, `src/test/scala/oathdigital/gameplay/powers/rest/LeagueTreatySuite.scala`
 - Modify: `docs/superpowers/specs/2026-09-20-powers-rulings.md` (append a results section)
 
-- [ ] **Step 1: Dazzle, suits and regions**
+- [ ] **Step 1: Dazzle, ruined edifices (fix), suits and regions**
 
-Add to `DazzleSuite`:
+First write the failing test in `DazzleSuite`:
+
+```scala
+  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val dazzle = DenizenId(catalog.denizens.find(_.powers.exists(
+      _.id == Dazzle.id)).get.id.value)
+    val home = current.players.find(_.player == actor).get.pawnSite.get
+    def pick(suit: Suit, taken: Set[EdificeId]): EdificeId =
+      current.commonCards.edificeDeck.find(id => !taken(id) &&
+        catalog.suitOf(id).contains(suit)).get
+    val ruinedHearth = pick(Suit.Hearth, Set.empty)
+    val intactHearth = pick(Suit.Hearth, Set(ruinedHearth))
+    val ruinedBeast = pick(Suit.Beast, Set.empty)
+    val placed = Set(ruinedHearth, intactHearth, ruinedBeast)
+    val prepared = base.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(
+        worldDeck = c.commonCards.worldDeck.filterNot(_ == dazzle),
+        edificeDeck = c.commonCards.edificeDeck.filterNot(placed)),
+      players = c.players.map(p => if (p.player != actor) p else
+        p.copy(advisers = p.advisers :+ DenizenState(dazzle,
+          Orientation.FaceUp, Tokens.empty))),
+      map = c.map.copy(sites = c.map.sites.updated(home,
+        c.map.sites(home).copy(denizens = c.map.sites(home).denizens ++ Vector(
+          EdificeState(ruinedHearth, EdificeSide.Ruined, Tokens.empty),
+          EdificeState(intactHearth, EdificeSide.Intact, Tokens.empty),
+          EdificeState(ruinedBeast, EdificeSide.Ruined, Tokens.empty)))))))
+    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val finished = ProcedureWalker.advance(prepared, hook, None,
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
+      .asInstanceOf[WalkerOutcome.Finished]
+    val after = finished.treeless.game.current
+    val remaining = after.map.sites(home).denizens.collect {
+      case e: EdificeState => e.id }
+    assert(!remaining.contains(ruinedHearth), "a ruined Hearth edifice is discarded")
+    assert(remaining.contains(intactHearth), "an intact edifice is locked")
+    assert(remaining.contains(ruinedBeast), "another suit is not discarded")
+    assertEquals(after.commonCards.edificeDeck.lastOption, Some(ruinedHearth))
+  }
+```
+
+Run it: `./sbtw "testOnly oathdigital.gameplay.powers.whenplayed.DazzleSuite"`. Expected: this test fails, because `Dazzle` collects denizens only.
+
+Then fix `Dazzle.effects`. Replace the `candidates` value and the fold below it with one pass over each site's cards, in card order, emitting a `Discard.Denizen` for a denizen and a `Discard.RuinedEdifice` for a ruined edifice, both only for Hearth and Order:
+
+```scala
+      val candidates = current.map.inPlay.filter(site =>
+        current.map.regionOf(site).contains(origin)).flatMap { siteId =>
+        current.map.sites.get(siteId).toVector.flatMap(_.denizens.map(siteId -> _))
+      }
+      candidates.foldLeft[Either[OathViolation, Vector[CoreOperation]]](
+        Right(Vector.empty)) { case (acc, (siteId, card)) => for {
+        operations <- acc
+        suit <- catalog.suitOf(card.id).toRight(OathViolation.UnknownWorldCard(card.id))
+      } yield if (suit != Suit.Hearth && suit != Suit.Order) operations
+      else card match {
+        case denizen: DenizenState => operations :+ Discard.Denizen(denizen.id,
+          PositionedLocation(Location.Site(siteId)), destination, suit,
+          denizen.tokens.favor, denizen.tokens.secrets, actor)
+        case edifice: EdificeState if edifice.side == EdificeSide.Ruined =>
+          operations :+ Discard.RuinedEdifice(edifice.id,
+            PositionedLocation(Location.Site(siteId)), suit,
+            edifice.tokens.favor, edifice.tokens.secrets, actor)
+        case _ => operations
+      } }
+```
+
+Keep the `DiscardRestrictions` on the `BuildOps`, which already covers `Discard.RuinedEdifice`. Update the class comment to say Dazzle discards Hearth and Order denizens and ruined edifices, and that intact edifices are locked. `UnknownWorldCard` takes a world card id. If it does not accept an edifice id, add `OathViolation.UnknownEdifice(id)` or reuse the nearest existing violation for a missing catalog card, and say which in the commit message.
+
+Re-run the suite. Expected: PASS, including the three existing Dazzle tests.
+
+Then add the suit and region test to `DazzleSuite`:
 
 ```scala
   test("Dazzle leaves other suits and other regions alone") {
@@ -1852,10 +1901,11 @@ Expected: PASS. A failing test is a finding. Do not weaken the assertion. If the
 
 - [ ] **Step 5: Append the results to the rulings doc**
 
-Append to the end of the "Slice 0: verify only" section in `docs/superpowers/specs/2026-09-20-powers-rulings.md` a "Slice 0 verification results" subsection with one line per card. Each line states matches the ruling, or mismatches with what differs. Include these two observations even if every test passes, because the rulings did not decide them:
+In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, update the "Slice 0: verify only" table:
+- **Dazzle:** "Discards every Hearth and Order denizen and every ruined Hearth or Order edifice at sites in your region, as far as the generic discard rules permit. Intact edifices are locked."
+- **Catacombs:** replace the "Likely mismatch" sentence with "Usable from a card at your site, at a site you rule, or held as an adviser. The relic goes to the card's own site (the pawn's site for an adviser), and Recover continues at the pawn's site. If that leaves no relic recovered, that is permitted."
 
-- **Dazzle and ruined edifices.** The rule text says "discard all Hearth and Order cards at sites in your region". The implementation discards denizens only. A ruined Hearth or Order edifice is left in place. Ask the product owner whether ruined edifices count. If they do, Dazzle also emits `Discard.RuinedEdifice`.
-- **Catacombs away from the pawn.** With Catacombs at a ruled site other than the pawn's, the relic and secret go to the Catacombs site and the Recover continues at the pawn's site. The relic placed there cannot be recovered by this action. Ask whether the modifier should instead require the pawn to be at Catacombs' site.
+Then append a "Slice 0 verification results" subsection with one line per card. Each line states that the power matches its ruling, or what differs. Also update the design doc's "Verify only" bullet to say Dazzle gained ruined edifices.
 
 - [ ] **Step 6: Commit**
 
@@ -1917,8 +1967,8 @@ Use superpowers:finishing-a-development-branch to verify tests and offer merge, 
 | E2 activation from the catalog | 6 (refined for When Played) |
 | E3 `PhasePower.cost`, `payOnSource`, `usedPowers`, banner source | 5 (`Costs.onCard` is the `payOnSource` helper, added in 2) |
 | E4 empty-card rule, `intoOccupied`, `matchingBank`, off-turn settlement | 2, 3 |
-| E5 `Give.required`, `BuryableCard.Vision`, `giveOrBurn`, standard-returns bury | 1 |
-| Verify Dazzle, Catacombs, League Treaty | 7 |
+| E5 `Give.required`, `BuryableCard.Vision`, standard-returns bury (`giveOrBurn` dropped: a `Give` to `Location.SharedBank` burns) | 1 |
+| Verify Dazzle (plus ruined edifices), Catacombs, League Treaty | 7 |
 | Verify at plan time: shared-bank secrets unbounded | Task 3's off-turn tests and the Task 1 bury test run against the validator. `quantity(Secrets, SharedBank)` is `Unbounded` (`OperationStateAdapter`), so this is confirmed. |
 | Verify at plan time: where Muster and Trade enforce the empty denizen | Decision 2: `MusterSource` (lines 25 and 42). |
 | Verify at plan time: fingerprints and window keys (E6) | Slice 2. |
