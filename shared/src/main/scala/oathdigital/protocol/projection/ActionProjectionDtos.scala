@@ -142,7 +142,8 @@ final case class DecisionQueryProjection(
     heading: Option[String] = None,
     confirmLabel: Option[String] = None,
     slots: Vector[DecisionSlotProjection] = Vector.empty,
-    total: Option[Int] = None,
+    minTotal: Option[Int] = None,
+    maxTotal: Option[Int] = None,
     minimum: Option[Int] = None,
     maximum: Option[Int] = None,
     deal: Option[NegotiationDealProjection] = None)

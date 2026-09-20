@@ -127,7 +127,7 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
 
   test("a parked distribution projects its slots, bounds, suggestions and total") {
     val (context, actor) = parked(ActionRef.Recover)
-    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(
+    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute.exactly(
       Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
       total = 2, heading = Some("League Treaty"), confirmLabel = "Move favor")))
@@ -138,9 +138,21 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
     assertEquals(query.slots.map(s => (s.option.kind, s.option.id, s.minimum,
       s.maximum, s.suggested)), Vector(("favor-bank", "arcane", 0, 2, Some(2)),
       ("favor-bank", "nomad", 0, 6, Some(0))))
-    assertEquals(query.total, Some(2))
+    assertEquals(query.minTotal -> query.maxTotal, Some(2) -> Some(2))
     assertEquals(query.heading, Some("League Treaty"))
     assertEquals(query.confirmLabel, Some("Move favor"))
+  }
+
+  test("a ranged distribution projects both totals") {
+    val (context, actor) = parked(ActionRef.Recover)
+    val tree = Sequence(Decide("test.distribute", actor, DecisionQuery.Distribute(
+      Vector(DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 3, None),
+        DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 3, None)),
+      minTotal = 0, maxTotal = 3, heading = Some("Place force"),
+      confirmLabel = "Place")))
+    val query = projectorFor(tree).project(context).flatMap(_.query)
+      .getOrElse(fail("a parked ranged distribution must project"))
+    assertEquals(query.minTotal -> query.maxTotal, Some(0) -> Some(3))
   }
 
   test("a parked choose-many projects its options and count") {

@@ -67,7 +67,7 @@ class WalkerPreviewSuite extends munit.FunSuite {
         DecisionOption.Button(cheap, "Cheap")))))), ready,
       WalkerPowers.empty).isLeft)
     val distribute = Sequence(Vector[Operation](Decide("split", actor,
-      DecisionQuery.Distribute(Vector(
+      DecisionQuery.Distribute.exactly(Vector(
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Arcane), 0, 2, Some(2)),
         DistributeSlot(DecisionOptionRef.FavorBank(Suit.Nomad), 0, 6, Some(0))),
         total = 2, heading = Some("League Treaty"), confirmLabel = "Move"))))

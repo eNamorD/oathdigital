@@ -11,16 +11,19 @@ private[frontend] final case class DistributeSlotBounds(item: String,
   *
   * Every move is clamped twice: to the slot's own bounds, and, when raising,
   * to what is left of the total. So no sequence of clicks builds an
-  * over-allocated draft, and `canConfirm` is exactly `remaining == 0`.
+  * over-allocated draft, and `canConfirm` is exactly `minTotal <= allocated <= maxTotal`.
   */
 private[frontend] final case class DistributeDecisionState(
     slots: Vector[DistributeSlotBounds],
-    total: Int,
+    minTotal: Int,
+    maxTotal: Int,
     amounts: Map[String, Int]
 ) {
   def amount(item: String): Int = amounts.getOrElse(item, 0)
 
-  def remaining: Int = total - slots.map(slot => amount(slot.item)).sum
+  def allocated: Int = slots.map(slot => amount(slot.item)).sum
+
+  def remaining: Int = maxTotal - allocated
 
   def increment(item: String): DistributeDecisionState = raise(item, 1)
 
@@ -32,7 +35,7 @@ private[frontend] final case class DistributeDecisionState(
   /** Lowers a slot to its minimum. */
   def drain(item: String): DistributeDecisionState = lower(item, Int.MaxValue)
 
-  def canConfirm: Boolean = remaining == 0
+  def canConfirm: Boolean = allocated >= minTotal && allocated <= maxTotal
 
   private def raise(item: String, by: Int): DistributeDecisionState =
     slot(item).fold(this) { bounds =>
@@ -56,9 +59,9 @@ private[frontend] final case class DistributeDecisionState(
 
 private[frontend] object DistributeDecisionState {
   /** Opens at `suggested` when the query carries one, else at the minimums. */
-  def opened(slots: Vector[DistributeSlotBounds], total: Int,
+  def opened(slots: Vector[DistributeSlotBounds], minTotal: Int, maxTotal: Int,
       suggested: Option[Vector[Int]]): DistributeDecisionState =
-    DistributeDecisionState(slots, total, slots.map(_.item).zip(
+    DistributeDecisionState(slots, minTotal, maxTotal, slots.map(_.item).zip(
       suggested.filter(_.size == slots.size)
         .getOrElse(slots.map(_.minimum))).toMap)
 }
@@ -101,7 +104,8 @@ private[frontend] object WalkerDistributeDraft {
           .getOrElse(WalkerDistributeDraft(context, decisionId, query,
             DistributeDecisionState.opened(query.slots.map(slot =>
               DistributeSlotBounds(WalkerPartitionDraft.itemId(slot.option),
-                slot.minimum, slot.maximum)), query.total.getOrElse(0),
+                slot.minimum, slot.maximum)), query.minTotal.getOrElse(0),
+                query.maxTotal.getOrElse(0),
               Option.when(query.slots.nonEmpty &&
                 query.slots.forall(_.suggested.nonEmpty))(
                 query.slots.flatMap(_.suggested)))))

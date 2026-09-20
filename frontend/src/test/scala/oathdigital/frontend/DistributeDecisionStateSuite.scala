@@ -9,7 +9,7 @@ class DistributeDecisionStateSuite extends munit.FunSuite {
     DistributeSlotBounds("arcane", 0, 2),
     DistributeSlotBounds("discord", 0, 2),
     DistributeSlotBounds("nomad", 1, 6))
-  private val atMinimums = DistributeDecisionState.opened(slots, 5, None)
+  private val atMinimums = DistributeDecisionState.opened(slots, 5, 5, None)
 
   test("a draft with no suggestions opens at the minimums") {
     assertEquals(slots.map(s => atMinimums.amount(s.item)), Vector(0, 0, 1))
@@ -18,7 +18,7 @@ class DistributeDecisionStateSuite extends munit.FunSuite {
   }
 
   test("a draft with suggestions opens at them") {
-    val suggested = DistributeDecisionState.opened(slots, 5,
+    val suggested = DistributeDecisionState.opened(slots, 5, 5,
       Some(Vector(2, 2, 1)))
     assertEquals(slots.map(s => suggested.amount(s.item)), Vector(2, 2, 1))
     assert(suggested.canConfirm)
@@ -64,5 +64,18 @@ class DistributeDecisionStateSuite extends munit.FunSuite {
   test("confirmation is enabled exactly when nothing remains") {
     assert(!atMinimums.increment("arcane").canConfirm)
     assert(atMinimums.fill("arcane").fill("discord").canConfirm)
+  }
+
+  test("a range confirms at any allocation between its minimum and maximum") {
+    val two = Vector(DistributeSlotBounds("a", 0, 3), DistributeSlotBounds("b", 0, 3))
+    val open = DistributeDecisionState.opened(two, 1, 3, None)
+    assert(!open.canConfirm)
+    val one = open.increment("a")
+    assert(one.canConfirm)
+    assertEquals(one.remaining, 2)
+    val full = one.fill("b")
+    assertEquals(full.allocated, 3)
+    assert(full.canConfirm)
+    assertEquals(full.increment("a"), full)
   }
 }

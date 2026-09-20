@@ -79,7 +79,7 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
   }
 
   private def query(treaty: Treaty, bank: Suit): DecisionQuery.Distribute =
-    DecisionQuery.Distribute(
+    DecisionQuery.Distribute.exactly(
       treaty.suits.filter(_ != bank).map { suit =>
         val maximum = treaty.favorOf(suit)
         DistributeSlot(DecisionOptionRef.FavorBank(suit), 0, maximum,

@@ -227,7 +227,8 @@ private[projection] object ActionProjectionCodec {
     "slots" -> encoded(value.slots)(slot => ujson.Obj(
       "option" -> encodeOptionRow(slot.option), "minimum" -> slot.minimum,
       "maximum" -> slot.maximum, "suggested" -> intOption(slot.suggested))),
-    "total" -> intOption(value.total),
+    "minTotal" -> intOption(value.minTotal),
+    "maxTotal" -> intOption(value.maxTotal),
     "minimum" -> intOption(value.minimum),
     "maximum" -> intOption(value.maximum),
     "deal" -> option(value.deal)(encodeDeal))
@@ -235,7 +236,7 @@ private[projection] object ActionProjectionCodec {
       : Result[DecisionQueryProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("form", "options", "sections", "heading",
-      "confirmLabel", "slots", "total", "minimum", "maximum", "deal"), path)
+      "confirmLabel", "slots", "minTotal", "maxTotal", "minimum", "maximum", "deal"), path)
     form <- string(value, "form", path)
     optionRaws <- array(value, "options", path)
     options <- traverse(optionRaws, s"$path.options")(decodeOptionRow)
@@ -259,12 +260,13 @@ private[projection] object ActionProjectionCodec {
       maximum <- int(row, "maximum", child)
       suggested <- optionalInt(row, "suggested", child)
     } yield DecisionSlotProjection(option, minimum, maximum, suggested) }
-    total <- optionalInt(value, "total", path)
+    minTotal <- optionalInt(value, "minTotal", path)
+    maxTotal <- optionalInt(value, "maxTotal", path)
     minimum <- optionalInt(value, "minimum", path)
     maximum <- optionalInt(value, "maximum", path)
     deal <- optionalAbsent(value, "deal", path)(decodeDeal)
   } yield DecisionQueryProjection(form, options, sections, heading,
-    confirmLabel, slots, total, minimum, maximum, deal)
+    confirmLabel, slots, minTotal, maxTotal, minimum, maximum, deal)
 
   private def encodeOptionRow(row: DecisionOptionProjection): ujson.Value =
     ujson.Obj("kind" -> row.kind, "id" -> row.id, "label" -> row.label,

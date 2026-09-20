@@ -236,7 +236,8 @@ private[application] final class WalkerDecisionProjector(
           sections.map(section => DecisionSectionProjection(section.key,
             section.label, section.minRequired, section.maxAllowed)),
           heading = heading, confirmLabel = confirmLabel))
-      case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
+      case DecisionQuery.Distribute(slots, minTotal, maxTotal, heading,
+          confirmLabel) =>
         described(slots.flatMap(slot => DecisionOption.forRef(slot.ref)))
           .filter(_.size == slots.size).map(options =>
             DecisionQueryProjection("distribute", Vector.empty,
@@ -244,7 +245,7 @@ private[application] final class WalkerDecisionProjector(
               slots = slots.zip(options).map { case (slot, option) =>
                 DecisionSlotProjection(option, slot.minimum, slot.maximum,
                   slot.suggested) },
-              total = Some(total)))
+              minTotal = Some(minTotal), maxTotal = Some(maxTotal)))
     }
   }
 

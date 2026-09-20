@@ -277,15 +277,24 @@ object DecisionQuery {
       options: Vector[DecisionOption], heading: Option[String] = None,
       confirmLabel: Option[String] = None) extends DecisionQuery
 
-  /** Spread exactly `total` across the slots, each within its own bounds.
+  /** Spread an amount across the slots, each within its own bounds, so that
+    * the amounts sum to between `minTotal` and `maxTotal` inclusive. An exact
+    * distribution sets both to one value ([[Distribute.exactly]]).
     *
     * Both labels are required. `heading` keeps the `Option` type that
     * [[DecisionQuery.heading]] declares, and `DecisionQueries.wellFormed`
     * rejects `None` or blank. A distribution has a confirm step, so it
     * always names its confirm control.
     */
-  final case class Distribute(slots: Vector[DistributeSlot], total: Int,
-      heading: Option[String], confirmLabel: String) extends DecisionQuery
+  final case class Distribute(slots: Vector[DistributeSlot], minTotal: Int,
+      maxTotal: Int, heading: Option[String], confirmLabel: String)
+      extends DecisionQuery
+  object Distribute {
+    /** A distribution whose amounts must sum to exactly `total`. */
+    def exactly(slots: Vector[DistributeSlot], total: Int,
+        heading: Option[String], confirmLabel: String): Distribute =
+      Distribute(slots, total, total, heading, confirmLabel)
+  }
 
   /** A negotiation deal, as a snapshot the action rebuilds from live state and
     * the recorded answers on every command: who is in it, everyone's current

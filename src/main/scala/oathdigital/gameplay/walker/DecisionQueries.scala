@@ -149,7 +149,8 @@ object DecisionQueries {
             "options, leaving nothing to decide")
       } yield ()
 
-    case DecisionQuery.Distribute(slots, total, heading, confirmLabel) =>
+    case DecisionQuery.Distribute(slots, minTotal, maxTotal, heading,
+        confirmLabel) =>
       val refs = slots.map(_.ref)
       val minimums = slots.map(_.minimum.toLong).sum
       val maximums = slots.map(_.maximum.toLong).sum
@@ -174,18 +175,19 @@ object DecisionQueries {
             s"with bounds ${s.minimum}..${s.maximum}")
           case None => Right(())
         }
-        _ <- require(minimums <= total && total <= maximums, decisionId,
+        _ <- require(minTotal >= 0 && minTotal <= maxTotal &&
+          minimums <= maxTotal && minTotal <= maximums, decisionId,
           "declares a total no answer can meet")
-        _ <- require(minimums != total, decisionId, "declares minimums that " +
-          "already make its total, leaving nothing to decide")
-        _ <- require(maximums != total, decisionId, "declares maximums that " +
-          "already make its total, leaving nothing to decide")
+        _ <- require(minimums != maxTotal, decisionId, "declares minimums " +
+          "that already make its total, leaving nothing to decide")
+        _ <- require(maximums != minTotal, decisionId, "declares maximums " +
+          "that already make its total, leaving nothing to decide")
         _ <- require(variableSlots >= 2, decisionId,
           "declares fewer than two variable slots, leaving nothing to decide")
         _ <- require(suggested.isEmpty || suggested.size == slots.size,
           decisionId, "suggests amounts for some slots but not all")
         _ <- if (suggested.isEmpty) Right(())
-          else acceptsDistribution(decisionId, slots, total,
+          else acceptsDistribution(decisionId, slots, minTotal, maxTotal,
               slots.zip(suggested).map { case (s, n) => DistributeAmount(s.ref, n) })
             .fold(_ => reject(decisionId,
               "suggests a distribution it would not accept"), Right(_))
@@ -245,9 +247,9 @@ object DecisionQueries {
         reject(decisionId, "expects a partition answer")
     }
 
-    case DecisionQuery.Distribute(slots, total, _, _) => answer match {
+    case DecisionQuery.Distribute(slots, minTotal, maxTotal, _, _) => answer match {
       case DecisionAnswer.DistributeAnswer(amounts) =>
-        acceptsDistribution(decisionId, slots, total, amounts)
+        acceptsDistribution(decisionId, slots, minTotal, maxTotal, amounts)
       case _ =>
         reject(decisionId, "expects a distribution answer")
     }
@@ -268,10 +270,11 @@ object DecisionQueries {
   }
 
   private def acceptsDistribution(decisionId: String,
-      slots: Vector[DistributeSlot], total: Int,
+      slots: Vector[DistributeSlot], minTotal: Int, maxTotal: Int,
       amounts: Vector[DistributeAmount]): Either[OathViolation, Unit] = {
     val declared = slots.map(_.ref)
     val named = amounts.map(_.ref)
+    val sum = amounts.map(_.amount.toLong).sum
     for {
       _ <- require(named.forall(declared.contains), decisionId,
         "does not offer a distributed option")
@@ -285,8 +288,11 @@ object DecisionQueries {
           s"outside ${s.minimum}..${s.maximum}")
         case None => Right(())
       }
-      _ <- require(amounts.map(_.amount.toLong).sum == total.toLong,
-        decisionId, s"distributes an amount other than its total of $total")
+      _ <- require(sum >= minTotal.toLong && sum <= maxTotal.toLong,
+        decisionId,
+        if (minTotal == maxTotal)
+          s"distributes an amount other than its total of $maxTotal"
+        else s"distributes an amount outside $minTotal..$maxTotal")
     } yield ()
   }
 

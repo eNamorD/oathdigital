@@ -328,7 +328,10 @@ class DecisionQuerySuite extends munit.FunSuite {
   private def dist(slots: Vector[DistributeSlot], total: Int,
       heading: Option[String] = Some("League Treaty"),
       confirm: String = "Move favor") =
-    DecisionQuery.Distribute(slots, total, heading, confirm)
+    DecisionQuery.Distribute.exactly(slots, total, heading, confirm)
+
+  private def ranged(slots: Vector[DistributeSlot], min: Int, max: Int) =
+    DecisionQuery.Distribute(slots, min, max, Some("Place force"), "Place")
 
   /** The spec's worked example: three source suits of two favor each, and a
     * destination that may take all six.
@@ -386,6 +389,47 @@ class DecisionQuerySuite extends munit.FunSuite {
     assertEquals(DecisionQueries.accepts(decisionId, distribute, amounts(
       Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2, Suit.Nomad -> 3), anyone),
       Right(()))
+  }
+
+  test("a ranged distribution is well formed when its range is reachable and open") {
+    val two = Vector(slot(Suit.Arcane, 0, 3), slot(Suit.Nomad, 0, 3))
+    assertEquals(DecisionQueries.wellFormed(decisionId, ranged(two, 0, 3)),
+      Right(()))
+    assertEquals(DecisionQueries.wellFormed(decisionId, ranged(two, 1, 4)),
+      Right(()))
+  }
+
+  test("a malformed range names its own defect") {
+    val two = Vector(slot(Suit.Arcane, 0, 3), slot(Suit.Nomad, 0, 3))
+    val cases = Vector(
+      ranged(two, 4, 3) -> "declares a total no answer can meet",
+      ranged(two, -1, 3) -> "declares a total no answer can meet",
+      ranged(two, 7, 8) -> "declares a total no answer can meet",
+      ranged(Vector(slot(Suit.Arcane, 2, 3), slot(Suit.Nomad, 1, 3)), 0, 3) ->
+        "declares minimums that already make its total, leaving nothing to decide",
+      ranged(two, 6, 9) ->
+        "declares maximums that already make its total, leaving nothing to decide")
+    cases.foreach { case (query, detail) =>
+      assertEquals(DecisionQueries.wellFormed(decisionId, query),
+        violation(detail), detail)
+    }
+  }
+
+  test("a ranged distribution accepts any sum inside its range and no other") {
+    val query = ranged(Vector(slot(Suit.Arcane, 0, 3), slot(Suit.Nomad, 0, 3)),
+      0, 3)
+    Vector(0 -> 0, 1 -> 0, 2 -> 1, 3 -> 0).foreach { case (a, n) =>
+      assertEquals(DecisionQueries.accepts(decisionId, query,
+        amounts(Suit.Arcane -> a, Suit.Nomad -> n), anyone), Right(()))
+    }
+    assertEquals(DecisionQueries.accepts(decisionId, query,
+      amounts(Suit.Arcane -> 2, Suit.Nomad -> 2), anyone),
+      violation("distributes an amount outside 0..3"))
+    val floor = ranged(Vector(slot(Suit.Arcane, 0, 3), slot(Suit.Nomad, 0, 3)),
+      2, 4)
+    assertEquals(DecisionQueries.accepts(decisionId, floor,
+      amounts(Suit.Arcane -> 1, Suit.Nomad -> 0), anyone),
+      violation("distributes an amount outside 2..4"))
   }
 
   test("a mismatched distribution answer names its own defect") {

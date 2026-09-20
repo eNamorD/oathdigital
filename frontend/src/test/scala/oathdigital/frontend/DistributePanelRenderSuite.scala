@@ -15,7 +15,7 @@ class DistributePanelRenderSuite extends munit.FunSuite {
     heading = Some("League Treaty"), confirmLabel = Some("Move favor"),
     slots = Vector(DecisionSlotState(bank("arcane", "Arcane"), 0, 2, Some(2)),
       DecisionSlotState(bank("nomad", "Nomad"), 0, 4, Some(0))),
-    total = Some(2))
+    minTotal = Some(2), maxTotal = Some(2))
   private val parked = WalkerDecisionState("begin-rest",
     "rest.league-treaty.distribution", "decide", query = Some(query))
 
@@ -100,5 +100,29 @@ class DistributePanelRenderSuite extends munit.FunSuite {
     assert(one(panel, """[data-option-id="favor-bank:nomad"] .distribute-increment""")
       .asInstanceOf[dom.html.Button].disabled)
     assert(one(panel, ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
+  }
+
+  private val rangedQuery = query.copy(slots = Vector(
+    DecisionSlotState(bank("arcane", "Arcane"), 0, 3, None),
+    DecisionSlotState(bank("nomad", "Nomad"), 0, 3, None)),
+    minTotal = Some(1), maxTotal = Some(3))
+  private val rangedParked = parked.copy(query = Some(rangedQuery))
+
+  test("a range shows its minimum and confirms anywhere inside it") {
+    val ui = new RecordingView("game", "red")
+    ui.currentWalkerDistribution = WalkerDistributeDraft.reconcile(None,
+      BoardSelectionContext("game", "red", 9), Some(rangedParked))
+    val ranged = projection.copy(walkerDecision = Some(rangedParked))
+    def draw(): dom.Element = {
+      val panel = dom.document.createElement("div")
+      DistributePanelRenderer.render(ranged, presentation, true, panel, ui)
+      panel
+    }
+    assertEquals(one(draw(), ".distribute-minimum").textContent,
+      "At least 1 must be placed")
+    assert(one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
+    click(one(draw(), """[data-option-id="favor-bank:arcane"] .distribute-increment"""))
+    assert(!one(draw(), ".distribute-confirm").asInstanceOf[dom.html.Button].disabled)
+    assertEquals(one(draw(), ".distribute-remaining").textContent, "Remaining: 2")
   }
 }
