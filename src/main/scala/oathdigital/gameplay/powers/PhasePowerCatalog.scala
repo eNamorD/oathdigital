@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.gameplay.powers.action.{Elders, MagicWaterskin, WaysideInn}
 import oathdigital.gameplay.powers.rest.SilverTongue
+import oathdigital.gameplay.powers.wake.MarbleFountains
 
 /** The production phase powers, beside [[WalkerPowerCatalog]]. A power whose
   * card is absent from `catalog` is omitted.
@@ -11,5 +12,5 @@ import oathdigital.gameplay.powers.rest.SilverTongue
 object PhasePowerCatalog {
   def default(catalog: ExecutableCatalog): PhasePowers =
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
-      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin))
+      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains))
 }
