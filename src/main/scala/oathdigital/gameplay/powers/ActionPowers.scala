@@ -19,7 +19,7 @@ object ActionPowers {
   object Blackmail extends ReviewedPower("denizen.blackmail", None, played)
   object Dissent extends ReviewedPower("denizen.dissent", None, played)
   object FalseProphet extends ReviewedPower("denizen.false-prophet", None, played)
-  object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, played)
+  object FamilyHeirloom extends ReviewedPower("denizen.family-heirloom", None, playedDone)
   object FabledFeast extends ReviewedPower("denizen.fabled-feast", None, played)
   object SaladDays extends ReviewedPower("denizen.salad-days", None, played)
   object TheGathering extends ReviewedPower("denizen.the-gathering", None, played)
