@@ -15,11 +15,6 @@ object GameIntent {
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
-  final case class BeginNegotiation(participantPlayerIds: Vector[String]) extends GameIntent
-  final case class ReplaceNegotiationTerms(decisionId: String, terms: NegotiationTerms)
-      extends GameIntent
-  final case class AcceptNegotiation(decisionId: String) extends GameIntent
-  final case class DeclineNegotiation(decisionId: String) extends GameIntent
   final case class BeginCampaignConquest(targetSiteIds: Vector[String],
       attackDiceCount: Int) extends GameIntent
   final case class BeginCampaignRaid(targets: Vector[CampaignRaidTarget],

@@ -32,14 +32,6 @@ object GameCommand {
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
-  final case class BeginNegotiation(playerId: PlayerId,
-      participants: Vector[PlayerId]) extends GameCommand
-  final case class ReplaceNegotiationTerms(playerId: PlayerId,
-      decision: DecisionId, terms: NegotiationTerms) extends GameCommand
-  final case class AcceptNegotiation(playerId: PlayerId, decision: DecisionId)
-      extends GameCommand
-  final case class DeclineNegotiation(playerId: PlayerId, decision: DecisionId)
-      extends GameCommand
   final case class BeginCampaignConquest(playerId: PlayerId, targetSiteIds: Vector[SiteId],
       attackDiceCount: Int) extends GameCommand
   final case class BeginCampaignRaid(playerId: PlayerId,

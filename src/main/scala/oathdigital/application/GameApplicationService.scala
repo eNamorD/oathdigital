@@ -9,7 +9,6 @@ import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
-import oathdigital.gameplay.actions.NegotiationCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
 import oathdigital.protocol.PreviewTarget
@@ -398,15 +397,6 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
       case GameCommand.MoveWarbands(playerId, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
-      case GameCommand.BeginNegotiation(playerId, participants) =>
-        rules.handle(state, NegotiationCommand.Begin(playerId,
-          DecisionId(s"negotiation-$nextSequence"), participants))
-      case GameCommand.ReplaceNegotiationTerms(playerId, decision, terms) =>
-        rules.handle(state, NegotiationCommand.ReplaceTerms(playerId, decision, terms))
-      case GameCommand.AcceptNegotiation(playerId, decision) =>
-        rules.handle(state, NegotiationCommand.Accept(playerId, decision))
-      case GameCommand.DeclineNegotiation(playerId, decision) =>
-        rules.handle(state, NegotiationCommand.Decline(playerId, decision))
       case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
         rules.handle(state, CampaignCommand.Start(playerId,
           DecisionId(s"campaign-$nextSequence"), targets, count))

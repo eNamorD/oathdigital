@@ -17,7 +17,8 @@ import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.walker.WalkerStepPayload.DeltaRecorded
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   RelicAcquired, SupplySpent}
-import oathdigital.model.DecisionAnswer.{ChooseAmountAnswer, ChooseOneAnswer, PartitionAnswer}
+import oathdigital.gameplay.actions.negotiation.NegotiationDeal
+import oathdigital.model.DecisionAnswer.{AcceptDeal, ChooseAmountAnswer, ChooseManyAnswer, ChooseOneAnswer, PartitionAnswer, ProposeTerms}
 import oathdigital.persistence.OwnedHsqldbEventStreamRepository
 import oathdigital.serialization.GameEventWire
 import oathdigital.server.GameHttpWire
@@ -2081,42 +2082,86 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     } finally reopened.close()
   }
 
+  private def negotiationOpened(service: GameApplicationService, gameId: String)
+      : (GameAccepted, PlayerId, PlayerId, WorldCardId) = {
+    val setup = execute(service, gameId)
+    val Ready(ready) = setup.state: @unchecked
+    val actor = ready.game.current.turn.activePlayer
+    val other = ready.game.current.players.find(_.player != actor).get
+    val act = service.handle(gameId, setup.nextSequence,
+      GameCommand.EndWake(actor)).toOption.get
+    val traveled = service.handle(gameId, act.nextSequence,
+      GameCommand.StartWalker(ActionRef.Travel, StartPayload(actor,
+        Vector.empty, Vector(DecisionOptionRef.Site(other.pawnSite.get)))))
+      .toOption.get
+    val adviser = ready.game.current.players.find(_.player == actor).get
+      .advisers.head.id.asInstanceOf[WorldCardId]
+    val started = service.handle(gameId, traveled.nextSequence,
+      GameCommand.StartWalker(ActionRef.Negotiation, StartPayload(actor)))
+      .fold(error => fail(s"Negotiation must start: $error"), identity)
+    val Ready(afterTravel) = traveled.state: @unchecked
+    val opened =
+      if (NegotiationDeal.eligible(afterTravel, actor).size < 2) started
+      else service.handle(gameId, started.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision(
+          NegotiationDeal.negotiatorsDecisionId, ChooseManyAnswer(
+            Vector(DecisionOptionRef.Player(other.player))))))
+        .fold(error => fail(s"negotiators must be accepted: $error"), identity)
+    (opened, actor, other.player, adviser)
+  }
+
+  private def say(service: GameApplicationService, gameId: String,
+      from: GameAccepted, by: PlayerId, answer: DecisionAnswer) =
+    service.handle(gameId, from.nextSequence, GameCommand.ResolveWalker(by,
+      TreeDecision(NegotiationDeal.dealDecisionId, answer)))
+
+  test("HSQL reopen preserves a parked Negotiation deal") {
+    val path = Files.createTempDirectory("oathdigital-negotiation-parked-")
+      .resolve("journal")
+    val gameId = "game-hsql-negotiation-parked"
+    val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
+    val (parked, actor, other, adviser) = try {
+      val service = new GameApplicationService(catalog, first)
+      val (opened, actor, other, adviser) = negotiationOpened(service, gameId)
+      val terms = NegotiationTerms(disclosures = Vector(NegotiationDisclosure(
+        other, NegotiationDisclosureRef.Adviser(actor, adviser))))
+      (say(service, gameId, opened, actor, ProposeTerms(terms))
+        .fold(error => fail(s"terms must persist: $error"), identity),
+        actor, other, adviser)
+    } finally first.close()
+    val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
+      error => fail(s"failed to reopen Negotiation repository: $error"), identity)
+    try {
+      val loaded = new GameApplicationService(catalog, reopened)
+        .load(gameId).toOption.flatten.get
+      assertEquals(loaded.state, parked.state)
+      val seen = new GameProjector(catalog).project(gameId, loaded, other)
+        .walkerDecision.flatMap(_.query).flatMap(_.deal).get
+      assertEquals(seen.disclosures.map(d => (d.authorPlayerId, d.card)),
+        Vector((actor.value, None)))
+    } finally reopened.close()
+  }
+
   test("HSQL reopen preserves completed Negotiation disclosure knowledge") {
-    val path = Files.createTempDirectory("oathdigital-negotiation-reopen-").resolve("journal")
+    val path = Files.createTempDirectory("oathdigital-negotiation-reopen-")
+      .resolve("journal")
     val gameId = "game-hsql-negotiation"
     val first = OwnedHsqldbEventStreamRepository.open(path).toOption.get
     val (completed, actor, other, adviser) = try {
       val service = new GameApplicationService(catalog, first)
-      val setup = execute(service, gameId)
-      val Ready(ready) = setup.state: @unchecked
-      val actor = ready.game.current.turn.activePlayer
-      val other = ready.game.current.players.find(_.player != actor).get
-      val act = service.handle(gameId, setup.nextSequence,
-        GameCommand.EndWake(actor)).toOption.get
-      val traveled = service.handle(gameId, act.nextSequence,
-        GameCommand.StartWalker(ActionRef.Travel, StartPayload(actor,
-          Vector.empty, Vector(DecisionOptionRef.Site(
-            other.pawnSite.get))))).toOption.get
-      val started = service.handle(gameId, traveled.nextSequence,
-        GameCommand.BeginNegotiation(actor, Vector(other.player))).toOption.get
-      val decision = started.state.asInstanceOf[Ready].value.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Negotiation].decision
-      val adviser = ready.game.current.players.find(_.player == actor).get
-        .advisers.head.id.asInstanceOf[WorldCardId]
+      val (opened, actor, other, adviser) = negotiationOpened(service, gameId)
       val terms = NegotiationTerms(disclosures = Vector(NegotiationDisclosure(
-        other.player, NegotiationDisclosureRef.Adviser(actor, adviser))))
-      val changed = service.handle(gameId, started.nextSequence,
-        GameCommand.ReplaceNegotiationTerms(actor, decision, terms)).fold(
-          error => fail(s"failed to persist Negotiation terms: $error"), identity)
-      assertEquals(service.handle(gameId, started.nextSequence,
-        GameCommand.AcceptNegotiation(actor, decision)).left.toOption,
+        other, NegotiationDisclosureRef.Adviser(actor, adviser))))
+      val changed = say(service, gameId, opened, actor, ProposeTerms(terms))
+        .fold(error => fail(s"failed to persist Negotiation terms: $error"), identity)
+      assertEquals(say(service, gameId, opened, actor, AcceptDeal).left.toOption,
         Some(GameApplicationError.StaleClientPosition(
-          started.nextSequence, changed.nextSequence)))
-      val actorAccepted = service.handle(gameId, changed.nextSequence,
-        GameCommand.AcceptNegotiation(actor, decision)).toOption.get
-      val completed = service.handle(gameId, actorAccepted.nextSequence,
-        GameCommand.AcceptNegotiation(other.player, decision)).toOption.get
-      (completed, actor, other.player, adviser)
+          opened.nextSequence, changed.nextSequence)))
+      val actorAccepted = say(service, gameId, changed, actor, AcceptDeal)
+        .toOption.get
+      val completed = say(service, gameId, actorAccepted, other, AcceptDeal)
+        .toOption.get
+      (completed, actor, other, adviser)
     } finally first.close()
     val reopened = OwnedHsqldbEventStreamRepository.open(path).fold(
       error => fail(s"failed to reopen Negotiation repository: $error"), identity)
@@ -2125,17 +2170,18 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         .load(gameId).toOption.flatten.get
       assertEquals(loaded.state, completed.state)
       val projector = new GameProjector(catalog)
-      assertEquals(projector.project(gameId, loaded, actor).negotiation, None)
+      assertEquals(projector.project(gameId, loaded, actor).walkerDecision, None)
       val recipientBoard = projector.project(gameId, loaded, other).playerBoards
         .find(_.playerId == actor.value).get
-      assert(recipientBoard.advisers.exists(card => card.cardId == adviser.value && !card.hidden))
+      assert(recipientBoard.advisers.exists(card =>
+        card.cardId == adviser.value && !card.hidden))
       val publicBoard = projector.projectPublic(gameId, loaded).playerBoards
         .find(_.playerId == actor.value).get
-      assert(publicBoard.advisers.forall(card => card.cardId != adviser.value || card.hidden))
-      assertEquals(projector.projectPublic(gameId, loaded).negotiation, None)
+      assert(publicBoard.advisers.forall(card =>
+        card.cardId != adviser.value || card.hidden))
+      assertEquals(projector.projectPublic(gameId, loaded).walkerWaiting, None)
     } finally reopened.close()
   }
-
 
   test("HSQL reopen preserves Raid pending and completed replay") {
     val path = Files.createTempDirectory("oathdigital-raid-reopen-").resolve("journal")

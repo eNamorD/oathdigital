@@ -12,12 +12,6 @@ class CommandProtocolSuite extends munit.FunSuite {
       Vector(WalkerStartArgWire("denizen", "d1"))),
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
-    BeginNegotiation(Vector("p2", "p3")),
-    ReplaceNegotiationTerms("n1", NegotiationTerms(
-      Vector(NegotiationTransfer("p2", 1, Vector("r1"))),
-      Vector(NegotiationDisclosure("p2", NegotiationInformation.Adviser(
-        "p1", WorldCard("denizen", "d1")))))),
-    AcceptNegotiation("n1"), DeclineNegotiation("n1"),
     BeginCampaignConquest(Vector("site:a", "site:b"), 3),
     BeginCampaignRaid(Vector(CampaignRaidTarget.Pawn("p2"),
       CampaignRaidTarget.Relic("p2", "r1"),
@@ -114,9 +108,9 @@ class CommandProtocolSuite extends munit.FunSuite {
       """"action":"travel","modifiers":[],"startArgs":[{"optionKind":"site"}]}}"""
     assertEquals(ActorlessCommandCodec.decode(missing).left.toOption.get.path,
       "$.intent.startArgs[0].optionId")
-    val duplicate = """{"expectedNextSequence":0,"intent":{"type":"beginNegotiation","participantPlayerIds":["p2","p2"]}}"""
+    val duplicate = """{"expectedNextSequence":0,"intent":{"type":"resolveWalker","decisionId":"negotiation.deal","payload":{"kind":"propose-terms","terms":{"transfers":[{"recipientPlayerId":"p2","favor":1,"relicIds":[]},{"recipientPlayerId":"p2","favor":2,"relicIds":[]}],"disclosures":[]}}}}"""
     assertEquals(ActorlessCommandCodec.decode(duplicate).left.toOption.get.path,
-      "$.intent.participantPlayerIds")
+      "$.intent.payload.terms.transfers")
   }
 
   test("ordered modifier transport preserves click order and rejects duplicates") {

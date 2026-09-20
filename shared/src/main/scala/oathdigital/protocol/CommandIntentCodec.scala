@@ -14,10 +14,6 @@ private[protocol] object CommandIntentCodec {
     case PeekSiteRelics => tagged("peekSiteRelics")
     case RevealOwnedRelic(id) => tagged("revealOwnedRelic", "relicId" -> id)
     case MoveWarbands(toSite, amount) => tagged("moveWarbands", "toSite" -> toSite, "amount" -> amount)
-    case BeginNegotiation(ids) => tagged("beginNegotiation", "participantPlayerIds" -> ujson.Arr.from(ids.map(ujson.Str(_))))
-    case ReplaceNegotiationTerms(id, terms) => tagged("replaceNegotiationTerms", "decisionId" -> id, "terms" -> negotiation(terms))
-    case AcceptNegotiation(id) => tagged("acceptNegotiation", "decisionId" -> id)
-    case DeclineNegotiation(id) => tagged("declineNegotiation", "decisionId" -> id)
     case BeginCampaignConquest(sites, count) => tagged("beginCampaignConquest", "targetSiteIds" -> ujson.Arr.from(sites.map(ujson.Str(_))), "attackDiceCount" -> count)
     case BeginCampaignRaid(targets, count) => tagged("beginCampaignRaid", "targets" -> ujson.Arr.from(targets.map(raid)), "attackDiceCount" -> count)
     case ChooseCampaignPlan(id, source) => tagged("chooseCampaignPlan", "decisionId" -> id, "source" -> plan(source))
@@ -56,6 +52,5 @@ private[protocol] object CommandIntentCodec {
     case CampaignPlanSource.Relic(player, id) => ujson.Obj("kind" -> "relic", "playerId" -> player, "cardId" -> id)
     case CampaignPlanSource.Title(player) => ujson.Obj("kind" -> "title", "playerId" -> player)
   }
-  private def negotiation(v: NegotiationTerms): ujson.Obj = CommandNestedCodecs.encodeNegotiation(v)
   private def decision(v: DecisionResolution): ujson.Obj = CommandNestedCodecs.encodeDecision(v)
 }

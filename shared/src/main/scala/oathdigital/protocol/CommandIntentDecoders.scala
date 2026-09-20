@@ -29,18 +29,6 @@ private[protocol] object CommandIntentDecoders {
       toSite <- field(value, "toSite", path).flatMap(boolean(_, s"$path.toSite"))
       amount <- field(value, "amount", path).flatMap(integer(_, s"$path.amount"))
     } yield MoveWarbands(toSite, amount)
-    case "beginNegotiation" => for {
-      _ <- exact(value, Set("type", "participantPlayerIds"), path)
-      ids <- field(value, "participantPlayerIds", path).flatMap(strings(_, s"$path.participantPlayerIds"))
-      _ <- noDuplicates(ids, s"$path.participantPlayerIds")
-    } yield BeginNegotiation(ids)
-    case "replaceNegotiationTerms" => for {
-      _ <- exact(value, Set("type", "decisionId", "terms"), path)
-      id <- string(value, "decisionId", path)
-      terms <- field(value, "terms", path).flatMap(CommandNestedCodecs.decodeNegotiation(_, s"$path.terms"))
-    } yield ReplaceNegotiationTerms(id, terms)
-    case "acceptNegotiation" => decision(value, path)(AcceptNegotiation)
-    case "declineNegotiation" => decision(value, path)(DeclineNegotiation)
     case "beginCampaignConquest" => for {
       _ <- exact(value, Set("type", "targetSiteIds", "attackDiceCount"), path)
       sites <- field(value, "targetSiteIds", path).flatMap(strings(_, s"$path.targetSiteIds"))
