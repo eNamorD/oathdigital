@@ -48,8 +48,6 @@ package object frontend {
   val BoardTargetRef = protocol.projection.BoardTargetRefProjection
   type BoardTargetCandidate = protocol.projection.BoardTargetCandidateProjection
   val BoardTargetCandidate = protocol.projection.BoardTargetCandidateProjection
-  type BoardTargetFormation = protocol.projection.BoardTargetFormationProjection
-  val BoardTargetFormation = protocol.projection.BoardTargetFormationProjection
   type BoardTargetAction = protocol.projection.BoardTargetActionProjection
   val BoardTargetAction = protocol.projection.BoardTargetActionProjection
   type CardResolution = protocol.projection.CardResolutionProjection
@@ -73,38 +71,6 @@ package object frontend {
   val DecisionSectionState = protocol.projection.DecisionSectionProjection
   type DecisionSlotState = protocol.projection.DecisionSlotProjection
   val DecisionSlotState = protocol.projection.DecisionSlotProjection
-  type CampaignState = protocol.projection.CampaignProjection
-  object CampaignState {
-    def apply(decisionId: String, targetSiteIds: Vector[String], force: Int,
-        plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
-        selectedPlans: Vector[CampaignPlanChoice], attackDice: Vector[String],
-        attack: Int, skullLosses: Int, maxSacrifice: Int,
-        sacrificed: Option[Int], defenseDice: Vector[String],
-        defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
-        placementTargets: Vector[CampaignPlacementTarget]): CampaignState =
-      protocol.projection.CampaignProjection(decisionId, targetSiteIds, force,
-        plansFinished, planChoices, selectedPlans, attackDice, attack,
-        skullLosses, maxSacrifice, sacrificed, defenseDice, defense, victorious,
-        maxPlacement, placementTargets)
-
-    def apply(decisionId: String, siteId: String, force: Int,
-        plansFinished: Boolean, planChoices: Vector[CampaignPlanChoice],
-        selectedPlans: Vector[CampaignPlanChoice], attackDice: Vector[String],
-        attack: Int, skullLosses: Int, maxSacrifice: Int,
-        sacrificed: Option[Int], defenseDice: Vector[String],
-        defense: Option[Int], victorious: Option[Boolean],
-        maxPlacement: Int): CampaignState =
-      protocol.projection.CampaignProjection(decisionId, Vector(siteId), force,
-        plansFinished, planChoices, selectedPlans, attackDice, attack,
-        skullLosses, maxSacrifice, sacrificed, defenseDice, defense, victorious,
-        maxPlacement, Vector(CampaignPlacementTarget(siteId, siteId)))
-  }
-  type CampaignRaidRelocation = protocol.projection.CampaignRaidRelocationProjection
-  val CampaignRaidRelocation = protocol.projection.CampaignRaidRelocationProjection
-  type CampaignPlacementTarget = protocol.projection.CampaignPlacementTargetProjection
-  val CampaignPlacementTarget = protocol.projection.CampaignPlacementTargetProjection
-  type CampaignPlanChoice = protocol.projection.CampaignPlanChoiceProjection
-  val CampaignPlanChoice = protocol.projection.CampaignPlanChoiceProjection
   type BannerState = protocol.projection.BannerProjection
   val BannerState = protocol.projection.BannerProjection
   type MinorAdviser = protocol.projection.MinorAdviserProjection

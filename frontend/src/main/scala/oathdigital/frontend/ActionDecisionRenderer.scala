@@ -153,57 +153,6 @@ private[frontend] object ActionDecisionRenderer {
     } else if (currentFacedownAdviserDraft.nonEmpty) {
       panel.appendChild(FacedownAdviserRenderer.render(
         currentFacedownAdviserDraft.get, ui))
-    } else if (currentBoardFormation.nonEmpty) {
-       val formation = currentBoardFormation.get
-       val targetLabel = formation.targets.map { target =>
-         formation.action.candidates.find(_.target == target)
-           .fold(target.stableKey)(_.label)
-       }.mkString(", ")
-       panel.appendChild(text("h2", "", "Form Campaign force"))
-       panel.appendChild(text("p", "campaign-formation-target",
-         s"Target: $targetLabel"))
-       val summary = text("p", "campaign-formation-summary",
-         campaignFormationSummary(formation))
-       summary.setAttribute("aria-live", "polite")
-       panel.appendChild(summary)
-       val decrease = button("Decrease committed force", "campaign-force-decrease")
-       decrease.setAttribute("aria-label", campaignForceAdjustmentLabel(increase = false))
-       decrease.disabled = !canControl || formation.force <= formation.minimumForce
-       decrease.onclick = _ => {
-         currentBoardFormation = currentBoardFormation.map(_.decrement); rerender()
-       }
-       panel.appendChild(decrease)
-       (formation.minimumForce to formation.maximumForce).foreach { count =>
-         val choice = button(count.toString, "campaign-force-choice")
-         choice.setAttribute("aria-label", campaignForceChoiceLabel(count))
-         choice.setAttribute("aria-pressed", (formation.force == count).toString)
-         choice.disabled = !canControl
-         choice.onclick = _ => {
-           currentBoardFormation = currentBoardFormation.map(_.choose(count)); rerender()
-         }
-         panel.appendChild(choice)
-       }
-       val increase = button("Increase committed force", "campaign-force-increase")
-       increase.setAttribute("aria-label", campaignForceAdjustmentLabel(increase = true))
-       increase.disabled = !canControl || formation.force >= formation.maximumForce
-       increase.onclick = _ => {
-         currentBoardFormation = currentBoardFormation.map(_.increment); rerender()
-       }
-       panel.appendChild(increase)
-       val confirm = button("Confirm Campaign", "campaign-force-confirm")
-       confirm.disabled = !canControl
-       confirm.onclick = _ => {
-         currentBoardFormation = None
-         currentBoardSelection = None
-         commandForFormation(formation, currentPlayerId).foreach(submitTargetCommand)
-       }
-       panel.appendChild(confirm)
-       val back = button("Back to target selection", "campaign-force-back")
-       back.onclick = _ => { currentBoardFormation = None; rerender() }
-       panel.appendChild(back)
-       val cancel = button("Cancel Campaign", "campaign-force-cancel")
-       cancel.onclick = _ => cancelTargetAction()
-       panel.appendChild(cancel)
      } else if (selection.nonEmpty) {
        val action = selection.get
        panel.appendChild(text("p", "selection-instruction", action.prompt))
@@ -223,7 +172,7 @@ private[frontend] object ActionDecisionRenderer {
          val confirm = button("Confirm selection", "confirm-board-selection")
          confirm.disabled = !canControl ||
            !currentBoardSelection.exists(_.canConfirm)
-         confirm.onclick = _ => currentBoardSelection.flatMap(_.confirmResult)
+         confirm.onclick = _ => currentBoardSelection.flatMap(_.confirm)
            .foreach(handleSelection)
          panel.appendChild(confirm)
        }
@@ -340,118 +289,6 @@ private[frontend] object ActionDecisionRenderer {
    WalkerSelectionPanels.render(value, presentation, canControl, panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
    CampaignResultPanel.render(value, panel)
-   value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
-     panel.appendChild(text("h2", "", "Campaign"))
-     if (!campaign.plansFinished) {
-       panel.appendChild(text("p", "campaign-instruction",
-         s"Choose ${campaign.planSide} battle plans in order, then finish."))
-       if (campaign.selectedPlans.nonEmpty) panel.appendChild(text("p",
-         "campaign-selected-plans", campaignSelectedPlansLabel(
-           campaign.selectedPlans)))
-       campaign.planChoices.foreach { choice =>
-         val choose = button(campaignPlanButtonLabel(choice), "campaign-plan")
-         choose.title = choice.mechanicalResult
-         choose.disabled = !canControl
-         choose.onclick = _ => submitCommand(GameCommand.ChooseCampaignPlan(
-           campaign.decisionId, protocolCampaignPlan(choice)))
-         panel.appendChild(choose)
-       }
-       val rollsNow = campaign.planSide == "defender" || campaign.defenderKind == "bandits"
-       val finishLabel = if (!rollsNow) "Finish attacker plans"
-         else if (campaign.selectedPlans.isEmpty) "Roll without battle plans"
-         else "Finish plans and roll"
-       val finish = button(finishLabel, "campaign-finish-plans")
-       finish.disabled = !canControl
-       finish.onclick = _ => submitCommand(GameCommand.FinishCampaignPlans(
-         campaign.decisionId))
-       panel.appendChild(finish)
-     } else {
-       panel.appendChild(text("p", "campaign-results",
-         s"Attack dice: ${campaign.attackDice.mkString(", ")} · " +
-           s"${campaign.attack} attack · ${campaign.skullLosses} skull losses"))
-     if (campaign.sacrificed.isEmpty) {
-       panel.appendChild(text("p", "campaign-instruction",
-         "Choose surviving warbands to sacrifice for +1 attack each."))
-       (0 to campaign.maxSacrifice).foreach { count =>
-         val choose = button(s"Sacrifice $count", "campaign-sacrifice")
-         choose.disabled = !canControl
-         choose.onclick = _ => submitCommand(GameCommand.ChooseCampaignSacrifice(
-           campaign.decisionId, count))
-         panel.appendChild(choose)
-       }
-     } else {
-       val outcome = if (campaign.victorious.contains(true)) "Victory" else "Defeat"
-       panel.appendChild(text("p", "campaign-defense",
-         s"Defense dice: ${campaign.defenseDice.mkString(", ")} · " +
-           s"${campaign.defense.getOrElse(0)} defense · $outcome"))
-       if (campaign.victorious.contains(true)) {
-         val placement = currentCampaignPlacement.getOrElse(
-           CampaignPlacementState.reconcile(None,
-             BoardSelectionContext(value.gameId, currentPlayerId,
-               value.nextSequence), Some(campaign)).get)
-         panel.appendChild(text("p", "campaign-instruction",
-           "Allocate surviving warbands among conquered sites."))
-         placement.targets.foreach { target =>
-           val row = element("div", "campaign-placement-row")
-           row.appendChild(text("span", "campaign-placement-site",
-             target.label))
-           val decrease = button(s"Remove one from ${target.label}",
-             "campaign-placement-decrease")
-           decrease.disabled = !canControl ||
-             placement.count(target.siteId) == 0
-           decrease.onclick = _ => {
-             currentCampaignPlacement = currentCampaignPlacement.map(
-               _.decrement(target.siteId)); rerender()
-           }
-           row.appendChild(decrease)
-           row.appendChild(text("span", "campaign-placement-count",
-             placement.count(target.siteId).toString))
-           val increase = button(s"Add one to ${target.label}",
-             "campaign-placement-increase")
-           increase.disabled = !canControl || placement.remaining == 0
-           increase.onclick = _ => {
-             currentCampaignPlacement = currentCampaignPlacement.map(
-               _.increment(target.siteId)); rerender()
-           }
-           row.appendChild(increase)
-           panel.appendChild(row)
-         }
-         panel.appendChild(text("p", "campaign-placement-summary",
-           s"Placed: ${placement.total} · Remaining: ${placement.remaining}"))
-         val confirm = button("Confirm placement",
-           "campaign-placement-confirm")
-         confirm.disabled = !canControl
-         confirm.onclick = _ => {
-           currentCampaignPlacement = None
-           submitCommand(GameCommand.PlaceCampaignForce(campaign.decisionId,
-             placement.allocations.map(v => CampaignForceAllocation(v.siteId, v.count))))
-         }
-         panel.appendChild(confirm)
-         val back = button("Back", "campaign-placement-back")
-         back.disabled = !canControl || placement.total == 0
-         back.onclick = _ => {
-           currentCampaignPlacement = currentCampaignPlacement.map(_.reset)
-           rerender()
-         }
-         panel.appendChild(back)
-       }
-     }
-     }
-   }
-   value.campaignRaidRelocation.filter(decision =>
-     decision.actorPlayerId == currentPlayerId &&
-       presentation.showGameplayControls).foreach { decision =>
-     panel.appendChild(text("h2", "", "Relocate defender pawn"))
-     panel.appendChild(text("p", "campaign-instruction",
-       "Choose another legal site for the defender pawn."))
-     raidRelocationCommands(decision, currentPlayerId).foreach { command =>
-       val site = command.destinationSiteId
-       val choose = button(siteLabel(value, site), "campaign-raid-relocation")
-       choose.disabled = !canControl
-       choose.onclick = _ => submitCommand(command)
-       panel.appendChild(choose)
-     }
-   }
    if (value.phase == "rest" && presentation.showGameplayControls) {
      PhasePowerButtons.render(value, canControl, panel, submitCommand)
      if (PhasePowerButtons.showsFinishRest(value)) {

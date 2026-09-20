@@ -78,23 +78,6 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       Some(Vector(siteA.target, siteB.target)))
   }
 
-  test("Campaign keeps its mandatory site selected and forms all chosen targets") {
-    val action = BoardTargetAction("campaign-conquest", "Targets", 1, 2,
-      autoActivate = false, Vector(siteA, siteB),
-      Some(BoardTargetFormation(0, 3, 3, 2)), Vector(siteA.target))
-    val active = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind)
-    assert(active.selected(siteA.target))
-    val stillRequired = active.choose(siteA.target).asInstanceOf[
-      BoardSelectionResult.Updated].state
-    assert(stillRequired.selected(siteA.target))
-    val selected = stillRequired.choose(siteB.target).asInstanceOf[
-      BoardSelectionResult.Updated].state
-    val formation = selected.confirmResult.get.asInstanceOf[
-      BoardSelectionResult.Form].state
-    assertEquals(formation.targets, Vector(siteA.target, siteB.target))
-  }
-
   test("state clears on sequence player game candidate or action changes") {
     val action = BoardTargetAction("travel", "Travel", 1, 2,
       autoActivate = false, Vector(siteA, siteB))
@@ -125,83 +108,4 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(refs.map(_.stableKey).distinct.size, refs.size)
   }
 
-  test("Raid keeps the defender pawn selected and confirms canonical targets") {
-    val pawn = BoardTargetCandidate(BoardTargetRef.PlayerPawn("blue"),
-      "Blue pawn", Vector("Mandatory"))
-    val relic = BoardTargetCandidate(BoardTargetRef.PlayerRelic("blue", "R03"),
-      "Relic", Vector.empty)
-    val banner = BoardTargetCandidate(
-      BoardTargetRef.PlayerBanner("blue", "peoples-favor"),
-      "People's Favor", Vector.empty)
-    val action = BoardTargetAction("campaign-raid", "Raid Blue", 1, 3,
-      autoActivate = false, Vector(pawn, relic, banner),
-      Some(BoardTargetFormation(0, 3, 3, 2)), Vector(pawn.target))
-    val active = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind)
-    val afterPawn = active.choose(pawn.target)
-      .asInstanceOf[BoardSelectionResult.Updated].state
-    assert(afterPawn.selected(pawn.target))
-    val selected = afterPawn.choose(banner.target)
-      .asInstanceOf[BoardSelectionResult.Updated].state.choose(relic.target)
-      .asInstanceOf[BoardSelectionResult.Updated].state
-    val formation = selected.confirmResult.get
-      .asInstanceOf[BoardSelectionResult.Form].state
-    assertEquals(formation.targets, Vector(pawn.target, relic.target, banner.target))
-  }
-
-  test("formation follows target choice and enforces projected force bounds") {
-    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
-      autoActivate = false, Vector(siteA),
-      Some(BoardTargetFormation(1, 4, 4, 2)))
-    val active = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind)
-    val formation = active.choose(siteA.target)
-      .asInstanceOf[BoardSelectionResult.Form].state
-    assertEquals(formation.force, 4)
-    assertEquals(formation.decrement.force, 3)
-    assertEquals(formation.choose(2).force, 2)
-    assertEquals(formation.choose(0), formation)
-    assertEquals(formation.increment, formation)
-    assertEquals(formation.remainingWarbands, 0)
-    assertEquals(formation.attackDiceBeforePlans, 4)
-    assertEquals(formation.supplyCost, 2)
-  }
-
-  test("previewed Campaign explicitly confirms its target before formation") {
-    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
-      false, Vector(siteA), Some(BoardTargetFormation(1, 4, 4, 2)),
-      explicitConfirm = true)
-    val chosen = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind).choose(siteA.target)
-      .asInstanceOf[BoardSelectionResult.Updated].state
-    assert(chosen.canConfirm)
-    assert(chosen.confirmResult.exists(_.isInstanceOf[BoardSelectionResult.Form]))
-  }
-
-  test("empty formation selects confirms and reports all warbands remaining") {
-    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
-      false, Vector(siteA), Some(BoardTargetFormation(0, 0, 0, 2)))
-    val formation = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind).choose(siteA.target)
-      .asInstanceOf[BoardSelectionResult.Form].state
-    assertEquals(formation.force, 0)
-    assertEquals(formation.decrement.force, 0)
-    assertEquals(formation.increment.force, 0)
-    assertEquals(formation.remainingWarbands, 0)
-    assertEquals(formation.attackDiceBeforePlans, 0)
-  }
-
-  test("formation clears on context candidates or projected facts changes") {
-    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
-      false, Vector(siteA), Some(BoardTargetFormation(1, 4, 4, 2)))
-    val formation = BoardTargetFormationState(context, action, siteA.target, 2)
-    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
-      Vector(action)), Some(formation))
-    assertEquals(BoardTargetFormationState.reconcile(Some(formation),
-      context.copy(sequence = 5), Vector(action)), None)
-    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
-      Vector(action.copy(candidates = Vector(siteB)))), None)
-    assertEquals(BoardTargetFormationState.reconcile(Some(formation), context,
-      Vector(action.copy(formation = Some(BoardTargetFormation(1, 3, 3, 2))))), None)
-  }
 }

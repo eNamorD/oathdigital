@@ -32,10 +32,6 @@ private[frontend] final class RecordingView(gameId: String, playerId: String)
     new ServerSessionCoordinator(gameId, playerId)
   def currentBoardSelection: Option[BoardTargetSelectionState] = None
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit = ()
-  def currentBoardFormation: Option[BoardTargetFormationState] = None
-  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit = ()
-  def currentCampaignPlacement: Option[CampaignPlacementState] = None
-  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit = ()
   def currentCardDecision: Option[CardDecisionState] = None
   def currentCardDecision_=(value: Option[CardDecisionState]): Unit = ()
   def currentModifierWorkflow: Option[ModifierWorkflow] = None

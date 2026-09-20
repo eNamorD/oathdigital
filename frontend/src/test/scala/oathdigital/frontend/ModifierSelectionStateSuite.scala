@@ -36,7 +36,7 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
   test("targeted actions preview before commands while direct actions retain their stage") {
     assertEquals(Vector("travel", "campaign-conquest", "campaign-raid",
       "play-facedown-adviser").flatMap(ModifierWorkflow.targeted).map(_._1),
-      Vector("travel", "campaign", "campaign", "search"))
+      Vector("travel", "search"))
     val commands = Vector[GameIntent](
       GameIntent.StartWalker("recover", Vector.empty),
       GameIntent.StartWalker("forge", Vector.empty),

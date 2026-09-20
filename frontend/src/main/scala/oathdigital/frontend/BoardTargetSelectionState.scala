@@ -9,38 +9,6 @@ private[frontend] object BoardSelectionResult {
       extends BoardSelectionResult
   final case class Submit(action: BoardTargetAction,
       targets: Vector[BoardTargetRef]) extends BoardSelectionResult
-  final case class Form(state: BoardTargetFormationState)
-      extends BoardSelectionResult
-}
-
-private[frontend] final case class BoardTargetFormationState(
-    context: BoardSelectionContext,
-    action: BoardTargetAction,
-    targets: Vector[BoardTargetRef],
-    force: Int
-) {
-  private def facts = action.formation.get
-  def minimumForce: Int = facts.minimumForce
-  def maximumForce: Int = facts.maximumForce
-  def availableWarbands: Int = facts.availableWarbands
-  def supplyCost: Int = facts.supplyCost
-  def remainingWarbands: Int = availableWarbands - force
-  def attackDiceBeforePlans: Int = force
-  def decrement: BoardTargetFormationState = copy(force = math.max(minimumForce, force - 1))
-  def increment: BoardTargetFormationState = copy(force = math.min(maximumForce, force + 1))
-  def choose(value: Int): BoardTargetFormationState =
-    if (value >= minimumForce && value <= maximumForce) copy(force = value) else this
-}
-private[frontend] object BoardTargetFormationState {
-  def apply(context: BoardSelectionContext, action: BoardTargetAction,
-      target: BoardTargetRef, force: Int): BoardTargetFormationState =
-    new BoardTargetFormationState(context, action, Vector(target), force)
-
-  def reconcile(previous: Option[BoardTargetFormationState],
-      context: BoardSelectionContext, actions: Vector[BoardTargetAction]) =
-    previous.filter(state => state.context == context &&
-      actions.contains(state.action) && state.targets.forall(target =>
-        state.action.candidates.exists(_.target == target)))
 }
 
 private[frontend] final case class BoardTargetSelectionState(
@@ -65,11 +33,6 @@ private[frontend] final case class BoardTargetSelectionState(
   }
 
   def choose(target: BoardTargetRef): BoardSelectionResult = activeAction match {
-    case Some(action) if action.candidates.exists(_.target == target) &&
-        action.maximum == 1 && action.formation.nonEmpty && !action.explicitConfirm =>
-      BoardSelectionResult.Form(BoardTargetFormationState(context, action,
-        Vector(target),
-        action.formation.get.maximumForce))
     case Some(action) if action.candidates.exists(_.target == target) &&
         action.maximum == 1 && !action.explicitConfirm =>
       BoardSelectionResult.Submit(action, Vector(target))
@@ -102,14 +65,6 @@ private[frontend] final case class BoardTargetSelectionState(
     }
   } yield BoardSelectionResult.Submit(action, targets)
 
-  def confirmResult: Option[BoardSelectionResult] = confirm.map { confirmed =>
-    confirmed.action.formation match {
-      case Some(formation) => BoardSelectionResult.Form(
-        BoardTargetFormationState(context, confirmed.action, confirmed.targets,
-          formation.maximumForce))
-      case None => confirmed
-    }
-  }
 }
 
 private[frontend] object BoardTargetSelectionState {

@@ -11,10 +11,6 @@ private[frontend] trait ServerUiView {
   def sessionCoordinator: ServerSessionCoordinator
   def currentBoardSelection: Option[BoardTargetSelectionState]
   def currentBoardSelection_=(value: Option[BoardTargetSelectionState]): Unit
-  def currentBoardFormation: Option[BoardTargetFormationState]
-  def currentBoardFormation_=(value: Option[BoardTargetFormationState]): Unit
-  def currentCampaignPlacement: Option[CampaignPlacementState]
-  def currentCampaignPlacement_=(value: Option[CampaignPlacementState]): Unit
   def currentWalkerPartition: Option[WalkerPartitionDraft]
   def currentWalkerPartition_=(value: Option[WalkerPartitionDraft]): Unit
   def currentWalkerDistribution: Option[WalkerDistributeDraft]
@@ -273,8 +269,7 @@ private[frontend] object ServerUiSupport {
         waitingForPlayerId = value.walkerWaiting.map(_.playerId),
         waitingForDisplayName = value.walkerWaiting.map(w =>
           playerDisplayName(value, w.playerId)))
-    val controllingPlayer = value.campaign.filter(!_.plansFinished)
-      .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
+    val controllingPlayer = value.activeParticipantId
     controllingPlayer match {
       case Some(activePlayerId) if activePlayerId != playerId =>
         ViewerPresentation(
@@ -297,8 +292,6 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def actionLabel(kind: String): String = kind match {
     case "travel" => "Travel"
-    case "campaign-conquest" => "Campaign"
-    case "campaign-raid" => "Raid"
     case "challenge" => "Challenge"
     case "peoples-favor" => "People's Favor"
     case "darkest-secret" => "Darkest Secret"
@@ -306,7 +299,7 @@ private[frontend] object ServerUiSupport {
   }
 
   private[frontend] def actionCategory(kind: String): String = kind match {
-    case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
+    case "search" | "travel" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
         "challenge" | "campaign" => "major"
     case "negotiation" |
@@ -319,7 +312,6 @@ private[frontend] object ServerUiSupport {
     "search", "travel", "campaign", "muster", "trade", "forge", "recover", "challenge")
 
   private[frontend] def actionFamily(kind: String): String = kind match {
-    case "campaign-conquest" | "campaign-raid" => "campaign"
     case "trade-favor" | "trade-secret" => "trade"
     case other => other
   }
@@ -384,32 +376,6 @@ private[frontend] object ServerUiSupport {
     banner
   }
 
-  private[frontend] def campaignPlanButtonLabel(choice: CampaignPlanChoice): String = {
-    val cost = Vector(
-      Option.when(choice.favorCost > 0)(s"${choice.favorCost} Favor"),
-      Option.when(choice.secretCost > 0)(s"Place ${choice.secretCost} Secret")
-    ).flatten.mkString(", ")
-    if (cost.isEmpty) choice.label else s"${choice.label} ($cost)"
-  }
-
-  private[frontend] def campaignSelectedPlansLabel(
-      plans: Vector[CampaignPlanChoice]): String =
-    plans.zipWithIndex.map { case (plan, index) =>
-      s"${index + 1}. ${plan.label}"
-    }.mkString("Selected: ", " · ", "")
-
-  private[frontend] def campaignFormationSummary(
-      formation: BoardTargetFormationState): String =
-    s"Committed force: ${formation.force}. Board warbands remaining: " +
-      s"${formation.remainingWarbands}. Attack dice before plans: " +
-      s"${formation.attackDiceBeforePlans}. Cost: ${formation.supplyCost} Supply."
-
-  private[frontend] def campaignForceChoiceLabel(force: Int): String =
-    s"Commit $force warbands"
-
-  private[frontend] def campaignForceAdjustmentLabel(increase: Boolean): String =
-    if (increase) "Increase committed force" else "Decrease committed force"
-
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
     Vector("site", if (candidate) "board-target" else "site-readonly",
@@ -421,8 +387,7 @@ private[frontend] object ServerUiSupport {
       if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
   private[frontend] def commandForSelection(action: BoardTargetAction,
-      targets: Vector[BoardTargetRef], playerId: String,
-      attackDiceCount: Int = 0): Option[GameCommand] =
+      targets: Vector[BoardTargetRef], playerId: String): Option[GameCommand] =
     (action.actionKind, targets) match {
       case ("place-pawn", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.PlacePawn(site))
@@ -435,45 +400,8 @@ private[frontend] object ServerUiSupport {
       case ("travel", Vector(BoardTargetRef.Site(site))) =>
         Some(GameCommand.StartWalker("travel", Vector.empty,
           Vector(oathdigital.protocol.WalkerStartArgWire("site", site))))
-      case ("campaign-conquest", sites) if sites.nonEmpty &&
-          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.BeginCampaignConquest(sites.collect {
-          case BoardTargetRef.Site(site) => site
-        }, attackDiceCount))
-      case ("campaign-raid", targets) if targets.nonEmpty &&
-          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
-          targets.forall {
-            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
-                _: BoardTargetRef.PlayerBanner => true
-            case _ => false
-          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), attackDiceCount))
       case _ => None
     }
-
-  private[frontend] def commandForFormation(formation: BoardTargetFormationState,
-      playerId: String): Option[GameCommand] =
-    (formation.action.actionKind, formation.targets) match {
-      case ("campaign-conquest", sites) if sites.nonEmpty &&
-          sites.forall(_.isInstanceOf[BoardTargetRef.Site]) =>
-        Some(GameCommand.BeginCampaignConquest(sites.collect {
-          case BoardTargetRef.Site(site) => site
-        }, formation.force))
-      case ("campaign-raid", targets) if targets.nonEmpty &&
-          targets.head.isInstanceOf[BoardTargetRef.PlayerPawn] &&
-          targets.forall {
-            case _: BoardTargetRef.PlayerPawn | _: BoardTargetRef.PlayerRelic |
-                _: BoardTargetRef.PlayerBanner => true
-            case _ => false
-          } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), formation.force))
-      case _ => None
-    }
-
-  private[frontend] def raidRelocationCommands(
-      decision: CampaignRaidRelocation,
-      playerId: String): Vector[GameCommand.RelocateCampaignRaidPawn] =
-    if (decision.actorPlayerId != playerId) Vector.empty
-    else decision.legalSiteIds.map(site => GameCommand.RelocateCampaignRaidPawn(
-      decision.decisionId, site))
 
   private def takeWealth(resource: String): GameCommand =
     GameCommand.StartWalker("take-wealth", Vector.empty,
@@ -517,23 +445,6 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def facedownAdviserLaunchCount(minor: MinorActionsState): Int =
     if (minor.advisers.nonEmpty) 1 else 0
-
-  private[frontend] def protocolRaidTarget(target: BoardTargetRef): CampaignRaidTarget = target match {
-    case BoardTargetRef.PlayerPawn(player) => CampaignRaidTarget.Pawn(player)
-    case BoardTargetRef.PlayerRelic(player, relic) => CampaignRaidTarget.Relic(player, relic)
-    case BoardTargetRef.PlayerBanner(player, banner) => CampaignRaidTarget.Banner(player, banner)
-    case other => throw new IllegalArgumentException(
-      s"unsupported Campaign Raid target ${other.stableKey}")
-  }
-
-  private[frontend] def protocolCampaignPlan(choice: CampaignPlanChoice): CampaignPlanSource =
-    choice.kind match {
-      case "adviser" => CampaignPlanSource.Adviser(choice.playerId.get, choice.cardId.get)
-      case "site-card" => CampaignPlanSource.SiteCard(choice.siteId.get, choice.cardId.get)
-      case "relic" => CampaignPlanSource.Relic(choice.playerId.get, choice.cardId.get)
-      case "title" => CampaignPlanSource.Title(choice.playerId.get)
-      case other => throw new IllegalArgumentException(s"unknown Campaign plan '$other'")
-    }
 
   private[frontend] def protocolNegotiationTerms(value: NegotiationTermsInput): NegotiationTerms =
     NegotiationTerms(

@@ -117,36 +117,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(WalkerPartitionDraft.reconcile(None, context,
       Some(forgeParked.copy(query = None))), None)
   }
-  test("selection actions map only authorized single target shapes to commands") {
-    val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
-      BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
-    def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
-      false, placeholderCandidates)
-    assertEquals(ServerUiSupport.commandForSelection(action("travel"),
-      Vector(BoardTargetRef.Site("site:b")), "red"),
-      Some(GameCommand.Travel("red", "site:b")))
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
-      Vector(BoardTargetRef.Site("site:b")), "red", 4),
-      Some(GameCommand.CampaignConquest("red", "site:b", 4)))
-    assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
-      BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
-      Vector(BoardTargetRef.Site("site:a"), BoardTargetRef.Site("site:b")),
-      "red", 4), Some(GameCommand.CampaignConquest("red",
-        Vector("site:a", "site:b"), 4)))
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
-      Vector(BoardTargetRef.Site("site:b")), "red", 0),
-      Some(GameCommand.CampaignConquest("red", "site:b", 0)))
-    val raidTargets = Vector[BoardTargetRef](
-      BoardTargetRef.PlayerPawn("blue"),
-      BoardTargetRef.PlayerRelic("blue", "R03"),
-      BoardTargetRef.PlayerBanner("blue", "peoples-favor"))
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
-      raidTargets, "red", 2),
-      Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
-    assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
-      raidTargets.tail, "red", 2), None)
-  }
 
   test("banner and Challenge action labels are presentable") {
     assertEquals(ServerUiSupport.actionLabel("challenge"), "Challenge")
@@ -211,109 +181,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.cardinalityInstruction(single.copy(
       actionKind = "travel", minimum = 0, maximum = 0)),
       "No target is available; confirm to play this action.")
-  }
-
-  test("Campaign uses the generic board-target action label") {
-    assertEquals(ServerUiSupport.actionLabel("campaign-conquest"), "Campaign")
-    assertEquals(ServerUiSupport.actionLabel("campaign-raid"), "Raid")
-    val skip = CampaignPlanChoice("skip", None, None, None, None,
-      "Use no battle plan", None, 0, 0, "Roll normally")
-    val outriders = CampaignPlanChoice("adviser", Some("source"), Some("red"),
-      None, Some("143"), "Outriders", Some("denizen.outriders"), 0, 0,
-      "Ignore all attack-roll skull losses")
-    assertEquals(ServerUiSupport.campaignPlanButtonLabel(skip), "Use no battle plan")
-    assertEquals(ServerUiSupport.campaignPlanButtonLabel(outriders), "Outriders")
-    val brass = CampaignPlanChoice("relic", Some("relic:red:R25"), Some("red"),
-      None, Some("R25"), "Brass Army", Some("relic.brass-army.campaign"), 0, 1,
-      "Add 4 attack dice")
-    assertEquals(ServerUiSupport.campaignPlanButtonLabel(brass),
-      "Brass Army (Place 1 Secret)")
-    assertEquals(ServerUiSupport.campaignSelectedPlansLabel(Vector(brass, outriders)),
-      "Selected: 1. Brass Army · 2. Outriders")
-    val action = BoardTargetAction("campaign-conquest", "Campaign", 1, 1,
-      false, Vector(BoardTargetCandidate(BoardTargetRef.Site("site:b"),
-        "Site B", Vector.empty)), Some(BoardTargetFormation(1, 4, 4, 2)))
-    val formation = BoardTargetFormationState(
-      BoardSelectionContext("game", "red", 7), action,
-      BoardTargetRef.Site("site:b"), 2)
-    assertEquals(ServerUiSupport.campaignFormationSummary(formation),
-      "Committed force: 2. Board warbands remaining: 2. " +
-        "Attack dice before plans: 2. Cost: 2 Supply.")
-    assertEquals(ServerUiSupport.campaignForceChoiceLabel(2), "Commit 2 warbands")
-    assertEquals(ServerUiSupport.campaignForceAdjustmentLabel(increase = false),
-      "Decrease committed force")
-    assertEquals(ServerUiSupport.campaignForceAdjustmentLabel(increase = true),
-      "Increase committed force")
-    assertEquals(ServerUiSupport.commandForFormation(formation, "red"),
-      Some(GameCommand.CampaignConquest("red", "site:b", 2)))
-    assertEquals(ServerUiSupport.commandForFormation(formation.copy(
-      targets = Vector(BoardTargetRef.PlayerRelic("red", "R1"))), "red"), None)
-    val empty = formation.copy(force = 0)
-    assertEquals(ServerUiSupport.campaignFormationSummary(empty),
-      "Committed force: 0. Board warbands remaining: 4. " +
-        "Attack dice before plans: 0. Cost: 2 Supply.")
-    assertEquals(ServerUiSupport.commandForFormation(empty, "red"),
-      Some(GameCommand.CampaignConquest("red", "site:b", 0)))
-    val raid = formation.copy(action = action.copy(actionKind = "campaign-raid"),
-      targets = Vector(BoardTargetRef.PlayerPawn("blue"),
-        BoardTargetRef.PlayerBanner("blue", "darkest-secret")))
-    assertEquals(ServerUiSupport.commandForFormation(raid, "red"),
-      Some(GameCommand.CampaignRaid("red", raid.targets, 2)))
-  }
-
-  test("available controls use durable ordered presentation categories") {
-    assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
-      Vector("Major actions", "Minor actions", "Powers"))
-    assertEquals(ServerUiSupport.actionCategory("travel"), "major")
-    assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
-    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "powers")
-    assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
-      "muster", "trade", "forge", "recover", "challenge"))
-    assertEquals(Vector("campaign-conquest", "campaign-raid").map(
-      ServerUiSupport.actionFamily), Vector("campaign", "campaign"))
-    assertEquals(Vector("trade-favor", "trade-secret").map(
-      ServerUiSupport.actionFamily), Vector("trade", "trade"))
-  }
-
-  test("Campaign placement distributes locally and clears stale context") {
-    val context = BoardSelectionContext("game", "red", 9)
-    val targets = Vector(CampaignPlacementTarget("site:a", "Site A"),
-      CampaignPlacementTarget("site:b", "Site B"))
-    val campaign = CampaignState(decisionId = "campaign-9",
-      targetSiteIds = Vector("site:a", "site:b"), force = 3,
-      plansFinished = true, planChoices = Vector.empty,
-      selectedPlans = Vector.empty, attackDice = Vector.empty, attack = 3,
-      skullLosses = 0, maxSacrifice = 3, sacrificed = Some(0),
-      defenseDice = Vector.empty, defense = Some(0), victorious = Some(true),
-      maxPlacement = 3, placementTargets = targets)
-    val initial = CampaignPlacementState.reconcile(None, context,
-      Some(campaign)).get
-    assertEquals(initial.allocations,
-      Vector(CampaignPlacement("site:a", 0), CampaignPlacement("site:b", 0)))
-    val distributed = initial.increment("site:a").increment("site:a")
-      .increment("site:b").increment("site:b")
-    assertEquals(distributed.total -> distributed.remaining, 3 -> 0)
-    assertEquals(distributed.count("site:a") -> distributed.count("site:b"),
-      2 -> 1)
-    assertEquals(distributed.decrement("site:a").remaining, 1)
-    assertEquals(distributed.reset.total, 0)
-    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
-      Some(campaign)), Some(distributed))
-    assertEquals(CampaignPlacementState.reconcile(Some(distributed),
-      context.copy(sequence = 10), Some(campaign)).get.total, 0)
-    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
-      Some(campaign.copy(decisionId = "campaign-new"))).get.total, 0)
-    assertEquals(CampaignPlacementState.reconcile(Some(distributed), context,
-      Some(campaign.copy(victorious = Some(false)))), None)
-  }
-
-  test("Raid relocation commands are scoped to the attacking owner") {
-    val decision = CampaignRaidRelocation("raid-9", "red", "blue", "site:a",
-      Vector("site:b", "site:c"))
-    assertEquals(ServerUiSupport.raidRelocationCommands(decision, "red"), Vector(
-      GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:b"),
-      GameCommand.RelocateCampaignRaidPawn("red", "raid-9", "site:c")))
-    assertEquals(ServerUiSupport.raidRelocationCommands(decision, "blue"), Vector.empty)
   }
 
   test("a parked walker roll classifies as a Roll control carrying the projected pool") {
@@ -868,5 +735,33 @@ class ServerModeUiSuite extends FunSuite {
       decision.query.get.options(1)),
       GameCommand.ResolveWalker("red", "oathkeeper.recipient",
         DecisionAnswerWire.ChooseOneWire("player", "yellow")))
+  }
+  test("selection actions map only authorized single target shapes to commands") {
+    val placeholderCandidates = Vector("a", "b", "c", "d").map(id =>
+      BoardTargetCandidate(BoardTargetRef.Site(id), id, Vector.empty))
+    def action(kind: String) = BoardTargetAction(kind, "Choose", 1, 1,
+      false, placeholderCandidates)
+    assertEquals(ServerUiSupport.commandForSelection(action("travel"),
+      Vector(BoardTargetRef.Site("site:b")), "red"),
+      Some(oathdigital.protocol.GameIntent.StartWalker("travel", Vector.empty,
+        Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:b")))))
+    assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
+      BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+    // Campaign is no longer a board-target selection: it starts from its own
+    // control and asks its questions as walker decisions.
+    assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),
+      Vector(BoardTargetRef.Site("site:b")), "red"), None)
+  }
+  test("available controls use durable ordered presentation categories") {
+    assertEquals(ServerUiSupport.actionCategoryOrder.map(_._2),
+      Vector("Major actions", "Minor actions", "Powers"))
+    assertEquals(ServerUiSupport.actionCategory("travel"), "major")
+    assertEquals(ServerUiSupport.actionCategory("challenge"), "major")
+    assertEquals(ServerUiSupport.actionCategory("campaign"), "major")
+    assertEquals(ServerUiSupport.actionCategory("unrecognized-power"), "powers")
+    assertEquals(ServerUiSupport.majorFamilyOrder, Vector("search", "travel", "campaign",
+      "muster", "trade", "forge", "recover", "challenge"))
+    assertEquals(Vector("trade-favor", "trade-secret").map(
+      ServerUiSupport.actionFamily), Vector("trade", "trade"))
   }
 }

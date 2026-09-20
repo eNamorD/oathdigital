@@ -20,24 +20,6 @@ private[frontend] object GameCommand {
   // rides the start selection, not an intent of its own.
   def Travel(actor: String, site: String) = Intent.StartWalker("travel",
     Vector.empty, Vector(WalkerStartArgWire("site", site)))
-  def CampaignConquest(actor: String, site: String, count: Int) = Intent.BeginCampaignConquest(Vector(site), count)
-  def CampaignConquest(actor: String, sites: Vector[String], count: Int) = Intent.BeginCampaignConquest(sites, count)
-  def CampaignRaid(actor: String, targets: Vector[BoardTargetRef], count: Int) = Intent.BeginCampaignRaid(targets.map {
-    case BoardTargetRef.PlayerPawn(p) => CampaignRaidTarget.Pawn(p)
-    case BoardTargetRef.PlayerRelic(p,r) => CampaignRaidTarget.Relic(p,r)
-    case BoardTargetRef.PlayerBanner(p,b) => CampaignRaidTarget.Banner(p,b)
-    case other => throw new IllegalArgumentException(other.stableKey)
-  }, count)
-  def ChooseCampaignPlan(actor: String, id: String, choice: CampaignPlanChoice) = Intent.ChooseCampaignPlan(id, choice.kind match {
-    case "adviser" => CampaignPlanSource.Adviser(choice.playerId.get, choice.cardId.get)
-    case "site-card" => CampaignPlanSource.SiteCard(choice.siteId.get, choice.cardId.get)
-    case "relic" => CampaignPlanSource.Relic(choice.playerId.get, choice.cardId.get)
-    case "title" => CampaignPlanSource.Title(choice.playerId.get)
-  })
-  def FinishCampaignPlans(actor: String, id: String) = Intent.FinishCampaignPlans(id)
-  def ChooseCampaignSacrifice(actor: String, id: String, count: Int) = Intent.ChooseCampaignSacrifice(id, count)
-  def PlaceCampaignForce(actor: String, id: String, values: Vector[CampaignPlacement]) = Intent.PlaceCampaignForce(id, values.map(v => CampaignForceAllocation(v.siteId, v.count)))
-  def RelocateCampaignRaidPawn(actor: String, id: String, site: String) = Intent.RelocateCampaignRaidPawn(id, site)
   def BeginSearch(actor: String, source: String, region: Option[String]) =
     Intent.StartWalker("search", Vector.empty, Vector(WalkerStartArgWire(
       "button", region.fold("search:world")(r =>
