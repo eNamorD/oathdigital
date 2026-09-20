@@ -115,8 +115,6 @@ package object frontend {
   val NegotiationDisclosureState = protocol.projection.NegotiationDisclosureProjection
   type NegotiationSiteRelicState = protocol.projection.NegotiationSiteRelicProjection
   val NegotiationSiteRelicState = protocol.projection.NegotiationSiteRelicProjection
-  type NegotiationState = protocol.projection.NegotiationProjection
-  val NegotiationState = protocol.projection.NegotiationProjection
   type NegotiationEditingState = protocol.projection.NegotiationEditingProjection
   val NegotiationEditingState = protocol.projection.NegotiationEditingProjection
   type NegotiationDealState = protocol.projection.NegotiationDealProjection

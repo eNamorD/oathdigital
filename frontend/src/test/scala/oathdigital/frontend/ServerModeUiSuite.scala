@@ -28,42 +28,6 @@ class ServerModeUiSuite extends FunSuite {
       "Rolled two-shields, doubler -- 4 shields so far (need 4).")
   }
 
-  test("Negotiation editor restores only authored relic and disclosure selections") {
-    val relic = CardDetails("R1", "relic", "Public Relic")
-    val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
-    val deal = NegotiationState("deal", "red", "S1", Vector("red", "blue", "yellow"),
-      Vector.empty, Vector(NegotiationTransferState("red", "blue", 0, 1,
-        Vector(relic))), Vector(NegotiationDisclosureState("red", "yellow",
-        "adviser", Some(adviser))), 3, Vector(relic), Vector(adviser), Vector.empty)
-    assert(ServerUiSupport.negotiationRelicChecked(deal, "red", "blue", "R1"))
-    assert(!ServerUiSupport.negotiationRelicChecked(deal, "red", "yellow", "R1"))
-    assert(ServerUiSupport.negotiationDisclosureChecked(
-      deal, "red", "yellow", "adviser", "D1"))
-    assert(!ServerUiSupport.negotiationDisclosureChecked(
-      deal, "blue", "yellow", "adviser", "D1"))
-    assert(ServerUiSupport.negotiationRelicCompetes("blue", "R1", "yellow", "R1"))
-    assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R1", "blue", "R1"))
-    assert(!ServerUiSupport.negotiationRelicCompetes("blue", "R2", "yellow", "R1"))
-  }
-  test("Negotiation editor offers disclosures only for inspectable information") {
-    val faceUpRelic = CardDetails("R1", "relic", "Public Relic",
-      orientation = Some("face-up"))
-    val facedownRelic = CardDetails("R2", "relic", "Secret Relic",
-      orientation = Some("face-down"))
-    val adviser = CardDetails("D1", "denizen", "Hidden Adviser")
-    val siteRelic = CardDetails("R3", "relic", "Bone Dice")
-    val deal = NegotiationState("deal", "red", "S1", Vector("red", "blue"),
-      Vector.empty, Vector.empty, Vector.empty, 3,
-      Vector(faceUpRelic, facedownRelic), Vector(adviser),
-      Vector(NegotiationSiteRelicState("site:broken-peaks", siteRelic)))
-    val offers = ServerUiSupport.negotiationDisclosureOffers(deal)
-    assertEquals(offers.map(o => (o.kind, o.card.cardId, o.siteId)),
-      Vector(
-        ("adviser", "D1", None),
-        ("held-relic", "R2", None),
-        ("site-relic", "R3", Some("site:broken-peaks"))))
-  }
-
   /** Task 5: Forge is driven end to end through the shared two-zone
     * interaction. The sections carrying their own labels and minima, the
     * denizen options carrying their own references, and the answer is
@@ -182,13 +146,6 @@ class ServerModeUiSuite extends FunSuite {
       Some(GameCommand.CampaignRaid("red", raidTargets, 2)))
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-raid"),
       raidTargets.tail, "red", 2), None)
-    val negotiation = BoardTargetAction("negotiation", "Choose negotiators", 1, 2,
-      false, Vector("blue", "yellow").map(id => BoardTargetCandidate(
-        BoardTargetRef.Player(id), id, Vector.empty)))
-    assertEquals(ServerUiSupport.commandForSelection(negotiation, Vector(
-      BoardTargetRef.Player("blue"), BoardTargetRef.Player("yellow")), "red"),
-      Some(GameCommand.BeginNegotiation("red", Vector("blue", "yellow"))))
-
   }
 
   test("banner and Challenge action labels are presentable") {
@@ -530,31 +487,6 @@ class ServerModeUiSuite extends FunSuite {
       ServerUiSupport.takeWealthActions(value, "blue-exile"),
       Vector.empty
     )
-  }
-
-  test("Negotiation participants control the procedure regardless of active turn") {
-    val deal = NegotiationState("deal", "red-exile", "site:1",
-      Vector("red-exile", "blue-exile"), Vector.empty, Vector.empty,
-      Vector.empty, 3, Vector.empty, Vector.empty, Vector.empty)
-    val participantView = projection(
-      Set("replaceNegotiationTerms", "acceptNegotiation", "declineNegotiation"))
-      .copy(negotiation = Some(deal))
-
-    val active = ServerUiSupport.viewerPresentation(participantView, "red-exile")
-    val offTurn = ServerUiSupport.viewerPresentation(participantView, "blue-exile")
-    assert(active.showGameplayControls)
-    assert(offTurn.showGameplayControls)
-    assert(ServerUiSupport.showNegotiationControls(participantView, offTurn))
-    assertEquals(offTurn.waitingForPlayerId, None)
-    assertEquals(offTurn.procedureStatus, Some("Negotiation in progress."))
-    val nonparticipant = ServerUiSupport.viewerPresentation(
-      participantView.copy(negotiation = None, negotiationWaiting = true), "yellow-exile")
-    assert(!nonparticipant.showGameplayControls)
-    assert(!ServerUiSupport.showNegotiationControls(
-      participantView.copy(negotiation = None, negotiationWaiting = true), nonparticipant))
-    assertEquals(nonparticipant.waitingForPlayerId, None)
-    assertEquals(nonparticipant.procedureStatus,
-      Some("Waiting for the negotiation to finish."))
   }
 
   /** Fix round 1: a parked walker `Decide`'s owner is not always the active

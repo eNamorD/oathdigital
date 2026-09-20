@@ -52,38 +52,6 @@ private[frontend] object ServerUiSupport {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
-  private[frontend] def negotiationRelicChecked(deal: NegotiationState,
-      author: String, recipient: String, relicId: String): Boolean =
-    deal.transfers.exists(t => t.authorPlayerId == author &&
-      t.recipientPlayerId == recipient && t.relics.exists(_.cardId == relicId))
-
-  private[frontend] def negotiationDisclosureChecked(deal: NegotiationState,
-      author: String, recipient: String, kind: String, cardId: String): Boolean =
-    deal.disclosures.exists(d => d.authorPlayerId == author &&
-      d.recipientPlayerId == recipient && d.kind == kind &&
-      d.card.exists(_.cardId == cardId))
-
-  private[frontend] def negotiationRelicCompetes(currentRecipient: String,
-      currentRelic: String, selectedRecipient: String, selectedRelic: String): Boolean =
-    currentRecipient != selectedRecipient && currentRelic == selectedRelic
-
-  private[frontend] final case class NegotiationDisclosureOffer(
-      kind: String,
-      card: CardDetails,
-      siteId: Option[String])
-
-  /** Disclosure options the engine can accept: only information the author can
-    * currently inspect (facedown advisers/relics, known site relics with the
-    * site that holds them). */
-  private[frontend] def negotiationDisclosureOffers(
-      deal: NegotiationState): Vector[NegotiationDisclosureOffer] =
-    deal.editableAdvisers.map(card =>
-      NegotiationDisclosureOffer("adviser", card, None)) ++
-      deal.editableRelics.filter(_.orientation.contains("face-down"))
-        .map(card => NegotiationDisclosureOffer("held-relic", card, None)) ++
-      deal.editableSiteRelics.map(entry => NegotiationDisclosureOffer(
-        "site-relic", entry.card, Some(entry.siteId)))
-
   private[frontend] def siteDetails(site: GameSite,
       selection: Option[BoardTargetSelectionState] = None,
       chooseTarget: BoardTargetRef => Unit = _ => ()): dom.Element = {
@@ -305,14 +273,6 @@ private[frontend] object ServerUiSupport {
         waitingForPlayerId = value.walkerWaiting.map(_.playerId),
         waitingForDisplayName = value.walkerWaiting.map(w =>
           playerDisplayName(value, w.playerId)))
-    if (value.negotiation.exists(_.participantPlayerIds.contains(playerId)))
-      return ViewerPresentation(showGameplayControls = true,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Negotiation in progress."))
-    if (value.negotiationWaiting)
-      return ViewerPresentation(showGameplayControls = false,
-        waitingForPlayerId = None, waitingForDisplayName = None,
-        procedureStatus = Some("Waiting for the negotiation to finish."))
     val controllingPlayer = value.campaign.filter(!_.plansFinished)
       .flatMap(_.decisionOwnerPlayerId).orElse(value.activeParticipantId)
     controllingPlayer match {
@@ -329,11 +289,6 @@ private[frontend] object ServerUiSupport {
       )
     }
   }
-
-  private[frontend] def showNegotiationControls(
-      value: GameProjection,
-      presentation: ViewerPresentation
-  ): Boolean = value.negotiation.nonEmpty && presentation.showGameplayControls
 
   private[frontend] def showActActionControls(
       value: GameProjection,
@@ -492,11 +447,6 @@ private[frontend] object ServerUiSupport {
                 _: BoardTargetRef.PlayerBanner => true
             case _ => false
           } => Some(GameCommand.BeginCampaignRaid(targets.map(protocolRaidTarget), attackDiceCount))
-      case ("negotiation", players) if players.nonEmpty &&
-          players.forall(_.isInstanceOf[BoardTargetRef.Player]) =>
-        Some(GameCommand.BeginNegotiation(players.collect {
-          case BoardTargetRef.Player(id) => id
-        }))
       case _ => None
     }
 

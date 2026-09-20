@@ -43,15 +43,7 @@ private[frontend] object GameCommand {
       "button", region.fold("search:world")(r =>
         s"search:regional-discard:$r"))))
   def PeekSiteRelics(actor: String) = Intent.PeekSiteRelics
-  def BeginNegotiation(actor: String, participants: Vector[String]) = Intent.BeginNegotiation(participants)
   def MoveWarbands(actor: String, toSite: Boolean, amount: Int) = Intent.MoveWarbands(toSite, amount)
-  def ReplaceNegotiationTerms(actor: String, id: String, terms: NegotiationTermsInput) = Intent.ReplaceNegotiationTerms(id, NegotiationTerms(
-    terms.transfers.map(v => NegotiationTransfer(v.recipientPlayerId, v.favor, v.relicIds)),
-    terms.disclosures.map(v => NegotiationDisclosure(v.recipientPlayerId, v.kind match {
-      case "adviser" => NegotiationInformation.Adviser(v.ownerPlayerId.get, WorldCard(v.cardKind.get, v.cardId))
-      case "held-relic" => NegotiationInformation.HeldRelic(v.ownerPlayerId.get, v.cardId)
-      case "site-relic" => NegotiationInformation.SiteRelic(v.siteId.get, v.cardId)
-    }))))
   def ResolveCardDecision(actor: String, id: String, value: DecisionResolution.Value) = Intent.ResolveCardDecision(id, value.intent)
   def StartWalker(actor: String, action: String, modifiers: Vector[String] = Vector.empty) =
     Intent.StartWalker(action, modifiers)
