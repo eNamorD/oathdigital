@@ -121,4 +121,21 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
     assert(projection.legalControls.contains("beginNegotiation"))
     assert(!projection.boardTargetActions.exists(_.actionKind == "negotiation"))
   }
+
+  test("a faceup relic in a transfer is shown to every viewer, public included") {
+    val b = NegotiationFixture.board()
+    val faceUp = b.copy(ready = b.ready.updateCurrent(current => current.copy(
+      players = current.players.map(p => if (p.player == b.actor)
+        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp)))
+        else p))))
+    val terms = NegotiationTerms(Vector(NegotiationTransfer(b.second, 1,
+      Vector(b.actorRelic))))
+    val state = parkedDeal(faceUp, Some(terms), Vector(b.second))
+    val views = Vector(view(state, b.actor), view(state, b.second),
+      view(state, b.third),
+      projector.projectPublic("negotiation", LoadedGame(state, 30)))
+    views.foreach(projection => assertEquals(
+      deal(projection).transfers.head.relics.map(_.cardId),
+      Vector(b.actorRelic.value)))
+  }
 }

@@ -107,16 +107,6 @@ class NegotiationSuite extends munit.FunSuite {
     val changed = Negotiation.handle(catalog, started.state,
       NegotiationCommand.ReplaceTerms(players.head.player, DecisionId("deal"), terms))
       .toOption.get
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(changed.state, 2)
-    assert(projector.project("deal", loaded, players.head.player).negotiation.get
-      .disclosures.forall(_.card.nonEmpty))
-    assert(projector.project("deal", loaded, players(1).player).negotiation.get
-      .disclosures.forall(_.card.isEmpty))
-    assertEquals(projector.project("deal", loaded, players(2).player).negotiation.get
-      .disclosures.map(_.card), Vector(None, None))
-    assertEquals(projector.projectPublic("deal", loaded).negotiation, None)
-    assert(projector.projectPublic("deal", loaded).negotiationWaiting)
     val one = Negotiation.handle(catalog, changed.state,
       NegotiationCommand.Accept(players.head.player, DecisionId("deal"))).toOption.get
     val two = Negotiation.handle(catalog, one.state,
@@ -128,31 +118,6 @@ class NegotiationSuite extends munit.FunSuite {
     assert(after.knowledge.siteRelics(players(1).player)(site).contains(siteRelic))
     assert(!after.knowledge.advisers.getOrElse(players(2).player, Vector.empty)
       .contains(adviser))
-  }
-
-  test("projection gives every participant only participant Negotiation controls") {
-    val (base, players, _, _, _) = ready()
-    val started = begin(base, Vector(players(1).player))
-    val changed = Negotiation.handle(catalog, started.state,
-      NegotiationCommand.ReplaceTerms(players.head.player, DecisionId("deal"),
-        NegotiationTerms(Vector(NegotiationTransfer(players(1).player, 1,
-          Vector.empty))))).toOption.get
-    val projector = new oathdigital.application.GameProjector(catalog)
-    val loaded = oathdigital.application.LoadedGame(changed.state, 2)
-
-    val active = projector.project("deal", loaded, players.head.player)
-    val offTurn = projector.project("deal", loaded, players(1).player)
-    val nonparticipant = projector.project("deal", loaded, players(2).player)
-    Vector(active, offTurn).foreach { view =>
-      assert(view.negotiation.nonEmpty)
-      assert(view.legalControls.contains("replaceNegotiationTerms"))
-      assert(view.legalControls.contains("acceptNegotiation"))
-      assert(view.legalControls.contains("declineNegotiation"))
-      assert(!view.negotiationWaiting)
-    }
-    assertEquals(nonparticipant.negotiation, None)
-    assertEquals(nonparticipant.legalControls, Vector.empty)
-    assert(nonparticipant.negotiationWaiting)
   }
 
   test("information-for-assets deal supports held-relic disclosure") {
@@ -258,43 +223,6 @@ class NegotiationSuite extends munit.FunSuite {
     assert(Negotiation.handle(catalog, Ready(separateAction), NegotiationCommand.Begin(
       players.head.player, DecisionId("separate-action"),
       Vector(players(1).player))).isRight)
-  }
-
-  test("projection derives accept legality and preserves public faceup relic identity") {
-    val (base, players, _, actorRelic, _) = ready()
-    val faceup = base.updateCurrent(_.copy(
-      players = base.game.current.players.map(p => if (p.player == players.head.player)
-        p.copy(relics = p.relics.map(_.copy(orientation = Orientation.FaceUp))) else p)))
-    val started = begin(faceup, Vector(players(1).player))
-    val projector = new oathdigital.application.GameProjector(catalog)
-    def projection(state: OathState, viewer: PlayerId) = projector.project(
-      "deal", oathdigital.application.LoadedGame(state, 2), viewer)
-    assert(!projection(started.state, players.head.player).legalControls
-      .contains("acceptNegotiation"))
-    val terms = NegotiationTerms(Vector(NegotiationTransfer(
-      players(1).player, 1, Vector(actorRelic))))
-    val changed = Negotiation.handle(catalog, started.state,
-      NegotiationCommand.ReplaceTerms(players.head.player, DecisionId("deal"), terms))
-      .toOption.get
-    val recipient = projection(changed.state, players(1).player)
-    assert(recipient.legalControls.contains("acceptNegotiation"))
-    assertEquals(recipient.negotiation.get.transfers.head.relics.map(_.cardId),
-      Vector(actorRelic.value))
-    val accepted = Negotiation.handle(catalog, changed.state,
-      NegotiationCommand.Accept(players(1).player, DecisionId("deal"))).toOption.get
-    assert(!projection(accepted.state, players(1).player).legalControls
-      .contains("acceptNegotiation"))
-
-    val Ready(changedReady) = changed.state: @unchecked
-    val pending = changedReady.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Negotiation]
-    val staleTerms = pending.terms.updated(players.head.player,
-      NegotiationTerms(Vector(NegotiationTransfer(
-        players(1).player, 99, Vector.empty))))
-    val invalidPending = pending.copy(terms = staleTerms)
-    val invalid = changedReady.updateCurrent(_.copy(pending = Some(invalidPending)))
-    assert(!projection(Ready(invalid), players.head.player).legalControls
-      .contains("acceptNegotiation"))
   }
 
   test("accessible When Negotiating handler blocks with stable source identity") {

@@ -27,8 +27,6 @@ private[application] final case class PendingProjection(
     cardDecision: Option[PendingCardDecisionProjection],
     campaign: Option[CampaignProjection],
     campaignRaidRelocation: Option[CampaignRaidRelocationProjection],
-    negotiation: Option[NegotiationProjection],
-    negotiationWaiting: Boolean,
     walkerDecision: Option[WalkerDecisionProjection],
     walkerWaiting: Option[WalkerWaitingProjection]
 )

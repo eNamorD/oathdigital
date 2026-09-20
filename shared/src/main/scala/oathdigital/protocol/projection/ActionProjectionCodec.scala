@@ -372,35 +372,4 @@ private[projection] object ActionProjectionCodec {
       canAccept <- bool(row, "canAccept", child)
     } yield NegotiationEditingProjection(favor, relics, advisers, sites, canAccept) }
   } yield NegotiationDealProjection(participants, accepted, transfers, disclosures, editing)
-
-  def encodeNegotiation(value: NegotiationProjection): ujson.Value = ujson.Obj(
-    "decisionId" -> value.decisionId, "actorPlayerId" -> value.actorPlayerId,
-    "siteId" -> value.siteId,
-    "participantPlayerIds" -> encoded(value.participantPlayerIds)(ujson.Str(_)),
-    "acceptedPlayerIds" -> encoded(value.acceptedPlayerIds)(ujson.Str(_)),
-    "transfers" -> encoded(value.transfers)(encodeTransfer),
-    "disclosures" -> encoded(value.disclosures)(encodeDisclosure),
-    "editableFavor" -> value.editableFavor,
-    "editableRelics" -> encoded(value.editableRelics)(encodeCard),
-    "editableAdvisers" -> encoded(value.editableAdvisers)(encodeCard),
-    "editableSiteRelics" -> encoded(value.editableSiteRelics)(encodeSiteRelic))
-  def decodeNegotiation(raw: ujson.Value, path: String): Result[NegotiationProjection] = for {
-    value <- obj(raw, path)
-    _ <- exact(value, Set("decisionId", "actorPlayerId", "siteId", "participantPlayerIds",
-      "acceptedPlayerIds", "transfers", "disclosures", "editableFavor", "editableRelics",
-      "editableAdvisers", "editableSiteRelics"), path)
-    decision <- string(value, "decisionId", path); actor <- string(value, "actorPlayerId", path)
-    site <- string(value, "siteId", path); participants <- strings(value, "participantPlayerIds", path)
-    accepted <- strings(value, "acceptedPlayerIds", path)
-    transferRaws <- array(value, "transfers", path)
-    transfers <- traverse(transferRaws, s"$path.transfers")(decodeTransfer)
-    disclosureRaws <- array(value, "disclosures", path)
-    disclosures <- traverse(disclosureRaws, s"$path.disclosures")(decodeDisclosure)
-    favor <- int(value, "editableFavor", path)
-    relicRaws <- array(value, "editableRelics", path); relics <- traverse(relicRaws, s"$path.editableRelics")(decodeCard)
-    adviserRaws <- array(value, "editableAdvisers", path); advisers <- traverse(adviserRaws, s"$path.editableAdvisers")(decodeCard)
-    siteRelicRaws <- array(value, "editableSiteRelics", path)
-    siteRelics <- traverse(siteRelicRaws, s"$path.editableSiteRelics")(decodeSiteRelic)
-  } yield NegotiationProjection(decision, actor, site, participants, accepted, transfers,
-    disclosures, favor, relics, advisers, siteRelics)
 }

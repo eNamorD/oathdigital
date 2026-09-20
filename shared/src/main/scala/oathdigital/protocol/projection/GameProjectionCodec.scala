@@ -17,7 +17,7 @@ object GameProjectionCodec {
     "boardTargetActions", "pendingCardDecision", "campaign",
     "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
-    "negotiation", "negotiationWaiting", "favorBanks", "tracks",
+    "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview",
     "walkerDecision", "walkerWaiting", "phasePowers")
 
@@ -68,8 +68,6 @@ object GameProjectionCodec {
       "banner" -> b.key, "face" -> b.face,
       "holderPlayerId" -> stringOption(b.holderPlayerId), "resources" -> b.resources)),
     "minorActions" -> option(value.minorActions)(encodeMinor),
-    "negotiation" -> option(value.negotiation)(encodeNegotiation),
-    "negotiationWaiting" -> value.negotiationWaiting,
     "favorBanks" -> encoded(value.favorBanks)(b => ujson.Obj(
       "suit" -> b.suit, "count" -> b.count)),
     "tracks" -> option(value.tracks)(t => ujson.Obj(
@@ -117,8 +115,6 @@ object GameProjectionCodec {
     bannerRaws <- default(value, "banners", path, Vector.empty[ujson.Value])(array)
     banners <- traverse(bannerRaws, s"$path.banners")(decodeBanner)
     minor <- optionalAbsent(value, "minorActions", path)(decodeMinor)
-    negotiation <- optionalAbsent(value, "negotiation", path)(decodeNegotiation)
-    waiting <- boolOr(value, "negotiationWaiting", path, false)
     bankRaws <- default(value, "favorBanks", path, Vector.empty[ujson.Value])(array)
     banks <- traverse(bankRaws, s"$path.favorBanks") { (raw, child) => for {
       row <- obj(raw, child); _ <- exact(row, Set("suit", "count"), child)
@@ -144,7 +140,7 @@ object GameProjectionCodec {
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
-    negotiation, waiting, banks, tracks, relicDeck, preview,
+    banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {

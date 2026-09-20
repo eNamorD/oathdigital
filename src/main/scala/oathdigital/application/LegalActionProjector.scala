@@ -129,12 +129,6 @@ private[application] final class LegalActionProjector(
     if (current.result.nonEmpty) Vector.empty
     else if (current.walkerPending.nonEmpty) walkerControls(context)
     else current.pending match {
-      case Some(n: PendingProcedure.Negotiation)
-          if context.viewer.exists(n.participants.contains) =>
-        Vector("replaceNegotiationTerms", "declineNegotiation") ++
-          context.viewer.filter(oathdigital.gameplay.actions.Negotiation
-            .canAccept(context.ready, n, _)).map(_ => "acceptNegotiation")
-      case Some(_: PendingProcedure.Negotiation) => Vector.empty
       case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
           context.viewer.contains(CampaignRules.planDecisionOwner(c)) =>
         Vector("chooseCampaignPlan", "finishCampaignPlans")

@@ -18,13 +18,7 @@ private[application] final class PendingProcedureProjector(
     PendingProjection(
       phase(context, campaign,
         relocation, walkerDecision),
-      None, campaign, relocation,
-      negotiationProjection(context),
-      context.current.pending.exists {
-        case n: PendingProcedure.Negotiation =>
-          !context.viewer.exists(n.participants.contains)
-        case _ => false
-      }, walkerDecision, walkerWaiting)
+      None, campaign, relocation, walkerDecision, walkerWaiting)
   }
 
   private def campaignProjection(context: ScopedProjectionContext) =
@@ -124,63 +118,6 @@ private[application] final class PendingProcedureProjector(
           if context.viewer.contains(r.actor) =>
         CampaignRaidRelocationProjection(r.decision.value, r.actor.value,
           r.defender.value, r.origin.value, r.legalSites.map(_.value))
-    }
-
-  private def negotiationProjection(context: ScopedProjectionContext) =
-    context.current.pending.collect {
-      case negotiation: PendingProcedure.Negotiation
-          if context.viewer.exists(negotiation.participants.contains) =>
-        val viewing = context.viewer.get
-        val transfers = negotiation.participants.flatMap { author =>
-          negotiation.terms(author).transfers.map { transfer =>
-            val owner = context.current.players.find(_.player == author).get
-            NegotiationTransferProjection(author.value, transfer.recipient.value,
-              transfer.favor, transfer.relics.size,
-              transfer.relics.flatMap(id => owner.relics.find(_.id == id)).collect {
-                case relic if viewing == author || relic.orientation == Orientation.FaceUp =>
-                  presentation.cardDetails(relic.id, Some(relic.orientation), hidden = false)
-              })
-          }
-        }
-        val disclosures = negotiation.participants.flatMap { author =>
-          negotiation.terms(author).disclosures.map { disclosure =>
-            val visible = viewing == author
-            val (kind, detail) = disclosure.information match {
-              case NegotiationDisclosureRef.Adviser(_, card) => "adviser" ->
-                Option.when(visible)(presentation.cardDetails(card,
-                  Some(Orientation.FaceDown), hidden = false))
-              case NegotiationDisclosureRef.HeldRelic(_, relic) => "held-relic" ->
-                Option.when(visible)(presentation.cardDetails(relic,
-                  Some(Orientation.FaceDown), hidden = false))
-              case NegotiationDisclosureRef.SiteRelic(_, relic) => "site-relic" ->
-                Option.when(visible)(presentation.cardDetails(relic,
-                  Some(Orientation.FaceDown), hidden = false))
-            }
-            NegotiationDisclosureProjection(author.value,
-              disclosure.recipient.value, kind, detail)
-          }
-        }
-        val player = context.current.players.find(_.player == viewing).get
-        val siteRelicOffers = context.ready.knowledge.siteRelics
-          .getOrElse(viewing, Map.empty).toVector.flatMap { case (site, known) =>
-          context.current.map.sites.get(site).toVector.flatMap(
-            _.relics.filter(relic => known.contains(relic.id)).map(relic =>
-              NegotiationSiteRelicProjection(site.value, presentation.cardDetails(
-                relic.id, Some(relic.orientation), hidden = false))))
-        }
-        NegotiationProjection(negotiation.decision.value,
-          negotiation.actor.value, negotiation.site.value,
-          negotiation.participants.map(_.value),
-          negotiation.participants.filter(negotiation.accepted).map(_.value),
-          transfers, disclosures, player.board.favor,
-          player.relics.map(r => presentation.cardDetails(r.id,
-            Some(r.orientation), hidden = false)),
-          player.advisers.collect {
-            case d: DenizenState if d.orientation == Orientation.FaceDown =>
-              presentation.cardDetails(d.id, Some(d.orientation), hidden = false)
-            case v: VisionState if v.orientation == Orientation.FaceDown =>
-              presentation.cardDetails(v.id, Some(v.orientation), hidden = false)
-          }, siteRelicOffers)
     }
 
   private def phase(context: ScopedProjectionContext,

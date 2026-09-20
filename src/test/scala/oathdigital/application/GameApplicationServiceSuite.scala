@@ -662,7 +662,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       assertEquals(view.phase, "game-over")
       assertEquals(view.legalControls, Vector.empty)
       assert(!view.actionSelectionOpen)
-      assert(!view.negotiationWaiting)
       assertEquals(view.oathkeeper.flatMap(_.winnerPlayerId),
         finished.game.current.result.map(_.winner.value))
       assert(view.world.flatMap(_.sites).nonEmpty)

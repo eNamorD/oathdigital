@@ -318,10 +318,3 @@ final case class NegotiationDealProjection(participantPlayerIds: Vector[String],
     transfers: Vector[NegotiationTransferProjection],
     disclosures: Vector[NegotiationDisclosureProjection],
     editing: Option[NegotiationEditingProjection] = None)
-final case class NegotiationProjection(decisionId: String, actorPlayerId: String,
-    siteId: String, participantPlayerIds: Vector[String],
-    acceptedPlayerIds: Vector[String], transfers: Vector[NegotiationTransferProjection],
-    disclosures: Vector[NegotiationDisclosureProjection],
-    editableFavor: Int, editableRelics: Vector[CardDetailsProjection],
-    editableAdvisers: Vector[CardDetailsProjection],
-    editableSiteRelics: Vector[NegotiationSiteRelicProjection])

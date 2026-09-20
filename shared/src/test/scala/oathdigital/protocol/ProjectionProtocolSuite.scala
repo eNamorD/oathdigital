@@ -53,12 +53,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     minorActions = Some(MinorActionsProjection(
       Vector(MinorAdviserProjection(known, Vector(CardResolutionProjection("discard")))),
       true, Vector(hidden), Some("site:a"), 1, 1)),
-    negotiation = Some(NegotiationProjection("deal", "red", "site:a", Vector("red", "blue"),
-      Vector("blue"), Vector(NegotiationTransferProjection("red", "blue", 1, 0, Vector.empty)),
-      Vector(NegotiationDisclosureProjection("red", "blue", "adviser", Some(hidden))),
-      2, Vector(known), Vector(hidden),
-      Vector(NegotiationSiteRelicProjection("site:b", known)))),
-    negotiationWaiting = true,
     favorBanks = Vector(FavorBankProjection("beast", 4)),
     phasePowers = Vector(PhasePowerProjection("denizen.silver-tongue",
       DecisionOptionProjection("denizen", "92", "Silver Tongue"),

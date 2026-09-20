@@ -141,34 +141,6 @@ class NegotiationParitySuite extends munit.FunSuite {
       Propose(b.actor, gift(b.second, 3)), Decline(b.second)))
   }
 
-  test("what each participant is shown mid-deal matches") {
-    val b = NegotiationFixture.board()
-    val terms = NegotiationTerms(
-      Vector(NegotiationTransfer(b.second, 3, Vector(b.actorRelic))),
-      Vector(NegotiationDisclosure(b.second,
-        NegotiationDisclosureRef.HeldRelic(b.actor, b.actorRelic))))
-    val who = Vector(b.second, b.third)
-    val script = Vector[Move](Propose(b.actor, terms), Accept(b.second))
-    val old = legacy(b, who, script).state
-    val now = walker(b, who, script).state
-    Vector(b.actor, b.second, b.third).foreach { viewer =>
-      val before = projector.project("parity", LoadedGame(old, 30), viewer)
-        .negotiation.getOrElse(fail("legacy projects the deal to participants"))
-      val after = projector.project("parity", LoadedGame(now, 30), viewer)
-        .walkerDecision.flatMap(_.query).flatMap(_.deal)
-        .getOrElse(fail("the walker projects the deal to owners"))
-      assertEquals(after.participantPlayerIds, before.participantPlayerIds)
-      assertEquals(after.acceptedPlayerIds, before.acceptedPlayerIds)
-      assertEquals(after.transfers, before.transfers)
-      assertEquals(after.disclosures, before.disclosures)
-      val editing = after.editing.getOrElse(fail("participants get editing"))
-      assertEquals((editing.editableFavor, editing.editableRelics,
-        editing.editableAdvisers, editing.editableSiteRelics),
-        (before.editableFavor, before.editableRelics, before.editableAdvisers,
-          before.editableSiteRelics))
-    }
-  }
-
   test("both paths refuse an over-budget proposal, an empty accept and an outsider") {
     val b = NegotiationFixture.board()
     val who = Vector(b.second)

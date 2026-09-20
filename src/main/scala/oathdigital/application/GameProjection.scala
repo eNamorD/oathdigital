@@ -152,8 +152,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       campaignRaidRelocation = pending.campaignRaidRelocation,
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
       minorActions = legal.minorActions,
-      negotiation = pending.negotiation,
-      negotiationWaiting = current.result.isEmpty && pending.negotiationWaiting,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,
         context.ready.banks.favor.getOrElse(suit, 0))),
       tracks = Some(GameTracksProjection(current.tracks.round,
