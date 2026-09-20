@@ -76,6 +76,39 @@ class PhasePowerProjectorSuite extends munit.FunSuite {
       s"usePower:${powerId.value}:${relic.value}"))
   }
 
+  test("a phase power used from an edifice at the pawn's site is projected " +
+      "and legal with the edifice face's printed name") {
+    import oathdigital.gameplay.PhasePowerFixture.{TestPower, actor, base, card,
+      powerId}
+    val current = base.game.current
+    val id = current.commonCards.edificeDeck.head
+    val edifice = catalog.edifices.find(_.id.value == id.value).get
+    val printed = catalog.denizens.find(_.id.value == card.value).get.powers
+      .find(_.id == powerId).get
+    val powered = catalog.copy(edifices = catalog.edifices.map(e =>
+      if (e.id == edifice.id) e.copy(
+        intact = e.intact.copy(powers = e.intact.powers :+ printed)) else e))
+    val home = current.players.find(_.player == actor).get.pawnSite.get
+    val state = base.updateCurrent(c => c.copy(
+      turn = TurnState(actor, Phase.Act, Set.empty),
+      players = c.players.map(p => if (p.player != actor) p else
+        p.copy(advisers = Vector.empty)),
+      // The adviser card returns to the deck so the card inventory stays whole.
+      commonCards = c.commonCards.copy(
+        worldDeck = card +: c.commonCards.worldDeck,
+        edificeDeck = c.commonCards.edificeDeck.filterNot(_ == id)),
+      map = c.map.copy(sites = c.map.sites.updated(home,
+        c.map.sites(home).copy(denizens = Vector(
+          EdificeState(id, EdificeSide.Intact, Tokens.empty)))))))
+    val projected = new GameProjector(powered,
+      PhasePowers(Vector(TestPower(powerId, PowerTiming.Act))))
+      .project("edifice-power", LoadedGame(Ready(state), 30L), actor)
+    assertEquals(projected.phasePowers.map(p => (p.powerId, p.name)),
+      Vector((powerId.value, edifice.intact.name)))
+    assert(projected.legalControls.exists(_.startsWith(
+      s"usePower:${powerId.value}:")))
+  }
+
   test("an unusable power is neither projected nor legal") {
     val (ready, actor) = SilverTongueFixture.arranged(Vector(Suit.Arcane),
       Set(Suit.Nomad))
