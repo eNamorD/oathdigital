@@ -33,10 +33,10 @@
 
 | Card | Ruling |
 | --- | --- |
-| 15 A Small Favor | Gain four warbands, capped by the warband bank. |
-| 28 Faithful Friend | Gain 4 Supply, clamped at the track maximum. |
-| 7 Garrison | Count the sites you rule once, when played. Gain that many warbands, then put one warband from your board on each ruled site. If your board is short, you choose which sites receive one. Otherwise no decision is asked. |
-| 133 Family Heirloom | Draw a relic. Only you see it. Choose take it facedown, or put it on the bottom of the relic deck. An empty relic deck does nothing. |
+| 15 A Small Favor | Gain four warbands, capped by the warband bank. Implemented (slice 1a). |
+| 28 Faithful Friend | Gain 4 Supply, clamped at the track maximum. Implemented (slice 1a). |
+| 7 Garrison | Count the sites you rule once, when played. Gain that many warbands, then put one warband from your board on each ruled site. If your board is short, you choose which sites receive one. Otherwise no decision is asked. Implemented (slice 1a). |
+| 133 Family Heirloom | Draw a relic. Only you see it. Choose take it facedown, or put it on the bottom of the relic deck. An empty relic deck does nothing. Implemented (slice 1a). |
 
 Locked and adviser-only are card restrictions in the data, not part of the power.
 
@@ -44,8 +44,8 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 
 | Card | Ruling |
 | --- | --- |
-| 47 Wayside Inn | Cost 1 favor placed. Gain 2 Supply. |
-| 26 Elders | Cost 2 favor placed. Gain 1 secret from the shared bank. |
+| 47 Wayside Inn | Cost 1 favor placed. Gain 2 Supply. Implemented (slice 1a). |
+| 26 Elders | Cost 2 favor placed. Gain 1 secret from the shared bank. Implemented (slice 1a). |
 | 9 Alchemist | Cost 1 secret placed and 1 secret burnt. Gain 4 favor from any bank or banks: a `Distribute` with a total of exactly min(4, favor available across all banks). No decision is asked when one bank holds all the available favor, or when 4 or fewer are available (you take everything). The favor goes to your board. |
 | 39 Wolves | Cost 1 secret placed. Choose one player board, yours included, and kill one warband there. If it has none, nothing happens. Only player boards count. |
 | 180 Fae Merchant | Cost 1 secret placed. Draw a relic and take it (assumed facedown). Then put exactly one relic you hold, except the Grand Scepter, on the bottom of the relic deck. The just-taken relic is eligible. A decision is asked only when there is more than one candidate. |
@@ -59,14 +59,23 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 | R03 Brass Horse | Cost 1 secret placed. "Your region" is the region of your pawn's site. Reveal the top card of that region's discard pile, then turn it facedown again. Place your pawn at a different site holding a card of the same suit (denizen or edifice). No decision is asked when exactly one site matches. If the pile is empty, the top is a Vision, or no site matches, place it at any other site. |
 | R16 Ivory Eye | Cost 1 secret placed. Choose any facedown adviser of any player, yours included, and `Peek` at it. The peek is private. Other players see only a log line saying who peeked at whose adviser. |
 | R39 Magic Carpet | No cost. Place your pawn at any site, including your current one, in which case the move is skipped. Then choose one: discard the Carpet with `Discard.Relic` (to the set-aside relic pile), or give it, faceup, to a player whose pawn is at a site different from your new one. With no eligible player the only choice is to discard. |
-| R45 Magic Waterskin | The relic must be faceup in your play area. Bury it first, with the standard returns, then gain 4 Supply. |
+| R45 Magic Waterskin | The relic must be faceup in your play area. Bury it first, with the standard returns, then gain 4 Supply. Implemented (slice 1a). |
 
 ## Slice 1: WAKE powers
 
 | Card | Ruling |
 | --- | --- |
-| E15 Marble Fountains (intact) | Wake. If your pawn is at this site, refresh Supply to the leftmost space: `GainSupply` up to the track maximum of 7. Once per turn. |
+| E15 Marble Fountains (intact) | Wake. If your pawn is at this site, refresh Supply to the leftmost space: `GainSupply` up to the track maximum of 7. Once per turn. Implemented (slice 1a). |
 | R06 Horned Mask | Wake. Take a non-edifice denizen from your pawn's site as a facedown adviser. `site-only` denizens are eligible, and locked ones are decided by the `Take` restrictions. If you already have 3 advisers you choose one of yours to discard, as in card play. Resources on the taken card return by the standard returns. |
+
+### Slice 1a implementation notes
+
+- **Family Heirloom:** holds the drawn relic facedown in the player's play area during the choice, because a temporary hand cannot hold a relic. "Put it on the bottom" buries it again.
+- **Garrison:** the site decision appears only when the warband bank was too short to fill the board, which needs a bank that the ruled sites and boards have nearly emptied.
+- **Warband gains:** `Gain.Warbands` reduces to what the bank holds. A Small Favor and Garrison tests pin this.
+- **Test staging:** the first game deals only some denizens. Cards 7, 26, 28 and 47 are not in its world deck, so the test fixture adds them where a test needs them.
+- **Marble Fountains:** E15 was in the edifice deck of the first game, so the fixture places it from there.
+- **Magic Waterskin:** a secret on the relic returns to its holder facedown before the relic goes to the bottom of the relic deck.
 
 ## Slice 2: modifiers
 

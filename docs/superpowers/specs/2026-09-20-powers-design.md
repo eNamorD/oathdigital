@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Slice 0 (E1 to E5) implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5) and slice 1a are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md) and the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
 ## Goal and scope
 
@@ -110,6 +110,17 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
 
 Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). The order above is the recommended one.
+
+## Walker shapes for powers
+
+The walker re-derives the operation tree on every command. A `Branch.select` and a `Transform` run again on resume against the state stored at the park, without the new answer. Two shapes are safe for a conditional decision, and slice 1a uses both:
+
+- **Live decision.** A `Branch` whose `select` returns only a `Decide`, placed after the sibling that changed the state it reads. Nothing runs between the park and the answer, so `select` returns the same decision on resume. Garrison uses it.
+- **Once guard.** `Repeat(guard, body)` where the guard is "no answer with this decision id yet, and the precondition holds". The guard runs only at pass boundaries, never on a resume inside the body, so a body that changes its own precondition is safe. The body must contain the `Decide` with that id, or the loop never ends. Family Heirloom uses it.
+
+A `Branch` whose selection is changed by an operation inside its own selected vector is not safe, because the resume selects again against the changed state.
+
+A relic cannot wait in a temporary hand, because `temporaryHands` holds world cards only. Family Heirloom therefore draws the relic facedown into the player's play area, asks the choice, and buries it again on "put on the bottom". Other players briefly see a facedown relic appear.
 
 ## Testing
 
