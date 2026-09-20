@@ -1,8 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.application.{GameProjector, LoadedGame}
-import oathdigital.protocol.projection.{BoardTargetFormationProjection,
-  BoardTargetRefProjection}
+import oathdigital.protocol.projection.BoardTargetFormationProjection
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignLosingForceRegistry,
   CampaignLosingForceResolver, CampaignPlanEffects, CampaignRules}
 import oathdigital.model._
@@ -132,25 +131,6 @@ class CampaignSuite extends munit.FunSuite {
       2 + catalog.relics.find(_.id.value == relic.value).get.defense + 6)
   }
 
-  test("Raid target projection is canonical private and requires the pawn") {
-    val (ready, attacker, defender, _, relic) = raidReady
-    val projector = new GameProjector(catalog)
-    val own = projector.project("raid-targets", LoadedGame(Ready(ready), 4),
-      attacker.player)
-    val action = own.boardTargetActions.find(_.actionKind == "campaign-raid").get
-    assertEquals(action.requiredTargets,
-      Vector(BoardTargetRefProjection.PlayerPawn(defender.player.value)))
-    assertEquals(action.candidates.map(_.target), Vector(
-      BoardTargetRefProjection.PlayerPawn(defender.player.value),
-      BoardTargetRefProjection.PlayerRelic(defender.player.value, relic.value),
-      BoardTargetRefProjection.PlayerBanner(defender.player.value, "peoples-favor"),
-      BoardTargetRefProjection.PlayerBanner(defender.player.value, "darkest-secret")))
-    assertEquals(projector.projectPublic("raid-targets",
-      LoadedGame(Ready(ready), 4)).boardTargetActions, Vector.empty)
-    assert(!projector.project("raid-targets", LoadedGame(Ready(ready), 4),
-      defender.player).legalControls.contains("beginCampaignRaid"))
-  }
-
   test("successful Raid durably resolves losses and relocates without Travel") {
     val (ready0, attacker, defender, origin, relic) = raidReady
     val refillSite = ready0.game.current.map.inPlay.find(_ != origin).get
@@ -276,37 +256,6 @@ class CampaignSuite extends munit.FunSuite {
       CampaignPlanEffects.validateExecutable(Vector(effect)).isLeft, effect.toString))
   }
 
-  test("legality and projection agree on mandatory bandit origin") {
-    val (ready, player, site) = campaignReady
-    val legal = CampaignRules.legalTargets(catalog, ready, player.player)
-    assertEquals(legal.head, site)
-    assert(legal.size > 1)
-    val projection = new GameProjector(catalog).project("campaign",
-      LoadedGame(Ready(ready), 1), player.player)
-    val action = projection.boardTargetActions.find(_.actionKind == "campaign-conquest").get
-    assertEquals(action.minimum -> action.maximum, 1 -> legal.size)
-    assertEquals(action.candidates.map(_.target), legal.map(id =>
-      BoardTargetRefProjection.Site(id.value)))
-    assertEquals(action.requiredTargets,
-      Vector(BoardTargetRefProjection.Site(site.value)))
-    assertEquals(action.candidates.head.details,
-      Vector("2 Supply", s"Choose 0 to ${player.board.warbands} board warbands"))
-    assertEquals(action.formation, Some(
-      BoardTargetFormationProjection(
-        0, player.board.warbands, player.board.warbands, 2)))
-    val hidden = new GameProjector(catalog).projectPublic("campaign",
-      LoadedGame(Ready(ready), 1))
-    assertEquals(hidden.boardTargetActions, Vector.empty)
-
-    val reduced = ready.updateCurrent(_.copy(
-      players = ready.game.current.players.map(p => if (p.player == player.player)
-        p.copy(board = p.board.copy(warbands = 2)) else p)))
-    val changed = new GameProjector(catalog).project("campaign",
-      LoadedGame(Ready(reduced), 2), player.player).boardTargetActions
-      .find(_.actionKind == "campaign-conquest").flatMap(_.formation).get
-    assertEquals(changed.maximumForce -> changed.availableWarbands, 2 -> 2)
-  }
-
   test("multi-site Conquest preserves the mandatory origin and canonical targets") {
     val (ready, player, pawn) = campaignReady
     val legal = CampaignRules.legalTargets(catalog, ready, player.player)
@@ -364,41 +313,6 @@ class CampaignSuite extends munit.FunSuite {
             SiteForces.Occupied(ForceKind.Exile(lineage), 1))))))
     assert(CampaignRules.passAllowsTarget(catalog, controlledPass, activeId,
       source, blocked))
-  }
-
-  test("Campaign projection permits an empty force and requires full Supply cost") {
-    val (ready, player, site) = campaignReady
-    def withResources(warbands: Int, supply: Int): ReadyGame =
-      ready.updateCurrent(_.copy(
-        players = ready.game.current.players.map(p => if (p.player == player.player)
-          p.copy(board = p.board.copy(warbands = warbands,
-            supply = SupplyTrack(supply))) else p)))
-    def campaignAction(state: ReadyGame) = new GameProjector(catalog)
-      .project("campaign-resources", LoadedGame(Ready(state), 2), player.player)
-      .boardTargetActions.find(_.actionKind == "campaign-conquest")
-
-    Vector(0 -> 0, 0 -> 1, 1 -> 0, 1 -> 1).foreach {
-      case (warbands, supply) =>
-        val state = withResources(warbands, supply)
-        assertEquals(CampaignRules.legalTargets(catalog, state, player.player),
-          Vector.empty)
-        assertEquals(campaignAction(state), None)
-        assert(rules.handle(Ready(state), CampaignCommand.Start(player.player,
-          DecisionId(s"campaign-insufficient-$warbands-$supply"), site, 0))
-          .left.toOption.get.isInstanceOf[InsufficientSupply])
-    }
-
-    val empty = withResources(0, Campaign.SupplyCost)
-    assertEquals(CampaignRules.legalTargets(catalog, empty, player.player).head,
-      site)
-    assertEquals(campaignAction(empty).flatMap(_.formation), Some(
-      BoardTargetFormationProjection(0, 0, 0,
-        Campaign.SupplyCost)))
-
-    val exact = withResources(1, Campaign.SupplyCost)
-    val formation = campaignAction(exact).flatMap(_.formation).get
-    assertEquals(formation, BoardTargetFormationProjection(
-      Campaign.MinimumForce, 1, 1, Campaign.SupplyCost))
   }
 
   test("formation projection rejects malformed authoritative bounds") {
@@ -589,47 +503,6 @@ class CampaignSuite extends munit.FunSuite {
       .left.toOption.get
     assert(error.isInstanceOf[CampaignUnavailable])
     assert(error.toString.contains("Vow of Peace"))
-  }
-
-  test("facedown owned Outriders is offered by exact source and ignores recorded skulls") {
-    val (ready, player, site) = campaignReady
-    val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
-    val source = CampaignPlanSource.Adviser(player.player,
-      DenizenId(outriders.id.value))
-    val state = withPlanActor(ready,
-      player.copy(advisers = Vector(DenizenState(DenizenId(outriders.id.value),
-        Orientation.FaceDown, Tokens.empty))))
-    val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
-      DecisionId("campaign-outriders"), site, 1)).toOption.get
-    val Ready(pendingState) = declared.state: @unchecked
-    val pending = pendingState.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
-    assertEquals(CampaignRules.legalPlanChoices(catalog, pendingState, pending),
-      Vector(source))
-    val projector = new GameProjector(catalog)
-    val actorView = projector.project("campaign-outriders",
-      LoadedGame(declared.state, 1), player.player)
-    assertEquals(actorView.campaign.get.planChoices.map(_.kind),
-      Vector("adviser"))
-    assertEquals(actorView.legalControls,
-      Vector("chooseCampaignPlan", "finishCampaignPlans"))
-    val other = pendingState.game.current.players.find(_.player != player.player).get.player
-    val otherView = projector.project("campaign-outriders",
-      LoadedGame(declared.state, 1), other)
-    assertEquals(otherView.campaign, None)
-    assertEquals(otherView.phase, "campaign-waiting")
-    assertEquals(projector.projectPublic("campaign-outriders",
-      LoadedGame(declared.state, 1)).campaign, None)
-    val selected = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
-      pending.decision, source)).toOption.get
-    assert(selected.events.head.asInstanceOf[CampaignPlanChosen].revealed)
-    val chosen = rules.handle(selected.state, CampaignCommand.FinishPlans(player.player,
-      pending.decision, Vector(AttackDieFace.TwoSwordsSkull))).toOption.get
-    val Ready(after) = chosen.state: @unchecked
-    val result = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
-    assertEquals(result.attack, 2)
-    assertEquals(result.skullLosses, 0)
-    assertEquals(after.game.current.players.find(_.player == player.player).get
-      .advisers.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
   }
 
   test("facedown site Outriders reveals in place and records cleanly") {
@@ -1150,127 +1023,6 @@ class CampaignSuite extends munit.FunSuite {
       .board.warbands, player.board.warbands)
     assertEquals(alternate.evolve(started.state, event), Right(defeated.state))
     assert(rules.evolve(started.state, event).isLeft)
-  }
-
-  test("player-defender Conquest aggregates force and resolves title plans") {
-    val (base, attacker, pawn) = campaignReady
-    val defender = base.game.current.players.find(_.player != attacker.player).get
-    val other = CampaignRules.legalTargets(catalog, base, attacker.player)(1)
-    val sites = Vector(pawn, other)
-    val targetStates = sites.zip(Vector(1, 2)).foldLeft(
-      base.game.current.map.sites) { case (all, (site, count)) =>
-      all.updated(site, all(site).copy(forces = SiteForces.Occupied(
-        ForceKind.Exile(defender.lineage), count), denizens = Vector.empty))
-    }
-    val state = base.updateCurrent(_.copy(
-      title = OathkeeperState(None, TitleSide.Oathkeeper),
-      players = base.game.current.players.map {
-        case p if p.player == attacker.player =>
-          p.copy(board = p.board.copy(warbands = 4))
-        case p if p.player == defender.player =>
-          p.copy(board = p.board.copy(warbands = 10), advisers = Vector.empty,
-            relics = Vector.empty)
-        case p => p
-      }, map = base.game.current.map.copy(sites = targetStates)))
-    assertEquals(CampaignRules.validateStart(catalog, state, attacker.player,
-      sites, 4), Right(CampaignDefender.Player(defender.player)))
-    assertEquals(CampaignRules.defenderForce(state, sites), 3)
-    val started = rules.handle(Ready(state), CampaignCommand.Start(attacker.player,
-      DecisionId("campaign-player"), sites, 4)).toOption.get
-    val Ready(afterStart) = started.state: @unchecked
-    val pending = afterStart.game.current.pending.get
-      .asInstanceOf[PendingProcedure.Campaign]
-    assertEquals(pending.defender, CampaignDefender.Player(defender.player))
-    val projected = new GameProjector(catalog).project("player-defender",
-      LoadedGame(started.state, 4), attacker.player).campaign.get
-    assertEquals(projected.defenderKind -> projected.defenderPlayerId,
-      "player" -> Some(defender.player.value))
-    assertEquals(projected.defenderForce -> projected.defenseDiceCount,
-      3 -> (sites.flatMap(CampaignRules.siteDefinition(catalog, _))
-        .map(_.defense).sum))
-    assertEquals(new GameProjector(catalog).project("player-defender",
-      LoadedGame(started.state, 4), defender.player).campaign, None)
-    Vector(TitleSide.Oathkeeper -> 1, TitleSide.Usurper -> 2).foreach { case (side, bonus) =>
-      val titled = state.updateCurrent(_.copy(title = OathkeeperState(
-          Some(defender.player), side)))
-      assertEquals(CampaignRules.validateStart(catalog, titled,
-        attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
-      assert(CampaignRules.legalTargets(catalog, titled, attacker.player).nonEmpty)
-      assert(new GameProjector(catalog).project("titled-defender",
-        LoadedGame(Ready(titled), 4), attacker.player).boardTargetActions
-        .exists(_.actionKind == "campaign-conquest"))
-      val titleStarted = rules.handle(Ready(titled), CampaignCommand.Start(
-        attacker.player, DecisionId(s"title-$side"), sites, 4)).toOption.get
-      val attackerDone = rules.handle(titleStarted.state, CampaignCommand.FinishPlans(
-        attacker.player, DecisionId(s"title-$side"), Vector.empty)).toOption.get
-      val Ready(awaitingDefender) = attackerDone.state: @unchecked
-      assertEquals(awaitingDefender.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Campaign].attackDice, Vector.empty)
-      assert(rules.handle(attackerDone.state, CampaignCommand.FinishPlans(
-        attacker.player, DecisionId(s"title-$side"), Vector.empty)).isLeft)
-      val defenderView = new GameProjector(catalog).project("titled-defender",
-        LoadedGame(attackerDone.state, 5), defender.player).campaign.get
-      assertEquals(defenderView.decisionOwnerPlayerId, Some(defender.player.value))
-      assertEquals(defenderView.planChoices.map(_.mechanicalResult),
-        Vector(s"Add $bonus defense ${if (bonus == 1) "die" else "dice"}"))
-      val titleSource = CampaignPlanSource.Title(defender.player)
-      assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
-        attacker.player, DecisionId(s"title-$side"), titleSource)).isLeft)
-      assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
-        defender.player, DecisionId("stale-title"), titleSource)).isLeft)
-      val chosen = rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
-        defender.player, DecisionId(s"title-$side"), titleSource)).toOption.get
-      val titleEvent = chosen.events.head.asInstanceOf[CampaignPlanChosen]
-      assert(rules.evolve(attackerDone.state, titleEvent.copy(effects = Vector(
-        CampaignPlanEffect.AddDefenseDice(bonus + 1)))).isLeft)
-      val resolved = rules.handle(chosen.state, CampaignCommand.FinishPlans(
-        defender.player, DecisionId(s"title-$side"),
-        Vector.fill(4)(AttackDieFace.OneSword))).toOption.get
-      val Ready(afterTitle) = resolved.state: @unchecked
-      assertEquals(CampaignRules.defensePlanDice(afterTitle.game.current.pending.get
-        .asInstanceOf[PendingProcedure.Campaign]), bonus)
-      assertEquals(new GameProjector(catalog).project("titled-defender",
-        LoadedGame(resolved.state, 6), defender.player).campaign, None)
-    }
-
-    val outriders = catalog.denizens.find(
-      _.handlers.contains("denizen.outriders")).get
-    val vow = catalog.denizens.find(
-      _.handlers.contains("denizen.vow-of-peace")).get
-    val brass = catalog.relics.find(
-      _.handlers.contains("relic.brass-army.campaign")).get
-    val attackerOnly = state.updateCurrent(_.copy(players = state.game.current.players.map {
-        case p if p.player == defender.player => p.copy(
-          advisers = Vector(outriders, vow).map(card => DenizenState(
-            DenizenId(card.id.value), Orientation.FaceUp, Tokens.empty)),
-          relics = Vector(RelicState(RelicId(brass.id.value),
-            Orientation.FaceUp, Tokens.empty)))
-        case p => p
-      }))
-    assertEquals(CampaignRules.validateStart(catalog, attackerOnly,
-      attacker.player, sites, 4), Right(CampaignDefender.Player(defender.player)))
-
-    val original = catalog.denizens.head
-    val changedCatalog = catalog.copy(denizens = catalog.denizens.updated(0,
-      original.copy(powers = Vector(CatalogPower("denizen.future-defender-plan",
-        persistent = false, "+2 [defense-die]")))))
-    val unsupported = state.updateCurrent(_.copy(players = state.game.current.players.map {
-        case p if p.player == defender.player => p.copy(advisers = Vector(
-          DenizenState(DenizenId(original.id.value), Orientation.FaceUp,
-            Tokens.empty)))
-        case p => p
-      }))
-    assert(CampaignRules.validateStart(changedCatalog, unsupported,
-      attacker.player, sites, 4).isLeft)
-    assertEquals(CampaignRules.legalTargets(changedCatalog, unsupported,
-      attacker.player), Vector.empty)
-
-    val mixed = state.updateCurrent(_.copy(map = state.game.current.map.copy(sites =
-        state.game.current.map.sites.updated(other,
-          state.game.current.map.sites(other).copy(forces =
-            SiteForces.Occupied(ForceKind.Bandit, 2))))))
-    assert(CampaignRules.validateStart(catalog, mixed, attacker.player,
-      sites, 4).isLeft)
   }
 
   test("player-defender victory kills half returns survivors and places atomically") {

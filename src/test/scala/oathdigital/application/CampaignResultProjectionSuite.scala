@@ -97,4 +97,12 @@ class CampaignResultProjectionSuite extends munit.FunSuite {
     assertEquals(projector.projectPublic("campaign", LoadedGame(plans.state, 40))
       .walkerDecision, None)
   }
+
+  test("Campaign is offered as a start control, not as a board-target selection") {
+    val b = board(extras = 1)
+    val projection = view(Ready(b.ready), b.actor)
+    assert(projection.legalControls.contains("beginCampaign"))
+    assert(!projection.boardTargetActions.exists(_.actionKind.startsWith("campaign")))
+    assert(!projection.legalControls.exists(_.endsWith("CampaignPlans")))
+  }
 }

@@ -2,7 +2,7 @@ package oathdigital.application
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.actions.{CampaignRules, ForgeRules}
+import oathdigital.gameplay.actions.ForgeRules
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
@@ -134,17 +134,7 @@ private[application] final class LegalActionProjector(
     if (current.result.nonEmpty) Vector.empty
     else if (current.walkerPending.nonEmpty) walkerControls(context)
     else current.pending match {
-      case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished &&
-          context.viewer.contains(CampaignRules.planDecisionOwner(c)) =>
-        Vector("chooseCampaignPlan", "finishCampaignPlans")
-      case Some(r: PendingProcedure.CampaignRaidRelocation)
-          if context.viewer.contains(r.actor) => Vector("relocateCampaignRaidPawn")
       case _ if !context.viewerIsActive => Vector.empty
-      case Some(c: PendingProcedure.Campaign) if c.victorious.contains(true) =>
-        Vector(if (c.kind == CampaignKind.Raid) "relocateCampaignRaidPawn"
-          else "placeCampaignForce")
-      case Some(c: PendingProcedure.Campaign) if !c.defenderPlansFinished => Vector.empty
-      case Some(_: PendingProcedure.Campaign) => Vector("chooseCampaignSacrifice")
       case Some(_) => Vector.empty
       case None => current.turn.phase match {
         case Phase.Act => Vector(
@@ -234,43 +224,12 @@ private[application] final class LegalActionProjector(
 
   private def boardTargetActions(context: ScopedProjectionContext,
       travelFacts: Vector[(SiteId, Int)]) = {
-    val ready = context.ready; val player = context.active
     val travel = travelFacts.map {
       case (site, cost) => BoardTargetCandidateProjection(
         BoardTargetRefProjection.Site(site.value), presentation.siteLabel(site),
         Vector(s"$cost Supply"))
     }
-    val campaign = CampaignRules.legalTargets(catalog, ready, player.player).map(site =>
-      BoardTargetCandidateProjection(BoardTargetRefProjection.Site(site.value),
-        presentation.siteLabel(site), Vector(
-          s"${oathdigital.gameplay.actions.Campaign.SupplyCost} Supply",
-          s"Choose ${oathdigital.gameplay.actions.Campaign.MinimumForce} to " +
-            s"${player.board.warbands} board warbands")))
-    val raid = CampaignRules.legalRaidTargets(catalog, ready, player.player).map {
-      case CampaignRaidTarget.Pawn(defender) => BoardTargetCandidateProjection(
-        BoardTargetRefProjection.PlayerPawn(defender.value),
-        s"${presentation.safeLabel(defender.value)} pawn", Vector("Required Raid target"))
-      case CampaignRaidTarget.Relic(defender, relic) => BoardTargetCandidateProjection(
-        BoardTargetRefProjection.PlayerRelic(defender.value, relic.value),
-        presentation.relicLabel(relic))
-      case CampaignRaidTarget.Banner(defender, banner) =>
-        val key = banner.key
-        BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
-          defender.value, key), presentation.safeLabel(key))
-    }
-    Vector(
-      selection("travel", "Choose a Travel destination", travel),
-      selection("campaign-conquest", "Choose optional same-ruler Conquest sites",
-        campaign, Option.when(campaign.nonEmpty)(BoardTargetFormationProjection(
-          oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
-          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
-        1, campaign.size, campaign.headOption.map(_.target).toVector),
-      selection("campaign-raid", "Choose Raid targets", raid,
-        Option.when(raid.nonEmpty)(BoardTargetFormationProjection(
-          oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
-          player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
-        Option.when(raid.nonEmpty)(1).getOrElse(0), raid.size,
-        raid.headOption.map(_.target).toVector)).flatten
+    Vector(selection("travel", "Choose a Travel destination", travel)).flatten
   }
 
   private def selection(kind: String, prompt: String,
