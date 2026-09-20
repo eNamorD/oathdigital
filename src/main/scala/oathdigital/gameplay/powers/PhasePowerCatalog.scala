@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
-import oathdigital.gameplay.powers.action.{Elders, WaysideInn}
+import oathdigital.gameplay.powers.action.{Elders, MagicWaterskin, WaysideInn}
 import oathdigital.gameplay.powers.rest.SilverTongue
 
 /** The production phase powers, beside [[WalkerPowerCatalog]]. A power whose
@@ -11,5 +11,5 @@ import oathdigital.gameplay.powers.rest.SilverTongue
 object PhasePowerCatalog {
   def default(catalog: ExecutableCatalog): PhasePowers =
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
-      Vector[PhasePower](WaysideInn, Elders))
+      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin))
 }
