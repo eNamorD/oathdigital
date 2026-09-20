@@ -9,10 +9,6 @@ final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
   def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
 }
 
-final case class CampaignForceAllocation(site: SiteId, count: Int) {
-  require(count >= 0, "Campaign allocation must be non-negative")
-}
-
 sealed trait CampaignKind extends Product with Serializable {
   def key: String
 }
@@ -53,95 +49,8 @@ object CampaignRaidTarget {
       canonical(targets) == targets
 }
 
-sealed trait CampaignLosingForceEffect extends Product with Serializable {
-  def site: SiteId
-}
 sealed trait CampaignDefender extends Product with Serializable
 object CampaignDefender {
   case object Bandits extends CampaignDefender
   final case class Player(playerId: PlayerId) extends CampaignDefender
-}
-object CampaignLosingForceEffect {
-  final case class Remove(site: SiteId, force: ForceKind, count: Int)
-      extends CampaignLosingForceEffect {
-    require(count > 0, "removed Campaign force must be positive")
-  }
-  final case class Preserve(site: SiteId, force: ForceKind, count: Int)
-      extends CampaignLosingForceEffect {
-    require(count > 0, "preserved Campaign force must be positive")
-  }
-  final case class Relocate(site: SiteId, destination: SiteId,
-      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
-    require(site != destination, "Campaign relocation needs a different site")
-    require(count > 0, "relocated Campaign force must be positive")
-  }
-  final case class Replace(site: SiteId, force: ForceKind, count: Int,
-      replacementForce: Option[ForceKind], replacementCount: Int)
-      extends CampaignLosingForceEffect {
-    require(count > 0, "replaced Campaign force must be positive")
-    require(replacementCount >= 0, "replacement force must be non-negative")
-    require(replacementForce.nonEmpty == (replacementCount > 0),
-      "replacement force and count must agree")
-  }
-  final case class ReturnToBoard(site: SiteId, player: PlayerId,
-      force: ForceKind, count: Int)
-      extends CampaignLosingForceEffect {
-    require(count > 0, "returned Campaign force must be positive")
-  }
-  final case class KillCommitted(site: SiteId, player: PlayerId,
-      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
-    require(count > 0, "killed committed Campaign force must be positive")
-  }
-  final case class RelocateCommitted(site: SiteId, player: PlayerId,
-      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
-    require(count > 0, "relocated committed Campaign force must be positive")
-  }
-  final case class PreserveCommitted(site: SiteId, player: PlayerId,
-      force: ForceKind, count: Int) extends CampaignLosingForceEffect {
-    require(count > 0, "preserved committed Campaign force must be positive")
-  }
-}
-final case class CampaignRaidBoardLoss(playerId: PlayerId, killed: Int,
-    returned: Int) {
-  require(killed >= 0 && returned >= 0, "Raid board losses must be non-negative")
-}
-object PendingProcedure {
-  final case class Campaign(
-      decision: DecisionId,
-      actor: PlayerId,
-      targetSites: Vector[SiteId],
-      defender: CampaignDefender,
-      force: Int,
-      plans: Vector[CampaignPlanResolution],
-      attackerPlansFinished: Boolean,
-      defenderPlansFinished: Boolean,
-      attackDice: Vector[AttackDieFace],
-      attack: Int,
-      skullLosses: Int,
-      sacrificed: Option[Int],
-      defenseDice: Vector[DefenseDieFace],
-      defense: Option[Int],
-      victorious: Option[Boolean],
-      kind: CampaignKind = CampaignKind.Conquest,
-      raidTargets: Vector[CampaignRaidTarget] = Vector.empty
-  ) extends PendingProcedure {
-    require(kind match {
-      case CampaignKind.Conquest => targetSites.nonEmpty && raidTargets.isEmpty
-      case CampaignKind.Raid => targetSites.isEmpty &&
-        CampaignRaidTarget.isCanonical(raidTargets)
-    }, "Campaign targets must match their kind and canonical order")
-  }
-
-  final case class CampaignRaidRelocation(
-      decision: DecisionId,
-      actor: PlayerId,
-      defender: PlayerId,
-      origin: SiteId,
-      legalSites: Vector[SiteId]
-  ) extends PendingProcedure {
-    require(legalSites.nonEmpty && !legalSites.contains(origin) &&
-      legalSites.distinct.size == legalSites.size,
-      "Raid relocation sites must be distinct and exclude the origin")
-  }
-
 }

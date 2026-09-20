@@ -197,8 +197,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
       case _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
-          _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
-          _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>
         Left(InvalidEventOrder("gameplay events require the gameplay evolution"))
       case _: UsurperFlipped | _: UsurperVictory =>

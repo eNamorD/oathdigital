@@ -18,7 +18,7 @@ final case class GameEventEnvelope(
  * Explicit current game-event vocabulary, including first-game setup.
  */
 object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
-    with ActionEventCodec with CampaignEventCodec with EndingEventCodec
+    with ActionEventCodec with EndingEventCodec
     with WalkerEventCodec {
   import WireError._
 
@@ -33,13 +33,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
   val SiteRelicsPeekedType = "gameplay.site-relics-peeked"
   val OwnedRelicRevealedType = "gameplay.owned-relic-revealed"
   val WarbandsMovedType = "gameplay.warbands-moved"
-  val CampaignStartedType = "gameplay.campaign-started"
-  val CampaignPlanChosenType = "gameplay.campaign-plan-chosen"
-  val CampaignPlansFinishedType = "gameplay.campaign-plans-finished"
-  val CampaignSacrificedType = "gameplay.campaign-sacrificed"
-  val CampaignConqueredType = "gameplay.campaign-conquered"
-  val CampaignRaidedType = "gameplay.campaign-raided"
-  val CampaignRaidPawnRelocatedType = "gameplay.campaign-raid-pawn-relocated"
   val BanditsRefilledType = "gameplay.bandits-refilled"
   val UsurperFlippedType = "gameplay.usurper-flipped"
   val UsurperVictoryType = "gameplay.usurper-victory"
@@ -272,11 +265,11 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     } yield ()
 
   private val discriminatorDispatch = lifecycleDiscriminator
-    .orElse(actionDiscriminator).orElse(campaignDiscriminator)
+    .orElse(actionDiscriminator)
     .orElse(endingDiscriminator).orElse(walkerDiscriminator)
 
   private val encoderDispatch = lifecycleEncoder.orElse(actionEncoder)
-    .orElse(campaignEncoder).orElse(endingEncoder).orElse(walkerEncoder)
+    .orElse(endingEncoder).orElse(walkerEncoder)
 
   private def discriminator(event: OathEvent): String =
     discriminatorDispatch(event)
@@ -293,7 +286,6 @@ object GameEventWire extends GameEventJsonSupport with LifecycleEventCodec
     try {
       lifecycleDecode(eventType, payload, path, envelopeCatalog)
         .orElse(actionDecode(eventType, payload, path, envelopeCatalog))
-        .orElse(campaignDecode(eventType, payload, path, envelopeCatalog))
         .orElse(endingDecode(eventType, payload, path, envelopeCatalog))
         .orElse(walkerDecode(eventType, payload, path, envelopeCatalog))
         .getOrElse(Left(UnknownEventType(s"$path.eventType", eventType)))

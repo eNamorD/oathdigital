@@ -76,12 +76,7 @@ object OathViolation {
       extends OathViolation
   final case class UnsupportedRecoverState(reason: String) extends OathViolation
   final case class RecoverOutcomeMismatch(detail: String) extends OathViolation
-  final case class UnsupportedCampaignState(reason: String) extends OathViolation
   final case class CampaignUnavailable(reason: String) extends OathViolation
-  final case class CampaignDecisionMismatch(expected: DecisionId, actual: DecisionId)
-      extends OathViolation
-  final case class CampaignPlanUnavailable(detail: String) extends OathViolation
-  final case class CampaignOutcomeMismatch(detail: String) extends OathViolation
   final case class RecoverUnavailable(detail: String) extends OathViolation
   final case class UnsupportedForgeState(reason: String) extends OathViolation
   final case class ForgeUnavailable(detail: String) extends OathViolation

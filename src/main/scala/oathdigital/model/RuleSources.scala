@@ -97,40 +97,6 @@ object RuleSourceRef {
 }
 
 sealed trait RuleQueryContext extends Product with Serializable
-object RuleQueryContext {
-  final case class Campaign(
-      ready: ReadyGame,
-      player: PlayerState,
-      target: SiteId,
-      window: CampaignTimingWindow
-  ) extends RuleQueryContext
-}
-
-/** Printed Campaign order, kept explicit even where the bounded Conquest has
-  * no executable choice at a window yet. Handler discovery and replay use the
-  * same stable ordering rather than inferring timing from a card name.
-  */
-sealed trait CampaignTimingWindow extends Product with Serializable {
-  def order: Int
-}
-object CampaignTimingWindow {
-  case object TargetAndForceFormation extends CampaignTimingWindow { val order = 0 }
-  case object AttackerBattlePlans extends CampaignTimingWindow { val order = 1 }
-  case object AttackRollAndSkullLosses extends CampaignTimingWindow { val order = 2 }
-  case object AttackerSacrifice extends CampaignTimingWindow { val order = 3 }
-  case object DefenderBattlePlansAndRoll extends CampaignTimingWindow { val order = 4 }
-  case object Outcome extends CampaignTimingWindow { val order = 5 }
-  case object ConquestPlacement extends CampaignTimingWindow { val order = 6 }
-  case object RaidResolution extends CampaignTimingWindow { val order = 7 }
-  case object RaidPawnRelocation extends CampaignTimingWindow { val order = 8 }
-  case object RemainingEndVictoryDefeatEffects extends CampaignTimingWindow { val order = 9 }
-
-  val ordered: Vector[CampaignTimingWindow] = Vector(
-    TargetAndForceFormation, AttackerBattlePlans, AttackRollAndSkullLosses,
-    AttackerSacrifice, DefenderBattlePlansAndRoll, Outcome,
-    ConquestPlacement, RaidResolution, RaidPawnRelocation,
-    RemainingEndVictoryDefeatEffects)
-}
 
 final case class RuleActivation(
     source: RuleSourceRef,

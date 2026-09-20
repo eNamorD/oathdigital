@@ -1,6 +1,5 @@
 package oathdigital.application
 
-import oathdigital.gameplay.CampaignFixture
 import oathdigital.gameplay.CampaignFixture._
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog

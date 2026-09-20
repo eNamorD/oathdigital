@@ -1,7 +1,6 @@
 package oathdigital.serialization
 
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
-import oathdigital.gameplay.actions.{CampaignLosingForceResolver, CampaignRules}
 import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.model.OathEvent.FirstGameCompleted
@@ -279,109 +278,6 @@ class GameEventWireSuite extends munit.FunSuite {
       assert(GameEventWire.decodeStream(ujson.write(mutated)).isLeft,
         s"a '$tag' answer must not decode")
     }
-  }
-
-  test("Campaign Raid targets have stable canonical keys and round trip") {
-    val defender = PlayerId("blue")
-    val targets = Vector[CampaignRaidTarget](
-      CampaignRaidTarget.Pawn(defender),
-      CampaignRaidTarget.Relic(defender, RelicId("R03")),
-      CampaignRaidTarget.Relic(defender, RelicId("R12")),
-      CampaignRaidTarget.Banner(defender, Banner.PeoplesFavor),
-      CampaignRaidTarget.Banner(defender, Banner.DarkestSecret))
-    assertEquals(targets.map(_.stableKey), Vector(
-      "pawn:blue", "relic:blue:R03", "relic:blue:R12",
-      "banner:blue:peoples-favor", "banner:blue:darkest-secret"))
-    assertEquals(CampaignRaidTarget.canonical(targets.reverse), targets)
-
-    val event = OathEvent.CampaignStarted(PlayerId("red"),
-      DecisionId("raid-1"), Vector.empty, CampaignDefender.Player(defender),
-      supplySpent = 2, force = 3, CampaignKind.Raid, targets)
-    val encoded = GameEventWire.encodeStream("raid", catalogRef,
-      Vector(RecordedEvent(0, event))).toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.event), Vector(event))
-
-    val wrongOrder = ujson.read(encoded).arr
-    wrongOrder.head("payload")("raidTargets") = ujson.Arr.from(
-      wrongOrder.head("payload")("raidTargets").arr.reverse)
-    assert(GameEventWire.decodeStream(ujson.write(wrongOrder)).isLeft)
-
-    val unknownBanner = ujson.read(encoded).arr
-    unknownBanner.head("payload")("raidTargets")(3)("banner") = "unknown"
-    assert(GameEventWire.decodeStream(ujson.write(unknownBanner)).isLeft)
-  }
-
-  test("Raid resolution and relocation round trip hidden disposals exactly") {
-    val events = Vector[OathEvent](
-      OathEvent.CampaignRaided(PlayerId("red"), DecisionId("raid-1"),
-        CampaignLosingForceResolver.default.id,
-        CampaignRaidBoardLoss(PlayerId("blue"), 2, 3),
-        Vector(RelicId("R1")), Vector(Banner.PeoplesFavor),
-        Vector(DenizenId("D1"), VisionId("V1")), Region.Provinces,
-        Some(CampaignRules.Conspiracy), Vector(RelicId("R2")),
-        favorBurned = 2, bannerFavorReturned = Map(Suit.Order -> 2),
-        darkestSecretBurned = 3),
-      OathEvent.CampaignRaidPawnRelocated(PlayerId("red"), DecisionId("raid-1"),
-        PlayerId("blue"), SiteId("S1"), SiteId("S2")))
-    val encoded = GameEventWire.encodeStream("raid", catalogRef,
-      events.zipWithIndex.map { case (event, i) => RecordedEvent(i.toLong, event) })
-      .toOption.get
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered.head("payload")("takenBanners")(0) = "unknown"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-
-    val negativeBurn = ujson.read(encoded).arr
-    negativeBurn.head("payload")("darkestSecretBurned") = -1
-    assert(GameEventWire.decodeStream(ujson.write(negativeBurn)).isLeft)
-
-    val fractionalBurn = ujson.read(encoded).arr
-    fractionalBurn.head("payload")("darkestSecretBurned") = 1.5
-    assert(GameEventWire.decodeStream(ujson.write(fractionalBurn)).isLeft)
-  }
-
-  test("current pre-release Campaign events round-trip exact dice and choices") {
-    val events = Vector[OathEvent](
-      OathEvent.CampaignStarted(PlayerId("red"), DecisionId("campaign-1"),
-        SiteId("site"), 2, 2),
-      OathEvent.CampaignPlanChosen(PlayerId("red"), DecisionId("campaign-1"),
-        CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25")), "relic.brass-army.campaign",
-        CampaignPlanSide.Attacker,
-        Vector(CampaignPlanCost.Secret(1)),
-        Vector(CampaignPlanEffect.AddAttackDice(4))),
-      OathEvent.CampaignPlansFinished(PlayerId("red"), DecisionId("campaign-1"),
-        CampaignPlanSide.Attacker,
-        Vector(CampaignPlanSource.Relic(PlayerId("red"),
-          RelicId("R25"))), Vector("relic.brass-army.campaign"),
-        Vector(CampaignPlanEffect.AddAttackDice(4)),
-        Vector.fill(6)(AttackDieFace.OneSword), attack = 6, skullLosses = 0),
-      OathEvent.CampaignPlanChosen(PlayerId("blue"), DecisionId("campaign-1"),
-        CampaignPlanSource.Title(PlayerId("blue")),
-        "title.oathkeeper-defense", CampaignPlanSide.Defender,
-        Vector.empty, Vector(CampaignPlanEffect.AddDefenseDice(1))),
-      OathEvent.CampaignSacrificed(PlayerId("red"), DecisionId("campaign-1"),
-        1, Vector(DefenseDieFace.OneShield), 3, 4, 1, victorious = false),
-      OathEvent.CampaignConquered(PlayerId("red"), DecisionId("campaign-2"),
-        CampaignLosingForceResolver.removeAllBandits.id,
-        Vector(CampaignLosingForceEffect.Remove(SiteId("site"),
-          ForceKind.Bandit, 2)),
-        Vector(CampaignForceAllocation(SiteId("site"), 1))),
-      OathEvent.BanditsRefilled(Vector(SiteId("empty") -> 2)))
-    val encoded = GameEventWire.encodeStream("campaign", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index.toLong, event) })
-      .toOption.get
-    val decoded = GameEventWire.decodeStream(encoded).toOption.get
-    assertEquals(decoded.map(_.formatVersion), Vector.fill(events.size)(1))
-    assertEquals(decoded.map(_.event), events)
-    val tampered = ujson.read(encoded).arr
-    tampered(2)("payload")("attackDice")(0) = "unknown-face"
-    assert(GameEventWire.decodeStream(ujson.write(tampered)).isLeft)
-    val duplicate = ujson.read(encoded).arr
-    val source = duplicate(2)("payload")("orderedSources")(0)
-    duplicate(2)("payload")("orderedSources") = ujson.Arr(source, source)
-    assert(GameEventWire.decodeStream(ujson.write(duplicate)).isLeft)
   }
 
   test("walker delta events round-trip independent semantic facts") {
@@ -873,29 +769,6 @@ class GameEventWireSuite extends munit.FunSuite {
 
     assertEquals(decoded.map(_.sequence), Vector(41L, 42L))
     assertEquals(decoded.map(_.event), events)
-  }
-
-  test("Campaign losing-force policy effects round-trip without narrowing") {
-    val effects = Vector[CampaignLosingForceEffect](
-      CampaignLosingForceEffect.Preserve(SiteId("a"), ForceKind.Bandit, 2),
-      CampaignLosingForceEffect.Relocate(SiteId("b"), SiteId("c"),
-        ForceKind.Exile(LineageId("red")), 3),
-      CampaignLosingForceEffect.Replace(SiteId("d"), ForceKind.Imperial, 1,
-        Some(ForceKind.Bandit), 2),
-      CampaignLosingForceEffect.ReturnToBoard(SiteId("d"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.KillCommitted(SiteId("a"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.PreserveCommitted(SiteId("a"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1),
-      CampaignLosingForceEffect.RelocateCommitted(SiteId("c"), PlayerId("red"),
-        ForceKind.Exile(LineageId("red")), 1))
-    val event = OathEvent.CampaignConquered(PlayerId("red"),
-      DecisionId("campaign-effects"), "campaign.loss.synthetic", effects,
-      Vector(CampaignForceAllocation(SiteId("a"), 0)))
-    val encoded = GameEventWire.encodeEvent("campaign", catalogRef, 0, event)
-      .toOption.get
-    assertEquals(GameEventWire.decode(encoded).toOption.get.event, event)
   }
 
   test("mixed contiguous v2 setup and v3 gameplay records round trip") {

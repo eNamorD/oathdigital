@@ -4,7 +4,6 @@ import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._
 
 import oathdigital.catalog.CatalogHandlerInventory
-import oathdigital.gameplay.actions.CampaignRules
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.{ReviewedPowerCatalog, ReviewedPowerFacts,
   ReviewedPowerInspector}
@@ -161,14 +160,10 @@ class BackendArchitectureSuite extends munit.FunSuite {
       "7e333f6b4bdd033e2c1e76c3b4f8889c7d44cb5325f8d7da32ba514291b154e2")
   }
 
-  test("Recover registry and Campaign relevance use exact power-ID data") {
+  test("Recover registry uses exact power-ID data") {
     val registry = ReviewedPowerCatalog.registry(catalog).toOption.get
     assert(registry.lookup(PowerId("edifice.e17.intact")).nonEmpty)
     assert(registry.lookup(PowerId("denizen.future-recover-text")).isEmpty)
-    assert(CampaignRules.classify("relic.bag-of-siegeworks", catalog)
-      .isInstanceOf[CampaignRules.HandlerSupport.Blocked])
-    assertEquals(CampaignRules.classify("denizen.extra-provisions", catalog),
-      CampaignRules.HandlerSupport.IrrelevantToBanditConquest)
   }
 
   test("gameplay production sources never infer mechanics from rulesText") {

@@ -2,8 +2,6 @@ package oathdigital.gameplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
-  CampaignLosingForceRegistry}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
@@ -31,8 +29,6 @@ import oathdigital.model.OathViolation._
   * command walks; production derives it from the action's own module.
   */
 final class OathRules(protected val catalog: ExecutableCatalog,
-    campaignLosingForceRegistry: CampaignLosingForceRegistry =
-      CampaignLosingForceRegistry.default,
     protected val warExhaustionRandomPort: WarExhaustionRandomPort =
       WarExhaustionRandomPort.random,
     protected val walkerPowerCatalog: WalkerPowers = WalkerPowers.empty,
@@ -65,30 +61,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     MinorActions.handle(catalog, state, command).flatMap(completeAction _)
   }
 
-  def handle(state: OathState, command: CampaignCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    (command match {
-      case begin: CampaignCommand.Start => withFallback(state, begin.playerId,
-        ActionKind.Campaign)(Campaign.handle(catalog, state, command,
-          campaignLosingForceRegistry))
-      case begin: CampaignCommand.StartRaid => withFallback(state, begin.playerId,
-        ActionKind.Campaign)(Campaign.handle(catalog, state, command,
-          campaignLosingForceRegistry))
-      case _ => Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
-    })
-      .flatMap { transition =>
-      command match {
-        case _: CampaignCommand.Place | _: CampaignCommand.RelocateRaidPawn =>
-          completeAction(transition)
-        case _: CampaignCommand.Sacrifice if (transition.state match {
-          case Ready(ready) => ready.game.current.pending.isEmpty
-          case _ => false
-        }) => completeAction(transition)
-        case _ => Right(transition)
-      }
-    }
-  }
-
   override def evolve(
       state: OathState,
       event: OathEvent
@@ -115,20 +87,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
-      case event: CampaignStarted => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignPlansFinished => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignSacrificed => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignConquered => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignRaided => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
-      case event: CampaignRaidPawnRelocated => Campaign.evolve(catalog, state, event,
-        campaignLosingForceRegistry)
       case event: BanditsRefilled => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperFlipped => StateBasedEvaluation.evolve(catalog, state, event)
       case event: UsurperVictory => StateBasedEvaluation.evolve(catalog, state, event)

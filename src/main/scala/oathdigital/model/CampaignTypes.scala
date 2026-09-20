@@ -27,15 +27,6 @@ object CampaignPlanEffect {
   }
   case object IgnoreAttackSkulls extends CampaignPlanEffect
   case object RevealSource extends CampaignPlanEffect
-  /** Typed extension points: their payload remains owned by a registered
-    * handler rather than interpreted as a general card scripting language.
-    * No handler produces them; they are deleted with the legacy Campaign.
-    */
-  final case class TransformAttackResult(handlerId: String)
-      extends CampaignPlanEffect
-  final case class ReplaceLosingForcePolicy(policyId: String)
-      extends CampaignPlanEffect
-  final case class Suspend(decisionKind: String) extends CampaignPlanEffect
 }
 
 sealed trait CampaignPlanSource extends Product with Serializable {

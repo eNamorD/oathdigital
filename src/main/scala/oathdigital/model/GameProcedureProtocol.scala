@@ -47,14 +47,6 @@ object OathContinue {
     */
   final case class AwaitingCampaignDecision(playerId: PlayerId,
       decision: DecisionId) extends OathContinue
-  final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
-      extends OathContinue
-  final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)
-      extends OathContinue
-  final case class AwaitingCampaignPlacement(playerId: PlayerId, decision: DecisionId)
-      extends OathContinue
-  final case class AwaitingCampaignRaidRelocation(playerId: PlayerId,
-      decision: DecisionId) extends OathContinue
   final case class AwaitingOathkeeperRecipient(playerId: PlayerId,
       decision: DecisionId) extends OathContinue
   final case class GameFinished(winner: PlayerId) extends OathContinue

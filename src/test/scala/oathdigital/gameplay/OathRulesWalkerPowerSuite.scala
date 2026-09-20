@@ -22,8 +22,8 @@ import oathdigital.model._
   *
   * No action declares a `window` yet (Task 4 wires Recover's), so the tree a
   * command walks is supplied through `OathRules`' `walkerTree` seam -- the
-  * same injectable-default shape `campaignLosingForceRegistry` and
-  * `warExhaustionRandomPort` already use, and the production default is what
+  * same injectable-default shape `warExhaustionRandomPort` already
+  * uses, and the production default is what
   * every other walker suite exercises. The wiring under test is generic; the
   * tree only has to carry a hookable node.
   */

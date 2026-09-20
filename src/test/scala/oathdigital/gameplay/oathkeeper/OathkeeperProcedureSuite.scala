@@ -134,21 +134,6 @@ class OathkeeperProcedureSuite extends munit.FunSuite {
       TriggeredProcedureRef.Oathkeeper)
     assert(result.left.toOption.exists(_.isInstanceOf[OathViolation.InvalidEventOrder]),
       s"expected a typed rejection, got $result")
-
-    // A legacy (non-walker) pending procedure is refused the same way.
-    val actor = ready.game.current.players
-      .find(_.player == ready.game.current.turn.activePlayer).get
-    val legacy = ready.updateCurrent(_.copy(
-      pending = Some(PendingProcedure.CampaignRaidRelocation(
-        DecisionId("legacy-pending"), actor.player, PlayerId("legacy-defender"),
-        ready.game.current.map.inPlay.head,
-        ready.game.current.map.inPlay.tail.take(1)))))
-    assertEquals(legacy.game.current.walkerPending, None)
-    assertEquals(legacy.game.current.walkerProcedure, None)
-    val refused = rules.startTriggered(OathTransition(Ready(legacy), Vector.empty,
-      OathContinue.ActActionSelection(actor.player)), TriggeredProcedureRef.Oathkeeper)
-    assert(refused.left.toOption.exists(_.isInstanceOf[OathViolation.InvalidEventOrder]),
-      s"expected a typed rejection over a legacy pending procedure, got $refused")
   }
 
   test("the procedure rejects a start selection and a state with nothing to change") {
