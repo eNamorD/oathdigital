@@ -551,9 +551,14 @@ intentional and neither changes behaviour today:
 
 ## Open items
 
-- **Concurrent multi-owner decisions.** Negotiation accepts answers from a set
-  of participants in any order. A single owner per parked position cannot
-  express it; it needs its own design at Negotiation's port.
+- **Concurrent multi-owner decisions.** Closed by
+  `2026-09-19-negotiation-walker-design.md`: a `Decide` may carry co-owners, any
+  of whom may answer it, and the park reports every open decision and every
+  awaited player (`ProcedureWalker.openDecisions`, `awaitedPlayers`). A
+  simultaneous step, where each of several players answers their own decision
+  and the step joins when all have, is designed for but not built; the
+  Negotiation design records its semantics for the Lineage setup step that will
+  need it.
 - **Answer kinds.** Amounts (Campaign dice and sacrifice, Challenge), ordering
   (Search discards) and per-site allocations (Campaign placement) have no
   `DecisionQuery` shape. The first port that needs one widens the vocabulary.

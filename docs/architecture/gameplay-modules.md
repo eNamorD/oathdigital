@@ -35,7 +35,7 @@ oathdigital/gameplay/
     Challenge.scala
     Campaign*.scala
     MinorActions.scala
-    Negotiation.scala
+    negotiation/           (NegotiationDeal, NegotiationProcedure)
     Visions.scala
   operations/
     OperationExecutor.scala, OperationPipeline.scala, OperationValidator.scala,
@@ -71,8 +71,7 @@ never reads `rulesText`.
 the shared source, activation, query, and outcome vocabulary in
 `model/RuleSources.scala`. Specialized registries such as Campaign plans remain in
 their owning module when their windows/effects are action-specific.
-`RuntimeRuleRegistry` is an empty stub kept for Negotiation's blocking
-boundary; the terrain travel path lives on TravelCost window powers under
+The terrain travel path lives on TravelCost window powers under
 `powers/travel/` (see `docs/architecture/rule-resolution.md`).
 
 ## One legality path

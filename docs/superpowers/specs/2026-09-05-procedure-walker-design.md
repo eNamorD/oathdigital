@@ -445,17 +445,18 @@ actions migrated. They were not; both kept a job:
 3. Port remaining actions in batches: Search, Economy (Muster/Trade), Forge,
    Challenge, Campaign, Negotiation, CardPlay, Rest, Wake, Visions.
    *In progress:* batch 1 ported Forge, Travel and Wake (Take Wealth and End
-   Wake). Remaining: Campaign and Negotiation.
+   Wake). Remaining: Campaign.
    Economy (Muster and Trade) is ported and its legacy path deleted; see
    the Muster and Trade design. Visions (Reveal Vision and Conspiracy) are
    ported and their legacy path deleted; see the Visions and Conspiracy
    design. Challenge and Place Banner Resource are ported and their legacy
-   path deleted; see the Challenge design.
+   path deleted; see the Challenge design. Negotiation is ported and its
+   legacy path deleted; see the Negotiation design.
 4. Delete retired machinery (per-action integration seams, typed-fact
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel
    and Wake have no legacy path left, and the typed-cost vocabulary is gone.
-   Three `PendingProcedure` cases remain (see Migration status).
+   Two `PendingProcedure` cases remain (see Migration status).
    The former ninth case, `OathkeeperRecipient`, was ported to the triggered
    `Oathkeeper` procedure by `2026-09-12-walker-ownership-and-phases-design.md`.
 5. Author MVP power set on the new framework.
@@ -639,15 +640,18 @@ decide the shape.
 
 ### What remains
 
-Step 3: Campaign and Negotiation. Step 5 has not started.
+Step 3: Campaign. Step 5 has not started.
 
-Three `PendingProcedure` cases remain, and their owners are the starting
+Two `PendingProcedure` cases remain, and their owner is the starting
 inventory for the next plan (the file-level table is in the batch-1 plan,
 Task 8):
 
 - `Campaign` and `CampaignRaidRelocation`: Campaign. The `CampaignPlan*` types
   nested beside them are Campaign's supporting vocabulary, not cases.
-- `Negotiation`: Negotiation.
+
+`Negotiation` was the third case. It is ported
+(`2026-09-19-negotiation-walker-design.md`), and its deal is a fold over the
+walker's answered log rather than pending state.
 
 The ninth case this list once carried, `OathkeeperRecipient` — state-based
 evaluation that parks a player decision, which decision 6 did not cover —
@@ -673,8 +677,8 @@ so they are the cheapest ports and the least informative ones.
   `2026-09-12-walker-ownership-and-phases-design.md` (Task 5, commits
   `4321aae`..`90f4e6a`) — a parked `Decide` is authorized for its own owner,
   not necessarily the active player. That design's own still-open items
-  remain open: concurrent multi-owner decisions (Negotiation), new answer
-  kinds, power selection by an off-turn owner, and unanswered off-turn
-  decisions.
+  remain open: new answer kinds, power selection by an off-turn owner, and
+  unanswered off-turn decisions. Concurrent multi-owner decisions landed with
+  Negotiation as co-owned decisions (`Decide.coOwners`).
 - Start selections that are not an option reference (a warband count):
   waits for the first action that needs one.

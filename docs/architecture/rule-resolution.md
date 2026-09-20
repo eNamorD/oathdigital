@@ -31,8 +31,8 @@ typed unsupported violation with handler and source identity.
 
 `model/RuleSources.scala` defines the shared source/activation/query/outcome
 vocabulary, and `gameplay/RuleResolution.scala` holds the registry and
-deterministic ordering. Small generic modifiers use explicit registries such
-as `RuntimeRuleRegistry`. Action-specific systems may own narrower registries:
+deterministic ordering. Small generic modifiers use explicit registries.
+Action-specific systems may own narrower registries:
 Campaign plans author side/window-scoped options in
 `gameplay/actions/CampaignPlans.scala`; other bounded actions use exact-ID
 classifications beside their rule modules.
@@ -40,7 +40,7 @@ classifications beside their rule modules.
 Order is explicit: priority, stable source key, then handler ID unless the
 owning procedure defines a stricter printed order.
 
-Terrain travel no longer runs through `RuntimeRuleRegistry` (Phase 4): the
+Terrain travel no longer runs through a rule registry (Phase 4): the
 travel path was cost-only with zero core-operation coupling, so it migrated
 onto power windows. Terrain site powers under
 `gameplay/powers/travel/TravelCostWindow.scala` declare their typed terrain
@@ -52,9 +52,8 @@ windows: coast powers register "on a coast route I ignore Island/Mountain/Pass",
 wiring tests exercise it with real ids, and today's one-terrain-power-per-site
 fold already implements the ignore in its coast-route branch. Narrow Pass is a
 power holding a restriction body evaluated by Travel legality against a
-simulated pawn move; `RuntimeRuleRegistry` is now an empty stub retained only
-for Negotiation's explicit blocking boundary, and Wake take-wealth rules live
-under `gameplay/phases/TakeWealthRules.scala`.
+simulated pawn move; the old registry is deleted, and Wake take-wealth rules
+live under `gameplay/phases/TakeWealthRules.scala`.
 
 Typed outcomes may allow or block, or report an unsupported relevant handler.
 They are not generic scripts; reserved effect forms reject until both a
@@ -95,9 +94,10 @@ selection model nevertheless preserves click order, keyboard reordering, and
 clears stale drafts when context, candidates, or preview identity changes.
 
 The runtime is connected to Search, Campaign, Muster, Trade, Forge,
-Recover, and Challenge plus Wake, Rest, card-play, and post-action windows; reviewed
-Negotiation definitions are indexed for its existing explicit blocking boundary.
-It does not
+Recover, and Challenge plus Wake, Rest, card-play, and post-action windows;
+reviewed Negotiation definitions are indexed at the `NegotiationOffer` window,
+so an unsupported `When Negotiating` handler is recorded as ignored rather than
+blocking the action. It does not
 replace action ownership: Travel cost resolves through the TravelCost window
 fold (typed terrain facts + suppression), Campaign retains its later
 attacker/defender/bandit battle-plan windows, and Economy target choice remains

@@ -76,8 +76,8 @@ Pass is a power holding a restriction body; `TravelRules.cost` is pure cost and
 a separate Travel legality evaluates the pass restriction against a simulated
 pawn move, decoding to the single `TravelPassBlocked` violation
 (`TravelConsentUnsupported` deleted). `RuntimeRuleRegistry` travel machinery and
-travel-only typed-rule types deleted; `RuntimeRuleRegistry` is an empty stub for
-Negotiation; `TakeWealthRules` moved to the Wake phase module. Commits:
+travel-only typed-rule types deleted; `RuntimeRuleRegistry` was left as an empty
+stub for Negotiation (deleted with the Negotiation port, 2026-09-19); `TakeWealthRules` moved to the Wake phase module. Commits:
 `83e5f2c` (contributions + suppression registry), `33fea9b` (terrain powers +
 fold + pass legality), `9a39b71` (delete travel machinery, stub, TakeWealth
 move). Plan: `docs/superpowers/plans/2026-09-04-engine-redesign-phase-4.md`.
@@ -299,7 +299,11 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   non-active participants through authenticated transport and the accessible
   Scala.js editor. Relevant component families are inventory-audited and
   unimplemented Negotiation powers reject explicitly; Citizenship, additional
-  asset types, remote deals, and printed powers remain deferred.
+  asset types, remote deals, and printed powers remain deferred. Since
+  2026-09-19 Negotiation runs on the procedure walker (co-owned deal decision,
+  no first-game gate, unsupported rules ignored and recorded); the legacy
+  pending state, commands and events are deleted. See
+  `docs/architecture/all-exile-negotiation.md`.
 
 - [x] **Phase 1 - Core minor actions.** During Act, players can play or discard
   a facedown adviser as if searched, privately inspect relics at their site,

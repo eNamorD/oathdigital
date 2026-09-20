@@ -55,8 +55,10 @@ Events record accepted facts needed for deterministic replay:
   placement operations are internal composition values, not independently
   injectable `OathEvent` cases.
 - Forge records the prepared relic transfer and exact assignments.
-- Challenge, banners, minor actions, Negotiation, Visions, and endings record
-  their authoritative choices and terminal facts.
+- Challenge, banners, minor actions, Visions, and endings record their
+  authoritative choices and terminal facts. Negotiation records each answer
+  (proposed terms, accept, decline) as a walker `ChoicePayload` step and its
+  settlement as the step's core operations; it has no events of its own.
 - War Exhaustion records the canonical random-fallback candidate order and
   selected winner when deterministic title/Vision rules do not decide it.
 

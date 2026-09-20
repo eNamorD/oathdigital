@@ -446,9 +446,11 @@ Completed within this phase:
 - only faceup secrets can be burned: a burnt secret returns to the untracked
   limitless SharedBank sink, and burning a facedown secret fails as if the
   source held no secrets at all;
-- `NegotiationCompleted` executes its deal through operations: favor and relic
+- Negotiation settlement executes its deal through operations: favor and relic
   transfers as `Give`, disclosure knowledge as `Peek` (before any transfer
-  relocates a disclosed card), with `pending = None` as the direct update;
+  relocates a disclosed card). This was the `NegotiationCompleted` event until
+  Negotiation moved onto the walker (2026-09-19), where the same operations are
+  the settle step of the deal tree;
 - Conspiracy resolution executes through operations: the played Conspiracy card
   leaves the game entirely (removed after the batch validates, since the
   executor conserves card inventory), an enemy relic is taken by `Give`,

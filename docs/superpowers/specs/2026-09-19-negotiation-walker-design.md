@@ -1,6 +1,6 @@
 # Negotiation on the Procedure Walker
 
-> Status: draft for review. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), closes the "concurrent multi-owner decisions" open item of the [walker ownership and phases design](2026-09-12-walker-ownership-and-phases-design.md), and follows the [Challenge walker design](2026-09-19-challenge-walker-design.md), whose `ChooseMany` this slice widens. Rules content stays as in [All-Exile Negotiation](../../architecture/all-exile-negotiation.md), which this slice rewrites. This revision replaces the earlier draft that kept the deal in `PendingProcedure.Negotiation`.
+> Status: implemented by `docs/superpowers/plans/2026-09-19-negotiation-walker.md`. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), closes the "concurrent multi-owner decisions" open item of the [walker ownership and phases design](2026-09-12-walker-ownership-and-phases-design.md), and follows the [Challenge walker design](2026-09-19-challenge-walker-design.md), whose `ChooseMany` this slice widens. Rules content stays as in [All-Exile Negotiation](../../architecture/all-exile-negotiation.md), which this slice rewrites. This revision replaces the earlier draft that kept the deal in `PendingProcedure.Negotiation`.
 
 ## Goal and scope
 
@@ -157,3 +157,13 @@ Kept: the terms model types, and the HSQL reopen test, migrated to reopen a park
 - The `Simultaneous` node for Lineage setup.
 - The first-game gate on the other minor actions and on Campaign.
 - A per-participant record of ignored Negotiation rules.
+
+## Implementation notes
+
+Where the implementation differs from the text above:
+
+1. `DecisionQuery.Negotiate` also carries the deal: its fields are `participants`, `terms`, `accepted`, `bounds`, `acceptors` and `heading`. Carrying the current terms and acceptances lets the generic projector render the deal from the query alone, without folding `answered` itself.
+2. `ProcedureWalker.parkedDecide` and `awaitedPlayer` stay as single-decision conveniences (the first open decision, and the primary owner). About 17 test call sites use `parkedDecide`, and only a `Simultaneous` node needs them gone. `openDecisions` and `awaitedPlayers` are the set-returning API.
+3. The eligibility rule is `NegotiationDeal.eligible`, in `gameplay/actions/negotiation/`. The legacy `Negotiation.legalParticipants` was deleted with the legacy path.
+4. `WalkerWaitingProjection` gains `coOwnerPlayerIds` and `deal`; `playerId` stays the primary owner.
+5. `DecisionQueryProjection.count` is removed. A `ChooseMany` projects `minimum` and `maximum`, the fields `ChooseAmount` already used.
