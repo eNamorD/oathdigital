@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerTiming, ReadyGame}
+import oathdigital.model.{Cost, DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerTiming, ReadyGame}
 
 /** A WAKE, ACTION or REST power a player uses as an action.
   *
@@ -13,6 +13,12 @@ trait PhasePower {
   def timing: PowerTiming
   /** Power-specific preconditions beyond access and once-per-turn. */
   def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef): Boolean
+  /** What using the power costs, placed onto its source card. The engine
+    * prepends the payment and reads "cost payable, including the empty-card
+    * rule" as part of `usable`. Free by default. A cost is not accepted from
+    * a banner source: banners have no costs.
+    */
+  def cost: Cost = Cost.free
   def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef)
       : Either[OathViolation, Operation]
 }

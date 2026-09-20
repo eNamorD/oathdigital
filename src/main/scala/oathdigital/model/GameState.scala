@@ -103,6 +103,9 @@ object PowerSourceRef {
     * option names a card without its location.
     */
   final case class Card(id: CardId) extends PowerSourceRef
+
+  /** A banner whose printed face power was used. */
+  final case class Banner(banner: oathdigital.model.Banner) extends PowerSourceRef
 }
 
 /** A stable identity for one use-limited power instance this turn. */

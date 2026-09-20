@@ -2,6 +2,7 @@ package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.{IndexedRuleSource, PowerAccess, RuleSourceIndex}
+import oathdigital.gameplay.operations.Costs
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.model._
@@ -9,14 +10,22 @@ import oathdigital.model._
 /** Use Power (rest-walker spec, Phase powers).
   *
   * {{{
-  * Sequence(power.build(...), RecordPowerUse(timing, Card(source), id))
+  * Sequence(PayCost(cost, on the source card),   // when the cost is not free
+  *   power.build(...),
+  *   RecordPowerUse(timing, source, id))         // Wake and Rest only
   * }}}
   *
   * `usable` is the single usability function: the start gate, legal
   * controls, the `phasePowers` projection and the Rest auto-skip all ask it.
+  * A power is usable when its source is accessible, its once-per-turn limit
+  * (Wake and Rest) is unspent, its cost is payable (including the empty-card
+  * rule) and its own `usable` agrees.
+  *
+  * Act powers have no once-each limit. A costed one is limited only because
+  * its card holds the cost afterwards.
   */
 object PhasePowerProcedure {
-  final case class PowerSource(power: PhasePower, card: CardId,
+  final case class PowerSource(power: PhasePower, source: PowerSourceRef,
       ref: DecisionOptionRef)
 
   def timingOf(phase: Phase): Option[PowerTiming] = phase match {
@@ -26,28 +35,38 @@ object PhasePowerProcedure {
     case _ => None
   }
 
-  def useRef(power: PhasePower, card: CardId): PowerUseRef =
-    PowerUseRef(power.timing, PowerSourceRef.Card(card), power.id)
+  def useRef(power: PhasePower, source: PowerSourceRef): PowerUseRef =
+    PowerUseRef(power.timing, source, power.id)
 
-  /** Cards `player` can access that print `power`, in index order. */
+  private def limited(power: PhasePower): Boolean =
+    power.timing != PowerTiming.Act
+
+  /** Sources of `power` that `player` can access, in index order. */
   def sources(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
-      power: PhasePower): Vector[(CardId, DecisionOptionRef)] =
+      power: PhasePower): Vector[(PowerSourceRef, DecisionOptionRef)] =
     sourcesFrom(RuleSourceIndex.enumerate(catalog, ready), ready, player, power)
 
   private def sourcesFrom(index: Vector[IndexedRuleSource], ready: ReadyGame,
-      player: PlayerId, power: PhasePower): Vector[(CardId, DecisionOptionRef)] =
-    index.filter(source =>
-      source.powerIds.contains(power.id) && accessible(source, ready, player))
+      player: PlayerId, power: PhasePower)
+      : Vector[(PowerSourceRef, DecisionOptionRef)] =
+    index.filter(source => source.powerIds.contains(power.id) &&
+      PowerAccess.accessible(source.source, source.face, ready, player))
       .flatMap(source => sourceRef(source.source))
 
-  /** The rulebook access rule; see [[PowerAccess]]. */
-  private def accessible(source: IndexedRuleSource, ready: ReadyGame,
-      player: PlayerId): Boolean =
-    PowerAccess.accessible(source.source, source.face, ready, player)
+  /** The cost is payable from `source`. A free cost is always payable. */
+  private def payable(ready: ReadyGame, player: PlayerId, power: PhasePower,
+      source: PowerSourceRef): Either[OathViolation, Unit] =
+    if (power.cost == Cost.free) Right(())
+    else source match {
+      case PowerSourceRef.Card(card) => Costs.plan(ready, player,
+        Location.OnCard(card), power.cost).map(_ => ())
+      case other => Left(InvalidEventOrder(
+        s"${power.id.value} cannot charge a cost to $other"))
+    }
 
   def check(catalog: ExecutableCatalog, ready: ReadyGame, requester: PlayerId,
       power: PhasePower, source: DecisionOptionRef)
-      : Either[OathViolation, CardId] = {
+      : Either[OathViolation, PowerSourceRef] = {
     val current = ready.game.current
     val active = current.turn.activePlayer
     val phase = current.turn.phase
@@ -60,16 +79,18 @@ object PhasePowerProcedure {
       _ <- Either.cond(timingOf(phase).contains(power.timing), (),
         InvalidEventOrder(s"${power.id.value} is a ${power.timing} power " +
           s"and cannot be used in the ${phase.productPrefix} phase"))
-      card <- sources(catalog, ready, active, power).collectFirst {
-        case (card, `source`) => card
+      found <- sources(catalog, ready, active, power).collectFirst {
+        case (found, `source`) => found
       }.toRight(InvalidEventOrder(s"${source.kind}/${source.wireId} is not " +
         s"an accessible source of ${power.id.value}"))
-      _ <- Either.cond(!current.turn.usedPowers.contains(useRef(power, card)),
-        (), PowerAlreadyUsed(useRef(power, card)))
+      _ <- Either.cond(!limited(power) ||
+        !current.turn.usedPowers.contains(useRef(power, found)), (),
+        PowerAlreadyUsed(useRef(power, found)))
+      _ <- payable(ready, active, power, found)
       _ <- Either.cond(power.usable(ready, active, source), (),
         InvalidEventOrder(s"${power.id.value} has nothing to do from " +
           s"${source.kind}/${source.wireId}"))
-    } yield card
+    } yield found
   }
 
   def usable(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,
@@ -84,10 +105,12 @@ object PhasePowerProcedure {
       powers.powers.flatMap { power =>
         if (!timingOf(current.turn.phase).contains(power.timing)) Vector.empty
         else sourcesFrom(index, ready, player, power).collect {
-          case (card, ref)
-              if !current.turn.usedPowers.contains(useRef(power, card)) &&
+          case (found, ref)
+              if (!limited(power) ||
+                !current.turn.usedPowers.contains(useRef(power, found))) &&
+                payable(ready, player, power, found).isRight &&
                 power.usable(ready, player, ref) =>
-            PowerSource(power, card, ref)
+            PowerSource(power, found, ref)
         }
       }
     }
@@ -98,9 +121,9 @@ object PhasePowerProcedure {
       : Either[OathViolation, Operation] = for {
     power <- find(id, powers)
     source <- single(id, args)
-    card <- check(catalog, ready, player, power, source)
+    found <- check(catalog, ready, player, power, source)
     tree <- power.build(ready, player, source)
-  } yield Sequence(Vector(tree, RecordPowerUse(useRef(power, card))))
+  } yield assemble(catalog, power, player, found, tree)
 
   /** Resume skips the gate: the walker is pending and the use is not yet
     * recorded, so only the tree is rebuilt.
@@ -110,9 +133,22 @@ object PhasePowerProcedure {
       : Either[OathViolation, Operation] = for {
     power <- find(id, powers)
     source <- single(id, args)
-    card <- sourceCard(source)
+    found <- sourceOf(source)
     tree <- power.build(ready, player, source)
-  } yield Sequence(Vector(tree, RecordPowerUse(useRef(power, card))))
+  } yield assemble(catalog, power, player, found, tree)
+
+  private def assemble(catalog: ExecutableCatalog, power: PhasePower,
+      player: PlayerId, source: PowerSourceRef, tree: Operation): Operation = {
+    val payment: Vector[Operation] = source match {
+      case PowerSourceRef.Card(card) if power.cost != Cost.free =>
+        Vector(Costs.onCard(player, card, power.cost, catalog))
+      case _ => Vector.empty
+    }
+    val record: Vector[Operation] =
+      if (limited(power)) Vector(RecordPowerUse(useRef(power, source)))
+      else Vector.empty
+    Sequence(payment ++ Vector(tree) ++ record)
+  }
 
   private def find(id: PowerId, powers: PhasePowers) = powers.find(id)
     .toRight(InvalidEventOrder(s"no phase power is registered for ${id.value}"))
@@ -123,22 +159,28 @@ object PhasePowerProcedure {
       s"one source, got ${other.size}"))
   }
 
-  private def sourceRef(source: RuleSourceRef): Option[(CardId, DecisionOptionRef)] =
-    source match {
-      case RuleSourceRef.SiteCard(_, id: DenizenId) =>
-        Some(id -> DecisionOptionRef.Denizen(id))
-      case RuleSourceRef.Adviser(_, id: DenizenId) =>
-        Some(id -> DecisionOptionRef.Denizen(id))
-      case RuleSourceRef.Relic(_, id) => Some(id -> DecisionOptionRef.Relic(id))
-      case RuleSourceRef.SiteRelic(_, id) => Some(id -> DecisionOptionRef.Relic(id))
-      case _ => None
-    }
+  private def sourceRef(source: RuleSourceRef)
+      : Option[(PowerSourceRef, DecisionOptionRef)] = source match {
+    case RuleSourceRef.SiteCard(_, id: DenizenId) =>
+      Some(PowerSourceRef.Card(id) -> DecisionOptionRef.Denizen(id))
+    case RuleSourceRef.Adviser(_, id: DenizenId) =>
+      Some(PowerSourceRef.Card(id) -> DecisionOptionRef.Denizen(id))
+    case RuleSourceRef.Relic(_, id) =>
+      Some(PowerSourceRef.Card(id) -> DecisionOptionRef.Relic(id))
+    case RuleSourceRef.Edifice(_, id) =>
+      Some(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id))
+    case RuleSourceRef.Banner(key) => Banner.fromKey(key).map(banner =>
+      PowerSourceRef.Banner(banner) -> DecisionOptionRef.Banner(banner))
+    case _ => None
+  }
 
-  private def sourceCard(source: DecisionOptionRef): Either[OathViolation, CardId] =
-    source match {
-      case DecisionOptionRef.Denizen(id) => Right(id)
-      case DecisionOptionRef.Relic(id) => Right(id)
-      case other => Left(InvalidEventOrder(
-        s"${other.kind}/${other.wireId} is not a power source card"))
-    }
+  private def sourceOf(source: DecisionOptionRef)
+      : Either[OathViolation, PowerSourceRef] = source match {
+    case DecisionOptionRef.Denizen(id) => Right(PowerSourceRef.Card(id))
+    case DecisionOptionRef.Relic(id) => Right(PowerSourceRef.Card(id))
+    case DecisionOptionRef.Edifice(id) => Right(PowerSourceRef.Card(id))
+    case DecisionOptionRef.Banner(banner) => Right(PowerSourceRef.Banner(banner))
+    case other => Left(InvalidEventOrder(
+      s"${other.kind}/${other.wireId} is not a power source"))
+  }
 }

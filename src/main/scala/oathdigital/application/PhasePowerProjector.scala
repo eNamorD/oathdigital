@@ -23,7 +23,7 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
       PhasePowerProcedure.usable(catalog, context.ready, context.active.player,
         powers).flatMap { usable =>
         for {
-          (name, power) <- printed(usable.card, usable.power.id)
+          (name, power) <- printed(usable.source, usable.power.id)
           option <- DecisionOption.forRef(usable.ref)
           source <- walkerDecisions.optionProjection(context.ready,
             context.viewer, index, option)
@@ -38,12 +38,18 @@ private[application] final class PhasePowerProjector(catalog: ExecutableCatalog,
   def controls(projected: Vector[PhasePowerProjection]): Vector[String] =
     projected.map(p => s"usePower:${p.powerId}:${p.source.id}")
 
-  private def printed(card: CardId, power: PowerId)
-      : Option[(String, oathdigital.catalog.CatalogPower)] = card match {
-    case id: DenizenId => catalog.denizens.find(_.id.value == id.value)
-      .flatMap(d => d.powers.find(_.id == power).map(d.name -> _))
-    case id: RelicId => catalog.relics.find(_.id.value == id.value)
-      .flatMap(r => r.powers.find(_.id == power).map(r.name -> _))
-    case _ => None
+  private def printed(source: PowerSourceRef, power: PowerId)
+      : Option[(String, oathdigital.catalog.CatalogPower)] = source match {
+    case PowerSourceRef.Card(id: DenizenId) =>
+      catalog.denizens.find(_.id.value == id.value)
+        .flatMap(d => d.powers.find(_.id == power).map(d.name -> _))
+    case PowerSourceRef.Card(id: RelicId) =>
+      catalog.relics.find(_.id.value == id.value)
+        .flatMap(r => r.powers.find(_.id == power).map(r.name -> _))
+    case PowerSourceRef.Card(id: EdificeId) =>
+      catalog.edifices.find(_.id.value == id.value).flatMap(e =>
+        Vector(e.intact, e.ruined).flatMap(face =>
+          face.powers.find(_.id == power).map(face.name -> _)).headOption)
+    case _ => None // Banner faces get their labels with the slice that uses them.
   }
 }

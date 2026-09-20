@@ -9,7 +9,8 @@ import oathdigital.model._
   */
 object PhasePowerFixture {
   final case class TestPower(id: PowerId, timing: PowerTiming,
-      tree: PlayerId => Operation = _ => BuildOps((_, _) => Right(Vector.empty)))
+      tree: PlayerId => Operation = _ => BuildOps((_, _) => Right(Vector.empty)),
+      override val cost: Cost = Cost.free)
       extends PhasePower {
     def usable(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef) = true
     def build(ready: ReadyGame, player: PlayerId, source: DecisionOptionRef) =

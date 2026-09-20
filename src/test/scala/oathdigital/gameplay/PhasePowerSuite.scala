@@ -25,7 +25,8 @@ class PhasePowerSuite extends munit.FunSuite {
     val power = TestPower(powerId, PowerTiming.Wake)
     val powers = PhasePowers(Vector(power))
     assertEquals(PhasePowerProcedure.usable(catalog, inPhase(Phase.Wake), actor,
-      powers), Vector(PhasePowerProcedure.PowerSource(power, card, source)))
+      powers), Vector(PhasePowerProcedure.PowerSource(power, PowerSourceRef.Card(card),
+        source)))
     assertEquals(PhasePowerProcedure.usable(catalog, inPhase(Phase.Act), actor,
       powers), Vector.empty)
 
@@ -65,7 +66,7 @@ class PhasePowerSuite extends munit.FunSuite {
     assertEquals(PhasePowerProcedure.check(twice, state, actor, power, source),
       Left(OathViolation.PowerAlreadyUsed(usedFromFirst)))
     assertEquals(PhasePowerProcedure.check(twice, state, actor, power,
-      secondSource), Right(second))
+      secondSource), Right(PowerSourceRef.Card(second)))
     assertEquals(PhasePowerProcedure.usable(twice, state, actor,
       PhasePowers(Vector(power))).map(_.ref), Vector(secondSource))
   }
@@ -140,5 +141,98 @@ class PhasePowerSuite extends munit.FunSuite {
       .foldLeft[Either[OathViolation, OathState]](Right(Ready(inPhase(Phase.Act))))(
         (state, event) => state.flatMap(rules(power).evolve(_, event))),
       Right(done.state))
+  }
+
+  private def withSecrets(state: ReadyGame, count: Int): ReadyGame =
+    state.updateCurrent(c => c.copy(players = c.players.map(p =>
+      if (p.player != actor) p else
+        p.copy(board = p.board.copy(faceUpSecrets = count)))))
+  private def heldOnCard(state: ReadyGame): Tokens =
+    state.game.current.players.find(_.player == actor).get.advisers.collectFirst {
+      case d: DenizenState if d.id == card => d.tokens }.get
+
+  test("a costed ACTION power places its cost on its card, leaves no use " +
+      "record and is limited only by the empty-card rule") {
+    val power = TestPower(powerId, PowerTiming.Act, cost = Cost(secret = 1))
+    val powers = PhasePowers(Vector(power))
+    val funded = withSecrets(inPhase(Phase.Act), 2)
+    assertEquals(PhasePowerProcedure.usable(catalog, funded, actor, powers)
+      .map(_.ref), Vector(source))
+
+    val used = use(power, Ready(funded)).toOption.get
+    val after = ready(used.state)
+    assertEquals(heldOnCard(after), Tokens(0, 1))
+    assertEquals(after.game.current.turn.usedPowers, Set.empty[PowerUseRef])
+    assertEquals(PhasePowerProcedure.usable(catalog, after, actor, powers),
+      Vector.empty)
+    assert(use(power, used.state).isLeft)
+  }
+
+  test("an unaffordable cost makes the power unusable") {
+    val power = TestPower(powerId, PowerTiming.Act, cost = Cost(secret = 1))
+    val broke = withSecrets(inPhase(Phase.Act), 0)
+    assertEquals(PhasePowerProcedure.usable(catalog, broke, actor,
+      PhasePowers(Vector(power))), Vector.empty)
+    assert(use(power, Ready(broke)).isLeft)
+  }
+
+  test("a free ACTION power is unlimited and records no use") {
+    val power = TestPower(powerId, PowerTiming.Act)
+    val first = use(power, Ready(inPhase(Phase.Act))).toOption.get
+    val second = use(power, first.state).toOption.get
+    assertEquals(ready(second.state).game.current.turn.usedPowers,
+      Set.empty[PowerUseRef])
+  }
+
+  test("a costed WAKE power pays and is still once per turn") {
+    val power = TestPower(powerId, PowerTiming.Wake, cost = Cost(secret = 1))
+    val used = use(power, Ready(withSecrets(inPhase(Phase.Wake), 2))).toOption.get
+    assertEquals(heldOnCard(ready(used.state)), Tokens(0, 1))
+    val recorded = PowerUseRef(PowerTiming.Wake, PowerSourceRef.Card(card), powerId)
+    assert(ready(used.state).game.current.turn.usedPowers.contains(recorded))
+    assertEquals(use(power, used.state).left.toOption,
+      Some(OathViolation.PowerAlreadyUsed(recorded)))
+  }
+
+  test("an edifice at the pawn's site is a source, on either face") {
+    val edifice = catalog.edifices.head
+    val id = EdificeId(edifice.id.value)
+    val printed = catalog.denizens.find(_.id.value == card.value).get.powers
+      .find(_.id == powerId).get
+    val powered = catalog.copy(edifices = catalog.edifices.map(e =>
+      if (e.id == edifice.id) e.copy(
+        intact = e.intact.copy(powers = e.intact.powers :+ printed),
+        ruined = e.ruined.copy(powers = e.ruined.powers :+ printed)) else e))
+    val current = base.game.current
+    val home = current.players.find(_.player == actor).get.pawnSite.get
+    val power = TestPower(powerId, PowerTiming.Act)
+    Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
+      val state = base.updateCurrent(c => c.copy(
+        turn = TurnState(actor, Phase.Act, Set.empty),
+        players = c.players.map(p => if (p.player != actor) p else
+          p.copy(advisers = Vector.empty)),
+        map = c.map.copy(sites = c.map.sites.updated(home,
+          c.map.sites(home).copy(denizens =
+            Vector(EdificeState(id, side, Tokens.empty)))))))
+      assertEquals(PhasePowerProcedure.usable(powered, state, actor,
+        PhasePowers(Vector(power))).map(p => p.source -> p.ref),
+        Vector(PowerSourceRef.Card(id) -> DecisionOptionRef.Edifice(id)),
+        side.toString)
+    }
+  }
+
+  test("a banner is a source only for its holder") {
+    val bannerPower = PowerId("banner.peoples-favor.grand-council")
+    val power = TestPower(bannerPower, PowerTiming.Act)
+    def state(holder: Option[PlayerId]) = inPhase(Phase.Act).updateCurrent(c =>
+      c.copy(banners = c.banners.copy(peoplesFavor = c.banners.peoplesFavor.copy(
+        active = PeoplesFavorFace.GrandCouncil, holder = holder))))
+    val powers = PhasePowers(Vector(power))
+    assertEquals(PhasePowerProcedure.usable(catalog, state(Some(actor)), actor,
+      powers).map(p => p.source -> p.ref), Vector(
+      PowerSourceRef.Banner(Banner.PeoplesFavor) ->
+        DecisionOptionRef.Banner(Banner.PeoplesFavor)))
+    assertEquals(PhasePowerProcedure.usable(catalog, state(None), actor, powers),
+      Vector.empty)
   }
 }

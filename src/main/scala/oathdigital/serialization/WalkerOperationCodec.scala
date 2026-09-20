@@ -53,6 +53,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
           case PowerSourceRef.Site(site) => Vector("siteId" -> ujson.Str(site.value))
           case PowerSourceRef.Card(card) => Vector(
             "cardKind" -> ujson.Str(card.kind), "cardId" -> ujson.Str(card.value))
+          case PowerSourceRef.Banner(banner) =>
+            Vector("bannerKey" -> ujson.Str(banner.key))
         }) :+ ("powerId" -> ujson.Str(id.value)))
       case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
         "phase" -> phase.key)
@@ -239,10 +241,14 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
           .map(delta => ModifyDicePool(PoolKey(value("pool").str), delta))
       case "record-power-use" => for {
         timing <- decodePowerTiming(value("timing").str, s"$path.timing")
-        source <- if (value.obj.contains("siteId"))
+        source <- (if (value.obj.contains("siteId"))
             Right(PowerSourceRef.Site(SiteId(value("siteId").str)))
+          else if (value.obj.contains("bannerKey"))
+            Banner.fromKey(value("bannerKey").str).map(PowerSourceRef.Banner(_))
+              .toRight(InvalidValue(s"$path.bannerKey", "unknown banner"))
           else decodePowerCard(value("cardKind").str, value("cardId").str,
             s"$path.cardKind").map(PowerSourceRef.Card)
+          ): Either[WireError, PowerSourceRef]
       } yield RecordPowerUse(PowerUseRef(timing, source,
         PowerId(value("powerId").str)))
       case "enter-phase" =>
