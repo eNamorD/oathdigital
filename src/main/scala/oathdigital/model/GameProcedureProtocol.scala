@@ -40,6 +40,13 @@ object OathContinue {
     */
   final case class AwaitingNegotiation(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+
+  /** Any decision of a Campaign: the attacker's choices, and the defender's
+    * battle plans, which are owned by the defender. `playerId` is the
+    * decision's owner.
+    */
+  final case class AwaitingCampaignDecision(playerId: PlayerId,
+      decision: DecisionId) extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)

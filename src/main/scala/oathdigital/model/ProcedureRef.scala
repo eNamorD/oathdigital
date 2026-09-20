@@ -58,6 +58,7 @@ object ActionRef {
     val key = "place-banner-resource"
   }
   case object Negotiation extends ActionRef { val key = "negotiation" }
+  case object Campaign extends ActionRef { val key = "campaign" }
 
   /** Uses one phase power. Parameterized, so `all` cannot list it; the key
     * parses directly.
@@ -84,7 +85,7 @@ object ActionRef {
     */
   val all: Vector[ActionRef] = Vector(Search, PlayFacedownAdviser,
     Recover, Forge, Travel, TakeWealth, Muster, Trade, Challenge,
-    PlaceBannerResource, Negotiation)
+    PlaceBannerResource, Negotiation, Campaign)
 
   def usePower(key: String): Option[UsePower] =
     Option.when(key.startsWith(UsePower.Prefix))(key.stripPrefix(UsePower.Prefix))

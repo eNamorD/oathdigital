@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure, PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -280,6 +281,21 @@ object WalkerProcedureRegistry {
           OathContinue.AwaitingNegotiation(actor, decision)),
       build = NegotiationProcedure.build,
       rebuild = NegotiationProcedure.rebuild),
+
+    /** Campaign. Its first step spends the Supply, so a start runs an operation
+      * before its first decision and cannot use the playable-option gate. No
+      * roll parks: both dice rolls are automatic, so `rollDecisionId` is
+      * `None`.
+      */
+    ActionRef.Campaign -> Entry(
+      fallbackKind = Some(ActionKind.Campaign),
+      rollDecisionId = None,
+      modifierWindow = Some(PowerWindow.CampaignModifierSelection),
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(CampaignProcedure.decisionIds.contains(decisionId))(
+          OathContinue.AwaitingCampaignDecision(actor, decision)),
+      build = CampaignProcedure.build,
+      rebuild = CampaignProcedure.rebuild),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside

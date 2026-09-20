@@ -41,6 +41,7 @@ Found while reading the code for this plan. Task 19 folds each into the spec.
 12. **The Vow of Peace second sentence is not modelled.** "Attackers cannot sacrifice warbands to increase their attack against you" applies to a faceup Vow of Peace held by a defender. Legacy never modelled it either. It falls under the ignore-and-record rule.
 13. **The outcome branch reads the durable result.** After the losses change the board, the only nodes re-selected are those on the path to a parked placement or relocation decision. They read `lastCampaignResult`, written before the losses and never changed after, instead of deriving the kind and the defender from live state (Task 11).
 14. **"Ignore and record" records what the reviewed power catalog lists at the Campaign windows** (today Bag of Siegeworks). The other handlers the legacy classifier named are neither blocked nor recorded, as for every other ported action.
+15. **Correction to 14, found in Task 9: nothing is recorded today.** The resolver reports a diagnostic only for an unimplemented *automatic* handler at the window being resolved. Bag of Siegeworks is *player-selected* and hooks the attacker battle-plan window, so `PowerRuntime.ignored` for `ActionKind.Campaign` returns nothing for it. The `fallbackKind` wiring stays (it records whatever the catalog lists later), and the start test asserts only that an unimplemented held power does not block. The spec's "ignored and recorded" is therefore "ignored" for now.
 
 ## File structure
 
