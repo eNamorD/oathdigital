@@ -16,7 +16,7 @@ class DecisionQueriesSuite extends FunSuite {
     val answer = DecisionAnswer.PartitionAnswer(Vector(
       DecisionPlacement(first.ref, "keep"),
       DecisionPlacement(second.ref, "keep")))
-    assert(DecisionQueries.accepts("cards", query, answer).isLeft)
+    assert(DecisionQueries.accepts("cards", query, answer, PlayerId("player-red")).isLeft)
   }
 
   test("partition rejects a declared maximum below minimum") {
@@ -41,6 +41,6 @@ class DecisionQueriesSuite extends FunSuite {
       DecisionPlacement(first.ref, "favor"),
       DecisionPlacement(second.ref, "secret")))
     assert(DecisionQueries.wellFormed("forge", query).isRight)
-    assert(DecisionQueries.accepts("forge", query, answer).isRight)
+    assert(DecisionQueries.accepts("forge", query, answer, PlayerId("player-red")).isRight)
   }
 }

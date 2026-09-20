@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, RelicId, SiteId, Suit}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, PlayerId, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -54,8 +54,9 @@ class DecisionQuerySuite extends munit.FunSuite {
   private def invalid(detail: String) =
     Left(OathViolation.InvalidEventOrder(detail))
 
+  private val anyone = PlayerId("player-red")
   private def accepts(query: DecisionQuery, answer: DecisionAnswer) =
-    DecisionQueries.accepts(decisionId, query, answer)
+    DecisionQueries.accepts(decisionId, query, answer, anyone)
 
   private def wellFormed(query: DecisionQuery) =
     DecisionQueries.wellFormed(decisionId, query)
@@ -383,7 +384,7 @@ class DecisionQuerySuite extends munit.FunSuite {
 
   test("the worked example's answer is accepted") {
     assertEquals(DecisionQueries.accepts(decisionId, distribute, amounts(
-      Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2, Suit.Nomad -> 3)),
+      Suit.Arcane -> 0, Suit.Discord -> 1, Suit.Hearth -> 2, Suit.Nomad -> 3), anyone),
       Right(()))
   }
 
@@ -401,14 +402,14 @@ class DecisionQuerySuite extends munit.FunSuite {
       amounts(Suit.Arcane -> 0, Suit.Discord -> 0, Suit.Hearth -> 0,
         Suit.Nomad -> 3) -> "distributes an amount other than its total of 6")
     cases.foreach { case (answer, detail) =>
-      assertEquals(DecisionQueries.accepts(decisionId, distribute, answer),
+      assertEquals(DecisionQueries.accepts(decisionId, distribute, answer, anyone),
         violation(detail), detail)
     }
     assertEquals(DecisionQueries.accepts(decisionId, distribute,
-      DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad))),
+      DecisionAnswer.ChooseOneAnswer(bank(Suit.Nomad)), anyone),
       violation("expects a distribution answer"))
     assertEquals(DecisionQueries.accepts(decisionId, chooseOne,
-      amounts(full: _*)), violation("expects a single-choice answer"))
+      amounts(full: _*), anyone), violation("expects a single-choice answer"))
   }
 
   private def siteRef(id: String) = DecisionOptionRef.Site(SiteId(id))

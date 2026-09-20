@@ -207,21 +207,30 @@ object ProcedureWalker {
       case Roll(pool, _) => (pool, poolCount(state, pool))
     }
 
-  /** When `pending` parks on a `Decide` node of `action`, reports the node
-    * itself so the caller can dispatch on its stable `decisionId` (e.g. to
-    * pick the right `OathContinue` prompt) rather than on the park's
-    * structural path, which shifts if the tree is edited. Symmetric to
-    * [[parkedRoll]]. `None` when the park is a Roll or the position does not
-    * resolve to a Decide.
+  /** Every decision open at the park: one for a plain or co-owned `Decide`,
+    * none for a `Roll` or a position that does not resolve. Reports the nodes
+    * themselves so the caller can dispatch on their stable `decisionId`
+    * rather than on the park's structural path, which shifts if the tree is
+    * edited. A future `Simultaneous` node would return one per unanswered
+    * child, and nothing else here would change.
+    */
+  def openDecisions(state: ReadyGame, action: Operation,
+      pending: PendingTree, powers: WalkerPowers): Vector[Decide] =
+    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
+      case decide: Decide => decide
+    }.toVector
+
+  /** The single-decision view of [[openDecisions]]. `None` when the park is a
+    * Roll or the position does not resolve to a Decide. Symmetric to
+    * [[parkedRoll]].
     */
   def parkedDecide(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[Decide] =
-    WalkerPowerGather.leafAt(state, action, pending, powers).collect {
-      case decide: Decide => decide
-    }
+    openDecisions(state, action, pending, powers).headOption
 
-  /** Who a parked position waits on: a parked `Decide`'s owner, read off the
-    * rebuilt and transformed node, or the active player for a parked `Roll`.
+  /** Who a parked position waits on, as one player: a parked `Decide`'s
+    * primary owner, read off the rebuilt and transformed node, or the active
+    * player for a parked `Roll`.
     * Never stored -- a power that changes an owner changes this answer on the
     * next command, and authorization, projection and continuation all read
     * it (Task 5).
@@ -231,6 +240,17 @@ object ProcedureWalker {
     parkedDecide(state, action, pending, powers).map(_.owner).orElse(
       parkedRoll(state, action, pending, powers).map(_ =>
         state.game.current.turn.activePlayer))
+
+  /** Everyone who may answer the parked position: the owners and co-owners of
+    * its open decisions, or the active player for a parked `Roll`.
+    */
+  def awaitedPlayers(state: ReadyGame, action: Operation,
+      pending: PendingTree, powers: WalkerPowers): Set[PlayerId] = {
+    val open = openDecisions(state, action, pending, powers)
+    if (open.nonEmpty) open.flatMap(_.owners).toSet
+    else parkedRoll(state, action, pending, powers)
+      .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
+  }
 
   private def poolCount(state: ReadyGame, pool: PoolKey): Int =
     state.game.current.rollPools.get(pool).fold(0)(_.count)
@@ -596,11 +616,11 @@ object ProcedureWalker {
       path: Vector[String], answer: Answered,
       contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
     for {
-      _ <- Either.cond(decide.owner == answer.by, (),
+      _ <- Either.cond(decide.owners.contains(answer.by), (),
         OathViolation.WrongPlayer(decide.owner, answer.by))
       _ <- DecisionQueries.wellFormed(decide.decisionId, decide.query)
       _ <- DecisionQueries.accepts(decide.decisionId, decide.query,
-        answer.answer)
+        answer.answer, answer.by)
     } yield {
       val nodeId =
         if (path.isEmpty) leafLabel(decide) else path.mkString(".")

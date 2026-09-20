@@ -556,14 +556,24 @@ final case class ClearDicePool(pool: PoolKey) extends PrimitiveOperation
   * against live state on every command, so whatever would have been computed
   * at resume time can be computed at build time instead.
   *
+  * `coOwners` are further players who may answer the same decision. One
+  * answer from any owner resolves it, so a `Repeat` around it re-asks it
+  * after each answer.
+  *
   * `window` makes the decision hookable: the walker folds the gathered
   * transforms over `Vector(this)` before walking it, so a power may insert
   * operations around the decision, or replace its query.
   */
 final case class Decide(decisionId: String, owner: PlayerId,
     query: DecisionQuery,
-    override val window: Option[PowerWindow] = None)
-    extends PrimitiveOperation
+    override val window: Option[PowerWindow] = None,
+    coOwners: Vector[PlayerId] = Vector.empty)
+    extends PrimitiveOperation {
+  /** Everyone who may answer: `owner` first, then the co-owners, each once.
+    * `owner` stays the primary owner, the addressee of continuations.
+    */
+  def owners: Vector[PlayerId] = (owner +: coOwners).distinct
+}
 
 /** A leaf whose concrete deltas are decided AT WALK TIME: the walker calls
   * `build(state, pending)` when it reaches the node and executes whatever

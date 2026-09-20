@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DistributeAmount, DistributeSlot, OathViolation}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DistributeAmount, DistributeSlot, OathViolation, PlayerId}
 
 /** The whole generic decision contract: whether a declared query is
   * answerable at all, and whether a submitted answer satisfies it.
@@ -183,9 +183,13 @@ object DecisionQueries {
     * The checks run in a fixed order so that each way of getting an answer
     * wrong reports its own message rather than whichever check happened to
     * fire first.
+    *
+    * `by` is the player who answered. Only the negotiation shape reads it,
+    * because only there does legality depend on who is answering.
     */
   def accepts(decisionId: String, query: DecisionQuery,
-      answer: DecisionAnswer): Either[OathViolation, Unit] = query match {
+      answer: DecisionAnswer, by: PlayerId)
+      : Either[OathViolation, Unit] = query match {
     case DecisionQuery.ChooseOne(options, _) => answer match {
       case DecisionAnswer.ChooseOneAnswer(selected) =>
         require(options.map(_.ref).contains(selected), decisionId,

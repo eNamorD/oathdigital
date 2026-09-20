@@ -8,8 +8,8 @@ package oathdigital.model
   *
   * @param decisionId the id of the `Decide` node that parked.
   * @param answer the model-safe choice the player made.
-  * @param by the player who submitted it: the authorized requester, which
-  *   equals the parked `Decide`'s owner. Journalled so log lines can name who
+  * @param by the player who submitted it: the authorized requester: the
+  *   parked `Decide`'s owner or one of its co-owners. Journalled so log lines can name who
   *   chose from the payload alone; replay does not re-derive the owner.
   */
 final case class Answered(decisionId: String, answer: DecisionAnswer,
