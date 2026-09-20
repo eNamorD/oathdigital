@@ -137,7 +137,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       legalSearchSources = legal.search,
       boardTargetActions = legal.boardTargets,
       pendingCardDecision = pending.cardDecision,
-      campaign = pending.campaign,
       worldDeckCount = current.commonCards.worldDeck.size,
       worldDeckTopCardKind = current.commonCards.worldDeck.headOption
         .map(presentation.cardKind),
@@ -149,7 +148,6 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
           case TitleSide.Usurper => "usurper"
         }, current.tracks.usurperLimited, current.result.map(_.winner.value),
         current.result.map(_.kind.key))),
-      campaignRaidRelocation = pending.campaignRaidRelocation,
       banners = presentation.banners(context.ready).filter(_.holderPlayerId.isEmpty),
       minorActions = legal.minorActions,
       favorBanks = Suit.all.map(suit => FavorBankProjection(suit.key,

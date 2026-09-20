@@ -20,8 +20,6 @@ final case class GameProjection(
     legalSearchSources: Vector[LegalSearchSourceProjection] = Vector.empty,
     boardTargetActions: Vector[BoardTargetActionProjection] = Vector.empty,
     pendingCardDecision: Option[PendingCardDecisionProjection] = None,
-    campaign: Option[CampaignProjection] = None,
-    campaignRaidRelocation: Option[CampaignRaidRelocationProjection] = None,
     worldDeckCount: Int = 0,
     worldDeckTopCardKind: Option[String] = None,
     playerBoards: Vector[PlayerBoardProjection] = Vector.empty,

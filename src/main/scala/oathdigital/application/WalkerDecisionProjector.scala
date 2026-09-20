@@ -397,8 +397,7 @@ private[application] final class WalkerDecisionProjector(
   /** Local duplicate of `WalkerEventCodec`'s (serialization-layer)
     * `encodeDefenseFace` vocabulary: the application layer may not import
     * the serialization layer (`BackendArchitectureSuite`), and
-    * `PendingProcedureProjector.defenseFaceName` already establishes this
-    * exact precedent for Campaign's dice projections.
+    * `CampaignResultProjector` follows the same precedent for Campaign's dice.
     */
   private def defenseFaceName(value: DefenseDieFace): String = value match {
     case DefenseDieFace.Blank => "blank"

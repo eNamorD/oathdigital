@@ -14,8 +14,8 @@ object GameProjectionCodec {
     "pawnLocations", "legalControls", "ready", "completed", "activePlayerResources",
     "currentSiteResources", "actionSelectionOpen", "actionFamilies",
     "legalTravelDestinations", "legalSearchSources",
-    "boardTargetActions", "pendingCardDecision", "campaign",
-    "campaignRaidRelocation", "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
+    "boardTargetActions", "pendingCardDecision",
+    "worldDeckCount", "worldDeckTopCardKind", "playerBoards",
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview",
@@ -51,11 +51,6 @@ object GameProjectionCodec {
       "kind" -> s.kind, "region" -> stringOption(s.region), "supplyCost" -> s.supplyCost)),
     "boardTargetActions" -> encoded(value.boardTargetActions)(encodeAction),
     "pendingCardDecision" -> option(value.pendingCardDecision)(encodePending),
-    "campaign" -> option(value.campaign)(CampaignProjectionCodec.encode),
-    "campaignRaidRelocation" -> option(value.campaignRaidRelocation)(r => ujson.Obj(
-      "decisionId" -> r.decisionId, "actorPlayerId" -> r.actorPlayerId,
-      "defenderPlayerId" -> r.defenderPlayerId, "originSiteId" -> r.originSiteId,
-      "legalSiteIds" -> encoded(r.legalSiteIds)(ujson.Str(_)))),
     "worldDeckCount" -> value.worldDeckCount,
     "worldDeckTopCardKind" -> stringOption(value.worldDeckTopCardKind),
     "playerBoards" -> encoded(value.playerBoards)(encodeBoard),
@@ -106,8 +101,6 @@ object GameProjectionCodec {
     actionRaws <- default(value, "boardTargetActions", path, Vector.empty[ujson.Value])(array)
     actions <- traverse(actionRaws, s"$path.boardTargetActions")(decodeAction)
     pending <- optionalAbsent(value, "pendingCardDecision", path)(decodePending)
-    campaign <- optionalAbsent(value, "campaign", path)(CampaignProjectionCodec.decode)
-    relocation <- optionalAbsent(value, "campaignRaidRelocation", path)(decodeRelocation)
     deckCount <- intOr(value, "worldDeckCount", path, 0)
     deckTop <- optionalAbsent(value, "worldDeckTopCardKind", path)(string)
     boardRaws <- default(value, "playerBoards", path, Vector.empty[ujson.Value])(array)
@@ -140,7 +133,7 @@ object GameProjectionCodec {
     lastCampaign <- optionalAbsent(value, "lastCampaign", path)(CampaignResultProjectionCodec.decode)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
-    sources, actions, pending, campaign, relocation,
+    sources, actions, pending,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
     walkerDecision, walkerWaiting, phasePowers, lastCampaign)
@@ -166,12 +159,6 @@ object GameProjectionCodec {
     kind <- string(v, "kind", path); region <- optionalString(v, "region", path)
     cost <- int(v, "supplyCost", path)
   } yield LegalSearchSourceProjection(kind, region, cost)
-  private def decodeRelocation(raw: ujson.Value, path: String): Result[CampaignRaidRelocationProjection] = for {
-    v <- obj(raw, path); _ <- exact(v, Set("decisionId", "actorPlayerId", "defenderPlayerId", "originSiteId", "legalSiteIds"), path)
-    decision <- string(v, "decisionId", path); actor <- string(v, "actorPlayerId", path)
-    defender <- string(v, "defenderPlayerId", path); origin <- string(v, "originSiteId", path)
-    sites <- strings(v, "legalSiteIds", path)
-  } yield CampaignRaidRelocationProjection(decision, actor, defender, origin, sites)
   private def decodeOathkeeper(raw: ujson.Value, path: String): Result[OathkeeperProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("goal", "holderPlayerId", "side", "usurperLimited", "winnerPlayerId", "winnerVictoryKind"), path)
     goal <- string(v, "goal", path); holder <- optionalString(v, "holderPlayerId", path)

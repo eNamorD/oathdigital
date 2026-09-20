@@ -323,22 +323,6 @@ class CampaignSuite extends munit.FunSuite {
     intercept[IllegalArgumentException](BoardTargetFormationProjection(1, 1, 1, -1))
   }
 
-  test("empty force finishes with an empty attack pool and zero bounds") {
-    val (ready, player, site) = campaignReady
-    val decision = DecisionId("campaign-empty")
-    val declared = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
-      decision, site, 0)).toOption.get
-    val finished = rules.handle(declared.state, CampaignCommand.FinishPlans(
-      player.player, decision, Vector.empty)).toOption.get
-    val Ready(after) = finished.state: @unchecked
-    val pending = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
-    assertEquals(pending.attackDice, Vector.empty)
-    assertEquals(pending.attack -> pending.skullLosses, 0 -> 0)
-    val projected = new GameProjector(catalog).project("campaign-empty",
-      LoadedGame(finished.state, 2), player.player).campaign.get
-    assertEquals(projected.maxSacrifice -> projected.maxPlacement, 0 -> 0)
-  }
-
   test("empty force can use Brass Army with and without Outriders") {
     val (ready, player, site) = campaignReady
     val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
@@ -559,53 +543,6 @@ class CampaignSuite extends munit.FunSuite {
       .isInstanceOf[CampaignOutcomeMismatch])
   }
 
-  test("Brass Army shares the plan choice, pays onto the relic, and adds four dice") {
-    val (ready, player, site) = campaignReady
-    val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
-    val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
-    val brassId = RelicId(brass.id.value)
-    val brassSource = CampaignPlanSource.Relic(player.player, brassId)
-    val outridersSource = CampaignPlanSource.Adviser(player.player,
-      DenizenId(outriders.id.value))
-    val actor = player.copy(
-      board = player.board.copy(faceUpSecrets = 1),
-      advisers = Vector(DenizenState(DenizenId(outriders.id.value),
-        Orientation.FaceUp, Tokens.empty)),
-      relics = Vector(RelicState(brassId, Orientation.FaceUp, Tokens.empty)))
-    val state = withPlanActor(ready, actor)
-    val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
-      DecisionId("campaign-brass"), site, 2)).toOption.get
-    val Ready(pendingState) = declared.state: @unchecked
-    val pending = pendingState.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
-    assertEquals(CampaignRules.legalPlanChoices(catalog, pendingState, pending),
-      Vector(outridersSource, brassSource).sortBy(_.stableKey))
-    val actorView = new GameProjector(catalog).project("campaign-brass",
-      LoadedGame(declared.state, 1), player.player)
-    assertEquals(actorView.campaign.get.planChoices.map(_.kind).toSet,
-      Set("adviser", "relic"))
-    assertEquals(actorView.campaign.get.planChoices.find(_.kind == "relic").get.secretCost, 1)
-
-    val dice = Vector.fill(6)(AttackDieFace.OneSword)
-    val selected = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
-      pending.decision, brassSource)).toOption.get
-    val event = selected.events.head.asInstanceOf[CampaignPlanChosen]
-    assertEquals(event.handlerId, "relic.brass-army.campaign")
-    assertEquals(event.addedAttackDice, 4)
-    val finished = rules.handle(selected.state, CampaignCommand.FinishPlans(player.player,
-      pending.decision, dice)).toOption.get
-    val Ready(after) = finished.state: @unchecked
-    val afterActor = after.game.current.players.find(_.player == player.player).get
-    assertEquals(afterActor.board.faceUpSecrets, 0)
-    assertEquals(afterActor.relics.head.tokens, Tokens(0, 1))
-    assertEquals(after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign].attack, 6)
-
-    assert(rules.evolve(declared.state, event.copy(effects = Vector(
-      CampaignPlanEffect.AddAttackDice(3)))).isLeft)
-    val finishEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
-    assert(rules.evolve(selected.state, finishEvent.copy(
-      attackDice = dice.dropRight(1), attack = 5)).isLeft)
-  }
-
   test("Brass Army is offered only held faceup, empty, and payable") {
     val (ready, player, site) = campaignReady
     val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
@@ -628,59 +565,6 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(choices(Orientation.FaceUp, Tokens(1, 0), 1), Vector.empty)
     assertEquals(choices(Orientation.FaceUp, Tokens(0, 1), 1), Vector.empty)
     assertEquals(choices(Orientation.FaceDown, Tokens.empty, 1), Vector.empty)
-  }
-
-  test("Outriders and Brass Army resolve once each in either chosen order") {
-    val (ready, player, site) = campaignReady
-    val brassId = RelicId(catalog.relics.find(
-      _.handlers.contains("relic.brass-army.campaign")).get.id.value)
-    val outridersId = DenizenId(catalog.denizens.find(
-      _.handlers.contains("denizen.outriders")).get.id.value)
-    val outriders = CampaignPlanSource.Adviser(
-      player.player, outridersId)
-    val brass = CampaignPlanSource.Relic(player.player, brassId)
-    val actor = player.copy(board = player.board.copy(faceUpSecrets = 1),
-      advisers = Vector(DenizenState(outridersId, Orientation.FaceDown, Tokens.empty)),
-      relics = Vector(RelicState(brassId, Orientation.FaceUp, Tokens.empty)))
-    val state = withPlanActor(ready, actor)
-
-    Vector(Vector(outriders, brass), Vector(brass, outriders)).zipWithIndex.foreach {
-      case (order, index) =>
-        val decision = DecisionId(s"campaign-combined-$index")
-        val started = rules.handle(Ready(state), CampaignCommand.Start(
-          player.player, decision, site, 2)).toOption.get
-        val selected = order.foldLeft(started) { (transition, source) =>
-          val next = rules.handle(transition.state, CampaignCommand.ChoosePlan(
-            player.player, decision, source)).toOption.get
-          assert(next.events.forall(_.isInstanceOf[CampaignPlanChosen]))
-          next
-        }
-        val Ready(selectedState) = selected.state: @unchecked
-        val pending = selectedState.game.current.pending.get
-          .asInstanceOf[PendingProcedure.Campaign]
-        assertEquals(pending.plans.map(_.source), order)
-        assertEquals(pending.attackDice, Vector.empty)
-        assertEquals(CampaignRules.legalPlanChoices(catalog, selectedState, pending),
-          Vector.empty)
-        assert(rules.handle(selected.state, CampaignCommand.ChoosePlan(
-          player.player, decision, order.head)).isLeft)
-        val view = new GameProjector(catalog).project("campaign-combined",
-          LoadedGame(selected.state, 1), player.player).campaign.get
-        assertEquals(view.selectedPlans.map(_.sourceKey),
-          order.map(source => Some(source.stableKey)))
-        val dice = Vector.fill(6)(AttackDieFace.TwoSwordsSkull)
-        val finished = rules.handle(selected.state, CampaignCommand.FinishPlans(
-          player.player, decision, dice)).toOption.get
-        val attackerEvent = finished.events.head.asInstanceOf[CampaignPlansFinished]
-        val rollEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
-        assertEquals(attackerEvent.orderedSources, order)
-        assertEquals(attackerEvent.addedAttackDice, 4)
-        assertEquals(attackerEvent.ignoreAttackSkulls, true)
-        assertEquals(rollEvent.attack, 12)
-        assertEquals(rollEvent.skullLosses, 0)
-        assert(rules.evolve(selected.state,
-          attackerEvent.copy(orderedSources = order.reverse)).isLeft)
-    }
   }
 
   test("facedown Vow of Peace has no active pre-Campaign restriction") {

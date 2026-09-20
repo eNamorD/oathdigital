@@ -248,27 +248,6 @@ final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
   def banner: String = key
 }
-final case class CampaignProjection(
-    decisionId: String, targetSiteIds: Vector[String], force: Int,
-    plansFinished: Boolean, planChoices: Vector[CampaignPlanChoiceProjection],
-    selectedPlans: Vector[CampaignPlanChoiceProjection],
-    attackDice: Vector[String], attack: Int, skullLosses: Int,
-    maxSacrifice: Int, sacrificed: Option[Int], defenseDice: Vector[String],
-    defense: Option[Int], victorious: Option[Boolean], maxPlacement: Int,
-    placementTargets: Vector[CampaignPlacementTargetProjection],
-    defenderKind: String = "bandits", defenderPlayerId: Option[String] = None,
-    defenderForce: Int = 0, defenseDiceCount: Int = 0,
-    planSide: String = "attacker", decisionOwnerPlayerId: Option[String] = None,
-    kind: String = "conquest", raidTargets: Vector[String] = Vector.empty)
-final case class CampaignPlacementTargetProjection(siteId: String, label: String)
-final case class CampaignRaidRelocationProjection(
-    decisionId: String, actorPlayerId: String, defenderPlayerId: String,
-    originSiteId: String, legalSiteIds: Vector[String])
-final case class CampaignPlanChoiceProjection(
-    kind: String, sourceKey: Option[String], playerId: Option[String],
-    siteId: Option[String], cardId: Option[String], label: String,
-    handlerId: Option[String], favorCost: Int, secretCost: Int,
-    mechanicalResult: String)
 final case class OathkeeperProjection(
     goal: String, holderPlayerId: Option[String], side: String,
     usurperLimited: Boolean, winnerPlayerId: Option[String],

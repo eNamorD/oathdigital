@@ -25,8 +25,6 @@ private[application] final case class LegalProjection(
 private[application] final case class PendingProjection(
     phase: String,
     cardDecision: Option[PendingCardDecisionProjection],
-    campaign: Option[CampaignProjection],
-    campaignRaidRelocation: Option[CampaignRaidRelocationProjection],
     walkerDecision: Option[WalkerDecisionProjection],
     walkerWaiting: Option[WalkerWaitingProjection]
 )

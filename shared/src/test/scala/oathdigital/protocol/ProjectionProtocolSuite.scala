@@ -9,9 +9,6 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     Some("beast"), Some("none"), Some("public rule"), Some("faceup"),
     None, favor = 1, secrets = 2, defense = Some(1))
   private val target = BoardTargetRefProjection.SiteCard("site:a", "denizen", "known")
-  private val choice = CampaignPlanChoiceProjection("site-card", Some("site:a:known"),
-    None, Some("site:a"), Some("known"), "Known", Some("campaign-plan"),
-    1, 0, "adds one die")
   private val projection = GameProjection(
     gameId = "game-1", nextSequence = 7, phase = "act",
     activeParticipantId = Some("red"),
@@ -38,12 +35,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       "starting-adviser", "red", "Choose adviser", Vector.empty,
       Vector(hidden, known), 1, 1, false,
       Map("hidden" -> Vector.empty, "known" -> Vector.empty))),
-    campaign = Some(CampaignProjection("campaign", Vector("site:a"), 2, false,
-      Vector(choice), Vector.empty, Vector("two"), 2, 0, 1, None,
-      Vector("one"), None, None, 2,
-      Vector(CampaignPlacementTargetProjection("site:a", "Site A")))),
-    campaignRaidRelocation = Some(CampaignRaidRelocationProjection("raid", "red", "blue",
-      "site:a", Vector("site:b"))), worldDeckCount = 5,
+    worldDeckCount = 5,
     worldDeckTopCardKind = Some("denizen"),
     playerBoards = Vector(PlayerBoardProjection("red", 3, 2, 1, 1, 2, 4, 4,
       Some("site:a"), Vector(hidden), Vector(known), None)),
