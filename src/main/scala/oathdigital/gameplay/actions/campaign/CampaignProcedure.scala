@@ -55,14 +55,60 @@ object CampaignProcedure {
       targetsStep(actor)), Some(PowerWindow.CampaignBeforeTargets)),
     forceStep(state, actor),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
-      CampaignSetup.setup(ready, actor, pending).toRight(
-        OathViolation.InvalidEventOrder(
-          "Campaign gathered its dice pools without a complete setup"))
-        .map(CampaignBattle.gatherPools(catalog, _)))),
+      withSetup(ready, actor, pending)(CampaignBattle.gatherPools(catalog, _)))),
       Some(PowerWindow.CampaignGatherPools)),
     CampaignPlanSteps.attacker(catalog, actor),
-    CampaignPlanSteps.defender(catalog, actor)),
+    CampaignPlanSteps.defender(catalog, actor),
+    Roll(CampaignIds.attackPool, DiceSpec(DiceKind.Attack), RollMode.Automatic,
+      Some(PowerWindow.CampaignAttackRoll)),
+    Sequence(Vector[Operation](BuildOps((ready, pending) =>
+      withSetup(ready, actor, pending)(setup =>
+        CampaignBattle.attackResultOps(catalog, ready, setup, pending)))),
+      Some(PowerWindow.CampaignAttackResult)),
+    sacrificeStep(actor),
+    Roll(CampaignIds.defensePool, DiceSpec(DiceKind.Defense), RollMode.Automatic,
+      Some(PowerWindow.CampaignDefenseRoll)),
+    Sequence(Vector[Operation](BuildOps((ready, pending) =>
+      withSetup(ready, actor, pending)(setup =>
+        CampaignBattle.defenseResultOps(ready, setup)))),
+      Some(PowerWindow.CampaignDefenseResult)),
+    Sequence(Vector[Operation](BuildOps((ready, pending) =>
+      withSetup(ready, actor, pending)(setup => Vector(RecordCampaignResult(
+        CampaignBattle.result(ready, setup, pending)))))),
+      Some(PowerWindow.CampaignAfterOutcome)),
+    outcomeStep(catalog, actor)),
     Some(PowerWindow.CampaignActionEligibility))
+
+  private def withSetup(ready: ReadyGame, actor: PlayerId, pending: PendingTree)(
+      f: CampaignSetup => Vector[CoreOperation])
+      : Either[OathViolation, Vector[CoreOperation]] =
+    CampaignSetup.setup(ready, actor, pending).map(f).toRight(
+      OathViolation.InvalidEventOrder(
+        "Campaign reached a battle step without a complete setup"))
+
+  /** Omitted when no force survives the skulls. */
+  private def sacrificeStep(actor: PlayerId): Operation =
+    Branch((ready, pending) => CampaignSetup.setup(ready, actor, pending)
+      .filter(setup => CampaignBattle.sacrificeMax(ready, setup) > 0).map { setup =>
+        val max = CampaignBattle.sacrificeMax(ready, setup)
+        val attack = ready.game.current.rollOutcomes.get(CampaignIds.attackPool)
+        Vector[Operation](Decide(CampaignIds.sacrifice, actor,
+          DecisionQuery.ChooseAmount(0, max, Some(CampaignBattle.sacrificeHeading(
+            attack.toVector.flatMap(_.faces.collect {
+              case face: AttackDieFace => face }), attack.fold(0)(_.score),
+            attack.fold(0)(_.skulls), max)), "Sacrifice"),
+          window = Some(PowerWindow.CampaignSacrificeSelection)))
+      }.getOrElse(Vector.empty))
+
+  /** Read from the durable result, never from the board: this is selected
+    * again after the losses have changed it.
+    */
+  private def outcomeStep(catalog: ExecutableCatalog, actor: PlayerId): Operation =
+    Branch((ready, _) => ready.game.current.lastCampaignResult match {
+      case Some(result) => CampaignOutcome.steps(ready, catalog, actor, result)
+      case None => Vector(BuildOps((_, _) => Left(OathViolation.InvalidEventOrder(
+        "Campaign reached its outcome without a recorded result"))))
+    })
 
   /** Omitted when exactly one kind is legal. */
   private def kindStep(actor: PlayerId): Operation = Branch((ready, _) => {

@@ -1,9 +1,9 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.CampaignFixture.{Board, againstPlayer, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
-import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
+import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+import oathdigital.gameplay.walker.{ProcedureWalker, RollPayload, WalkerCompleted,
   WalkerPowers, WalkerStepRecorded}
 import oathdigital.model._
 import oathdigital.model.DecisionAnswer._
@@ -11,7 +11,7 @@ import oathdigital.model.OathState.Ready
 
 /** Campaign through the rules, as a client drives it. */
 class CampaignProcedureSuite extends munit.FunSuite {
-  private val r = rules()
+  private val r = rules(CampaignFixture.anyDice)
 
   private def start(b: Board) =
     r.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
@@ -124,7 +124,9 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val gathered = ops(done.events).collect { case pool: ModifyDicePool => pool }
     assertEquals(gathered, Vector(ModifyDicePool(CampaignIds.attackPool, 3)) ++
       Option.when(printed > 0)(ModifyDicePool(CampaignIds.defensePool, printed)))
-    assert(done.events.exists(_.isInstanceOf[WalkerCompleted]))
+    // The rolls are automatic, so the walk goes on to the sacrifice.
+    assertEquals(done.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.sacrifice)))
   }
 
   test("zero force is legal and gathers no attack pool") {
@@ -223,8 +225,10 @@ class CampaignProcedureSuite extends munit.FunSuite {
     assert(ops(picked.events).contains(Move(Piece.Secrets(1),
       PositionedLocation(Location.PlayArea(b.actor)),
       PositionedLocation(Location.OnCard(RelicId(brass))))))
-    // Nothing else can be chosen, so the window finishes by itself.
-    assert(picked.events.exists(_.isInstanceOf[WalkerCompleted]))
+    // Nothing else can be chosen, so the window finishes by itself and the
+    // walk goes on to the sacrifice.
+    assertEquals(picked.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.sacrifice)))
   }
 
   test("two plans are chosen one at a time, each source once, and Finish ends the window") {
@@ -264,8 +268,10 @@ class CampaignProcedureSuite extends munit.FunSuite {
   }
 
   test("with no plan available the attacker window is skipped") {
-    val plans = atPlans(board())
-    assert(plans.events.exists(_.isInstanceOf[WalkerCompleted]))
+    val b = board()
+    val plans = atPlans(b)
+    assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.sacrifice)))
   }
 
   test("a player defender owns the defender window and the attacker cannot answer it") {
@@ -292,6 +298,177 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val b = withSiteCard(base, base.origin, watchdog)
     val done = atPlans(b)
     assert(ops(done.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
-    assert(done.events.exists(_.isInstanceOf[WalkerCompleted]))
+    assertEquals(done.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.sacrifice)))
+  }
+
+  // ---- battle -----------------------------------------------------------
+  private def printed(b: Board): Int =
+    catalog.sites.find(_.id == b.origin).get.defense
+  private def blanks(b: Board) = Vector.fill(printed(b))(DefenseDieFace.Blank)
+  private def sword(count: Int) = Vector.fill(count)(AttackDieFace.OneSword)
+
+  private def committed(game: OathRules, b: Board, force: Int): OathTransition = {
+    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .getOrElse(fail("Campaign must start"))
+    game.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(force)).getOrElse(fail("the force must be accepted"))
+  }
+
+  private def result(state: OathState): CampaignResult =
+    ready(state).game.current.lastCampaignResult.get
+  private def site(state: OathState, id: SiteId): SiteForces =
+    ready(state).game.current.map.sites(id).forces
+  private def boardWarbands(state: OathState, id: PlayerId): Int =
+    ready(state).game.current.players.find(_.player == id).get.board.warbands
+  private def isAutomaticRoll(pool: PoolKey)(event: OathEvent): Boolean =
+    event match {
+      case step: WalkerStepRecorded => step.payload match {
+        case RollPayload(`pool`, _, true) => true
+        case _ => false
+      }
+      case _ => false
+    }
+
+  test("a Conquest victory rolls both dice by itself, records the result and places the survivors") {
+    val b = board()
+    val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
+    val start = committed(game, b, 4)
+    assert(start.events.exists(isAutomaticRoll(CampaignIds.attackPool)))
+    assertEquals(start.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.sacrifice)))
+    val sacrificed = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0)).getOrElse(fail("the sacrifice must be accepted"))
+    assertEquals(sacrificed.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.placement)))
+    assertEquals(result(sacrificed.state), CampaignResult(b.actor,
+      CampaignKind.Conquest, CampaignDefender.Bandits, Vector(b.origin),
+      Vector.empty, force = 4, attackFaces = sword(4), attackScore = 4,
+      skullLosses = 0, sacrificed = 0, defenseFaces = blanks(b), defenseScore = 2,
+      victorious = true))
+    // The board is untouched until the losses: the bandits are gone, the
+    // committed force is still on the board, and nothing is placed yet.
+    assertEquals(boardWarbands(sacrificed.state, b.actor), 5)
+    val placed = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.placement,
+      ChooseAmountAnswer(3)).getOrElse(fail("the placement must be accepted"))
+    val lineage = b.player(b.actor).lineage
+    assertEquals(site(placed.state, b.origin),
+      SiteForces.Occupied(ForceKind.Exile(lineage), 3))
+    assertEquals(boardWarbands(placed.state, b.actor), 2)
+    assertEquals(placed.continue, OathContinue.ActActionSelection(b.actor))
+    assertEquals(ready(placed.state).game.current.walkerPending, None)
+    assertEquals(ready(placed.state).game.current.rollPools, Map.empty[PoolKey, DicePoolState])
+  }
+
+  test("the recorded events replay to the same state as the live walk") {
+    val b = board()
+    val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
+    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor)
+      .toOption.get
+    val forced = game.resolveWalker(started.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(4)).toOption.get
+    val sacrificed = game.resolveWalker(forced.state, b.actor,
+      CampaignIds.sacrifice, ChooseAmountAnswer(0)).toOption.get
+    val placed = game.resolveWalker(sacrificed.state, b.actor,
+      CampaignIds.placement, ChooseAmountAnswer(3)).toOption.get
+    val events = started.events ++ forced.events ++ sacrificed.events ++
+      placed.events
+    val replayed = events.foldLeft[Either[OathViolation, OathState]](
+      Right(Ready(b.ready))) {
+      case (Right(state), event) => game.evolve(state, event)
+      case (failure, _) => failure
+    }
+    assertEquals(replayed, Right(placed.state))
+  }
+
+  test("a defeat kills the skull and sacrifice losses and half the survivors, and the bandits stay") {
+    val b = board()
+    val game = rules(CampaignFixture.dice(sword(2), blanks(b)))
+    val start = committed(game, b, 2)
+    val done = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0)).toOption.get
+    assertEquals(result(done.state).victorious, false)
+    assertEquals(boardWarbands(done.state, b.actor), 4)
+    assertEquals(site(done.state, b.origin), SiteForces.Occupied(ForceKind.Bandit, 2))
+    assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
+  }
+
+  test("a sacrifice adds one attack per warband and can turn a defeat into a victory") {
+    val b = board()
+    val game = rules(CampaignFixture.dice(sword(2), blanks(b)))
+    val start = committed(game, b, 2)
+    val won = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(1)).toOption.get
+    assertEquals(result(won.state).sacrificed, 1)
+    assertEquals(result(won.state).victorious, true)
+    assertEquals(won.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.placement)))
+  }
+
+  test("the sacrifice decision is bounded by the force the skulls left, and shows the roll") {
+    val b = board()
+    val faces = Vector(AttackDieFace.TwoSwordsSkull, AttackDieFace.OneSword)
+    val game = rules(CampaignFixture.dice(faces, blanks(b)))
+    val start = committed(game, b, 2)
+    assertEquals(parkedDecision(b, start).query, DecisionQuery.ChooseAmount(0, 1,
+      Some(CampaignBattle.sacrificeHeading(faces, 3, 1, 1)), "Sacrifice"))
+  }
+
+  test("zero force asks no sacrifice, and the attacker loses with nothing to kill") {
+    val b = board(warbands = 0)
+    val game = rules(CampaignFixture.dice(Vector.empty, blanks(b)))
+    val done = committed(game, b, 0)
+    assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
+    assertEquals(result(done.state).force, 0)
+    assertEquals(result(done.state).victorious, false)
+    assertEquals(boardWarbands(done.state, b.actor), 0)
+  }
+
+  test("a player defender keeps half the killed force, returned to its board") {
+    val b = againstPlayer(board())
+    val game = rules(CampaignFixture.dice(sword(4), blanks(b)))
+    val before = boardWarbands(Ready(b.ready), b.other)
+    val start = committed(game, b, 4)
+    // The defender may choose plans first; finish that window.
+    val afterPlans = game.resolveWalker(start.state, b.other,
+      CampaignIds.defenderPlan, ChooseOneAnswer(CampaignIds.finish)).toOption.get
+    val sacrificed = game.resolveWalker(afterPlans.state, b.actor,
+      CampaignIds.sacrifice, ChooseAmountAnswer(0)).toOption.get
+    assertEquals(result(sacrificed.state).defender, CampaignDefender.Player(b.other))
+    assertEquals(boardWarbands(sacrificed.state, b.other), before + 1)
+  }
+
+  test("several targets are placed with one distribution, and the rest stay on the board") {
+    val b = board(extras = 1)
+    val game = rules(CampaignFixture.dice(sword(5),
+      Vector.fill(printed(b) + catalog.sites.find(_.id == b.extras.head).get.defense)(
+        DefenseDieFace.Blank)))
+    val started = game.startWalker(Ready(b.ready), ActionRef.Campaign, b.actor).toOption.get
+    val targeted = game.resolveWalker(started.state, b.actor, CampaignIds.targets,
+      ChooseManyAnswer(Vector(DecisionOptionRef.Site(b.extras.head)))).toOption.get
+    val forced = game.resolveWalker(targeted.state, b.actor, CampaignIds.force,
+      ChooseAmountAnswer(5)).toOption.get
+    val sacrificed = game.resolveWalker(forced.state, b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0)).toOption.get
+    assertEquals(parkedDecision(b, sacrificed).query, DecisionQuery.Distribute(
+      Vector(b.origin, b.extras.head).map(site => DistributeSlot(
+        DecisionOptionRef.Site(site), 0, 5, None)), 0, 5,
+      Some("Place up to 5 surviving warbands across the conquered sites; the " +
+        "rest stay on your board"), "Place warbands"))
+    val placed = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.placement,
+      DistributeAnswer(Vector(
+        DistributeAmount(DecisionOptionRef.Site(b.origin), 2),
+        DistributeAmount(DecisionOptionRef.Site(b.extras.head), 1)))).toOption.get
+    val lineage = b.player(b.actor).lineage
+    assertEquals(site(placed.state, b.origin),
+      SiteForces.Occupied(ForceKind.Exile(lineage), 2))
+    assertEquals(site(placed.state, b.extras.head),
+      SiteForces.Occupied(ForceKind.Exile(lineage), 1))
+    assertEquals(boardWarbands(placed.state, b.actor), 2)
+    // More than the survivors is rejected.
+    assert(game.resolveWalker(sacrificed.state, b.actor, CampaignIds.placement,
+      DistributeAnswer(Vector(
+        DistributeAmount(DecisionOptionRef.Site(b.origin), 4),
+        DistributeAmount(DecisionOptionRef.Site(b.extras.head), 2)))).isLeft)
   }
 }

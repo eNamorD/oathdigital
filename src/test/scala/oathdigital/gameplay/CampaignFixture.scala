@@ -45,9 +45,17 @@ object CampaignFixture {
         if (ruled(id)) SiteForces.Occupied(ForceKind.Bandit, 2)
         else SiteForces.Empty)
     }
+    def bandits(forces: SiteForces): Int = forces match {
+      case SiteForces.Occupied(ForceKind.Bandit, count) => count
+      case _ => 0
+    }
+    val delta = current.map.sites.values.map(s => bandits(s.forces)).sum -
+      sites.values.map(s => bandits(s.forces)).sum
     val ready = base.updateCurrent(_.copy(players = players, pending = None,
       map = current.map.copy(sites = sites),
-      turn = current.turn.copy(phase = Phase.Act)))
+      turn = current.turn.copy(phase = Phase.Act))).copy(banks =
+      base.banks.copy(warbandSupply = base.banks.warbandSupply.updated(
+        ForceKind.Bandit, base.banks.warbandSupply.getOrElse(ForceKind.Bandit, 0) + delta)))
     Board(ready, activeId, otherId, origin)
   }
 
@@ -61,6 +69,14 @@ object CampaignFixture {
     walkerPowerCatalog =
       if (powers) WalkerPowerCatalog.default(catalog) else WalkerPowers.empty,
     walkerDice = dice)
+
+  /** Dice for tests that only walk through the battle: hollow swords and
+    * blanks, of whatever count the pool holds.
+    */
+  val anyDice: WalkerDice = (kind, count) => Right(kind match {
+    case DiceKind.Attack => Vector.fill(count)(AttackDieFace.HollowSword: DieFace)
+    case DiceKind.Defense => Vector.fill(count)(DefenseDieFace.Blank: DieFace)
+  })
 
   /** Dice that return exactly these faces, and fail loudly on a wrong count. */
   def dice(attack: Vector[AttackDieFace] = Vector.empty,
