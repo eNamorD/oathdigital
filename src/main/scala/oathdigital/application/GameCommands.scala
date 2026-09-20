@@ -32,25 +32,6 @@ object GameCommand {
       extends GameCommand
   final case class MoveWarbands(playerId: PlayerId, toSite: Boolean, amount: Int)
       extends GameCommand
-  final case class BeginCampaignConquest(playerId: PlayerId, targetSiteIds: Vector[SiteId],
-      attackDiceCount: Int) extends GameCommand
-  final case class BeginCampaignRaid(playerId: PlayerId,
-      targets: Vector[CampaignRaidTarget], attackDiceCount: Int) extends GameCommand
-  object BeginCampaignConquest {
-    def apply(playerId: PlayerId, targetSiteId: SiteId,
-        attackDiceCount: Int): BeginCampaignConquest =
-      new BeginCampaignConquest(playerId, Vector(targetSiteId), attackDiceCount)
-  }
-  final case class ChooseCampaignPlan(playerId: PlayerId, decision: DecisionId,
-      source: CampaignPlanSource) extends GameCommand
-  final case class FinishCampaignPlans(playerId: PlayerId, decision: DecisionId)
-      extends GameCommand
-  final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,
-      count: Int) extends GameCommand
-  final case class PlaceCampaignForce(playerId: PlayerId, decision: DecisionId,
-      allocations: Vector[CampaignForceAllocation]) extends GameCommand
-  final case class RelocateCampaignRaidPawn(playerId: PlayerId,
-      decision: DecisionId, destinationSiteId: SiteId) extends GameCommand
   final case class ResolveCardDecision(
       playerId: PlayerId,
       decision: DecisionId,

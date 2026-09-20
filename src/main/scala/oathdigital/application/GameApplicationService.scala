@@ -3,11 +3,10 @@ package oathdigital.application
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.{EventReplayEngine, RecordedEvent}
 import oathdigital.gameplay.{PowerRuntime, OathRules}
-import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.{WalkerDice, WalkerProcedureRegistry}
+import oathdigital.gameplay.walker.WalkerProcedureRegistry
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
@@ -398,36 +397,6 @@ final class GameApplicationService(
         rules.handle(state, MinorActionCommand.RevealOwnedRelic(playerId, relic))
       case GameCommand.MoveWarbands(playerId, toSite, amount) =>
         rules.handle(state, MinorActionCommand.MoveWarbands(playerId, toSite, amount))
-      case GameCommand.BeginCampaignConquest(playerId, targets, count) =>
-        rules.handle(state, CampaignCommand.Start(playerId,
-          DecisionId(s"campaign-$nextSequence"), targets, count))
-      case GameCommand.BeginCampaignRaid(playerId, targets, count) =>
-        rules.handle(state, CampaignCommand.StartRaid(playerId,
-          DecisionId(s"campaign-$nextSequence"), targets, count))
-      case GameCommand.ChooseCampaignPlan(playerId, decision, source) =>
-        rules.handle(state, CampaignCommand.ChoosePlan(playerId, decision, source))
-      case GameCommand.FinishCampaignPlans(playerId, decision) =>
-        Campaign.prepareFinishPlans(catalog, state, playerId, decision).flatMap { count =>
-          rules.handle(state, CampaignCommand.FinishPlans(playerId, decision,
-            count.fold(Vector.empty[AttackDieFace])(campaignDicePort.rollAttack)))
-        }
-      case GameCommand.ChooseCampaignSacrifice(playerId, decision, count) => state match {
-        case OathState.Ready(ready) => ready.game.current.pending match {
-          case Some(c: PendingProcedure.Campaign) =>
-            val defenseCount = CampaignRules.defenseDiceCount(catalog, ready, c)
-            rules.handle(state, CampaignCommand.Sacrifice(playerId, decision, count,
-              campaignDicePort.rollDefense(defenseCount)))
-          case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
-            count, Vector.empty))
-        }
-        case _ => rules.handle(state, CampaignCommand.Sacrifice(playerId, decision,
-          count, Vector.empty))
-      }
-      case GameCommand.PlaceCampaignForce(playerId, decision, allocations) =>
-        rules.handle(state, CampaignCommand.Place(playerId, decision, allocations))
-      case GameCommand.RelocateCampaignRaidPawn(playerId, decision, destination) =>
-        rules.handle(state, CampaignCommand.RelocateRaidPawn(
-          playerId, decision, destination))
       case GameCommand.ResolveCardDecision(playerId, decision, resolution) =>
         resolution match {
           case CardDecisionResolution.StartingAdviser(adviserId) => state match {
@@ -456,10 +425,6 @@ final class GameApplicationService(
 
   private def majorAction(command: GameCommand): Option[(PlayerId, ActionKind)] =
     command match {
-      case GameCommand.BeginCampaignConquest(actor, _, _) =>
-        Some(actor -> ActionKind.Campaign)
-      case GameCommand.BeginCampaignRaid(actor, _, _) =>
-        Some(actor -> ActionKind.Campaign)
       case _ => None
     }
 

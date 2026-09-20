@@ -25,13 +25,6 @@ object GameIntentMapper {
       case Intent.PeekSiteRelics => Right(actor.peekSiteRelics)
       case Intent.RevealOwnedRelic(id) => Right(actor.revealOwnedRelic(RelicId(id)))
       case Intent.MoveWarbands(toSite, amount) => Right(actor.moveWarbands(toSite, amount))
-      case Intent.BeginCampaignConquest(sites, count) => Right(actor.beginCampaignConquest(sites.map(SiteId), count))
-      case Intent.BeginCampaignRaid(values, count) => traverse(values)(raid).map(actor.beginCampaignRaid(_, count))
-      case Intent.ChooseCampaignPlan(id, value) => plan(value).map(actor.chooseCampaignPlan(DecisionId(id), _))
-      case Intent.FinishCampaignPlans(id) => Right(actor.finishCampaignPlans(DecisionId(id)))
-      case Intent.ChooseCampaignSacrifice(id, count) => Right(actor.chooseCampaignSacrifice(DecisionId(id), count))
-      case Intent.PlaceCampaignForce(id, values) => Right(actor.placeCampaignForce(DecisionId(id), values.map(v => oathdigital.model.CampaignForceAllocation(SiteId(v.siteId), v.count))))
-      case Intent.RelocateCampaignRaidPawn(id, site) => Right(actor.relocateCampaignRaidPawn(DecisionId(id), SiteId(site)))
       case Intent.ResolveCardDecision(id, value) => resolution(value).map(actor.resolveCardDecision(DecisionId(id), _))
       case Intent.StartWalker(value, modifiers, startArgs) => for {
         ref <- actionRef(value)
@@ -82,19 +75,6 @@ object GameIntentMapper {
 
   private def invalid(path: String, value: String, kind: String) = Left(GameIntentMappingFailure(path, s"unknown $kind '$value'"))
   private def world(value: WorldCard, path: String): Result[WorldCardId] = value.kind match { case "denizen" => Right(DenizenId(value.id)); case "vision" => Right(VisionId(value.id)); case v => invalid(s"$path.kind", v, "world card kind") }
-  private def raid(value: oathdigital.protocol.CampaignRaidTarget): Result[oathdigital.model.CampaignRaidTarget] = value match {
-    case oathdigital.protocol.CampaignRaidTarget.Pawn(p) => Right(oathdigital.model.CampaignRaidTarget.Pawn(PlayerId(p)))
-    case oathdigital.protocol.CampaignRaidTarget.Relic(p, r) => Right(oathdigital.model.CampaignRaidTarget.Relic(PlayerId(p), RelicId(r)))
-    case oathdigital.protocol.CampaignRaidTarget.Banner(p, key) => Banner.fromKey(key)
-      .map(oathdigital.model.CampaignRaidTarget.Banner(PlayerId(p), _))
-      .toRight(GameIntentMappingFailure("$.intent.targets.banner", s"unknown campaign banner '$key'"))
-  }
-  private def plan(value: oathdigital.protocol.CampaignPlanSource): Result[oathdigital.model.CampaignPlanSource] = value match {
-    case oathdigital.protocol.CampaignPlanSource.Adviser(p,c) => Right(oathdigital.model.CampaignPlanSource.Adviser(PlayerId(p), DenizenId(c)))
-    case oathdigital.protocol.CampaignPlanSource.SiteCard(s,c) => Right(oathdigital.model.CampaignPlanSource.SiteCard(SiteId(s), DenizenId(c)))
-    case oathdigital.protocol.CampaignPlanSource.Relic(p,c) => Right(oathdigital.model.CampaignPlanSource.Relic(PlayerId(p), RelicId(c)))
-    case oathdigital.protocol.CampaignPlanSource.Title(p) => Right(oathdigital.model.CampaignPlanSource.Title(PlayerId(p)))
-  }
   private def negotiation(value: oathdigital.protocol.NegotiationTerms): Result[oathdigital.model.NegotiationTerms] = traverse(value.disclosures)(disclosure).map(ds => oathdigital.model.NegotiationTerms(value.transfers.map(v => oathdigital.model.NegotiationTransfer(PlayerId(v.recipientPlayerId), v.favor, v.relicIds.map(RelicId))), ds))
   private def disclosure(value: oathdigital.protocol.NegotiationDisclosure): Result[oathdigital.model.NegotiationDisclosure] = value.information match {
     case NegotiationInformation.Adviser(owner, c) => world(c, "$.intent.terms.disclosures.information.card").map(v => oathdigital.model.NegotiationDisclosure(PlayerId(value.recipientPlayerId), NegotiationDisclosureRef.Adviser(PlayerId(owner), v)))

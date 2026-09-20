@@ -15,18 +15,6 @@ object GameIntent {
   case object PeekSiteRelics extends GameIntent
   final case class RevealOwnedRelic(relicId: String) extends GameIntent
   final case class MoveWarbands(toSite: Boolean, amount: Int) extends GameIntent
-  final case class BeginCampaignConquest(targetSiteIds: Vector[String],
-      attackDiceCount: Int) extends GameIntent
-  final case class BeginCampaignRaid(targets: Vector[CampaignRaidTarget],
-      attackDiceCount: Int) extends GameIntent
-  final case class ChooseCampaignPlan(decisionId: String, source: CampaignPlanSource)
-      extends GameIntent
-  final case class FinishCampaignPlans(decisionId: String) extends GameIntent
-  final case class ChooseCampaignSacrifice(decisionId: String, count: Int) extends GameIntent
-  final case class PlaceCampaignForce(decisionId: String,
-      allocations: Vector[CampaignForceAllocation]) extends GameIntent
-  final case class RelocateCampaignRaidPawn(decisionId: String,
-      destinationSiteId: String) extends GameIntent
   final case class ResolveCardDecision(decisionId: String,
       resolution: DecisionResolution) extends GameIntent
   /** Starts a walker procedure. `action` is the engine's persisted `StartableRef`
@@ -63,22 +51,6 @@ object GameIntent {
 final case class WalkerStartArgWire(optionKind: String, optionId: String)
 
 final case class WorldCard(kind: String, id: String)
-final case class CampaignForceAllocation(siteId: String, count: Int)
-sealed trait CampaignRaidTarget extends Product with Serializable
-object CampaignRaidTarget {
-  final case class Pawn(playerId: String) extends CampaignRaidTarget
-  final case class Relic(playerId: String, relicId: String) extends CampaignRaidTarget
-  final case class Banner(playerId: String, banner: String) extends CampaignRaidTarget
-}
-
-sealed trait CampaignPlanSource extends Product with Serializable
-object CampaignPlanSource {
-  final case class Adviser(playerId: String, cardId: String) extends CampaignPlanSource
-  final case class SiteCard(siteId: String, cardId: String) extends CampaignPlanSource
-  final case class Relic(playerId: String, cardId: String) extends CampaignPlanSource
-  final case class Title(playerId: String) extends CampaignPlanSource
-}
-
 final case class NegotiationTerms(
     transfers: Vector[NegotiationTransfer],
     disclosures: Vector[NegotiationDisclosure]

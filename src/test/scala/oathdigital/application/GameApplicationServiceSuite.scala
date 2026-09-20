@@ -1044,6 +1044,20 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     accepted
   }
 
+  test("a walker Campaign persists every command and replays to the same state") {
+    val repository = new InMemoryEventStreamRepository
+    val service = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice)
+    val (accepted, _, _) = forgeReadyGame(service, "walker-campaign")
+    val reloaded = new GameApplicationService(catalog, repository,
+      campaignDicePort = blankCampaignDice).load("walker-campaign")
+      .toOption.flatten.get
+    assertEquals(reloaded.state, accepted.state)
+    assertEquals(reloaded.nextSequence, accepted.nextSequence)
+    val Ready(after) = reloaded.state: @unchecked
+    assert(after.game.current.lastCampaignResult.exists(_.victorious))
+  }
+
   test("create advance and reload replay the complete persisted v2 stream") {
     val repository = new InMemoryEventStreamRepository
     val service = new GameApplicationService(catalog, repository)

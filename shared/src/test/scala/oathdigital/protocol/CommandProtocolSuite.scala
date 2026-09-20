@@ -12,14 +12,7 @@ class CommandProtocolSuite extends munit.FunSuite {
       Vector(WalkerStartArgWire("denizen", "d1"))),
     PeekSiteRelics,
     RevealOwnedRelic("r1"), MoveWarbands(toSite = true, 2),
-    BeginCampaignConquest(Vector("site:a", "site:b"), 3),
-    BeginCampaignRaid(Vector(CampaignRaidTarget.Pawn("p2"),
-      CampaignRaidTarget.Relic("p2", "r1"),
-      CampaignRaidTarget.Banner("p2", "peoples-favor")), 3),
-    ChooseCampaignPlan("cp1", CampaignPlanSource.Adviser("p1", "d1")),
-    FinishCampaignPlans("cp1"), ChooseCampaignSacrifice("cp1", 1),
-    PlaceCampaignForce("cp1", Vector(CampaignForceAllocation("site:a", 2))),
-    RelocateCampaignRaidPawn("cp1", "site:c"),
+    StartWalker("campaign", Vector.empty),
     ResolveCardDecision("d1", DecisionResolution.StartingAdviser("d1")),
     StartWalker("recover", Vector.empty),
     StartWalker("recover", Vector("denizen.catacombs")),
@@ -78,6 +71,17 @@ class CommandProtocolSuite extends munit.FunSuite {
       val failure = ActorlessCommandCodec.decode(json).left.toOption.get
       assertEquals(failure.path, s"$$.intent.$field")
       assert(failure.isInstanceOf[ProtocolDecodeFailure.ActorInjection])
+    }
+  }
+
+  test("the retired Campaign intents are rejected as unknown types") {
+    Vector("beginCampaignConquest", "beginCampaignRaid", "chooseCampaignPlan",
+      "finishCampaignPlans", "chooseCampaignSacrifice", "placeCampaignForce",
+      "relocateCampaignRaidPawn").foreach { tag =>
+      val json = s"""{"expectedNextSequence":0,"intent":{"type":"$tag"}}"""
+      val failure = ActorlessCommandCodec.decode(json).left.toOption.get
+      assertEquals(failure.path, "$.intent.type", tag)
+      assert(failure.message.contains("unknown intent type"), tag)
     }
   }
 

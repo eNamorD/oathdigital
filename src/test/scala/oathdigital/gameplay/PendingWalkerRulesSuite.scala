@@ -1,8 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
-import oathdigital.gameplay.actions.{CampaignCommand,
-  MinorActionCommand}
+import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyFixture, SilverTongue,
   SilverTongueFixture}
@@ -55,9 +54,7 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
         }
         Vector(
           "minor action" -> rules.handle(state,
-            MinorActionCommand.PeekSiteRelics(actor)),
-          "campaign" -> rules.handle(state, CampaignCommand.Start(actor,
-            DecisionId("cp1"), Vector(site), 1))
+            MinorActionCommand.PeekSiteRelics(actor))
         ).foreach { case (family, result) =>
           assertEquals(result.left.toOption, Some(pending), family)
         }

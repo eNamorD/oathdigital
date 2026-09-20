@@ -1,6 +1,8 @@
 package oathdigital.application
 
+import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.model._
+import oathdigital.model.DecisionAnswer._
 import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.model.OathState.Ready
@@ -79,22 +81,29 @@ object ForgeWalkerFixture extends munit.Assertions {
     val actor = PlayerId("p2")
     accepted = service.handle(gameId, accepted.nextSequence,
       GameCommand.EndWake(actor)).toOption.get
-    val campaignDecision = DecisionId(s"campaign-${accepted.nextSequence}")
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.BeginCampaignConquest(actor, forgeSite, 3)).toOption.get
+      GameCommand.StartWalker(ActionRef.Campaign, StartPayload(actor)))
+      .fold(error => fail(s"Campaign fixture rejected: $error"), identity)
+    // Other bandit-ruled sites are optional targets: take none.
+    if (accepted.continue == OathContinue.AwaitingCampaignDecision(actor,
+        DecisionId(CampaignIds.targets)))
+      accepted = service.handle(gameId, accepted.nextSequence,
+        GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.targets,
+          ChooseManyAnswer(Vector.empty)))).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.FinishCampaignPlans(actor, campaignDecision)).toOption.get
+      GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.force,
+        ChooseAmountAnswer(3)))).toOption.get
     accepted = service.handle(gameId, accepted.nextSequence,
-      GameCommand.ChooseCampaignSacrifice(actor, campaignDecision, 2)).toOption.get
-    val Ready(won) = accepted.state: @unchecked
-    won.game.current.pending.collect { case c: PendingProcedure.Campaign => c }
-      .foreach { campaign =>
+      GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.sacrifice,
+        ChooseAmountAnswer(2)))).toOption.get
+    accepted.continue match {
+      case OathContinue.AwaitingCampaignDecision(_, decision)
+          if decision.value == CampaignIds.placement =>
         accepted = service.handle(gameId, accepted.nextSequence,
-          GameCommand.PlaceCampaignForce(actor, campaignDecision,
-            Vector(CampaignForceAllocation(forgeSite,
-              campaign.force - campaign.skullLosses -
-                campaign.sacrificed.getOrElse(0))))).toOption.get
-      }
+          GameCommand.ResolveWalker(actor, TreeDecision(CampaignIds.placement,
+            ChooseAmountAnswer(1)))).toOption.get
+      case _ => ()
+    }
 
     def searchOne(): Unit = {
       accepted = service.handle(gameId, accepted.nextSequence,
