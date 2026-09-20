@@ -79,6 +79,7 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         "kind" -> "roll", "pool" -> pool.value,
         "faces" -> ujson.Arr.from(faces.map {
           case face: DefenseDieFace => ujson.Str(encodeDefenseFace(face))
+          case face: AttackDieFace => ujson.Str(encodeAttackFace(face))
           case other => throw new IllegalArgumentException(
             s"unsupported walker die face $other")
         }))
@@ -95,11 +96,18 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         .map(ChoicePayload(value("decisionId").str, _,
           PlayerId(value("byPlayerId").str)))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
-        decodeDefenseFace(face.str, s"$path.faces"))
+        decodeDieFace(face.str, s"$path.faces"))
         .map(faces => RollPayload(PoolKey(value("pool").str), faces))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
     }
+
+  private def decodeDieFace(value: String, path: String)
+      : Either[WireError, DieFace] = value match {
+    case "hollow-sword" | "one-sword" | "two-swords-skull" =>
+      decodeAttackFace(value, path)
+    case _ => decodeDefenseFace(value, path)
+  }
 
   private def encodeDeltaMeaning(meaning: DeltaMeaning): ujson.Value =
     meaning match {

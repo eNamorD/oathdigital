@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.OperationExecutor
-import oathdigital.model.{Answered, DefenseDieFace, OathState, OathViolation, PendingTree, ReadyGame, RollOutcome, WalkerEvent}
+import oathdigital.model.{Answered, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).
@@ -58,20 +58,8 @@ private[walker] object WalkerReplay {
           _ <- validateParkedStep(step)
           _ <- Either.cond(ops.isEmpty, (), OathViolation.InvalidEventOrder(
             "recorded RollPayload must not contain operations"))
-          count <- ready.game.current.rollPools.get(pool).map(_.count).toRight(
-            OathViolation.InvalidEventOrder(
-              s"recorded roll references missing pool ${pool.value}"))
-          _ <- Either.cond(faces.size == count, (),
-            OathViolation.InvalidEventOrder(
-              s"recorded roll has ${faces.size} faces but pool count is $count"))
-          _ <- Either.cond(faces.forall(_.isInstanceOf[DefenseDieFace]), (),
-            OathViolation.InvalidEventOrder(
-              "recorded Recover roll contains a non-defense face"))
-        } yield ProcedureWalker.writeRollOutcome(ready, RollOutcome(pool,
-          count, faces,
-          skulls = 0, score = DefenseDieFace.score(faces.collect {
-            case face: DefenseDieFace => face
-          })))
+          outcome <- WalkerRolls.outcomeForRecorded(ready, pool, faces)
+        } yield WalkerRolls.write(ready, outcome)
 
       case step @ WalkerStepRecorded(_,
           ChoicePayload(decisionId, payload, by), ops, _) =>

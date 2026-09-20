@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powerresolver.ContributingPower
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DefenseDieFace, DiceKind, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollOutcome, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -143,9 +143,8 @@ object ProcedureWalker {
     * exactly like `advance`: further deltas execute until the next
     * Decide/Roll park (`Parked`) or the tree ends (`Finished`).
     *
-    * Only `DiceKind.Defense` rolls are legal this slice: an `Attack` die, a
-    * face count differing from the pool count, or a non-`DefenseDieFace` in
-    * `faces` each reject with `OathViolation.InvalidEventOrder`.
+    * A face count differing from the pool count, or a face outside the roll's
+    * die kind, rejects with `OathViolation.InvalidEventOrder`.
     */
   def roll(state: ReadyGame, action: Operation, pending: PendingTree,
       faces: Vector[DieFace], powers: WalkerPowers)
@@ -204,7 +203,7 @@ object ProcedureWalker {
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
     WalkerPowerGather.leafAt(state, action, pending, powers).collect {
-      case Roll(pool, _) => (pool, poolCount(state, pool))
+      case roll: Roll => (roll.pool, WalkerRolls.poolCount(state, roll.pool))
     }
 
   /** Every decision open at the park: one for a plain or co-owned `Decide`,
@@ -251,9 +250,6 @@ object ProcedureWalker {
     else parkedRoll(state, action, pending, powers)
       .map(_ => Set(state.game.current.turn.activePlayer)).getOrElse(Set.empty)
   }
-
-  private def poolCount(state: ReadyGame, pool: PoolKey): Int =
-    state.game.current.rollPools.get(pool).fold(0)(_.count)
 
   // --------------------------------------------------------------------------
   // Walking core
@@ -634,72 +630,21 @@ object ProcedureWalker {
     }
   }
 
-  /** Records one roll step: validates the resumed Roll's die kind (defense
-    * only this slice), the face count vs the pool count, and that every face
-    * is a [[DefenseDieFace]]; merges the derived [[RollOutcome]] into
-    * `ctx.state` (accumulating across rolls of the same pool) and appends the
-    * [[WalkerStepRecorded]] carrying a [[RollPayload]] (with no ops — the
-    * outcome is a state write).
+  /** Records one roll step: the outcome is derived and validated by
+    * [[WalkerRolls.outcomeFor]], merged into `ctx.state`, and the step carries
+    * a [[RollPayload]] with no ops (the outcome is a state write).
     */
   private def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
       faces: Vector[DieFace], contributions: Vector[PowerId])
-      : Either[OathViolation, WalkCtx] = {
-    val pool = roll.pool
-    for {
-      _ <- roll.dice.die match {
-        case DiceKind.Attack => Left(OathViolation.InvalidEventOrder(
-          "attack dice not supported in this slice"))
-        case DiceKind.Defense => Right(())
-      }
-      count = poolCount(ctx.state, pool)
-      _ <- Either.cond(faces.size == count, (),
-        OathViolation.InvalidEventOrder(
-          s"rolled ${faces.size} dice for pool $pool but pool count is $count"))
-      _ <- Either.cond(faces.forall(_.isInstanceOf[DefenseDieFace]), (),
-        OathViolation.InvalidEventOrder(
-          s"defense roll for pool $pool received a non-defense die face"))
-    } yield {
+      : Either[OathViolation, WalkCtx] =
+    WalkerRolls.outcomeFor(roll, ctx.state, faces).map { outcome =>
       val nodeId =
         if (path.isEmpty) leafLabel(roll) else path.mkString(".")
-      val score = DefenseDieFace.score(faces.collect {
-        case face: DefenseDieFace => face
-      })
       ctx.copy(
-        state = writeRollOutcome(ctx.state, RollOutcome(pool, count, faces,
-          skulls = 0, score)),
+        state = WalkerRolls.write(ctx.state, outcome),
         events = ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId, payload = RollPayload(pool, faces),
+          nodeId = nodeId, payload = RollPayload(roll.pool, faces),
           ops = Vector.empty, contributions = contributions))
     }
-  }
-
-  /** Merges `outcome` into the pool's accumulated roll entry: repeated rolls
-    * of one pool (e.g. a Recover `Repeat` re-rolling "recover") accumulate
-    * faces/count/skulls and re-score all defense faces together. Re-scoring is
-    * required because each Doubler multiplies shields from every accumulated
-    * roll, not only the roll containing that Doubler.
-    */
-  /** `private[walker]`, not `private`: [[WalkerReplay]] merges a recorded
-    * `RollPayload` into the same accumulator the live walk writes through, so
-    * a replayed roll and a rolled one accumulate identically by construction
-    * rather than by two implementations agreeing.
-    */
-  private[walker] def writeRollOutcome(ready: ReadyGame,
-      outcome: RollOutcome): ReadyGame = {
-    val accumulated = ready.game.current.rollOutcomes.get(outcome.pool)
-      .fold(outcome) { previous =>
-        val faces = previous.faces ++ outcome.faces
-        RollOutcome(outcome.pool,
-          count = previous.count + outcome.count,
-          faces = faces,
-          skulls = previous.skulls + outcome.skulls,
-          score = DefenseDieFace.score(faces.collect {
-            case face: DefenseDieFace => face
-          }))
-      }
-    ready.copy(game = ready.game.copy(current = ready.game.current.copy(
-      rollOutcomes = ready.game.current.rollOutcomes
-        .updated(outcome.pool, accumulated))))
-  }
 
 }

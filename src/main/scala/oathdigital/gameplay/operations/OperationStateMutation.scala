@@ -310,6 +310,8 @@ private[operations] object OperationStateMutation {
         }
       case (result, ModifyDicePool(pool, delta, _)) =>
         result.flatMap(adjustDicePool(_, pool, delta))
+      case (result, ModifyRollOutcome(pool, skulls, score)) =>
+        result.map(modifyRollOutcome(_, pool, skulls, score))
       case (result, RecordPowerUse(power)) =>
         result.map(recordPowerUse(_, power))
       case (result, EnterPhase(phase)) =>
@@ -379,6 +381,19 @@ private[operations] object OperationStateMutation {
     * defensive guard below is a mutation-time floor — shape-level dice-pool
     * validation belongs to a later task that defines underflow semantics).
     */
+  /** An upsert: a pool that never rolled starts from an empty outcome, so a
+    * step that has no roll (a pool of zero dice is never rolled) can still
+    * record a result. Fields left `None` are unchanged.
+    */
+  private def modifyRollOutcome(ready: ReadyGame, pool: PoolKey,
+      skulls: Option[Int], score: Option[Int]): ReadyGame = {
+    val outcomes = ready.game.current.rollOutcomes
+    val base = outcomes.getOrElse(pool, RollOutcome(pool, 0, Vector.empty, 0, 0))
+    ready.updateCurrent(current => current.copy(rollOutcomes = outcomes.updated(
+      pool, base.copy(skulls = skulls.getOrElse(base.skulls),
+        score = score.getOrElse(base.score)))))
+  }
+
   private def adjustDicePool(ready: ReadyGame, pool: PoolKey,
       delta: Int): Either[OperationError, ReadyGame] = {
     val pools = ready.game.current.rollPools

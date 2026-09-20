@@ -6,7 +6,7 @@ import oathdigital.gameplay.setup._
 import oathdigital.model._
 import oathdigital.model.OathEvent.FirstGameCompleted
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
-import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning,
+import oathdigital.gameplay.walker.{ChoicePayload, DeltaMeaning, RollPayload,
   WalkerCompleted, WalkerParked, WalkerStepPayload, WalkerStepRecorded}
 import oathdigital.model.OathEvent.{UsurperFlipped, UsurperVictory,
   RoundEnded, WarExhaustionResolved}
@@ -657,6 +657,21 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(ujson.read(encoded).arr.map(
       _("payload")("ops")(0)("kind").str).toVector.distinct.size,
       operations.map(_.getClass.getSimpleName).distinct.size)
+  }
+
+  test("a walker roll payload round-trips attack and defense faces") {
+    val events = Vector[OathEvent](
+      WalkerStepRecorded("1", RollPayload(PoolKey("campaign.attack"),
+        Vector(AttackDieFace.HollowSword, AttackDieFace.OneSword,
+          AttackDieFace.TwoSwordsSkull)), Vector.empty, Vector.empty),
+      WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
+        Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank)),
+        Vector.empty, Vector.empty))
+    val encoded = GameEventWire.encodeStream("walker-rolls", catalogRef,
+      events.zipWithIndex.map { case (event, index) =>
+        RecordedEvent(index.toLong, event) }).toOption.get
+    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
+      events)
   }
 
   test("every Piece variant round-trips through the walker codec") {

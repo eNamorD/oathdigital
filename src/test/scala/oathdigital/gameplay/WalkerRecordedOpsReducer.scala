@@ -35,21 +35,22 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
       }
       step.payload match {
         case RollPayload(pool, faces) =>
-          val outcome = RollOutcome(pool, faces.size, faces, skulls = 0,
-            score = DefenseDieFace.score(faces.collect {
-              case face: DefenseDieFace => face
-            }))
+          def derive(all: Vector[DieFace]): (Int, Int) = {
+            val attack = all.collect { case face: AttackDieFace => face }
+            if (attack.nonEmpty)
+              (AttackDieFace.skulls(attack), AttackDieFace.score(attack))
+            else (0, DefenseDieFace.score(all.collect {
+              case face: DefenseDieFace => face }))
+          }
+          val (skulls, score) = derive(faces)
+          val outcome = RollOutcome(pool, faces.size, faces, skulls, score)
           val accumulated =
             current.game.current.rollOutcomes.get(pool).fold(outcome) {
               previous =>
                 val accumulatedFaces = previous.faces ++ outcome.faces
-                RollOutcome(pool,
-                  previous.count + outcome.count,
-                  accumulatedFaces,
-                  previous.skulls + outcome.skulls,
-                  DefenseDieFace.score(accumulatedFaces.collect {
-                    case face: DefenseDieFace => face
-                  }))
+                RollOutcome(pool, previous.count + outcome.count,
+                  accumulatedFaces, previous.skulls + outcome.skulls,
+                  derive(accumulatedFaces)._2)
             }
           current.updateCurrent(_.copy(rollOutcomes =
               current.game.current.rollOutcomes.updated(pool, accumulated)))

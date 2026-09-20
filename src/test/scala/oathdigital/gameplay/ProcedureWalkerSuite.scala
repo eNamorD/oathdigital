@@ -643,14 +643,31 @@ class ProcedureWalkerSuite extends munit.FunSuite {
     expectRollViolation(parkedState, tree, pending, faces, "non-defense")
   }
 
-  test("roll() rejects an Attack-kind roll in this defense-only slice") {
-    val attackRoll = Roll(recoverPool, DiceSpec(DiceKind.Attack))
-    val tree: Operation = Sequence(ModifyDicePool(recoverPool, 1), attackRoll)
+  test("roll() accepts an Attack roll and derives skulls and score from its faces") {
+    val attackPool = PoolKey("campaign.attack")
+    val tree: Operation = Sequence(ModifyDicePool(attackPool, 4),
+      Roll(attackPool, DiceSpec(DiceKind.Attack)))
+    val faces: Vector[DieFace] = Vector(AttackDieFace.TwoSwordsSkull,
+      AttackDieFace.OneSword, AttackDieFace.HollowSword, AttackDieFace.HollowSword)
     val (pending, parkedState) = parkAtRoll(tree)
+    ProcedureWalker.roll(parkedState, tree, pending, faces, noPowers) match {
+      case Right(WalkerOutcome.Finished(finalState, events)) =>
+        assertEquals(finalState.game.current.rollOutcomes(attackPool),
+          RollOutcome(attackPool, 4, faces, skulls = 1, score = 4))
+        assertEquals(events.head.asInstanceOf[WalkerStepRecorded].payload,
+          RollPayload(attackPool, faces))
+      case other => fail(s"expected the attack roll to finish the tree, got $other")
+    }
+  }
 
+  test("roll() rejects a defense face mixed into an attack roll") {
+    val attackPool = PoolKey("campaign.attack")
+    val tree: Operation = Sequence(ModifyDicePool(attackPool, 2),
+      Roll(attackPool, DiceSpec(DiceKind.Attack)))
+    val (pending, parkedState) = parkAtRoll(tree)
     expectRollViolation(parkedState, tree, pending,
-      Vector[DieFace](AttackDieFace.HollowSword),
-      "attack dice not supported in this slice")
+      Vector[DieFace](AttackDieFace.HollowSword, DefenseDieFace.Blank),
+      "non-attack")
   }
 
   test("roll() continues auto-walking deltas after the Roll and records both events") {
