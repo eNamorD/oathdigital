@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, PowerCtx}
-import oathdigital.model.{Branch, OathViolation, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OptionRestriction, PowerCtx}
+import oathdigital.model.{Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -41,8 +41,67 @@ private[walker] object WalkerPowerGather {
           case (acc, (powerId, transform)) =>
             transform.fn(ctxFor(byId(powerId)), acc)
         }
-        (folded, gathered.order)
+        val restricted = operation match {
+          case _: Decide => restrictOptions(folded, gathered.optionRestrictions,
+            ctxFor, byId)
+          case _ => folded
+        }
+        (restricted, gathered.order)
     }
+
+  private def permits(restrictions: Vector[(PowerId, OptionRestriction)],
+      ctxFor: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower]): DecisionOptionRef => Boolean =
+    ref => restrictions.forall { case (id, restriction) =>
+      restriction.fn(ctxFor(byId(id)), ref).isEmpty
+    }
+
+  /** Removes the forbidden options from every `Decide` in `ops`; see
+    * [[OptionRestriction]] for what happens when nothing is left.
+    */
+  private def restrictOptions(ops: Vector[Operation],
+      restrictions: Vector[(PowerId, OptionRestriction)],
+      ctxFor: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower]): Vector[Operation] =
+    if (restrictions.isEmpty) ops
+    else {
+      val permitted = permits(restrictions, ctxFor, byId)
+      ops.flatMap {
+        case decide: Decide => decide.query match {
+          case one: DecisionQuery.ChooseOne => Vector(decide.copy(query =
+            one.copy(options = one.options.filter(o => permitted(o.ref)))))
+          case many: DecisionQuery.ChooseMany =>
+            val options = many.options.filter(o => permitted(o.ref))
+            if (many.min == 0 && options.isEmpty) Vector.empty
+            else Vector(decide.copy(query = many.copy(
+              min = math.min(many.min, options.size),
+              max = math.min(many.max, options.size), options = options)))
+          case _ => Vector(decide)
+        }
+        case other => Vector(other)
+      }
+    }
+
+  /** A required decision with every option forbidden cannot be answered: the
+    * violation is the first restriction's, for the first option.
+    */
+  private def emptiedDecision(decide: Decide,
+      restrictions: Vector[(PowerId, OptionRestriction)],
+      ctx: ContributingPower => PowerCtx,
+      byId: Map[PowerId, ContributingPower]): Vector[OathViolation] = {
+    val required: Option[Vector[DecisionOptionRef]] = decide.query match {
+      case one: DecisionQuery.ChooseOne => Some(one.options.map(_.ref))
+      case many: DecisionQuery.ChooseMany if many.min >= 1 =>
+        Some(many.options.map(_.ref))
+      case _ => None
+    }
+    required.filter(_.nonEmpty).toVector.flatMap { refs =>
+      val verdicts = refs.map(ref => restrictions.flatMap {
+        case (id, restriction) => restriction.fn(ctx(byId(id)), ref)
+      }.headOption)
+      if (verdicts.forall(_.nonEmpty)) verdicts.head.toVector else Vector.empty
+    }
+  }
 
   /** Collects every restriction violation from every windowed node in
     * `tree`, run against the tree root (spec decision 9's `Restriction`
@@ -58,7 +117,9 @@ private[walker] object WalkerPowerGather {
     * statically empty and reading it would silently skip them. `select` is
     * already required to be a pure function of state, and the traversal has
     * no answered decisions to offer it, so it passes an empty `PendingTree`
-    * at the branch's own path.
+    * at the branch's own path. The traversal also reports a required
+    * decision whose every option an `OptionRestriction` forbids, since such a
+    * decision could never be answered.
     */
   def restrictionViolations(tree: Operation, powers: WalkerPowers,
       state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] = {
@@ -84,13 +145,22 @@ private[walker] object WalkerPowerGather {
       }
       own ++ nested
     }
-    windowsIn(tree, Vector.empty).flatMap { case (window, path, operation) =>
-      val gathered = ContributionCollector.gather(window, powers.powers,
-        ctxFor(window, path, operation))
-      gathered.restrictions.flatMap { case (powerId, restriction) =>
-        restriction.fn(ctxFor(window, path, operation)(byId(powerId)), tree)
-      }
+    val rejected = windowsIn(tree, Vector.empty).flatMap {
+      case (window, path, operation) =>
+        val gathered = ContributionCollector.gather(window, powers.powers,
+          ctxFor(window, path, operation))
+        gathered.restrictions.flatMap { case (powerId, restriction) =>
+          restriction.fn(ctxFor(window, path, operation)(byId(powerId)), tree)
+        }
     }
+    val emptied = windowsIn(tree, Vector.empty).flatMap {
+      case (window, path, decide: Decide) =>
+        val ctx = ctxFor(window, path, decide)
+        emptiedDecision(decide, ContributionCollector.gather(window,
+          powers.powers, ctx).optionRestrictions, ctx, byId)
+      case _ => Vector.empty
+    }
+    rejected ++ emptied
   }
 
   /** Resolves the node addressed by `pending.at` (a child-index path rooted

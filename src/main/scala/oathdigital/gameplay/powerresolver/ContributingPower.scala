@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
+import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -21,11 +21,12 @@ final case class PowerCtx(
     operation: Operation
 )
 
-/** The two ways a power may speak at a hooked node (spec decision 9). A
+/** The three ways a power may speak at a hooked node (spec decision 9). A
   * `Transform` rewrites the hooked node's children vector -- never the whole
   * tree, whole-action restructure is out of scope. A `Restriction` checks the
   * whole action tree, since a Vow-of-Peace-style power rejects an action
-  * wholesale rather than editing it.
+  * wholesale rather than editing it. An `OptionRestriction` forbids single
+  * options of the `Decide` it hooks.
   */
 sealed trait Contribution extends Product with Serializable
 
@@ -47,6 +48,16 @@ final case class Transform(
   */
 final case class Restriction(
     fn: (PowerCtx, Operation) => Option[OathViolation]
+) extends Contribution
+
+/** Forbids one option of the `Decide` the window hooks. Called once per offered
+  * option in the window fold, before the query is parked, so a forbidden
+  * option is absent from what the projector offers, from what `accepts`
+  * validates and from what a simulation answers. Covers cannot-effects that
+  * name a choice rather than the whole action.
+  */
+final case class OptionRestriction(
+    fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation]
 ) extends Contribution
 
 /** One object per power (spec decision 8). No engine code lives in a power --

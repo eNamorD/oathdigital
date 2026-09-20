@@ -3,18 +3,19 @@ package oathdigital.gameplay.powerresolver
 import oathdigital.model.PowerId
 import oathdigital.model.PowerWindow
 
-/** The result of one gather at a hooked node: transforms and restrictions
-  * declared by the surviving powers, tagged with the power that declared
+/** The result of one gather at a hooked node: transforms, restrictions and
+  * option restrictions declared by the surviving powers, tagged with the power that declared
   * each, plus the deterministic order those powers were resolved in.
   */
 final case class GatheredContributions(
     transforms: Vector[(PowerId, Transform)],
     restrictions: Vector[(PowerId, Restriction)],
-    order: Vector[PowerId]
+    order: Vector[PowerId],
+    optionRestrictions: Vector[(PowerId, OptionRestriction)] = Vector.empty
 )
 
-/** Turns "which powers hook this window" into "which transforms and
-  * restrictions apply, in what order" (spec decision 10, steps a-d; the
+/** Turns "which powers hook this window" into "which transforms, restrictions
+  * and option restrictions apply, in what order" (spec decision 10, steps a-d; the
   * walker executes leaves and records the event -- steps e-f -- separately).
   *
   * Pure: reads only the `PowerCtx` values `ctxFor` produces and the powers
@@ -45,22 +46,25 @@ object ContributionCollector {
     val ordered = survivors.sortBy(ContributingPower.sortKey)
 
     // Step 5: split each survivor's contributions at this window into
-    // transforms and restrictions, tagged with the owning power id, and
+    // transforms, restrictions and option restrictions, tagged with the owning power id, and
     // record each survivor's id once, in order.
     val transforms = Vector.newBuilder[(PowerId, Transform)]
     val restrictions = Vector.newBuilder[(PowerId, Restriction)]
+    val optionRestrictions = Vector.newBuilder[(PowerId, OptionRestriction)]
 
     ordered.foreach { power =>
       power.contributions(window).foreach {
         case transform: Transform => transforms += power.id -> transform
         case restriction: Restriction => restrictions += power.id -> restriction
+        case option: OptionRestriction => optionRestrictions += power.id -> option
       }
     }
 
     GatheredContributions(
       transforms = transforms.result(),
       restrictions = restrictions.result(),
-      order = ordered.map(_.id)
+      order = ordered.map(_.id),
+      optionRestrictions = optionRestrictions.result()
     )
   }
 }
