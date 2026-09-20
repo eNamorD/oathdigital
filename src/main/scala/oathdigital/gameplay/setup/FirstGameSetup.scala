@@ -197,8 +197,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
           case _ => Left(InvalidEventOrder("setup is incomplete"))
         }
       case _: SiteRelicsPeeked | _: OwnedRelicRevealed | _: WarbandsMoved |
-          _: NegotiationStarted | _: NegotiationTermsReplaced |
-          _: NegotiationAccepted | _: NegotiationDeclined | _: NegotiationCompleted |
           _: CampaignStarted | _: CampaignPlanChosen | _: CampaignPlansFinished | _: CampaignSacrificed | _: CampaignConquered |
           _: CampaignRaided | _: CampaignRaidPawnRelocated |
           _: BanditsRefilled =>

@@ -40,14 +40,3 @@ object RuleRegistry {
     new RuleRegistry(entries.toMap)
   }
 }
-
-/** Travel-only stub retained for Negotiation's explicit blocking boundary:
-  * its relevant-handler activations are never registered, so resolving them
-  * against this empty registry yields `UnsupportedRelevantRule` exactly as the
-  * retired travel handler set did. The travel terrain path itself now runs
-  * through `ContributingPower` transforms at the TravelCost window (see
-  * powers/travel/TravelSitePowers.scala).
-  */
-object RuntimeRuleRegistry {
-  val default: RuleRegistry = RuleRegistry()
-}

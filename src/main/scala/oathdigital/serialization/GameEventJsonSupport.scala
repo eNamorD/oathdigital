@@ -11,13 +11,6 @@ private[serialization] trait GameEventJsonSupport {
   protected final def decodeBanner(value: String, path: String): Either[WireError, Banner] =
     Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))
 
-  protected final def encodeNegotiationTerms(terms: NegotiationTerms): ujson.Value =
-    NegotiationTermsCodec.encode(terms)
-
-  protected final def decodeNegotiationTerms(value: ujson.Value,
-      path: String): Either[WireError, NegotiationTerms] =
-    NegotiationTermsCodec.decode(value, path)
-
   protected final def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(
       "catalog" -> encodeCatalog(plan.catalog),

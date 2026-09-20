@@ -104,9 +104,6 @@ object RuleQueryContext {
       target: SiteId,
       window: CampaignTimingWindow
   ) extends RuleQueryContext
-
-  final case class Negotiation(ready: ReadyGame, participant: PlayerState,
-      site: SiteId, participants: Vector[PlayerId]) extends RuleQueryContext
 }
 
 /** Printed Campaign order, kept explicit even where the bounded Conquest has

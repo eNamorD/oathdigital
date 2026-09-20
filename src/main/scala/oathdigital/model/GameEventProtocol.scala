@@ -37,20 +37,6 @@ object OathEvent {
   final case class WarbandsMoved(
       playerId: PlayerId, siteId: SiteId, toSite: Boolean, amount: Int,
       priorBoardWarbands: Int, priorSiteWarbands: Int) extends OathEvent
-  final case class NegotiationStarted(
-      playerId: PlayerId, decision: DecisionId, siteId: SiteId,
-      participants: Vector[PlayerId]) extends OathEvent
-  final case class NegotiationTermsReplaced(
-      playerId: PlayerId, decision: DecisionId, terms: NegotiationTerms)
-      extends OathEvent
-  final case class NegotiationAccepted(
-      playerId: PlayerId, decision: DecisionId) extends OathEvent
-  final case class NegotiationDeclined(
-      playerId: PlayerId, decision: DecisionId) extends OathEvent
-  final case class NegotiationCompleted(
-      playerId: PlayerId, decision: DecisionId,
-      participants: Vector[PlayerId], terms: Map[PlayerId, NegotiationTerms])
-      extends OathEvent
   final case class CampaignStarted(
       playerId: PlayerId, decision: DecisionId, targetSites: Vector[SiteId],
       defender: CampaignDefender,

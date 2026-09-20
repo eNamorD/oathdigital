@@ -209,21 +209,4 @@ object PendingProcedure {
       "Raid relocation sites must be distinct and exclude the origin")
   }
 
-  final case class Negotiation(
-      decision: DecisionId,
-      actor: PlayerId,
-      site: SiteId,
-      participants: Vector[PlayerId],
-      terms: Map[PlayerId, NegotiationTerms],
-      accepted: Set[PlayerId]
-  ) extends PendingProcedure {
-    require(participants.size >= 2 && participants.head == actor &&
-      participants.distinct.size == participants.size,
-      "Negotiation participants must be distinct and actor-first")
-    require(terms.keySet == participants.toSet,
-      "Negotiation terms must exist for every participant")
-    require(accepted.subsetOf(participants.toSet),
-      "Negotiation acceptances must belong to participants")
-  }
-
 }

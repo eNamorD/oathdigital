@@ -2,7 +2,7 @@ package oathdigital.gameplay
 
 import oathdigital.model.OathState.Ready
 import oathdigital.gameplay.actions.{CampaignCommand,
-  MinorActionCommand, NegotiationCommand}
+  MinorActionCommand}
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
 import oathdigital.gameplay.powers.rest.{LeagueTreatyFixture, SilverTongue,
   SilverTongueFixture}
@@ -56,8 +56,6 @@ class PendingWalkerRulesSuite extends munit.FunSuite {
         Vector(
           "minor action" -> rules.handle(state,
             MinorActionCommand.PeekSiteRelics(actor)),
-          "negotiation" -> rules.handle(state, NegotiationCommand.Decline(actor,
-            DecisionId("n1"))),
           "campaign" -> rules.handle(state, CampaignCommand.Start(actor,
             DecisionId("cp1"), Vector(site), 1))
         ).foreach { case (family, result) =>

@@ -38,10 +38,6 @@ class RuleResolutionSuite extends munit.FunSuite {
   test("registry lookup is explicit and unknown relevant handlers are safe") {
     val registry = RuleRegistry("known" -> AllowHandler)
     assert(registry.lookup("known").nonEmpty)
-    // The RuntimeRuleRegistry travel path was deleted in Phase 4; the stub
-    // stays for Negotiation's blocking boundary and registers no handlers.
-    assertEquals(RuntimeRuleRegistry.default.lookup("site.fair-isle.island"),
-      None)
     assertEquals(registry.lookup("unknown"), None)
     val activation = RuleActivation(RuleSourceRef.GameRule("test"), "unknown", 0)
     val resolved = registry.resolve(Vector(activation), null)

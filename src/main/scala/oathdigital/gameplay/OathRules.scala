@@ -5,7 +5,6 @@ import oathdigital.engine.EventEvolution
 import oathdigital.gameplay.actions.{Campaign, CampaignCommand,
   CampaignLosingForceRegistry}
 import oathdigital.gameplay.actions.{MinorActions, MinorActionCommand}
-import oathdigital.gameplay.actions.{Negotiation, NegotiationCommand}
 import oathdigital.gameplay.phases.rest.{TurnBoundary,
   WarExhaustionRandomPort}
 import oathdigital.model._
@@ -65,18 +64,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     MinorActions.handle(catalog, state, command).flatMap(completeAction _)
   }
 
-  def handle(state: OathState, command: NegotiationCommand)
-      : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
-    Negotiation.handle(catalog, state, command).flatMap { transition => command match {
-      case _: NegotiationCommand.Accept if (transition.state match {
-        case Ready(ready) => ready.game.current.pending.isEmpty
-        case _ => false
-      }) => completeAction(transition)
-      case _: NegotiationCommand.Decline => completeAction(transition)
-      case _ => Right(transition)
-    }}
-  }
-
   def handle(state: OathState, command: CampaignCommand)
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
@@ -127,11 +114,6 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case event: SiteRelicsPeeked => MinorActions.evolve(catalog, state, event)
       case event: OwnedRelicRevealed => MinorActions.evolve(catalog, state, event)
       case event: WarbandsMoved => MinorActions.evolve(catalog, state, event)
-      case event: NegotiationStarted => Negotiation.evolve(catalog, state, event)
-      case event: NegotiationTermsReplaced => Negotiation.evolve(catalog, state, event)
-      case event: NegotiationAccepted => Negotiation.evolve(catalog, state, event)
-      case event: NegotiationDeclined => Negotiation.evolve(catalog, state, event)
-      case event: NegotiationCompleted => Negotiation.evolve(catalog, state, event)
       case event: CampaignStarted => Campaign.evolve(catalog, state, event,
         campaignLosingForceRegistry)
       case event: CampaignPlanChosen => Campaign.evolve(catalog, state, event,

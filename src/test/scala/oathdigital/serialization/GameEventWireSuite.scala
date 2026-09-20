@@ -105,27 +105,6 @@ class GameEventWireSuite extends munit.FunSuite {
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
   }
 
-  test("v11 Negotiation events preserve authored terms and disclosures") {
-    val red = PlayerId("red"); val blue = PlayerId("blue")
-    val terms = NegotiationTerms(Vector(NegotiationTransfer(blue, 2,
-      Vector(RelicId("R1")))), Vector(NegotiationDisclosure(blue,
-      NegotiationDisclosureRef.Adviser(red, VisionId("vision:test")))))
-    val participants = Vector(red, blue)
-    val events = Vector[OathEvent](
-      OathEvent.NegotiationStarted(red, DecisionId("deal"), SiteId("site:a"), participants),
-      OathEvent.NegotiationTermsReplaced(red, DecisionId("deal"), terms),
-      OathEvent.NegotiationAccepted(red, DecisionId("deal")),
-      OathEvent.NegotiationAccepted(blue, DecisionId("deal")),
-      OathEvent.NegotiationCompleted(red, DecisionId("deal"), participants,
-        Map(red -> terms, blue -> NegotiationTerms())))
-    val encoded = GameEventWire.encodeStream("negotiation", catalogRef,
-      events.zipWithIndex.map { case (event, index) => RecordedEvent(index, event) })
-      .toOption.get
-    assertEquals(ujson.read(encoded).arr.map(_("formatVersion").num.toInt).toVector,
-      Vector.fill(events.size)(1))
-    assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event), events)
-  }
-
   test("v10 minor actions preserve private identities and prior force facts") {
     val events = Vector[OathEvent](
       OathEvent.SiteRelicsPeeked(PlayerId("red"), SiteId("site:a"),

@@ -29,13 +29,6 @@ private[server] object CommandRejectionMessage {
   def text(violation: oathdigital.model.OathViolation): String =
     violation match {
       case oathdigital.model.OathViolation.NegotiationUnavailable(detail) => detail
-      case oathdigital.model.OathViolation.NegotiationDecisionMismatch(expected, actual) =>
-        s"negotiation decision mismatch: expected $expected, actual $actual"
-      case oathdigital.model.OathViolation.NegotiationOutcomeMismatch(detail) => detail
-      case oathdigital.model.OathViolation.UnsupportedNegotiationRule(source, handler) =>
-        s"unsupported negotiation rule $source ($handler)"
-      case oathdigital.model.OathViolation.UnsupportedNegotiationCatalogInventory(_, _) =>
-        "negotiation requires an unaltered supported catalog"
       case oathdigital.model.OathViolation.InsufficientFavor(required, available) =>
         s"required favor $required exceeds available $available"
       case oathdigital.model.OathViolation.InsufficientSupply(required, available) =>
