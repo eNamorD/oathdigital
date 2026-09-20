@@ -588,7 +588,7 @@ class GarrisonSuite extends munit.FunSuite with WalkerRecordedOpsReducer {
     val done = finished(ProcedureWalker.resolve(atChoice, hook(card),
       first.tree, Answered(Garrison.decisionId, DecisionAnswer.ChooseManyAnswer(
         Vector(DecisionOptionRef.Site(chosen))), actor), powers(power)))
-    assertEquals(forcesAt(done.treeless, chosen), SiteForces.Occupied(kind, 6))
+    assertEquals(forcesAt(done.treeless, chosen), SiteForces.Occupied(kind, 5))
     assertEquals(forcesAt(done.treeless, sites.head), SiteForces.Occupied(kind, 4))
     assertEquals(forcesAt(done.treeless, sites(2)), SiteForces.Occupied(kind, 5))
     assertEquals(player(done.treeless).board.warbands, 0)

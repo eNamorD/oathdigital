@@ -27,7 +27,7 @@ object ActionPowers {
   object GreatHerd extends ReviewedPower("denizen.great-herd", None, played)
   object Pilgrimage extends ReviewedPower("denizen.pilgrimage", None, played)
   object TwinBrother extends ReviewedPower("denizen.twin-brother", None, played)
-  object Garrison extends ReviewedPower("denizen.garrison", None, played)
+  object Garrison extends ReviewedPower("denizen.garrison", None, playedDone)
   object RoyalTax extends ReviewedPower("denizen.royal-tax", None, played)
   object Bewitch extends ReviewedPower("denizen.bewitch", None, played)
   object WizardsConclave extends ReviewedPower("denizen.wizard-s-conclave", None, played)
