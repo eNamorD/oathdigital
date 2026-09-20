@@ -59,7 +59,9 @@ object CampaignProcedure {
         OathViolation.InvalidEventOrder(
           "Campaign gathered its dice pools without a complete setup"))
         .map(CampaignBattle.gatherPools(catalog, _)))),
-      Some(PowerWindow.CampaignGatherPools))),
+      Some(PowerWindow.CampaignGatherPools)),
+    CampaignPlanSteps.attacker(catalog, actor),
+    CampaignPlanSteps.defender(catalog, actor)),
     Some(PowerWindow.CampaignActionEligibility))
 
   /** Omitted when exactly one kind is legal. */

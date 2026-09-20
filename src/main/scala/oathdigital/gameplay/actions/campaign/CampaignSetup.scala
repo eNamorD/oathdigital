@@ -223,6 +223,14 @@ object CampaignAnswers {
     case _ => Vector.empty
   }
 
+  /** The latest source picked in `decisionId`, or `None` when the latest answer
+    * was Finish or there is none.
+    */
+  def lastPick(pending: PendingTree, decisionId: String): Option[DecisionOptionRef] =
+    latest(pending, decisionId).collect {
+      case DecisionAnswer.ChooseOneAnswer(ref) if ref != CampaignIds.finish => ref
+    }
+
   def relocation(pending: PendingTree): Option[SiteId] =
     latest(pending, CampaignIds.relocation).collect {
       case DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Site(site)) => site

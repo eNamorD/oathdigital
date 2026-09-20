@@ -1,6 +1,6 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.CampaignFixture.{Board, board, rules, withEnemyAtOrigin}
+import oathdigital.gameplay.CampaignFixture.{Board, againstPlayer, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignProcedure}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
@@ -195,5 +195,103 @@ class CampaignProcedureSuite extends munit.FunSuite {
     assertEquals(withPowers.startWalker(Ready(holding), ActionRef.Campaign, b.actor),
       Left(OathViolation.CampaignUnavailable(
         "Vow of Peace prevents its ruler from campaigning")))
+  }
+
+  private val outriders = cardWith("denizen.outriders")
+  private val brass = relicWith("relic.brass-army.campaign")
+  private def planPick(ref: DecisionOptionRef) = ChooseOneAnswer(ref)
+  private val finish = ChooseOneAnswer(CampaignIds.finish)
+
+  private def atPlans(b: Board, force: Int = 2): OathTransition = {
+    val started = start(b).toOption.get
+    answer(started.state, b.actor, CampaignIds.force, ChooseAmountAnswer(force))
+      .getOrElse(fail("the force must be accepted"))
+  }
+
+  test("an attacker plan is offered after the force, with Finish, and a pick applies its effects") {
+    val b = withSecrets(withRelic(board(), brass), 2)
+    val plans = atPlans(b)
+    assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.attackerPlan)))
+    assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      Some("Choose a battle plan, or finish")))
+    val picked = answer(plans.state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Relic(RelicId(brass)))).toOption.get
+    assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
+    assert(ops(picked.events).contains(Move(Piece.Secrets(1),
+      PositionedLocation(Location.PlayArea(b.actor)),
+      PositionedLocation(Location.OnCard(RelicId(brass))))))
+    // Nothing else can be chosen, so the window finishes by itself.
+    assert(picked.events.exists(_.isInstanceOf[WalkerCompleted]))
+  }
+
+  test("two plans are chosen one at a time, each source once, and Finish ends the window") {
+    val b = withSecrets(withRelic(withAdviser(board(), outriders,
+      Orientation.FaceUp), brass), 1)
+    val plans = atPlans(b)
+    val first = answer(plans.state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+    assertEquals(first.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.attackerPlan)))
+    assertEquals(parkedDecision(b, first).query, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      Some("Choose a battle plan, or finish")))
+    val done = answer(first.state, b.actor, CampaignIds.attackerPlan, finish).toOption.get
+    assertEquals(ops(done.events).collect { case pool: ModifyDicePool => pool }
+      .filter(_.pool == CampaignIds.attackPool), Vector.empty)
+  }
+
+  test("a plan already chosen is rejected when chosen again") {
+    val b = withSecrets(withRelic(withAdviser(board(), outriders,
+      Orientation.FaceUp), brass), 1)
+    val first = answer(atPlans(b).state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+    assert(answer(first.state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).isLeft)
+  }
+
+  test("a facedown Outriders is revealed when chosen") {
+    val b = withAdviser(board(), outriders, Orientation.FaceDown)
+    val done = answer(atPlans(b).state, b.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+    assert(ops(done.events).contains(Move(Piece.Card(DenizenId(outriders)),
+      PositionedLocation(Location.PlayArea(b.actor)),
+      PositionedLocation(Location.PlayArea(b.actor)),
+      resultingOrientation = Some(Orientation.FaceUp))))
+  }
+
+  test("with no plan available the attacker window is skipped") {
+    val plans = atPlans(board())
+    assert(plans.events.exists(_.isInstanceOf[WalkerCompleted]))
+  }
+
+  test("a player defender owns the defender window and the attacker cannot answer it") {
+    val b = againstPlayer(board())
+    val plans = atPlans(b)
+    assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.other,
+      DecisionId(CampaignIds.defenderPlan)))
+    assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(DecisionOptionRef.Button("title"),
+        "Oathkeeper title: add 1 defense die"),
+      DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
+      Some("Defender: choose a battle plan, or finish")))
+    assert(answer(plans.state, b.actor, CampaignIds.defenderPlan, finish).isLeft)
+    val picked = answer(plans.state, b.other, CampaignIds.defenderPlan,
+      planPick(DecisionOptionRef.Button("title"))).toOption.get
+    assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+  }
+
+  test("a bandit defender applies its cost-free plans by itself") {
+    val watchdog = cardWith("denizen.watchdog")
+    val base = board()
+    assert(base.ready.game.current.map.regionOf(base.origin).contains(Region.Cradle),
+      "the fixture's origin must be in the Cradle for Watchdog")
+    val b = withSiteCard(base, base.origin, watchdog)
+    val done = atPlans(b)
+    assert(ops(done.events).contains(ModifyDicePool(CampaignIds.defensePool, 1)))
+    assert(done.events.exists(_.isInstanceOf[WalkerCompleted]))
   }
 }

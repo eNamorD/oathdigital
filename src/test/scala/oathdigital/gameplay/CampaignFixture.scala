@@ -73,4 +73,62 @@ object CampaignFixture {
         OathViolation.InvalidEventOrder(
           s"test dice: ${defense.size} defense faces for a pool of $count"))
     }
+
+  /** Takes a card out of every zone, so placing it keeps the card index valid. */
+  private def scrub(ready: ReadyGame, card: String): ReadyGame =
+    ready.updateCurrent(current => current.copy(
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck.filterNot(_.value == card),
+        relicDeck = current.commonCards.relicDeck.filterNot(_.value == card),
+        regionalDiscards = current.commonCards.regionalDiscards.map {
+          case (region, cards) => region -> cards.filterNot(_.value == card) }),
+      players = current.players.map(p => p.copy(
+        advisers = p.advisers.filter {
+          case held: DenizenState => held.id.value != card
+          case _ => true },
+        relics = p.relics.filterNot(_.id.value == card))),
+      map = current.map.copy(sites = current.map.sites.map { case (id, site) =>
+        id -> site.copy(
+          denizens = site.denizens.filter {
+            case held: DenizenState => held.id.value != card
+            case _ => true },
+          relics = site.relics.filterNot(_.id.value == card)) })))
+
+  private def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
+      : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
+    players = current.players.map(p => if (p.player == id) f(p) else p))))
+
+  def withAdviser(b: Board, card: String, orientation: Orientation): Board =
+    replacePlayer(b.copy(ready = scrub(b.ready, card)), b.actor)(p => p.copy(advisers = p.advisers :+
+      DenizenState(DenizenId(card), orientation, Tokens.empty)))
+
+  def withRelic(b: Board, relic: String): Board =
+    replacePlayer(b.copy(ready = scrub(b.ready, relic)), b.actor)(p =>
+    p.copy(relics = p.relics :+ RelicState(RelicId(relic), Orientation.FaceUp,
+      Tokens.empty)))
+
+  def withSecrets(b: Board, faceUp: Int): Board = replacePlayer(b, b.actor)(p =>
+    p.copy(board = p.board.copy(faceUpSecrets = faceUp)))
+
+  /** The origin becomes ruled by the other player, who holds the title. */
+  def againstPlayer(b: Board): Board = {
+    val lineage = b.player(b.other).lineage
+    b.copy(ready = b.ready.updateCurrent(current => current.copy(
+      map = current.map.copy(sites = current.map.sites.updated(b.origin,
+        current.map.sites(b.origin).copy(forces =
+          SiteForces.Occupied(ForceKind.Exile(lineage), 2)))),
+      title = current.title.copy(holder = Some(b.other),
+        side = TitleSide.Oathkeeper))))
+  }
+
+  def withSiteCard(b: Board, site: SiteId, card: String): Board =
+    b.copy(ready = scrub(b.ready, card).updateCurrent(current => current.copy(map =
+      current.map.copy(sites = current.map.sites.updated(site,
+        current.map.sites(site).copy(denizens = Vector(DenizenState(
+          DenizenId(card), Orientation.FaceUp, Tokens.empty))))))))
+
+  def cardWith(handler: String): String =
+    catalog.denizens.find(_.handlers.contains(handler)).get.id.value
+  def relicWith(handler: String): String =
+    catalog.relics.find(_.handlers.contains(handler)).get.id.value
 }
