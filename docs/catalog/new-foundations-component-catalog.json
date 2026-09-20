@@ -3287,7 +3287,7 @@
       "powers": [
         {
           "id": "denizen.relic-worship",
-          "persistent": true,
+          "persistent": false,
           "rulesText": "[secret] After recovering a relic, gain 2 Supply."
         }
       ]

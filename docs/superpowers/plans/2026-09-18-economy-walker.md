@@ -2619,7 +2619,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 In `2026-09-18-economy-walker-design.md`, change the status line to: `> Status: implemented by [the plan](../plans/2026-09-18-economy-walker.md). Extends the [procedure walker design]...` (keep the links that follow).
 
 In `2026-09-05-procedure-walker-design.md`:
-- In the status line, append: "Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md))."
+- In the status line, `Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)).`
 - In roadmap step 3 ("Port remaining actions in batches"), after the "*In progress:*" sentence, add: "Economy (Muster and Trade) is ported and its legacy path deleted; see the Muster and Trade design."
 
 - [ ] **Step 2: Full verification**

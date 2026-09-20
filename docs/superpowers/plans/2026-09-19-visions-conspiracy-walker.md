@@ -1690,7 +1690,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 In `2026-09-19-visions-conspiracy-walker-design.md`, change the status line to: `> Status: implemented by [the plan](../plans/2026-09-19-visions-conspiracy-walker.md). Extends the [procedure walker design]...` (keep the links that follow).
 
 In `2026-09-05-procedure-walker-design.md`:
-- In the status line, append: "Reveal Vision and Conspiracy have since moved onto the walker (see the [Visions and Conspiracy design](2026-09-19-visions-conspiracy-walker-design.md))."
+- In the status line, `Reveal Vision and Conspiracy have since moved onto the walker (see the [Visions and Conspiracy design](2026-09-19-visions-conspiracy-walker-design.md)).`
 - In roadmap step 3 ("Port remaining actions in batches"), after the sentence "Economy (Muster and Trade) is ported and its legacy path deleted; see the Muster and Trade design.", add: "Visions (Reveal Vision and Conspiracy) are ported and their legacy path deleted; see the Visions and Conspiracy design."
 - In "What remains", delete the bullet "- `Conspiracy`: CardPlay and Visions." and lower the count in the sentence before the list by one; remove "and Visions" from the "Step 3:" line above it.
 
