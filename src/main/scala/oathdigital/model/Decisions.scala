@@ -248,9 +248,10 @@ object DecisionQuery {
       heading: Option[String] = None) extends DecisionQuery
 
   /** Pick between `min` and `max` distinct options, inclusive. Well-formed
-    * only when `1 <= min <= max <= options.size` and not the forced case
-    * `min == max == options.size`, which takes every option and asks nothing.
-    * An exact count is `min == max`.
+    * only when `0 <= min <= max <= options.size`, `max >= 1`, and not the
+    * forced case `min == max == options.size`, which takes every option and
+    * asks nothing. `min == 0` makes the pick optional: the empty selection is
+    * an answer. An exact count is `min == max`.
     */
   final case class ChooseMany(min: Int, max: Int,
       options: Vector[DecisionOption], heading: Option[String] = None)

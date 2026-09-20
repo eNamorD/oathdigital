@@ -420,13 +420,17 @@ class DecisionQuerySuite extends munit.FunSuite {
     DecisionQuery.ChooseMany(min, max.getOrElse(min), options,
       Some("Choose sites"))
 
-  test("a choose-many query needs 1 <= min <= max <= options and is not forced") {
+  test("a choose-many query needs 0 <= min <= max <= options, one pickable option, and is not forced") {
     assertEquals(wellFormed(many(1)), Right(()))
     assertEquals(wellFormed(many(2)), Right(()))
     assertEquals(wellFormed(many(1, max = Some(3))), Right(()))
     assertEquals(wellFormed(many(2, max = Some(3))), Right(()))
+    assertEquals(wellFormed(many(0, max = Some(1))), Right(()))
+    assertEquals(wellFormed(many(0, max = Some(3))), Right(()))
     assertEquals(wellFormed(many(0)),
       invalid("decision recover.choice declares no selection to make"))
+    assertEquals(wellFormed(many(-1, max = Some(2))), invalid(
+      "decision recover.choice declares a selection range -1..2"))
     assertEquals(wellFormed(many(3, max = Some(2))), invalid(
       "decision recover.choice declares a selection range 3..2"))
     assertEquals(wellFormed(many(1, max = Some(4))), invalid("decision " +
@@ -460,6 +464,19 @@ class DecisionQuerySuite extends munit.FunSuite {
       Vector(siteRef("a"), siteRef("b"), siteRef("c")))), Right(()))
     assertEquals(accepts(range, DecisionAnswer.ChooseManyAnswer(Vector.empty)),
       invalid("decision recover.choice selects 0 options outside 1..3"))
+  }
+
+  test("an optional choose-many accepts the empty selection and any subset") {
+    val optional = many(0, max = Some(3))
+    assertEquals(accepts(optional, DecisionAnswer.ChooseManyAnswer(Vector.empty)),
+      Right(()))
+    assertEquals(accepts(optional, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("b")))), Right(()))
+    assertEquals(accepts(optional, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("b"), siteRef("c")))), Right(()))
+    assertEquals(accepts(many(0, max = Some(2)), DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("b"), siteRef("c")))), invalid(
+      "decision recover.choice selects 3 options outside 0..2"))
   }
 
   private def amount(min: Int, max: Int, heading: Option[String] = Some("Amount"),

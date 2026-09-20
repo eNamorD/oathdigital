@@ -91,8 +91,8 @@ object DecisionQueries {
       for {
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
-        _ <- require(min >= 1, decisionId, "declares no selection to make")
-        _ <- require(min <= max, decisionId,
+        _ <- require(max >= 1, decisionId, "declares no selection to make")
+        _ <- require(min >= 0 && min <= max, decisionId,
           s"declares a selection range $min..$max")
         _ <- require(max <= refs.size, decisionId,
           "declares a maximum above its option count")

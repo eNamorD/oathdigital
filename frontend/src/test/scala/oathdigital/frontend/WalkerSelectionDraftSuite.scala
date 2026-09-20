@@ -36,6 +36,18 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
     assert(draft.toggle("site:a").toggle("site:b").toggle("site:c").canConfirm)
   }
 
+  test("an optional choose-many confirms an empty selection and submits it") {
+    val optional = many.copy(minimum = Some(0), maximum = Some(3))
+    val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
+      context, parked("campaign.targets", optional)): @unchecked
+    assert(draft.canConfirm)
+    assertEquals(draft.command, Some(Intent.ResolveWalker("campaign.targets",
+      DecisionAnswerWire.ChooseManyWire(Vector.empty))))
+    assertEquals(draft.toggle("site:b").command, Some(Intent.ResolveWalker(
+      "campaign.targets", DecisionAnswerWire.ChooseManyWire(
+        Vector(DecisionOptionWire("site", "b"))))))
+  }
+
   test("a choose-many draft submits its selection in declared option order") {
     val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
       context, parked("challenge.ribbon-site", many)): @unchecked
