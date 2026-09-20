@@ -71,7 +71,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(encodeOrientation(value))))
-      case PayCost(player, placedAt, cost, intoOccupied, matchingBank) =>
+      case PayCost(player, placedAt, cost, intoOccupied, matchingBank, _) =>
         val optional: Vector[(String, ujson.Value)] =
           (if (intoOccupied) Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
           else Vector.empty) ++

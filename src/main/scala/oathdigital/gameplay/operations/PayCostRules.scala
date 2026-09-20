@@ -21,7 +21,7 @@ private[gameplay] object PayCostRules {
 
   def violations(ready: ReadyGame,
       operation: CoreOperation): Vector[OperationError] = operation match {
-    case pay: PayCost if !pay.intoOccupied && pay.cost.favor + pay.cost.secret > 0 =>
+    case pay: PayCost if !pay.intoOccupied && !pay.offTurn && pay.cost.favor + pay.cost.secret > 0 =>
       pay.placedAt match {
         case Location.OnCard(card) if !isEmpty(ready, card) =>
           Vector(OperationError.CardOccupied(card))

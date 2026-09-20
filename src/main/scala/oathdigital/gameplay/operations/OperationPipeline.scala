@@ -21,6 +21,7 @@ object OperationRun {
     case value: Play => value.copy(required = false)
     case value: Replace => value.copy(required = false)
     case value: Give => value.copy(required = false)
+    case value: PayCost => value.copy(offTurn = false)
     case other => other
   }
 
@@ -76,18 +77,21 @@ object OperationPipeline {
         staged <- operations.foldLeft[Either[OathViolation, OperationRun]](
           Right(OperationRun(ready, Vector.empty, Vector.empty))) {
           (result, operation) => result.flatMap { current =>
-            OperationResolution.resolve(current.state, operation, validator,
-              requireAll)
-              .flatMap {
-                case OperationResolution.Skip(reasons) =>
-                  Right(current.copy(skipped = current.skipped :+
-                    SkippedOperation(operation, reasons)))
-                case OperationResolution.Execute(actual) =>
-                  new OperationExecutor().execute(current.state, actual)
-                    .left.map(_.toViolation).map(state => current.copy(
-                      state = state,
-                      executed = current.executed :+ OperationRun.canonical(actual)))
-              }
+            PayCostSettlement.prepare(current.state, operation).flatMap { prepared =>
+              OperationResolution.resolve(current.state, prepared, validator,
+                requireAll)
+                .flatMap {
+                  case OperationResolution.Skip(reasons) =>
+                    Right(current.copy(skipped = current.skipped :+
+                      SkippedOperation(operation, reasons)))
+                  case OperationResolution.Execute(actual) =>
+                    new OperationExecutor().execute(current.state, actual)
+                      .left.map(_.toViolation).map(state => current.copy(
+                        state = state,
+                        executed = current.executed :+
+                          OperationRun.canonical(actual)))
+                }
+            }
           }
         }
         updated <- OperationError.describe(update(staged.state))

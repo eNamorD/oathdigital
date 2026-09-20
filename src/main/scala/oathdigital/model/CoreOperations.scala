@@ -369,16 +369,34 @@ object Cost {
   * plans set it). `matchingBank` is the suit bank of the card the cost is paid
   * onto, supplied by the caller because the pipeline has no catalog; it is
   * used only to settle an off-turn payment.
+  *
+  * Off turn (`offTurn`, set only by the pipeline) the placed portions settle
+  * immediately instead of resting on the card: favor goes to `matchingBank`
+  * and the payer's secrets flip facedown.
   */
 final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost,
-    intoOccupied: Boolean = false, matchingBank: Option[Suit] = None)
-    extends CoreOperation {
+    intoOccupied: Boolean = false, matchingBank: Option[Suit] = None,
+    offTurn: Boolean = false) extends CoreOperation {
+  require(!offTurn || cost.favor == 0 || matchingBank.isDefined,
+    "an off-turn placed favor needs its matching bank")
   override val required: Boolean = true
   override val children: Vector[Operation] =
-    favorMove(cost.favor, placedAt) ++
-      secretMove(cost.secret, placedAt) ++
+    placedFavor ++ placedSecrets ++
       favorMove(cost.favorBurnt, Location.SharedBank) ++
       secretMove(cost.secretBurnt, Location.SharedBank)
+
+  // The cost.favor > 0 guard matters: matchingBank.get is evaluated eagerly
+  // as an argument, and matchingBank may be None for a zero favor.
+  private def placedFavor: Vector[Operation] =
+    if (offTurn && cost.favor > 0)
+      favorMove(cost.favor, Location.FavorBank(matchingBank.get))
+    else favorMove(cost.favor, placedAt)
+
+  private def placedSecrets: Vector[Operation] =
+    if (cost.secret == 0) Vector.empty
+    else if (offTurn) Vector(FlipSecrets(player, cost.secret,
+      SecretSide.FaceUp, SecretSide.FaceDown))
+    else secretMove(cost.secret, placedAt)
 
   private def favorMove(amount: Int, to: Location): Vector[Operation] =
     if (amount == 0) Vector.empty
