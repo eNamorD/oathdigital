@@ -487,7 +487,10 @@ Completed within this phase:
   a single favor/secret `Move` from the holder's play area onto the banner.
   `BannerChallengeStarted` and `BannerRibbonChoiceMade` stay direct (Supply
   spend and pending-procedure state only).
-- Campaign conquests and raids execute through operations. The committed
+- Campaign conquests and raids execute through operations. *(Superseded
+  2026-09-19: Campaign now runs on the procedure walker and the seven events
+  named below no longer exist. See `docs/architecture/bounded-campaign.md`. The
+  text is kept as history.)* The committed
   attacker force stays in the attacker's play area through the battle and
   leaves only at terminal events (it dies under a `Kill`, or the placed
   allocation moves under a `Move`), so a winning attacker keeps its board count

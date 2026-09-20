@@ -113,14 +113,14 @@ gameplay.
 
 Add shared DTO/codec fields only when the wire contract truly changes. Assemble
 world/board/card presentation in `GamePresentationProjector`, legal targets in
-`LegalActionProjector`, and pending procedures in
-`PendingProcedureProjector`. Keep one scope/redaction decision in
+`LegalActionProjector`, and the walker decision, its waiting notice and the phase
+in `PendingProjector`. Keep one scope/redaction decision in
 `GameProjector`. Update JVM and Scala.js round-trip tests together.
 
 ### Event
 
 Add the domain event in `model` (`GameEventProtocol.scala`), evolution in its owning module, and
 one explicit discriminator/payload case in the appropriate split event codec
-(`LifecycleEventCodec`, `ActionEventCodec`, `CampaignEventCodec`, or
+(`LifecycleEventCodec`, `ActionEventCodec`, or
 `EndingEventCodec`). `GameEventWire` owns the single current envelope.
 Update replay and malformed-wire tests; do not serialize Scala class names.

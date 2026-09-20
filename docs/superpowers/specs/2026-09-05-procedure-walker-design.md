@@ -1,6 +1,6 @@
 # Procedure Walker: Operations as Data, Powers as Contributors
 
-> Status: approved; partly implemented. Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)), and so have Reveal Vision and Conspiracy (see the [Visions and Conspiracy design](2026-09-19-visions-conspiracy-walker-design.md)). Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
+> Status: approved; implemented for every action. Campaign, Conquest and Raid, has since moved onto the walker and the legacy `PendingProcedure` and its `pending` slot are deleted (see the [Campaign design](2026-09-19-campaign-walker-design.md)). Muster and Trade have since moved onto the walker (see the [Muster and Trade design](2026-09-18-economy-walker-design.md)), and so have Reveal Vision and Conspiracy (see the [Visions and Conspiracy design](2026-09-19-visions-conspiracy-walker-design.md)). Recover, Forge, Travel, Take Wealth and End Wake run on the walker; every other action still runs on its legacy path. See **Migration status** for what the implementation settled. Supersedes the roadmap and phase plans under `docs/superpowers/plans/` for forward work.
 
 ## Problem
 
@@ -272,7 +272,10 @@ Per command, the engine:
 4. Executes delta leaves via the executor.
 5. At `Roll`: pool count comes from state; the application layer has already
    rolled that many faces (they ride the command); engine validates count,
-   writes `RollOutcome`, records the roll event.
+   writes `RollOutcome`, records the roll event. An `Automatic` `Roll` never
+   parks: the walker asks its per-command dice source for the faces, records the
+   same roll event marked `automatic`, and keeps walking. A `Parked` `Roll` (the
+   default, and Recover's) parks as described.
 6. At `Decide`: parks. Response carries owner, legal options, preview.
 7. At tree end: clear pools and pending. The phase the procedure **finished**
    in names the continuation, meaning where the player now is (Act action
@@ -444,8 +447,9 @@ actions migrated. They were not; both kept a job:
    slice; prove ≤50-line power authoring and engine-untouched.
 3. Port remaining actions in batches: Search, Economy (Muster/Trade), Forge,
    Challenge, Campaign, Negotiation, CardPlay, Rest, Wake, Visions.
-   *In progress:* batch 1 ported Forge, Travel and Wake (Take Wealth and End
-   Wake). Remaining: Campaign.
+   *Done:* batch 1 ported Forge, Travel and Wake (Take Wealth and End
+   Wake). Campaign is ported and its legacy path deleted; see the Campaign
+   design.
    Economy (Muster and Trade) is ported and its legacy path deleted; see
    the Muster and Trade design. Visions (Reveal Vision and Conspiracy) are
    ported and their legacy path deleted; see the Visions and Conspiracy
@@ -456,7 +460,9 @@ actions migrated. They were not; both kept a job:
    vocabularies, bespoke evolve/handle pairs, PendingProcedure ADT).
    *In progress, and done per action at its cutover:* Recover, Forge, Travel
    and Wake have no legacy path left, and the typed-cost vocabulary is gone.
-   Two `PendingProcedure` cases remain (see Migration status).
+   The last two `PendingProcedure` cases (`Campaign` and
+   `CampaignRaidRelocation`) were deleted by the Campaign port, and with them
+   the `PendingProcedure` type and the `CurrentGameState.pending` slot.
    The former ninth case, `OathkeeperRecipient`, was ported to the triggered
    `Oathkeeper` procedure by `2026-09-12-walker-ownership-and-phases-design.md`.
 5. Author MVP power set on the new framework.

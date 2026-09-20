@@ -34,7 +34,7 @@ vocabulary, and `gameplay/RuleResolution.scala` holds the registry and
 deterministic ordering. Small generic modifiers use explicit registries.
 Action-specific systems may own narrower registries:
 Campaign plans author side/window-scoped options in
-`gameplay/actions/CampaignPlans.scala`; other bounded actions use exact-ID
+`gameplay/actions/campaign/CampaignPlans.scala`; other bounded actions use exact-ID
 classifications beside their rule modules.
 
 Order is explicit: priority, stable source key, then handler ID unless the
@@ -72,7 +72,20 @@ runs the registry.
 
 Campaign defender decisions can belong to a non-active player. Bandit choices
 use a deterministic policy only for cost-free, choice-free registered options;
-paid, ambiguous, or unsupported relevant behavior blocks.
+other relevant handlers are ignored rather than blocking (see
+`docs/architecture/bounded-campaign.md`).
+
+A power can forbid a choice as well as a whole action. `OptionRestriction` is the
+third contribution kind beside `Transform` and `Restriction`: hooked at a `Decide`
+window, it is applied once in the window fold, so the projector, the answer check
+and simulation all see the filtered options. Narrow Pass uses it at
+`CampaignTargetSelection`. Campaign adds the windows `CampaignCost`,
+`CampaignKindSelection`, `CampaignDefenderSelection`, `CampaignTargetSelection`,
+`CampaignForceSelection`, `CampaignGatherPools`, `CampaignAttackRoll`,
+`CampaignAttackResult`, `CampaignSacrificeSelection`, `CampaignDefenseRoll`,
+`CampaignDefenseResult`, `CampaignLosses`, `CampaignPlacement`,
+`CampaignRaidTransfer` and `CampaignRaidRelocation`, all audited vocabulary that
+only Vow of Peace and Narrow Pass use so far.
 
 ## Window-driven power runtime
 
@@ -99,8 +112,8 @@ reviewed Negotiation definitions are indexed at the `NegotiationOffer` window,
 so an unsupported `When Negotiating` handler is recorded as ignored rather than
 blocking the action. It does not
 replace action ownership: Travel cost resolves through the TravelCost window
-fold (typed terrain facts + suppression), Campaign retains its later
-attacker/defender/bandit battle-plan windows, and Economy target choice remains
+fold (typed terrain facts + suppression), Campaign runs its battle-plan
+windows on the walker with the plan registry as the option source, and Economy target choice remains
 an explicit confirm.
 `PowerRuntime` translates precise resolver results into the current command and
 durable-event shapes. The legacy central classification switch has been removed;

@@ -28,7 +28,6 @@ for setup and gameplay. It delegates explicit payload cases to cohesive codecs:
 
 - `LifecycleEventCodec` for setup, Wake, Rest, and lifecycle facts;
 - `ActionEventCodec` for ordinary actions and pending decisions;
-- `CampaignEventCodec` for Campaign procedures; and
 - `EndingEventCodec` for title, Vision, round, and victory facts.
 
 Readers reject unknown discriminators, malformed values, catalog disagreement,
@@ -46,8 +45,10 @@ Events record accepted facts needed for deterministic replay:
 
 - Search start records the application-prepared draw; completion records the
   exact ordered player decision.
-- Recover and Campaign record prepared physical die faces and resolved costs,
-  targets, plans, losses, and outcomes.
+- Recover records prepared physical die faces and resolved costs. Campaign
+  records each answer as a walker `ChoicePayload` step, each automatic roll as a
+  `RollPayload` step marked `automatic`, and every other step as recorded core
+  operations, including `RecordCampaignResult`. It has no events of its own.
 - Catacombs records one procedure-scoped `CatacombsResolved` outcome containing
   its exact power, source, payment, and relic placement. Replay revalidates the
   Recover window and all power facts, then leaves a typed prepared-Recover

@@ -305,6 +305,20 @@ persistence, server, Scala.js, packaged-network, and browser acceptance gates.
   pending state, commands and events are deleted. See
   `docs/architecture/all-exile-negotiation.md`.
 
+- [x] **Campaign on the procedure walker (2026-09-19).** Campaign, Conquest and
+  Raid, runs as `ActionRef.Campaign`: one tree in rulebook order with automatic
+  attack and defense rolls, recorded attack and defense results, a durable public
+  result shown to every player, Conquest placement by amount or distribution, and
+  Raid resolution and relocation. The engine gained `ChooseMany` with a minimum of
+  0, a `Distribute` total range, automatic `Roll` nodes fed by a dice source,
+  attack outcomes, an executed `ModifyRollOutcome`, and an `OptionRestriction`
+  contribution. Vow of Peace is a root restriction and Narrow Pass an option
+  restriction. Unsupported Campaign handlers are ignored, the first-game gates are
+  dropped and there is no cancel after the start. The legacy Campaign path, its
+  seven events, its projection and the `PendingProcedure` type with the
+  `CurrentGameState.pending` slot are deleted. See
+  `docs/architecture/bounded-campaign.md`.
+
 - [x] **Phase 1 - Core minor actions.** During Act, players can play or discard
   a facedown adviser as if searched, privately inspect relics at their site,
   reveal a held facedown relic, and move legal quantities of their warbands to

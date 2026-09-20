@@ -1,5 +1,7 @@
 # Campaign on the Procedure Walker Implementation Plan
 
+> Status: executed. The build matches this plan except where the deviations below say otherwise; the spec's "Implementation notes" section records the final state.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Move Campaign, Conquest and Raid, onto the procedure walker as `ActionRef.Campaign`, show its dice and result to every player, and delete the legacy Campaign path and then the legacy `pending` slot.

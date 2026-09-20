@@ -1,6 +1,6 @@
 # Campaign on the Procedure Walker
 
-> Status: approved design, not yet planned. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md) and the [ownership design](2026-09-12-walker-ownership-and-phases-design.md), and follows the recipe of the Challenge and Negotiation ports ([Challenge](2026-09-19-challenge-walker-design.md), [Negotiation](2026-09-19-negotiation-walker-design.md)). Rules content stays as in [bounded-campaign.md](../../architecture/bounded-campaign.md) except where **Rule changes** below says otherwise.
+> Status: implemented by [the plan](../plans/2026-09-19-campaign-walker.md). See **Implementation notes** at the end for where the build differs from this design. Extends the [procedure walker design](2026-09-05-procedure-walker-design.md), the [declarative decisions design](2026-09-10-declarative-walker-decisions-design.md) and the [ownership design](2026-09-12-walker-ownership-and-phases-design.md), and follows the recipe of the Challenge and Negotiation ports ([Challenge](2026-09-19-challenge-walker-design.md), [Negotiation](2026-09-19-negotiation-walker-design.md)). Rules content stays as in [bounded-campaign.md](../../architecture/bounded-campaign.md) except where **Rule changes** below says otherwise.
 
 ## Goal and scope
 
@@ -206,3 +206,33 @@ Also test:
 - How the projector reads start affordability without duplicating `SpendSupply`'s rule (a dry run of the start walk is the candidate).
 - Whether the frontend panels need a "remaining" display for `Distribute` ranges beyond what the generic panel shows.
 - File split points, so no production file passes 800 lines.
+
+## Implementation notes
+
+What was built differs from the design above in the following ways. The design text is kept as approved.
+
+1. **There is no action-history feed.** The design assumed one. Projections are built from state alone, rolls are cleared when the walker completes, and the only event view is a development-only raw dump. A durable public result fact replaces the feed: `CampaignResult`, written by a `RecordCampaignResult` operation into `CurrentGameState.lastCampaignResult`, projected to every viewer as `GameProjection.lastCampaign` and drawn by a result panel.
+2. **A single-target placement is `ChooseAmount`, not `Distribute`,** because a distribution needs at least two slots. Several targets use `Distribute` with `minTotal = 0` and `maxTotal = survivors`.
+3. **`ModifyRollOutcome` was defined but never executed.** It is now an upsert: it creates the outcome when the pool has none.
+4. **An automatic `Roll` on an empty pool is skipped and records nothing.** Downstream steps read a missing outcome as zero faces, zero skulls and zero score.
+5. **Victory reads recorded outcomes only.** The defender's board force cannot be read after the losses, so a `CampaignDefenseResult` window writes the defense score (dice score plus the defender's force) right after the defense roll. The window list gains `CampaignDefenseResult`.
+6. **The plan loop finishes by itself when no unused plan is left.** The Finish option is offered while at least one plan can still be chosen.
+7. **The plan registry stops depending on the legacy pending type.** The registry in `actions/campaign/CampaignPlans.scala` takes a small `CampaignSetup` and omits the replay validation the legacy registry carried (replay applies recorded operations). The dormant `TransformAttackResult`, `ReplaceLosingForcePolicy` and `Suspend` plan effects were deleted with the legacy path.
+8. **The Raid discard rule drops "revealed by a defender plan":** no registered defender plan reveals, so only facedown advisers are discarded.
+9. **The Recover roll feedback is gated on Recover.** `WalkerDecisionProjector.rollOutcome` is Recover-specific and would otherwise attach a Recover difficulty to every decision.
+10. **`Distribute`'s projected `total` is `minTotal` and `maxTotal`** in the DTO and on the wire.
+11. **`OathContinue.AwaitingCampaignDecision(playerId, decision)` replaces the four legacy Campaign continuations.**
+12. **The second sentence of Vow of Peace is not modelled.** Attackers cannot sacrifice against a faceup holder. The legacy Campaign never modelled it either.
+13. **The outcome branch reads the durable result.** After the losses change the board, the only nodes re-selected are those on the path to a parked placement or relocation decision. They read `lastCampaignResult`, written before the losses and never changed after.
+14. **"Ignore and record" records what the reviewed power catalog lists at the Campaign windows, and today that is nothing.** The resolver reports a diagnostic only for an unimplemented automatic handler at the window being resolved. Bag of Siegeworks is player-selected and hooks the attacker battle-plan window, so it is ignored but not recorded. The other handlers the legacy classifier named are neither blocked nor recorded, as for every other ported action. The `fallbackKind` wiring stays, so anything the catalog lists later is recorded without further work.
+15. **The `Distribute` panel and the sacrifice heading carry the summary the legacy draft showed**, and the increment and decrement widgets of the legacy force and placement drafts are gone.
+
+## Deferred follow-ups
+
+- The board-target `formation` field and the `PlayerPawn`, `PlayerRelic` and `PlayerBanner` board-target refs lost their only producer. They remain in the shared protocol as unused wire types.
+- An action-history feed. The durable result is the interim.
+- All rolls automatic (Recover still parks on its roll).
+- Real consent for the Pass, and a consent system in general.
+- The first-game rule audit behind the dropped gates.
+- Converting the plan handlers into power contributions.
+- The second sentence of Vow of Peace.

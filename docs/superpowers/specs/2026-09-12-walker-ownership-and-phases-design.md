@@ -1,6 +1,6 @@
 # Walker Ownership, Phases and Triggered Procedures Design
 
-> Status: approved; implemented. Landed by
+> Status: approved; implemented. Its "legacy `PendingProcedure`" guards were removed when the Campaign port deleted that type and the `pending` slot (see the [Campaign design](2026-09-19-campaign-walker-design.md)); a Campaign decision may be owned by the defender, which the co-owned and owned `Decide` machinery here already supports. Landed by
 > `docs/superpowers/plans/2026-09-12-walker-ownership-and-phases.md`, Tasks
 > 1-8, commits `25a8a69..4c98292` (per-task commits: `25a8a69`, `f2c1ab3`,
 > `02e1357..877d7e4`, `266f2fb`, `4321aae..90f4e6a`, `dae427d`,
