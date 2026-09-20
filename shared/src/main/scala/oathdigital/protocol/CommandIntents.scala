@@ -138,6 +138,16 @@ object DecisionAnswerWire {
 
   /** Answers a choose-amount decision with the amount picked. */
   final case class ChooseAmountWire(amount: Int) extends DecisionAnswerWire
+
+  /** Answers a negotiation decision with the sender's complete terms. */
+  final case class ProposeTermsWire(terms: NegotiationTerms)
+      extends DecisionAnswerWire
+
+  /** Accepts the current deal. */
+  case object AcceptDealWire extends DecisionAnswerWire
+
+  /** Declines, which ends the negotiation. */
+  case object DeclineDealWire extends DecisionAnswerWire
 }
 
 /** One option named in a [[DecisionAnswerWire.ChooseManyWire]]. */

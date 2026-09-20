@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DistributeAmount, DistributeSlot, OathViolation, PlayerId}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionQuery, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationTerms, OathViolation, PlayerId}
 
 /** The whole generic decision contract: whether a declared query is
   * answerable at all, and whether a submitted answer satisfies it.
@@ -69,6 +69,21 @@ object DecisionQueries {
         _ <- require(refs.nonEmpty, decisionId, "declares no options")
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
+      } yield ()
+
+    case DecisionQuery.Negotiate(participants, terms, accepted, bounds,
+        acceptors, _) =>
+      val members = participants.toSet
+      for {
+        _ <- require(participants.size >= 2 &&
+          participants.distinct.size == participants.size, decisionId,
+          "declares fewer than two distinct participants")
+        _ <- require(bounds.keySet == members, decisionId,
+          "declares bounds for players outside the deal")
+        _ <- require(terms.keySet == members, decisionId,
+          "declares terms for players outside the deal")
+        _ <- require(accepted.subsetOf(members) && acceptors.subsetOf(members),
+          decisionId, "declares an acceptance from outside the deal")
       } yield ()
 
     case DecisionQuery.ChooseMany(min, max, options, _) =>
@@ -236,6 +251,20 @@ object DecisionQueries {
       case _ =>
         reject(decisionId, "expects a distribution answer")
     }
+
+    case DecisionQuery.Negotiate(participants, _, _, bounds, acceptors, _) =>
+      answer match {
+        case DecisionAnswer.ProposeTerms(terms) =>
+          acceptsTerms(decisionId, participants, bounds, by, terms)
+        case DecisionAnswer.AcceptDeal =>
+          require(acceptors.contains(by), decisionId,
+            "does not let this player accept now")
+        case DecisionAnswer.DeclineDeal =>
+          require(participants.contains(by), decisionId,
+            "is not open to this player")
+        case _ =>
+          reject(decisionId, "expects a negotiation answer")
+      }
   }
 
   private def acceptsDistribution(decisionId: String,
@@ -260,6 +289,30 @@ object DecisionQueries {
         decisionId, s"distributes an amount other than its total of $total")
     } yield ()
   }
+
+  private def acceptsTerms(decisionId: String, participants: Vector[PlayerId],
+      bounds: Map[PlayerId, NegotiationBounds], by: PlayerId,
+      terms: NegotiationTerms): Either[OathViolation, Unit] =
+    bounds.get(by).filter(_ => participants.contains(by)) match {
+      case None => reject(decisionId, "is not open to this player")
+      case Some(own) =>
+        val recipients = terms.transfers.map(_.recipient) ++
+          terms.disclosures.map(_.recipient)
+        val relics = terms.transfers.flatMap(_.relics)
+        for {
+          _ <- require(recipients.forall(own.recipients.contains), decisionId,
+            "offers terms to a player outside the deal")
+          _ <- require(terms.transfers.map(_.favor.toLong).sum <=
+            own.maxFavor.toLong, decisionId,
+            s"offers more than ${own.maxFavor} favor")
+          _ <- require(relics.distinct.size == relics.size &&
+            relics.forall(own.relics.contains), decisionId,
+            "offers a relic its author does not hold")
+          _ <- require(terms.disclosures.map(_.information)
+            .forall(own.disclosures.contains), decisionId,
+            "promises a disclosure its author cannot make")
+        } yield ()
+    }
 
   private def acceptsPartition(decisionId: String,
       sections: Map[String, oathdigital.model.DecisionSection],

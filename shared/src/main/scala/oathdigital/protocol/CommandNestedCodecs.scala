@@ -80,6 +80,10 @@ private[protocol] object CommandNestedCodecs {
         "optionKind" -> row.optionKind, "optionId" -> row.optionId))))
     case DecisionAnswerWire.ChooseAmountWire(amount) =>
       ujson.Obj("kind" -> "choose-amount", "amount" -> amount)
+    case DecisionAnswerWire.ProposeTermsWire(terms) =>
+      ujson.Obj("kind" -> "propose-terms", "terms" -> encodeNegotiation(terms))
+    case DecisionAnswerWire.AcceptDealWire => ujson.Obj("kind" -> "accept-deal")
+    case DecisionAnswerWire.DeclineDealWire => ujson.Obj("kind" -> "decline-deal")
   }
 
   def decodeDecisionAnswerWire(value: ujson.Value, path: String)
@@ -118,6 +122,15 @@ private[protocol] object CommandNestedCodecs {
         _ <- exact(root, Set("kind", "amount"), path)
         amount <- field(root, "amount", path).flatMap(integer(_, s"$path.amount"))
       } yield DecisionAnswerWire.ChooseAmountWire(amount)
+      case "propose-terms" => for {
+        _ <- exact(root, Set("kind", "terms"), path)
+        raw <- field(root, "terms", path)
+        terms <- decodeNegotiation(raw, s"$path.terms")
+      } yield DecisionAnswerWire.ProposeTermsWire(terms)
+      case "accept-deal" => exact(root, Set("kind"), path)
+        .map(_ => DecisionAnswerWire.AcceptDealWire)
+      case "decline-deal" => exact(root, Set("kind"), path)
+        .map(_ => DecisionAnswerWire.DeclineDealWire)
       case kind => Left(InvalidValue(s"$path.kind", s"unknown decision answer '$kind'"))
     }}
 

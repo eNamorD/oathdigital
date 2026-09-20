@@ -28,6 +28,9 @@ private[serialization] object DecisionAnswerCodec {
   private val ChooseAmountTag = "choose-amount"
   private val PartitionTag = "partition"
   private val DistributeTag = "distribute"
+  private val ProposeTermsTag = "propose-terms"
+  private val AcceptDealTag = "accept-deal"
+  private val DeclineDealTag = "decline-deal"
 
   def encode(answer: DecisionAnswer): ujson.Value = answer match {
     case DecisionAnswer.ChooseOneAnswer(selected) => ujson.Obj(
@@ -46,6 +49,10 @@ private[serialization] object DecisionAnswerCodec {
       "kind" -> DistributeTag,
       "amounts" -> ujson.Arr.from(amounts.map(entry => ujson.Obj(
         "option" -> encodeRef(entry.ref), "amount" -> entry.amount))))
+    case DecisionAnswer.ProposeTerms(terms) => ujson.Obj(
+      "kind" -> ProposeTermsTag, "terms" -> NegotiationTermsCodec.encode(terms))
+    case DecisionAnswer.AcceptDeal => ujson.Obj("kind" -> AcceptDealTag)
+    case DecisionAnswer.DeclineDeal => ujson.Obj("kind" -> DeclineDealTag)
   }
 
   def decode(value: ujson.Value,
@@ -79,6 +86,10 @@ private[serialization] object DecisionAnswerCodec {
                 InvalidValue(s"$entryPath.amount", s"amount '$raw' is not an integer"))
             } yield DistributeAmount(ref, amount)
         }.map(DecisionAnswer.DistributeAnswer)
+      case ProposeTermsTag => NegotiationTermsCodec.decode(value("terms"),
+        s"$path.terms").map(DecisionAnswer.ProposeTerms)
+      case AcceptDealTag => Right(DecisionAnswer.AcceptDeal)
+      case DeclineDealTag => Right(DecisionAnswer.DeclineDeal)
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker decision answer '$other'"))
     }

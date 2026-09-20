@@ -1,6 +1,6 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, OathViolation, PlayerId, RelicId, SiteId, Suit}
+import oathdigital.model.{DecisionAnswer, DecisionOption, DecisionOptionRef, DecisionPlacement, DecisionQuery, DecisionSection, DenizenId, DistributeAmount, DistributeSlot, NegotiationBounds, NegotiationDisclosure, NegotiationDisclosureRef, NegotiationTerms, NegotiationTransfer, OathViolation, PlayerId, RelicId, SiteId, Suit}
 
 /** Task 2: the generic decision contract, exercised with hand-built queries
   * and no game state at all.
@@ -488,5 +488,83 @@ class DecisionQuerySuite extends munit.FunSuite {
       "decision recover.choice amount 6 is outside 3..5"))
     assertEquals(accepts(q, DecisionAnswer.ChooseOneAnswer(siteRef("a"))),
       invalid("decision recover.choice expects an amount answer"))
+  }
+
+  // Negotiate: legality depends on who answers.
+
+  private val red = PlayerId("red")
+  private val blue = PlayerId("blue")
+  private val green = PlayerId("green")
+  private val heldRelic = RelicId("relic-1")
+  private val adviser = NegotiationDisclosureRef.Adviser(red, DenizenId("d1"))
+  private val redBounds = NegotiationBounds(Vector(blue), 5, Vector(heldRelic),
+    Vector(adviser))
+  private val blueBounds = NegotiationBounds(Vector(red), 2, Vector.empty,
+    Vector.empty)
+
+  private def deal(accepted: Set[PlayerId] = Set.empty,
+      acceptors: Set[PlayerId] = Set.empty) = DecisionQuery.Negotiate(
+    Vector(red, blue), Map(red -> NegotiationTerms(), blue -> NegotiationTerms()),
+    accepted, Map(red -> redBounds, blue -> blueBounds), acceptors,
+    Some("Negotiation"))
+
+  private def acceptsBy(by: PlayerId, answer: DecisionAnswer,
+      query: DecisionQuery = deal(acceptors = Set(red, blue))) =
+    DecisionQueries.accepts(decisionId, query, answer, by)
+
+  test("a negotiate query needs two distinct participants and consistent maps") {
+    assertEquals(wellFormed(deal()), Right(()))
+    assertEquals(wellFormed(deal().copy(participants = Vector(red))),
+      invalid("decision recover.choice declares fewer than two distinct participants"))
+    assertEquals(wellFormed(deal().copy(participants = Vector(red, red))),
+      invalid("decision recover.choice declares fewer than two distinct participants"))
+    assertEquals(wellFormed(deal().copy(bounds = Map(red -> redBounds))),
+      invalid("decision recover.choice declares bounds for players outside the deal"))
+    assertEquals(wellFormed(deal().copy(terms = Map(red -> NegotiationTerms()))),
+      invalid("decision recover.choice declares terms for players outside the deal"))
+    assertEquals(wellFormed(deal(accepted = Set(green))),
+      invalid("decision recover.choice declares an acceptance from outside the deal"))
+  }
+
+  test("proposed terms must sit inside the author's bounds") {
+    val fine = NegotiationTerms(
+      Vector(NegotiationTransfer(blue, 3, Vector(heldRelic))),
+      Vector(NegotiationDisclosure(blue, adviser)))
+    assertEquals(acceptsBy(red, DecisionAnswer.ProposeTerms(fine)), Right(()))
+    assertEquals(acceptsBy(red, DecisionAnswer.ProposeTerms(NegotiationTerms())),
+      Right(()))
+    assertEquals(acceptsBy(red, DecisionAnswer.ProposeTerms(NegotiationTerms(
+      Vector(NegotiationTransfer(blue, 6, Vector.empty))))),
+      invalid("decision recover.choice offers more than 5 favor"))
+    assertEquals(acceptsBy(blue, DecisionAnswer.ProposeTerms(NegotiationTerms(
+      Vector(NegotiationTransfer(red, 1, Vector(heldRelic)))))),
+      invalid("decision recover.choice offers a relic its author does not hold"))
+    assertEquals(acceptsBy(red, DecisionAnswer.ProposeTerms(NegotiationTerms(
+      Vector(NegotiationTransfer(green, 1, Vector.empty))))),
+      invalid("decision recover.choice offers terms to a player outside the deal"))
+    assertEquals(acceptsBy(red, DecisionAnswer.ProposeTerms(NegotiationTerms(
+      Vector.empty, Vector(NegotiationDisclosure(blue,
+        NegotiationDisclosureRef.HeldRelic(red, heldRelic)))))),
+      invalid("decision recover.choice promises a disclosure its author cannot make"))
+    assertEquals(acceptsBy(green, DecisionAnswer.ProposeTerms(fine)),
+      invalid("decision recover.choice is not open to this player"))
+  }
+
+  test("only an acceptor accepts and any participant declines") {
+    assertEquals(acceptsBy(red, DecisionAnswer.AcceptDeal), Right(()))
+    assertEquals(acceptsBy(red, DecisionAnswer.AcceptDeal, deal()),
+      invalid("decision recover.choice does not let this player accept now"))
+    assertEquals(acceptsBy(green, DecisionAnswer.AcceptDeal),
+      invalid("decision recover.choice does not let this player accept now"))
+    assertEquals(acceptsBy(blue, DecisionAnswer.DeclineDeal, deal()), Right(()))
+    assertEquals(acceptsBy(green, DecisionAnswer.DeclineDeal, deal()),
+      invalid("decision recover.choice is not open to this player"))
+  }
+
+  test("negotiation answers and queries only meet each other") {
+    assertEquals(acceptsBy(red, DecisionAnswer.ChooseOneAnswer(continueRef)),
+      invalid("decision recover.choice expects a negotiation answer"))
+    assertEquals(acceptsBy(red, DecisionAnswer.AcceptDeal, chooseOne),
+      invalid("decision recover.choice expects a single-choice answer"))
   }
 }

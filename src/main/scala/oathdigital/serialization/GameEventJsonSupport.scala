@@ -11,50 +11,12 @@ private[serialization] trait GameEventJsonSupport {
   protected final def decodeBanner(value: String, path: String): Either[WireError, Banner] =
     Banner.fromKey(value).toRight(InvalidValue(path, s"unknown banner '$value'"))
 
-  protected final def encodeNegotiationTerms(terms: NegotiationTerms): ujson.Value = ujson.Obj(
-    "transfers" -> ujson.Arr.from(terms.transfers.map(transfer => ujson.Obj(
-      "recipientPlayerId" -> transfer.recipient.value, "favor" -> transfer.favor,
-      "relicIds" -> stringArray(transfer.relics.map(_.value))))),
-    "disclosures" -> ujson.Arr.from(terms.disclosures.map { disclosure =>
-      val information = disclosure.information match {
-        case NegotiationDisclosureRef.Adviser(owner, card) => ujson.Obj(
-          "kind" -> "adviser", "ownerPlayerId" -> owner.value,
-          "card" -> encodeWorldCard(card))
-        case NegotiationDisclosureRef.HeldRelic(owner, relic) => ujson.Obj(
-          "kind" -> "held-relic", "ownerPlayerId" -> owner.value,
-          "relicId" -> relic.value)
-        case NegotiationDisclosureRef.SiteRelic(site, relic) => ujson.Obj(
-          "kind" -> "site-relic", "siteId" -> site.value, "relicId" -> relic.value)
-      }
-      ujson.Obj("recipientPlayerId" -> disclosure.recipient.value,
-        "information" -> information)
-    }))
+  protected final def encodeNegotiationTerms(terms: NegotiationTerms): ujson.Value =
+    NegotiationTermsCodec.encode(terms)
 
   protected final def decodeNegotiationTerms(value: ujson.Value,
-      path: String): Either[WireError, NegotiationTerms] = try {
-    for {
-      transfers <- traverse(value("transfers").arr.toVector) { row => for {
-        favor <- safeIntField(row.obj, "favor", s"$path.transfers")
-      } yield NegotiationTransfer(PlayerId(row("recipientPlayerId").str), favor,
-        row("relicIds").arr.toVector.map(v => RelicId(v.str))) }
-      disclosures <- traverse(value("disclosures").arr.toVector) { row =>
-        val info = row("information")
-        val decoded: Either[WireError, NegotiationDisclosureRef] = info("kind").str match {
-          case "adviser" => decodeWorldCard(info("card"), s"$path.disclosures.card")
-            .map(card => NegotiationDisclosureRef.Adviser(
-              PlayerId(info("ownerPlayerId").str), card))
-          case "held-relic" => Right(NegotiationDisclosureRef.HeldRelic(
-            PlayerId(info("ownerPlayerId").str), RelicId(info("relicId").str)))
-          case "site-relic" => Right(NegotiationDisclosureRef.SiteRelic(
-            SiteId(info("siteId").str), RelicId(info("relicId").str)))
-          case other => Left(InvalidValue(s"$path.disclosures.kind",
-            s"unknown disclosure kind '$other'"))
-        }
-        decoded.map(NegotiationDisclosure(PlayerId(row("recipientPlayerId").str), _))
-      }
-    } yield NegotiationTerms(transfers, disclosures)
-  } catch { case NonFatal(error) => Left(InvalidValue(path,
-    Option(error.getMessage).getOrElse("invalid Negotiation terms"))) }
+      path: String): Either[WireError, NegotiationTerms] =
+    NegotiationTermsCodec.decode(value, path)
 
   protected final def encodePlan(plan: FirstGameSetupPlan): ujson.Value =
     ujson.Obj(

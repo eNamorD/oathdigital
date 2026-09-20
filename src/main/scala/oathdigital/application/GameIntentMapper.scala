@@ -152,6 +152,10 @@ object GameIntentMapper {
         "$.intent.payload.options")).map(ChooseManyAnswer)
     case DecisionAnswerWire.ChooseAmountWire(amount) =>
       Right(ChooseAmountAnswer(amount))
+    case DecisionAnswerWire.ProposeTermsWire(terms) =>
+      negotiation(terms).map(DecisionAnswer.ProposeTerms)
+    case DecisionAnswerWire.AcceptDealWire => Right(DecisionAnswer.AcceptDeal)
+    case DecisionAnswerWire.DeclineDealWire => Right(DecisionAnswer.DeclineDeal)
   }
   private def resolution(value: DecisionResolution): Result[CardDecisionResolution] = value match {
     case DecisionResolution.StartingAdviser(id) => Right(CardDecisionResolution.StartingAdviser(DenizenId(id)))

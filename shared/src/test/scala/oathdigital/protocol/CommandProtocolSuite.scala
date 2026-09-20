@@ -46,7 +46,13 @@ class CommandProtocolSuite extends munit.FunSuite {
       DistributeAmountWire("favor-bank", "nomad", 3)))),
     ResolveWalker("challenge.ribbon-site", DecisionAnswerWire.ChooseManyWire(
       Vector(DecisionOptionWire("site", "a"), DecisionOptionWire("site", "c")))),
-    ResolveWalker("challenge.amount", DecisionAnswerWire.ChooseAmountWire(4))
+    ResolveWalker("challenge.amount", DecisionAnswerWire.ChooseAmountWire(4)),
+    ResolveWalker("negotiation.deal", DecisionAnswerWire.ProposeTermsWire(
+      NegotiationTerms(Vector(NegotiationTransfer("blue", 2, Vector("r1"))),
+        Vector(NegotiationDisclosure("blue",
+          NegotiationInformation.HeldRelic("red", "r2")))))),
+    ResolveWalker("negotiation.deal", DecisionAnswerWire.AcceptDealWire),
+    ResolveWalker("negotiation.deal", DecisionAnswerWire.DeclineDealWire)
   )
 
   test("usePower names exactly one power and one source") {

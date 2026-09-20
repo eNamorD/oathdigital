@@ -285,6 +285,18 @@ object DecisionQuery {
     */
   final case class Distribute(slots: Vector[DistributeSlot], total: Int,
       heading: Option[String], confirmLabel: String) extends DecisionQuery
+
+  /** A negotiation deal, as a snapshot the action rebuilds from live state and
+    * the recorded answers on every command: who is in it, everyone's current
+    * terms, who has accepted, what each author may still offer, and who may
+    * accept now. Legality depends on WHO answers (each author has their own
+    * bounds), which is why `DecisionQueries.accepts` receives the answerer.
+    * Any participant may answer it: the deal is a `Decide` with co-owners.
+    */
+  final case class Negotiate(participants: Vector[PlayerId],
+      terms: Map[PlayerId, NegotiationTerms], accepted: Set[PlayerId],
+      bounds: Map[PlayerId, NegotiationBounds], acceptors: Set[PlayerId],
+      heading: Option[String] = None) extends DecisionQuery
 }
 
 /** One option assigned to one section in a [[DecisionAnswer.PartitionAnswer]].
@@ -345,4 +357,15 @@ object DecisionAnswer {
     */
   final case class DistributeAnswer(amounts: Vector[DistributeAmount])
       extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.Negotiate]]: this author's complete terms,
+    * replacing their earlier ones and clearing every acceptance.
+    */
+  final case class ProposeTerms(terms: NegotiationTerms) extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.Negotiate]]: accepts the current deal. */
+  case object AcceptDeal extends DecisionAnswer
+
+  /** Answer to a [[DecisionQuery.Negotiate]]: declines, which ends it. */
+  case object DeclineDeal extends DecisionAnswer
 }
