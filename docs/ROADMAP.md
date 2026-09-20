@@ -118,6 +118,22 @@ battle plans. Add Foundation, Legacy, relic, edifice, banner, site, and Vision
 handlers through the same typed boundaries. Unknown relevant handlers continue
 to reject explicitly until implemented.
 
+- [ ] **Deferred: walker-native card play through card slots.** Card play still
+  runs through the legacy `CardPlay.legalChoices` and `plannedOperations` helpers
+  rather than through Operations, so a power cannot change the placement
+  procedure. Powers that need to (People's Favor: Mob may discard a site
+  denizen first, even at a full site) can today reach only the adviser limits
+  exposed by `CardPlayProcedure.PlacementTree`. The redesign plays a card to a
+  card slot instead of to a site. By default the options are the empty slots
+  at the actor's site and the actor's empty adviser slots. When no adviser slot
+  is empty, slots holding discardable advisers also become options. Site-card
+  discards, Homeland replacement, the revealed-Vision replacement and the
+  Silver Tongue limit all become contributions to the slot options. It touches
+  Search, facedown-adviser play, Conspiracy, the projections and the frontend,
+  so it needs its own spec. Until then Mob uses a single `PlacementRules` value
+  on `PlacementTree` that carries the adviser limits and a
+  "may discard a site card first" permission.
+
 ### Phase 4 - Player-facing action history
 
 Add a human-readable action log similar to HRF's log, but derive it from
