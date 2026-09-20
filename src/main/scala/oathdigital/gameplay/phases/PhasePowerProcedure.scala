@@ -1,7 +1,7 @@
 package oathdigital.gameplay.phases
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.{IndexedRuleSource, RuleSourceAccess, RuleSourceFace, RuleSourceIndex}
+import oathdigital.gameplay.{IndexedRuleSource, PowerAccess, RuleSourceIndex}
 import oathdigital.model.OathViolation._
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
 import oathdigital.model._
@@ -40,25 +40,10 @@ object PhasePowerProcedure {
       source.powerIds.contains(power.id) && accessible(source, ready, player))
       .flatMap(source => sourceRef(source.source))
 
-  /** The reviewed access rule, plus faceup site cards and site relics at
-    * sites `player` rules (Corrections 6).
-    */
+  /** The rulebook access rule; see [[PowerAccess]]. */
   private def accessible(source: IndexedRuleSource, ready: ReadyGame,
       player: PlayerId): Boolean =
-    RuleSourceAccess.accessible(source.source, source.face, ready, player,
-      facedownAdviser = false) || (source.source match {
-      case RuleSourceRef.SiteCard(site, _) =>
-        source.face == RuleSourceFace.FaceUp && rules(ready, player, site)
-      case RuleSourceRef.SiteRelic(site, _) =>
-        source.face == RuleSourceFace.FaceUp && rules(ready, player, site)
-      case _ => false
-    })
-
-  private def rules(ready: ReadyGame, player: PlayerId, site: SiteId): Boolean = {
-    val current = ready.game.current
-    current.map.sites.get(site).exists(state => SiteRule.ruler(state.forces,
-      current.players).toOption.contains(SiteRuler.Player(player)))
-  }
+    PowerAccess.accessible(source.source, source.face, ready, player)
 
   def check(catalog: ExecutableCatalog, ready: ReadyGame, requester: PlayerId,
       power: PhasePower, source: DecisionOptionRef)

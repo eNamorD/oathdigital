@@ -516,7 +516,8 @@ class GameApplicationServiceSuite extends munit.FunSuite {
         PositionedLocation(Location.Deck(CardDeck.Relic), StackPosition.Top),
         PositionedLocation(Location.Site(siteId)),
         resultingOrientation = Some(Orientation.FaceDown)),
-      PayCost(actor, Location.OnCard(catacombsId), Cost(secret = 1))))
+      PayCost(actor, Location.OnCard(catacombsId), Cost(secret = 1),
+        matchingBank = catalog.suitOf(catacombsId))))
     assert(started.events.collect { case step: WalkerStepRecorded =>
       step.contributions }.contains(Vector(PowerId("denizen.catacombs"))),
       "the recorded step must name the contribution that produced it")

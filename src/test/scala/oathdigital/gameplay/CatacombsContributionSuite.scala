@@ -59,7 +59,7 @@ class CatacombsContributionSuite extends munit.FunSuite {
         PositionedLocation(Location.Site(fixture.site)),
         resultingOrientation = Some(Orientation.FaceDown)),
       PayCost(fixture.actor, Location.OnCard(catacombsCard),
-        Cost(secret = 1))))
+        Cost(secret = 1), matchingBank = catalog.suitOf(catacombsCard))))
 
     val Ready(after) = transition.state: @unchecked
     val site = after.game.current.map.sites(fixture.site)
