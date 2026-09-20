@@ -1,6 +1,7 @@
 package oathdigital.gameplay
 
 import oathdigital.gameplay.powers.WalkerPowerCatalog
+import oathdigital.gameplay.actions.VisionRules
 import oathdigital.gameplay.setup._
 import oathdigital.gameplay.setup.FirstGameSetupFixture._
 import oathdigital.gameplay.walker.{WalkerDice, WalkerPowers}
@@ -147,4 +148,38 @@ object CampaignFixture {
     catalog.denizens.find(_.handlers.contains(handler)).get.id.value
   def relicWith(handler: String): String =
     catalog.relics.find(_.handlers.contains(handler)).get.id.value
+
+  /** A Raid board: the other player stands at the origin holding a faceup relic,
+    * a facedown relic, three facedown advisers (one a Conspiracy), both banners
+    * and 5 favor; the actor has 4 warbands.
+    */
+  def raidBoard(defenderWarbands: Int = 3): (Board, RelicId) = {
+    val b = withEnemyAtOrigin(board(warbands = 4))
+    val relic = RelicId(catalog.relics.head.id.value)
+    val ready = b.ready.updateCurrent(current => current.copy(
+      players = current.players.map(p =>
+        if (p.player == b.other) p.copy(
+          board = p.board.copy(warbands = defenderWarbands, favor = 5),
+          advisers = Vector(
+            DenizenState(DenizenId("raid-facedown-denizen"), Orientation.FaceDown,
+              Tokens.empty),
+            VisionState(VisionId("raid-facedown-vision"), Orientation.FaceDown),
+            VisionState(VisionRules.Conspiracy, Orientation.FaceDown)),
+          relics = Vector(
+            RelicState(relic, Orientation.FaceUp, Tokens.empty),
+            RelicState(RelicId("raid-facedown-relic"), Orientation.FaceDown,
+              Tokens.empty)))
+        else p),
+      commonCards = current.commonCards.copy(
+        worldDeck = current.commonCards.worldDeck.filterNot(_ == VisionRules.Conspiracy),
+        relicDeck = current.commonCards.relicDeck.filterNot(_ == relic)),
+      map = current.map.copy(sites = current.map.sites.map { case (id, site) =>
+        id -> site.copy(relics = site.relics.filterNot(_.id == relic)) }),
+      banners = current.banners.copy(
+        peoplesFavor = current.banners.peoplesFavor.copy(
+          holder = Some(b.other), favor = 3),
+        darkestSecret = current.banners.darkestSecret.copy(
+          holder = Some(b.other), secrets = 2))))
+    (b.copy(ready = ready), relic)
+  }
 }

@@ -15,7 +15,7 @@ private[campaign] object CampaignOutcome {
       if (!result.victorious) Vector.empty
       else result.kind match {
         case CampaignKind.Conquest => CampaignConquest.steps(actor, result)
-        case CampaignKind.Raid => Vector.empty
+        case CampaignKind.Raid => CampaignRaid.steps(ready, actor, result)
       }
     losses +: resolution
   }
