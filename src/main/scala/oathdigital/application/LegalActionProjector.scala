@@ -231,11 +231,10 @@ private[application] final class LegalActionProjector(
 
   private def selection(kind: String, prompt: String,
       candidates: Vector[BoardTargetCandidateProjection],
-      formation: Option[BoardTargetFormationProjection] = None,
       minimum: Int = 1, maximum: Int = 1,
       requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
       explicitConfirm: Boolean = false) =
     Option.when(candidates.nonEmpty)(BoardTargetActionProjection(kind, prompt,
-      minimum, maximum, autoActivate = false, candidates, formation, requiredTargets,
+      minimum, maximum, autoActivate = false, candidates, requiredTargets,
       explicitConfirm = explicitConfirm))
 }

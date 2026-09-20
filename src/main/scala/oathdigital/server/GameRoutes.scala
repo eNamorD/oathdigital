@@ -143,9 +143,6 @@ private[server] object MajorActionPreviewTargets {
         .contains("facedown-adviser") => Vector.empty
     case "search" => projection.legalSearchSources.map(v => PreviewTarget(
       s"${v.kind}:${v.region.getOrElse("")}", v.supplyCost, "Search source"))
-    case "campaign" => projection.boardTargetActions.filter(_.actionKind
-      .startsWith("campaign")).flatMap(_.candidates.map(v => PreviewTarget(
-      v.target.stableKey, 2, v.label)))
     case _ => Vector.empty
   }
 }

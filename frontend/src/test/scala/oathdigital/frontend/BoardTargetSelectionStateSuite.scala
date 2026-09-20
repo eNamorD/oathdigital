@@ -31,11 +31,10 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
   test("restoring projected actions after preview cancellation permits another action") {
     val travel = BoardTargetAction("travel", "Travel", 1, 1,
       autoActivate = false, Vector(siteA))
-    val banner = BoardTargetCandidate(
-      BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor"),
-      "People's Favor", Vector("1 Supply"))
+    val other = BoardTargetCandidate(BoardTargetRef.Site("c"), "C",
+      Vector("1 Supply"))
     val challenge = BoardTargetAction("challenge", "Challenge", 1, 1,
-      autoActivate = false, Vector(banner))
+      autoActivate = false, Vector(other))
     val previewSelection = BoardTargetSelectionState.reconcile(None, context,
       Vector(travel)).activate("travel")
 
@@ -44,8 +43,8 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
 
     assertEquals(previewSelection.cancel.activeAction, None)
     assertEquals(restored.activeAction, Some(challenge))
-    assertEquals(restored.choose(banner.target),
-      BoardSelectionResult.Submit(challenge, Vector(banner.target)))
+    assertEquals(restored.choose(other.target),
+      BoardSelectionResult.Submit(challenge, Vector(other.target)))
   }
 
   test("explicit-confirm target mode requires confirmation and supports cancel") {
@@ -96,15 +95,11 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       Set.empty[String])
   }
 
-  test("card pawn and banner target refs have stable distinct keys") {
+  test("card target refs have stable distinct keys") {
     val refs = Vector[BoardTargetRef](
       BoardTargetRef.SiteCard("site", "denizen", "d1"),
       BoardTargetRef.SiteCard("site", "edifice", "d1"),
-      BoardTargetRef.PlayerAdviser("red", "d1"),
-      BoardTargetRef.PlayerRelic("red", "d1"),
-      BoardTargetRef.PlayerPawn("red"),
-      BoardTargetRef.PlayerBanner("red", "peoples-favor"),
-      BoardTargetRef.PlayerBanner("red", "darkest-secret"))
+      BoardTargetRef.PlayerAdviser("red", "d1"))
     assertEquals(refs.map(_.stableKey).distinct.size, refs.size)
   }
 

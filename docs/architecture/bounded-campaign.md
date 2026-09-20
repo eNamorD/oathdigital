@@ -178,5 +178,3 @@ finishes by itself when no plan is left.
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   `At End` handlers. The timing windows exist and no behavior is inferred for them.
 - An action-history feed. The durable `lastCampaignResult` is the interim.
-- The unused board-target `formation`, `PlayerPawn`, `PlayerRelic` and `PlayerBanner`
-  protocol types, which lost their only producer.

@@ -30,7 +30,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     legalSearchSources = Vector(LegalSearchSourceProjection("region", Some("cradle"), 1)),
     boardTargetActions = Vector(BoardTargetActionProjection("campaign", "Choose", 1, 1,
       false, Vector(BoardTargetCandidateProjection(target, "Known", Vector("detail"))),
-      Some(BoardTargetFormationProjection(1, 2, 2, 1)), Vector(target), Some("decision"))),
+      Vector(target), Some("decision"))),
     pendingCardDecision = Some(PendingCardDecisionProjection("pending",
       "starting-adviser", "red", "Choose adviser", Vector.empty,
       Vector(hidden, known), 1, 1, false,

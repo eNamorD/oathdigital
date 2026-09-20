@@ -8,11 +8,6 @@ sealed trait BoardTargetRefProjection extends Product with Serializable {
       s"site-card:$site:$kind:$id"
     case BoardTargetRefProjection.PlayerAdviser(player, card) =>
       s"player-adviser:$player:$card"
-    case BoardTargetRefProjection.PlayerRelic(player, relic) =>
-      s"player-relic:$player:$relic"
-    case BoardTargetRefProjection.PlayerPawn(player) => s"player-pawn:$player"
-    case BoardTargetRefProjection.PlayerBanner(player, banner) =>
-      s"player-banner:$player:$banner"
   }
 }
 object BoardTargetRefProjection {
@@ -22,32 +17,12 @@ object BoardTargetRefProjection {
       extends BoardTargetRefProjection
   final case class PlayerAdviser(playerId: String, cardId: String)
       extends BoardTargetRefProjection
-  final case class PlayerRelic(playerId: String, relicId: String)
-      extends BoardTargetRefProjection
-  final case class PlayerPawn(playerId: String) extends BoardTargetRefProjection
-  final case class PlayerBanner(playerId: String, banner: String)
-      extends BoardTargetRefProjection
 }
 final case class BoardTargetCandidateProjection(
     target: BoardTargetRefProjection,
     label: String,
     details: Vector[String] = Vector.empty
 )
-final case class BoardTargetFormationProjection(
-    minimumForce: Int,
-    maximumForce: Int,
-    availableWarbands: Int,
-    supplyCost: Int
-) {
-  require(minimumForce >= 0, "formation minimum must be non-negative")
-  require(maximumForce >= minimumForce,
-    "formation maximum must include minimum")
-  require(maximumForce <= availableWarbands,
-    "formation maximum cannot exceed available warbands")
-  require(availableWarbands >= 0,
-    "formation available warbands must be non-negative")
-  require(supplyCost >= 0, "formation Supply cost must be non-negative")
-}
 final case class BoardTargetActionProjection(
     actionKind: String,
     prompt: String,
@@ -55,7 +30,6 @@ final case class BoardTargetActionProjection(
     maximum: Int,
     autoActivate: Boolean,
     candidates: Vector[BoardTargetCandidateProjection],
-    formation: Option[BoardTargetFormationProjection] = None,
     requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
     decisionId: Option[String] = None,
     explicitConfirm: Boolean = false

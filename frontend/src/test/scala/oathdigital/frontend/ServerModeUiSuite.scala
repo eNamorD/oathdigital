@@ -483,21 +483,21 @@ class ServerModeUiSuite extends FunSuite {
         "The remaining candidates are discarded in order."))
   }
 
-  test("targetable players and banners render exactly one detail badge") {
+  test("targetable players and sites render exactly one detail badge") {
     val candidates = Vector(
       BoardTargetCandidate(BoardTargetRef.Player("blue"), "Blue", Vector("1 Favor")),
-      BoardTargetCandidate(BoardTargetRef.PlayerBanner("blue", "peoples-favor"),
-        "People's Favor", Vector("2 Defense", "3 Favor")))
+      BoardTargetCandidate(BoardTargetRef.Site("b"),
+        "Site B", Vector("2 Defense", "3 Favor")))
     candidates.foreach(candidate => assertEquals(
       ServerUiSupport.candidateDetailBadgeTexts(candidate).size, 1))
   }
 
-  test("shared-bank Challenge target identity selects only projected legal banners") {
-    val legal = BoardTargetRef.PlayerBanner("shared-bank", "peoples-favor")
-    val illegal = BoardTargetRef.PlayerBanner("shared-bank", "darkest-secret")
-    val action = BoardTargetAction("challenge", "Choose a banner", 1, 1,
+  test("target identity selects only projected legal candidates") {
+    val legal = BoardTargetRef.Site("a")
+    val illegal = BoardTargetRef.Site("b")
+    val action = BoardTargetAction("challenge", "Choose a site", 1, 1,
       autoActivate = false, Vector(BoardTargetCandidate(legal,
-        "People's Favor", Vector("1 Supply"))))
+        "Site A", Vector("1 Supply"))))
     val state = BoardTargetSelectionState.reconcile(None,
       BoardSelectionContext("game", "red", 2), Vector(action))
       .activate("challenge")
@@ -746,7 +746,7 @@ class ServerModeUiSuite extends FunSuite {
       Some(oathdigital.protocol.GameIntent.StartWalker("travel", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:b")))))
     assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
-      BoardTargetRef.PlayerRelic("red", "R1")), "red"), None)
+      BoardTargetRef.PlayerAdviser("red", "R1")), "red"), None)
     // Campaign is no longer a board-target selection: it starts from its own
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),

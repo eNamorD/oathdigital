@@ -52,17 +52,15 @@ private[frontend] object WorldBoardRenderer {
      val relics = element("div", "board-cards relics")
      relics.appendChild(text("strong", "", "Relics"))
      board.relics.foreach { card =>
-       relics.appendChild(boardCardTarget(card,
-         BoardTargetRef.PlayerRelic(board.playerId, card.cardId), ui))
+       val shell = element("span", cardTargetClasses(false, false))
+       shell.appendChild(cardDetailsPopover(card))
+       relics.appendChild(shell)
      }
      section.appendChild(relics)
      board.banners.foreach { banner =>
-       val target = BoardTargetRef.PlayerBanner(board.playerId, banner.key)
-       val row = targetable(text("p", s"player-banner banner-${banner.key}",
+       section.appendChild(text("p", s"player-banner banner-${banner.key}",
          s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-           s"resources ${banner.resources}"),
-         target, ui)
-       section.appendChild(row)
+           s"resources ${banner.resources}"))
      }
      board.revealedVision.foreach(card => {
        section.appendChild(text("strong", "", "Revealed Vision"))
@@ -159,8 +157,7 @@ private[frontend] object WorldBoardRenderer {
        value.pawnLocations.filter(_.siteId == site.siteId).foreach { pawn =>
          val marker = element("span", "pawn")
          marker.appendChild(dom.document.createTextNode("● "))
-         marker.appendChild(targetable(playerReference(value, pawn.playerId),
-           BoardTargetRef.PlayerPawn(pawn.playerId), ui))
+         marker.appendChild(playerReference(value, pawn.playerId))
          pawns.appendChild(marker)
        }
        if (pawns.childNodes.length > 0) control.appendChild(pawns)
@@ -255,10 +252,9 @@ private[frontend] object WorldBoardRenderer {
    section.appendChild(text("h3", "", "Shared Bank"))
    section.appendChild(pileDisplay("Relic deck", value.relicDeckCount, None))
    value.banners.foreach { banner =>
-     val target = BoardTargetRef.PlayerBanner("shared-bank", banner.key)
-     section.appendChild(targetable(text("p", s"shared-banner banner-${banner.key}",
+     section.appendChild(text("p", s"shared-banner banner-${banner.key}",
        s"${actionLabel(banner.key)} · ${banner.face.replace('-', ' ')} · " +
-         s"resources ${banner.resources}"), target, ui))
+         s"resources ${banner.resources}"))
    }
    section
  }
