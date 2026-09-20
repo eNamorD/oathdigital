@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
 import oathdigital.gameplay.powers.travel.TravelSitePowers
@@ -26,10 +27,13 @@ import oathdigital.gameplay.walker.WalkerPowers
   * Conspiracy's power carries no catalog id (a Vision has no catalog powers),
   * so like Take Wealth's limit it is always present and inert until a card
   * play runs `ActionCardPlayed` for Conspiracy.
+  * Vow of Peace's restriction is inert until Campaign walks
+  * `CampaignActionEligibility`.
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =
     WalkerPowers(CatacombsContribution.forCatalog(catalog).toVector ++
+      VowOfPeaceContribution.forCatalog(catalog).toVector ++
       TravelSitePowers.forCatalog(catalog) ++
       LeagueTreatyContribution.forCatalog(catalog) ++
       SilverTongue.forCatalog(catalog) ++

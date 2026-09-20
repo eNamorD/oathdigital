@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers.travel
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
-import oathdigital.model.{Location, Move, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
+import oathdigital.model.{DecisionOptionRef, Location, Move, OathViolation, Operation, Piece, PlayerId, PositionedLocation, PowerId, PowerWindow, RuleSourceRef, SiteId, SiteRule, SiteRuler, SpendSupply}
 
 private[travel] object TravelRoute {
   final case class PawnMove(player: PlayerId, source: SiteId, destination: SiteId)
@@ -65,12 +65,16 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
     coastSites: Set[SiteId], coastOrIslandSites: Set[SiteId])
     extends ContributingPower {
   def source: RuleSourceRef = RuleSourceRef.Site(site)
-  def contributions: Map[PowerWindow, Vector[Contribution]] =
-    Map.empty.updated(PowerWindow.TravelActionEligibility,
-      Vector(Restriction((ctx, _) => blocked(ctx))))
+  def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+    PowerWindow.TravelActionEligibility ->
+      Vector(Restriction((ctx, _) => blocked(ctx))),
+    PowerWindow.CampaignTargetSelection ->
+      Vector(OptionRestriction(campaignBlocked)))
 
-  override def applicable(ctx: PowerCtx): Boolean = TravelRoute
-    .pawnMove(ctx.operation).exists { route =>
+  override def applicable(ctx: PowerCtx): Boolean = ctx.window match {
+    // Per candidate, in `campaignBlocked`: nothing about the tree decides it.
+    case PowerWindow.CampaignTargetSelection => true
+    case _ => TravelRoute.pawnMove(ctx.operation).exists { route =>
       val map = ctx.state.game.current.map
       (for {
         sourceRegion <- map.regionOf(route.source)
@@ -79,6 +83,38 @@ final case class NarrowPassSitePower(id: PowerId, site: SiteId,
       } yield sourceRegion != destinationRegion && destinationRegion == passRegion &&
         route.destination != site).getOrElse(false)
     }
+  }
+
+  /** Campaign: "If your pawn is outside this region, you cannot ... target
+    * other sites in this region in campaigns, unless you have the consent of
+    * the Pass's ruler." Judged per candidate site, never against the other
+    * targets. Consent is approximated as ruling the Pass, as it was before
+    * this was a power. Only site options are considered: a Raid targets a
+    * pawn, relics and banners, never a site.
+    */
+  private def campaignBlocked(ctx: PowerCtx, ref: DecisionOptionRef)
+      : Option[OathViolation] = ref match {
+    case DecisionOptionRef.Site(target) =>
+      val current = ctx.state.game.current
+      val map = current.map
+      val outside = for {
+        pawn <- current.players.find(_.player == ctx.activePlayer)
+          .flatMap(_.pawnSite)
+        pawnRegion <- map.regionOf(pawn)
+        targetRegion <- map.regionOf(target)
+        passRegion <- map.regionOf(site)
+      } yield pawnRegion != targetRegion && targetRegion == passRegion &&
+        target != site
+      val ruledByActor = map.sites.get(site).exists(pass =>
+        SiteRule.ruler(pass.forces, current.players) match {
+          case Right(SiteRuler.Player(player)) => player == ctx.activePlayer
+          case _ => false
+        })
+      Option.when(outside.contains(true) && !ruledByActor)(
+        OathViolation.CampaignUnavailable(
+          s"a Pass prevents targeting '${target.value}' from the pawn site"))
+    case _ => None
+  }
 
   private def blocked(ctx: PowerCtx): Option[OathViolation] =
     TravelRoute.pawnMove(ctx.operation).flatMap { route =>
