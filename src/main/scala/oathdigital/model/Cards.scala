@@ -78,3 +78,8 @@ final case class CardZones(
   def discard(region: Region): Vector[WorldCardId] =
     regionalDiscards.getOrElse(region, Vector.empty)
 }
+
+/** Stable, container-qualified target for a denizen printed at a site. */
+final case class SiteDenizenTarget(siteId: SiteId, denizenId: DenizenId) {
+  def stableKey: String = s"site:${siteId.value}:denizen:${denizenId.value}"
+}

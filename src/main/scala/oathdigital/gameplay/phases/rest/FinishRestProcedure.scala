@@ -33,11 +33,8 @@ object FinishRestProcedure {
       Left(WrongPlayer(current.turn.activePlayer, player))
     else if (current.turn.phase != Phase.Rest)
       Left(WrongPhase(Phase.Rest, current.turn.phase))
-    else current.pending match {
-      case Some(value) => Left(PendingProcedureBlocksAction(value.decision))
-      case None => BeginRestProcedure.validateSupportedState(catalog, ready)
-        .map(_ => ready)
-    }
+    else BeginRestProcedure.validateSupportedState(catalog, ready)
+      .map(_ => ready)
   }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId,

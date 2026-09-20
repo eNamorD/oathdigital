@@ -70,7 +70,7 @@ object PhasePowerProcedure {
       _ <- Either.cond(current.result.isEmpty, (), GameEnded)
       _ <- Either.cond(requester == active, (), WrongPlayer(active, requester))
       _ <- Either.cond(current.walkerPending.isEmpty &&
-        current.walkerProcedure.isEmpty && current.pending.isEmpty, (),
+        current.walkerProcedure.isEmpty, (),
         InvalidEventOrder("a procedure is already pending"))
       _ <- Either.cond(timingOf(phase).contains(power.timing), (),
         InvalidEventOrder(s"${power.id.value} is a ${power.timing} power " +
@@ -92,8 +92,7 @@ object PhasePowerProcedure {
     val current = ready.game.current
     val available = current.result.isEmpty &&
       player == current.turn.activePlayer &&
-      current.walkerPending.isEmpty && current.walkerProcedure.isEmpty &&
-      current.pending.isEmpty
+      current.walkerPending.isEmpty && current.walkerProcedure.isEmpty
     if (!available) Vector.empty
     else {
       val index = RuleSourceIndex.enumerate(catalog, ready)

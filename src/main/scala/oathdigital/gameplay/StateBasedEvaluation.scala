@@ -64,9 +64,7 @@ object StateBasedEvaluation {
     val order = ready.game.current.players.map(_.player)
     val firstIndex = order.indexOf(ready.setup.firstPlayer)
     val turnOrder = order.drop(firstIndex) ++ order.take(firstIndex)
-    if (current.pending.nonEmpty)
-      Left(PendingProcedureBlocksAction(current.pending.get.decision))
-    else if (current.turn.phase != Phase.RoundEnd ||
+    if (current.turn.phase != Phase.RoundEnd ||
         current.turn.activePlayer != turnOrder.head)
       Left(InvalidEventOrder("round ending requires the completed round's final Rest"))
     else if (current.tracks.round < 8)
@@ -146,10 +144,7 @@ object StateBasedEvaluation {
           val players = ready.game.current.players.map(_.player)
           val firstIndex = players.indexOf(ready.setup.firstPlayer)
           val first = (players.drop(firstIndex) ++ players.take(firstIndex)).head
-          if (ready.game.current.pending.nonEmpty)
-            Left(PendingProcedureBlocksAction(
-              ready.game.current.pending.get.decision))
-          else if (ready.game.current.turn.phase != Phase.RoundEnd ||
+          if (ready.game.current.turn.phase != Phase.RoundEnd ||
               ready.game.current.turn.activePlayer != first)
             Left(InvalidEventOrder("round-end event is outside the round-end procedure"))
           else if (recorded != expected) Left(InvalidEventOrder(

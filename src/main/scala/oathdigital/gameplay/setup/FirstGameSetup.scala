@@ -420,7 +420,6 @@ final class FirstGameSetupRules(catalog: ExecutableCatalog)
         TurnState(plan.firstPlayer, Phase.Wake, Set.empty),
         material.tracks,
         None,
-        None,
         // Every player always holds a temporary-hand key; an empty vector
         // means no cards await a private choice. Nothing ever removes a key.
         temporaryHands = plan.participants.map(_.playerId -> Vector.empty).toMap

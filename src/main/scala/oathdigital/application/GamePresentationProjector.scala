@@ -265,7 +265,7 @@ private[application] final class GamePresentationProjector(
             .getOrElse(site, Vector.empty).contains(id) ||
             pawnSiteOf(ready, player).contains(site))
       // A temporary hand is the cards a player has drawn and not yet
-      // resolved. It is private to them outright -- `PendingProcedureProjector`
+      // resolved. It is private to them outright -- `PendingProjector`
       // projects a Search hand only to the drawing actor -- and its cards
       // carry no orientation to reason about, so ownership is the whole
       // rule and there is no faceup case to fall through to.

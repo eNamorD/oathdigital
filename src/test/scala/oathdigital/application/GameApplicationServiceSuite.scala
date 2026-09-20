@@ -837,8 +837,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       DecisionId(ForgeProcedure.assignmentDecisionId)))
     val Ready(parked) = started.state: @unchecked
     assertEquals(parked.game.current.walkerProcedure, Some(ActionRef.Forge))
-    assert(parked.game.current.pending.isEmpty,
-      "the walker path must not populate the legacy pending slot")
     assertEquals(parked.game.current.players.find(_.player == actor).get
       .board.supply.supply, supplyBefore - 1)
 
@@ -938,7 +936,6 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       beforeStart.game.current.commonCards.relicDeck.drop(1))
     assertEquals(after.game.current.players.find(_.player == actor).get
       .board.supply.supply, supplyBefore - 1)
-    assert(after.game.current.pending.isEmpty)
     assert(after.game.current.walkerPending.isEmpty)
     assert(after.game.current.walkerProcedure.isEmpty)
 

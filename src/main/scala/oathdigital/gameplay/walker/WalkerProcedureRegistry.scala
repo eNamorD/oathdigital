@@ -104,8 +104,8 @@ object WalkerProcedureRegistry {
     * The limit worth stating: a selection that is not a game-object reference
     * (a warband count, say) has no spelling here. The first procedure that
     * needs one widens this vocabulary rather than growing a case per
-    * procedure, which is the shape `PendingProcedure` had and this migration
-    * exists to end.
+    * procedure, which is the shape the retired legacy pending procedures had
+    * and the walker migration existed to end.
     *
     * `rebuild` receives the selections `startWalker` was given, read back from
     * the durable `CurrentGameState.walkerStartArgs`, for the same reason

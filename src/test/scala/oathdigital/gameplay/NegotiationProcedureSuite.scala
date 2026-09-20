@@ -49,7 +49,6 @@ class NegotiationProcedureSuite extends munit.FunSuite {
     val started = start(b).getOrElse(fail("Negotiation must start"))
     assertEquals(started.continue, OathContinue.AwaitingNegotiation(b.actor,
       DecisionId(negotiators)))
-    assertEquals(ready(started.state).game.current.pending, None)
   }
 
   test("a lone candidate skips the negotiator choice") {
@@ -103,7 +102,6 @@ class NegotiationProcedureSuite extends munit.FunSuite {
     assertEquals(player(after, b.second).relics.find(_.id == b.actorRelic)
       .get.tokens, Tokens(0, 1))
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(after.game.current.pending, None)
     assertEquals(done.continue, OathContinue.ActActionSelection(b.actor))
   }
 

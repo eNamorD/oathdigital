@@ -122,7 +122,6 @@ class SearchProcedureSuite extends munit.FunSuite {
     val OathState.Ready(after) = result.state: @unchecked
     assertEquals(after.game.current.temporaryHands(actor), Vector.empty)
     assertEquals(after.game.current.walkerPending, None)
-    assertEquals(after.game.current.pending, None)
     assert(!result.continue.isInstanceOf[OathContinue.AwaitingSearchDecision])
   }
 

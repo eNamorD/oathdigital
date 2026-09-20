@@ -102,8 +102,7 @@ private[gameplay] trait OathRulesWalker {
       procedure: TriggeredProcedureRef): Either[OathViolation, OathTransition] =
     transition.state match {
       case Ready(ready) if ready.game.current.walkerPending.nonEmpty ||
-          ready.game.current.walkerProcedure.nonEmpty ||
-          ready.game.current.pending.nonEmpty =>
+          ready.game.current.walkerProcedure.nonEmpty =>
         Left(InvalidEventOrder(s"cannot start ${procedure.key}: another " +
           "procedure is already pending"))
       case Ready(ready) =>
@@ -309,8 +308,6 @@ private[gameplay] trait OathRulesWalker {
       // No phase gate: only resume commands are accepted while a walker is
       // pending, so nothing else can change the phase, and the procedure's
       // own build passed its phase gates at start.
-      _ <- Either.cond(ready.game.current.pending.isEmpty, (),
-        InvalidEventOrder("legacy pending procedure blocks walker resume"))
       activePlayer = ready.game.current.turn.activePlayer
       startArgs = ready.game.current.walkerStartArgs
       tree <- buildWalker(procedure, ready, activePlayer, startArgs,

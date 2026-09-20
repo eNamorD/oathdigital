@@ -31,8 +31,6 @@ object OathViolation {
   ) extends OathViolation
   final case class PowerAlreadyUsed(power: PowerUseRef)
       extends OathViolation
-  final case class PendingProcedureBlocksAction(decision: DecisionId)
-      extends OathViolation
   final case class SameTravelSite(siteId: SiteId)
       extends OathViolation
   final case class TravelPassBlocked(passSiteId: SiteId, destination: SiteId)

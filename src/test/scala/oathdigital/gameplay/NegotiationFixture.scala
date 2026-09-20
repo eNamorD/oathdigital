@@ -37,7 +37,7 @@ object NegotiationFixture {
         case (`siteId`, value) => siteId -> value
         case (id, value) => id -> value.copy(relics = Vector.empty)
       }), turn = base.game.current.turn.copy(activePlayer = players.head.player,
-        phase = Phase.Act), pending = None)
+        phase = Phase.Act))
     val ready = base.copy(game = base.game.copy(current = current), knowledge =
       base.knowledge.copy(siteRelics = Map(players.head.player ->
         Map(siteId -> Vector(siteRelic)))))

@@ -17,7 +17,7 @@ import oathdigital.protocol.projection.{DecisionOptionProjection,
 /** Task 7 (Recover slice, controller ruling (b)) established the
   * application-projector surface: [[WalkerDecisionProjector]] plus the
   * `phase`/`legalControls` effects on
-  * [[PendingProcedureProjector]]/[[LegalActionProjector]]. Task 7a promotes
+  * [[PendingProjector]]/[[LegalActionProjector]]. Task 7a promotes
   * [[WalkerDecisionProjection]] itself onto the wire -- it is now the same
   * type `GameProjection.walkerDecision` carries (`shared/.../
   * ActionProjectionDtos.scala`).
@@ -137,7 +137,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val viewer = ScopedProjectionContext(ready, Some(other))
     assertEquals(walkerDecisions.project(viewer), None)
 
-    val pendingProjector = new PendingProcedureProjector(catalog,
+    val pendingProjector = new PendingProjector(catalog,
       presentation, walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-roll")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
@@ -200,7 +200,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val viewer = ScopedProjectionContext(ready, Some(other))
     assertEquals(walkerDecisions.project(viewer), None)
 
-    val pendingProjector = new PendingProcedureProjector(catalog, presentation,
+    val pendingProjector = new PendingProjector(catalog, presentation,
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")
@@ -294,7 +294,7 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     val viewer = ScopedProjectionContext(ready, Some(other))
     assertEquals(walkerDecisions.project(viewer), None)
 
-    val pendingProjector = new PendingProcedureProjector(catalog, presentation,
+    val pendingProjector = new PendingProjector(catalog, presentation,
       walkerDecisions)
     assertEquals(pendingProjector.project(owner).phase, "recover-walker-decision")
     assertEquals(pendingProjector.project(viewer).phase, "recover-walker-waiting")

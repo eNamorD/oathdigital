@@ -47,7 +47,6 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val started = start(b).getOrElse(fail("Campaign must start"))
     assertEquals(started.continue, OathContinue.AwaitingCampaignDecision(b.actor,
       DecisionId(CampaignIds.force)))
-    assertEquals(ready(started.state).game.current.pending, None)
     assertEquals(parkedDecision(b, started).query, DecisionQuery.ChooseAmount(0, 5,
       Some("Commit warbands to the Campaign: 0 to 5, each adds one attack die"),
       "Commit force"))

@@ -321,10 +321,8 @@ final case class DistributeAmount(ref: DecisionOptionRef, amount: Int)
   * `PendingTree.answered`.
   *
   * The answer must be MODEL-safe: answered decisions are persisted on
-  * `CurrentGameState.walkerPending` between commands (the legacy
-  * `PendingProcedure` precedent stores model answers the same way), so the
-  * family and every concrete case live in the model, never importing
-  * gameplay.
+  * `CurrentGameState.walkerPending` between commands, so the family and every
+  * concrete case live in the model, never importing gameplay.
   *
   * SEALED, and this reversed an earlier decision, so the reason matters.
   * The family used to be open so a power could declare its own answer case.

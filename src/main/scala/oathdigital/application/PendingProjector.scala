@@ -4,7 +4,10 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.model._
 import oathdigital.protocol.projection._
 
-private[application] final class PendingProcedureProjector(
+/** The walker decision, its waiting notice, and the phase label. The walker's
+  * parked position is the only pending procedure state.
+  */
+private[application] final class PendingProjector(
     catalog: ExecutableCatalog,
     presentation: GamePresentationProjector,
     walkerDecisions: WalkerDecisionProjector

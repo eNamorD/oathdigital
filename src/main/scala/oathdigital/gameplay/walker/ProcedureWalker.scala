@@ -124,8 +124,8 @@ object ProcedureWalker {
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
     val cursor: Option[Vector[String]] = pending.map(_.at)
     // The stored pending tree is navigation state passed by parameter; a
-    // running walk must not carry it inside CurrentGameState (dual-pending
-    // guard), so clear the stored field before executing deltas.
+    // running walk must not carry it inside CurrentGameState, so clear the
+    // stored field before executing deltas.
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)

@@ -52,7 +52,7 @@ object CampaignFixture {
     }
     val delta = current.map.sites.values.map(s => bandits(s.forces)).sum -
       sites.values.map(s => bandits(s.forces)).sum
-    val ready = base.updateCurrent(_.copy(players = players, pending = None,
+    val ready = base.updateCurrent(_.copy(players = players,
       map = current.map.copy(sites = sites),
       turn = current.turn.copy(phase = Phase.Act))).copy(banks =
       base.banks.copy(warbandSupply = base.banks.warbandSupply.updated(

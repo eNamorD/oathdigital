@@ -22,7 +22,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     walkerDecisions, phasePowers)
   private val legalActions = new LegalActionProjector(catalog, presentation,
     walkerDecisions, phasePowerProjector)
-  private val pendingProcedures = new PendingProcedureProjector(catalog,
+  private val pendingProjector = new PendingProjector(catalog,
     presentation, walkerDecisions)
   private val setupMaterializer = new FirstGameSetupMaterializer(catalog)
 
@@ -104,7 +104,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
     val active = context.active
     val projectedPhasePowers = phasePowerProjector.project(context)
     val legal = legalActions.project(context, projectedPhasePowers)
-    val pending = pendingProcedures.project(context)
+    val pending = pendingProjector.project(context)
     val site = context.activeSite
 
     GameProjection(
@@ -127,8 +127,7 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
         CurrentSiteResourcesProjection(siteId.value, state.tokens.favor,
           state.tokens.secrets))),
       actionSelectionOpen = current.result.isEmpty &&
-        current.turn.phase == Phase.Act && current.pending.isEmpty &&
-        current.walkerPending.isEmpty,
+        current.turn.phase == Phase.Act && current.walkerPending.isEmpty,
       actionFamilies = if (current.result.isEmpty && current.turn.phase == Phase.Act &&
         current.walkerPending.isEmpty)
         Vector("Search", "Travel", "Campaign", "Muster", "Trade", "Forge",

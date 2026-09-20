@@ -108,10 +108,10 @@ private[application] final class LegalActionProjector(
   def project(context: ScopedProjectionContext,
       projectedPhasePowers: Vector[PhasePowerProjection]): LegalProjection = {
     val minor = Option.when(context.viewerIsActive &&
-      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
+      context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty)(minorActionsProjection(context))
     val ordinaryAct = context.viewerIsActive &&
-      context.current.turn.phase == Phase.Act && context.current.pending.isEmpty &&
+      context.current.turn.phase == Phase.Act &&
       context.current.walkerPending.isEmpty
     val travelFacts = if (ordinaryAct) travelCandidates(context)
       else Vector.empty[(SiteId, Int)]
@@ -133,10 +133,8 @@ private[application] final class LegalActionProjector(
     val active = context.active
     if (current.result.nonEmpty) Vector.empty
     else if (current.walkerPending.nonEmpty) walkerControls(context)
-    else current.pending match {
-      case _ if !context.viewerIsActive => Vector.empty
-      case Some(_) => Vector.empty
-      case None => current.turn.phase match {
+    else if (!context.viewerIsActive) Vector.empty
+    else current.turn.phase match {
         case Phase.Act => Vector(
           Option.when(BeginRestProcedure.validateBegin(catalog, Ready(context.ready), active.player).isRight)(
             "beginRest"),
@@ -166,7 +164,6 @@ private[application] final class LegalActionProjector(
         case Phase.Wake =>
           takeableResources(context).map(takeControl) ++
             phasePowers.controls(projectedPhasePowers) :+ "endWake"
-      }
     }
   }
 
