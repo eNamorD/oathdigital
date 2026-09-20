@@ -20,19 +20,20 @@ private[frontend] final case class WalkerChooseManyDraft(
     context: BoardSelectionContext, decisionId: String,
     query: DecisionQueryState, selected: Vector[String])
     extends WalkerSelectionDraft {
-  private def count: Int = query.count.getOrElse(0)
+  private def minimum: Int = query.minimum.getOrElse(0)
+  private def maximum: Int = query.maximum.getOrElse(0)
 
-  /** Adds an unselected option while fewer than `count` are selected, and
-    * removes a selected one; adding past the count changes nothing.
+  /** Adds an unselected option while fewer than `maximum` are selected, and
+    * removes a selected one; adding past the maximum changes nothing.
     */
   def toggle(item: String): WalkerChooseManyDraft =
     if (selected.contains(item)) copy(selected = selected.filterNot(_ == item))
-    else if (selected.size < count &&
+    else if (selected.size < maximum &&
       query.options.exists(WalkerPartitionDraft.itemId(_) == item))
       copy(selected = selected :+ item)
     else this
 
-  def canConfirm: Boolean = selected.size == count
+  def canConfirm: Boolean = selected.size >= minimum && selected.size <= maximum
 
   def command: Option[GameCommand.ResolveWalker] = Option.when(canConfirm)(
     GameCommand.ResolveWalker(decisionId, DecisionAnswerWire.ChooseManyWire(

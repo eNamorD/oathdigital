@@ -108,7 +108,7 @@ final case class PhasePowerProjection(powerId: String,
   * `form` is the query shape: `"choose-one"` (pick exactly one option),
   * `"partition"` (spread every option across the declared sections),
   * `"distribute"` (assign amounts across the declared slots),
-  * `"choose-many"` (pick exactly `count` of the options), or
+  * `"choose-many"` (pick `minimum` to `maximum` of the options), or
   * `"choose-amount"` (pick an integer from `minimum` to `maximum`, with no
   * options). A choose-one
   * query carries no `sections` at all. `slots` and `total` are a distribute
@@ -143,7 +143,6 @@ final case class DecisionQueryProjection(
     confirmLabel: Option[String] = None,
     slots: Vector[DecisionSlotProjection] = Vector.empty,
     total: Option[Int] = None,
-    count: Option[Int] = None,
     minimum: Option[Int] = None,
     maximum: Option[Int] = None)
 

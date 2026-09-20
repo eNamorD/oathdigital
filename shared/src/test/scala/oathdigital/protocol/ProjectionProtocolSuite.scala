@@ -124,7 +124,7 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     def site(id: String) = DecisionOptionProjection("site", id, id)
     val many = DecisionQueryProjection("choose-many",
       Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-      count = Some(2))
+      minimum = Some(2), maximum = Some(2))
     val amount = DecisionQueryProjection("choose-amount", Vector.empty,
       heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
       minimum = Some(3), maximum = Some(6))

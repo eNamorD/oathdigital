@@ -247,12 +247,14 @@ object DecisionQuery {
   final case class ChooseOne(options: Vector[DecisionOption],
       heading: Option[String] = None) extends DecisionQuery
 
-  /** Pick exactly `count` distinct options. Well-formed only when
-    * `1 <= count < options.size`: a count that takes every option is a forced
-    * answer, which no shape may park on.
+  /** Pick between `min` and `max` distinct options, inclusive. Well-formed
+    * only when `1 <= min <= max <= options.size` and not the forced case
+    * `min == max == options.size`, which takes every option and asks nothing.
+    * An exact count is `min == max`.
     */
-  final case class ChooseMany(count: Int, options: Vector[DecisionOption],
-      heading: Option[String] = None) extends DecisionQuery
+  final case class ChooseMany(min: Int, max: Int,
+      options: Vector[DecisionOption], heading: Option[String] = None)
+      extends DecisionQuery
 
   /** Pick an integer from `min` to `max` inclusive. Both labels are required,
     * as on [[Distribute]]: the panel has a confirm step, and a range with no

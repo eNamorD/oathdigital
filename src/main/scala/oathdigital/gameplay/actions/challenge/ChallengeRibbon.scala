@@ -61,7 +61,7 @@ private[challenge] object ChallengeRibbon {
     else Vector(
       // No window on this Decide: the enclosing `ChallengeRibbon` sequence
       // already gathered it, and a second gather would apply a power twice.
-      Decide(siteDecisionId, actor, DecisionQuery.ChooseMany(remaining,
+      Decide(siteDecisionId, actor, DecisionQuery.ChooseMany(remaining, remaining,
         tied.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
         Some(s"Place $remaining secrets on tied least-stocked sites"))),
       BuildOps((_, pending) => chosen(pending).map(_.map(place))))

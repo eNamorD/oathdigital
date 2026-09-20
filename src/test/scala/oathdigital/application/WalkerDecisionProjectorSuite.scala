@@ -146,13 +146,13 @@ class WalkerDecisionProjectorSuite extends munit.FunSuite {
   test("a parked choose-many projects its options and count") {
     val (context, actor) = parked(ActionRef.Recover)
     val siteIds = context.ready.game.current.map.sites.keys.toVector.take(3)
-    val tree = Sequence(Decide("test.many", actor, DecisionQuery.ChooseMany(2,
+    val tree = Sequence(Decide("test.many", actor, DecisionQuery.ChooseMany(2, 2,
       siteIds.map(id => DecisionOption.Site(DecisionOptionRef.Site(id))),
       Some("Choose sites"))))
     val query = projectorFor(tree).project(context).flatMap(_.query)
       .getOrElse(fail("a parked choose-many must project"))
     assertEquals(query.form, "choose-many")
-    assertEquals(query.count, Some(2))
+    assertEquals((query.minimum, query.maximum), (Some(2), Some(2)))
     assertEquals(query.options.map(_.id), siteIds.map(_.value))
     assertEquals(query.heading, Some("Choose sites"))
   }

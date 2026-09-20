@@ -71,14 +71,18 @@ object DecisionQueries {
           "declares duplicate options")
       } yield ()
 
-    case DecisionQuery.ChooseMany(count, options, _) =>
+    case DecisionQuery.ChooseMany(min, max, options, _) =>
       val refs = options.map(_.ref)
       for {
         _ <- require(refs.distinct.size == refs.size, decisionId,
           "declares duplicate options")
-        _ <- require(count >= 1, decisionId, "declares no selection to make")
-        _ <- require(count < refs.size, decisionId,
-          "declares a count that already takes every option, leaving " +
+        _ <- require(min >= 1, decisionId, "declares no selection to make")
+        _ <- require(min <= max, decisionId,
+          s"declares a selection range $min..$max")
+        _ <- require(max <= refs.size, decisionId,
+          "declares a maximum above its option count")
+        _ <- require(!(min == max && max == refs.size), decisionId,
+          "declares a selection that already takes every option, leaving " +
             "nothing to decide")
       } yield ()
 
@@ -190,15 +194,17 @@ object DecisionQueries {
         reject(decisionId, "expects a single-choice answer")
     }
 
-    case DecisionQuery.ChooseMany(count, options, _) => answer match {
+    case DecisionQuery.ChooseMany(min, max, options, _) => answer match {
       case DecisionAnswer.ChooseManyAnswer(selected) =>
         for {
           _ <- require(selected.forall(options.map(_.ref).contains),
             decisionId, "does not offer a selected option")
           _ <- require(selected.distinct.size == selected.size, decisionId,
             "selects an option more than once")
-          _ <- require(selected.size == count, decisionId,
-            s"selects ${selected.size} options instead of $count")
+          _ <- require(selected.size >= min && selected.size <= max,
+            decisionId,
+            if (min == max) s"selects ${selected.size} options instead of $min"
+            else s"selects ${selected.size} options outside $min..$max")
         } yield ()
       case _ =>
         reject(decisionId, "expects a multiple-choice answer")

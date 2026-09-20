@@ -414,21 +414,30 @@ class DecisionQuerySuite extends munit.FunSuite {
   private def siteRef(id: String) = DecisionOptionRef.Site(SiteId(id))
   private val sites = Vector("a", "b", "c").map(id =>
     DecisionOption.Site(siteRef(id)))
-  private def many(count: Int, options: Vector[DecisionOption] = sites) =
-    DecisionQuery.ChooseMany(count, options, Some("Choose sites"))
+  private def many(min: Int, options: Vector[DecisionOption] = sites,
+      max: Option[Int] = None) =
+    DecisionQuery.ChooseMany(min, max.getOrElse(min), options,
+      Some("Choose sites"))
 
-  test("a choose-many query needs a count of at least one and fewer than its options") {
+  test("a choose-many query needs 1 <= min <= max <= options and is not forced") {
     assertEquals(wellFormed(many(1)), Right(()))
     assertEquals(wellFormed(many(2)), Right(()))
+    assertEquals(wellFormed(many(1, max = Some(3))), Right(()))
+    assertEquals(wellFormed(many(2, max = Some(3))), Right(()))
     assertEquals(wellFormed(many(0)),
       invalid("decision recover.choice declares no selection to make"))
+    assertEquals(wellFormed(many(3, max = Some(2))), invalid(
+      "decision recover.choice declares a selection range 3..2"))
+    assertEquals(wellFormed(many(1, max = Some(4))), invalid("decision " +
+      "recover.choice declares a maximum above its option count"))
     assertEquals(wellFormed(many(3)), invalid("decision recover.choice " +
-      "declares a count that already takes every option, leaving nothing to decide"))
+      "declares a selection that already takes every option, leaving " +
+      "nothing to decide"))
     assertEquals(wellFormed(many(1, sites :+ sites.head)),
       invalid("decision recover.choice declares duplicate options"))
   }
 
-  test("a choose-many answer must name exactly count distinct offered options") {
+  test("a choose-many answer names distinct offered options within its range") {
     val q = many(2)
     assertEquals(accepts(q, DecisionAnswer.ChooseManyAnswer(
       Vector(siteRef("a"), siteRef("c")))), Right(()))
@@ -443,6 +452,13 @@ class DecisionQuerySuite extends munit.FunSuite {
       "decision recover.choice does not offer a selected option"))
     assertEquals(accepts(q, DecisionAnswer.ChooseOneAnswer(siteRef("a"))),
       invalid("decision recover.choice expects a multiple-choice answer"))
+    val range = many(1, max = Some(3))
+    assertEquals(accepts(range, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a")))), Right(()))
+    assertEquals(accepts(range, DecisionAnswer.ChooseManyAnswer(
+      Vector(siteRef("a"), siteRef("b"), siteRef("c")))), Right(()))
+    assertEquals(accepts(range, DecisionAnswer.ChooseManyAnswer(Vector.empty)),
+      invalid("decision recover.choice selects 0 options outside 1..3"))
   }
 
   private def amount(min: Int, max: Int, heading: Option[String] = Some("Amount"),

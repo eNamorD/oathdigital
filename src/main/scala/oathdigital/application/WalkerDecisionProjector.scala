@@ -206,9 +206,9 @@ private[application] final class WalkerDecisionProjector(
       case DecisionQuery.ChooseOne(options, heading) =>
         described(options).map(DecisionQueryProjection("choose-one", _,
           heading = heading))
-      case DecisionQuery.ChooseMany(count, options, heading) =>
+      case DecisionQuery.ChooseMany(min, max, options, heading) =>
         described(options).map(DecisionQueryProjection("choose-many", _,
-          heading = heading, count = Some(count)))
+          heading = heading, minimum = Some(min), maximum = Some(max)))
       case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
         Some(DecisionQueryProjection("choose-amount", Vector.empty,
           heading = heading, confirmLabel = Some(confirmLabel),

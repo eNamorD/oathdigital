@@ -8,7 +8,7 @@ class WalkerSelectionPanelsSuite extends munit.FunSuite {
   private def site(id: String) = DecisionOptionState("site", id, s"Site $id")
   private val many = DecisionQueryState("choose-many",
     Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-    count = Some(2))
+    minimum = Some(2), maximum = Some(2))
   private val amount = DecisionQueryState("choose-amount", Vector.empty,
     heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
     minimum = Some(3), maximum = Some(5))

@@ -7,7 +7,7 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
   private def site(id: String) = DecisionOptionState("site", id, id)
   private val many = DecisionQueryState("choose-many",
     Vector(site("a"), site("b"), site("c")), heading = Some("Choose sites"),
-    count = Some(2))
+    minimum = Some(2), maximum = Some(2))
   private val amount = DecisionQueryState("choose-amount", Vector.empty,
     heading = Some("Place more than 2 favor"), confirmLabel = Some("Take banner"),
     minimum = Some(3), maximum = Some(6))
@@ -25,6 +25,15 @@ class WalkerSelectionDraftSuite extends munit.FunSuite {
     assert(two.canConfirm)
     assertEquals(two.toggle("site:b"), two)
     assertEquals(two.toggle("site:a").selected, Vector("site:c"))
+  }
+
+  test("a choose-many range confirms between its minimum and maximum") {
+    val range = many.copy(minimum = Some(1), maximum = Some(3))
+    val Some(draft: WalkerChooseManyDraft) = WalkerSelectionDraft.reconcile(None,
+      context, parked("negotiation.negotiators", range)): @unchecked
+    assert(!draft.canConfirm)
+    assert(draft.toggle("site:a").canConfirm)
+    assert(draft.toggle("site:a").toggle("site:b").toggle("site:c").canConfirm)
   }
 
   test("a choose-many draft submits its selection in declared option order") {
