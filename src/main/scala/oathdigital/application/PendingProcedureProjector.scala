@@ -59,42 +59,42 @@ private[application] final class PendingProcedureProjector(
           campaign.kind.key, campaign.raidTargets.map(_.stableKey))
     }
 
-  private def sourceIdentity(source: PendingProcedure.CampaignPlanSource) = source match {
-    case PendingProcedure.CampaignPlanSource.Adviser(player, id) =>
+  private def sourceIdentity(source: CampaignPlanSource) = source match {
+    case CampaignPlanSource.Adviser(player, id) =>
       ("adviser", Some(player.value), None, Some(id.value))
-    case PendingProcedure.CampaignPlanSource.SiteCard(site, id) =>
+    case CampaignPlanSource.SiteCard(site, id) =>
       ("site-card", None, Some(site.value), Some(id.value))
-    case PendingProcedure.CampaignPlanSource.Relic(player, id) =>
+    case CampaignPlanSource.Relic(player, id) =>
       ("relic", Some(player.value), None, Some(id.value))
-    case PendingProcedure.CampaignPlanSource.Title(player) =>
+    case CampaignPlanSource.Title(player) =>
       ("title", Some(player.value), None, None)
   }
   private def sourceLabel(context: ScopedProjectionContext,
-      source: PendingProcedure.CampaignPlanSource) = source match {
-    case PendingProcedure.CampaignPlanSource.Adviser(_, id) =>
+      source: CampaignPlanSource) = source match {
+    case CampaignPlanSource.Adviser(_, id) =>
       presentation.denizenLabel(id)
-    case PendingProcedure.CampaignPlanSource.SiteCard(_, id) =>
+    case CampaignPlanSource.SiteCard(_, id) =>
       presentation.denizenLabel(id)
-    case PendingProcedure.CampaignPlanSource.Relic(_, id) =>
+    case CampaignPlanSource.Relic(_, id) =>
       presentation.relicLabel(id)
-    case PendingProcedure.CampaignPlanSource.Title(_) =>
+    case CampaignPlanSource.Title(_) =>
       context.current.title.side.toString
   }
-  private def costs(values: Vector[PendingProcedure.CampaignPlanCost]) = (
-    values.collect { case PendingProcedure.CampaignPlanCost.Favor(n) => n }.sum,
-    values.collect { case PendingProcedure.CampaignPlanCost.Secret(n) => n }.sum)
-  private def effects(values: Vector[PendingProcedure.CampaignPlanEffect]) =
+  private def costs(values: Vector[CampaignPlanCost]) = (
+    values.collect { case CampaignPlanCost.Favor(n) => n }.sum,
+    values.collect { case CampaignPlanCost.Secret(n) => n }.sum)
+  private def effects(values: Vector[CampaignPlanEffect]) =
     values.map {
-      case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => s"Add $n attack dice"
-      case PendingProcedure.CampaignPlanEffect.AddDefenseDice(n) => s"Add $n defense dice"
-      case PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls =>
+      case CampaignPlanEffect.AddAttackDice(n) => s"Add $n attack dice"
+      case CampaignPlanEffect.AddDefenseDice(n) => s"Add $n defense dice"
+      case CampaignPlanEffect.IgnoreAttackSkulls =>
         "Ignore attack-roll skull losses"
-      case PendingProcedure.CampaignPlanEffect.RevealSource => "Reveal this card"
-      case PendingProcedure.CampaignPlanEffect.TransformAttackResult(id) =>
+      case CampaignPlanEffect.RevealSource => "Reveal this card"
+      case CampaignPlanEffect.TransformAttackResult(id) =>
         s"Transform attack result ($id)"
-      case PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy(id) =>
+      case CampaignPlanEffect.ReplaceLosingForcePolicy(id) =>
         s"Replace losing-force policy ($id)"
-      case PendingProcedure.CampaignPlanEffect.Suspend(kind) =>
+      case CampaignPlanEffect.Suspend(kind) =>
         s"Requires $kind decision"
     }.mkString("; ")
   private def optionProjection(option: CampaignPlanOption) = {
@@ -104,7 +104,7 @@ private[application] final class PendingProcedureProjector(
       card, option.label, Some(option.handlerId), favor, secret, option.description)
   }
   private def resolutionProjection(context: ScopedProjectionContext,
-      plan: PendingProcedure.CampaignPlanResolution) = {
+      plan: CampaignPlanResolution) = {
     val (kind, player, site, card) = sourceIdentity(plan.source)
     val label = sourceLabel(context, plan.source)
     val (favor, secret) = costs(plan.costs)

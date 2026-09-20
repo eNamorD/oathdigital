@@ -58,31 +58,31 @@ object OathEvent {
   }
   final case class CampaignPlanChosen(
       playerId: PlayerId, decision: DecisionId,
-      source: PendingProcedure.CampaignPlanSource,
-      handlerId: String, side: PendingProcedure.CampaignPlanSide,
-      costs: Vector[PendingProcedure.CampaignPlanCost],
-      effects: Vector[PendingProcedure.CampaignPlanEffect]
+      source: CampaignPlanSource,
+      handlerId: String, side: CampaignPlanSide,
+      costs: Vector[CampaignPlanCost],
+      effects: Vector[CampaignPlanEffect]
   ) extends OathEvent {
     def revealed: Boolean = effects.contains(
-      PendingProcedure.CampaignPlanEffect.RevealSource)
+      CampaignPlanEffect.RevealSource)
     def ignoreAttackSkulls: Boolean = effects.contains(
-      PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls)
+      CampaignPlanEffect.IgnoreAttackSkulls)
     def addedAttackDice: Int = effects.collect {
-      case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => n
+      case CampaignPlanEffect.AddAttackDice(n) => n
     }.sum
   }
   final case class CampaignPlansFinished(
       playerId: PlayerId, decision: DecisionId,
-      side: PendingProcedure.CampaignPlanSide,
-      orderedSources: Vector[PendingProcedure.CampaignPlanSource],
+      side: CampaignPlanSide,
+      orderedSources: Vector[CampaignPlanSource],
       orderedHandlerIds: Vector[String],
-      effects: Vector[PendingProcedure.CampaignPlanEffect],
+      effects: Vector[CampaignPlanEffect],
       attackDice: Vector[AttackDieFace], attack: Int, skullLosses: Int
   ) extends OathEvent {
     def ignoreAttackSkulls: Boolean = effects.contains(
-      PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls)
+      CampaignPlanEffect.IgnoreAttackSkulls)
     def addedAttackDice: Int = effects.collect {
-      case PendingProcedure.CampaignPlanEffect.AddAttackDice(n) => n
+      case CampaignPlanEffect.AddAttackDice(n) => n
     }.sum
   }
   final case class CampaignSacrificed(

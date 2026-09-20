@@ -89,11 +89,11 @@ object GameIntentMapper {
       .map(oathdigital.model.CampaignRaidTarget.Banner(PlayerId(p), _))
       .toRight(GameIntentMappingFailure("$.intent.targets.banner", s"unknown campaign banner '$key'"))
   }
-  private def plan(value: oathdigital.protocol.CampaignPlanSource): Result[PendingProcedure.CampaignPlanSource] = value match {
-    case oathdigital.protocol.CampaignPlanSource.Adviser(p,c) => Right(PendingProcedure.CampaignPlanSource.Adviser(PlayerId(p), DenizenId(c)))
-    case oathdigital.protocol.CampaignPlanSource.SiteCard(s,c) => Right(PendingProcedure.CampaignPlanSource.SiteCard(SiteId(s), DenizenId(c)))
-    case oathdigital.protocol.CampaignPlanSource.Relic(p,c) => Right(PendingProcedure.CampaignPlanSource.Relic(PlayerId(p), RelicId(c)))
-    case oathdigital.protocol.CampaignPlanSource.Title(p) => Right(PendingProcedure.CampaignPlanSource.Title(PlayerId(p)))
+  private def plan(value: oathdigital.protocol.CampaignPlanSource): Result[oathdigital.model.CampaignPlanSource] = value match {
+    case oathdigital.protocol.CampaignPlanSource.Adviser(p,c) => Right(oathdigital.model.CampaignPlanSource.Adviser(PlayerId(p), DenizenId(c)))
+    case oathdigital.protocol.CampaignPlanSource.SiteCard(s,c) => Right(oathdigital.model.CampaignPlanSource.SiteCard(SiteId(s), DenizenId(c)))
+    case oathdigital.protocol.CampaignPlanSource.Relic(p,c) => Right(oathdigital.model.CampaignPlanSource.Relic(PlayerId(p), RelicId(c)))
+    case oathdigital.protocol.CampaignPlanSource.Title(p) => Right(oathdigital.model.CampaignPlanSource.Title(PlayerId(p)))
   }
   private def negotiation(value: oathdigital.protocol.NegotiationTerms): Result[oathdigital.model.NegotiationTerms] = traverse(value.disclosures)(disclosure).map(ds => oathdigital.model.NegotiationTerms(value.transfers.map(v => oathdigital.model.NegotiationTransfer(PlayerId(v.recipientPlayerId), v.favor, v.relicIds.map(RelicId))), ds))
   private def disclosure(value: oathdigital.protocol.NegotiationDisclosure): Result[oathdigital.model.NegotiationDisclosure] = value.information match {

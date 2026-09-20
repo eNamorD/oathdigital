@@ -1156,7 +1156,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val declared = service.handle("campaign-rng-validation", act.nextSequence,
       GameCommand.BeginCampaignConquest(active, SiteId(target), 2)).toOption.get
     val decision = DecisionId(s"campaign-${act.nextSequence}")
-    val invalid = PendingProcedure.CampaignPlanSource.Adviser(active,
+    val invalid = CampaignPlanSource.Adviser(active,
       DenizenId("not-outriders"))
 
     assert(service.handle("campaign-rng-validation", declared.nextSequence,

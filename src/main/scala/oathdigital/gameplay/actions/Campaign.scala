@@ -21,7 +21,7 @@ object CampaignCommand {
   final case class StartRaid(playerId: PlayerId, decision: DecisionId,
       targets: Vector[CampaignRaidTarget], force: Int) extends CampaignCommand
   final case class ChoosePlan(playerId: PlayerId, decision: DecisionId,
-      source: PendingProcedure.CampaignPlanSource) extends CampaignCommand
+      source: CampaignPlanSource) extends CampaignCommand
   final case class FinishPlans(playerId: PlayerId, decision: DecisionId,
       attackDice: Vector[AttackDieFace]) extends CampaignCommand
   final case class Sacrifice(playerId: PlayerId, decision: DecisionId, count: Int,
@@ -93,7 +93,7 @@ object Campaign {
         CampaignRules.validateSelectedPlans(catalog, ready, pending).flatMap { plans =>
           val side = CampaignRules.currentPlanSide(pending)
           val sidePlans = plans.filter(_.side == side)
-          if (side == PendingProcedure.CampaignPlanSide.Attacker &&
+          if (side == CampaignPlanSide.Attacker &&
               pending.defender.isInstanceOf[CampaignDefender.Player])
             transition(catalog, state, Vector(CampaignPlansFinished(player, decision,
               side, sidePlans.map(_.source), sidePlans.map(_.handlerId),
@@ -102,7 +102,7 @@ object Campaign {
                 pending.defender.asInstanceOf[CampaignDefender.Player].playerId, decision))
           else {
             val banditPlans = if (pending.defender == CampaignDefender.Bandits &&
-              side == PendingProcedure.CampaignPlanSide.Attacker)
+              side == CampaignPlanSide.Attacker)
               CampaignRules.deterministicBanditPlans(catalog, ready, pending)
             else Right(Vector.empty)
             banditPlans.flatMap { automatic =>
@@ -117,12 +117,12 @@ object Campaign {
                 val events = if (pending.defender == CampaignDefender.Bandits)
                   Vector(
                     CampaignPlansFinished(player, decision,
-                      PendingProcedure.CampaignPlanSide.Attacker,
+                      CampaignPlanSide.Attacker,
                       sidePlans.map(_.source), sidePlans.map(_.handlerId),
                       sidePlans.flatMap(_.effects),
                       Vector.empty, 0, 0),
                     CampaignPlansFinished(player, decision,
-                      PendingProcedure.CampaignPlanSide.Defender,
+                      CampaignPlanSide.Defender,
                       automatic.map(_.source), automatic.map(_.handlerId),
                       automatic.flatMap(_.effects), dice,
                       attack, skulls))
@@ -201,11 +201,11 @@ object Campaign {
     val banners = c.raidTargets.collect { case CampaignRaidTarget.Banner(_, id) => id }
     val revealedPlans = c.plans.collect {
       case plan if plan.effects.contains(
-          PendingProcedure.CampaignPlanEffect.RevealSource) => plan.source
+          CampaignPlanEffect.RevealSource) => plan.source
     }.toSet
     val advisers = defender.advisers.collect {
       case d: DenizenState if d.orientation == Orientation.FaceDown ||
-          revealedPlans(PendingProcedure.CampaignPlanSource.Adviser(defenderId, d.id)) =>
+          revealedPlans(CampaignPlanSource.Adviser(defenderId, d.id)) =>
         d.id: WorldCardId
       case v: VisionState if v.orientation == Orientation.FaceDown => v.id: WorldCardId
     }
@@ -320,7 +320,7 @@ object Campaign {
         for {
           expected <- CampaignRules.validateSelectedPlans(catalog, ready, c)
           expectedSide = CampaignRules.currentPlanSide(c)
-          automatic <- if (expectedSide == PendingProcedure.CampaignPlanSide.Defender &&
+          automatic <- if (expectedSide == CampaignPlanSide.Defender &&
               c.defender == CampaignDefender.Bandits)
             CampaignRules.deterministicBanditPlans(catalog, ready, c)
             else Right(Vector.empty)
@@ -332,7 +332,7 @@ object Campaign {
             e.side == expectedSide && e.effects == expectedEffects, (),
             CampaignOutcomeMismatch("recorded attacker plan order or result is invalid"))
           allEffects = (expected ++ automatic).flatMap(_.effects)
-          rollsNow = expectedSide == PendingProcedure.CampaignPlanSide.Defender
+          rollsNow = expectedSide == CampaignPlanSide.Defender
           _ <- Either.cond(!rollsNow || e.attackDice.size == c.force +
             CampaignPlanEffects.attackDice(allEffects), (),
             CampaignOutcomeMismatch("attack dice count is invalid"))
@@ -343,7 +343,7 @@ object Campaign {
         } yield Ready(ready.updateCurrent(_.copy(
           pending = Some(c.copy(
             attackerPlansFinished = c.attackerPlansFinished ||
-              e.side == PendingProcedure.CampaignPlanSide.Attacker,
+              e.side == CampaignPlanSide.Attacker,
             defenderPlansFinished = c.defenderPlansFinished || rollsNow,
             plans = c.plans ++ automatic,
             attackDice = e.attackDice, attack = e.attack,
@@ -471,18 +471,18 @@ object Campaign {
   private def applyPlanChosen(catalog: ExecutableCatalog, ready: ReadyGame,
       e: CampaignPlanChosen, c: PendingProcedure.Campaign)
       : Either[OathViolation, ReadyGame] = {
-    val resolution = PendingProcedure.CampaignPlanResolution(e.source,
+    val resolution = CampaignPlanResolution(e.source,
       e.handlerId, e.side, e.costs, e.effects)
     val favorCost = CampaignPlanEffects.favorCost(e.costs)
     val secretCost = CampaignPlanEffects.secretCost(e.costs)
     val sourceCard = e.source match {
-      case PendingProcedure.CampaignPlanSource.Adviser(_, id) => Some(id)
-      case PendingProcedure.CampaignPlanSource.Relic(_, id) => Some(id)
-      case PendingProcedure.CampaignPlanSource.SiteCard(_, id) => Some(id)
-      case PendingProcedure.CampaignPlanSource.Title(_) => None
+      case CampaignPlanSource.Adviser(_, id) => Some(id)
+      case CampaignPlanSource.Relic(_, id) => Some(id)
+      case CampaignPlanSource.SiteCard(_, id) => Some(id)
+      case CampaignPlanSource.Title(_) => None
     }
     e.side match {
-      case PendingProcedure.CampaignPlanSide.Attacker =>
+      case CampaignPlanSide.Attacker =>
         val payments = sourceCard.toVector.flatMap { card =>
           Option.when(favorCost > 0)(CoreMove(
             Piece.Favor(favorCost),
@@ -496,14 +496,14 @@ object Campaign {
         // Reveal flips the facedown source faceup: an adviser moves within its
         // own PlayArea, a site denizen flips in place at its site.
         val reveal = e.source match {
-          case PendingProcedure.CampaignPlanSource.Adviser(player, id)
+          case CampaignPlanSource.Adviser(player, id)
               if CampaignPlanEffects.revealed(e.effects) =>
             Vector(CoreMove(
               Piece.Card(id),
               PositionedLocation(Location.PlayArea(player)),
               PositionedLocation(Location.PlayArea(player)),
               resultingOrientation = Some(Orientation.FaceUp)))
-          case PendingProcedure.CampaignPlanSource.SiteCard(site, id)
+          case CampaignPlanSource.SiteCard(site, id)
               if CampaignPlanEffects.revealed(e.effects) =>
             Vector(Reveal(id, Location.Site(site)))
           case _ => Vector.empty
@@ -513,7 +513,7 @@ object Campaign {
           Right(state.updateCurrent(current => current.copy(
             pending = Some(c.copy(plans = c.plans :+ resolution)))))
         }
-      case PendingProcedure.CampaignPlanSide.Defender =>
+      case CampaignPlanSide.Defender =>
         // Latent: no registered defender plan carries a cost today. When one
         // lands, defender favor must go to the source denizen's suit bank and
         // defender secrets flip facedown in the play area (Q11/Q12).

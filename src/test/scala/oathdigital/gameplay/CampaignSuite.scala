@@ -21,7 +21,7 @@ class CampaignSuite extends munit.FunSuite {
 
   private def startAndChoose(ready: ReadyGame, player: PlayerState, site: SiteId,
       id: DecisionId, force: Int, dice: Vector[AttackDieFace],
-      source: Option[PendingProcedure.CampaignPlanSource] = None): OathTransition = {
+      source: Option[CampaignPlanSource] = None): OathTransition = {
     val started = rules.handle(Ready(ready), CampaignCommand.Start(
       player.player, id, site, force)).toOption.get
     val selected = source.fold(started)(value => rules.handle(started.state,
@@ -268,10 +268,10 @@ class CampaignSuite extends munit.FunSuite {
   }
 
   test("unimplemented Campaign plan extension effects fail explicitly") {
-    val effects = Vector[PendingProcedure.CampaignPlanEffect](
-      PendingProcedure.CampaignPlanEffect.TransformAttackResult("future-transform"),
-      PendingProcedure.CampaignPlanEffect.ReplaceLosingForcePolicy("future-policy"),
-      PendingProcedure.CampaignPlanEffect.Suspend("future-choice"))
+    val effects = Vector[CampaignPlanEffect](
+      CampaignPlanEffect.TransformAttackResult("future-transform"),
+      CampaignPlanEffect.ReplaceLosingForcePolicy("future-policy"),
+      CampaignPlanEffect.Suspend("future-choice"))
     effects.foreach(effect => assert(
       CampaignPlanEffects.validateExecutable(Vector(effect)).isLeft, effect.toString))
   }
@@ -429,9 +429,9 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, site) = campaignReady
     val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
-    val brassSource = PendingProcedure.CampaignPlanSource.Relic(player.player,
+    val brassSource = CampaignPlanSource.Relic(player.player,
       RelicId(brass.id.value))
-    val outridersSource = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+    val outridersSource = CampaignPlanSource.Adviser(player.player,
       DenizenId(outriders.id.value))
     val actor = player.copy(board = player.board.copy(faceUpSecrets = 1),
       advisers = Vector(DenizenState(DenizenId(outriders.id.value),
@@ -441,7 +441,7 @@ class CampaignSuite extends munit.FunSuite {
     val state = withPlanActor(ready, actor)
     val skulls = Vector.fill(4)(AttackDieFace.TwoSwordsSkull)
 
-    def finish(id: String, plans: Vector[PendingProcedure.CampaignPlanSource]) = {
+    def finish(id: String, plans: Vector[CampaignPlanSource]) = {
       val declared = rules.handle(Ready(state), CampaignCommand.Start(player.player,
         DecisionId(id), site, 0)).toOption.get
       val selected = plans.foldLeft(declared) { (transition, source) =>
@@ -594,7 +594,7 @@ class CampaignSuite extends munit.FunSuite {
   test("facedown owned Outriders is offered by exact source and ignores recorded skulls") {
     val (ready, player, site) = campaignReady
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
-    val source = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+    val source = CampaignPlanSource.Adviser(player.player,
       DenizenId(outriders.id.value))
     val state = withPlanActor(ready,
       player.copy(advisers = Vector(DenizenState(DenizenId(outriders.id.value),
@@ -636,7 +636,7 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, site) = campaignReady
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
     val outridersId = DenizenId(outriders.id.value)
-    val source = PendingProcedure.CampaignPlanSource.SiteCard(site, outridersId)
+    val source = CampaignPlanSource.SiteCard(site, outridersId)
     // The facedown denizen sits at the campaign origin; remove it from the
     // world deck so the fixture stays CardIndex-unique under operation
     // preflight (a card may not be duplicated across containers).
@@ -670,16 +670,16 @@ class CampaignSuite extends munit.FunSuite {
     val (ready, player, site) = campaignReady
     val declared = rules.handle(Ready(ready), CampaignCommand.Start(player.player,
       DecisionId("campaign-stale-plan"), site, 1)).toOption.get
-    val fake = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+    val fake = CampaignPlanSource.Adviser(player.player,
       DenizenId("not-outriders"))
     val error = rules.handle(declared.state, CampaignCommand.ChoosePlan(player.player,
       DecisionId("campaign-stale-plan"), fake))
       .left.toOption.get
     assert(error.isInstanceOf[CampaignPlanUnavailable])
     val tampered = CampaignPlansFinished(player.player,
-      DecisionId("campaign-stale-plan"), PendingProcedure.CampaignPlanSide.Attacker,
+      DecisionId("campaign-stale-plan"), CampaignPlanSide.Attacker,
       Vector.empty, Vector.empty,
-      Vector(PendingProcedure.CampaignPlanEffect.IgnoreAttackSkulls),
+      Vector(CampaignPlanEffect.IgnoreAttackSkulls),
       Vector(AttackDieFace.TwoSwordsSkull),
       attack = 2, skullLosses = 0)
     assert(rules.evolve(declared.state, tampered).left.toOption.get
@@ -691,8 +691,8 @@ class CampaignSuite extends munit.FunSuite {
     val brass = catalog.relics.find(_.handlers.contains("relic.brass-army.campaign")).get
     val outriders = catalog.denizens.find(_.handlers.contains("denizen.outriders")).get
     val brassId = RelicId(brass.id.value)
-    val brassSource = PendingProcedure.CampaignPlanSource.Relic(player.player, brassId)
-    val outridersSource = PendingProcedure.CampaignPlanSource.Adviser(player.player,
+    val brassSource = CampaignPlanSource.Relic(player.player, brassId)
+    val outridersSource = CampaignPlanSource.Adviser(player.player,
       DenizenId(outriders.id.value))
     val actor = player.copy(
       board = player.board.copy(faceUpSecrets = 1),
@@ -727,7 +727,7 @@ class CampaignSuite extends munit.FunSuite {
     assertEquals(after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign].attack, 6)
 
     assert(rules.evolve(declared.state, event.copy(effects = Vector(
-      PendingProcedure.CampaignPlanEffect.AddAttackDice(3)))).isLeft)
+      CampaignPlanEffect.AddAttackDice(3)))).isLeft)
     val finishEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
     assert(rules.evolve(selected.state, finishEvent.copy(
       attackDice = dice.dropRight(1), attack = 5)).isLeft)
@@ -763,9 +763,9 @@ class CampaignSuite extends munit.FunSuite {
       _.handlers.contains("relic.brass-army.campaign")).get.id.value)
     val outridersId = DenizenId(catalog.denizens.find(
       _.handlers.contains("denizen.outriders")).get.id.value)
-    val outriders = PendingProcedure.CampaignPlanSource.Adviser(
+    val outriders = CampaignPlanSource.Adviser(
       player.player, outridersId)
-    val brass = PendingProcedure.CampaignPlanSource.Relic(player.player, brassId)
+    val brass = CampaignPlanSource.Relic(player.player, brassId)
     val actor = player.copy(board = player.board.copy(faceUpSecrets = 1),
       advisers = Vector(DenizenState(outridersId, Orientation.FaceDown, Tokens.empty)),
       relics = Vector(RelicState(brassId, Orientation.FaceUp, Tokens.empty)))
@@ -884,12 +884,12 @@ class CampaignSuite extends munit.FunSuite {
     val finished = rules.handle(started.state, CampaignCommand.FinishPlans(
       player.player, decision, Vector(AttackDieFace.HollowSword))).toOption.get
     val defenderEvent = finished.events.last.asInstanceOf[CampaignPlansFinished]
-    assertEquals(defenderEvent.side, PendingProcedure.CampaignPlanSide.Defender)
+    assertEquals(defenderEvent.side, CampaignPlanSide.Defender)
     assertEquals(defenderEvent.orderedSources,
-      Vector(PendingProcedure.CampaignPlanSource.SiteCard(site,
+      Vector(CampaignPlanSource.SiteCard(site,
         DenizenId(watchdog.id.value))))
     assertEquals(defenderEvent.effects,
-      Vector(PendingProcedure.CampaignPlanEffect.AddDefenseDice(1)))
+      Vector(CampaignPlanEffect.AddDefenseDice(1)))
     val Ready(after) = finished.state: @unchecked
     val pending = after.game.current.pending.get.asInstanceOf[PendingProcedure.Campaign]
     assertEquals(CampaignRules.defensePlanDice(pending), 1)
@@ -1213,7 +1213,7 @@ class CampaignSuite extends munit.FunSuite {
       assertEquals(defenderView.decisionOwnerPlayerId, Some(defender.player.value))
       assertEquals(defenderView.planChoices.map(_.mechanicalResult),
         Vector(s"Add $bonus defense ${if (bonus == 1) "die" else "dice"}"))
-      val titleSource = PendingProcedure.CampaignPlanSource.Title(defender.player)
+      val titleSource = CampaignPlanSource.Title(defender.player)
       assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
         attacker.player, DecisionId(s"title-$side"), titleSource)).isLeft)
       assert(rules.handle(attackerDone.state, CampaignCommand.ChoosePlan(
@@ -1222,7 +1222,7 @@ class CampaignSuite extends munit.FunSuite {
         defender.player, DecisionId(s"title-$side"), titleSource)).toOption.get
       val titleEvent = chosen.events.head.asInstanceOf[CampaignPlanChosen]
       assert(rules.evolve(attackerDone.state, titleEvent.copy(effects = Vector(
-        PendingProcedure.CampaignPlanEffect.AddDefenseDice(bonus + 1)))).isLeft)
+        CampaignPlanEffect.AddDefenseDice(bonus + 1)))).isLeft)
       val resolved = rules.handle(chosen.state, CampaignCommand.FinishPlans(
         defender.player, DecisionId(s"title-$side"),
         Vector.fill(4)(AttackDieFace.OneSword))).toOption.get

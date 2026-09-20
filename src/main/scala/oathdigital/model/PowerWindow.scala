@@ -76,6 +76,47 @@ object PowerWindow {
   case object CampaignAfterOutcome extends CampaignWindow {
     val key = "campaign.after-outcome"
   }
+  case object CampaignCost extends CampaignWindow { val key = "campaign.cost" }
+  case object CampaignKindSelection extends CampaignWindow {
+    val key = "campaign.kind-selection"
+  }
+  case object CampaignDefenderSelection extends CampaignWindow {
+    val key = "campaign.defender-selection"
+  }
+  case object CampaignTargetSelection extends CampaignWindow {
+    val key = "campaign.target-selection"
+  }
+  case object CampaignForceSelection extends CampaignWindow {
+    val key = "campaign.force-selection"
+  }
+  case object CampaignGatherPools extends CampaignWindow {
+    val key = "campaign.gather-pools"
+  }
+  case object CampaignAttackRoll extends CampaignWindow {
+    val key = "campaign.attack-roll"
+  }
+  case object CampaignAttackResult extends CampaignWindow {
+    val key = "campaign.attack-result"
+  }
+  case object CampaignSacrificeSelection extends CampaignWindow {
+    val key = "campaign.sacrifice-selection"
+  }
+  case object CampaignDefenseRoll extends CampaignWindow {
+    val key = "campaign.defense-roll"
+  }
+  case object CampaignDefenseResult extends CampaignWindow {
+    val key = "campaign.defense-result"
+  }
+  case object CampaignLosses extends CampaignWindow { val key = "campaign.losses" }
+  case object CampaignPlacement extends CampaignWindow {
+    val key = "campaign.placement"
+  }
+  case object CampaignRaidTransfer extends CampaignWindow {
+    val key = "campaign.raid-transfer"
+  }
+  case object CampaignRaidRelocation extends CampaignWindow {
+    val key = "campaign.raid-relocation"
+  }
   case object MusterCost extends MusterWindow { val key = "muster.cost" }
   case object TradeCost extends TradeWindow { val key = "trade.cost" }
   case object MusterSourceSelection extends MusterWindow {

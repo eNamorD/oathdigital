@@ -42,7 +42,7 @@ object GameCommand {
       new BeginCampaignConquest(playerId, Vector(targetSiteId), attackDiceCount)
   }
   final case class ChooseCampaignPlan(playerId: PlayerId, decision: DecisionId,
-      source: PendingProcedure.CampaignPlanSource) extends GameCommand
+      source: CampaignPlanSource) extends GameCommand
   final case class FinishCampaignPlans(playerId: PlayerId, decision: DecisionId)
       extends GameCommand
   final case class ChooseCampaignSacrifice(playerId: PlayerId, decision: DecisionId,

@@ -17,14 +17,14 @@ object CampaignRules {
   }
 
   def currentPlanSide(campaign: PendingProcedure.Campaign)
-      : PendingProcedure.CampaignPlanSide =
-    if (!campaign.attackerPlansFinished) PendingProcedure.CampaignPlanSide.Attacker
-    else PendingProcedure.CampaignPlanSide.Defender
+      : CampaignPlanSide =
+    if (!campaign.attackerPlansFinished) CampaignPlanSide.Attacker
+    else CampaignPlanSide.Defender
 
   def planDecisionOwner(campaign: PendingProcedure.Campaign): PlayerId =
     currentPlanSide(campaign) match {
-      case PendingProcedure.CampaignPlanSide.Attacker => campaign.actor
-      case PendingProcedure.CampaignPlanSide.Defender => campaign.defender match {
+      case CampaignPlanSide.Attacker => campaign.actor
+      case CampaignPlanSide.Defender => campaign.defender match {
         case CampaignDefender.Player(player) => player
         case CampaignDefender.Bandits => campaign.actor
       }
@@ -165,7 +165,7 @@ object CampaignRules {
 
   def legalPlanChoices(catalog: ExecutableCatalog, ready: ReadyGame,
       campaign: PendingProcedure.Campaign)
-      : Vector[PendingProcedure.CampaignPlanSource] = {
+      : Vector[CampaignPlanSource] = {
     if (campaign.defenderPlansFinished) Vector.empty
     else planOptions(catalog, ready, campaign).map(_.source)
   }
@@ -177,9 +177,9 @@ object CampaignRules {
     val activations = campaignOrigin(ready, campaign).toOption.toVector.flatMap(
       accessibleRules(catalog, ready, owner, _)).collect {
       case DiscoveredCampaignRule(a, HandlerSupport.Executable(window), _)
-          if (side == PendingProcedure.CampaignPlanSide.Attacker &&
+          if (side == CampaignPlanSide.Attacker &&
               window == CampaignTimingWindow.AttackerBattlePlans) ||
-             (side == PendingProcedure.CampaignPlanSide.Defender &&
+             (side == CampaignPlanSide.Defender &&
               window == CampaignTimingWindow.DefenderBattlePlansAndRoll) => a
     }
     CampaignPlanRegistry.options(CampaignPlanContext(catalog, ready, campaign,
@@ -188,20 +188,20 @@ object CampaignRules {
 
   def deterministicBanditPlans(catalog: ExecutableCatalog, ready: ReadyGame,
       campaign: PendingProcedure.Campaign)
-      : Either[OathViolation, Vector[PendingProcedure.CampaignPlanResolution]] = {
+      : Either[OathViolation, Vector[CampaignPlanResolution]] = {
     val activations = banditRules(catalog, ready).collect {
       case DiscoveredCampaignRule(activation, HandlerSupport.Executable(
           CampaignTimingWindow.DefenderBattlePlansAndRoll), facedown)
           if !facedown => activation
     }
     CampaignPlanRegistry.deterministicBandit(CampaignPlanContext(catalog, ready,
-      campaign, PendingProcedure.CampaignPlanSide.Defender, campaign.actor), activations)
+      campaign, CampaignPlanSide.Defender, campaign.actor), activations)
   }
 
   def validatePlanChoice(catalog: ExecutableCatalog, ready: ReadyGame,
       campaign: PendingProcedure.Campaign,
-      selected: PendingProcedure.CampaignPlanSource)
-      : Either[OathViolation, PendingProcedure.CampaignPlanResolution] = {
+      selected: CampaignPlanSource)
+      : Either[OathViolation, CampaignPlanResolution] = {
     if (campaign.plans.exists(_.source == selected)) Left(CampaignPlanUnavailable(
       s"Campaign plan source '${selected.stableKey}' was already used"))
     else {
@@ -217,16 +217,16 @@ object CampaignRules {
 
   def validateSelectedPlans(catalog: ExecutableCatalog, ready: ReadyGame,
       campaign: PendingProcedure.Campaign)
-      : Either[OathViolation, Vector[PendingProcedure.CampaignPlanResolution]] = {
+      : Either[OathViolation, Vector[CampaignPlanResolution]] = {
     val sources = campaign.plans.map(_.source)
     if (sources.distinct.size != sources.size) Left(CampaignOutcomeMismatch(
       "Campaign plan sources must be distinct"))
     else campaign.plans.foldLeft[
-      Either[OathViolation, Vector[PendingProcedure.CampaignPlanResolution]]](
+      Either[OathViolation, Vector[CampaignPlanResolution]]](
       Right(Vector.empty)) { (result, plan) => result.flatMap { accepted =>
         val owner = plan.side match {
-          case PendingProcedure.CampaignPlanSide.Attacker => campaign.actor
-          case PendingProcedure.CampaignPlanSide.Defender => campaign.defender match {
+          case CampaignPlanSide.Attacker => campaign.actor
+          case CampaignPlanSide.Defender => campaign.defender match {
             case CampaignDefender.Player(player) => player
             case CampaignDefender.Bandits => campaign.actor
           }

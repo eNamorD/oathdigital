@@ -86,7 +86,7 @@ final case class AuthorizedPlayer private (
   def chooseCampaignSacrifice(decision: DecisionId, count: Int): GameCommand =
     GameCommand.ChooseCampaignSacrifice(access.playerId, decision, count)
   def chooseCampaignPlan(decision: DecisionId,
-      source: PendingProcedure.CampaignPlanSource): GameCommand =
+      source: CampaignPlanSource): GameCommand =
     GameCommand.ChooseCampaignPlan(access.playerId, decision, source)
   def finishCampaignPlans(decision: DecisionId): GameCommand =
     GameCommand.FinishCampaignPlans(access.playerId, decision)

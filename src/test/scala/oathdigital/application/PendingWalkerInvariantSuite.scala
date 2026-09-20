@@ -36,7 +36,7 @@ class PendingWalkerInvariantSuite extends munit.FunSuite {
     GameCommand.BeginCampaignRaid(actor,
       Vector(CampaignRaidTarget.Pawn(PlayerId("p2"))), 1),
     GameCommand.ChooseCampaignPlan(actor, decision,
-      PendingProcedure.CampaignPlanSource.Adviser(actor, denizen)),
+      CampaignPlanSource.Adviser(actor, denizen)),
     GameCommand.FinishCampaignPlans(actor, decision),
     GameCommand.ChooseCampaignSacrifice(actor, decision, 1),
     GameCommand.PlaceCampaignForce(actor, decision,
