@@ -471,4 +471,40 @@ class CampaignProcedureSuite extends munit.FunSuite {
         DistributeAmount(DecisionOptionRef.Site(b.origin), 4),
         DistributeAmount(DecisionOptionRef.Site(b.extras.head), 2)))).isLeft)
   }
+
+  test("a facedown site Outriders is revealed in place when chosen") {
+    val outriders = cardWith("denizen.outriders")
+    val base = board()
+    val facedown = base.copy(ready = base.ready.updateCurrent(current => current.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(_ == DenizenId(outriders))),
+      map = current.map.copy(sites = current.map.sites.updated(base.origin,
+        current.map.sites(base.origin).copy(denizens = Vector(DenizenState(
+          DenizenId(outriders), Orientation.FaceDown, Tokens.empty))))))))
+    val plans = atPlans(facedown)
+    val done = answer(plans.state, facedown.actor, CampaignIds.attackerPlan,
+      planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
+    assert(ops(done.events).contains(Reveal(DenizenId(outriders),
+      Location.Site(facedown.origin))))
+    assertEquals(ready(done.state).game.current.map.sites(facedown.origin)
+      .denizens.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
+  }
+
+  test("a victory with nothing placed refills the bandits at the action boundary") {
+    val b = board()
+    val game = rules(CampaignFixture.dice(sword(3), blanks(b)))
+    val start = committed(game, b, 3)
+    val sacrificed = game.resolveWalker(start.state, b.actor, CampaignIds.sacrifice,
+      ChooseAmountAnswer(0)).toOption.get
+    val done = game.resolveWalker(sacrificed.state, b.actor, CampaignIds.placement,
+      ChooseAmountAnswer(0)).toOption.get
+    assert(done.events.exists(_.isInstanceOf[OathEvent.BanditsRefilled]))
+    val capacity = catalog.sites.find(_.id == b.origin).get.capacity
+    assertEquals(ready(done.state).game.current.map.sites(b.origin).forces,
+      SiteForces.Occupied(ForceKind.Bandit, capacity))
+    val refill = done.events.collectFirst {
+      case event: OathEvent.BanditsRefilled => event }.get
+    assert(game.evolve(sacrificed.state, refill.copy(sites =
+      Vector(b.origin -> 99))).isLeft)
+  }
 }

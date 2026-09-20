@@ -340,4 +340,22 @@ class StateBasedEvaluationSuite extends munit.FunSuite {
     assertEquals(rules.startWalker(Ready(wake), PhaseTransitionRef.EndWake,
       active), Left(OathViolation.GameEnded))
   }
+
+  test("state-based operation policy permits only bandit-bank refills") {
+    val b = CampaignFixture.board()
+    val ready = b.ready
+    val site = b.origin
+    val empty = ready.updateCurrent(_.copy(map = ready.game.current.map.copy(sites =
+        ready.game.current.map.sites.updated(site,
+          ready.game.current.map.sites(site).copy(forces = SiteForces.Empty)))))
+    val refill = Move(
+      Piece.Warbands(ForceKind.Bandit, 1),
+      PositionedLocation(Location.WarbandBank(ForceKind.Bandit)),
+      PositionedLocation(Location.Site(site)))
+    val wrongKind = refill.copy(piece = Piece.Warbands(
+      ForceKind.Exile(ready.game.current.players.head.lineage), 1))
+
+    assert(StateBasedOperationPolicy.validate(empty, refill).isRight)
+    assert(StateBasedOperationPolicy.validate(empty, wrongKind).isLeft)
+  }
 }
