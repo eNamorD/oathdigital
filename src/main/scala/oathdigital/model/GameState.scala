@@ -173,7 +173,10 @@ final case class CurrentGameState(
     // site -- cannot be re-derived from state. Restored by replay from the
     // `WalkerParked` fact and cleared by `WalkerCompleted` alongside the other
     // walker-owned scratch fields.
-    walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty
+    walkerStartArgs: Vector[DecisionOptionRef] = Vector.empty,
+    // The public result of the last Campaign fought. Not walker scratch:
+    // `WalkerCompleted` leaves it, and the next Campaign replaces it.
+    lastCampaignResult: Option[CampaignResult] = None
 )
 
 final case class OathGame(

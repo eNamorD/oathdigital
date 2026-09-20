@@ -318,6 +318,8 @@ private[operations] object OperationStateMutation {
         result.flatMap(enterPhase(_, phase))
       case (result, SetOathkeeper(holder)) =>
         result.flatMap(setOathkeeper(_, holder))
+      case (result, RecordCampaignResult(fact)) =>
+        result.map(_.updateCurrent(_.copy(lastCampaignResult = Some(fact))))
       case (result, BeginTurn(player, phase)) =>
         result.flatMap(beginTurn(_, player, phase))
       case (result, _) => result

@@ -641,6 +641,12 @@ class GameEventWireSuite extends munit.FunSuite {
       Roll(PoolKey("recover"), DiceSpec(DiceKind.Defense)),
       ModifyRollOutcome(PoolKey("recover"), Some(1), Some(2)),
       ClearDicePool(PoolKey("recover")),
+      RecordCampaignResult(CampaignResult(player, CampaignKind.Conquest,
+        CampaignDefender.Bandits, Vector(site), Vector.empty, force = 2,
+        attackFaces = Vector(AttackDieFace.OneSword), attackScore = 1,
+        skullLosses = 0, sacrificed = 0,
+        defenseFaces = Vector(DefenseDieFace.Blank), defenseScore = 2,
+        victorious = false)),
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None))
 

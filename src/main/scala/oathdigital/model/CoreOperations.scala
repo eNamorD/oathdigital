@@ -509,6 +509,12 @@ final case class EnterPhase(phase: Phase) extends PrimitiveOperation
   */
 final case class SetOathkeeper(holder: Option[PlayerId]) extends PrimitiveOperation
 
+/** Records the result of the Campaign just fought as the public
+  * `lastCampaignResult`, replacing the previous one.
+  */
+final case class RecordCampaignResult(result: CampaignResult)
+    extends PrimitiveOperation
+
 /** Hands the turn to `player` in `phase`, clearing every power use recorded
   * against the turn that ended.
   *

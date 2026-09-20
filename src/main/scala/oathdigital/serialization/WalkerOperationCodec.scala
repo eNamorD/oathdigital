@@ -27,7 +27,7 @@ import oathdigital.model._
   * compile here ("match may not be exhaustive") until it is given a real
   * arm.
   */
-private[serialization] trait WalkerOperationCodec {
+private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     this: GameEventJsonSupport =>
   import WireError._
 
@@ -56,6 +56,9 @@ private[serialization] trait WalkerOperationCodec {
         }) :+ ("powerId" -> ujson.Str(id.value)))
       case EnterPhase(phase) => ujson.Obj("kind" -> "enter-phase",
         "phase" -> phase.key)
+      case RecordCampaignResult(result) => ujson.Obj(
+        "kind" -> "record-campaign-result",
+        "result" -> encodeCampaignResult(result))
       case SetOathkeeper(holder) => ujson.Obj("kind" -> "set-oathkeeper",
         "holderPlayerId" -> holder.fold[ujson.Value](ujson.Null)(p =>
           ujson.Str(p.value)))
@@ -241,6 +244,9 @@ private[serialization] trait WalkerOperationCodec {
         Phase.fromKey(key).toRight(
           InvalidValue(s"$path.phase", s"unknown phase '$key'"))
           .map(EnterPhase.apply)
+      case "record-campaign-result" =>
+        decodeCampaignResult(value("result"), s"$path.result")
+          .map(RecordCampaignResult(_))
       case "set-oathkeeper" => Right(SetOathkeeper(value("holderPlayerId") match {
         case ujson.Null => None
         case other => Some(PlayerId(other.str))

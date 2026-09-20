@@ -66,3 +66,30 @@ final case class CampaignPlanResolution(
     costs: Vector[CampaignPlanCost],
     effects: Vector[CampaignPlanEffect]
 )
+
+/** The public, durable record of one Campaign's battle: written by
+  * `RecordCampaignResult` when the outcome is known, projected to every viewer,
+  * and replaced by the next Campaign. Everything in it is public: dice are
+  * public, and a Raid's targets are a pawn, faceup relics and banners.
+  *
+  * `attackScore` is the attack after the skull cap and any Outriders, before
+  * the sacrifice; `defenseScore` is the defense dice score plus the defender's
+  * board force. The attacker prevails when `attackTotal > defenseScore`.
+  */
+final case class CampaignResult(
+    attacker: PlayerId,
+    kind: CampaignKind,
+    defender: CampaignDefender,
+    targetSites: Vector[SiteId],
+    raidTargets: Vector[CampaignRaidTarget],
+    force: Int,
+    attackFaces: Vector[AttackDieFace],
+    attackScore: Int,
+    skullLosses: Int,
+    sacrificed: Int,
+    defenseFaces: Vector[DefenseDieFace],
+    defenseScore: Int,
+    victorious: Boolean
+) {
+  def attackTotal: Int = attackScore + sacrificed
+}
