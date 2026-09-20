@@ -1,6 +1,13 @@
 # Rest on the Walker and Generic Phase Powers Design
 
 > Status: implemented on feat/rest-walker; see docs/superpowers/plans/2026-09-13-rest-walker-and-phase-powers.md.
+>
+> Later change ([powers batch 1, slice 0](2026-09-20-powers-design.md)): a
+> `PhasePower` has a `cost` placed onto its source card, and sources may be
+> edifices (either face) and banners (`PowerSourceRef.Banner`). Access follows
+> `PowerAccess`: cards at your site or a site you rule, and your play area.
+> ACTION powers no longer enter `usedPowers`; WAKE and REST keep the
+> once-per-turn limit.
 
 ## Goal
 

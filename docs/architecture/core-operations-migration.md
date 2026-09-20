@@ -319,7 +319,13 @@ Supply-capped "as much as possible" effects are resolved at plan time with
 Payments are typed with `Cost(favor, secret, favorBurnt, secretBurnt)` and
 applied by the single `PayCost(player, placedAt, cost)` root (zero-cost
 `Cost.free` is an inert no-op); `Costs.plan` is the pre-flight
-affordability/placement validator. Supply spending in executor-backed
+affordability/placement validator. A placed cost goes onto an empty card only
+(`PayCostRules`, enforced by the validator), unless `intoOccupied` is set, as
+battle plans do. `matchingBank` names the paying card's suit bank. When the
+payer is not the active player the pipeline settles the payment at once
+(`PayCostSettlement`): placed favor goes to `matchingBank` and secrets flip
+facedown, so nothing rests on the card. The recorded operation stays the
+requested one, so replay derives the same settlement. Supply spending in executor-backed
 operations is an `AdjustSupply(player, amount)` operation enforced exactly
 against the track; procedural phase/module supply writes (Challenge, Forge,
 Recover, Campaign, and Rest's refresh-to-value) remain module-authoritative
