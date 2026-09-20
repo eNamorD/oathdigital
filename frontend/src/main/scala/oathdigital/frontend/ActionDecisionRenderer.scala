@@ -260,6 +260,7 @@ private[frontend] object ActionDecisionRenderer {
        EconomyControls.render(value, canControl, groups, submitCommand)
        BannerControls.render(value, canControl, groups, submitCommand)
        NegotiationControls.render(value, canControl, groups, submitCommand)
+       CampaignControls.render(value, canControl, groups, submitCommand)
        value.minorActions.foreach { minor =>
          if (facedownAdviserLaunchCount(minor) == 1) {
            val play = button("Play facedown adviser", "minor-adviser-launch")
@@ -338,6 +339,7 @@ private[frontend] object ActionDecisionRenderer {
    NegotiationDealPanel.render(value, presentation, canControl, panel, ui)
    WalkerSelectionPanels.render(value, presentation, canControl, panel, ui)
    WalkerPanelSupport.renderWaitingNotice(value, panel)
+   CampaignResultPanel.render(value, panel)
    value.campaign.filter(_ => presentation.showGameplayControls).foreach { campaign =>
      panel.appendChild(text("h2", "", "Campaign"))
      if (!campaign.plansFinished) {

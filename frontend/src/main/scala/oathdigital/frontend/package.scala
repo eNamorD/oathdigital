@@ -1,6 +1,8 @@
 package oathdigital
 
 package object frontend {
+  type CampaignResultState = protocol.projection.CampaignResultProjection
+  val CampaignResultState = protocol.projection.CampaignResultProjection
   type GameProjection = protocol.projection.GameProjection
   val GameProjection = protocol.projection.GameProjection
   type GamePlayer = protocol.projection.SetupPlayerProjection

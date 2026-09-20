@@ -308,7 +308,7 @@ private[frontend] object ServerUiSupport {
   private[frontend] def actionCategory(kind: String): String = kind match {
     case "search" | "travel" | "campaign-conquest" | "campaign-raid" |
         "muster" | "trade-favor" | "trade-secret" | "recover" | "forge" |
-        "challenge" => "major"
+        "challenge" | "campaign" => "major"
     case "negotiation" |
         "place-banner-resource" | "facedown-adviser" | "peek-site-relics" |
         "reveal-owned-relic" | "move-warbands" => "minor"
