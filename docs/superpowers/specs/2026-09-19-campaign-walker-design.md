@@ -134,7 +134,7 @@ Each shape change needs, with a round-trip test: its `DecisionQueries` validatio
   - the check is per candidate site and never reads the other targets, so selecting the Pass changes nothing for other sites (the legacy `passAllowsTarget` already behaved this way);
   - the Pass site itself stays targetable, because the rule says "other sites";
   - it affects only Conquest targets, because Raid targets a co-located pawn and its relics and banners, never a site;
-  - "consent of the Pass's ruler" is approximated as legacy did: the actor rules the Pass. Real consent, a Negotiation term, is deferred.
+  - "consent of the Pass's ruler" is approximated as legacy did: the actor rules the Pass. Real consent is deferred: a consent system in general is its own mechanism, separate from Negotiation.
 - **Plan handlers** (Outriders, Brass Army, the title plan, Watchdog) stay in `CampaignPlanRegistry`, as above.
 - Restrictions remain the central "cannot" channel for power-derived limits. Where a decision would offer a choice a power forbids, the design is changed so it does not (option restrictions), rather than adding a second check.
 
@@ -192,7 +192,7 @@ Also test:
 ## Deferred, and recorded
 
 - **All rolls should eventually become automatic.** Recover stays `Parked` in this slice because removing its roll button and `RollWalker` changes a shipped interaction and a wire command. That is its own slice.
-- Real consent for the Pass, as a Negotiation term.
+- Real consent for the Pass, and a consent system in general, separate from Negotiation.
 - The first-game rule audit behind the dropped gates.
 - Converting the plan handlers into walker power contributions.
 - Further optional attacker, defender and deterministic bandit plan families; non-deterministic sacrifice and loss choices where several legal assignments matter; and the additional Raid, victory, defeat and `At End` handlers. The timing windows exist structurally, and no behaviour is inferred for them.
