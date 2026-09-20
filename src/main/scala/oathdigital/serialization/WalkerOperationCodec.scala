@@ -151,7 +151,7 @@ private[serialization] trait WalkerOperationCodec {
         "playerId" -> player.value, "from" -> encodeLocation(from),
         "to" -> encodeLocation(to),
         "sourcePosition" -> encodeStackPosition(sourcePosition))
-      case Roll(pool, dice) => ujson.Obj("kind" -> "roll",
+      case Roll(pool, dice, _, _) => ujson.Obj("kind" -> "roll",
         "pool" -> pool.value, "die" -> encodeDiceKind(dice.die))
       case ModifyRollOutcome(pool, skulls, score) => ujson.Obj(
         "kind" -> "modify-roll-outcome", "pool" -> pool.value,

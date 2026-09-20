@@ -526,10 +526,14 @@ case object AdvanceVisionsDrawn extends PrimitiveOperation {
   override val required: Boolean = true
 }
 
-/** Parks a walker at a roll of `dice` drawn from `pool`; pool count comes from
-  * state, faces ride the next command.
+/** Rolls `dice` drawn from `pool`; the pool count comes from state. `Parked`
+  * (the default) parks the walker until the faces ride the next command;
+  * `Automatic` takes them from the walker's dice source and keeps walking.
+  * A `window` lets a power hook the roll.
   */
-final case class Roll(pool: PoolKey, dice: DiceSpec)
+final case class Roll(pool: PoolKey, dice: DiceSpec,
+    mode: RollMode = RollMode.Parked,
+    override val window: Option[PowerWindow] = None)
     extends PrimitiveOperation
 
 /** Edits a recorded roll outcome for `pool` (power-authored skulls/score

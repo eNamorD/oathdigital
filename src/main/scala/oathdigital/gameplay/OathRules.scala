@@ -13,7 +13,7 @@ import oathdigital.gameplay.oathkeeper.{OathkeeperOutcome, OathkeeperRules}
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.powerresolver.{PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
-  WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
+  WalkerDice, WalkerParked, WalkerPowers, WalkerProcedureRegistry, WalkerStepRecorded}
 import oathdigital.gameplay._
 import oathdigital.model.OathEvent._
 import oathdigital.model.OathState._
@@ -38,7 +38,8 @@ final class OathRules(protected val catalog: ExecutableCatalog,
     protected val walkerPowerCatalog: WalkerPowers = WalkerPowers.empty,
     protected val walkerTree: OathRules.WalkerTreeSource =
       OathRules.declaredWalkerTree,
-    protected val phasePowerCatalog: PhasePowers = PhasePowers.empty)
+    protected val phasePowerCatalog: PhasePowers = PhasePowers.empty,
+    protected val walkerDice: WalkerDice = WalkerDice.unavailable)
     extends EventEvolution[OathState, OathEvent, OathViolation]
     with OathRulesWalker {
   private val setup = new FirstGameSetupRules(catalog)

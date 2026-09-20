@@ -47,9 +47,11 @@ final case class ChoicePayload(decisionId: String, answer: DecisionAnswer,
   * empty: the outcome is a state write (a `RollOutcome` into
   * `CurrentGameState.rollOutcomes`), not an operation batch, so replay must
   * re-derive the outcome from this payload rather than applying ops.
+  * `automatic` is true when the walker rolled the faces itself from its dice
+  * source; replay then needs no durable park at the node.
   */
-final case class RollPayload(pool: PoolKey, faces: Vector[DieFace])
-    extends WalkerStepPayload
+final case class RollPayload(pool: PoolKey, faces: Vector[DieFace],
+    automatic: Boolean = false) extends WalkerStepPayload
 
 /** Container event: recorded once per delta, resolved choice, or submitted
   * roll the walker executes.

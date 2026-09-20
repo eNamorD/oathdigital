@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx, PhasePowers}
-import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted,
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
   WalkerSimulation, WalkerStepRecorded}
 import oathdigital.model.OathState._
@@ -26,6 +26,7 @@ private[gameplay] trait OathRulesWalker {
   protected def catalog: ExecutableCatalog
   protected def walkerPowerCatalog: WalkerPowers
   protected def phasePowerCatalog: PhasePowers
+  protected def walkerDice: WalkerDice
   protected def walkerTree: OathRules.WalkerTreeSource
   protected def withFallback(state: OathState, actor: PlayerId,
       action: ActionKind)(
@@ -69,7 +70,7 @@ private[gameplay] trait OathRulesWalker {
               starting = true)
             _ <- checkRestrictions(tree, powers, ready, activePlayer)
             outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None,
-              powers))
+              powers, walkerDice))
             _ <- requirePlayableOption(procedure, ready, tree, outcome, powers)
             transition <- walkerTransition(state, procedure, tree,
               outcome, powers, modifiers, startArgs)
@@ -112,7 +113,8 @@ private[gameplay] trait OathRulesWalker {
           tree <- buildWalker(procedure, ready, activePlayer, Vector.empty,
             starting = true)
           _ <- checkRestrictions(tree, powers, ready, activePlayer)
-          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers))
+          outcome <- walkerCall(ProcedureWalker.advance(ready, tree, None, powers,
+            walkerDice))
           started <- walkerTransition(transition.state, procedure, tree,
             outcome, powers, Vector.empty, Vector.empty)
         } yield started.copy(events = transition.events ++ started.events)
@@ -234,7 +236,7 @@ private[gameplay] trait OathRulesWalker {
       case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
         walkerCall(ProcedureWalker.resolve(ready, tree, pending,
           Answered(decisionId, answer, by = requester),
-          powers)).flatMap(walkerTransition(state, procedure, tree, _,
+          powers, walkerDice)).flatMap(walkerTransition(state, procedure, tree, _,
             powers, modifiers, startArgs))
     }
 
@@ -261,7 +263,7 @@ private[gameplay] trait OathRulesWalker {
           s"roll pool ${pool.value} does not match parked pool ${parked._1.value}"))
         faces <- prepareFaces(parked._2)
         outcome <- walkerCall(ProcedureWalker.roll(ready, tree, pending, faces,
-          powers))
+          powers, walkerDice))
         transition <- walkerTransition(state, procedure, tree, outcome,
           powers, modifiers, startArgs)
       } yield transition

@@ -51,7 +51,8 @@ object WalkerSimulation {
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
+          WalkerDice.placeholder))
         .flatMap {
           case WalkerOutcome.Finished(_, events) =>
             Right(recordedOperations(events))
@@ -72,7 +73,8 @@ object WalkerSimulation {
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
+          WalkerDice.placeholder))
     }.isRight
 
   /** Previews a freshly built tree: walks it to its first park and previews
@@ -85,7 +87,8 @@ object WalkerSimulation {
       ProcedureWalker.restrictionViolations(tree, powers, state,
         state.game.current.turn.activePlayer)
         .headOption.toLeft(())
-        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers))
+        .flatMap(_ => ProcedureWalker.advance(state, tree, None, powers,
+          WalkerDice.placeholder))
         .flatMap {
           case WalkerOutcome.Parked(pending, events)
               if recordedOperations(events).isEmpty =>
@@ -127,7 +130,7 @@ object WalkerSimulation {
       : Either[OathViolation, PreviewOutcome] = guarded {
     ProcedureWalker.resolve(state, tree, pending,
       Answered(decide.decisionId, DecisionAnswer.ChooseOneAnswer(option.ref),
-        decide.owner), powers).map {
+        decide.owner), powers, WalkerDice.placeholder).map {
       case WalkerOutcome.Finished(_, events) =>
         PreviewOutcome(recordedOperations(events), complete = true)
       case WalkerOutcome.Parked(_, events) =>

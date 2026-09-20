@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powerresolver.ContributingPower
-import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, SpendSupply, WalkerEvent}
+import oathdigital.model.{Answered, Branch, BuildOps, CoreOperation, Decide, DieFace, Location, ModifyDicePool, Move, OathEvent, OathState, OathViolation, Operation, OperationRestriction, PendingTree, Piece, PlayerId, PoolKey, PositionedLocation, PowerId, PowerResolution, PowerWindow, PrimitiveOperation, ReadyGame, RelicId, Repeat, Roll, RollMode, SpendSupply, WalkerEvent}
 import oathdigital.gameplay.walker.DeltaMeaning.{DicePoolModified,
   OperationApplied, RelicAcquired, SupplySpent}
 
@@ -62,7 +62,7 @@ object WalkerPowers {
   *    (the caller supplies the tree every command — S1 pending stores only a
   *    pointer); `pending = None` starts fresh at the root.
   *  - `Decide` nodes park; `Roll` nodes park in `advance` (their faces ride
-  *    a later command) and are resumed by
+  *    a later command, unless the node is `Automatic`, which rolls from the dice source) and are resumed by
   *    `roll(state, action, pending, faces)`: faces are validated against the
   *    parked node's pool count, a `RollOutcome` is merged into
   *    `CurrentGameState.rollOutcomes` for the pool, one [[WalkerStepRecorded]]
@@ -117,7 +117,8 @@ object ProcedureWalker {
 
 
   def advance(state: ReadyGame, action: Operation,
-      pending: Option[PendingTree], powers: WalkerPowers)
+      pending: Option[PendingTree], powers: WalkerPowers,
+      dice: WalkerDice = WalkerDice.unavailable)
       : Either[OathViolation, WalkerOutcome] = {
     val activePlayer = state.game.current.turn.activePlayer
     val answered = pending.fold(Vector.empty[Answered])(_.answered)
@@ -126,7 +127,7 @@ object ProcedureWalker {
     // running walk must not carry it inside CurrentGameState (dual-pending
     // guard), so clear the stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers),
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
   }
 
@@ -147,11 +148,12 @@ object ProcedureWalker {
     * die kind, rejects with `OathViolation.InvalidEventOrder`.
     */
   def roll(state: ReadyGame, action: Operation, pending: PendingTree,
-      faces: Vector[DieFace], powers: WalkerPowers)
+      faces: Vector[DieFace], powers: WalkerPowers,
+      dice: WalkerDice = WalkerDice.unavailable)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers),
+      state.game.current.turn.activePlayer, pending.answered, powers, dice),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
   }
@@ -171,11 +173,12 @@ object ProcedureWalker {
     * next Roll/Decide or finish the tree).
     */
   def resolve(state: ReadyGame, action: Operation, pending: PendingTree,
-      answer: Answered, powers: WalkerPowers)
+      answer: Answered, powers: WalkerPowers,
+      dice: WalkerDice = WalkerDice.unavailable)
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers),
+      state.game.current.turn.activePlayer, pending.answered, powers, dice),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
       .map(toOutcome)
   }
@@ -203,7 +206,8 @@ object ProcedureWalker {
   def parkedRoll(state: ReadyGame, action: Operation,
       pending: PendingTree, powers: WalkerPowers): Option[(PoolKey, Int)] =
     WalkerPowerGather.leafAt(state, action, pending, powers).collect {
-      case roll: Roll => (roll.pool, WalkerRolls.poolCount(state, roll.pool))
+      case roll: Roll if roll.mode == RollMode.Parked =>
+        (roll.pool, WalkerRolls.poolCount(state, roll.pool))
     }
 
   /** Every decision open at the park: one for a plain or co-owned `Decide`,
@@ -264,7 +268,8 @@ object ProcedureWalker {
       events: Vector[OathEvent],
       activePlayer: PlayerId,
       answered: Vector[Answered],
-      powers: WalkerPowers
+      powers: WalkerPowers,
+      dice: WalkerDice
   )
 
   private sealed trait Step extends Product with Serializable
@@ -485,6 +490,8 @@ object ProcedureWalker {
         }
       case None =>
         leaf match {
+          case roll: Roll if roll.mode == RollMode.Automatic =>
+            runAutomaticRoll(roll, ctx, path, contributions).map(Done(_))
           case _: Decide | _: Roll => Right(Park(path, ctx))
           case build: BuildOps =>
             runBuildOps(build, ctx, path, contributions).map(Done(_))
@@ -635,16 +642,29 @@ object ProcedureWalker {
     * a [[RollPayload]] with no ops (the outcome is a state write).
     */
   private def recordRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
-      faces: Vector[DieFace], contributions: Vector[PowerId])
-      : Either[OathViolation, WalkCtx] =
+      faces: Vector[DieFace], contributions: Vector[PowerId],
+      automatic: Boolean = false): Either[OathViolation, WalkCtx] =
     WalkerRolls.outcomeFor(roll, ctx.state, faces).map { outcome =>
       val nodeId =
         if (path.isEmpty) leafLabel(roll) else path.mkString(".")
       ctx.copy(
         state = WalkerRolls.write(ctx.state, outcome),
         events = ctx.events :+ WalkerStepRecorded(
-          nodeId = nodeId, payload = RollPayload(roll.pool, faces),
+          nodeId = nodeId, payload = RollPayload(roll.pool, faces, automatic),
           ops = Vector.empty, contributions = contributions))
     }
+
+  /** Rolls an `Automatic` node: the faces come from the dice source and the
+    * step is recorded like a resumed roll, marked `automatic`. A pool of zero
+    * dice is skipped and records nothing: replay needs the pool to exist, and
+    * a Campaign with no force and no plans never creates one.
+    */
+  private def runAutomaticRoll(roll: Roll, ctx: WalkCtx, path: Vector[String],
+      contributions: Vector[PowerId]): Either[OathViolation, WalkCtx] = {
+    val count = WalkerRolls.poolCount(ctx.state, roll.pool)
+    if (count == 0) Right(ctx)
+    else ctx.dice.roll(roll.dice.die, count).flatMap(faces =>
+      recordRoll(roll, ctx, path, faces, contributions, automatic = true))
+  }
 
 }

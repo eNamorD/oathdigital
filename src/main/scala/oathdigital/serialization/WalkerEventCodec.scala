@@ -75,14 +75,17 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
         "kind" -> "choice", "decisionId" -> decisionId,
         "payload" -> DecisionAnswerCodec.encode(answer),
         "byPlayerId" -> by.value)
-      case RollPayload(pool, faces) => ujson.Obj(
-        "kind" -> "roll", "pool" -> pool.value,
-        "faces" -> ujson.Arr.from(faces.map {
-          case face: DefenseDieFace => ujson.Str(encodeDefenseFace(face))
-          case face: AttackDieFace => ujson.Str(encodeAttackFace(face))
-          case other => throw new IllegalArgumentException(
-            s"unsupported walker die face $other")
-        }))
+      case RollPayload(pool, faces, automatic) =>
+        val encoded = ujson.Obj(
+          "kind" -> "roll", "pool" -> pool.value,
+          "faces" -> ujson.Arr.from(faces.map {
+            case face: DefenseDieFace => ujson.Str(encodeDefenseFace(face))
+            case face: AttackDieFace => ujson.Str(encodeAttackFace(face))
+            case other => throw new IllegalArgumentException(
+              s"unsupported walker die face $other")
+          }))
+        if (automatic) encoded("automatic") = ujson.True
+        encoded
       case other => throw new IllegalArgumentException(
         s"unsupported walker step payload $other")
     }
@@ -97,7 +100,8 @@ private[serialization] trait WalkerEventCodec extends WalkerOperationCodec {
           PlayerId(value("byPlayerId").str)))
       case "roll" => traverse(value("faces").arr.toVector)(face =>
         decodeDieFace(face.str, s"$path.faces"))
-        .map(faces => RollPayload(PoolKey(value("pool").str), faces))
+        .map(faces => RollPayload(PoolKey(value("pool").str), faces,
+          value.obj.get("automatic").exists(_.bool)))
       case other => Left(InvalidValue(s"$path.kind",
         s"unknown walker step payload '$other'"))
     }

@@ -34,7 +34,7 @@ private[gameplay] trait WalkerRecordedOpsReducer { self: munit.Assertions =>
         case other => self.fail(s"expected a WalkerStepRecorded, got $other")
       }
       step.payload match {
-        case RollPayload(pool, faces) =>
+        case RollPayload(pool, faces, _) =>
           def derive(all: Vector[DieFace]): (Int, Int) = {
             val attack = all.collect { case face: AttackDieFace => face }
             if (attack.nonEmpty)

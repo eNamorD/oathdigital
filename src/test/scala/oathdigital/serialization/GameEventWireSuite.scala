@@ -665,13 +665,18 @@ class GameEventWireSuite extends munit.FunSuite {
         Vector(AttackDieFace.HollowSword, AttackDieFace.OneSword,
           AttackDieFace.TwoSwordsSkull)), Vector.empty, Vector.empty),
       WalkerStepRecorded("2", RollPayload(PoolKey("campaign.defense"),
-        Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank)),
-        Vector.empty, Vector.empty))
+        Vector(DefenseDieFace.Doubler, DefenseDieFace.Blank),
+        automatic = true), Vector.empty, Vector.empty))
     val encoded = GameEventWire.encodeStream("walker-rolls", catalogRef,
       events.zipWithIndex.map { case (event, index) =>
         RecordedEvent(index.toLong, event) }).toOption.get
     assertEquals(GameEventWire.decodeStream(encoded).toOption.get.map(_.event),
       events)
+    // `automatic` is written only when set, so a parked roll's wire form is
+    // unchanged.
+    assertEquals(ujson.read(encoded).arr.map(
+      _("payload")("step").obj.contains("automatic")).toVector,
+      Vector(false, true))
   }
 
   test("every Piece variant round-trips through the walker codec") {

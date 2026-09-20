@@ -7,7 +7,7 @@ import oathdigital.gameplay.actions.{Campaign, CampaignCommand, CampaignRules}
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.powers.{PhasePowerCatalog, WalkerPowerCatalog}
-import oathdigital.gameplay.walker.WalkerProcedureRegistry
+import oathdigital.gameplay.walker.{WalkerDice, WalkerProcedureRegistry}
 import oathdigital.gameplay.actions.MinorActionCommand
 import oathdigital.gameplay.phases.rest.WarExhaustionRandomPort
 import oathdigital.model._
@@ -84,7 +84,8 @@ final class GameApplicationService(
   private val rules = new OathRules(catalog,
     warExhaustionRandomPort = warExhaustionRandomPort,
     walkerPowerCatalog = WalkerPowerCatalog.default(catalog),
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
+    phasePowerCatalog = PhasePowerCatalog.default(catalog),
+    walkerDice = CampaignDicePort.walkerDice(campaignDicePort))
   private val replay = new EventReplayEngine(rules)
 
   /** Privileged development support. Never include this in a player projection. */

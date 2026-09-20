@@ -1,6 +1,7 @@
 package oathdigital.application
 
 import oathdigital.gameplay.actions.SearchRules
+import oathdigital.gameplay.walker.WalkerDice
 import oathdigital.model._
 
 
@@ -41,6 +42,15 @@ object CampaignDicePort {
     def rollAttack(count: Int) = Vector.fill(count)(attack(rng.nextInt(6)))
     def rollDefense(count: Int) = Vector.fill(count)(defense(rng.nextInt(6)))
   }
+
+  /** The walker's dice source, backed by `port`: the same faces a legacy
+    * Campaign rolled, now drawn by an automatic `Roll` node.
+    */
+  def walkerDice(port: CampaignDicePort): WalkerDice = (kind, count) =>
+    Right(kind match {
+      case DiceKind.Attack => port.rollAttack(count)
+      case DiceKind.Defense => port.rollDefense(count)
+    })
 }
 
 object CardDecisionIds {
