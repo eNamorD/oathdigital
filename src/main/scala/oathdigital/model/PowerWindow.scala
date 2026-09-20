@@ -120,6 +120,12 @@ object PowerWindow {
   case object RestReturnSecrets extends OtherWindow { val key = "rest.return-secrets" }
   case object RestEnd extends OtherWindow { val key = "rest.end" }
   case object NegotiationOffer extends OtherWindow { val key = "negotiation.offer" }
+  case object NegotiationEligibility extends OtherWindow {
+    val key = "negotiation.eligibility"
+  }
+  case object NegotiationSettlement extends OtherWindow {
+    val key = "negotiation.settlement"
+  }
 }
 
 sealed trait PowerResolution extends Product with Serializable

@@ -59,6 +59,7 @@ object PowerRuntime {
     case ActionKind.WhenPlayed => PowerWindow.ActionCardPlayed
     case ActionKind.Wake => PowerWindow.WakeBoundary
     case ActionKind.ActionBoundary => PowerWindow.ActionAfterMajorAction
+    case ActionKind.Negotiation => PowerWindow.NegotiationOffer
   }
 
   private def diagnostic(action: ActionKind, value: PowerDiagnostic) =

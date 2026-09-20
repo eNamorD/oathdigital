@@ -17,9 +17,10 @@ object ActionKind {
   case object Rest extends ActionKind { val key = "rest" }
   case object WhenPlayed extends ActionKind { val key = "when-played" }
   case object ActionBoundary extends ActionKind { val key = "action-boundary" }
+  case object Negotiation extends ActionKind { val key = "negotiation" }
 
   val values = Vector(Travel, Search, Campaign, Muster, Trade, Forge, Recover,
-    Challenge, Wake, Rest, WhenPlayed, ActionBoundary)
+    Challenge, Wake, Rest, WhenPlayed, ActionBoundary, Negotiation)
   def fromKey(key: String): Option[ActionKind] = values.find(_.key == key)
 }
 

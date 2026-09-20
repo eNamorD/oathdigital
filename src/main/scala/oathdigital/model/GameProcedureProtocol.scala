@@ -33,6 +33,13 @@ object OathContinue {
       extends OathContinue
   final case class AwaitingBannerDecision(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
+
+  /** Either decision of a Negotiation: the negotiator choice, or the open
+    * deal, which any participant may answer. `playerId` is the primary owner,
+    * the actor.
+    */
+  final case class AwaitingNegotiation(playerId: PlayerId, decision: DecisionId)
+      extends OathContinue
   final case class AwaitingCampaignSacrifice(playerId: PlayerId, decision: DecisionId)
       extends OathContinue
   final case class AwaitingCampaignPlan(playerId: PlayerId, decision: DecisionId)

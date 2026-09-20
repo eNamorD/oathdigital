@@ -4,6 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure, PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
 import oathdigital.gameplay.actions.forge.ForgeProcedure
+import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
 import oathdigital.gameplay.actions.cardplay.CardPlayProcedure
@@ -265,6 +266,20 @@ object WalkerProcedureRegistry {
           OathContinue.AwaitingBannerDecision(actor, decision)),
       build = PlaceBannerResourceProcedure.build,
       rebuild = PlaceBannerResourceProcedure.rebuild),
+
+    /** Negotiation is a minor action: no modifier window (none of its powers
+      * is player-selected), and an `ActionKind` of its own so a start records
+      * the Negotiation rules it ignores.
+      */
+    ActionRef.Negotiation -> Entry(
+      fallbackKind = Some(ActionKind.Negotiation),
+      rollDecisionId = None,
+      modifierWindow = None,
+      continuationFor = (decisionId, actor, decision) =>
+        Option.when(NegotiationProcedure.decisionIds.contains(decisionId))(
+          OathContinue.AwaitingNegotiation(actor, decision)),
+      build = NegotiationProcedure.build,
+      rebuild = NegotiationProcedure.rebuild),
 
     /** Batch-1 Task 7, and the first entry for an action outside the Act
       * phase. Nothing here says so: the phase is a gate inside
