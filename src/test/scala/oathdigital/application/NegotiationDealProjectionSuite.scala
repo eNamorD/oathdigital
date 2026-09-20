@@ -114,4 +114,11 @@ class NegotiationDealProjectionSuite extends munit.FunSuite {
       .legalControls.contains("beginNegotiation"))
     assert(!view(parkedDeal(b), b.actor).legalControls.contains("beginNegotiation"))
   }
+
+  test("Negotiation is offered as a start control, not as a board-target selection") {
+    val b = NegotiationFixture.board()
+    val projection = view(Ready(b.ready), b.actor)
+    assert(projection.legalControls.contains("beginNegotiation"))
+    assert(!projection.boardTargetActions.exists(_.actionKind == "negotiation"))
+  }
 }

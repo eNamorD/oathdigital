@@ -258,10 +258,6 @@ private[application] final class LegalActionProjector(
         BoardTargetCandidateProjection(BoardTargetRefProjection.PlayerBanner(
           defender.value, key), presentation.safeLabel(key))
     }
-    val negotiators = oathdigital.gameplay.actions.Negotiation
-      .legalParticipants(ready, player.player).map(candidate =>
-        BoardTargetCandidateProjection(BoardTargetRefProjection.Player(candidate.value),
-          presentation.safeLabel(candidate.value), Vector("Co-located negotiator")))
     Vector(
       selection("travel", "Choose a Travel destination", travel),
       selection("campaign-conquest", "Choose optional same-ruler Conquest sites",
@@ -274,9 +270,7 @@ private[application] final class LegalActionProjector(
           oathdigital.gameplay.actions.Campaign.MinimumForce, player.board.warbands,
           player.board.warbands, oathdigital.gameplay.actions.Campaign.SupplyCost)),
         Option.when(raid.nonEmpty)(1).getOrElse(0), raid.size,
-        raid.headOption.map(_.target).toVector),
-      selection("negotiation", "Choose one or more co-located negotiators",
-        negotiators, minimum = 1, maximum = negotiators.size)).flatten
+        raid.headOption.map(_.target).toVector)).flatten
   }
 
   private def selection(kind: String, prompt: String,
