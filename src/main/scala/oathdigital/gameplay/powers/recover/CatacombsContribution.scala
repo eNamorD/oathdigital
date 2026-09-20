@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.recover
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.gameplay.operations.Costs
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
@@ -15,7 +16,8 @@ final case class CatacombsContribution private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends ContributingPower {
   def id: PowerId = CatacombsContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-  override def resolution: PowerResolution = PowerResolution.PlayerSelected
+  override lazy val resolution: PowerResolution =
+    CatalogResolution.of(catalog, id)
   // Stable across the action: card presence, never the relic/secrets spent.
   override def applicable(ctx: PowerCtx): Boolean =
     PowerAccess.locate(ctx.state, ctx.activePlayer, cardId).isDefined

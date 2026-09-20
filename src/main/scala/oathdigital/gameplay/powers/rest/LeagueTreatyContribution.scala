@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers.rest
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powers.CatalogResolution
 import oathdigital.gameplay.powerresolver._
 import oathdigital.model._
 
@@ -18,6 +19,8 @@ final case class LeagueTreatyContribution private (cardId: DenizenId,
 
   def id: PowerId = LeagueTreatyContribution.id
   def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+  override lazy val resolution: PowerResolution =
+    CatalogResolution.of(catalog, id)
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RestReturnFavor -> Vector(Transform((ctx, ops) =>
       treaty(ctx.state).fold(ops)(inserted(ctx.state, ctx.activePlayer, _) ++ ops))))

@@ -45,7 +45,7 @@ Known code deviations it removes: `PhasePowerProcedure.accessible` covers ruled-
 
 ### E2. Activation from the catalog
 
-`resolution` is derived from `CatalogPower.persistent` in each power's `forCatalog`: false is `PlayerSelected`, true is `Automatic`. Battle plans are the exception, being `Automatic` with their own decision. The product owner corrects the catalog: Relic Worship becomes `persistent: false`. That edit must be mirrored wherever the runtime catalog is compared or validated (`reference/catalog-ingestion`), or the equality check fails.
+`CatalogResolution.of` derives a power's `resolution` from `CatalogPower.persistent`: false is `PlayerSelected`, true is `Automatic`. Only modifiers and persistent rules use it. When Played powers (the catalog marks Dazzle `persistent: false`), phase powers and battle plans keep their own resolution, because they do not activate by selection at the start of an action. `PowerKindsCatalogSuite` pins the flags for every in-scope modifier and persistent rule. The product owner corrected Relic Worship to `persistent: false` in the catalog and in `reference/catalog-ingestion`.
 
 ### E3. Phase-power costs and sources
 
