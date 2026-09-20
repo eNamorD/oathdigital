@@ -60,6 +60,8 @@ object OathViolation {
       extends OathViolation
   final case class UnknownWorldCard(id: WorldCardId)
       extends OathViolation
+  final case class UnknownEdifice(id: EdificeId)
+      extends OathViolation
   final case class InvalidSearchPlacement(detail: String)
       extends OathViolation
   final case class MinorActionUnavailable(detail: String)

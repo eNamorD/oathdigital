@@ -122,4 +122,85 @@ class DazzleSuite extends munit.FunSuite {
     assert(ProcedureWalker.advance(prepared, hook, None,
       WalkerPowers(Vector(dazzle))).isLeft)
   }
+
+  test("Dazzle discards ruined Hearth and Order edifices, not intact ones or other suits") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val dazzle = DenizenId(catalog.denizens.find(_.powers.exists(
+      _.id == Dazzle.id)).get.id.value)
+    val home = current.players.find(_.player == actor).get.pawnSite.get
+    def pick(suit: Suit, taken: Set[EdificeId]): EdificeId =
+      current.commonCards.edificeDeck.find(id => !taken(id) &&
+        catalog.suitOf(id).contains(suit)).get
+    val ruinedHearth = pick(Suit.Hearth, Set.empty)
+    val intactHearth = pick(Suit.Hearth, Set(ruinedHearth))
+    val ruinedBeast = pick(Suit.Beast, Set.empty)
+    val placed = Set(ruinedHearth, intactHearth, ruinedBeast)
+    val prepared = base.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(
+        worldDeck = c.commonCards.worldDeck.filterNot(_ == dazzle),
+        edificeDeck = c.commonCards.edificeDeck.filterNot(placed)),
+      players = c.players.map(p => if (p.player != actor) p else
+        p.copy(advisers = p.advisers :+ DenizenState(dazzle,
+          Orientation.FaceUp, Tokens.empty))),
+      map = c.map.copy(sites = c.map.sites.updated(home,
+        c.map.sites(home).copy(denizens = c.map.sites(home).denizens ++ Vector(
+          EdificeState(ruinedHearth, EdificeSide.Ruined, Tokens.empty),
+          EdificeState(intactHearth, EdificeSide.Intact, Tokens.empty),
+          EdificeState(ruinedBeast, EdificeSide.Ruined, Tokens.empty)))))))
+    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val finished = ProcedureWalker.advance(prepared, hook, None,
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
+      .asInstanceOf[WalkerOutcome.Finished]
+    val after = finished.treeless.game.current
+    val remaining = after.map.sites(home).denizens.collect {
+      case e: EdificeState => e.id }
+    assert(!remaining.contains(ruinedHearth), "a ruined Hearth edifice is discarded")
+    assert(remaining.contains(intactHearth), "an intact edifice is locked")
+    assert(remaining.contains(ruinedBeast), "another suit is not discarded")
+    assertEquals(after.commonCards.edificeDeck.lastOption, Some(ruinedHearth))
+  }
+
+  test("Dazzle leaves other suits and other regions alone") {
+    val base = initialReady
+    val current = base.game.current
+    val actor = current.turn.activePlayer
+    val dazzle = DenizenId(catalog.denizens.find(_.powers.exists(
+      _.id == Dazzle.id)).get.id.value)
+    val home = current.players.find(_.player == actor).get.pawnSite.get
+    val region = current.map.regionOf(home).get
+    val away = current.map.inPlay.find(id =>
+      current.map.regionOf(id).exists(_ != region)).get
+    def pick(suit: Suit, taken: Set[DenizenId]): DenizenId =
+      current.commonCards.worldDeck.collectFirst {
+        case id: DenizenId if id != dazzle && !taken(id) &&
+          catalog.suitOf(id).contains(suit) => id }.get
+    val beast = pick(Suit.Beast, Set.empty)
+    val faraway = pick(Suit.Hearth, Set(beast))
+    val near = pick(Suit.Hearth, Set(beast, faraway))
+    val placed = Set[CardId](dazzle, beast, faraway, near)
+    def add(c: CurrentGameState, site: SiteId, id: DenizenId) =
+      c.copy(map = c.map.copy(sites = c.map.sites.updated(site,
+        c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
+          DenizenState(id, Orientation.FaceUp, Tokens.empty)))))
+    val prepared = base.updateCurrent { c =>
+      val cleared = c.copy(
+        commonCards = c.commonCards.copy(worldDeck =
+          c.commonCards.worldDeck.filterNot(placed)),
+        players = c.players.map(p => if (p.player != actor) p else
+          p.copy(advisers = p.advisers :+ DenizenState(dazzle,
+            Orientation.FaceUp, Tokens.empty))))
+      add(add(add(cleared, home, beast), home, near), away, faraway)
+    }
+    val hook = CardPlayed(dazzle, RuleSourceRef.Adviser(actor, dazzle))
+    val finished = ProcedureWalker.advance(prepared, hook, None,
+      WalkerPowers(Vector(Dazzle.forCatalog(catalog).get))).toOption.get
+      .asInstanceOf[WalkerOutcome.Finished]
+    val after = finished.treeless.game.current.map.sites
+    def at(site: SiteId, id: DenizenId) = after(site).denizens.exists(_.id == id)
+    assert(at(home, beast), "a Beast card in the region is not discarded")
+    assert(!at(home, near), "a Hearth card in the region is discarded")
+    assert(at(away, faraway), "a Hearth card in another region is not discarded")
+  }
 }

@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5) implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan.
 
 ## Goal and scope
 
@@ -11,7 +11,7 @@ In scope: 30 denizens, 12 edifice faces, 15 relics and the two banner powers Wan
 Out of scope, recorded so they are not lost:
 - **Parked**: the six setup/explore edifices (Great Market, Bandit Market, Great Forge, Broken Forge, Proving Grounds, Empty Grounds). No exploration procedure exists to hook. Marble Fountains, Murky Fountain, Towering and Cracked Rampart, Oaken and Rotting Fortress are in scope.
 - **Deferred**: the card-slot redesign of card play (see [ROADMAP.md](../../ROADMAP.md), Phase 3), the player-chosen sign of Mercenaries, defender-side activation of non-plan modifiers, Empire rulers (Toll Roads, Oaken Fortress) and Peace Envoy.
-- **Verify only**: Dazzle, Catacombs and League Treaty already exist. Slice 0 checks them against the appendix and reports mismatches. It does not rebuild them. The one exception is Dazzle, which gains ruled edifices (product ruling).
+- **Verify only**: Dazzle, Catacombs and League Treaty already exist. Slice 0 checks them against the appendix and reports mismatches. It does not rebuild them. The one exception was Dazzle, which gained ruined edifices in slice 0 (product ruling).
 
 ## How the rulings were gathered
 

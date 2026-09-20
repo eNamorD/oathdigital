@@ -23,6 +23,12 @@
 | 201 Catacombs | Recover modifier, 1 secret placed, relic drawn and placed facedown at the card's site if it has an empty relic slot. Usable from a card at your site, at a site you rule, or held as an adviser. Recover continues at the pawn's site, and if no relic is recovered as a result, that is permitted. |
 | 237 League Treaty | Off-turn Rest decision by the ruler; moves favor from cards in its region to one bank. |
 
+### Slice 0 verification results
+
+- **35 Dazzle:** did not match. It discarded denizens only. It now also discards ruined Hearth and Order edifices in the region (`Discard.RuinedEdifice`, in card order with the denizens), and intact edifices, other suits and other regions stay. A missing catalog edifice is `OathViolation.UnknownEdifice`. Tests in `DazzleSuite`.
+- **201 Catacombs:** matches the ruling. It was pawn-site only, so it now runs through `PowerAccess` and is usable from a card at your site, at a site you rule, or held as an adviser. The relic goes to the card's own site (the pawn's site for an adviser), and its payment is `Costs.onCard`. A site the actor neither rules nor stands on makes the modifier not applicable. Tests in `CatacombsContributionSuite`.
+- **237 League Treaty:** matches the ruling. Favor on an edifice in the region, intact or ruined, moves with the rest. Its resolution now comes from the catalog flag (`persistent: true`, so automatic, as before). Test in `LeagueTreatySuite`.
+
 ## Slice 1: When Played
 
 | Card | Ruling |

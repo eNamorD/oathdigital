@@ -98,4 +98,37 @@ class LeagueTreatySuite extends munit.FunSuite {
         suit.toString)
     }
   }
+
+  test("favor on an edifice in the region moves with the rest, on either face") {
+    Vector(EdificeSide.Intact, EdificeSide.Ruined).foreach { side =>
+      val owner = offTurn(act)
+      val (arrangedReady, site) = arranged(Some(owner), Vector(Suit.Arcane -> 1))
+      val edifice = arrangedReady.game.current.commonCards.edificeDeck.head
+      val edificeSuit = catalog.suitOf(edifice).get
+      val ready = arrangedReady.updateCurrent(c => c.copy(
+        commonCards = c.commonCards.copy(edificeDeck =
+          c.commonCards.edificeDeck.tail),
+        map = c.map.copy(sites = c.map.sites.updated(site,
+          c.map.sites(site).copy(denizens = c.map.sites(site).denizens :+
+            EdificeState(edifice, side, Tokens(2, 0)))))))
+      val destinationBank = Suit.all.find(s =>
+        s != Suit.Arcane && s != edificeSuit).get
+      val destination = LeagueTreatyContribution.destinationDecisionId(ready,
+        rester(ready), site, treatyCard)
+      val distribution = LeagueTreatyContribution.distributionDecisionId(ready,
+        rester(ready), site, treatyCard)
+      val parked = rules.startWalker(Ready(ready), PhaseTransitionRef.BeginRest,
+        rester(ready)).toOption.get
+      val chosen = rules.resolveWalker(parked.state, owner, destination,
+        DecisionAnswer.ChooseOneAnswer(bank(destinationBank))).toOption.get
+      val sources = (Set(Suit.Arcane, edificeSuit) - destinationBank).toVector
+      val answer = DecisionAnswer.DistributeAnswer(
+        (sources.map(_ -> 0) :+ (destinationBank -> 3)).map {
+          case (suit, n) => DistributeAmount(bank(suit), n) })
+      val done = rules.resolveWalker(chosen.state, owner, distribution, answer)
+        .toOption.get
+      assertEquals(banks(done.state)(destinationBank),
+        ready.banks.favor(destinationBank) + 3, side.toString)
+    }
+  }
 }

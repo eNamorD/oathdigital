@@ -169,6 +169,27 @@ class CatacombsContributionSuite extends munit.FunSuite {
     // fixture's own state (never mutated -- it is immutable data) is the
     // only state that exists for this command.
   }
+
+  test("Catacombs at a site the actor rules places the relic at its own site") {
+    val fixture = ruledElsewhere(setup)
+    val transition = started(fixture, Vector(catacombsId))
+    val Ready(after) = transition.state: @unchecked
+    val there = after.game.current.map.sites(fixture.site)
+    assertEquals(there.relics.map(_.id), Vector(fixture.topRelic))
+    assertEquals(there.denizens.head match {
+      case d: DenizenState => d.tokens.secrets
+      case _ => -1 }, 1)
+  }
+
+  test("Catacombs at a site the actor neither rules nor stands on is not applicable") {
+    val fixture = ruledElsewhere(setup, ruled = false)
+    rules.startWalker(Ready(fixture.ready), ActionRef.Recover, fixture.actor,
+      Vector(catacombsId)) match {
+      case Left(OathViolation.InvalidEventOrder(detail)) =>
+        assert(detail.contains("not applicable"), detail)
+      case other => fail(s"expected the modifier to be refused, got $other")
+    }
+  }
 }
 
 /** Shared fixture: the application-level projection suite drives the same
@@ -247,5 +268,33 @@ object CatacombsContributionSuite {
       map = current.map.copy(sites =
         current.map.sites.updated(siteId, site))))
     Fixture(ready, player.player, siteId, remainingDeck.head)
+  }
+
+  /** The pawn stands on a Recover site that already holds a facedown relic.
+    * The Catacombs card sits at a different in-play site with a free relic
+    * slot, which the actor rules. `site` is the Catacombs site.
+    */
+  def ruledElsewhere(setup: FirstGameSetupRules,
+      ruled: Boolean = true): Fixture = {
+    val home = relicSite(setup)
+    val current = home.ready.game.current
+    val lineage = current.players.find(_.player == home.actor).get.lineage
+    // Setup fills every relic slot, so the far site's relics go to the bottom
+    // of the relic deck to free a slot. The top of the deck stays the same.
+    val far = current.map.inPlay.find(id => id != home.site &&
+      catalog.sites.find(_.id == id).exists(_.relicSlots > 0)).get
+    val freed = current.map.sites(far).relics.map(_.id)
+    val forces =
+      if (ruled) SiteForces.Occupied(ForceKind.Exile(lineage), 1)
+      else SiteForces.Occupied(ForceKind.Bandit, 1)
+    val moved = home.ready.updateCurrent(c => c.copy(
+      commonCards = c.commonCards.copy(relicDeck =
+        c.commonCards.relicDeck ++ freed),
+      map = c.map.copy(sites = c.map.sites
+        .updated(home.site, c.map.sites(home.site).copy(denizens = Vector.empty))
+        .updated(far, c.map.sites(far).copy(forces = forces, relics =
+          Vector.empty, denizens = Vector(DenizenState(catacombsCard,
+            Orientation.FaceUp, Tokens.empty)))))))
+    home.copy(ready = moved, site = far)
   }
 }
