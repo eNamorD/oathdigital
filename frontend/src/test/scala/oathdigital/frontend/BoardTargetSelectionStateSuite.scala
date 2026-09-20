@@ -59,27 +59,9 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
     assertEquals(selected.cancel.activeAction, None)
   }
 
-  test("multi target selection toggles caps and confirms in candidate order") {
-    val third = BoardTargetCandidate(BoardTargetRef.Site("c"), "C", Vector.empty)
-    val action = BoardTargetAction("campaign-sites", "Targets", 1, 2,
-      autoActivate = false, Vector(siteA, siteB, third))
-    val active = BoardTargetSelectionState.reconcile(None, context,
-      Vector(action)).activate(action.actionKind)
-    val one = active.choose(siteB.target).asInstanceOf[
-      BoardSelectionResult.Updated].state
-    val two = one.keyboardChoose("Enter", siteA.target).asInstanceOf[
-      BoardSelectionResult.Updated].state
-    val capped = two.keyboardChoose(" ", third.target).asInstanceOf[
-      BoardSelectionResult.Updated].state
-    assertEquals(capped, two)
-    assert(two.canConfirm)
-    assertEquals(two.confirm.map(_.targets),
-      Some(Vector(siteA.target, siteB.target)))
-  }
-
   test("state clears on sequence player game candidate or action changes") {
-    val action = BoardTargetAction("travel", "Travel", 1, 2,
-      autoActivate = false, Vector(siteA, siteB))
+    val action = BoardTargetAction("travel", "Travel", 1, 1,
+      autoActivate = false, Vector(siteA, siteB), explicitConfirm = true)
     val selected = BoardTargetSelectionState.reconcile(None, context,
       Vector(action)).activate("travel").choose(siteA.target)
       .asInstanceOf[BoardSelectionResult.Updated].state
@@ -94,13 +76,4 @@ class BoardTargetSelectionStateSuite extends munit.FunSuite {
       Vector(action.copy(maximum = 1, candidates = Vector(siteA)))).selectedKeys,
       Set.empty[String])
   }
-
-  test("card target refs have stable distinct keys") {
-    val refs = Vector[BoardTargetRef](
-      BoardTargetRef.SiteCard("site", "denizen", "d1"),
-      BoardTargetRef.SiteCard("site", "edifice", "d1"),
-      BoardTargetRef.PlayerAdviser("red", "d1"))
-    assertEquals(refs.map(_.stableKey).distinct.size, refs.size)
-  }
-
 }

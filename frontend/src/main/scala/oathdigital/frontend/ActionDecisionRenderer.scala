@@ -168,7 +168,7 @@ private[frontend] object ActionDecisionRenderer {
            back.onclick = _ => backFromTargets(); panel.appendChild(back)
          }
        }
-       if (action.maximum > 1 || action.explicitConfirm) {
+       if (action.explicitConfirm) {
          val confirm = button("Confirm selection", "confirm-board-selection")
          confirm.disabled = !canControl ||
            !currentBoardSelection.exists(_.canConfirm)

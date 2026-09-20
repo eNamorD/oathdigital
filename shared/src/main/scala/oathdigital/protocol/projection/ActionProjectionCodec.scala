@@ -5,32 +5,13 @@ import WorldProjectionCodec.{decodeCard, encodeCard}
 
 private[projection] object ActionProjectionCodec {
   def encodeTarget(value: BoardTargetRefProjection): ujson.Value = value match {
-    case BoardTargetRefProjection.Player(id) => ujson.Obj("kind" -> "player", "playerId" -> id)
     case BoardTargetRefProjection.Site(id) => ujson.Obj("kind" -> "site", "siteId" -> id)
-    case BoardTargetRefProjection.SiteCard(site, kind, id) => ujson.Obj(
-      "kind" -> "site-card", "siteId" -> site, "cardKind" -> kind, "cardId" -> id)
-    case BoardTargetRefProjection.PlayerAdviser(player, card) => ujson.Obj(
-      "kind" -> "player-adviser", "playerId" -> player, "cardId" -> card)
   }
   def decodeTarget(raw: ujson.Value, path: String): Result[BoardTargetRefProjection] = for {
     value <- obj(raw, path); kind <- string(value, "kind", path)
     target <- kind match {
-      case "player" => exact(value, Set("kind", "playerId"), path).flatMap(_ =>
-        string(value, "playerId", path).map(BoardTargetRefProjection.Player))
       case "site" => exact(value, Set("kind", "siteId"), path).flatMap(_ =>
         string(value, "siteId", path).map(BoardTargetRefProjection.Site))
-      case "site-card" => for {
-        _ <- exact(value, Set("kind", "siteId", "cardKind", "cardId"), path)
-        site <- string(value, "siteId", path); cardKind <- string(value, "cardKind", path)
-        _ <- Either.cond(Set("denizen", "edifice").contains(cardKind), (),
-          oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(s"$path.cardKind",
-            "expected denizen or edifice"))
-        card <- string(value, "cardId", path)
-      } yield BoardTargetRefProjection.SiteCard(site, cardKind, card)
-      case "player-adviser" => for {
-        _ <- exact(value, Set("kind", "playerId", "cardId"), path)
-        player <- string(value, "playerId", path); card <- string(value, "cardId", path)
-      } yield BoardTargetRefProjection.PlayerAdviser(player, card)
       case other => Left(oathdigital.protocol.ProtocolDecodeFailure.InvalidValue(
         s"$path.kind", s"unsupported board target '$other'"))
     }
@@ -40,21 +21,18 @@ private[projection] object ActionProjectionCodec {
     "actionKind" -> value.actionKind, "decisionId" -> stringOption(value.decisionId),
     "prompt" -> value.prompt, "minimum" -> value.minimum, "maximum" -> value.maximum,
     "autoActivate" -> value.autoActivate, "explicitConfirm" -> value.explicitConfirm,
-    "requiredTargets" -> encoded(value.requiredTargets)(encodeTarget),
     "candidates" -> encoded(value.candidates)(candidate => ujson.Obj(
       "target" -> encodeTarget(candidate.target), "label" -> candidate.label,
       "details" -> encoded(candidate.details)(ujson.Str(_)))))
   def decodeAction(raw: ujson.Value, path: String): Result[BoardTargetActionProjection] = for {
     value <- obj(raw, path)
     _ <- exact(value, Set("actionKind", "decisionId", "prompt", "minimum", "maximum",
-      "autoActivate", "explicitConfirm", "requiredTargets", "candidates"), path)
+      "autoActivate", "explicitConfirm", "candidates"), path)
     kind <- string(value, "actionKind", path)
     decision <- optionalAbsent(value, "decisionId", path)(string)
     prompt <- string(value, "prompt", path); minimum <- int(value, "minimum", path)
     maximum <- int(value, "maximum", path); auto <- bool(value, "autoActivate", path)
     explicit <- bool(value, "explicitConfirm", path)
-    requiredRaws <- array(value, "requiredTargets", path)
-    required <- traverse(requiredRaws, s"$path.requiredTargets")(decodeTarget)
     candidateRaws <- array(value, "candidates", path)
     candidates <- traverse(candidateRaws, s"$path.candidates") { (raw, child) => for {
       row <- obj(raw, child); _ <- exact(row, Set("target", "label", "details"), child)
@@ -62,7 +40,7 @@ private[projection] object ActionProjectionCodec {
       label <- string(row, "label", child); details <- strings(row, "details", child)
     } yield BoardTargetCandidateProjection(target, label, details) }
   } yield BoardTargetActionProjection(kind, prompt, minimum, maximum, auto, candidates,
-    required, decision, explicit)
+    decision, explicit)
 
   def encodeResolution(value: CardResolutionProjection): ujson.Value = ujson.Obj(
     "kind" -> value.kind, "orientation" -> stringOption(value.orientation),

@@ -104,11 +104,11 @@ class ModifierSelectionStateSuite extends munit.FunSuite {
 
   test("zero modifiers skip ordering and a targeted action still requires explicit confirmation") {
     val target = BoardTargetCandidate(
-      BoardTargetRef.SiteCard("site", "denizen", "d1"), "D1", Vector.empty)
+      BoardTargetRef.Site("d1"), "D1", Vector.empty)
     val action = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(target))
     val response = MajorActionPreviewResponse(4, "travel", Vector.empty, Vector.empty,
-      Vector(PreviewTarget("denizen:d1", 1, "D1")))
+      Vector(PreviewTarget("site:d1", 1, "D1")))
     val selection = ModifierSelectionState.reconcile(None, context,
       Vector.empty, "empty")
     val workflow = ModifierWorkflow(None, Some("travel"),

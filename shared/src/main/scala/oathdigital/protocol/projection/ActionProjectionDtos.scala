@@ -1,22 +1,15 @@
 package oathdigital.protocol.projection
 
+/** What a board-target action can select. Only sites remain: Travel and
+  * the setup pawn placement are the whole of it.
+  */
 sealed trait BoardTargetRefProjection extends Product with Serializable {
   def stableKey: String = this match {
-    case BoardTargetRefProjection.Player(id) => s"player:$id"
     case BoardTargetRefProjection.Site(id) => s"site:$id"
-    case BoardTargetRefProjection.SiteCard(site, kind, id) =>
-      s"site-card:$site:$kind:$id"
-    case BoardTargetRefProjection.PlayerAdviser(player, card) =>
-      s"player-adviser:$player:$card"
   }
 }
 object BoardTargetRefProjection {
-  final case class Player(playerId: String) extends BoardTargetRefProjection
   final case class Site(siteId: String) extends BoardTargetRefProjection
-  final case class SiteCard(siteId: String, cardKind: String, cardId: String)
-      extends BoardTargetRefProjection
-  final case class PlayerAdviser(playerId: String, cardId: String)
-      extends BoardTargetRefProjection
 }
 final case class BoardTargetCandidateProjection(
     target: BoardTargetRefProjection,
@@ -30,20 +23,14 @@ final case class BoardTargetActionProjection(
     maximum: Int,
     autoActivate: Boolean,
     candidates: Vector[BoardTargetCandidateProjection],
-    requiredTargets: Vector[BoardTargetRefProjection] = Vector.empty,
     decisionId: Option[String] = None,
     explicitConfirm: Boolean = false
 ) {
   require(minimum >= 0, "selection minimum must be non-negative")
   require(maximum >= minimum, "selection maximum must include minimum")
+  require(maximum <= 1, "a board-target action selects at most one target")
   require(maximum <= candidates.size,
     "selection maximum cannot exceed authorized candidates")
-  require(requiredTargets.distinct.size == requiredTargets.size,
-    "required selection targets must be distinct")
-  require(requiredTargets.forall(required => candidates.exists(_.target == required)),
-    "required selection targets must be authorized candidates")
-  require(requiredTargets.size <= minimum,
-    "required selection targets must fit within the minimum")
 }
 final case class CardResolutionProjection(
     kind: String,

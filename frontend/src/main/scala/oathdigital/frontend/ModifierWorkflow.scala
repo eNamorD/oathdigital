@@ -94,16 +94,10 @@ private[frontend] object ModifierWorkflow {
     val authorized = response.targets.map(_.key).toSet
     actions.find(_.actionKind == actionKind).map { action =>
       val candidates = action.candidates.filter(candidate => authorized(
-        previewKey(candidate.target)))
-      val required = action.requiredTargets.filter(target => authorized(previewKey(target)))
+        candidate.target.stableKey))
       action.copy(minimum = math.min(action.minimum, candidates.size),
         maximum = math.min(action.maximum, candidates.size), candidates = candidates,
-        requiredTargets = required, explicitConfirm = true)
+        explicitConfirm = true)
     }
-  }
-
-  private def previewKey(target: BoardTargetRef): String = target match {
-    case BoardTargetRef.SiteCard(_, kind, id) => s"$kind:$id"
-    case other => other.stableKey
   }
 }

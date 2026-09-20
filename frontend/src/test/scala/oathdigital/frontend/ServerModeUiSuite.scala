@@ -165,12 +165,10 @@ class ServerModeUiSuite extends FunSuite {
   test("selection copy exposes details and non-color cardinality instructions") {
     val single = BoardTargetAction("travel", "Travel", 1, 1, false,
       Vector(BoardTargetCandidate(BoardTargetRef.Site("a"), "A", Vector.empty)))
-    val multi = single.copy(actionKind = "campaign", maximum = 3,
-      candidates = Vector("a", "b", "c").map(id => BoardTargetCandidate(
-        BoardTargetRef.Site(id), id, Vector.empty)))
+    val confirmed = single.copy(explicitConfirm = true)
     assert(ServerUiSupport.cardinalityInstruction(single).contains("immediately"))
-    assertEquals(ServerUiSupport.cardinalityInstruction(multi),
-      "Choose 1 to 3 targets, then confirm.")
+    assertEquals(ServerUiSupport.cardinalityInstruction(confirmed),
+      "Choose one target, then confirm.")
     assertEquals(ServerUiSupport.candidateButtonLabel(BoardTargetCandidate(
       BoardTargetRef.Site("b"), "Site B", Vector("2 Supply"))),
       "Site B · 2 Supply")
@@ -438,8 +436,6 @@ class ServerModeUiSuite extends FunSuite {
       "site board-target")
     assertEquals(ServerUiSupport.siteTargetClasses(true, true),
       "site board-target board-target-selected")
-    assert(ServerUiSupport.cardTargetClasses(true, true)
-      .contains("board-target-selected"))
   }
 
   test("round tracker geometry is eight circular ring wedges") {
@@ -481,28 +477,6 @@ class ServerModeUiSuite extends FunSuite {
     assertEquals(ServerUiSupport.cardDecisionZoneHelpers(adviser),
       ServerUiSupport.CardDecisionZoneHelpers("Move exactly one adviser to Keep.",
         "The remaining candidates are discarded in order."))
-  }
-
-  test("targetable players and sites render exactly one detail badge") {
-    val candidates = Vector(
-      BoardTargetCandidate(BoardTargetRef.Player("blue"), "Blue", Vector("1 Favor")),
-      BoardTargetCandidate(BoardTargetRef.Site("b"),
-        "Site B", Vector("2 Defense", "3 Favor")))
-    candidates.foreach(candidate => assertEquals(
-      ServerUiSupport.candidateDetailBadgeTexts(candidate).size, 1))
-  }
-
-  test("target identity selects only projected legal candidates") {
-    val legal = BoardTargetRef.Site("a")
-    val illegal = BoardTargetRef.Site("b")
-    val action = BoardTargetAction("challenge", "Choose a site", 1, 1,
-      autoActivate = false, Vector(BoardTargetCandidate(legal,
-        "Site A", Vector("1 Supply"))))
-    val state = BoardTargetSelectionState.reconcile(None,
-      BoardSelectionContext("game", "red", 2), Vector(action))
-      .activate("challenge")
-    assert(ServerUiSupport.candidateForTarget(Some(state), legal).nonEmpty)
-    assertEquals(ServerUiSupport.candidateForTarget(Some(state), illegal), None)
   }
 
   test("populated site details render properties, stable IDs, and hidden relics") {
@@ -746,7 +720,7 @@ class ServerModeUiSuite extends FunSuite {
       Some(oathdigital.protocol.GameIntent.StartWalker("travel", Vector.empty,
         Vector(oathdigital.protocol.WalkerStartArgWire("site", "site:b")))))
     assertEquals(ServerUiSupport.commandForSelection(action("travel"), Vector(
-      BoardTargetRef.PlayerAdviser("red", "R1")), "red"), None)
+      BoardTargetRef.Site("site:b"), BoardTargetRef.Site("site:c")), "red"), None)
     // Campaign is no longer a board-target selection: it starts from its own
     // control and asks its questions as walker decisions.
     assertEquals(ServerUiSupport.commandForSelection(action("campaign-conquest"),

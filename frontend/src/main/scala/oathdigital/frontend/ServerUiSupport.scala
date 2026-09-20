@@ -48,9 +48,7 @@ private[frontend] object ServerUiSupport {
     value.world.flatMap(_.sites).find(_.siteId == siteId)
       .fold(siteId)(_.label)
 
-  private[frontend] def siteDetails(site: GameSite,
-      selection: Option[BoardTargetSelectionState] = None,
-      chooseTarget: BoardTargetRef => Unit = _ => ()): dom.Element = {
+  private[frontend] def siteDetails(site: GameSite): dom.Element = {
     val presentation = SiteCardPresentation.from(site)
     val details = element("div", "site-details")
     val properties = element("dl", "site-properties")
@@ -84,34 +82,12 @@ private[frontend] object ServerUiSupport {
     if (site.denizens.isEmpty)
       denizens.appendChild(dom.document.createTextNode(presentation.denizenEmpty))
     else site.denizens.foreach { denizen =>
-      val target = BoardTargetRef.SiteCard(site.siteId,
-        denizen.details.fold("denizen")(_.cardKind), denizen.denizenId)
-      val candidate = selection.flatMap(_.activeAction.flatMap(
-        _.candidates.find(_.target == target)))
-      val shell = element("span", cardTargetClasses(candidate.nonEmpty,
-        selection.exists(_.selected(target))))
-      shell.setAttribute("data-target-ref", target.stableKey)
+      val shell = element("span", "site-card-target")
       val card = denizen.details.fold[dom.Element](VisualDomRenderer.render(
         presentation.denizenVisuals.find(_._1 == denizen.denizenId).get._2,
         "site-card"))(cardDetailsPopover)
       card.setAttribute("data-denizen-id", denizen.denizenId)
-      candidate.foreach { value =>
-        card.classList.add("board-target")
-        card.setAttribute("aria-pressed",
-          selection.exists(_.selected(target)).toString)
-        card.setAttribute("title", candidateButtonLabel(value))
-        card.addEventListener("click", (event: dom.Event) => {
-          event.stopPropagation(); chooseTarget(target)
-        })
-        card.addEventListener("keydown", (event: dom.Event) => {
-          val key = event.asInstanceOf[dom.KeyboardEvent].key
-          if (key == "Enter" || key == " ") {
-            event.preventDefault(); event.stopPropagation(); chooseTarget(target)
-          }
-        })
-      }
       shell.appendChild(card)
-      candidate.flatMap(candidateDetailBadge).foreach(shell.appendChild)
       denizens.appendChild(shell)
     }
     (site.denizens.size until site.denizenCapacity).foreach { _ =>
@@ -339,8 +315,8 @@ private[frontend] object ServerUiSupport {
 
   private[frontend] def cardinalityInstruction(action: BoardTargetAction): String =
     if (action.maximum == 0) "No target is available; confirm to play this action."
-    else if (action.maximum == 1) "Choose one target. Selection submits immediately."
-    else s"Choose ${action.minimum} to ${action.maximum} targets, then confirm."
+    else if (action.explicitConfirm) "Choose one target, then confirm."
+    else "Choose one target. Selection submits immediately."
 
   private[frontend] def candidateButtonLabel(candidate: BoardTargetCandidate): String =
     (candidate.label +: candidate.details).mkString(" · ")
@@ -348,15 +324,6 @@ private[frontend] object ServerUiSupport {
   private[frontend] def candidateDetailText(
       candidate: BoardTargetCandidate): Option[String] =
     Option.when(candidate.details.nonEmpty)(candidate.details.mkString(" · "))
-
-  private[frontend] def candidateDetailBadgeTexts(
-      candidate: BoardTargetCandidate): Vector[String] =
-    candidateDetailText(candidate).toVector
-
-  private[frontend] def candidateForTarget(
-      selection: Option[BoardTargetSelectionState],
-      target: BoardTargetRef): Option[BoardTargetCandidate] =
-    selection.flatMap(_.activeAction.flatMap(_.candidates.find(_.target == target)))
 
   private[frontend] def candidateDetailBadge(
       candidate: BoardTargetCandidate): Option[dom.Element] =
@@ -379,11 +346,6 @@ private[frontend] object ServerUiSupport {
   private[frontend] def siteTargetClasses(candidate: Boolean,
       selected: Boolean): String =
     Vector("site", if (candidate) "board-target" else "site-readonly",
-      if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
-
-  private[frontend] def cardTargetClasses(candidate: Boolean,
-      selected: Boolean): String =
-    Vector("site-card-target", if (candidate) "board-target" else "",
       if (selected) "board-target-selected" else "").filter(_.nonEmpty).mkString(" ")
 
   private[frontend] def commandForSelection(action: BoardTargetAction,

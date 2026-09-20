@@ -294,22 +294,21 @@ class HttpGameClientSuite extends FunSuite {
       Vector(LegalTravelDestination("site:b", 2)))
   }
 
-  test("typed board-target actions decode sites cards advisers and reject malformed refs") {
-    val actions = """[{"actionKind":"campaign-hooks","prompt":"Choose targets","minimum":1,"maximum":3,"autoActivate":false,"explicitConfirm":false,"requiredTargets":[],"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site-card","siteId":"site:b","cardKind":"edifice","cardId":"E26"},"label":"Spring","details":["+2 warbands"]},{"target":{"kind":"player-adviser","playerId":"red-exile","cardId":"D1"},"label":"Adviser","details":[]}]}]"""
+  test("typed board-target actions decode sites and reject malformed refs") {
+    val actions = """[{"actionKind":"travel","prompt":"Choose a destination","minimum":1,"maximum":1,"autoActivate":false,"explicitConfirm":false,"candidates":[{"target":{"kind":"site","siteId":"site:b"},"label":"Site B","details":["2 Supply"]},{"target":{"kind":"site","siteId":"site:c"},"label":"Site C","details":[]}]}]"""
     val json = projectionJson(sequence = 10, choices = false)
       .replace("\"boardTargetActions\":[]",
         s"\"boardTargetActions\":$actions")
     val decoded = GameJson.decodeProjection(json).toOption.get
       .boardTargetActions.head
-    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 3)
+    assertEquals(decoded.minimum -> decoded.maximum, 1 -> 1)
     assertEquals(decoded.candidates.map(_.target), Vector(
-      BoardTargetRef.Site("site:b"),
-      BoardTargetRef.SiteCard("site:b", "edifice", "E26"),
-      BoardTargetRef.PlayerAdviser("red-exile", "D1")))
-    assert(GameJson.decodeProjection(json.replace("player-adviser", "unknown")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"maximum\":3", "\"maximum\":4")).isLeft)
-    assert(GameJson.decodeProjection(json.replace("\"cardKind\":\"edifice\"",
-      "\"cardKind\":\"relic\"")).isLeft)
+      BoardTargetRef.Site("site:b"), BoardTargetRef.Site("site:c")))
+    assert(GameJson.decodeProjection(json.replace("\"kind\":\"site\"",
+      "\"kind\":\"site-card\"")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"maximum\":1", "\"maximum\":2")).isLeft)
+    assert(GameJson.decodeProjection(json.replace("\"autoActivate\":false,",
+      "\"autoActivate\":false,\"requiredTargets\":[],")).isLeft)
   }
 
   test("Search start uses walker arguments and decodes legal sources") {

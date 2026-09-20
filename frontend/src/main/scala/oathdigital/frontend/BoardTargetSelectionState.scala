@@ -22,8 +22,7 @@ private[frontend] final case class BoardTargetSelectionState(
 
   def activate(kind: String): BoardTargetSelectionState =
     actions.find(action => action.actionKind == kind && !action.autoActivate)
-      .map(action => copy(activeActionKind = Some(kind),
-        selectedKeys = action.requiredTargets.map(_.stableKey).toSet))
+      .map(_ => copy(activeActionKind = Some(kind), selectedKeys = Set.empty))
       .getOrElse(this)
 
   def cancel: BoardTargetSelectionState = activeAction match {
@@ -38,8 +37,7 @@ private[frontend] final case class BoardTargetSelectionState(
       BoardSelectionResult.Submit(action, Vector(target))
     case Some(action) if action.candidates.exists(_.target == target) =>
       val key = target.stableKey
-      val required = action.requiredTargets.map(_.stableKey).toSet
-      val next = if (selectedKeys.contains(key) && !required(key)) selectedKeys - key
+      val next = if (selectedKeys.contains(key)) selectedKeys - key
       else if (selectedKeys.size < action.maximum) selectedKeys + key
       else selectedKeys
       BoardSelectionResult.Updated(copy(selectedKeys = next))
@@ -54,7 +52,7 @@ private[frontend] final case class BoardTargetSelectionState(
     selectedKeys.contains(target.stableKey)
 
   def canConfirm: Boolean = activeAction.exists(action =>
-    (action.maximum > 1 || action.explicitConfirm) &&
+    action.explicitConfirm &&
       selectedKeys.size >= action.minimum &&
       selectedKeys.size <= action.maximum)
 
@@ -77,9 +75,7 @@ private[frontend] object BoardTargetSelectionState {
       : BoardTargetSelectionState = previous match {
     case Some(state) if state.context == context && state.actions == actions => state
     case _ =>
-      val automatic = actions.find(_.autoActivate).map(_.actionKind)
-      val required = automatic.toVector.flatMap(kind => actions.find(
-        _.actionKind == kind).toVector.flatMap(_.requiredTargets)).map(_.stableKey).toSet
-      BoardTargetSelectionState(context, actions, automatic, required)
+      BoardTargetSelectionState(context, actions,
+        actions.find(_.autoActivate).map(_.actionKind), Set.empty)
   }
 }
