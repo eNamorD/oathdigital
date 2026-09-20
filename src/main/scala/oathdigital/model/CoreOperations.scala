@@ -364,8 +364,14 @@ object Cost {
 /** Pays a typed cost. The placed portions (`favor`/`secret`) move from the
   * player's play area to `placedAt`; the burnt portions leave play to the
   * shared bank. An all-zero cost is an inert no-op.
+  *
+  * A cost is placed only onto an empty card, unless `intoOccupied` (battle
+  * plans set it). `matchingBank` is the suit bank of the card the cost is paid
+  * onto, supplied by the caller because the pipeline has no catalog; it is
+  * used only to settle an off-turn payment.
   */
-final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost)
+final case class PayCost(player: PlayerId, placedAt: Location, cost: Cost,
+    intoOccupied: Boolean = false, matchingBank: Option[Suit] = None)
     extends CoreOperation {
   override val required: Boolean = true
   override val children: Vector[Operation] =

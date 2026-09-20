@@ -149,6 +149,7 @@ object OperationShape {
     accumulated ++= positionViolations(leaves)
     accumulated ++= cardViolations(ready, leaves)
     accumulated ++= resourceDescriptionViolations(ready, operation)
+    accumulated ++= PayCostRules.violations(ready, operation)
     accumulated ++= countedSourceViolations(
       ready, favorMoves, warbandMoves, secretReasons)
     accumulated ++= countedDestinationViolations(ready, leaves)

@@ -46,6 +46,12 @@ object OperationError {
       s"a supply spend of $required exceeds the $available available"
   }
 
+  final case class CardOccupied(card: CardId) extends OperationError {
+    override val code: String = "card-occupied"
+    override val detail: String =
+      s"${card.value} already holds favor or secrets, so a cost cannot be placed on it"
+  }
+
   final case class IncompatibleLocation(piece: Piece, location: Location)
       extends OperationError {
     override val code: String = "incompatible-location"

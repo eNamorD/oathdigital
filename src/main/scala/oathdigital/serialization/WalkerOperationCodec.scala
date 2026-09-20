@@ -71,10 +71,16 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
         "to" -> encodePositionedLocation(to),
         "resultingOrientation" -> orientation.fold[ujson.Value](ujson.Null)(
           value => ujson.Str(encodeOrientation(value))))
-      case PayCost(player, placedAt, cost) => ujson.Obj(
-        "kind" -> "pay-cost", "playerId" -> player.value,
-        "placedAt" -> encodeLocation(placedAt),
-        "cost" -> encodeCost(cost))
+      case PayCost(player, placedAt, cost, intoOccupied, matchingBank) =>
+        val optional: Vector[(String, ujson.Value)] =
+          (if (intoOccupied) Vector("intoOccupied" -> (ujson.Bool(true): ujson.Value))
+          else Vector.empty) ++
+            matchingBank.toVector.map(suit =>
+              "matchingBank" -> (ujson.Str(suit.key): ujson.Value))
+        ujson.Obj.from(Vector[(String, ujson.Value)](
+          "kind" -> "pay-cost", "playerId" -> player.value,
+          "placedAt" -> encodeLocation(placedAt),
+          "cost" -> encodeCost(cost)) ++ optional)
       case Peek(viewer, card, at) => ujson.Obj("kind" -> "peek",
         "viewerPlayerId" -> viewer.value, "card" -> encodeCardRef(card),
         "at" -> encodeLocation(at))
@@ -269,7 +275,13 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       case "pay-cost" => for {
         placedAt <- decodeLocation(value("placedAt"), s"$path.placedAt")
         cost <- decodeCost(value("cost"), s"$path.cost")
-      } yield PayCost(PlayerId(value("playerId").str), placedAt, cost)
+        bank <- value.obj.get("matchingBank") match {
+          case None | Some(ujson.Null) => Right(None)
+          case Some(raw) => decodeSuit(raw.str, s"$path.matchingBank").map(Some(_))
+        }
+      } yield PayCost(PlayerId(value("playerId").str), placedAt, cost,
+        intoOccupied = value.obj.get("intoOccupied").exists(_.bool),
+        matchingBank = bank)
       case "peek" => for {
         card <- decodeCardRef(value("card"), s"$path.card")
         at <- decodeLocation(value("at"), s"$path.at")
