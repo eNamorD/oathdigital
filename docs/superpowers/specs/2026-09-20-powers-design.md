@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Slice 0 (E1 to E5) implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5) implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
 ## Goal and scope
 
@@ -101,12 +101,15 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | Slice | Contents | Engine changes |
 | --- | --- | --- |
 | 0. Foundations | verify Dazzle, Catacombs, League Treaty | E1 to E5 |
-| 1. When Played, ACTION, WAKE | A Small Favor, Faithful Friend, Garrison, Family Heirloom; Wayside Inn, Elders, Alchemist, Wolves, Fae Merchant, Sleight of Hand, Gambling Hall, Murky Fountain, Whistle, Brass Horse, Dowsing Sticks, Ivory Eye, Crystal Vial, Bone Dice, Magic Carpet, Magic Waterskin; Marble Fountains, Horned Mask | none beyond slice 0 |
+| 1a. When Played and simple actions | A Small Favor, Faithful Friend, Garrison, Family Heirloom; Wayside Inn, Elders, Magic Waterskin; Marble Fountains | none beyond slice 0 |
+| 1b. Dice and relic draws | Gambling Hall, Bone Dice, Murky Fountain, Dowsing Sticks, Fae Merchant | none expected |
+| 1c. Targets and information | Alchemist, Wolves, Sleight of Hand, Crystal Vial, Ivory Eye; Horned Mask | none expected |
+| 1d. Movement | Whistle, Brass Horse, Magic Carpet | none expected |
 | 2. Modifiers, restrictions, triggers | Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant; Toll Roads, Grasping Vines, Circlet, Oaken and Rotting Fortress; Wild Cry, Welcoming Party, Gossip | E6 (`CardPlayed` split), E7, E9 |
 | 3. Battle plans | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
 | 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
 
-Slices 2, 3 and 4 are independent once slice 0 lands. Slice 1 needs only slice 0. The order above is the recommended one.
+Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). The order above is the recommended one.
 
 ## Testing
 
