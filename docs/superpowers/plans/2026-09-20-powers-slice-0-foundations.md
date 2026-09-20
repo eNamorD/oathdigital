@@ -117,17 +117,17 @@ class OperationVocabularySuite extends munit.FunSuite {
       .advisers.isEmpty)
   }
 
-  test("Bury.standard is the bury followed by the discard's returns") {
+  test("Bury.standard is the discard's returns followed by the bury") {
     val card = DenizenId("denizen:one")
     val from = PositionedLocation(Location.Site(SiteId("site:one")))
     assertEquals(Bury.standard(BuryableCard.Denizen(card), from,
       Some(Suit.Hearth), favor = 2, secrets = 1, actor), Vector[CoreOperation](
-      Bury(BuryableCard.Denizen(card), from),
       Move(Piece.Favor(2), PositionedLocation(Location.OnCard(card)),
         PositionedLocation(Location.FavorBank(Suit.Hearth))),
       Move(Piece.Secrets(1), PositionedLocation(Location.OnCard(card)),
         PositionedLocation(Location.PlayArea(actor))),
-      FlipSecrets(actor, 1, SecretSide.FaceUp, SecretSide.FaceDown)))
+      FlipSecrets(actor, 1, SecretSide.FaceUp, SecretSide.FaceDown),
+      Bury(BuryableCard.Denizen(card), from)))
     assertEquals(Bury.standard(BuryableCard.Relic(RelicId("relic:one")), from,
       None, favor = 0, secrets = 0, actor),
       Vector[CoreOperation](Bury(BuryableCard.Relic(RelicId("relic:one")), from)))
@@ -198,6 +198,8 @@ Add a companion to `Bury` directly below the class:
 object Bury {
   /** A bury with the returns a discard makes: favor to the suit's bank and
     * secrets to the acting player, facedown. `Bury` alone returns nothing.
+    * The returns come first because a card must carry no resources when it
+    * enters a deck.
     * `suit` is a fact about the card the caller supplies (the pipeline has no
     * catalog). It may be `None` only when `favor` is zero, as for a relic.
     */
@@ -205,8 +207,8 @@ object Bury {
       suit: Option[Suit], favor: Int, secrets: Int,
       actingPlayer: PlayerId): Vector[CoreOperation] = {
     require(favor == 0 || suit.isDefined, "buried favor needs its suit bank")
-    Bury(card, from) +: Discard.returns(card.id, suit, favor, secrets,
-      actingPlayer)
+    Discard.returns(card.id, suit, favor, secrets, actingPlayer) :+
+      Bury(card, from)
   }
 }
 ```

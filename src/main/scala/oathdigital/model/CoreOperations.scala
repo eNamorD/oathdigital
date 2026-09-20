@@ -161,6 +161,9 @@ object BuryableCard {
   final case class Edifice(id: EdificeId) extends BuryableCard {
     override val deck: CardDeck = CardDeck.Edifice
   }
+  final case class Vision(id: VisionId) extends BuryableCard {
+    override val deck: CardDeck = CardDeck.World
+  }
 }
 
 /** Adds a denizen, relic, or edifice to the bottom of its matching deck.
@@ -171,6 +174,23 @@ final case class Bury(card: BuryableCard, from: PositionedLocation,
     extends PrimitiveOperation {
   val to: PositionedLocation = PositionedLocation(
     Location.Deck(card.deck), StackPosition.Bottom)
+}
+
+object Bury {
+  /** A bury with the returns a discard makes: favor to the suit's bank and
+    * secrets to the acting player, facedown. `Bury` alone returns nothing.
+    * The returns come first because a card must carry no resources when it
+    * enters a deck.
+    * `suit` is a fact about the card the caller supplies (the pipeline has no
+    * catalog). It may be `None` only when `favor` is zero, as for a relic.
+    */
+  def standard(card: BuryableCard, from: PositionedLocation,
+      suit: Option[Suit], favor: Int, secrets: Int,
+      actingPlayer: PlayerId): Vector[CoreOperation] = {
+    require(favor == 0 || suit.isDefined, "buried favor needs its suit bank")
+    Discard.returns(card.id, suit, favor, secrets, actingPlayer) :+
+      Bury(card, from)
+  }
 }
 
 sealed trait Discard extends CoreOperation
@@ -228,6 +248,17 @@ object Discard {
     Piece.Card(card), from,
     PositionedLocation(Location.RegionalDiscard(destination),
       StackPosition.Top), resultingOrientation = Some(Orientation.FaceDown)))
+
+  // The suit fallback is never reached with a positive favor: positiveMove
+  // returns empty for zero and Bury.standard requires the suit.
+  private[model] def returns(card: CardId, suit: Option[Suit], favor: Int,
+      secrets: Int, actingPlayer: PlayerId): Vector[CoreOperation] =
+    (positiveMove(favor)(Piece.Favor.apply,
+      PositionedLocation(Location.OnCard(card)),
+      PositionedLocation(Location.FavorBank(suit.getOrElse(Suit.Arcane)))) ++
+      returnedSecrets(card, secrets, actingPlayer)).collect {
+      case operation: CoreOperation => operation
+    }
 
   private def returnedResources(card: CardId, suit: Suit, favor: Int,
       secrets: Int, actingPlayer: PlayerId): Vector[Operation] =
@@ -307,7 +338,8 @@ object Gain {
   * Restrictions on Take do not prevent a Give operation.
   */
 final case class Give(piece: Piece, giver: PlayerId,
-    from: Location, to: Location)
+    from: Location, to: Location,
+    override val required: Boolean = false)
     extends CoreOperation {
   require(Location.ownedBy(from, giver),
     "give source must belong to the giving player")

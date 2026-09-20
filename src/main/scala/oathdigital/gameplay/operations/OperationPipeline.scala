@@ -20,6 +20,7 @@ object OperationRun {
     case value: Discard.Denizen => value.copy(required = false)
     case value: Play => value.copy(required = false)
     case value: Replace => value.copy(required = false)
+    case value: Give => value.copy(required = false)
     case other => other
   }
 

@@ -441,6 +441,8 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
       "id" -> id.value)
     case BuryableCard.Edifice(id) => ujson.Obj("kind" -> "edifice",
       "id" -> id.value)
+    case BuryableCard.Vision(id) => ujson.Obj("kind" -> "vision",
+      "id" -> id.value)
   }
 
   private def decodeBuryableCard(value: ujson.Value,
@@ -448,6 +450,7 @@ private[serialization] trait WalkerOperationCodec extends CampaignResultCodec {
     case "denizen" => Right(BuryableCard.Denizen(DenizenId(value("id").str)))
     case "relic" => Right(BuryableCard.Relic(RelicId(value("id").str)))
     case "edifice" => Right(BuryableCard.Edifice(EdificeId(value("id").str)))
+    case "vision" => Right(BuryableCard.Vision(VisionId(value("id").str)))
     case other => Left(InvalidValue(s"$path.kind",
       s"unknown buryable card '$other'"))
   }
