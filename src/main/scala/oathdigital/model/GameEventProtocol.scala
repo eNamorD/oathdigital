@@ -15,7 +15,7 @@ trait WalkerEvent extends OathEvent
 object OathEvent {
   final case class IgnoredRulesRecorded(
       playerId: PlayerId,
-      action: MajorActionKind,
+      action: ActionKind,
       diagnostics: Vector[IgnoredRuleDiagnostic]
   ) extends OathEvent {
     require(diagnostics.nonEmpty, "ignored-rule event must not be empty")

@@ -559,7 +559,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     val gameId = "catacombs-walker-preview"
     val (prepared, actor, _) = prepareCatacombs(service, gameId, catacombsPlan)
     val preview = service.preview(gameId, prepared.nextSequence, actor,
-      MajorActionKind.Recover, Vector.empty).toOption.get
+      ActionKind.Recover, Vector.empty).toOption.get
     val offeredIds = preview.options.map(v => PowerId(v.handlerId))
     assertEquals(offeredIds, Vector(PowerId("denizen.catacombs")))
 
@@ -585,7 +585,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     // A legacy action's preview is untouched: still resolved through
     // `PowerRuntime`, not the walker catalog.
     val travelPreview = service.preview(gameId, prepared.nextSequence, actor,
-      MajorActionKind.Travel, Vector.empty)
+      ActionKind.Travel, Vector.empty)
     assert(travelPreview.isRight)
   }
 
@@ -680,16 +680,16 @@ class GameApplicationServiceSuite extends munit.FunSuite {
       GameCommand.EndWake(actor)).toOption.get
     val before = repository.load("game-preview").toOption.flatten.get.records
     val preview = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.model.MajorActionKind.Travel, Vector.empty).toOption.get
+      oathdigital.model.ActionKind.Travel, Vector.empty).toOption.get
     assertEquals(preview.loaded.nextSequence, act.nextSequence)
     assertEquals(repository.load("game-preview").toOption.flatten.get.records, before)
     assert(service.preview("game-preview", act.nextSequence - 1, actor,
-      oathdigital.model.MajorActionKind.Travel, Vector.empty).left.toOption
+      oathdigital.model.ActionKind.Travel, Vector.empty).left.toOption
       .exists(_.isInstanceOf[GameApplicationError.StaleClientPosition]))
     val forged = oathdigital.model.OrderedRuleInvocation(
       oathdigital.model.RuleSourceRef.GameRule("forged"), "unknown")
     assert(service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.model.MajorActionKind.Travel, Vector(forged)).isLeft)
+      oathdigital.model.ActionKind.Travel, Vector(forged)).isLeft)
     val adviser = ready.game.current.players.find(_.player == actor).get.advisers.head.id
       .asInstanceOf[WorldCardId]
     assert(service.handle("game-preview", act.nextSequence,
@@ -700,7 +700,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
             case id: VisionId => DecisionOptionRef.Vision(id)
           }))), Vector(forged))).isLeft)
     val challenge = service.preview("game-preview", act.nextSequence, actor,
-      oathdigital.model.MajorActionKind.Challenge, Vector.empty).toOption.get
+      oathdigital.model.ActionKind.Challenge, Vector.empty).toOption.get
     assertEquals(challenge.options, Vector.empty)
     assertEquals(challenge.ignored, Vector.empty)
   }

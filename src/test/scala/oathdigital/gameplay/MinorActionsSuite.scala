@@ -240,11 +240,11 @@ class MinorActionsSuite extends munit.FunSuite {
         if (player.player == other.player) other else player)))
     val source = RuleSourceRef.Adviser(other.player, powered)
     val expected = PowerRuntime.ignoredAtSource(catalog, changed, other.player,
-      MajorActionKind.WhenPlayed, source).toOption.get
+      ActionKind.WhenPlayed, source).toOption.get
     assertEquals(expected.map(_.handlerId), Vector("denizen.revelation"))
     assertEquals(PowerRuntime.ignoredAtSource(catalog, changed, active.player,
-      MajorActionKind.WhenPlayed, source).toOption.get, Vector.empty)
-    val event = IgnoredRulesRecorded(other.player, MajorActionKind.WhenPlayed, expected)
+      ActionKind.WhenPlayed, source).toOption.get, Vector.empty)
+    val event = IgnoredRulesRecorded(other.player, ActionKind.WhenPlayed, expected)
     assert(rules.evolve(Ready(changed), event).isRight)
   }
 

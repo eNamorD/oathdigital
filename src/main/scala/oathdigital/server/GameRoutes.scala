@@ -55,7 +55,7 @@ final class GameServerGateway(
   def preview(gameId: String, requestingPlayer: PlayerId,
       request: MajorActionPreviewRequest)
       : Either[GameApplicationError, MajorActionPreviewResponse] = for {
-    action <- oathdigital.model.MajorActionKind.fromKey(request.action).toRight(
+    action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
       GameApplicationError.BootstrapFailure("unknown major action"))
     selected <- GameIntentMapper.bindModifiers(requestingPlayer,
       request.orderedModifiers).left.map(error =>

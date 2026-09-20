@@ -422,7 +422,7 @@ class OathRulesWalkerPowerSuite extends munit.FunSuite {
   private def entryWindowed(modifierWindow: Option[PowerWindow])
       : WalkerProcedureRegistry.Entry =
     WalkerProcedureRegistry.Entry(
-      fallbackKind = Some(MajorActionKind.Recover),
+      fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = modifierWindow,
       continuationFor = (_, _, _) => None,

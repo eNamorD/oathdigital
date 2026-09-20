@@ -70,7 +70,7 @@ private[serialization] trait LifecycleEventCodec { this: GameEventJsonSupport =>
           )
         case FirstGameCompletedType => Right(FirstGameCompleted)
         case IgnoredRulesRecordedType => for {
-          action <- MajorActionKind.fromKey(payload("action").str).toRight(
+          action <- ActionKind.fromKey(payload("action").str).toRight(
             InvalidValue(s"$path.action", "unknown major action"))
           diagnostics <- payload("diagnostics").arr.toVector.foldLeft[
             Either[WireError, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {

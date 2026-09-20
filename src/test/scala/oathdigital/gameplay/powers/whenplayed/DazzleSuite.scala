@@ -50,7 +50,7 @@ class DazzleSuite extends munit.FunSuite {
       OperationPolicy.Permissive)(Right(_)).toOption.get.state
     assertEquals(replayed, finished.treeless)
     assertEquals(PowerRuntime.ignoredAtSource(catalog, prepared, actor,
-      MajorActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),
+      ActionKind.WhenPlayed, RuleSourceRef.Adviser(actor, dazzle)),
       Right(Vector.empty))
   }
 

@@ -111,7 +111,7 @@ final class GameApplicationService(
     }
 
   def preview(gameId: String, expectedNextSequence: Long, actor: PlayerId,
-      action: MajorActionKind, selected: Vector[OrderedRuleInvocation])
+      action: ActionKind, selected: Vector[OrderedRuleInvocation])
       : Either[GameApplicationError, MajorActionPreviewAccepted] =
     load(gameId).flatMap {
       case None => Left(GameApplicationError.StreamNotFound(gameId))
@@ -147,13 +147,13 @@ final class GameApplicationService(
     * names a registered [[oathdigital.model.ActionRef]] --
     * `WalkerProcedureRegistry` stays the single place that knows which
     * procedures are walker-driven, so this needs no per-action
-    * `MajorActionKind` match of its own. `MajorActionKind` and `ActionRef`
+    * `ActionKind` match of its own. `ActionKind` and `ActionRef`
     * share their key strings by convention (see `GameIntentMapper.actionRef`,
     * which bridges the same way from the wire intent), so a legacy-only kind
     * like `Campaign` simply has no matching `ActionRef` and falls through to
     * the `None` branch.
     */
-  private def walkerAction(action: MajorActionKind): Option[ActionRef] =
+  private def walkerAction(action: ActionKind): Option[ActionRef] =
     ActionRef.fromKey(action.key).filter(WalkerProcedureRegistry.isRegistered)
 
   /** Shared acceptance gate for both preview branches: `selected` must be
@@ -463,12 +463,12 @@ final class GameApplicationService(
     case _ => false
   }
 
-  private def majorAction(command: GameCommand): Option[(PlayerId, MajorActionKind)] =
+  private def majorAction(command: GameCommand): Option[(PlayerId, ActionKind)] =
     command match {
       case GameCommand.BeginCampaignConquest(actor, _, _) =>
-        Some(actor -> MajorActionKind.Campaign)
+        Some(actor -> ActionKind.Campaign)
       case GameCommand.BeginCampaignRaid(actor, _, _) =>
-        Some(actor -> MajorActionKind.Campaign)
+        Some(actor -> ActionKind.Campaign)
       case _ => None
     }
 

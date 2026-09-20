@@ -2,7 +2,7 @@ package oathdigital.gameplay.walker
 
 import oathdigital.gameplay.actions.forge.ForgeProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, OathContinue, OathViolation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, SiteId}
 
 /** Task 8: `WalkerProcedureRegistry.build`/`rebuild` are the single keyed
   * lookup both `OathRules.buildWalker` and `WalkerDecisionProjector` now
@@ -110,7 +110,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
     */
   test("the Forge entry declares Forge's own kind, modifier window and continuation") {
     val entry = WalkerProcedureRegistry.entries(ActionRef.Forge)
-    assertEquals(entry.fallbackKind, Some(MajorActionKind.Forge))
+    assertEquals(entry.fallbackKind, Some(ActionKind.Forge))
     assertEquals(entry.modifierWindow, Some(PowerWindow.ForgeModifierSelection))
     assertEquals(entry.rollDecisionId, None)
     val actor = PlayerId("p1")
@@ -130,7 +130,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
     */
   test("the Travel entry declares Travel's own kind and no park of any shape") {
     val entry = WalkerProcedureRegistry.entries(ActionRef.Travel)
-    assertEquals(entry.fallbackKind, Some(MajorActionKind.Travel))
+    assertEquals(entry.fallbackKind, Some(ActionKind.Travel))
     assertEquals(entry.modifierWindow, Some(PowerWindow.TravelModifierSelection))
     assertEquals(entry.rollDecisionId, None)
     // A flat tree parks nowhere, so no decision id of any spelling maps to a
@@ -144,7 +144,7 @@ class WalkerProcedureRegistrySuite extends munit.FunSuite {
   test("Begin Rest records Rest diagnostics; Finish Rest records none and " +
       "parks as a generic Rest decision") {
     assertEquals(WalkerProcedureRegistry.fallbackKind(
-      PhaseTransitionRef.BeginRest), Right(Some(MajorActionKind.Rest)))
+      PhaseTransitionRef.BeginRest), Right(Some(ActionKind.Rest)))
     assertEquals(WalkerProcedureRegistry.fallbackKind(
       PhaseTransitionRef.FinishRest), Right(None))
     assertEquals(WalkerProcedureRegistry.continuationFor(

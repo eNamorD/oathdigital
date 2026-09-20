@@ -13,7 +13,7 @@ import oathdigital.gameplay.phases.rest.{BeginRestProcedure, FinishRestProcedure
 import oathdigital.gameplay.phases.PhasePowerProcedure
 import oathdigital.gameplay.oathkeeper.OathkeeperProcedure
 import oathdigital.gameplay.powerresolver.PhasePowers
-import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionKind, OathContinue, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
+import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, ActionKind, OathContinue, OathViolation, Operation, PhaseTransitionRef, PlayerId, PowerId, PowerWindow, ProcedureRef, ReadyGame, StartableRef, TriggeredProcedureRef}
 
 /** The one place a procedure registers its walker tree-building functions
   * (Task 8; re-keyed by [[ProcedureRef]] family at Task 4). Before this,
@@ -31,9 +31,9 @@ import oathdigital.model.{ActionRef, DecisionId, DecisionOptionRef, MajorActionK
   */
 object WalkerProcedureRegistry {
 
-  /** `fallbackKind` (I4) is the [[MajorActionKind]] `OathRules.startWalker`
+  /** `fallbackKind` (I4) is the [[ActionKind]] `OathRules.startWalker`
     * runs `PowerRuntime.ignored` fallback-diagnostics against for this
-    * procedure -- previously a bare `MajorActionKind.Recover` literal at the
+    * procedure -- previously a bare `ActionKind.Recover` literal at the
     * `startWalker` call site regardless of which action was actually
     * starting. `None` for a triggered procedure, which declares no fallback
     * kind at all (Task 4): the `fallbackKind` accessor turns that into a
@@ -117,7 +117,7 @@ object WalkerProcedureRegistry {
     * Procedures that do not opt in are untouched.
     */
   private[gameplay] final case class Entry(
-      fallbackKind: Option[MajorActionKind],
+      fallbackKind: Option[ActionKind],
       rollDecisionId: Option[String],
       modifierWindow: Option[PowerWindow],
       continuationFor: (String, PlayerId, DecisionId) => Option[OathContinue],
@@ -141,7 +141,7 @@ object WalkerProcedureRegistry {
     */
   private[gameplay] val entries: Map[ProcedureRef, Entry] = Map(
     ActionRef.PlayFacedownAdviser -> Entry(
-      fallbackKind = Some(MajorActionKind.Search),
+      fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
@@ -151,7 +151,7 @@ object WalkerProcedureRegistry {
       rebuild = CardPlayProcedure.rebuildFacedown),
 
     ActionRef.Search -> Entry(
-      fallbackKind = Some(MajorActionKind.Search),
+      fallbackKind = Some(ActionKind.Search),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.SearchModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
@@ -162,7 +162,7 @@ object WalkerProcedureRegistry {
       rebuild = SearchProcedure.rebuild),
 
     ActionRef.Recover -> Entry(
-      fallbackKind = Some(MajorActionKind.Recover),
+      fallbackKind = Some(ActionKind.Recover),
       rollDecisionId = Some(RecoverProcedure.rollDecisionId),
       modifierWindow = Some(PowerWindow.RecoverModifierSelection),
       continuationFor = (decisionId, actor, decision) => decisionId match {
@@ -183,7 +183,7 @@ object WalkerProcedureRegistry {
       * `None` (R18).
       */
     ActionRef.Forge -> Entry(
-      fallbackKind = Some(MajorActionKind.Forge),
+      fallbackKind = Some(ActionKind.Forge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ForgeModifierSelection),
       continuationFor = (decisionId, actor, decision) => decisionId match {
@@ -204,7 +204,7 @@ object WalkerProcedureRegistry {
       * the route rather than a start-only cost.
       */
     ActionRef.Travel -> Entry(
-      fallbackKind = Some(MajorActionKind.Travel),
+      fallbackKind = Some(ActionKind.Travel),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TravelModifierSelection),
       continuationFor = (_, _, _) => None,
@@ -216,7 +216,7 @@ object WalkerProcedureRegistry {
       * source decision, so the start can be previewed from the fresh tree.
       */
     ActionRef.Muster -> Entry(
-      fallbackKind = Some(MajorActionKind.Muster),
+      fallbackKind = Some(ActionKind.Muster),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
@@ -229,7 +229,7 @@ object WalkerProcedureRegistry {
       requiresPlayableOption = true),
 
     ActionRef.Trade -> Entry(
-      fallbackKind = Some(MajorActionKind.Trade),
+      fallbackKind = Some(ActionKind.Trade),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.TradeModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
@@ -244,7 +244,7 @@ object WalkerProcedureRegistry {
       * preview gate; the banner decision's own option filter is the gate.
       */
     ActionRef.Challenge -> Entry(
-      fallbackKind = Some(MajorActionKind.Challenge),
+      fallbackKind = Some(ActionKind.Challenge),
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.ChallengeModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
@@ -277,7 +277,7 @@ object WalkerProcedureRegistry {
       * `continuationFor` is never consulted.
       */
     ActionRef.TakeWealth -> Entry(
-      fallbackKind = Some(MajorActionKind.Wake),
+      fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
       continuationFor = (_, _, _) => None,
@@ -294,12 +294,12 @@ object WalkerProcedureRegistry {
       * ran in (`OathRulesWalker.runsActionBoundary`, Task 8) -- End Wake is
       * a `PhaseTransitionRef`, so it never runs one.
       *
-      * `fallbackKind` is `MajorActionKind.Wake`, which is the kind the
+      * `fallbackKind` is `ActionKind.Wake`, which is the kind the
       * deleted `Wake` object's `withFallback` wrapper used, so the Wake
       * timing's ignored-rule diagnostics are recorded exactly as before.
       */
     PhaseTransitionRef.EndWake -> Entry(
-      fallbackKind = Some(MajorActionKind.Wake),
+      fallbackKind = Some(ActionKind.Wake),
       rollDecisionId = None,
       modifierWindow = None,
       continuationFor = (_, _, _) => None,
@@ -307,10 +307,10 @@ object WalkerProcedureRegistry {
       rebuild = EndWakeProcedure.build),
 
     /** Records the Rest timing's ignored-rule diagnostics, as the legacy
-      * `withFallback(MajorActionKind.Rest)` wrapper does.
+      * `withFallback(ActionKind.Rest)` wrapper does.
       */
     PhaseTransitionRef.BeginRest -> Entry(
-      fallbackKind = Some(MajorActionKind.Rest),
+      fallbackKind = Some(ActionKind.Rest),
       rollDecisionId = None,
       modifierWindow = None,
       continuationFor = (_, _, _) => None,
@@ -411,9 +411,9 @@ object WalkerProcedureRegistry {
         .InvalidEventOrder(s"no walker procedure registered for ${procedure.key}"))
     }
 
-  /** `procedure`'s [[MajorActionKind]] for the `PowerRuntime.ignored`
+  /** `procedure`'s [[ActionKind]] for the `PowerRuntime.ignored`
     * fallback diagnostics `OathRules.startWalker` records alongside the
-    * command (I4) -- queried here instead of a bare `MajorActionKind
+    * command (I4) -- queried here instead of a bare `ActionKind
     * .Recover` literal at the `startWalker` call site, so a second
     * registered procedure supplies its own kind without editing
     * `OathRules`.
@@ -423,7 +423,7 @@ object WalkerProcedureRegistry {
     * means the start records no fallback diagnostics.
     */
   def fallbackKind(procedure: StartableRef)
-      : Either[OathViolation, Option[MajorActionKind]] =
+      : Either[OathViolation, Option[ActionKind]] =
     lookup(procedure, entries).map(_.fallbackKind)
 
   /** `procedure`'s synthetic Roll-park decision id (I4) -- see `Entry`'s doc.

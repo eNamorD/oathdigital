@@ -73,9 +73,9 @@ class GameEventWireSuite extends munit.FunSuite {
 
   test("ignored-rule diagnostics round trip durable source timing and reason") {
     val event = OathEvent.IgnoredRulesRecorded(PlayerId("red"),
-      MajorActionKind.Rest, Vector(IgnoredRuleDiagnostic(
+      ActionKind.Rest, Vector(IgnoredRuleDiagnostic(
         RuleSourceRef.Adviser(PlayerId("red"), DenizenId("insomnia")),
-        "denizen.insomnia", MajorActionKind.Rest, RuleTiming.Trigger,
+        "denizen.insomnia", ActionKind.Rest, RuleTiming.Trigger,
         "reviewed-unimplemented-pre-alpha-fallback")))
     val encoded = GameEventWire.encodeEvent("g", catalog.ref, 0, event).toOption.get
     assertEquals(GameEventWire.decode(encoded).map(_.event), Right(event))

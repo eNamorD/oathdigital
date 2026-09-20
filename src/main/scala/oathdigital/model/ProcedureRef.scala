@@ -66,7 +66,7 @@ object ActionRef {
   }
   object UsePower { private[model] val Prefix = "use-power:" }
 
-  /** A key here that also names a [[oathdigital.model.MajorActionKind]]
+  /** A key here that also names a [[oathdigital.model.ActionKind]]
     * bridges to it on the string alone -- `GameApplicationService
     * .walkerAction` and `GameIntentMapper.actionRef` both do that, and the
     * major actions above rely on it.
@@ -74,7 +74,7 @@ object ActionRef {
     * `TakeWealth` deliberately does not: it is one of the two things a
     * player does in the Wake phase (the other, End Wake, is a
     * [[PhaseTransitionRef]] and never named here at all), so it cannot
-    * honestly own the phase's name. `MajorActionKind.Wake` names the
+    * honestly own the phase's name. `ActionKind.Wake` names the
     * phase's power timing, and Take Wealth points at it through
     * `fallbackKind` instead -- which is also what preserves the fallback
     * diagnostics the legacy `Wake` command ran under that same kind. The

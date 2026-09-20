@@ -86,7 +86,7 @@ final class AuthenticatedGameGateway(
       : Either[AuthenticatedGameFailure, MajorActionPreviewResponse] =
     authorization.authorizeCommand(gameId, principal).left.map(Authorization)
       .flatMap { actor => for {
-        action <- oathdigital.model.MajorActionKind.fromKey(request.action).toRight(
+        action <- oathdigital.model.ActionKind.fromKey(request.action).toRight(
           InvalidIntent(GameIntentMappingFailure("$.action", "unknown major action")))
         selected <- GameIntentMapper.bindModifiers(actor.access.playerId,
           request.orderedModifiers).left.map(InvalidIntent)

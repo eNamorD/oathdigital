@@ -4,7 +4,7 @@ import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver._
 import oathdigital.gameplay.powers.ReviewedPowerCatalog
 import oathdigital.model.PlayerId
-import oathdigital.model.{IgnoredRuleDiagnostic, MajorActionKind, OathViolation, OrderedRuleInvocation, PowerWindow, ReadyGame, RuleSourceRef, RuleTiming}
+import oathdigital.model.{IgnoredRuleDiagnostic, ActionKind, OathViolation, OrderedRuleInvocation, PowerWindow, ReadyGame, RuleSourceRef, RuleTiming}
 
 /** Compatibility projection from precise power windows into the current
   * command/event protocol. Matching and applicability are owned exclusively by
@@ -15,17 +15,17 @@ object PowerRuntime {
     ReviewedPowerCatalog.requireAudited(catalog)
 
   def options(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      action: MajorActionKind): Either[OathViolation, Vector[OrderedRuleInvocation]] =
+      action: ActionKind): Either[OathViolation, Vector[OrderedRuleInvocation]] =
     resolve(catalog, ready, actor, window(action)).map(_.offered.map(invocation =>
       OrderedRuleInvocation(invocation.source, invocation.powerId.value)))
 
   def ignored(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
-      action: MajorActionKind): Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
+      action: ActionKind): Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
     resolve(catalog, ready, actor, window(action)).map(_.diagnostics.map(value =>
       diagnostic(action, value)))
 
   def ignoredAtSource(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, action: MajorActionKind, source: RuleSourceRef)
+      actor: PlayerId, action: ActionKind, source: RuleSourceRef)
       : Either[OathViolation, Vector[IgnoredRuleDiagnostic]] =
     resolve(catalog, ready, actor, window(action),
       Some(source)).map(_.diagnostics.map(value => diagnostic(action, value)))
@@ -46,22 +46,22 @@ object PowerRuntime {
     }
   } yield result
 
-  private def window(action: MajorActionKind): PowerWindow = action match {
-    case MajorActionKind.Search => PowerWindow.SearchModifierSelection
-    case MajorActionKind.Travel => PowerWindow.TravelModifierSelection
-    case MajorActionKind.Campaign => PowerWindow.CampaignModifierSelection
-    case MajorActionKind.Muster => PowerWindow.MusterModifierSelection
-    case MajorActionKind.Trade => PowerWindow.TradeModifierSelection
-    case MajorActionKind.Forge => PowerWindow.ForgeModifierSelection
-    case MajorActionKind.Recover => PowerWindow.RecoverBeforeFirstRoll
-    case MajorActionKind.Challenge => PowerWindow.ChallengeModifierSelection
-    case MajorActionKind.Rest => PowerWindow.RestStart
-    case MajorActionKind.WhenPlayed => PowerWindow.ActionCardPlayed
-    case MajorActionKind.Wake => PowerWindow.WakeBoundary
-    case MajorActionKind.ActionBoundary => PowerWindow.ActionAfterMajorAction
+  private def window(action: ActionKind): PowerWindow = action match {
+    case ActionKind.Search => PowerWindow.SearchModifierSelection
+    case ActionKind.Travel => PowerWindow.TravelModifierSelection
+    case ActionKind.Campaign => PowerWindow.CampaignModifierSelection
+    case ActionKind.Muster => PowerWindow.MusterModifierSelection
+    case ActionKind.Trade => PowerWindow.TradeModifierSelection
+    case ActionKind.Forge => PowerWindow.ForgeModifierSelection
+    case ActionKind.Recover => PowerWindow.RecoverBeforeFirstRoll
+    case ActionKind.Challenge => PowerWindow.ChallengeModifierSelection
+    case ActionKind.Rest => PowerWindow.RestStart
+    case ActionKind.WhenPlayed => PowerWindow.ActionCardPlayed
+    case ActionKind.Wake => PowerWindow.WakeBoundary
+    case ActionKind.ActionBoundary => PowerWindow.ActionAfterMajorAction
   }
 
-  private def diagnostic(action: MajorActionKind, value: PowerDiagnostic) =
+  private def diagnostic(action: ActionKind, value: PowerDiagnostic) =
     IgnoredRuleDiagnostic(value.source, value.powerId.value, action,
       timing(value.window), value.reason)
 

@@ -28,7 +28,7 @@ private[gameplay] trait OathRulesWalker {
   protected def phasePowerCatalog: PhasePowers
   protected def walkerTree: OathRules.WalkerTreeSource
   protected def withFallback(state: OathState, actor: PlayerId,
-      action: MajorActionKind)(
+      action: ActionKind)(
       operation: => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition]
   protected def completeAction(transition: OathTransition)
@@ -431,13 +431,13 @@ private[gameplay] trait OathRulesWalker {
         sources.foldLeft[Either[OathViolation,
             Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
           case (Right(found), source) => PowerRuntime.ignoredAtSource(catalog,
-            ready, actor, MajorActionKind.WhenPlayed, source)
+            ready, actor, ActionKind.WhenPlayed, source)
             .map(found ++ _)
           case (failure @ Left(_), _) => failure
         }.map { diagnostics =>
           if (diagnostics.isEmpty) transition
           else transition.copy(events = transition.events :+
-            OathEvent.IgnoredRulesRecorded(actor, MajorActionKind.WhenPlayed,
+            OathEvent.IgnoredRulesRecorded(actor, ActionKind.WhenPlayed,
               diagnostics))
         }
       case _ => Right(transition)

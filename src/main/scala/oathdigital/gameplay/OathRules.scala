@@ -81,10 +81,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       : Either[OathViolation, OathTransition] = unlessWalkerPending(state) {
     (command match {
       case begin: CampaignCommand.Start => withFallback(state, begin.playerId,
-        MajorActionKind.Campaign)(Campaign.handle(catalog, state, command,
+        ActionKind.Campaign)(Campaign.handle(catalog, state, command,
           campaignLosingForceRegistry))
       case begin: CampaignCommand.StartRaid => withFallback(state, begin.playerId,
-        MajorActionKind.Campaign)(Campaign.handle(catalog, state, command,
+        ActionKind.Campaign)(Campaign.handle(catalog, state, command,
           campaignLosingForceRegistry))
       case _ => Campaign.handle(catalog, state, command, campaignLosingForceRegistry)
     })
@@ -107,7 +107,7 @@ final class OathRules(protected val catalog: ExecutableCatalog,
   ): Either[OathViolation, OathState] =
     event match {
       case recorded: IgnoredRulesRecorded => state match {
-        case Ready(ready) => (if (recorded.action == MajorActionKind.WhenPlayed)
+        case Ready(ready) => (if (recorded.action == ActionKind.WhenPlayed)
           recorded.diagnostics.map(_.source).distinct.foldLeft[
             Either[OathViolation, Vector[IgnoredRuleDiagnostic]]](Right(Vector.empty)) {
               case (Right(found), source) => PowerRuntime.ignoredAtSource(
@@ -196,16 +196,16 @@ final class OathRules(protected val catalog: ExecutableCatalog,
       case Ready(ready) =>
         val actor = ready.game.current.turn.activePlayer
         PowerRuntime.ignored(catalog, ready, actor,
-          MajorActionKind.ActionBoundary).map { diagnostics =>
+          ActionKind.ActionBoundary).map { diagnostics =>
           if (diagnostics.isEmpty) transition else transition.copy(events =
             transition.events :+ IgnoredRulesRecorded(actor,
-              MajorActionKind.ActionBoundary, diagnostics))
+              ActionKind.ActionBoundary, diagnostics))
         }
       case _ => Right(transition)
     }
 
   protected def withFallback(state: OathState, actor: PlayerId,
-      action: MajorActionKind)(
+      action: ActionKind)(
       operation: => Either[OathViolation, OathTransition])
       : Either[OathViolation, OathTransition] =
     state match {
@@ -228,10 +228,10 @@ final class OathRules(protected val catalog: ExecutableCatalog,
         }))
     val prepared = transition.state match {
       case Ready(ready) => PowerRuntime.ignored(catalog, ready,
-        ready.game.current.turn.activePlayer, MajorActionKind.Wake).map { diagnostics =>
+        ready.game.current.turn.activePlayer, ActionKind.Wake).map { diagnostics =>
         if (diagnostics.isEmpty) transition else transition.copy(events =
           transition.events :+ IgnoredRulesRecorded(
-            ready.game.current.turn.activePlayer, MajorActionKind.Wake, diagnostics))
+            ready.game.current.turn.activePlayer, ActionKind.Wake, diagnostics))
       }
       case _ => Right(transition)
     }
