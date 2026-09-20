@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.{CampaignRules, ForgeRules}
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
+import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
 import oathdigital.gameplay.actions.search.SearchProcedure
@@ -77,6 +78,10 @@ private[application] final class LegalActionProjector(
   private def challengeStartable(context: ScopedProjectionContext): Boolean =
     ChallengeProcedure.startable(catalog, context.ready, context.active.player,
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  private def negotiationStartable(context: ScopedProjectionContext): Boolean =
+    NegotiationProcedure.startable(catalog, context.ready,
+      context.active.player, WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   private def placeBannerResourceStartable(
       context: ScopedProjectionContext): Boolean =
@@ -164,8 +169,7 @@ private[application] final class LegalActionProjector(
             "revealOwnedRelic"),
           Option.when(minor.exists(value => value.maxBoardToSite > 0 ||
             value.maxSiteToBoard > 0))("moveWarbands"),
-          Option.when(oathdigital.gameplay.actions.Negotiation
-            .legalParticipants(context.ready, active.player).nonEmpty)("beginNegotiation")
+          Option.when(negotiationStartable(context))("beginNegotiation")
         ).flatten ++ phasePowers.controls(projectedPhasePowers)
         case Phase.Rest => phasePowers.controls(projectedPhasePowers) :+ "finishRest"
         case Phase.RoundEnd | Phase.WarExhaustion => Vector.empty

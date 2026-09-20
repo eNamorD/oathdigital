@@ -120,6 +120,26 @@ class ProjectionProtocolSuite extends munit.FunSuite {
       Right(carrying))
   }
 
+  test("a negotiate query and a waiting deal round trip with and without editing") {
+    val card = CardDetailsProjection("r1", "relic", "Relic One",
+      orientation = Some("face-down"))
+    val editing = NegotiationEditingProjection(5, Vector(card), Vector.empty,
+      Vector(NegotiationSiteRelicProjection("s1", card)), canAccept = true)
+    val deal = NegotiationDealProjection(Vector("red", "blue"), Vector("blue"),
+      Vector(NegotiationTransferProjection("red", "blue", 3, 1, Vector(card))),
+      Vector(NegotiationDisclosureProjection("red", "blue", "held-relic", None)),
+      Some(editing))
+    val query = DecisionQueryProjection("negotiate", Vector.empty,
+      heading = Some("Negotiation"), deal = Some(deal))
+    val waiting = WalkerWaitingProjection("red", Some("Negotiation"),
+      Vector("blue"), Some(deal.copy(editing = None)))
+    val carrying = projection.copy(
+      walkerDecision = projection.walkerDecision.map(_.copy(query = Some(query))),
+      walkerWaiting = Some(waiting))
+    assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+      Right(carrying))
+  }
+
   test("choose-many and choose-amount queries round-trip their counts and bounds") {
     def site(id: String) = DecisionOptionProjection("site", id, id)
     val many = DecisionQueryProjection("choose-many",

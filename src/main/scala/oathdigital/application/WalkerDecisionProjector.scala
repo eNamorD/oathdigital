@@ -44,6 +44,7 @@ private[application] final class WalkerDecisionProjector(
     rebuildTree: WalkerDecisionProjector.TreeSource =
       WalkerDecisionProjector.declaredTree,
     phasePowers: PhasePowers = PhasePowers.empty) {
+  private val deals = new NegotiationDealProjector(presentation)
 
   def this(catalog: ExecutableCatalog, presentation: GamePresentationProjector) =
     this(catalog, presentation, WalkerPowerCatalog.default(catalog),
@@ -62,16 +63,20 @@ private[application] final class WalkerDecisionProjector(
         context.current.walkerModifiers)
       awaited <- ProcedureWalker.awaitedPlayer(context.ready, tree, pending,
         powers)
-    } yield Parked(procedure, tree, pending, powers, awaited)
+      owners = ProcedureWalker.awaitedPlayers(context.ready, tree, pending,
+        powers)
+    } yield Parked(procedure, tree, pending, powers, awaited, owners)
   }
 
-  /** The full owner-private projection, for the awaited player only. */
+  /** The full owner-private projection, for every owner of the parked
+    * decision: the awaited player and any co-owners.
+    */
   def project(context: ScopedProjectionContext)
       : Option[WalkerDecisionProjection] = for {
     parked <- parkedPosition(context)
-    if context.viewer.contains(parked.awaited)
+    if context.viewer.exists(parked.owners.contains)
     projection <- this.parked(parked.procedure, parked.tree, context.ready,
-      parked.pending, parked.powers, parked.awaited)
+      parked.pending, parked.powers, parked.awaited, context.viewer)
   } yield projection
 
   /** The public "who is this waiting on" projection, for every viewer
@@ -83,12 +88,21 @@ private[application] final class WalkerDecisionProjector(
   def waiting(context: ScopedProjectionContext)
       : Option[WalkerWaitingProjection] = for {
     parked <- parkedPosition(context)
-    if !context.viewer.contains(parked.awaited)
+    if !context.viewer.exists(parked.owners.contains)
     _ <- this.parked(parked.procedure, parked.tree, context.ready,
-      parked.pending, parked.powers, parked.awaited, previewed = false)
-  } yield WalkerWaitingProjection(parked.awaited.value,
-    ProcedureWalker.parkedDecide(context.ready, parked.tree, parked.pending,
-      parked.powers).flatMap(_.query.heading))
+      parked.pending, parked.powers, parked.awaited, context.viewer,
+      previewed = false)
+  } yield {
+    val decide = ProcedureWalker.parkedDecide(context.ready, parked.tree,
+      parked.pending, parked.powers)
+    WalkerWaitingProjection(parked.awaited.value,
+      decide.flatMap(_.query.heading),
+      parked.owners.filter(_ != parked.awaited).toVector.map(_.value).sorted,
+      decide.map(_.query).collect {
+        case negotiate: DecisionQuery.Negotiate =>
+          deals.project(context.ready, context.viewer, negotiate)
+      })
+  }
 
   private def rebuild(ready: ReadyGame, procedure: ProcedureRef,
       activePlayer: PlayerId, args: Vector[DecisionOptionRef]) =
@@ -103,7 +117,7 @@ private[application] final class WalkerDecisionProjector(
 
   private def parked(procedure: ProcedureRef, tree: Operation,
       ready: ReadyGame, pending: PendingTree, powers: WalkerPowers,
-      awaited: PlayerId, previewed: Boolean = true)
+      awaited: PlayerId, viewer: Option[PlayerId], previewed: Boolean = true)
       : Option[WalkerDecisionProjection] =
     ProcedureWalker.parkedRoll(ready, tree, pending, powers) match {
       // R18: a procedure whose entry declares no roll decision id has no
@@ -132,7 +146,7 @@ private[application] final class WalkerDecisionProjector(
             if (previewed) playable(procedure, ready, tree, pending, powers,
               decide)
             else (decide.query, Map.empty[DecisionOptionRef, Vector[String]])
-          queryProjection(ready, Some(awaited), query, details).map(projected =>
+          queryProjection(ready, viewer, query, details).map(projected =>
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
               query = Some(projected),
               rollOutcome = rollOutcome(ready, awaited)))
@@ -209,8 +223,10 @@ private[application] final class WalkerDecisionProjector(
       case DecisionQuery.ChooseMany(min, max, options, heading) =>
         described(options).map(DecisionQueryProjection("choose-many", _,
           heading = heading, minimum = Some(min), maximum = Some(max)))
-      // Task 6 projects the deal.
-      case _: DecisionQuery.Negotiate => None
+      case negotiate: DecisionQuery.Negotiate =>
+        Some(DecisionQueryProjection("negotiate", Vector.empty,
+          heading = negotiate.heading,
+          deal = Some(deals.project(ready, viewer, negotiate))))
       case DecisionQuery.ChooseAmount(min, max, heading, confirmLabel) =>
         Some(DecisionQueryProjection("choose-amount", Vector.empty,
           heading = heading, confirmLabel = Some(confirmLabel),
@@ -425,5 +441,6 @@ private[application] object WalkerDecisionProjector {
     * carries no such outer instance, so it triggers no warning.
     */
   private final case class Parked(procedure: ProcedureRef, tree: Operation,
-      pending: PendingTree, powers: WalkerPowers, awaited: PlayerId)
+      pending: PendingTree, powers: WalkerPowers, awaited: PlayerId,
+      owners: Set[PlayerId])
 }

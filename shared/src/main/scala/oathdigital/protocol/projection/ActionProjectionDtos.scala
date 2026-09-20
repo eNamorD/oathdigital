@@ -144,7 +144,8 @@ final case class DecisionQueryProjection(
     slots: Vector[DecisionSlotProjection] = Vector.empty,
     total: Option[Int] = None,
     minimum: Option[Int] = None,
-    maximum: Option[Int] = None)
+    maximum: Option[Int] = None,
+    deal: Option[NegotiationDealProjection] = None)
 
 /** One selectable option: its stable reference as `kind` plus `id` -- the
   * exact pair `DecisionOptionRef` spells for a submitted answer and a
@@ -239,7 +240,9 @@ final case class WalkerRollOutcomeProjection(
   * player receives this; the awaited player receives `WalkerDecisionProjection`.
   */
 final case class WalkerWaitingProjection(playerId: String,
-    heading: Option[String] = None)
+    heading: Option[String] = None,
+    coOwnerPlayerIds: Vector[String] = Vector.empty,
+    deal: Option[NegotiationDealProjection] = None)
 final case class BannerProjection(key: String, face: String,
     holderPlayerId: Option[String], resources: Int) {
   def banner: String = key
@@ -297,6 +300,24 @@ final case class NegotiationDisclosureProjection(authorPlayerId: String,
     card: Option[CardDetailsProjection])
 final case class NegotiationSiteRelicProjection(siteId: String,
     card: CardDetailsProjection)
+/** What the viewer may put into the deal: present only for a participant. */
+final case class NegotiationEditingProjection(editableFavor: Int,
+    editableRelics: Vector[CardDetailsProjection],
+    editableAdvisers: Vector[CardDetailsProjection],
+    editableSiteRelics: Vector[NegotiationSiteRelicProjection],
+    canAccept: Boolean)
+
+/** A parked negotiation as one viewer sees it. Everyone sees the participants,
+  * who has accepted, favor amounts, relic counts and faceup relic details, and
+  * each disclosure's kind and recipient. Only an author sees the identity of
+  * their own facedown relics and of information they promise. `editing` is
+  * present only for a participant.
+  */
+final case class NegotiationDealProjection(participantPlayerIds: Vector[String],
+    acceptedPlayerIds: Vector[String],
+    transfers: Vector[NegotiationTransferProjection],
+    disclosures: Vector[NegotiationDisclosureProjection],
+    editing: Option[NegotiationEditingProjection] = None)
 final case class NegotiationProjection(decisionId: String, actorPlayerId: String,
     siteId: String, participantPlayerIds: Vector[String],
     acceptedPlayerIds: Vector[String], transfers: Vector[NegotiationTransferProjection],
