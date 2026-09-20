@@ -129,7 +129,8 @@ private[application] final class WalkerDecisionProjector(
         WalkerProcedureRegistry.rollDecisionId(procedure).toOption.map(
           rollId => WalkerDecisionProjection(procedure.key, rollId, "roll",
             pool = Some(pool.value), count = Some(count),
-            rollOutcome = rollOutcome(ready, awaited)))
+            rollOutcome = Option.when(procedure == ActionRef.Recover)(
+              rollOutcome(ready, awaited)).flatten))
       // Task 4: no `decisionId` comparison and no candidate discovery.
       // Whatever the parked `Decide` declares -- after every power
       // transform, since `parkedDecide` resolves the node through the same
@@ -149,7 +150,8 @@ private[application] final class WalkerDecisionProjector(
           queryProjection(ready, viewer, query, details).map(projected =>
             WalkerDecisionProjection(procedure.key, decide.decisionId, "decide",
               query = Some(projected),
-              rollOutcome = rollOutcome(ready, awaited)))
+              rollOutcome = Option.when(procedure == ActionRef.Recover)(
+                rollOutcome(ready, awaited)).flatten))
         }
     }
 
@@ -375,6 +377,8 @@ private[application] final class WalkerDecisionProjector(
     * also why it is worth keeping separate from the decision projection
     * above, which must stay generic -- a `decisionId` or `ProcedureRef`
     * comparison deciding what to OFFER belongs nowhere in this layer.
+    *
+    * Only Recover has this feedback; the caller gates on the procedure.
     */
   private def rollOutcome(ready: ReadyGame, actor: PlayerId)
       : Option[WalkerRollOutcomeProjection] = for {

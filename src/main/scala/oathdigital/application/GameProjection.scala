@@ -160,7 +160,8 @@ final class GameProjector(catalog: ExecutableCatalog, phasePowers: PhasePowers) 
       relicDeckCount = current.commonCards.relicDeck.size)
       .copy(walkerDecision = pending.walkerDecision,
         walkerWaiting = pending.walkerWaiting,
-        phasePowers = projectedPhasePowers)
+        phasePowers = projectedPhasePowers,
+        lastCampaign = CampaignResultProjector.project(context.ready))
   }
 
   private def turnOrder(participants: Vector[FirstGameParticipant],

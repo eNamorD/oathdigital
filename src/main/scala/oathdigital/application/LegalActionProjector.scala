@@ -6,6 +6,7 @@ import oathdigital.gameplay.actions.{CampaignRules, ForgeRules}
 import oathdigital.gameplay.actions.challenge.{ChallengeProcedure,
   PlaceBannerResourceProcedure}
 import oathdigital.gameplay.actions.economy.{MusterProcedure, TradeProcedure}
+import oathdigital.gameplay.actions.campaign.CampaignProcedure
 import oathdigital.gameplay.actions.negotiation.NegotiationProcedure
 import oathdigital.gameplay.actions.recover.RecoverProcedure
 import oathdigital.gameplay.actions.travel.TravelProcedure
@@ -77,6 +78,10 @@ private[application] final class LegalActionProjector(
     */
   private def challengeStartable(context: ScopedProjectionContext): Boolean =
     ChallengeProcedure.startable(catalog, context.ready, context.active.player,
+      WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
+
+  private def campaignStartable(context: ScopedProjectionContext): Boolean =
+    CampaignProcedure.startable(catalog, context.ready, context.active.player,
       WalkerPowers.selected(walkerPowerCatalog, Vector.empty))
 
   private def negotiationStartable(context: ScopedProjectionContext): Boolean =
@@ -155,6 +160,7 @@ private[application] final class LegalActionProjector(
           Option.when(tradeStartable(context, TradeResource.Secret))(
             "beginTradeSecret"),
           Option.when(challengeStartable(context))("beginChallenge"),
+          Option.when(campaignStartable(context))("beginCampaign"),
           Option.when(placeBannerResourceStartable(context))("placeBannerResource"),
           Option.when(active.advisers.exists(presentation.adviserOrientation(_) ==
             Orientation.FaceDown))("facedownAdviserMinorAction"),

@@ -409,4 +409,14 @@ class WalkerDecisionProjectionSuite extends munit.FunSuite {
     assertEquals(projector.project(ScopedProjectionContext(ready,
       Some(other))), None)
   }
+
+  test("only a Recover decision carries roll feedback") {
+    val b = oathdigital.gameplay.CampaignFixture.board()
+    val game = oathdigital.gameplay.CampaignFixture.rules()
+    val started = game.startWalker(OathState.Ready(b.ready), ActionRef.Campaign,
+      b.actor).toOption.get
+    val projection = new GameProjector(catalog).project("campaign",
+      LoadedGame(started.state, 12), b.actor)
+    assertEquals(projection.walkerDecision.map(_.rollOutcome), Some(None))
+  }
 }

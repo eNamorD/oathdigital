@@ -35,4 +35,5 @@ final case class GameProjection(
     ,walkerDecision: Option[WalkerDecisionProjection] = None
     ,walkerWaiting: Option[WalkerWaitingProjection] = None
     ,phasePowers: Vector[PhasePowerProjection] = Vector.empty
+    ,lastCampaign: Option[CampaignResultProjection] = None
 )

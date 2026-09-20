@@ -19,7 +19,7 @@ object GameProjectionCodec {
     "oathkeeper", "banners", "minorActions",
     "favorBanks", "tracks",
     "relicDeckCount", "privateAdviserPreview",
-    "walkerDecision", "walkerWaiting", "phasePowers")
+    "walkerDecision", "walkerWaiting", "phasePowers", "lastCampaign")
 
   def encode(value: GameProjection): String = ujson.write(encodeValue(value))
   def decode(json: String): Either[ProtocolDecodeFailure, GameProjection] =
@@ -78,7 +78,8 @@ object GameProjectionCodec {
     "privateAdviserPreview" -> encoded(value.privateAdviserPreview)(encodeCard),
     "walkerDecision" -> option(value.walkerDecision)(encodeWalkerDecision),
     "walkerWaiting" -> option(value.walkerWaiting)(encodeWalkerWaiting),
-    "phasePowers" -> encoded(value.phasePowers)(encodePhasePower))
+    "phasePowers" -> encoded(value.phasePowers)(encodePhasePower),
+    "lastCampaign" -> option(value.lastCampaign)(CampaignResultProjectionCodec.encode))
 
   private[projection] def decodeValue(raw: ujson.Value, path: String): Result[GameProjection] = for {
     value <- obj(raw, path); _ <- exact(value, Fields, path)
@@ -136,12 +137,13 @@ object GameProjectionCodec {
     powerRaws <- default(value, "phasePowers", path, Vector.empty[ujson.Value])(array)
     phasePowers <- traverse(powerRaws, s"$path.phasePowers") { (raw, child) =>
       decodePhasePower(raw, child) }
+    lastCampaign <- optionalAbsent(value, "lastCampaign", path)(CampaignResultProjectionCodec.decode)
   } yield GameProjection(game, sequence, phase, active, players, world, pawns, controls,
     ready, completed, resources, siteResources, actionOpen, families, destinations,
     sources, actions, pending, campaign, relocation,
     deckCount, deckTop, boards, oathkeeper, banners, minor,
     banks, tracks, relicDeck, preview,
-    walkerDecision, walkerWaiting, phasePowers)
+    walkerDecision, walkerWaiting, phasePowers, lastCampaign)
 
   private def decodeResources(raw: ujson.Value, path: String): Result[ActivePlayerResourcesProjection] = for {
     v <- obj(raw, path); _ <- exact(v, Set("favor", "faceUpSecrets", "faceDownSecrets",

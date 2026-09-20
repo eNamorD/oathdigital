@@ -1586,7 +1586,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     )
     assertEquals(act.phase, "act-action-selection")
     assert(act.actionSelectionOpen)
-    assertEquals(act.legalControls, Vector("beginRest", "facedownAdviserMinorAction"))
+    assertEquals(act.legalControls, Vector("beginRest", "beginCampaign", "facedownAdviserMinorAction"))
     assertEquals(act.actionFamilies.size, 9)
     assert(act.boardTargetActions.exists(_.actionKind == "travel"))
     val travel = act.boardTargetActions.find(_.actionKind == "travel").get

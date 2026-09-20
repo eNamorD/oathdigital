@@ -319,3 +319,22 @@ final case class NegotiationDealProjection(participantPlayerIds: Vector[String],
     transfers: Vector[NegotiationTransferProjection],
     disclosures: Vector[NegotiationDisclosureProjection],
     editing: Option[NegotiationEditingProjection] = None)
+
+/** The public record of the last Campaign fought (see `CampaignResult`).
+  * `defenderPlayerId` is `None` for bandits. Dice use the wire spellings; a
+  * Raid's targets are stable keys.
+  */
+final case class CampaignResultProjection(
+    attackerPlayerId: String,
+    kind: String,
+    defenderPlayerId: Option[String],
+    targetSiteIds: Vector[String],
+    raidTargets: Vector[String],
+    force: Int,
+    attackDice: Vector[String],
+    attackScore: Int,
+    skullLosses: Int,
+    sacrificed: Int,
+    defenseDice: Vector[String],
+    defenseScore: Int,
+    victorious: Boolean)

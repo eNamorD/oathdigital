@@ -210,4 +210,18 @@ class ProjectionProtocolSuite extends munit.FunSuite {
     assertEquals(FirstGameBootstrapCodec.decode(ujson.write(unexpected)).left.toOption.get.path,
       "$.participants[0].actorPlayerId")
   }
+
+  test("a Campaign result round-trips for a Conquest and a Raid") {
+    val conquest = CampaignResultProjection("red", "conquest", None,
+      Vector("site:a", "site:b"), Vector.empty, 3, Vector("hollow-sword",
+        "two-swords-skull"), 2, 1, 1, Vector("one-shield", "doubler"), 4, false)
+    val raid = CampaignResultProjection("red", "raid", Some("blue"), Vector.empty,
+      Vector("pawn:blue", "relic:blue:r1", "banner:blue:peoples-favor"), 2,
+      Vector.empty, 0, 0, 0, Vector.empty, 5, true)
+    Vector(conquest, raid).foreach { result =>
+      val carrying = projection.copy(lastCampaign = Some(result))
+      assertEquals(GameProjectionCodec.decode(GameProjectionCodec.encode(carrying)),
+        Right(carrying))
+    }
+  }
 }
