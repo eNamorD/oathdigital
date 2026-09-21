@@ -11,6 +11,7 @@ object ReviewedPowerCatalog {
 
   private val syntheticIds = Set(
     PowerId("banner.peoples-favor.grand-council"),
+    PowerId("banner.peoples-favor.mob"),
     PowerId("banner.darkest-secret.festival"),
     PowerId("banner.darkest-secret.wandering-flame.move"),
     PowerId("banner.darkest-secret.wandering-flame.place"),

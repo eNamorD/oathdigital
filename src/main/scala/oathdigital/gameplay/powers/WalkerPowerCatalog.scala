@@ -1,6 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powers.banner.BannerFacePowers
 import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.KnightsErrant
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
@@ -55,5 +56,6 @@ object WalkerPowerCatalog {
       PlanRules.forCatalog(catalog) ++
       SimplePlans.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
+      BannerFacePowers.contributions ++
       Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }

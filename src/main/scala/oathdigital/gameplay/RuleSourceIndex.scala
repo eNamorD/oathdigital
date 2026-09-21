@@ -140,7 +140,7 @@ object RuleSourceIndex {
       IndexedRuleSource(
         RuleSourceRef.Banner(Banner.PeoplesFavor.key),
         current.banners.peoplesFavor.active match {
-          case PeoplesFavorFace.Mob => Vector.empty
+          case PeoplesFavorFace.Mob => ids(Vector("banner.peoples-favor.mob"))
           case PeoplesFavorFace.GrandCouncil =>
             ids(Vector("banner.peoples-favor.grand-council"))
         },

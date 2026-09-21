@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powers.banner
 
-import oathdigital.gameplay.powerresolver.PhasePower
+import oathdigital.gameplay.powerresolver.{ContributingPower, PhasePower}
 import oathdigital.model.PowerId
 
 /** The powers printed on the banner faces, registered through this one object
@@ -13,6 +13,10 @@ import oathdigital.model.PowerId
 object BannerFacePowers {
   val phasePowers: Vector[PhasePower] =
     Vector[PhasePower](WanderingFlameMove, WanderingFlamePlace)
+
+  /** The banner faces' rules that change how the engine plans an action. */
+  val contributions: Vector[ContributingPower] =
+    Vector[ContributingPower](PeoplesFavorMob)
 
   private val texts: Vector[(PowerId, String, String)] = Vector(
     (WanderingFlameMove.id, "Wandering Flame: move",
