@@ -90,6 +90,16 @@ leaked. Keep the raw loopback development event log separate.
   so it needs its own spec. Until then Mob uses a single `PlacementRules` value
   on `PlacementTree` that carries the adviser limits and a
   "may discard a site card first" permission.
+- [ ] **Deferred: an adviser-slot decision option.** `DecisionOptionRef` names a
+  card by identity, and `WalkerDecisionProjector` drops any decision that names
+  a card its viewer may not identify, so a decision cannot offer another
+  player's facedown adviser. Relics have an identity-free `RelicSlot`
+  reference, and advisers have none. Ivory Eye works around it with `Button`
+  options keyed by owner and adviser position, which show a label and no card.
+  An `AdviserSlot(owner, slot)` reference, like `RelicSlot`, would let the
+  panel present the slot as a facedown card. It touches the model, the answer
+  codec, the projector and the frontend, and any future power that targets a
+  facedown adviser would use it.
 
 ### Phase - Empire and campaign continuity
 

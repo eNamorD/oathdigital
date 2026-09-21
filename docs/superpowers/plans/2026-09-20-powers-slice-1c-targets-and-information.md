@@ -1792,3 +1792,14 @@ These are decisions the plan makes by default. Each needs a product answer only 
 - **Spec coverage.** The rulings for Alchemist, Wolves, Sleight of Hand, Crystal Vial and Ivory Eye (ACTION) and Horned Mask (WAKE) map to Tasks 2 to 6. Fae Merchant, Gambling Hall, Bone Dice, Murky Fountain and Dowsing Sticks belong to slice 1b, and Whistle, Brass Horse and Magic Carpet to slice 1d.
 - **Placeholders.** None.
 - **Types.** `PowerAnswers.one` / `distribution` / `missing` (Task 1) are used unchanged in Tasks 2 to 6. `TargetsFixture` members used later (`others`, `withSecrets`, `withPawn`, `giveAdviser`, `giveVision`, `withoutAdvisers`, `use`, `answer`, `after`, `awaits`, `pick`, `replayed`, `usableNow`, `offered`, `queryOf`, `boardOf`, `publicBoardOf`) are defined in Task 1. `PaidAction` (slice 1a) is the base of Tasks 1 to 5. `IvoryEye.optionFor` is defined in Task 5 and used in its suite. `HornedMask.denizenDecisionId` and `discardDecisionId` are defined in Task 6 and used in its suite.
+
+## Execution notes
+
+The plan was executed after slice 1b merged, with these changes. The task code above is the plan as first written. The executed code differs only as listed here.
+
+- **Registration.** Slice 1b registers its group through `DiceAndRelicDrawPowers`. Slice 1c does the same through `action/TargetPowers.scala`, and `PhasePowerCatalog` gained one line (`++ TargetPowers.forCatalog(catalog)`) instead of one line per task. Each task added its power to `TargetPowers`.
+- **Decisions on the open questions.** Q1, Q3 and Q5 stood. Q2 stood, and an "adviser-slot decision option" item was added to `docs/ROADMAP.md` beside the card-slots item. Q4 changed (below).
+- **Q4, Horned Mask and the adviser limit.** Horned Mask reads the limit through a new helper, `gameplay/powers/AdviserLimit.scala` (`AdviserLimit.of(catalog, ready, player)`: 3, or 2 for the holder of a faceup Silver Tongue). Silver Tongue's limit lived only in its `SearchPlayAdviser` transform, so no shared helper existed. The helper is a read of state that repeats that rule. Silver Tongue and card play are untouched. `HornedMask.AdviserLimit` was removed. Tests: `AdviserLimitSuite`, and four Silver Tongue cases in `HornedMaskSuite`. Silver Tongue lowers the limit (it does not raise it).
+- **Wolves.** The kill is not the player's option. It is the best-effort form of `Kill` (non-required), which an empty board skips, and the doc comment, test name and rulings row say so. The code is as written in Task 1.
+- **Journal wire checks.** The slice 1b `PaidActionHarness.wireRoundTrips` check was added to the Sleight of Hand (mixed batch), Crystal Vial, Ivory Eye and Horned Mask suites.
+- **Task code.** All six task suites and powers compiled and passed as written.
