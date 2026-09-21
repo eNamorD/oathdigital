@@ -5,6 +5,7 @@ import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
 import oathdigital.gameplay.powers.recover.CatacombsContribution
 import oathdigital.gameplay.powers.rest.{LeagueTreatyContribution, SilverTongue}
+import oathdigital.gameplay.powers.targeting.TargetProtections
 import oathdigital.gameplay.powers.travel.{TravelModifiers, TravelSitePowers}
 import oathdigital.gameplay.powers.wake.TakeWealthLimit
 import oathdigital.gameplay.powers.whenplayed.{ASmallFavor, ConspiracyWhenPlayed, Dazzle, FaithfulFriend, FamilyHeirloom, Garrison}
@@ -44,6 +45,7 @@ object WalkerPowerCatalog {
       Garrison.forCatalog(catalog).toVector ++
       FamilyHeirloom.forCatalog(catalog).toVector ++
       ActionModifiers.forCatalog(catalog) ++
+      TargetProtections.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }
