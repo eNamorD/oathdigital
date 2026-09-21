@@ -21,6 +21,9 @@ final case class CatacombsContribution private (cardId: DenizenId,
   // Stable across the action: card presence, never the relic/secrets spent.
   override def applicable(ctx: PowerCtx): Boolean =
     PowerAccess.locate(ctx.state, ctx.activePlayer, cardId).isDefined
+  override def selectionPayments(ready: ReadyGame, actor: PlayerId)
+      : Vector[CoreOperation] =
+    Vector(Costs.onCard(actor, cardId, Cost(secret = 1), catalog))
   def contributions: Map[PowerWindow, Vector[Contribution]] =
     Map(PowerWindow.RecoverActionEligibility -> Vector(
       Transform((ctx, ops) => place(ctx.activePlayer) +: ops)))

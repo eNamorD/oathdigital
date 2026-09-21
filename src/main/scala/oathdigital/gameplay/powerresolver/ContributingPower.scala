@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{CoreOperation, DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -83,6 +83,13 @@ trait ContributingPower {
   def priority: Int = 0
   def contributions: Map[PowerWindow, Vector[Contribution]]
   def applicable(ctx: PowerCtx): Boolean = true
+  /** What selecting this power pays, as the operations its action runs first.
+    * A command that selects several powers dry-runs all of their payments
+    * together (`OathRules.validateModifiers`), so a combination the player
+    * cannot pay is refused at selection. Free by default.
+    */
+  def selectionPayments(ready: ReadyGame, actor: PlayerId)
+      : Vector[CoreOperation] = Vector.empty
   /** Decision 10(b)'s named ignore. Receives the whole candidate rather than
     * its id, because a rule of the shape "ignore other modifiers of this
     * action" needs the candidate's classification, and that lives on the

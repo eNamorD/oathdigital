@@ -3,6 +3,7 @@ package oathdigital.gameplay
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.engine.EventEvolution
 import oathdigital.model._
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
 import oathdigital.gameplay.powerresolver.{ContributingPower, PowerCtx, PhasePowers}
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerCompleted, WalkerDice,
   WalkerOutcome, WalkerParked, WalkerPowers, WalkerProcedureRegistry,
@@ -209,8 +210,25 @@ private[gameplay] trait OathRulesWalker {
           case (Right(_), id) => Left(InvalidEventOrder(
             s"unknown or non-selectable power id ${id.value}"))
           case (left, _) => left
-        }
+        }.flatMap(_ => requirePayable(ready, actor, modifiers))
     }
+
+  /** Every selected power pays at the start of the action, so the payments
+    * are dry-run together against the state before the command: one that the
+    * player cannot make once the others are made (two costs that need the
+    * only secret) refuses the selection, before anything is recorded.
+    */
+  private def requirePayable(ready: ReadyGame, actor: PlayerId,
+      modifiers: Vector[PowerId]): Either[OathViolation, Unit] = {
+    val payments = walkerPowerCatalog.powers
+      .filter(power => modifiers.contains(power.id))
+      .flatMap(_.selectionPayments(ready, actor))
+    if (payments.isEmpty) Right(())
+    else OperationPipeline.run(ready, payments, OperationPolicy.Permissive)(
+      Right(_)).left.map(violation => InvalidEventOrder(
+      "the selected modifiers cannot all be paid together: " +
+        violation)).map(_ => ())
+  }
 
   /** Task 3 wiring rule: restrictions run once per command, at command entry,
     * before the walk -- collected across the whole derived `tree` via
