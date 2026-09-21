@@ -114,14 +114,14 @@ All are selected at the start of the major action. A modifier's cost is paid at 
 
 | Card | Ruling |
 | --- | --- |
-| 56 Augury | Search from the world deck or a regional discard draws one more card. The draw still stops after a Vision. |
-| R04 Truthful Harp | Search draws 2 more cards. Every drawn card is revealed while in your hand. Harp and Augury stack. |
+| 56 Augury | Implemented (slice 2d). Search from the world deck or a regional discard draws one more card. The draw still stops after a Vision. |
+| R04 Truthful Harp | Implemented (slice 2d). Search draws 2 more cards. Every drawn card is revealed while in your hand. Harp and Augury stack. |
 | 29 Tents | Implemented (slice 2c). Cost 1 favor placed. If the destination is in the region of your pawn's current site, Travel costs no Supply. |
 | 43 Forest Paths | Implemented (slice 2c). Cost 1 favor placed. If the destination holds a beast-suit denizen or edifice, Travel costs no Supply, and the powers of sites are ignored for that Travel (`shouldIgnore` on site-sourced Travel powers). |
-| R07 Cup of Plenty | Non-persistent, so a Trade modifier. Trading with a card whose suit differs from every faceup adviser you hold costs no Supply. Facedown advisers do not count. |
-| 144 Rowdy Pub | Muster from Rowdy Pub as the source gains one more warband, on top of the matching-adviser bonus. The source is read from the answered `muster.source` decision through a `BuildOps`. |
+| R07 Cup of Plenty | Implemented (slice 2d). Non-persistent, so a Trade modifier. Trading with a card whose suit differs from every faceup adviser you hold costs no Supply. Facedown advisers do not count. |
+| 144 Rowdy Pub | Implemented (slice 2d). Muster from Rowdy Pub as the source gains one more warband, on top of the matching-adviser bonus. The source is read from the answered `muster.source` decision through a `BuildOps`. |
 | R20 Dragonskin Drum | Implemented (slice 2c). After Travel, gain one warband, appended after the Move. |
-| 173 Relic Worship | Non-persistent after the catalog fix. `applicable` requires a secret and an empty card. After the relic is taken (`RecoverAfterRelic`), pay 1 secret placed with a required `PayCost` and gain 2 Supply. Limitation: another selected modifier spending your only secret first makes the payment fail late. |
+| 173 Relic Worship | Implemented (slice 2d). Non-persistent after the catalog fix. `applicable` requires a secret and an empty card. Its cost, 1 secret placed, is paid at the start of the Recover with the other selected modifiers' costs, and is refused at selection if they cannot all be paid together (Catacombs with one faceup secret). After the relic is taken (`RecoverAfterRelic`), gain 2 Supply. A Recover that ends without a relic has still paid the secret. |
 | 120 Knights Errant | After Muster you may Campaign for no Supply. An appended `Decide` is offered only if a Campaign is legal, and a `Branch` builds the Campaign tree at walk time from live state, so its force sees Muster's warbands. A hook on `CampaignCost` drops the `SpendSupply` for the nested Campaign only. One action boundary runs after Muster. |
 
 ## Slice 2: persistent rules
@@ -149,6 +149,7 @@ For both Fortress faces, a Raid removes the protected player from the defender d
 - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. Generic discard rules (product decisions): a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. An intact edifice is refused by the generic rule for Mob's discard too. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
 - **2b:** every selected modifier's cost is paid at the start of its action and all are validated together at selection (`ContributingPower.selectionPayments`); Catacombs states its secret. `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party is a denizen played faceup straight from the Search's draw, to a site or as a faceup adviser; a facedown placement and a card that was already a facedown adviser do not trigger it. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
 - **2c:** a selected modifier's cost is paid at the start of every Travel, whatever the route (permissive, product decision); the Supply saving and Forest Paths' ignore apply only when the condition holds. A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
+- **2d:** the Truthful Harp reveals by recording a `Peek` for every other player and restricts nothing; the hand itself stays private in projections, and the other players remember a revealed card played facedown. Augury and the Harp stack. Relic Worship pays its secret at the start of the Recover and gains its 2 Supply after the relic is taken; Catacombs plus Relic Worship with one faceup secret is refused at selection. The Cup of Plenty is free for a player with no faceup adviser. The reviewed entry for Relic Worship is now a selected, implemented handler.
 
 ## Slice 3: Campaign battle plans
 

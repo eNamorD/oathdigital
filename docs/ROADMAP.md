@@ -101,6 +101,11 @@ leaked. Keep the raw loopback development event log separate.
   codec, the projector and the frontend, and any future power that targets a
   facedown adviser would use it.
 
+- [ ] **Deferred: a public view of a revealed temporary hand.** The Truthful Harp
+  reveals the cards it draws by recording a `Peek` for every other player. No
+  operation reveals a card in a temporary hand and the hand is projected to its
+  owner only, so no view shows the reveal to the other players yet.
+
 - [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
   Knights Errant runs a Campaign inside a Muster and offers it whenever a
   Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
