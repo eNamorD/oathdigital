@@ -11,5 +11,5 @@ import oathdigital.gameplay.powerresolver.PhasePower
 object TargetPowers {
   def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
     Vector[PhasePower](Wolves, Alchemist, SleightOfHand,
-      CrystalVial(catalog))
+      CrystalVial(catalog), IvoryEye)
 }
