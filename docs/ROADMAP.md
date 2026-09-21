@@ -106,6 +106,12 @@ leaked. Keep the raw loopback development event log separate.
   operation reveals a card in a temporary hand and the hand is projected to its
   owner only, so no view shows the reveal to the other players yet.
 
+- [ ] **Deferred: a board slot for distributions and Sticky Fire without a choice.**
+  Warning Signals names the defender's board by a player option in its distribution, which
+  the panel shows as a player name, and Sticky Fire asks its question even when a yes
+  changes nothing (against bandits it only costs the favor). A board option, and skipping a
+  question whose answers are the same, need a small change to the option vocabulary.
+
 - [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
   Knights Errant runs a Campaign inside a Muster and offers it whenever a
   Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
