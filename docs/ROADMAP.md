@@ -101,6 +101,15 @@ leaked. Keep the raw loopback development event log separate.
   codec, the projector and the frontend, and any future power that targets a
   facedown adviser would use it.
 
+- [ ] **Deferred: offer a nested Campaign only when it would be accepted.**
+  Knights Errant runs a Campaign inside a Muster and offers it whenever a
+  Campaign is legal. A restriction on the whole Campaign (Vow of Peace, the
+  Fortress start refusal) rejects the player's "campaign" answer, so a Vow of
+  Peace holder is offered a Campaign that is then refused, and can only decline.
+  Offering it only when it would be accepted needs the power to ask the walker
+  whether the answer would pass its restrictions, which `PowerCtx` cannot do
+  today. It is accepted until then.
+
 ### Phase - Empire and campaign continuity
 
 After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,

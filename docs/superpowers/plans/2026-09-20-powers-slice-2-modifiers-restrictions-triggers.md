@@ -2573,7 +2573,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 `SelectedModifier` is the kit the other selected modifiers of this slice stand on (see fact 11). Its `applicable` answers two questions by window: at a `*ModifierSelection` window "may the player select this now?" (its action, `PowerAccess.locate`, `Costs.affordable`), and elsewhere `appliesAt`, which must read only the node the power is hooked on, because the walker folds every window again on each resume.
 
 - **Wild Cry** gains 1 Supply and 2 warbands when a beast denizen is played faceup. It excludes its own card, and is silent on a facedown play and a discard. It cannot be discarded while selected (Task 3), which its suite shows through a full adviser area.
-- **Welcoming Party** gains 1 favor from the Hearth bank when a denizen is played whose origin was not a facedown adviser. The origin is where the card comes from, not where it goes (product decision): a card drawn by a Search and then played to a site, as a faceup adviser or as a facedown adviser triggers it, and a card that was a facedown adviser and is played faceup by the Play-Facedown-Adviser action does not. The hook does not carry the origin, so the power reads `ctx.procedure` (Task 5). A Vision is not a denizen and a card does not trigger on its own play.
+- **Welcoming Party** ("If you play a denizen face up when first drawn, gain favor from the Hearth bank", product owner's text) gains 1 favor from the Hearth bank when a denizen is played faceup straight from the draw: the card comes from a Search's temporary hand (its origin) and goes to a site or becomes a faceup adviser. A card placed facedown does not trigger it, and neither does a card that was already a facedown adviser and is played faceup later by the Play-Facedown-Adviser action. The hook does not carry the origin, so the power reads `ctx.procedure` (Task 5): a card played by a Search came straight from its draw. A Vision is not a denizen and a card does not trigger on its own play.
 - **Gossip** gives its holder 1 favor from the Discord bank when another player places an adviser facedown, and reads `CardPlayedFacedown`.
 
 - [ ] **Step 1: Write the tests**
@@ -2927,8 +2927,8 @@ class WelcomingPartySuite extends munit.FunSuite {
       .toOption.get.map(_.id).contains(WelcomingParty.id))
   }
 
-  test("a card drawn by a Search and played to a site gains 1 favor from the " +
-      "Hearth bank") {
+  test("a denizen played faceup straight from the draw, to a site, gains 1 " +
+      "favor from the Hearth bank") {
     val ready = withParty(plain)
     val done = play(ready, modifiers, plain.head, "site")
     val after = SearchFixture.after(done)
@@ -2947,17 +2947,17 @@ class WelcomingPartySuite extends munit.FunSuite {
     assertEquals(favor(after), favor(ready) + 1)
   }
 
-  test("a card drawn by a Search and placed facedown was not a facedown " +
-      "adviser, so it gains it too") {
+  test("a card drawn by a Search and placed facedown is not played faceup, so " +
+      "it gains nothing") {
     val ready = withParty(plain)
     val done = play(ready, modifiers, plain.head, "adviser-facedown")
     val after = SearchFixture.after(done)
-    assertEquals(hearthBank(after), hearthBank(ready) - 1)
-    assertEquals(favor(after), favor(ready) + 1)
-    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+    assertEquals(hearthBank(after), hearthBank(ready))
+    assertEquals(favor(after), favor(ready))
   }
 
-  test("a card that was a facedown adviser does not, played faceup or to a site") {
+  test("a card that was already a facedown adviser is not first drawn, so it " +
+      "gains nothing, played faceup or to a site") {
     val card = plain.head
     val ready = asAdviser(withParty(plain.drop(1)), card, Orientation.FaceDown)
     Vector("adviser-faceup", "site").foreach { button =>
@@ -2991,8 +2991,9 @@ class WelcomingPartySuite extends munit.FunSuite {
     assert(power.applicable(ctx.copy(operation = played)))
     assert(!power.applicable(ctx.copy(operation = played,
       procedure = Some(ActionRef.PlayFacedownAdviser))))
+    assert(!power.applicable(ctx.copy(operation = played, procedure = None)))
     assert(!power.applicable(ctx.copy(operation =
-      CardPlayedFacedown(VisionRules.Faith, actor),
+      CardPlayedFacedown(plain.head, actor),
       window = PowerWindow.ActionCardPlayedFacedown)))
   }
 
@@ -3351,36 +3352,34 @@ import oathdigital.gameplay.powerresolver.{Contribution, PowerCtx, Transform}
 import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
 
-/** Welcoming Party (card 50), a selected Search modifier: when you play a
-  * denizen that was not a facedown adviser, gain 1 favor from the Hearth bank.
-  * A Vision is not a denizen, and a card does not trigger on its own play.
+/** Welcoming Party (card 50), a selected Search modifier: if you play a
+  * denizen faceup when it is first drawn, gain 1 favor from the Hearth bank.
   *
-  * "Not a facedown adviser" is about where the card comes from, not where it
-  * goes. A card drawn by a Search and played (to a site, as a faceup adviser or
-  * as a facedown adviser) was not a facedown adviser, so it triggers the power.
-  * A card that was a facedown adviser and is played faceup by the
-  * Play-Facedown-Adviser action does not. The played-card hook does not carry
-  * the origin, so the power reads it from the procedure the window is walked
-  * for (`PowerCtx.procedure`). The favor is best-effort, so an empty Hearth bank
-  * gives nothing.
+  * "When first drawn" is the card's origin: it comes straight from the draw,
+  * the temporary hand of a Search. It is played faceup when it goes to a site or
+  * becomes a faceup adviser. A card placed facedown does not trigger it, and
+  * neither does a card that was already a facedown adviser and is played faceup
+  * later by the Play-Facedown-Adviser action. A Vision is not a denizen, and a
+  * card does not trigger on its own play.
+  *
+  * The played-card hook does not carry the origin, so the power reads it from
+  * the procedure the window is walked for (`PowerCtx.procedure`): a card played
+  * by a Search came straight from its draw. The favor is best-effort, so an
+  * empty Hearth bank gives nothing.
   */
 final case class WelcomingParty private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier {
   def id: PowerId = WelcomingParty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
-  private val gain = Transform((ctx: PowerCtx, children: Vector[Operation]) =>
-    children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth, WelcomingParty.Favor))
-
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.ActionCardPlayedFaceup -> Vector(gain),
-    PowerWindow.ActionCardPlayedFacedown -> Vector(gain))
+    PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
+      children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth,
+        WelcomingParty.Favor))))
 
   override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match {
     case CardPlayedFaceup(card: DenizenId, _) => card != cardId &&
-      !ctx.procedure.contains(ActionRef.PlayFacedownAdviser)
-    // A card is placed facedown only from a hand.
-    case CardPlayedFacedown(card: DenizenId, _) => card != cardId
+      ctx.procedure.contains(ActionRef.Search)
     case _ => false
   }
 }
@@ -7208,23 +7207,19 @@ Each sub-slice ends with a docs commit, so a merged sub-slice leaves the design 
 
 - `docs/superpowers/specs/2026-09-20-powers-design.md`: in the status line add the sub-slice ("slice 2a" and so on) to the implemented list with a link to this plan. In the "Slicing" section add "Slice 2 is planned in six sub-slices: see its [plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md)." once, in 2a. In "Verify at plan time" replace: the window-key fingerprint item (2a) with "No: fingerprints cover catalog handler ids and structure only"; the `PowerCtx.nodePath` item (2b) with "`nodePath` is a vector of child indices and names no action, and a walk's state has no procedure; `PowerCtx.procedure` names it (E9)". In the E9 paragraph (2b) replace "If `nodePath` does not identify..." with the outcome: needed, for Welcoming Party's origin and Knights Errant.
 - `docs/superpowers/specs/2026-09-20-powers-rulings.md`: add `Implemented (slice 2x)` beside each card's row in "Slice 2: modifiers", "Slice 2: persistent rules" and "Slice 2: card-play triggers", and add a "Slice 2 implementation notes" list with these entries for the sub-slice:
-  - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. **Generic discard rules (product decisions):** a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded, by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. Add to "Rules that apply to every power": "**Active modifiers.** A card that prints a power selected for the running action cannot be discarded." Mob's row: an intact edifice is refused by the generic rule. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
-  - **2b:** `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party's "not a facedown adviser" is the card's origin: a card that was a facedown adviser played faceup does not trigger it; a card drawn by a Search does, wherever it is placed. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
+  - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. **Generic discard rules (product decisions):** a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded, by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. Add to "Rules that apply to every power", exactly: "**Active modifiers.** Active modifiers cannot be discarded. A modifier cannot be discarded during the major action it is modifying." Mob's row: an intact edifice is refused by the generic rule. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
+  - **2b:** `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party's row reads "If you play a denizen face up when first drawn, gain 1 favor from the Hearth bank with `Gain.Favor`. A card does not trigger on its own play." (replacing "that is not a facedown adviser"): a denizen played faceup straight from the Search's draw, to a site or as a faceup adviser; a facedown placement and a card that was already a facedown adviser do not trigger it. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
   - **2c:** a selected modifier places its cost on every Travel, whatever the route (permissive, product decision); the Supply saving and Forest Paths' ignore apply only when the condition holds. A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
   - **2d:** the Truthful Harp reveals by recording a `Peek` for every other player and restricts nothing; the hand itself stays private in projections, and the other players remember a revealed card played facedown. Augury and the Harp stack. Relic Worship's payment is required and fails late if another selected modifier spent the only secret (Catacombs), which strands the Recover. The Cup of Plenty is free for a player with no faceup adviser. The reviewed entry for Relic Worship is now a selected, implemented handler.
   - **2e:** Conspiracy's target decision has a window and is dropped when a power removes every option. The Fortress start refusal applies until the Campaign has answered one of its decisions. Circlet's protection covers Raid targets, Challenge banners and Conspiracy targets and never the Circlet itself.
   - **2f:** restrictions are checked against the tree a power adds and the answers a command carries, so Vow of Peace and the Fortress apply to Knights Errant's nested Campaign, which is refused when the player answers "campaign". The Muster registry entry recognises the Campaign's decision ids and the `muster.` prefix.
-- `docs/ROADMAP.md` (2d and 2f only): add one line each, beside the card-slots item: "A public view of a revealed temporary hand (Truthful Harp reveals by `Peek` today)" and "Offer a nested Campaign only when it would be accepted (Knights Errant asks, then refuses on the answer)".
+- `docs/ROADMAP.md` (2d only): add a deferred item beside the card-slots item: "A public view of a revealed temporary hand (Truthful Harp reveals by `Peek` today)". The deferred item for Knights Errant's offer was added when this plan was revised.
 
 ## Open items
 
 Everything else the product owner answered is built into the tasks. What remains:
 
-1. **Welcoming Party and a facedown placement from the hand.** The plan follows the origin reading: a card drawn by a Search and placed facedown as an adviser was not a facedown adviser, so it triggers Welcoming Party. Example: the player selects Welcoming Party, Searches, keeps a Fox and plays it facedown: they gain 1 favor. If a facedown placement should not count (as it does not for Wild Cry, whose ruling says so), `CardPlayedFacedown` is dropped from Welcoming Party's contributions, one line. Recommended default: trigger.
-2. **The Truthful Harp and memory.** The Harp records what the other players saw (`Peek`). If the kept card is then played facedown, the others remember which card it is, so the facedown adviser is shown to them as known. That is what a reveal at a table leaves behind, and nothing restricts the play. If the card should be hidden again once played facedown, an engine change is needed (forgetting a `Peek` when a card moves facedown). Recommended default: keep it, no change.
 3. **Relic Worship with Catacombs and one faceup secret.** Established by running it (fact 19): both are offered together, Catacombs pays the secret at the start, and answering the relic decision is then rejected (`player play area contains 0 of requested secrets`), with no other option, so the Recover cannot continue. The plan leaves it, as the ruling accepts it. Recommended fix, if wanted: check at selection that the combined placed costs of the selected modifiers are payable (an engine change to the selection check), so the pair is refused at the start.
-4. **Knights Errant offers a Campaign it will refuse.** With Vow of Peace or a Fortress, "campaign" is offered and rejected on the answer, and "do not campaign" works. Example: a Vow of Peace holder selects Knights Errant, musters, is asked, answers "campaign" and is told `CampaignUnavailable`. Recommended default: accept (the offer would need to ask the walker whether the answer would be accepted, which `PowerCtx` cannot do). The roadmap line records it.
-5. **The active-modifier rule is the product owner's, not the documents'.** It is enforced for every selected modifier of every action, not only Search modifiers, and recorded in the rulings appendix (Task 4's docs step). Example: Tents selected for a Travel cannot be discarded by a Dazzle played during it (there is none in a Travel, so it is moot today). Recommended default: every action.
 
 ## Risks to check while executing
 
@@ -7246,5 +7241,5 @@ Everything else the product owner answered is built into the tasks. What remains
 
 - **Spec coverage.** Augury, Truthful Harp, Cup of Plenty, Rowdy Pub, Relic Worship (Task 8); Tents, Forest Paths, Dragonskin Drum (Task 7); Knights Errant (Task 12); Wild Cry, Welcoming Party (Task 6); Toll Roads, Grasping Vines (Task 7); Circlet, Oaken and Rotting Fortress (Task 10); Gossip (Task 6); E6 (Tasks 1, 2 and 4), E7 (Task 9), E9 (Task 5). The design's verify-at-plan-time items for E6 (fingerprint) and E9 (`nodePath`) are answered in fact 1 and in Task 5. The product owner's answers: 1 in Task 6, 2 in the Global Constraints and Task 7, 3 in Task 8, 4 in Task 11, 5 in open item 3, 6 in Task 3, 7 in Task 10, 8 in Tasks 3 and 6, 9 in Task 8, 10 in Task 8 and open item 2.
 - **Placeholders.** None: every code step is a complete file or an exact replacement, compiled and run in a throwaway copy before it was written here.
-- **Validation.** Every file and replacement in Tasks 1 to 12 was applied, in this order, to a fresh copy of `main`, compiled and run: each task's tests failed to compile (or failed) before its implementation and passed after it, and the whole suite and the architecture check passed at the end (1371 tests, against 1195 on `main`). The same tasks were also applied in a second order (2a, 2b, 2e, 2f, 2d, 2c) with the same result, so the sub-slices are independent as the split table says.
+- **Validation.** Every file and replacement in Tasks 1 to 12 was applied, in this order, to a fresh copy of `main`, compiled and run: each task's tests failed to compile (or failed) before its implementation and passed after it, and the whole suite and the architecture check passed at the end (1371 tests, against 1195 on `main`). Revision in progress: Tasks 1 to 6 were re-run after the Welcoming Party change.
 - **Types.** `PlacementRules`, `PlacementTree.adjust`, `PlacementBody`, `CardPlay.Choice.replacementOptional` and `CardPlayProcedure.noReplacement` (Tasks 2 and 4) are used unchanged by `PlacementFixture`, `SiteDiscardFirstSuite` and `SilverTongue`. `DiscardRestrictions` and `CardStaging` (Task 3) are used by Tasks 4, 6, 7, 8, 10 and 12. `PowerCtx.procedure` (Task 5) is used by Tasks 6 and 12. `SelectedModifier` and `CatalogCards` (Task 6) are the base of Tasks 7, 8 and 12. `SearchFixture` (Task 6) is used by Task 8. `ContributingPower.ignores` (Task 7) is used by Forest Paths. The restriction traversal (Task 11) is what Task 12's suite relies on.
