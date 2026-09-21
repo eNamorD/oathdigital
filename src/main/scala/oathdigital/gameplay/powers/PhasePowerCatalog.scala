@@ -2,7 +2,7 @@ package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.powerresolver.{PhasePower, PhasePowers}
-import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, MagicWaterskin, WaysideInn}
+import oathdigital.gameplay.powers.action.{DiceAndRelicDrawPowers, Elders, MagicWaterskin, TargetPowers, WaysideInn}
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.gameplay.powers.wake.MarbleFountains
 
@@ -13,5 +13,6 @@ object PhasePowerCatalog {
   def default(catalog: ExecutableCatalog): PhasePowers =
     PhasePowers(SilverTongue.forCatalog(catalog).toVector ++
       Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains) ++
-      DiceAndRelicDrawPowers.forCatalog(catalog))
+      DiceAndRelicDrawPowers.forCatalog(catalog) ++
+      TargetPowers.forCatalog(catalog))
 }
