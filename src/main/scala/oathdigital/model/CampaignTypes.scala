@@ -53,6 +53,12 @@ object CampaignPlanSide {
   case object Defender extends CampaignPlanSide
 }
 
+/** What using a battle plan costs its user. `Favor` and `Secret` are placed onto
+  * the plan's source card, which may already hold resources; `FavorBurnt` and
+  * `SecretBurnt` leave play to the shared bank. `SacrificeWarband` kills one
+  * warband of the user's own force, and only a defender may pay it: the board
+  * in a Raid, a warband at a target site the defender rules in a Conquest.
+  */
 sealed trait CampaignPlanCost extends Product with Serializable
 object CampaignPlanCost {
   final case class Favor(count: Int) extends CampaignPlanCost {
@@ -61,18 +67,32 @@ object CampaignPlanCost {
   final case class Secret(count: Int) extends CampaignPlanCost {
     require(count > 0, "Campaign secret cost must be positive")
   }
+  final case class FavorBurnt(count: Int) extends CampaignPlanCost {
+    require(count > 0, "Campaign burnt favor cost must be positive")
+  }
+  final case class SecretBurnt(count: Int) extends CampaignPlanCost {
+    require(count > 0, "Campaign burnt secret cost must be positive")
+  }
+  case object SacrificeWarband extends CampaignPlanCost
 }
 
+/** What a chosen battle plan does once it is paid, in order. `RemoveAttackDice`
+  * takes what the attack pool holds, up to the count, so a pool of two loses
+  * two and an empty pool loses none. `Run` is the escape hatch for a plan whose
+  * effect is not a dice change: it runs the operations as they are.
+  */
 sealed trait CampaignPlanEffect extends Product with Serializable
 object CampaignPlanEffect {
   final case class AddAttackDice(count: Int) extends CampaignPlanEffect {
     require(count > 0, "added Campaign attack dice must be positive")
   }
+  final case class RemoveAttackDice(count: Int) extends CampaignPlanEffect {
+    require(count > 0, "removed Campaign attack dice must be positive")
+  }
   final case class AddDefenseDice(count: Int) extends CampaignPlanEffect {
     require(count > 0, "added Campaign defense dice must be positive")
   }
-  case object IgnoreAttackSkulls extends CampaignPlanEffect
-  case object RevealSource extends CampaignPlanEffect
+  final case class Run(operations: Vector[Operation]) extends CampaignPlanEffect
 }
 
 sealed trait CampaignPlanSource extends Product with Serializable {
@@ -87,6 +107,10 @@ object CampaignPlanSource {
       extends CampaignPlanSource {
     def stableKey: String = s"site-card:${siteId.value}:denizen:${id.value}"
   }
+  final case class SiteEdifice(siteId: SiteId, id: EdificeId)
+      extends CampaignPlanSource {
+    def stableKey: String = s"site-edifice:${siteId.value}:edifice:${id.value}"
+  }
   final case class Relic(playerId: PlayerId, id: RelicId)
       extends CampaignPlanSource {
     def stableKey: String = s"relic:${playerId.value}:${id.value}"
@@ -96,18 +120,15 @@ object CampaignPlanSource {
   }
 }
 
-final case class CampaignPlanResolution(
-    source: CampaignPlanSource,
-    handlerId: String,
-    side: CampaignPlanSide,
-    costs: Vector[CampaignPlanCost],
-    effects: Vector[CampaignPlanEffect]
-)
-
 /** One battle plan a power offers now: where it comes from, what it costs and
   * what it does. `label` is the words of the option when the source has no card
   * to name (the title). An offer says only that the plan is usable, never
   * whether its user can pay: the engine dry-runs the plan to learn that.
+  *
+  * The costs and effects must not depend on anything using the plan changes
+  * (the resources it spends, the orientation of its card, the warbands it
+  * moves), because the plan is rebuilt from a fresh offer whenever a walk
+  * resumes inside it.
   */
 final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
     costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect])

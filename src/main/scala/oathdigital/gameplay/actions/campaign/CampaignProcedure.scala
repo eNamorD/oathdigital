@@ -63,7 +63,7 @@ object CampaignProcedure {
       Some(PowerWindow.CampaignAttackRoll)),
     Sequence(Vector[Operation](BuildOps((ready, pending) =>
       withSetup(ready, actor, pending)(setup =>
-        CampaignBattle.attackResultOps(catalog, ready, setup, pending)))),
+        CampaignBattle.attackResultOps(ready, setup)))),
       Some(PowerWindow.CampaignAttackResult)),
     sacrificeStep(actor),
     Roll(CampaignIds.defensePool, DiceSpec(DiceKind.Defense), RollMode.Automatic,

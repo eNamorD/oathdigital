@@ -83,6 +83,12 @@ object PowerWindow {
   case object CampaignDefenderBattlePlans extends CampaignWindow {
     val key = "campaign.defender-battle-plans"
   }
+  /** One battle plan being paid for and applied. A power may add to what a
+    * chosen plan costs or does, matching on the plan's owner, side and source.
+    */
+  case object CampaignPlanApplication extends CampaignWindow {
+    val key = "campaign.plan-application"
+  }
   case object CampaignAfterOutcome extends CampaignWindow {
     val key = "campaign.after-outcome"
   }

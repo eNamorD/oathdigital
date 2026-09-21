@@ -1,7 +1,8 @@
 package oathdigital.gameplay
 
-import oathdigital.gameplay.CampaignFixture.{Board, againstPlayer, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
+import oathdigital.gameplay.CampaignFixture.{Board, actorRules, againstPlayer, board, cardWith, relicWith, rules, withAdviser, withEnemyAtOrigin, withRelic, withSecrets, withSiteCard}
 import oathdigital.gameplay.actions.campaign.{CampaignBattle, CampaignIds, CampaignProcedure}
+import oathdigital.gameplay.powers.WalkerPowerCatalog
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, RollPayload,
   WalkerPowers, WalkerStepRecorded}
@@ -35,7 +36,7 @@ class CampaignProcedureSuite extends munit.FunSuite {
     val tree = CampaignProcedure.rebuild(catalog, ready(transition.state),
       b.actor, Vector.empty).toOption.get
     ProcedureWalker.openDecisions(ready(transition.state), tree, pending,
-      WalkerPowers.empty).head
+      WalkerPowerCatalog.default(catalog)).head
   }
 
   private def supply(state: OathState, id: PlayerId): Int =
@@ -215,15 +216,16 @@ class CampaignProcedureSuite extends munit.FunSuite {
     assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.actor,
       DecisionId(CampaignIds.attackerPlan)))
     assertEquals(parkedDecision(b, plans).query, DecisionQuery.ChooseOne(Vector(
-      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+      DecisionOption.Priced(
+        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+        OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
     val picked = answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Relic(RelicId(brass)))).toOption.get
     assert(ops(picked.events).contains(ModifyDicePool(CampaignIds.attackPool, 4)))
-    assert(ops(picked.events).contains(Move(Piece.Secrets(1),
-      PositionedLocation(Location.PlayArea(b.actor)),
-      PositionedLocation(Location.OnCard(RelicId(brass))))))
+    assert(ops(picked.events).contains(PayCost(b.actor,
+      Location.OnCard(RelicId(brass)), Cost(secret = 1), intoOccupied = true)))
     // Nothing else can be chosen, so the window finishes by itself and the
     // walk goes on to the sacrifice.
     assertEquals(picked.continue, OathContinue.AwaitingCampaignDecision(b.actor,
@@ -239,7 +241,9 @@ class CampaignProcedureSuite extends munit.FunSuite {
     assertEquals(first.continue, OathContinue.AwaitingCampaignDecision(b.actor,
       DecisionId(CampaignIds.attackerPlan)))
     assertEquals(parkedDecision(b, first).query, DecisionQuery.ChooseOne(Vector(
-      DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+      DecisionOption.Priced(
+        DecisionOption.Relic(DecisionOptionRef.Relic(RelicId(brass))),
+        OptionPrice(secrets = 1)),
       DecisionOption.Button(CampaignIds.finish, "Finish battle plans")),
       Some("Choose a battle plan, or finish")))
     val done = answer(first.state, b.actor, CampaignIds.attackerPlan, finish).toOption.get
@@ -471,22 +475,21 @@ class CampaignProcedureSuite extends munit.FunSuite {
         DistributeAmount(DecisionOptionRef.Site(b.extras.head), 2)))).isLeft)
   }
 
-  test("a facedown site Outriders is revealed in place when chosen") {
+  test("a site card is a plan only for the site's ruler, and is never revealed") {
     val outriders = cardWith("denizen.outriders")
-    val base = board()
-    val facedown = base.copy(ready = base.ready.updateCurrent(current => current.copy(
-      commonCards = current.commonCards.copy(worldDeck =
-        current.commonCards.worldDeck.filterNot(_ == DenizenId(outriders))),
-      map = current.map.copy(sites = current.map.sites.updated(base.origin,
-        current.map.sites(base.origin).copy(denizens = Vector(DenizenState(
-          DenizenId(outriders), Orientation.FaceDown, Tokens.empty))))))))
-    val plans = atPlans(facedown)
-    val done = answer(plans.state, facedown.actor, CampaignIds.attackerPlan,
+    val two = board(extras = 1)
+    val ruled = two.extras.head
+    val b = withSiteCard(actorRules(two, ruled), ruled, outriders)
+    val plans = atPlans(b)
+    assertEquals(plans.continue, OathContinue.AwaitingCampaignDecision(b.actor,
+      DecisionId(CampaignIds.attackerPlan)))
+    val done = answer(plans.state, b.actor, CampaignIds.attackerPlan,
       planPick(DecisionOptionRef.Denizen(DenizenId(outriders)))).toOption.get
-    assert(ops(done.events).contains(Reveal(DenizenId(outriders),
-      Location.Site(facedown.origin))))
-    assertEquals(ready(done.state).game.current.map.sites(facedown.origin)
-      .denizens.head.asInstanceOf[DenizenState].orientation, Orientation.FaceUp)
+    assert(!ops(done.events).exists(_.isInstanceOf[Reveal]))
+    // The same card at the origin, which the bandits rule, is not the attacker's.
+    val atOrigin = withSiteCard(board(), board().origin, outriders)
+    assertEquals(atPlans(atOrigin).continue, OathContinue
+      .AwaitingCampaignDecision(atOrigin.actor, DecisionId(CampaignIds.sacrifice)))
   }
 
   test("a victory with nothing placed refills the bandits at the action boundary") {

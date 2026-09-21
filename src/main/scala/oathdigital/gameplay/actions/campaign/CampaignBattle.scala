@@ -47,19 +47,21 @@ object CampaignBattle {
     }
   }
 
-  private def attackFacesOf(ready: ReadyGame): Vector[AttackDieFace] =
+  /** The faces the attack pool rolled, before any cap. */
+  def attackFacesOf(ready: ReadyGame): Vector[AttackDieFace] =
     ready.game.current.rollOutcomes.get(CampaignIds.attackPool).toVector
       .flatMap(_.faces.collect { case face: AttackDieFace => face })
 
   /** Writes the capped attack over the rolled one. A pool that never rolled has
-    * no outcome, and a missing outcome already reads as zero.
+    * no outcome, and a missing outcome already reads as zero. A plan that
+    * ignores the skulls writes its own result afterwards, in the attack result
+    * window.
     */
-  def attackResultOps(catalog: ExecutableCatalog, ready: ReadyGame,
-      setup: CampaignSetup, pending: PendingTree): Vector[CoreOperation] =
+  def attackResultOps(ready: ReadyGame, setup: CampaignSetup)
+      : Vector[CoreOperation] =
     ready.game.current.rollOutcomes.get(CampaignIds.attackPool).toVector.map { _ =>
-      val ignore = CampaignPlans.ignoresSkulls(catalog,
-        CampaignAnswers.picks(pending, CampaignIds.attackerPlan))
-      val (score, skulls) = attackResult(attackFacesOf(ready), setup.force, ignore)
+      val (score, skulls) = attackResult(attackFacesOf(ready), setup.force,
+        ignoreSkulls = false)
       ModifyRollOutcome(CampaignIds.attackPool, Some(skulls), Some(score))
     }
 

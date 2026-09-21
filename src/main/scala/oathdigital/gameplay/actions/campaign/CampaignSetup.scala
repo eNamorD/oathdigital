@@ -14,8 +14,16 @@ object CampaignIds {
   val sacrifice = "campaign.sacrifice"
   val placement = "campaign.placement"
   val relocation = "campaign.relocation"
+  /** Which of a defender's forces pays a plan's warband sacrifice. */
+  val planSacrifice = "campaign.plan-sacrifice"
   val all: Set[String] = Set(kind, defender, targets, force, attackerPlan,
-    defenderPlan, sacrifice, placement, relocation)
+    defenderPlan, sacrifice, placement, relocation, planSacrifice)
+
+  /** The decision a side's plan window asks. */
+  def planDecision(side: CampaignPlanSide): String = side match {
+    case CampaignPlanSide.Attacker => attackerPlan
+    case CampaignPlanSide.Defender => defenderPlan
+  }
 
   val attackPool: PoolKey = PoolKey("campaign.attack")
   val defensePool: PoolKey = PoolKey("campaign.defense")

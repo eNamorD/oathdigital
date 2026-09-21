@@ -65,11 +65,21 @@ object CampaignFixture {
     current => current.copy(players = current.players.map(p =>
       if (p.player == b.other) p.copy(pawnSite = Some(b.origin)) else p))))
 
+  /** Battle plans are powers, so a Campaign runs with the walker power catalog
+    * unless a suite asks for none.
+    */
   def rules(dice: WalkerDice = WalkerDice.unavailable,
-      powers: Boolean = false): OathRules = new OathRules(catalog,
+      powers: Boolean = true): OathRules = new OathRules(catalog,
     walkerPowerCatalog =
       if (powers) WalkerPowerCatalog.default(catalog) else WalkerPowers.empty,
     walkerDice = dice)
+
+  /** Rules with exactly these walker powers, for a suite that tests the plan
+    * window with plans of its own.
+    */
+  def rulesWith(powers: Vector[oathdigital.gameplay.powerresolver.ContributingPower],
+      dice: WalkerDice = anyDice): OathRules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowers(powers), walkerDice = dice)
 
   /** Dice for tests that only walk through the battle: hollow swords and
     * blanks, of whatever count the pool holds.
@@ -111,13 +121,17 @@ object CampaignFixture {
             case _ => true },
           relics = site.relics.filterNot(_.id.value == card)) })))
 
-  private def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
+  def replacePlayer(b: Board, id: PlayerId)(f: PlayerState => PlayerState)
       : Board = b.copy(ready = b.ready.updateCurrent(current => current.copy(
     players = current.players.map(p => if (p.player == id) f(p) else p))))
 
+  def withAdviserFor(b: Board, player: PlayerId, card: String,
+      orientation: Orientation, tokens: Tokens = Tokens.empty): Board =
+    replacePlayer(b.copy(ready = scrub(b.ready, card)), player)(p => p.copy(
+      advisers = p.advisers :+ DenizenState(DenizenId(card), orientation, tokens)))
+
   def withAdviser(b: Board, card: String, orientation: Orientation): Board =
-    replacePlayer(b.copy(ready = scrub(b.ready, card)), b.actor)(p => p.copy(advisers = p.advisers :+
-      DenizenState(DenizenId(card), orientation, Tokens.empty)))
+    withAdviserFor(b, b.actor, card, orientation)
 
   def withRelic(b: Board, relic: String): Board =
     replacePlayer(b.copy(ready = scrub(b.ready, relic)), b.actor)(p =>
@@ -137,6 +151,13 @@ object CampaignFixture {
       title = current.title.copy(holder = Some(b.other),
         side = TitleSide.Oathkeeper))))
   }
+
+  /** The actor rules `site`, holding it with two warbands of their own. */
+  def actorRules(b: Board, site: SiteId): Board = b.copy(ready =
+    b.ready.updateCurrent(current => current.copy(map = current.map.copy(
+      sites = current.map.sites.updated(site, current.map.sites(site).copy(
+        forces = SiteForces.Occupied(ForceKind.Exile(
+          b.player(b.actor).lineage), 2)))))))
 
   def withSiteCard(b: Board, site: SiteId, card: String): Board =
     b.copy(ready = scrub(b.ready, card).updateCurrent(current => current.copy(map =
