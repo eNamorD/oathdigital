@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OptionRestriction, PowerCtx}
-import oathdigital.model.{Answered, Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
+import oathdigital.gameplay.powerresolver.{ContributingPower, ContributionCollector, OfferHost, OptionRestriction, PowerCtx}
+import oathdigital.model.{Answered, Branch, Decide, DecisionOptionRef, DecisionQuery, OathViolation, OfferedPlan, Operation, PendingTree, PlayerId, PowerId, PowerWindow, PrimitiveOperation, ReadyGame}
 
 /** Task 3's power-gather/fold mechanics for [[ProcedureWalker]], split into
   * their own file to keep `ProcedureWalker.scala` under the project's
@@ -24,11 +24,18 @@ private[walker] object WalkerPowerGather {
     * the gather's contribution order, to be recorded verbatim on whichever
     * `WalkerStepRecorded` this node's execution produces (Task 3 wiring
     * rules 1-3).
+    *
+    * `answered` are the decisions answered so far, which a contribution reads
+    * from its `PowerCtx`. `resuming` is true when the walk is resuming inside
+    * this node: an [[OfferHost]] then keeps its shape whatever it is offered.
+    * When the node is an [[OfferHost]], the offers the window gathered are
+    * turned into its children after the transforms have run.
     */
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
       activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
-      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef])
+      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef],
+      answered: Vector[Answered] = Vector.empty, resuming: Boolean = false)
       : (Vector[Operation], Vector[PowerId]) =
     window match {
       case None => (ops, Vector.empty)
@@ -37,7 +44,7 @@ private[walker] object WalkerPowerGather {
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
           PowerCtx(state, activePlayer, power.source, w, path, operation,
-            procedure)
+            procedure, answered)
         val gathered = ContributionCollector.gather(w, powers.powers, ctxFor)
         val folded = gathered.transforms.foldLeft(ops) {
           case (acc, (powerId, transform)) =>
@@ -46,6 +53,12 @@ private[walker] object WalkerPowerGather {
         val restricted = operation match {
           case _: Decide => restrictOptions(folded, gathered.optionRestrictions,
             ctxFor, byId)
+          case host: OfferHost =>
+            val offered = gathered.offers.flatMap { case (powerId, offer) =>
+              offer.plan(ctxFor(byId(powerId))).map(OfferedPlan(powerId, _))
+            }
+            folded ++ host.expand(offered, OfferHost.Pass(state, answered,
+              resuming, WalkerSimulation.applies(_, state, powers)))
           case _ => folded
         }
         (restricted, gathered.order)
@@ -146,10 +159,10 @@ private[walker] object WalkerPowerGather {
         case branch: Branch => descend(applyWindow(branch.window, branch,
           state, activePlayer, powers, path, branch.select(state,
             PendingTree(at = path, answered = answered)),
-          state.game.current.walkerProcedure)._1)
+          state.game.current.walkerProcedure, answered)._1)
         case _ => descend(applyWindow(node.window, node, state,
           activePlayer, powers, path, node.children,
-          state.game.current.walkerProcedure)._1)
+          state.game.current.walkerProcedure, answered)._1)
       }
       own ++ nested
     }
@@ -228,21 +241,23 @@ private[walker] object WalkerPowerGather {
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
         val (folded, _) = applyWindow(branch.window, branch, state,
-          activePlayer, powers, path, selected, state.game.current.walkerProcedure)
+          activePlayer, powers, path, selected, state.game.current.walkerProcedure,
+          pending.answered, resuming = true)
         (folded, gathered)
       case leaf: PrimitiveOperation =>
         leaf.window match {
           case Some(w) if !gathered.contains(w) =>
             val (folded, _) = applyWindow(Some(w), leaf, state,
               activePlayer, powers, path, Vector(leaf),
-              state.game.current.walkerProcedure)
+              state.game.current.walkerProcedure, pending.answered,
+              resuming = true)
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
         }
       case composite =>
         val (folded, _) = applyWindow(composite.window, composite, state,
           activePlayer, powers, path, composite.children,
-          state.game.current.walkerProcedure)
+          state.game.current.walkerProcedure, pending.answered, resuming = true)
         (folded, gathered)
     }
   }

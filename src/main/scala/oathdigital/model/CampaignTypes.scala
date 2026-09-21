@@ -104,6 +104,17 @@ final case class CampaignPlanResolution(
     effects: Vector[CampaignPlanEffect]
 )
 
+/** One battle plan a power offers now: where it comes from, what it costs and
+  * what it does. `label` is the words of the option when the source has no card
+  * to name (the title). An offer says only that the plan is usable, never
+  * whether its user can pay: the engine dry-runs the plan to learn that.
+  */
+final case class CampaignPlanOffer(source: CampaignPlanSource, label: String,
+    costs: Vector[CampaignPlanCost], effects: Vector[CampaignPlanEffect])
+
+/** An offer with the power that made it. */
+final case class OfferedPlan(power: PowerId, offer: CampaignPlanOffer)
+
 /** The public, durable record of one Campaign's battle: written by
   * `RecordCampaignResult` when the outcome is known, projected to every viewer,
   * and replaced by the next Campaign. Everything in it is public: dice are

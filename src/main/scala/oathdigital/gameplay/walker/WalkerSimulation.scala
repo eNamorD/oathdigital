@@ -62,6 +62,20 @@ object WalkerSimulation {
         }
     }
 
+  /** Whether `tree` could run now, as an [[oathdigital.gameplay.powerresolver.OfferHost]]
+    * asks it of a plan, and the operations it would record: the same windows and
+    * powers fold it and the same pipeline validates it. A tree that parks on a
+    * decision is accepted when everything before the decision ran, because a
+    * decision is not a cost. The state is not changed.
+    */
+  def applies(tree: Operation, state: ReadyGame,
+      powers: WalkerPowers): Either[OathViolation, Vector[CoreOperation]] =
+    guarded(ProcedureWalker.advance(state, tree, None, powers,
+      WalkerDice.placeholder).map {
+        case WalkerOutcome.Finished(_, events) => recordedOperations(events)
+        case WalkerOutcome.Parked(_, events) => recordedOperations(events)
+      })
+
   /** Whether a freshly built tree could start now: the same restriction check
     * and first walk a start performs, with nothing persisted. A tree that
     * parks and one that finishes both start; a rejected cost or restriction

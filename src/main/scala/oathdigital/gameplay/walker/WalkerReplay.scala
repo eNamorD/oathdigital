@@ -1,7 +1,7 @@
 package oathdigital.gameplay.walker
 
-import oathdigital.gameplay.operations.OperationExecutor
-import oathdigital.model.{Answered, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
+import oathdigital.gameplay.operations.{OperationExecutor, PayCostSettlement}
+import oathdigital.model.{Answered, CoreOperation, OathState, OathViolation, PendingTree, ReadyGame, WalkerEvent}
 
 /** Replay half of the walker: applies durable walker facts to state without
   * ever deriving or walking an action tree (batch-1 Task 5).
@@ -28,6 +28,18 @@ private[walker] object WalkerReplay {
       .map(OathState.Ready)
     case _ => Left(OathViolation.GameNotStarted)
   }
+
+  /** Applies the recorded operations the way the pipeline ran them: a `PayCost`
+    * whose payer is not the active player settles at once, so the recorded
+    * (requested) operation expands to the same moves it did when it ran.
+    */
+  private def executeRecorded(ready: ReadyGame, ops: Vector[CoreOperation])
+      : Either[OathViolation, ReadyGame] =
+    ops.foldLeft[Either[OathViolation, ReadyGame]](Right(ready)) {
+      (result, operation) => result.flatMap(state =>
+        PayCostSettlement.prepare(state, operation).flatMap(prepared =>
+          new OperationExecutor().execute(state, prepared).left.map(_.toViolation)))
+    }
 
   private def applyRecordedReady(ready: ReadyGame,
       event: WalkerEvent): Either[OathViolation, ReadyGame] = {
@@ -79,8 +91,7 @@ private[walker] object WalkerReplay {
           _ <- validateStep(step)
           _ <- Either.cond(ops.nonEmpty, (), OathViolation.InvalidEventOrder(
             "recorded delta step must contain operations"))
-          updated <- new OperationExecutor().executeAll(ready, ops)
-            .left.map(_.toViolation)
+          updated <- executeRecorded(ready, ops)
         } yield updated
 
       case WalkerParked(procedure, at, answered, modifiers, startArgs) => for {
