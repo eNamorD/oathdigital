@@ -222,7 +222,9 @@ object WalkerProcedureRegistry {
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
-        Option.when(decisionId == MusterProcedure.decisionId)(
+        if (CampaignProcedure.decisionIds.contains(decisionId))
+          Some(OathContinue.AwaitingCampaignDecision(actor, decision))
+        else Option.when(decisionId.startsWith(MusterProcedure.decisionPrefix))(
           OathContinue.AwaitingEconomyDecision(actor, decision)),
       build = (catalog, state, activePlayer, args) => noStartArgs(ActionRef.Muster,
         args).flatMap(_ => MusterProcedure.build(catalog, state, activePlayer)),
