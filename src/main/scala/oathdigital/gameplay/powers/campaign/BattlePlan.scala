@@ -18,7 +18,9 @@ import oathdigital.model._
   *    (Outriders ignores the skulls when the attack is scored). It runs only when
   *    the plan was chosen, and its operations are appended to the window's
   *    children, so a plan that must run last is registered at the end of the
-  *    Campaign, which is `CampaignActionEligibility`, the root.
+  *    Campaign, which is `CampaignActionEligibility`, the root. `wrapping` is
+  *    the same for a plan that must also add before the window's own children
+  *    (Sticky Fire asks its question before the losses run).
   *  - `cardRef` is how the plan's source is named in a decision, which is how a
   *    later window learns the plan was chosen.
   */
@@ -31,6 +33,13 @@ trait BattlePlan extends ContributingPower {
   def plan(context: PlanContext): Option[CampaignPlanOffer]
   /** What a used plan adds at a later window. */
   def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map.empty
+  /** What a used plan does to a later window's children, as the window is
+    * folded: it may add before them as well as after. It reads the state and
+    * answers the fold is made with, which are the same on every resume of the
+    * window, so it must not read what the window's own children change.
+    */
+  def wrapping: Map[PowerWindow, (PlanUse, Vector[Operation]) => Vector[Operation]] =
+    Map.empty
 
   final def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
   final override def resolution: PowerResolution = PowerResolution.Automatic
@@ -46,7 +55,16 @@ trait BattlePlan extends ContributingPower {
           PlanUse.chosen(ready, pending, ctx.activePlayer, cardRef, sides,
             BattlePlan.outcomeKnown(window)).fold(Vector.empty[Operation])(build))))
     }
-    offers ++ afterwards
+    val around: Map[PowerWindow, Vector[Contribution]] = wrapping.map {
+      case (window, wrap) => window -> Vector[Contribution](Transform(
+        (ctx, children) => PlanUse.chosen(ctx.state, PendingTree(ctx.nodePath,
+          ctx.answered), ctx.activePlayer, cardRef, sides,
+          BattlePlan.outcomeKnown(window)).fold(children)(wrap(_, children))))
+    }
+    (offers.keySet ++ afterwards.keySet ++ around.keySet).map(window =>
+      window -> (offers.getOrElse(window, Vector.empty) ++
+        afterwards.getOrElse(window, Vector.empty) ++
+        around.getOrElse(window, Vector.empty))).toMap
   }
 }
 

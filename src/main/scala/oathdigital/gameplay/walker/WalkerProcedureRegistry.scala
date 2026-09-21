@@ -222,7 +222,7 @@ object WalkerProcedureRegistry {
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.MusterModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
-        if (CampaignProcedure.decisionIds.contains(decisionId))
+        if (CampaignProcedure.isDecision(decisionId))
           Some(OathContinue.AwaitingCampaignDecision(actor, decision))
         else Option.when(decisionId.startsWith(MusterProcedure.decisionPrefix))(
           OathContinue.AwaitingEconomyDecision(actor, decision)),
@@ -294,7 +294,7 @@ object WalkerProcedureRegistry {
       rollDecisionId = None,
       modifierWindow = Some(PowerWindow.CampaignModifierSelection),
       continuationFor = (decisionId, actor, decision) =>
-        Option.when(CampaignProcedure.decisionIds.contains(decisionId))(
+        Option.when(CampaignProcedure.isDecision(decisionId))(
           OathContinue.AwaitingCampaignDecision(actor, decision)),
       build = CampaignProcedure.build,
       rebuild = CampaignProcedure.rebuild),

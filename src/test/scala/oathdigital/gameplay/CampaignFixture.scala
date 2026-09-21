@@ -191,7 +191,11 @@ object CampaignFixture {
     */
   def raidBoard(defenderWarbands: Int = 3): (Board, RelicId) = {
     val b = withEnemyAtOrigin(board(warbands = 4))
-    val relic = RelicId(catalog.relics.head.id.value)
+    // A relic that prints no battle plan, so the defender is offered none.
+    val plans = Set("relic.sticky-fire", "relic.fearsome-shield",
+      "relic.brass-army.campaign", "relic.bag-of-siegeworks")
+    val relic = RelicId(catalog.relics.find(_.handlers.forall(!plans(_))).get
+      .id.value)
     val ready = b.ready.updateCurrent(current => current.copy(
       players = current.players.map(p =>
         if (p.player == b.other) p.copy(
