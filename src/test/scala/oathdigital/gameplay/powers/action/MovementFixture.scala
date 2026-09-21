@@ -39,6 +39,30 @@ object MovementFixture {
       : ReadyGame = updateActor(ready)(p => p.copy(relics = p.relics.map(r =>
     if (r.id == id) r.copy(tokens = tokens) else r)))
 
+  /** Replaces a regional discard pile. The old pile goes back under the world
+    * deck and a new card leaves it if it is there, so the inventory stays
+    * whole. A card the first game did not deal is simply added.
+    */
+  def withDiscard(ready: ReadyGame, region: Region,
+      pile: Vector[WorldCardId]): ReadyGame = ready.updateCurrent { c =>
+    val cards = c.commonCards
+    c.copy(commonCards = cards.copy(
+      worldDeck = cards.worldDeck.filterNot(pile.contains) ++
+        cards.discard(region).filterNot(pile.contains),
+      regionalDiscards = cards.regionalDiscards.updated(region, pile)))
+  }
+
+  /** A denizen of `suit` that is nowhere in the game yet. */
+  def freshDenizen(ready: ReadyGame, suit: Suit, skip: Int = 0): DenizenId = {
+    val present = CardIndex.from(ready.game).toOption.get.ids
+    catalog.denizens.filter(_.suit == suit).map(d => DenizenId(d.id.value))
+      .filterNot(present.contains)(skip)
+  }
+
+  def aVision(ready: ReadyGame): VisionId =
+    ready.game.current.commonCards.worldDeck.collectFirst {
+      case vision: VisionId => vision }.get
+
   def use(ready: ReadyGame, power: PowerId, relic: RelicId)
       : Either[OathViolation, OathTransition] = rules.startWalker(Ready(ready),
     ActionRef.UsePower(power), actor, Vector.empty,

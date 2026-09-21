@@ -14,6 +14,10 @@ object PawnMoves {
     PowerAccess.pawnSite(ready, player).toRight(OathViolation.InvalidEventOrder(
       s"${player.value} has no pawn on the map"))
 
+  /** Every site in play except `site`, in map order. */
+  def sitesOtherThan(ready: ReadyGame, site: SiteId): Vector[SiteId] =
+    ready.game.current.map.inPlay.filter(_ != site)
+
   /** Other players whose pawn is at a site other than `player`'s. */
   def atOtherSites(ready: ReadyGame, player: PlayerId): Vector[PlayerId] =
     PowerAccess.pawnSite(ready, player).toVector.flatMap(here =>
