@@ -380,16 +380,14 @@ object CardPlay {
     val full = site.denizens.size >= capacity
     if (rules.siteDiscardFirst) replace match {
       // Any site, at any capacity: the discard is optional with room and
-      // required without, and it names a denizen of the site's card list
-      // (Mob's printed text; an edifice is not a denizen). `DiscardRestrictions`
-      // decide which denizen may actually go: a locked card and an active
-      // modifier may not.
+      // required without, and it may name any card of the site's card list.
+      // `DiscardRestrictions` decide what may actually be discarded: a locked
+      // card, an intact edifice and an active modifier may not.
       case None if full => Left(InvalidSearchPlacement(
         "a full site requires a site-card discard"))
       case None => Right(None)
-      case Some(id) => site.denizens.collectFirst {
-        case denizen: DenizenState if denizen.id == id => denizen
-      }.toRight(InvalidSearchPlacement("replacement card is not a denizen at the site"))
+      case Some(id) => site.denizens.find(_.id == id).toRight(
+        InvalidSearchPlacement("replacement card is not at the site"))
         .map(Some(_))
     }
     else if (!full && replace.isEmpty) Right(None)

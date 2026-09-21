@@ -164,7 +164,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
     assertEquals(choice.replacements, Vector[CardId](kept))
   }
 
-  test("a ruined edifice is not offered either: Mob discards a denizen") {
+  test("a ruined edifice is offered: only an intact one is locked") {
     val kept = denizensOf(Suit.Hearth).head
     val hall = EdificeId("E16")
     val (built, who, site) = PlacementFixture.staged(played,
@@ -175,7 +175,7 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
       played, CardPlay.Origin.TemporaryHand,
       oathdigital.gameplay.actions.PlacementRules.default.withSiteDiscardFirst)
       .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
-    assertEquals(choice.replacements, Vector[CardId](kept))
+    assertEquals(choice.replacements, Vector[CardId](kept, hall))
   }
 
   test("it applies to a facedown adviser played to a site as well") {

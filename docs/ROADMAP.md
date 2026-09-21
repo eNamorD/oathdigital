@@ -143,13 +143,8 @@ leaked. Keep the raw loopback development event log separate.
   moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
   lines, with regression risk in the Negotiation and Campaign suites.
 
-- [ ] **Deferred: Wandering Flame as one Place Banner Resource action.** The face
-  prints one action, "Place a secret on the banner or on your site". It is two
-  today: the generic Place Banner Resource action puts secrets on the banner, and
-  the `banner.darkest-secret.wandering-flame.place` power puts one faceup secret
-  on the pawn's site. Folding the site into the banner action's destination would
-  make it one action with a destination decision and an amount, as printed. The
-  Grand Council and Festival faces still have synthetic ids and no behaviour.
+- [ ] **Deferred: the Grand Council and Festival banner faces.** They are listed
+  as synthetic ids in the reviewed catalog and have no behaviour.
 
 - [ ] **Deferred: Mercenaries' player-chosen sign.** Mercenaries adds attack dice
   when its user attacks and removes defense dice from the attacker when it
