@@ -673,7 +673,7 @@ with:
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.banner.* oathdigital.application.BannerFaceProjectionSuite"`
 
-Expected: it compiles, and the four suites FAIL. `RuleSourceIndex` lists no power on the Wandering Flame face, so `PhasePowerProcedure` finds no source: the use is refused with `is not an accessible source of banner.darkest-secret.wandering-flame.move`, the powers are never usable, the projection is empty, and the index suite sees an empty list.
+Expected: it compiles, and 13 of the 21 tests FAIL (8 pass already, the ones that only check registration, refusals and the audit). `RuleSourceIndex` lists no power on the Wandering Flame face, so `PhasePowerProcedure` finds no source: a use is refused with `is not an accessible source of banner.darkest-secret.wandering-flame.move` (the tests that expect it to work fail on `None.get`), the powers are never usable, the projection is empty, and the index suite sees an empty list.
 
 
 - [ ] **Step 5: List the face's powers, audit their ids and name them for the client**
@@ -955,7 +955,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
 
   test("its holder is asked whether to discard a site card before a play " +
       "to a site with room, and may decline") {
-    val Vector(kept, other) = denizensOf(Suit.Hearth).take(2)
+    val hearth = denizensOf(Suit.Hearth)
+    val (kept, other) = (hearth(0), hearth(1))
     val ready = staged(Vector(kept, other))
     assert(capacity > 2, s"the pawn site must have room, capacity $capacity")
     val asked = toSite(ready)
@@ -1062,7 +1063,8 @@ class PeoplesFavorMobSuite extends munit.FunSuite {
   test("it composes with Silver Tongue's limit of two advisers, both from " +
       "the production walker powers") {
     val tongue = DenizenId("92")
-    val Vector(kept, adviser) = denizensOf(Suit.Hearth).take(2)
+    val hearth = denizensOf(Suit.Hearth)
+    val (kept, adviser) = (hearth(0), hearth(1))
     val (built, who, _) = PlacementFixture.staged(played,
       Vector(PlacementFixture.denizen(kept)))
     val bare = TargetsFixture.withoutAdvisers(built, who)
@@ -1372,3 +1374,12 @@ Each has a recommended default. The plan builds the default, and each is a small
 - **The first game's staging.** Broken-peaks starts with two secrets on the site and fair-isle with three favor. A suite that counts site secrets clears them first, as `BannerFixture.withoutSiteSecrets` does.
 - **File sizes.** The new production files are under 60 lines each, `RuleSourceIndex.scala` stays under 200, and no production file nears the 800-line bound.
 - **The projector shows a banner power under the banner's key.** The client's source is `banner`/`darkest-secret`. No frontend code changes and no frontend test covers it, so `BannerFaceProjectionSuite` is the check.
+
+
+## Self-review
+
+- **Spec coverage.** Wandering Flame's move and its place-a-secret power (Task 1) and Mob (Task 2) are the whole of the "Slice 4: banner faces" section of the rulings. E3's banner source and E6's `PlacementRules` are used and not changed. The design's "verify at plan time" items that this slice touches are settled: a secret on `Location.Site` is accepted (the place suite moves one and replays it), the shared bank's secrets are not used, `PlaceBannerResource` is a walker action that records no `usedPowers` (and so are Act phase powers), and no structural fingerprint changes (`BackendArchitectureSuite` still finds the handler inventory equal to the audited vocabulary). The parked and deferred lists are untouched.
+- **Placeholders.** None. Every code step is a complete file or an exact replacement, and each was applied in a throwaway copy in the order below.
+- **Validation.** Every file and replacement in Tasks 1 and 2 was applied, in this order, to a fresh copy of `main` with the tooling and `node_modules` linked, by a script that reads this document, then compiled and run. Task 1: Step 2 failed to compile on `WanderingFlameMove`; after Step 3, 13 of 21 tests failed; after Step 5 all 21 passed; `./sbtw test` printed `Passed: Total 1537` (1516 on `main`), and the architecture and link checks passed. Task 2: Step 2 failed to compile on `PeoplesFavorMob`; after Step 3, 1 of 11 failed; after Step 5 all 11 passed; `./sbtw test` printed `Passed: Total 1548`, and both checks passed. The audit line and the projector case were each removed once to confirm that a test fails without them.
+- **Types.** `WanderingFlameMove.decisionId`, `WanderingFlameMove.id` and `WanderingFlamePlace.id` (Task 1) are read by every Task 1 suite. `BannerFacePowers.printed` (Task 1) is read by `PhasePowerProjector`, and `BannerFacePowers.contributions` (Task 2) by `WalkerPowerCatalog`. `BannerFixture.holdingFavor` and `withCardTokens` are created in Task 1 and first used by Task 2's suite. `PeoplesFavorMob.id` (Task 2) is the id the index and the audit list.
+- **Docs.** Each task's docs step edits the design's status line and slicing row and the rulings' Slice 4 rows and implementation notes, with the exact strings as they stand after the earlier task, so the two tasks can be merged separately.
