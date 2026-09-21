@@ -46,18 +46,18 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 | --- | --- |
 | 47 Wayside Inn | Cost 1 favor placed. Gain 2 Supply. Implemented (slice 1a). |
 | 26 Elders | Cost 2 favor placed. Gain 1 secret from the shared bank. Implemented (slice 1a). |
-| 9 Alchemist | Cost 1 secret placed and 1 secret burnt. Gain 4 favor from any bank or banks: a `Distribute` with a total of exactly min(4, favor available across all banks). No decision is asked when one bank holds all the available favor, or when 4 or fewer are available (you take everything). The favor goes to your board. |
-| 39 Wolves | Cost 1 secret placed. Choose one player board, yours included, and kill one warband there. If it has none, nothing happens. Only player boards count. |
-| 180 Fae Merchant | Cost 1 secret placed. Draw a relic and take it (assumed facedown). Then put exactly one relic you hold, except the Grand Scepter, on the bottom of the relic deck. The just-taken relic is eligible. A decision is asked only when there is more than one candidate. |
-| 17 Sleight of Hand | Cost 1 favor placed. Targets are other players whose pawn is at your site and who have 2 or more secrets on their board (faceup and facedown together). Take one secret, faceup first, otherwise facedown. It arrives with the same orientation. With no legal target the cost is paid and nothing else happens. The take is a `Take`, so other powers may restrict it. |
-| 93 Gambling Hall | Cost 2 favor placed. Roll 4 defense dice. When the total X is above zero, choose any favor bank, even an empty one, and take min(X, its stock). |
-| R09 Dowsing Sticks | Cost 1 secret placed and 2 secrets burnt. Draw a relic from the relic deck and take it facedown. An empty deck does nothing. |
-| R21 Crystal Vial | Cost 1 secret placed and 1 secret burnt. Choose an adviser you hold (denizen or Vision, either orientation) or a card in the site's card list at your pawn's site (denizens and the edifice, intact or ruined). Bury it with the standard returns. The choice is required when a candidate exists. |
-| R24 Bone Dice | Cost 1 secret placed. Roll 2 attack dice. Gain Supply equal to the sword score. If any skull face rolled, bury this relic afterwards with the standard returns, so the secret you just placed returns to you facedown. |
-| E15 Murky Fountain (ruined) | Cost 1 secret placed on the edifice card. If your pawn is at this site: roll 2 defense dice and gain Supply equal to the total. A total of zero also ends your Act phase with `EnterPhase(Rest)`, without the Begin Rest validation gate. If your pawn is elsewhere, the cost is paid and nothing else happens. |
+| 9 Alchemist | Cost 1 secret placed and 1 secret burnt. Gain 4 favor from any bank or banks: a `Distribute` with a total of exactly min(4, favor available across all banks). No decision is asked when one bank holds all the available favor, or when 4 or fewer are available (you take everything). The favor goes to your board. Implemented (slice 1c). |
+| 39 Wolves | Cost 1 secret placed. Choose one player board, yours included, and kill one warband there. If it has none, nothing happens. Only player boards count. The kill is not the player's option: it always runs, as a best-effort (non-required) `Kill`, which an empty board skips. Implemented (slice 1c). |
+| 180 Fae Merchant | Cost 1 secret placed. Draw a relic and take it (assumed facedown). Then put exactly one relic you hold, except the Grand Scepter, on the bottom of the relic deck. The just-taken relic is eligible. A decision is asked only when there is more than one candidate. Implemented (slice 1b). |
+| 17 Sleight of Hand | Cost 1 favor placed. Targets are other players whose pawn is at your site and who have 2 or more secrets on their board (faceup and facedown together). Take one secret, faceup first, otherwise facedown. It arrives with the same orientation. With no legal target the cost is paid and nothing else happens. The take is a `Take`, so other powers may restrict it. Implemented (slice 1c). |
+| 93 Gambling Hall | Cost 2 favor placed. Roll 4 defense dice. When the total X is above zero, choose any favor bank, even an empty one, and take min(X, its stock). Implemented (slice 1b). |
+| R09 Dowsing Sticks | Cost 1 secret placed and 2 secrets burnt. Draw a relic from the relic deck and take it facedown. An empty deck does nothing. Implemented (slice 1b). |
+| R21 Crystal Vial | Cost 1 secret placed and 1 secret burnt. Choose an adviser you hold (denizen or Vision, either orientation) or a card in the site's card list at your pawn's site (denizens and the edifice, intact or ruined). Bury it with the standard returns. The choice is required when a candidate exists. Implemented (slice 1c). |
+| R24 Bone Dice | Cost 1 secret placed. Roll 2 attack dice. Gain Supply equal to the sword score. If any skull face rolled, bury this relic afterwards with the standard returns, so the secret you just placed returns to you facedown. Implemented (slice 1b). |
+| E15 Murky Fountain (ruined) | Cost 1 secret placed on the edifice card. If your pawn is at this site: roll 2 defense dice and gain Supply equal to the total. A total of zero also ends your Act phase with `EnterPhase(Rest)`, without the Begin Rest validation gate. If your pawn is elsewhere, the cost is paid and nothing else happens. Implemented (slice 1b). |
 | R08 Whistle | Cost 1 secret placed on the Whistle. Choose another player whose pawn is at a different site. Move their pawn to your site, then move the secret from the Whistle to their board. With no eligible player the cost is paid, nothing else happens and the secret stays. |
 | R03 Brass Horse | Cost 1 secret placed. "Your region" is the region of your pawn's site. Reveal the top card of that region's discard pile, then turn it facedown again. Place your pawn at a different site holding a card of the same suit (denizen or edifice). No decision is asked when exactly one site matches. If the pile is empty, the top is a Vision, or no site matches, place it at any other site. |
-| R16 Ivory Eye | Cost 1 secret placed. Choose any facedown adviser of any player, yours included, and `Peek` at it. The peek is private. Other players see only a log line saying who peeked at whose adviser. |
+| R16 Ivory Eye | Cost 1 secret placed. Choose any facedown adviser of any player, yours included, and `Peek` at it. The peek is private. Other players see only a log line saying who peeked at whose adviser. Implemented (slice 1c), privacy half only: the log line waits for the action log. |
 | R39 Magic Carpet | No cost. Place your pawn at any site, including your current one, in which case the move is skipped. Then choose one: discard the Carpet with `Discard.Relic` (to the set-aside relic pile), or give it, faceup, to a player whose pawn is at a site different from your new one. With no eligible player the only choice is to discard. |
 | R45 Magic Waterskin | The relic must be faceup in your play area. Bury it first, with the standard returns, then gain 4 Supply. Implemented (slice 1a). |
 
@@ -66,7 +66,7 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 | Card | Ruling |
 | --- | --- |
 | E15 Marble Fountains (intact) | Wake. If your pawn is at this site, refresh Supply to the leftmost space: `GainSupply` up to the track maximum of 7. Once per turn. Implemented (slice 1a). |
-| R06 Horned Mask | Wake. Take a non-edifice denizen from your pawn's site as a facedown adviser. `site-only` denizens are eligible, and locked ones are decided by the `Take` restrictions. If you already have 3 advisers you choose one of yours to discard, as in card play. Resources on the taken card return by the standard returns. |
+| R06 Horned Mask | Wake. Take a non-edifice denizen from your pawn's site as a facedown adviser. `site-only` denizens are eligible, and locked ones are decided by the `Take` restrictions. If you already have 3 advisers you choose one of yours to discard, as in card play. Resources on the taken card return by the standard returns. "Already have 3 advisers" is the player's adviser limit, so a faceup Silver Tongue holder is full at 2. Implemented (slice 1c). |
 
 ### Slice 1a implementation notes
 
@@ -76,6 +76,27 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 - **Test staging:** the first game deals only some denizens. Cards 7, 26, 28 and 47 are not in its world deck, so the test fixture adds them where a test needs them.
 - **Marble Fountains:** E15 was in the edifice deck of the first game, so the fixture places it from there.
 - **Magic Waterskin:** a secret on the relic returns to its holder facedown before the relic goes to the bottom of the relic deck.
+
+### Slice 1b implementation notes
+
+- **Shape:** each power is a `PaidAction` in `gameplay/powers/action`, registered through `DiceAndRelicDrawPowers`. Rolls are automatic, one pool key per power. Gambling Hall's bank choice is a live `Branch` after the roll.
+- **Bone Dice:** reads the relic's tokens after the engine pays the cost, so the placed secret returns facedown on the bury.
+- **Murky Fountain:** a zero total emits `EnterPhase(Rest)` and leaves the player awaiting a Rest action. It does not auto-finish Rest when no REST power is usable, as Begin Rest does (product decision).
+- **Fae Merchant:** the put-back is independent of the draw, so with an empty relic deck a held relic still goes to the bottom (product decision). Eligibility is read after the draw and a decision is asked only for more than one candidate. The Grand Scepter is read from the catalog's relic role. The taken relic is facedown (confirmed).
+- **Dowsing Sticks:** needs three faceup secrets, one placed and two burnt.
+- **Test staging:** card 93 is not dealt in the first game and the fixture adds it, card 180 is in the world deck and is removed, E15 is placed from the edifice deck, and R09 and R24 are taken from the relic deck.
+
+### Slice 1c implementation notes
+
+- **Shape:** each ACTION power is a `PaidAction` in `gameplay/powers/action` and Horned Mask is a `PhasePower` in `gameplay/powers/wake`, all registered through `TargetPowers`. Every decision that depends on state is a live `Branch` after the cost, with a `BuildOps` for the effect, because `rebuild` derives the tree again against the state after the cost was paid.
+- **Wolves:** the kill is a best-effort (non-required) `Kill`, so it always runs and an empty board is skipped. The decision is a plain `Decide` over all players.
+- **Alchemist:** the distribution is asked only when two or more banks hold favor and more than 4 is available in all. Then the query is well formed. Otherwise the power takes `min(stock, 4)` from each bank without asking.
+- **Sleight of Hand:** a one-secret `Take` from a board holding both orientations is ambiguous (`AmbiguousSecretOrientation`), so a mixed target gets `FlipSecrets` (facedown up), the `Take`, and `FlipSecrets` (back down) as one batch. It nets to one faceup secret moving.
+- **Crystal Vial:** the printed text says "a denizen at your site"; the ruling adds the edifice, and the power follows the ruling. It holds the catalog, because the standard returns need the buried card's suit.
+- **Ivory Eye:** the options are `Button`s keyed `adviser:<owner>:<slot>`, because an option naming another player's facedown adviser makes the projector drop the whole decision. A recorded `Peek` replays into `knowledge.advisers`, which the presentation layer reads, so only the peeker is told the card. An `AdviserSlot` option is on the ROADMAP.
+- **Horned Mask:** the adviser limit is read by `AdviserLimit.of` (3, or 2 for a faceup Silver Tongue holder), a new helper in `gameplay/powers` that repeats Silver Tongue's rule as a read of state and that card play does not use. The taken card is a `Take` followed by a `Flip`, and the returns are the returns half of `Bury.standard`. The discard goes to the next region's pile, as in `CardPlay`, and a `LockedAdviserOnly` adviser is never offered. A use with nothing to take still records the Wake use (confirmed).
+- **Locked denizens:** every locked denizen is adviser-only, so none can be at a site and no `Take` restriction is needed for Horned Mask.
+- **Test staging:** cards 9, 17, 26, 39 and 47 are added or removed by the fixtures as needed, and R06, R16 and R21 are taken from the relic deck. `TargetsFixture` holds the helpers.
 
 ## Slice 2: modifiers
 
