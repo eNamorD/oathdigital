@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b and slice 1c are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) and the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b, slice 1c and slice 1d are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md) and the [slice 1d plan](../plans/2026-09-20-powers-slice-1d-movement.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
 ## Goal and scope
 
@@ -104,12 +104,12 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | 1a. When Played and simple actions | A Small Favor, Faithful Friend, Garrison, Family Heirloom; Wayside Inn, Elders, Magic Waterskin; Marble Fountains | none beyond slice 0 |
 | 1b. Dice and relic draws (implemented) | Gambling Hall, Bone Dice, Murky Fountain, Dowsing Sticks, Fae Merchant | none |
 | 1c. Targets and information (implemented) | Alchemist, Wolves, Sleight of Hand, Crystal Vial, Ivory Eye; Horned Mask | none |
-| 1d. Movement | Whistle, Brass Horse, Magic Carpet | none expected |
+| 1d. Movement (implemented) | Whistle, Brass Horse, Magic Carpet | none beyond accepting `Reveal` at a regional discard |
 | 2. Modifiers, restrictions, triggers | Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant; Toll Roads, Grasping Vines, Circlet, Oaken and Rotting Fortress; Wild Cry, Welcoming Party, Gossip | E6 (`CardPlayed` split), E7, E9 |
 | 3. Battle plans | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
 | 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
 
-Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Slice 1b is planned: see its [plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). Slice 1c is planned: see its [plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md). The order above is the recommended one.
+Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Slice 1b is planned: see its [plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). Slice 1c is planned: see its [plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md). Slice 1d is planned: see its [plan](../plans/2026-09-20-powers-slice-1d-movement.md). The order above is the recommended one.
 
 ## Walker shapes for powers
 

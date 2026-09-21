@@ -4,72 +4,197 @@
 
 **Goal:** Implement three movement relics, each declared only as a `PhasePower` over existing operations: Whistle, Brass Horse and Magic Carpet.
 
-**Architecture:** Each relic is an Act-timed `PhasePower` built on the slice 1a `PaidAction` kit, so the engine pays the cost onto the relic and each power writes only `build`. A pawn relocation is a plain `Move`, never Travel. Conditional decisions use the "live decision" walker shape recorded in the design. No engine change is needed.
+**Architecture:** Each relic is an Act-timed `PhasePower` built on the slice 1a `PaidAction` kit, so the engine pays the cost onto the relic and each power writes only `build`. A pawn relocation is a plain `Move`, never Travel. Conditional decisions use the "live decision" walker shape recorded in the design. The one engine change is small: `Reveal` of a card in a regional discard is accepted as a no-op, so Brass Horse can reveal publicly (Task 1).
 
 **Tech Stack:** Scala 2.13, sbt via `./sbtw`, munit.
 
-**Spec:** [Powers design](../specs/2026-09-20-powers-design.md) and [rulings appendix](../specs/2026-09-20-powers-rulings.md) (row "Slice 1: ACTION powers": R08 Whistle, R03 Brass Horse, R39 Magic Carpet; the "Movement" rule). Follows the [slice 1a plan](2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), whose `PaidAction` and `PowerFixture` this plan reuses.
+**Spec:** [Powers design](../specs/2026-09-20-powers-design.md) and [rulings appendix](../specs/2026-09-20-powers-rulings.md) (row "Slice 1: ACTION powers": R08 Whistle, R03 Brass Horse, R39 Magic Carpet; the "Movement" rule). Follows the [slice 1a plan](2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), whose `PaidAction` and `PowerFixture` this plan reuses, and the slice 1b and 1c plans, whose registration pattern (`MovementPowers`, like `DiceAndRelicDrawPowers` and `TargetPowers`), `PowerAnswers` and `TargetsFixture` it reuses.
+
+> **Revised after approval.** The user decided open question 1 in favour of a public `Reveal` and an engine change to allow it (now Task 1, in its own commit). Slices 1b and 1c merged first, so this plan registers through one `MovementPowers` object, reads answers through `PowerAnswers`, and builds its test helpers on `TargetsFixture`. The code below is the code as executed.
 
 ## Global Constraints
 
 - `BackendArchitectureSuite` applies: production files stay at or under 800 lines; no power name appears in `gameplay/walker` or `gameplay/operations` sources (a lowercase substring scan); a power imports nothing from `oathdigital.gameplay.walker`; no `copy(advisers =`, `temporaryHands.updated(` or similar direct state writes under `gameplay/powers`.
-- A power is declared solely by a `ContributingPower` or `PhasePower`. No engine code is added for it. If a task finds it cannot be, stop and report the minimal engine change instead of adding one.
+- A power is declared solely by a `ContributingPower` or `PhasePower`. The only engine change is Task 1's, and it names no power. If another task finds it cannot be declared that way, stop and report the minimal engine change instead of adding one.
 - Commit messages end with `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`. Code, comments, commits and docs are normal prose.
-- Run the suite with `./sbtw test`. Run one suite with `./sbtw "testOnly <fully.qualified.Suite>"`.
+- Run the suite with `./sbtw test`. Run one suite with `./sbtw "testOnly <fully.qualified.Suite>"`. After every task run `./sbtw test` and `python3 scripts/check-architecture.py`; both must be green before the commit.
 - Test fixtures keep the card inventory whole: a card leaves the place it came from when it is placed, or `CardIndex` fails.
-- Shared files (`PowerFixture.scala`, the design's Slicing table, the rulings appendix, `PhasePowerCatalog.scala`) are edited by other slices in parallel. Keep every edit to them minimal, as this plan does: new test helpers live in a new file, and the shared registry gets one changed line per task.
+- Shared files (`PowerFixture.scala`, the design's Slicing table, the rulings appendix, `PhasePowerCatalog.scala`) are edited by other slices in parallel. Keep every edit to them minimal: new test helpers live in new files, and the shared registry gets one line.
 
 ## What planning found
 
 These facts were read from the code or checked by running it. They are not in the design.
 
-1. **`PhasePower.build` receives no catalog.** A card's suit is a catalog fact, and Brass Horse needs it, so `BrassHorse` is a class holding the `ExecutableCatalog` and `PhasePowerCatalog.default(catalog)` constructs it. Whistle and Magic Carpet need no catalog and are case objects.
-2. **A regional discard cannot be revealed with `Reveal` or `Flip`.** Regional discards hold card ids only, so the card has no orientation state, and both operations are rejected with `unsupported-orientation`. `Peek(viewer, card, Location.RegionalDiscard(region))` is accepted. Brass Horse therefore records the reveal as the actor's `Peek`, and "turn it facedown again" changes nothing because a discarded card is always facedown. The top of a pile is its last element (discards insert with `topAtHead = false`). See open question 1.
-3. **Secrets move faceup between a card and a board.** A cost places a faceup secret, and a `Move` of secrets from a card to another player's board adds it faceup to the target's `faceUpSecrets`. Whistle therefore leaves a faceup secret on the target's board. See open question 4.
+1. **`PhasePower.build` receives no catalog.** A card's suit is a catalog fact, and Brass Horse needs it, so `BrassHorse` is a class holding the `ExecutableCatalog` and `MovementPowers.forCatalog(catalog)` constructs it. Whistle and Magic Carpet need no catalog and are case objects.
+2. **A regional discard holds card ids only, so a card there has no orientation state.** `Reveal` expands to a faceup `Flip`, and both were rejected with `unsupported-orientation` at `Location.RegionalDiscard`. A discard is always facedown, so a reveal there changes nothing. Task 1 accepts a faceup look at a regional discard as a no-op and leaves a facedown `Flip` unsupported. The top of a pile is its last element (discards insert with `topAtHead = false`).
+3. **Secrets move faceup between a card and a board.** A cost places a faceup secret, and a `Move` of secrets from a card to another player's board adds it faceup to the target's `faceUpSecrets`. Whistle therefore leaves a faceup secret on the target's board.
 4. **A relic `Give` between two play areas is valid and carries the card's tokens.** A secret resting on the Carpet travels with it. `Discard.Relic` with the relic's secrets succeeds and returns them to the holder facedown, as `Bury.standard` does for Magic Waterskin.
 5. **Another player's pawn can be moved by a plain `Move`.** `Move(Piece.Pawn(target), Site(from), Site(to))` is valid whoever the actor is. A `Move` must change location (`require(from != to ...)`), so Magic Carpet skips the move when the chosen site is the current one.
 6. **Decision vocabulary needed already exists.** `ChooseOne` accepts a single option and mixed `Button` and `Player` options. `DecisionOption.Site` and `DecisionOption.Player` project generically. A decision inside a phase power parks as `OathContinue.AwaitingPowerDecision(actor, DecisionId(id))` and the registry names no power.
-7. **The live-decision shape is safe for all three.** A `Branch` whose `select` returns only a `Decide` is re-selected on resume against the state stored at the park. Whistle's and Brass Horse's branches read pawns, the discard pile and the map, none of which the preceding `PayCost` or `Peek` changes. Magic Carpet's second branch sits after the pawn move it depends on.
+7. **The live-decision shape is safe for all three.** A `Branch` whose `select` returns only a `Decide` is re-selected on resume against the state stored at the park. Whistle's and Brass Horse's branches read pawns, the discard pile and the map, none of which the preceding `PayCost` or `Reveal` changes. Magic Carpet's second branch sits after the pawn move it depends on.
 8. **No registry work beyond `PhasePowerCatalog`.** The relic power ids `relic.whistle`, `relic.brass-horse` and `relic.magic-carpet` already exist in the catalog, no relic is listed in `ActionPowers`, and `PowerAccess` already grants only faceup relics in the holder's play area.
 9. **First-game layout used by the tests.** Three players: the actor `p2` at ancient-city, `p1` at buried-giant, `p3` at broken-peaks. Regions: Cradle holds ancient-city and broken-peaks, Provinces holds buried-giant, deep-woods and desolate-shore, Hinterland holds dunes, fair-isle and golden-valley. The only site cards are a ruined beast edifice (E26) at deep-woods and a ruined hearth edifice (E21) at golden-valley. Every regional discard already holds cards, and relics R03, R08 and R39 are in the relic deck.
-10. **The plan's code was compiled and run before it was written here.** With it in place the whole suite (1091 tests) and `scripts/check-architecture.py` passed. It was then removed, so the plan starts from the slice 1a tree.
 
-## Open questions and defaults
+## Decisions on the rulings
 
-The plan uses the default for each. A product answer that differs changes only the named lines.
+Defaults used, decided with the user.
 
-1. **Brass Horse reveal is not public.** The rules say "reveal". A regional discard has no orientation, so `Reveal` and `Flip` cannot be applied, and `Peek` names the card to the actor only (in the journal step, and in the actor's knowledge). Making it public needs one small engine change: accept `Reveal` and `Flip` at `Location.RegionalDiscard` as an orientation no-op in `OperationValidator.flipViolation` and `OperationStateMutation.flipCard`, then have Brass Horse emit `Reveal` and a facedown `Flip` in place of the `Peek`. Default: `Peek`, no engine change.
-2. **Whistle asks even with a single candidate.** The ruling says "choose another player" and states no shortcut, unlike Brass Horse and Fae Merchant. Default: ask. To skip it, make `ask` return nothing for one candidate and have `pull` take that candidate.
-3. **Magic Carpet asks no second question when nobody is eligible.** The ruling says the only choice is to discard. Default: discard without asking. To ask anyway, drop the `isEmpty` guard in `ask`.
-4. **Whistle's secret arrives faceup.** The engine moves a card's secret to a board faceup. The ruling does not say. Default: faceup. To flip it, add `FlipSecrets(target, 1, FaceUp, FaceDown)` after the move.
-5. **A ruined edifice counts as a card at a site for Brass Horse.** The ruling says "a card of the same suit (denizen or edifice)" without a face. Default: either face counts, because the suit belongs to the card.
-6. **A secret resting on a given Carpet goes with it.** Default: the engine's behaviour. The Carpet has no cost, so this arises only from another power's placement.
+1. **Brass Horse reveals publicly**, with `Reveal`, after the engine change of Task 1.
+2. **Whistle asks even with a single candidate.**
+3. **Magic Carpet asks no second question when nobody is eligible**: it discards the Carpet.
+4. **Whistle's secret arrives faceup** on the target's board.
+5. **A ruined edifice counts as a card at a site for Brass Horse**; either face does, because the suit belongs to the card.
+6. **A secret resting on a given Carpet goes with it.**
 
 ## File Structure
 
+- Modify `src/main/scala/oathdigital/gameplay/operations/OperationStateAdapter.scala`, `OperationValidator.scala` and `OperationStateMutation.scala` (Task 1).
 - Create `src/main/scala/oathdigital/gameplay/powers/action/PawnMoves.scala`: the pawn reads and writes shared by the three relics.
-- Create `.../action/Whistle.scala`, `MagicCarpet.scala`, `BrassHorse.scala`.
-- Modify `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala` (one changed line per task).
-- Create test support `src/test/scala/oathdigital/gameplay/powers/action/MovementFixture.scala`.
-- Create `src/test/scala/oathdigital/gameplay/powers/action/WhistleSuite.scala`, `MagicCarpetSuite.scala`, `BrassHorseSuite.scala`.
-- Modify the design's Slicing row and the rulings appendix (Task 4).
+- Create `.../action/Whistle.scala`, `MagicCarpet.scala`, `BrassHorse.scala` and `MovementPowers.scala`.
+- Modify `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala` (one added line).
+- Create test support `src/test/scala/oathdigital/gameplay/powers/action/MovementFixture.scala`, built on `TargetsFixture`.
+- Create `src/test/scala/oathdigital/gameplay/RevealDiscardSuite.scala` and, under `.../powers/action/`, `WhistleSuite.scala`, `MagicCarpetSuite.scala`, `BrassHorseSuite.scala`.
+- Modify the design's Slicing row and status line and the rulings appendix (Task 5).
 
 ---
 
-### Task 1: The movement kit and Whistle
+### Task 1: Accept `Reveal` of a regional discard
+
+**Files:**
+- Modify: `src/main/scala/oathdigital/gameplay/operations/OperationStateAdapter.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/operations/OperationValidator.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/operations/OperationStateMutation.scala`
+- Test: `src/test/scala/oathdigital/gameplay/RevealDiscardSuite.scala`
+
+**Interfaces:**
+- Produces `OperationStateAdapter.isDiscardLook(at: Location, orientation: Orientation): Boolean`, `private[operations]`. Both the validator and the mutation ask it, so the two cannot disagree.
+- Later tasks rely on `Reveal(card, Location.RegionalDiscard(region))` being accepted and changing no state.
+
+- [ ] **Step 1: Write the failing suite**
+
+`src/test/scala/oathdigital/gameplay/RevealDiscardSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import oathdigital.gameplay.operations.{OperationPipeline, OperationPolicy}
+import oathdigital.gameplay.powers.PowerFixture.base
+import oathdigital.model._
+
+/** Revealing the top card of a regional discard is a public no-op: a discarded
+  * card has no orientation state, so nothing changes, and a facedown flip of
+  * it is still not accepted.
+  */
+class RevealDiscardSuite extends munit.FunSuite {
+  private val region = Region.Cradle
+  private val at = Location.RegionalDiscard(region)
+  private val top = base.game.current.commonCards.discard(region).last
+  private def run(ops: CoreOperation*) = OperationPipeline.run(base,
+    ops.toVector, OperationPolicy.Permissive)(Right(_))
+
+  test("revealing a discarded card is accepted and changes no state") {
+    val result = run(Reveal(top, at)).toOption.get
+    assertEquals(result.state, base)
+    assertEquals(result.executed, Vector(Reveal(top, at)))
+  }
+
+  test("a card that is not in that discard cannot be revealed there") {
+    val other = base.game.current.commonCards.discard(Region.Provinces).last
+    assert(run(Reveal(other, at)).isLeft)
+  }
+
+  test("a facedown flip of a discarded card stays unsupported") {
+    assert(run(Flip(top, at, Orientation.FaceDown)).isLeft)
+  }
+}
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.RevealDiscardSuite"`
+Expected: FAIL, the first test with `unsupported-orientation`.
+
+- [ ] **Step 3: Write the helper**
+
+In `OperationStateAdapter.scala`, after `import OperationError._`:
+
+```scala
+  /** A `Reveal` of a card in a regional discard. A discarded card has no
+    * orientation state, because a discard is always facedown, so looking at it
+    * is accepted and changes nothing. A facedown flip of such a card stays
+    * unsupported.
+    */
+  private[operations] def isDiscardLook(at: Location,
+      orientation: Orientation): Boolean =
+    at.isInstanceOf[Location.RegionalDiscard] &&
+      orientation == Orientation.FaceUp
+```
+
+- [ ] **Step 4: Ask it in the validator and the mutation**
+
+In `OperationValidator.scala`, pass the orientation to `flipViolation` and accept the look:
+
+```scala
+      case ((result, state), Flip(id, at, orientation)) =>
+        (result ++ flipViolation(ready, id, at, orientation), state)
+```
+```scala
+  private def flipViolation(
+      ready: ReadyGame,
+      id: CardId,
+      at: Location,
+      orientation: Orientation
+  ): Vector[OperationError] = card(ready, id, at) match {
+    case Left(error) => Vector(error)
+    case Right(located) => located.state match {
+      case Some(_: DenizenState) | Some(_: VisionState) |
+          Some(_: RelicState) => Vector.empty
+      // Looking at a discarded card: it has no orientation state (a discard is
+      // always facedown), so revealing it changes nothing.
+      case None if OperationStateAdapter.isDiscardLook(at, orientation) =>
+        Vector.empty
+      case _ => Vector(UnsupportedOrientation(id, at))
+    }
+  }
+```
+
+In `OperationStateMutation.scala`, in `flipCard`, add the case before the fallback:
+
+```scala
+      case None if isDiscardLook(at, orientation) => Right(ready)
+```
+
+- [ ] **Step 5: Run the suite, then the gates**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.RevealDiscardSuite"`
+Expected: PASS, 3 tests. Then `./sbtw test` and `python3 scripts/check-architecture.py`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src
+git commit -m "feat: accept Reveal of a regional discard as a no-op
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: The movement kit and Whistle
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/action/PawnMoves.scala`
 - Create: `src/main/scala/oathdigital/gameplay/powers/action/Whistle.scala`
+- Create: `src/main/scala/oathdigital/gameplay/powers/action/MovementPowers.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/MovementFixture.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/WhistleSuite.scala`
 
 **Interfaces:**
-- Consumes `PaidAction(idValue: String, cost: Cost)` from slice 1a: an Act-timed `PhasePower` gated only by its cost, with `final val id: PowerId`.
-- Produces `PawnMoves.pawnSite(ready, player): Either[OathViolation, SiteId]`, `PawnMoves.atOtherSites(ready, player): Vector[PlayerId]` and `PawnMoves.chosen(pending, decisionId): Option[DecisionOptionRef]`. Tasks 2 and 3 extend `PawnMoves`.
-- Produces `case object Whistle` with `Whistle.id` and `Whistle.decisionId = "power.whistle.target"`.
-- Produces the fixture `MovementFixture`: the players `p1`, `p3`; the sites `ancientCity`, `brokenPeaks`, `buriedGiant`, `deepWoods`, `desolateShore`, `dunes`; and `pawnOf`, `withPawn`, `withSecrets`, `relicOf`, `withRelicTokens`, `use`, `choose`, `readyOf`, `usable`, `parkedAt`, `backToActing`, `ops`, `replayed`. Task 3 adds `withDiscard`, `freshDenizen` and `aVision`.
+- Consumes `PaidAction(idValue: String, cost: Cost)` from slice 1a, `PowerAnswers.one(pending, decision)` and `PowerAnswers.missing(decision)` from slice 1b, and `TargetsFixture` (`rules`, `withPawn`, `replayed`) from slice 1c.
+- Produces `PawnMoves.pawnSite(ready, player): Either[OathViolation, SiteId]` and `PawnMoves.atOtherSites(ready, player): Vector[PlayerId]`. Tasks 3 and 4 extend `PawnMoves`.
+- Produces `case object Whistle` with `Whistle.id` and `Whistle.decisionId = "power.whistle.target"`, and `MovementPowers.forCatalog(catalog): Vector[PhasePower]`, which Tasks 3 and 4 extend.
+- Produces the fixture `MovementFixture`: the players `p1`, `p3`; the sites `ancientCity`, `brokenPeaks`, `buriedGiant`, `deepWoods`, `desolateShore`, `dunes`; and `pawnOf`, `withSecrets`, `relicOf`, `withRelicTokens`, `use`, `choose`, `readyOf`, `usable`, `parkedAt`, `backToActing`, `ops`. Task 4 adds `withDiscard`, `freshDenizen` and `aVision`.
 
 Ruling: cost 1 secret placed on the Whistle. Choose another player whose pawn is at a different site, move their pawn to your site, then move the secret from the Whistle to their board. With no eligible player the cost is paid, nothing else happens and the secret stays.
 
@@ -80,9 +205,8 @@ Ruling: cost 1 secret placed on the Whistle. Choose another player whose pawn is
 ```scala
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.OathRules
 import oathdigital.gameplay.phases.PhasePowerProcedure
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.WalkerStepRecorded
 import oathdigital.model._
@@ -94,6 +218,7 @@ import oathdigital.model.OathState.Ready
   */
 object MovementFixture {
   import PowerFixture._
+  import TargetsFixture.rules
 
   val p1: PlayerId = PlayerId("p1")
   val p3: PlayerId = PlayerId("p3")
@@ -105,15 +230,8 @@ object MovementFixture {
   val desolateShore: SiteId = SiteId("site:desolate-shore")
   val dunes: SiteId = SiteId("site:dunes")
 
-  private val rules = new OathRules(catalog,
-    phasePowerCatalog = PhasePowerCatalog.default(catalog))
-
   def pawnOf(ready: ReadyGame, id: PlayerId = actor): SiteId =
     player(ready, id).pawnSite.get
-
-  def withPawn(ready: ReadyGame, id: PlayerId, site: SiteId): ReadyGame =
-    ready.updateCurrent(c => c.copy(players = c.players.map(p =>
-      if (p.player == id) p.copy(pawnSite = Some(site)) else p)))
 
   def withSecrets(ready: ReadyGame, faceUp: Int): ReadyGame =
     withBoard(ready)(_.copy(faceUpSecrets = faceUp))
@@ -150,12 +268,6 @@ object MovementFixture {
 
   def ops(events: Vector[OathEvent]): Vector[CoreOperation] =
     events.collect { case step: WalkerStepRecorded => step.ops }.flatten
-
-  /** The state a fold of `events` from `from` reaches. */
-  def replayed(from: ReadyGame, events: Vector[OathEvent])
-      : Either[OathViolation, OathState] =
-    events.foldLeft[Either[OathViolation, OathState]](Right(Ready(from)))(
-      (state, event) => state.flatMap(rules.evolve(_, event)))
 }
 ```
 
@@ -166,13 +278,14 @@ object MovementFixture {
 ```scala
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class WhistleSuite extends munit.FunSuite {
   import PowerFixture._
   import MovementFixture._
+  import TargetsFixture.{replayed, withPawn}
 
   private val whistle = RelicId("R08")
   private def staged(secrets: Int = 2) = inPhase(
@@ -244,7 +357,7 @@ class WhistleSuite extends munit.FunSuite {
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.WhistleSuite"`
 Expected: FAIL to compile, `not found: value Whistle`.
 
-- [ ] **Step 4: Write `PawnMoves` and Whistle**
+- [ ] **Step 4: Write `PawnMoves`, Whistle and the registration**
 
 `src/main/scala/oathdigital/gameplay/powers/action/PawnMoves.scala`:
 
@@ -252,6 +365,7 @@ Expected: FAIL to compile, `not found: value Whistle`.
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** Reads and writes shared by the movement relics (Whistle, Brass Horse,
@@ -271,12 +385,6 @@ object PawnMoves {
         case other if other.player != player &&
             other.pawnSite.exists(_ != here) => other.player
       })
-
-  /** The latest single choice recorded for `decisionId`, if it was asked. */
-  def chosen(pending: PendingTree, decisionId: String)
-      : Option[DecisionOptionRef] = pending.answered.reverse.collectFirst {
-    case Answered(`decisionId`, DecisionAnswer.ChooseOneAnswer(ref), _) => ref
-  }
 }
 ```
 
@@ -285,6 +393,7 @@ object PawnMoves {
 ```scala
 package oathdigital.gameplay.powers.action
 
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** Whistle (relic R08), ACTION: place 1 secret on this relic, take the pawn
@@ -322,10 +431,9 @@ case object Whistle extends PaidAction("relic.whistle", Cost(secret = 1)) {
     if (PawnMoves.atOtherSites(ready, player).isEmpty) Right(Vector.empty)
     else for {
       here <- PawnMoves.pawnSite(ready, player)
-      target <- PawnMoves.chosen(pending, decisionId).collect {
+      target <- PowerAnswers.one(pending, decisionId).collect {
         case DecisionOptionRef.Player(id) => id
-      }.toRight(OathViolation.InvalidEventOrder(
-        "no Whistle target is recorded"))
+      }.toRight(PowerAnswers.missing(decisionId))
       from <- PawnMoves.pawnSite(ready, target)
     } yield Vector[CoreOperation](
       Move(Piece.Pawn(target), PositionedLocation(Location.Site(from)),
@@ -335,27 +443,40 @@ case object Whistle extends PaidAction("relic.whistle", Cost(secret = 1)) {
 }
 ```
 
-- [ ] **Step 5: Register Whistle**
-
-In `PhasePowerCatalog.scala`, import it and add a second vector after the slice 1a one:
+`src/main/scala/oathdigital/gameplay/powers/action/MovementPowers.scala`:
 
 ```scala
-import oathdigital.gameplay.powers.action.{Elders, MagicWaterskin, WaysideInn, Whistle}
-```
-```scala
-      Vector[PhasePower](WaysideInn, Elders, MagicWaterskin, MarbleFountains) ++
-      Vector[PhasePower](Whistle))
+package oathdigital.gameplay.powers.action
+
+import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.powerresolver.PhasePower
+
+/** The phase powers of slice 1d, registered by
+  * [[oathdigital.gameplay.powers.PhasePowerCatalog]] through this one object,
+  * like [[DiceAndRelicDrawPowers]] and [[TargetPowers]].
+  */
+object MovementPowers {
+  def forCatalog(catalog: ExecutableCatalog): Vector[PhasePower] =
+    Vector[PhasePower](Whistle)
+}
 ```
 
-- [ ] **Step 6: Run the suite, then the action suites**
+In `PhasePowerCatalog.scala`, add `MovementPowers` to the `action` import and one line at the end of the vector:
+
+```scala
+      TargetPowers.forCatalog(catalog) ++
+      MovementPowers.forCatalog(catalog))
+```
+
+- [ ] **Step 5: Run the suite, then the gates**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.WhistleSuite"`
-Expected: PASS, 5 tests. Then `./sbtw "testOnly oathdigital.gameplay.powers.action.*"`. Expected: PASS.
+Expected: PASS, 5 tests. Then `./sbtw test` and `python3 scripts/check-architecture.py`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/main src/test
+git add src
 git commit -m "feat: implement Whistle
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
@@ -363,16 +484,16 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: Magic Carpet
+### Task 3: Magic Carpet
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/action/MagicCarpet.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/action/PawnMoves.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/action/MovementPowers.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/MagicCarpetSuite.scala`
 
 **Interfaces:**
-- Consumes `PawnMoves.pawnSite`, `atOtherSites`, `chosen` and the `MovementFixture` helpers from Task 1.
+- Consumes `PawnMoves.pawnSite`, `atOtherSites` and the `MovementFixture` helpers from Task 2.
 - Produces `PawnMoves.siteChoice(decisionId, owner, sites, heading): Decide`, `PawnMoves.relocate(ready, player, to): Either[OathViolation, Vector[CoreOperation]]` and `PawnMoves.chosenSite(pending, decisionId): Either[OathViolation, SiteId]`.
 - Produces `case object MagicCarpet` with `MagicCarpet.id`, `siteDecisionId = "power.magic-carpet.site"`, `fateDecisionId = "power.magic-carpet.fate"` and `discard: DecisionOptionRef.Button`.
 
@@ -385,13 +506,14 @@ Ruling: no cost. Place your pawn at any site, including the current one, in whic
 ```scala
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class MagicCarpetSuite extends munit.FunSuite {
   import PowerFixture._
   import MovementFixture._
+  import TargetsFixture.{replayed, withPawn}
 
   private val carpet = RelicId("R39")
   private def staged = inPhase(withRelic(base, carpet), Phase.Act)
@@ -490,7 +612,7 @@ Expected: FAIL to compile, `not found: value MagicCarpet`.
 
 - [ ] **Step 3: Extend `PawnMoves` and write Magic Carpet**
 
-In `PawnMoves.scala`, add these members after `atOtherSites`, and before `chosen`, and add `chosenSite` after `chosen`:
+In `PawnMoves.scala`, add these members after `atOtherSites`:
 
 ```scala
   def siteChoice(decisionId: String, owner: PlayerId, sites: Vector[SiteId],
@@ -510,14 +632,10 @@ In `PawnMoves.scala`, add these members after `atOtherSites`, and before `chosen
         PositionedLocation(Location.Site(from)),
         PositionedLocation(Location.Site(to)))))
 
-```
-```scala
-
   def chosenSite(pending: PendingTree, decisionId: String)
-      : Either[OathViolation, SiteId] = chosen(pending, decisionId).collect {
-    case DecisionOptionRef.Site(site) => site
-  }.toRight(OathViolation.InvalidEventOrder(
-    s"no site choice is recorded for $decisionId"))
+      : Either[OathViolation, SiteId] = PowerAnswers.one(pending, decisionId)
+    .collect { case DecisionOptionRef.Site(site) => site }
+    .toRight(PowerAnswers.missing(decisionId))
 ```
 
 `src/main/scala/oathdigital/gameplay/powers/action/MagicCarpet.scala`:
@@ -526,6 +644,7 @@ In `PawnMoves.scala`, add these members after `atOtherSites`, and before `chosen
 package oathdigital.gameplay.powers.action
 
 import oathdigital.gameplay.powers.PlayerFacts
+import oathdigital.gameplay.powers.PowerAnswers
 import oathdigital.model._
 
 /** Magic Carpet (relic R39), ACTION, no cost: place your pawn at any site,
@@ -574,7 +693,7 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free) {
       relic <- held.relics.find(_.id == carpet).toRight(
         OathViolation.InvalidEventOrder(
           s"${carpet.value} is not held by ${player.value}"))
-    } yield PawnMoves.chosen(pending, fateDecisionId) match {
+    } yield PowerAnswers.one(pending, fateDecisionId) match {
       case Some(DecisionOptionRef.Player(taker)) => Vector[CoreOperation](
         Give(Piece.Card(carpet), player, Location.PlayArea(player),
           Location.PlayArea(taker)))
@@ -585,26 +704,17 @@ case object MagicCarpet extends PaidAction("relic.magic-carpet", Cost.free) {
 }
 ```
 
-- [ ] **Step 4: Register Magic Carpet**
+In `MovementPowers.scala`: `Vector[PhasePower](Whistle, MagicCarpet)`.
 
-In `PhasePowerCatalog.scala`, extend the import and the second vector:
-
-```scala
-import oathdigital.gameplay.powers.action.{Elders, MagicCarpet, MagicWaterskin, WaysideInn, Whistle}
-```
-```scala
-      Vector[PhasePower](Whistle, MagicCarpet))
-```
-
-- [ ] **Step 5: Run the suite, then the action suites**
+- [ ] **Step 4: Run the suite, then the gates**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.MagicCarpetSuite"`
-Expected: PASS, 9 tests. Then `./sbtw "testOnly oathdigital.gameplay.powers.action.*"`. Expected: PASS.
+Expected: PASS, 9 tests. Then `./sbtw test` and `python3 scripts/check-architecture.py`.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/main src/test
+git add src
 git commit -m "feat: implement Magic Carpet
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
@@ -612,19 +722,19 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 3: Brass Horse
+### Task 4: Brass Horse
 
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/powers/action/BrassHorse.scala`
 - Modify: `src/main/scala/oathdigital/gameplay/powers/action/PawnMoves.scala`
-- Modify: `src/main/scala/oathdigital/gameplay/powers/PhasePowerCatalog.scala`
+- Modify: `src/main/scala/oathdigital/gameplay/powers/action/MovementPowers.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/MovementFixture.scala`
 - Test: `src/test/scala/oathdigital/gameplay/powers/action/BrassHorseSuite.scala`
 
 **Interfaces:**
-- Consumes `PawnMoves.pawnSite`, `siteChoice`, `relocate`, `chosenSite` and the `MovementFixture` helpers from Tasks 1 and 2.
+- Consumes `PawnMoves.pawnSite`, `siteChoice`, `relocate`, `chosenSite`, the `MovementFixture` helpers from Tasks 2 and 3, and `Reveal` at a regional discard from Task 1.
 - Produces `PawnMoves.sitesOtherThan(ready, site): Vector[SiteId]`.
-- Produces `final class BrassHorse(catalog: ExecutableCatalog)` with `BrassHorse.id` and `BrassHorse.decisionId = "power.brass-horse.site"`. It is constructed by `PhasePowerCatalog.default(catalog)`, because a suit is a catalog fact.
+- Produces `final class BrassHorse(catalog: ExecutableCatalog)` with `BrassHorse.id` and `BrassHorse.decisionId = "power.brass-horse.site"`. It is constructed by `MovementPowers.forCatalog(catalog)`, because a suit is a catalog fact.
 - Produces the fixture members `withDiscard(ready, region, pile): ReadyGame`, `freshDenizen(ready, suit, skip = 0): DenizenId` and `aVision(ready): VisionId`.
 
 Ruling: cost 1 secret placed. "Your region" is the region of your pawn's site. Reveal the top card of that region's discard pile, then turn it facedown again. Place your pawn at a different site holding a card of the same suit (denizen or edifice). No decision is asked when exactly one site matches. If the pile is empty, the top is a Vision, or no site matches, place it at any other site.
@@ -657,7 +767,6 @@ In `MovementFixture.scala`, insert these members before `def use(`:
   def aVision(ready: ReadyGame): VisionId =
     ready.game.current.commonCards.worldDeck.collectFirst {
       case vision: VisionId => vision }.get
-
 ```
 
 - [ ] **Step 2: Write the failing suite**
@@ -667,13 +776,14 @@ In `MovementFixture.scala`, insert these members before `def use(`:
 ```scala
 package oathdigital.gameplay.powers.action
 
-import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture}
+import oathdigital.gameplay.powers.{PhasePowerCatalog, PowerFixture, TargetsFixture}
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.model._
 
 class BrassHorseSuite extends munit.FunSuite {
   import PowerFixture._
   import MovementFixture._
+  import TargetsFixture.{replayed, withPawn}
 
   private val horse = RelicId("R03")
   private def staged = inPhase(withSecrets(withRelic(base, horse), 2), Phase.Act)
@@ -683,8 +793,8 @@ class BrassHorseSuite extends munit.FunSuite {
   private def cradleTopped(card: WorldCardId) =
     withDiscard(staged, Region.Cradle, Vector(card))
   private def site(id: SiteId) = DecisionOptionRef.Site(id)
-  private def peeks(events: Vector[OathEvent]) = ops(events).collect {
-    case peek: Peek => peek }
+  private def reveals(events: Vector[OathEvent]) = ops(events).collect {
+    case reveal: Reveal => reveal }
 
   // The first game puts a ruined beast edifice at deep-woods and a ruined
   // hearth edifice at golden-valley, and no other card at any site.
@@ -703,8 +813,10 @@ class BrassHorseSuite extends munit.FunSuite {
     assertEquals(relicOf(after, horse).get.tokens, Tokens(0, 1))
     assertEquals(after.game.current.commonCards.discard(Region.Cradle).last,
       beastTop)
-    assertEquals(peeks(done.events), Vector(
-      Peek(actor, beastTop, Location.RegionalDiscard(Region.Cradle))))
+    assertEquals(reveals(done.events), Vector(
+      Reveal(beastTop, Location.RegionalDiscard(Region.Cradle))))
+    assertEquals(after.knowledge, start.knowledge)
+    assert(PaidActionHarness.wireRoundTrips(done.events))
     assertEquals(replayed(start, done.events), Right(done.state))
   }
 
@@ -740,7 +852,7 @@ class BrassHorseSuite extends munit.FunSuite {
     val start = withDiscard(staged, Region.Cradle, Vector.empty)
     val parked = use(start, BrassHorse.id, horse).toOption.get
     assert(parkedAt(parked, BrassHorse.decisionId))
-    assertEquals(peeks(parked.events), Vector.empty)
+    assertEquals(reveals(parked.events), Vector.empty)
     assert(choose(parked.state, BrassHorse.decisionId, site(dunes)).isRight)
   }
 
@@ -749,8 +861,8 @@ class BrassHorseSuite extends munit.FunSuite {
     val start = cradleTopped(vision)
     val parked = use(start, BrassHorse.id, horse).toOption.get
     assert(parkedAt(parked, BrassHorse.decisionId))
-    assertEquals(peeks(parked.events),
-      Vector(Peek(actor, vision, Location.RegionalDiscard(Region.Cradle))))
+    assertEquals(reveals(parked.events),
+      Vector(Reveal(vision, Location.RegionalDiscard(Region.Cradle))))
     assert(choose(parked.state, BrassHorse.decisionId, site(deepWoods)).isRight)
   }
 
@@ -759,8 +871,8 @@ class BrassHorseSuite extends munit.FunSuite {
     val start = withDiscard(withPawn(staged, actor, buriedGiant),
       Region.Provinces, Vector(provincesTop))
     val done = use(start, BrassHorse.id, horse).toOption.get
-    assertEquals(peeks(done.events), Vector(
-      Peek(actor, provincesTop, Location.RegionalDiscard(Region.Provinces))))
+    assertEquals(reveals(done.events), Vector(
+      Reveal(provincesTop, Location.RegionalDiscard(Region.Provinces))))
     assertEquals(pawnOf(readyOf(done.state)), deepWoods)
   }
 
@@ -789,7 +901,6 @@ In `PawnMoves.scala`, add this member before `atOtherSites`:
   /** Every site in play except `site`, in map order. */
   def sitesOtherThan(ready: ReadyGame, site: SiteId): Vector[SiteId] =
     ready.game.current.map.inPlay.filter(_ != site)
-
 ```
 
 `src/main/scala/oathdigital/gameplay/powers/action/BrassHorse.scala`:
@@ -805,11 +916,11 @@ import oathdigital.model._
   * pawn at a different site holding a card of the same suit (a denizen or an
   * edifice). If it cannot, place it at any other site.
   *
-  * A regional discard holds card ids only, with no orientation, so the reveal
-  * cannot be a `Reveal` or a `Flip`; it is recorded as the actor's `Peek`,
-  * and "turn it facedown again" changes nothing. The destination decision is a
-  * live `Branch`, asked only when more than one site qualifies. The reveal
-  * sits before it and changes neither the pile nor the pawn.
+  * The reveal is a public `Reveal` of the pile's top card. A discarded card
+  * has no orientation state, so the reveal changes nothing and "turn it
+  * facedown again" needs no operation. The destination decision is a live
+  * `Branch`, asked only when more than one site qualifies. The reveal sits
+  * before it and changes neither the pile nor the pawn.
   *
   * The power holds the catalog because a card's suit is a catalog fact and
   * `PhasePower.build` receives no catalog.
@@ -856,7 +967,7 @@ final class BrassHorse(catalog: ExecutableCatalog)
   private def reveal(ready: ReadyGame, player: PlayerId)
       : Either[OathViolation, Vector[CoreOperation]] =
     region(ready, player).map(found => top(ready, found).toVector.map(card =>
-      Peek(player, card, Location.RegionalDiscard(found)): CoreOperation))
+      Reveal(card, Location.RegionalDiscard(found)): CoreOperation))
 
   /** An error surfaces later, from `place`, so it is not swallowed here. */
   private def ask(ready: ReadyGame, player: PlayerId): Vector[Operation] =
@@ -883,26 +994,17 @@ object BrassHorse {
 }
 ```
 
-- [ ] **Step 5: Register Brass Horse**
+In `MovementPowers.scala`: `Vector[PhasePower](Whistle, MagicCarpet, new BrassHorse(catalog))`.
 
-In `PhasePowerCatalog.scala`, extend the import and the second vector:
-
-```scala
-import oathdigital.gameplay.powers.action.{BrassHorse, Elders, MagicCarpet, MagicWaterskin, WaysideInn, Whistle}
-```
-```scala
-      Vector[PhasePower](Whistle, MagicCarpet, new BrassHorse(catalog)))
-```
-
-- [ ] **Step 6: Run the suite, then the action suites**
+- [ ] **Step 5: Run the suite, then the gates**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.action.BrassHorseSuite"`
-Expected: PASS, 9 tests. Then `./sbtw "testOnly oathdigital.gameplay.powers.action.*"`. Expected: PASS.
+Expected: PASS, 9 tests. Then `./sbtw test` and `python3 scripts/check-architecture.py`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/main src/test
+git add src
 git commit -m "feat: implement Brass Horse
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
@@ -910,32 +1012,24 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Gates and documentation
+### Task 5: Documentation
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-09-20-powers-design.md` (the 1d row of the Slicing table only)
+- Modify: `docs/superpowers/specs/2026-09-20-powers-design.md` (status line, the 1d row and the slice 1d plan sentence)
 - Modify: `docs/superpowers/specs/2026-09-20-powers-rulings.md` (the three slice 1d rows and one new notes list)
+- Modify: this plan, to match what was executed.
 
-- [ ] **Step 1: Run every gate**
+- [ ] **Step 1: Update the design**
 
-Run: `./sbtw test`, then `python3 scripts/check-architecture.py`, then `python3 scripts/check-markdown-links.py`.
-Expected: all pass. If `BackendArchitectureSuite` reports a power name in a walker or operations source, rename the power object rather than loosening the scan.
+In `2026-09-20-powers-design.md`, add slice 1d and its plan to the status line, mark the 1d Slicing row `(implemented)` with the engine column `none beyond accepting Reveal at a regional discard`, and add the slice 1d plan sentence after the slice 1c one.
 
-- [ ] **Step 2: Update the design**
+- [ ] **Step 2: Record results in the rulings appendix**
 
-In `2026-09-20-powers-design.md`, change only the Slicing row for 1d, so that its engine column reads `none` and its contents read `Whistle, Brass Horse, Magic Carpet (implemented)`. Do not edit the status line: other slices edit it in parallel, and the coordinator updates it when the slices merge.
+Append `Implemented (slice 1d).` to the rulings of R08 Whistle, R03 Brass Horse and R39 Magic Carpet. Add a `### Slice 1d implementation notes` list before `## Slice 2: modifiers`, covering the shape, the Reveal change and the decisions above.
 
-- [ ] **Step 3: Record results in the rulings appendix**
+- [ ] **Step 3: Run the link check and commit**
 
-Append `Implemented (slice 1d).` to the rulings of R08 Whistle, R03 Brass Horse and R39 Magic Carpet. Then add a `### Slice 1d implementation notes` list directly after the slice 1a notes, with one bullet per line below. If a product answer to an open question differed from the default, write the answer instead:
-
-- **Brass Horse reveal:** a regional discard has no orientation, so `Reveal` and `Flip` are rejected. The reveal is recorded as the actor's `Peek`, and the card stays facedown throughout.
-- **Brass Horse matching:** the suit is read from the catalog. A ruined edifice counts, and so does an intact one. The pawn's own site never matches.
-- **Whistle:** the decision is asked even with one eligible player. The given secret arrives faceup on the target's board.
-- **Magic Carpet:** with no eligible player the Carpet is discarded without a second question. A secret resting on a given Carpet goes with it.
-- **Pawn moves:** all three relocate with a plain `Move` and run no Travel window.
-
-- [ ] **Step 4: Commit**
+Run: `python3 scripts/check-markdown-links.py`
 
 ```bash
 git add docs
@@ -946,7 +1040,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 ## Self-review
 
-- **Spec coverage.** The rulings for R08 Whistle, R03 Brass Horse and R39 Magic Carpet map to Tasks 1, 3 and 2. Each ruling clause has a test: Whistle's cost, target choice, pawn pull, secret hand-over, the no-target case and the unusable cases; Brass Horse's region, top card, one or several matches, the empty pile, the Vision, the different-site rule and the unusable cases; Magic Carpet's free use, same-site skip, both fates, the eligibility rule and the no-eligible case. The Movement rule is satisfied: every relocation is a plain `Move`, and no Travel power can fire.
+- **Spec coverage.** The rulings for R08 Whistle, R03 Brass Horse and R39 Magic Carpet map to Tasks 2, 4 and 3. Each ruling clause has a test: Whistle's cost, target choice, pawn pull, secret hand-over, the no-target case and the unusable cases; Brass Horse's region, public `Reveal` of the top card, one or several matches, the empty pile, the Vision, the different-site rule, unchanged knowledge, the journal wire round trip and the unusable cases; Magic Carpet's free use, same-site skip, both fates, the eligibility rule and the no-eligible case. The Movement rule is satisfied: every relocation is a plain `Move`, and no Travel power can fire.
 - **Placeholders.** None. Every step carries its code or command.
-- **Types.** `PawnMoves` members are introduced in the task that first uses them and consumed unchanged after. `MovementFixture` members used by a suite are defined in Task 1, except `withDiscard`, `freshDenizen` and `aVision`, which only the Brass Horse suite uses and Task 3 adds. `BrassHorse.id` is defined in the companion and used by the class, the suite and the catalog.
-- **Engine.** No engine file is touched. Open question 1 names the one change a public reveal would need.
+- **Types.** `PawnMoves` members are introduced in the task that first uses them and consumed unchanged after. `MovementFixture` members used by a suite are defined in Task 2, except `withDiscard`, `freshDenizen` and `aVision`, which only the Brass Horse suite uses and Task 4 adds. `BrassHorse.id` is defined in the companion and used by the class, the suite and `MovementPowers`.
+- **Engine.** Task 1 is the only engine change: three operations files, no power name.
