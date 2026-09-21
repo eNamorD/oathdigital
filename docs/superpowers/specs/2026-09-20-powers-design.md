@@ -2,6 +2,8 @@
 
 > Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b, slice 1c, slice 1d and slice 2 (sub-slices 2a to 2f) are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md) the [slice 1d plan](../plans/2026-09-20-powers-slice-1d-movement.md) and the [slice 2 plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md) (all six sub-slices). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
+> Slice 3 (battle plans) is planned in four sub-slices: see its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md). Implemented so far: 3a to 3d, so slice 3 is complete.
+
 ## Goal and scope
 
 Implement a limited, first batch of powers on the procedure walker, each declared solely as a `ContributingPower` (or, for ACTION, WAKE and REST powers, a `PhasePower`) that returns existing Operations. Where that was not possible, the gap is an engine change listed here.
@@ -88,7 +90,13 @@ Campaign plans move from the handler-id registry in `CampaignPlans.plan` into co
 - Plan application is a small operation class carrying the owner, side and source, in window `CampaignPlanApplication`. Powers such as Gleaming Armor match on it, as Silver Tongue matches `PlacementTree`.
 - Plans are usable only by the source's ruler: the holder for advisers and relics, the site's ruler for site cards and edifices. Current code also offers origin-site cards to a non-ruler and requires Brass Army's card to be empty. Both are removed. A defender plan may now carry a cost.
 - Facedown advisers remain usable as plans and are revealed when used (NF p. 13).
-- `CampaignResult.victorious` is renamed `attackerWins`. It touches the model, `CampaignResultProjectionCodec`, the shared DTO, the frontend result panel, the Campaign suites and docs. The wire key changes with it.
+- `CampaignResult.victorious` is renamed `attackerWins`. It touches the model, `CampaignResultProjectionCodec`, the shared DTO, the frontend result panel, the Campaign suites and docs. The wire key changes with it. Implemented in slice 3a.
+
+**What slice 3b built.** The plan window is a node, `CampaignPlanChoice`, that implements `OfferHost`. The walker gathers the `Offer` contributions hooked at its window and hands the plans to it. It asks the decision, prices each option from a dry run of the plan's application (every power's changes to the cost included), and applies the chosen plan as a `CampaignPlanApplication`. The four plans that were registry handlers (Outriders, Brass Army, the title, Watchdog) are now powers. It differs from the E8 text above in these ways, each found at plan time:
+
+- The price is a `DecisionOption.Priced(option, OptionPrice)`, which the projector words as the option's details. Campaign cannot use the preview gate (`requiresPlayableOption`), because its first step spends Supply before any decision.
+- What a used plan does later is not a `CampaignPlanEffect` variant. The `BattlePlan` kit installs it as a hook at the later window (`later`), which reads the picks from `PowerCtx.answered` and the outcome from the recorded result, because a plan is not re-derived at the end of the Campaign. `CampaignPlanEffect` gains `RemoveAttackDice` and `Run`, and loses `IgnoreAttackSkulls` and `RevealSource`: the engine reveals a facedown adviser, and Outriders scores the attack again without the cap.
+- Three engine changes E8 did not list: `PowerCtx.answered`; a `Repeat` pass that records nothing and asks nothing ends the loop; and replay settles a recorded `PayCost` whose payer is not the active player, which E4 specified but the walker's replay did not do.
 
 ### E9. Enclosing action on `PowerCtx`
 
@@ -106,10 +114,12 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | 1c. Targets and information (implemented) | Alchemist, Wolves, Sleight of Hand, Crystal Vial, Ivory Eye; Horned Mask | none |
 | 1d. Movement (implemented) | Whistle, Brass Horse, Magic Carpet | none beyond accepting `Reveal` at a regional discard |
 | 2. Modifiers, restrictions, triggers | Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant; Toll Roads, Grasping Vines, Circlet, Oaken and Rotting Fortress; Wild Cry, Welcoming Party, Gossip | E6 (`CardPlayed` split), E7, E9 |
-| 3. Battle plans | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
+| 3. Battle plans (implemented) | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
 | 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
 
 Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Slice 1b is planned: see its [plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). Slice 1c is planned: see its [plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md). Slice 1d is planned: see its [plan](../plans/2026-09-20-powers-slice-1d-movement.md). Slice 2 is planned in six sub-slices: see its [plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md). The order above is the recommended one.
+
+Slice 3 is planned in four sub-slices: 3a the rename of `CampaignResult.victorious`, 3b the plan window (E8) with the four plans already in the code, 3c the plans that change the dice or pay after the Campaign, and 3d Warning Signals, Sticky Fire and Gleaming Armor. See its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md).
 
 ## Walker shapes for powers
 

@@ -1053,7 +1053,7 @@ class GameApplicationServiceSuite extends munit.FunSuite {
     assertEquals(reloaded.state, accepted.state)
     assertEquals(reloaded.nextSequence, accepted.nextSequence)
     val Ready(after) = reloaded.state: @unchecked
-    assert(after.game.current.lastCampaignResult.exists(_.victorious))
+    assert(after.game.current.lastCampaignResult.exists(_.attackerWins))
   }
 
   test("create advance and reload replay the complete persisted v2 stream") {

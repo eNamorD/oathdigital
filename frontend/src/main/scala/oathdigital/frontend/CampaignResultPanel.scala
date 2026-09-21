@@ -36,7 +36,7 @@ private[frontend] object CampaignResultPanel {
       box.appendChild(text("p", "campaign-result-defense",
         s"Defense dice: ${dice(result.defenseDice)}. Defense ${result.defenseScore}."))
       box.appendChild(text("p", "campaign-result-outcome",
-        if (result.victorious) "Victory" else "Defeat"))
+        if (result.attackerWins) "Victory" else "Defeat"))
       panel.appendChild(box)
     }
 }

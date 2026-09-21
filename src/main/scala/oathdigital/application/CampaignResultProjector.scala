@@ -17,7 +17,7 @@ private[application] object CampaignResultProjector {
         result.force, result.attackFaces.map(attackFace), result.attackScore,
         result.skullLosses, result.sacrificed,
         result.defenseFaces.map(defenseFace), result.defenseScore,
-        result.victorious)
+        result.attackerWins)
     }
 
   // The wire spellings, duplicated because the application layer may not

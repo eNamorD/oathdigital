@@ -16,7 +16,7 @@ class CampaignResultPanelSuite extends munit.FunSuite {
 
   private val conquest = CampaignResultState("red", "conquest", None,
     Vector("site:a"), Vector.empty, 4, Vector("one-sword", "two-swords-skull"),
-    3, 1, 1, Vector("one-shield", "doubler"), 4, victorious = true)
+    3, 1, 1, Vector("one-shield", "doubler"), 4, attackerWins = true)
 
   test("nothing is drawn before a Campaign has been fought") {
     assertEquals(draw(None).children.length, 0)
@@ -38,7 +38,7 @@ class CampaignResultPanelSuite extends munit.FunSuite {
   test("a defeat and a Raid against a player read as such") {
     val raid = conquest.copy(kind = "raid", defenderPlayerId = Some("blue"),
       targetSiteIds = Vector.empty,
-      raidTargets = Vector("pawn:blue", "relic:blue:r1"), victorious = false)
+      raidTargets = Vector("pawn:blue", "relic:blue:r1"), attackerWins = false)
     val text = draw(Some(raid)).textContent
     assert(text.contains("Raid"), text)
     assert(text.contains("blue"), text)

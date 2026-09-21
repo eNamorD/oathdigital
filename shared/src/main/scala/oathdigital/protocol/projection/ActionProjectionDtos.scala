@@ -277,4 +277,4 @@ final case class CampaignResultProjection(
     sacrificed: Int,
     defenseDice: Vector[String],
     defenseScore: Int,
-    victorious: Boolean)
+    attackerWins: Boolean)

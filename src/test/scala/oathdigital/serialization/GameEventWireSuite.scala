@@ -542,7 +542,7 @@ class GameEventWireSuite extends munit.FunSuite {
         attackFaces = Vector(AttackDieFace.OneSword), attackScore = 1,
         skullLosses = 0, sacrificed = 0,
         defenseFaces = Vector(DefenseDieFace.Blank), defenseScore = 2,
-        victorious = false)),
+        attackerWins = false)),
       SetOathkeeper(Some(PlayerId("red"))),
       SetOathkeeper(None))
 

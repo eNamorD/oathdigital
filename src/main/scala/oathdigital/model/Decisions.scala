@@ -171,6 +171,16 @@ object DecisionOption {
   final case class FavorBank(ref: DecisionOptionRef.FavorBank)
       extends DecisionOption
 
+  /** An option that states what choosing it costs, which the projector words.
+    * The choice is the wrapped option's: `ref` is its reference, so an answer
+    * names the same thing whether or not the option carries a price, and the
+    * price never affects legality.
+    */
+  final case class Priced(option: DecisionOption, price: OptionPrice)
+      extends DecisionOption {
+    def ref: DecisionOptionRef = option.ref
+  }
+
   /** The option presenting `ref`, for every kind whose name the projector
     * resolves itself. A button has no such name: its label is authored, so
     * a reference alone cannot present one.
@@ -188,6 +198,17 @@ object DecisionOption {
     case value: DecisionOptionRef.Deck => Some(Deck(value))
     case value: DecisionOptionRef.FavorBank => Some(FavorBank(value))
   }
+}
+
+/** What choosing an option costs the chooser, as a dry run of the choice found
+  * it: favor and secrets paid (placed, or burnt to the shared bank) and
+  * warbands sacrificed. Everything is a count of what leaves the chooser.
+  */
+final case class OptionPrice(favor: Int = 0, secrets: Int = 0,
+    favorBurnt: Int = 0, secretsBurnt: Int = 0, warbands: Int = 0) {
+  require(favor >= 0 && secrets >= 0 && favorBurnt >= 0 && secretsBurnt >= 0 &&
+    warbands >= 0, "an option price is never negative")
+  def isFree: Boolean = this == OptionPrice()
 }
 
 /** One named bucket a [[DecisionQuery.Partition]] spreads its options across.

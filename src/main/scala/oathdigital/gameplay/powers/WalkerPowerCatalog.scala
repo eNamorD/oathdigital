@@ -1,7 +1,7 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
-import oathdigital.gameplay.powers.campaign.VowOfPeaceContribution
+import oathdigital.gameplay.powers.campaign.{BattlePlans, PlanRules, SimplePlans, VowOfPeaceContribution}
 import oathdigital.gameplay.powers.economy.KnightsErrant
 import oathdigital.gameplay.powers.cardplay.CardPlayTriggers
 import oathdigital.gameplay.powers.recover.CatacombsContribution
@@ -32,6 +32,9 @@ import oathdigital.gameplay.walker.WalkerPowers
   * play runs `ActionCardPlayedFaceup` for Conspiracy.
   * Vow of Peace's restriction is inert until Campaign walks
   * `CampaignActionEligibility`.
+  * The battle plans are inert until a Campaign folds its plan windows: each
+  * offers itself there, and the title's defense, which no card prints, is always
+  * present.
   */
 object WalkerPowerCatalog {
   def default(catalog: ExecutableCatalog): WalkerPowers =
@@ -48,6 +51,9 @@ object WalkerPowerCatalog {
       ActionModifiers.forCatalog(catalog) ++
       TargetProtections.forCatalog(catalog) ++
       KnightsErrant.forCatalog(catalog).toVector ++
+      BattlePlans.forCatalog(catalog) ++
+      PlanRules.forCatalog(catalog) ++
+      SimplePlans.forCatalog(catalog) ++
       CardPlayTriggers.forCatalog(catalog) ++
       Dazzle.forCatalog(catalog) :+ TakeWealthLimit :+ ConspiracyWhenPlayed)
 }

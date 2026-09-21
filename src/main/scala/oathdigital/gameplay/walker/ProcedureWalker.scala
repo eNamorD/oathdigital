@@ -353,7 +353,8 @@ object ProcedureWalker {
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.activePlayer, ctx.powers, path, children, ctx.procedure)
+      ctx.activePlayer, ctx.powers, path, children, ctx.procedure, ctx.answered,
+      cursor.isDefined)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
   }
 
@@ -403,6 +404,10 @@ object ProcedureWalker {
       walkFolded(repeat.window, repeat, repeat.children, current, path, at, resume,
         hooks).flatMap {
           case park: Park => Right(park)
+          // A pass that recorded nothing and asked nothing cannot change what
+          // the guard reads, so it would only repeat itself for ever.
+          case Done(next) if next.events.size == current.events.size &&
+              next.answered.size == current.answered.size => Right(Done(next))
           case Done(next) => passes(next)
         }
 

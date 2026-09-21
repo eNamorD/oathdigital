@@ -3,15 +3,17 @@ package oathdigital.gameplay.powerresolver
 import oathdigital.model.PowerId
 import oathdigital.model.PowerWindow
 
-/** The result of one gather at a hooked node: transforms, restrictions and
-  * option restrictions declared by the surviving powers, tagged with the power that declared
-  * each, plus the deterministic order those powers were resolved in.
+/** The result of one gather at a hooked node: transforms, restrictions, option
+  * restrictions and offers declared by the surviving powers, tagged with the
+  * power that declared each, plus the deterministic order those powers were
+  * resolved in.
   */
 final case class GatheredContributions(
     transforms: Vector[(PowerId, Transform)],
     restrictions: Vector[(PowerId, Restriction)],
     order: Vector[PowerId],
-    optionRestrictions: Vector[(PowerId, OptionRestriction)] = Vector.empty
+    optionRestrictions: Vector[(PowerId, OptionRestriction)] = Vector.empty,
+    offers: Vector[(PowerId, Offer)] = Vector.empty
 )
 
 /** Turns "which powers hook this window" into "which transforms, restrictions
@@ -52,12 +54,14 @@ object ContributionCollector {
     val transforms = Vector.newBuilder[(PowerId, Transform)]
     val restrictions = Vector.newBuilder[(PowerId, Restriction)]
     val optionRestrictions = Vector.newBuilder[(PowerId, OptionRestriction)]
+    val offers = Vector.newBuilder[(PowerId, Offer)]
 
     ordered.foreach { power =>
       power.contributions(window).foreach {
         case transform: Transform => transforms += power.id -> transform
         case restriction: Restriction => restrictions += power.id -> restriction
         case option: OptionRestriction => optionRestrictions += power.id -> option
+        case offer: Offer => offers += power.id -> offer
       }
     }
 
@@ -65,7 +69,8 @@ object ContributionCollector {
       transforms = transforms.result(),
       restrictions = restrictions.result(),
       order = ordered.map(_.id),
-      optionRestrictions = optionRestrictions.result()
+      optionRestrictions = optionRestrictions.result(),
+      offers = offers.result()
     )
   }
 }

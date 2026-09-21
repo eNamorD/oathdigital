@@ -277,6 +277,8 @@ private[application] final class WalkerDecisionProjector(
       Some(DecisionOptionProjection(ref.kind, ref.wireId, label, card,
         details ++ extra))
     option match {
+      case DecisionOption.Priced(inner, price) => optionProjection(ready,
+        viewer, index, inner, details ++ PriceDetails.of(price))
       case DecisionOption.Button(_, label) => row(label)
       case DecisionOption.Player(player) =>
         if (ready.game.current.players.exists(_.player == player.id))

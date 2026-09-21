@@ -12,14 +12,14 @@ class CampaignResultCodecSuite extends munit.FunSuite {
     attackFaces = Vector(AttackDieFace.HollowSword, AttackDieFace.TwoSwordsSkull),
     attackScore = 2, skullLosses = 1, sacrificed = 1,
     defenseFaces = Vector(DefenseDieFace.OneShield, DefenseDieFace.Doubler),
-    defenseScore = 4, victorious = false)
+    defenseScore = 4, attackerWins = false)
   private val raid = conquest.copy(kind = CampaignKind.Raid,
     defender = CampaignDefender.Player(PlayerId("blue")),
     targetSites = Vector.empty,
     raidTargets = Vector(CampaignRaidTarget.Pawn(PlayerId("blue")),
       CampaignRaidTarget.Relic(PlayerId("blue"), RelicId("r1")),
       CampaignRaidTarget.Banner(PlayerId("blue"), Banner.PeoplesFavor)),
-    victorious = true)
+    attackerWins = true)
   private val empty = conquest.copy(attackFaces = Vector.empty,
     defenseFaces = Vector.empty, attackScore = 0, skullLosses = 0,
     sacrificed = 0, force = 0)

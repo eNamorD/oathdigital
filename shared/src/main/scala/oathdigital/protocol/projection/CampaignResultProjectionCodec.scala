@@ -5,7 +5,7 @@ import ProjectionCodecSupport._
 private[projection] object CampaignResultProjectionCodec {
   private val Fields = Set("attackerPlayerId", "kind", "defenderPlayerId",
     "targetSiteIds", "raidTargets", "force", "attackDice", "attackScore",
-    "skullLosses", "sacrificed", "defenseDice", "defenseScore", "victorious")
+    "skullLosses", "sacrificed", "defenseDice", "defenseScore", "attackerWins")
 
   def encode(value: CampaignResultProjection): ujson.Value = ujson.Obj(
     "attackerPlayerId" -> value.attackerPlayerId, "kind" -> value.kind,
@@ -17,7 +17,7 @@ private[projection] object CampaignResultProjectionCodec {
     "attackScore" -> value.attackScore, "skullLosses" -> value.skullLosses,
     "sacrificed" -> value.sacrificed,
     "defenseDice" -> encoded(value.defenseDice)(ujson.Str(_)),
-    "defenseScore" -> value.defenseScore, "victorious" -> value.victorious)
+    "defenseScore" -> value.defenseScore, "attackerWins" -> value.attackerWins)
 
   def decode(raw: ujson.Value, path: String): Result[CampaignResultProjection] = for {
     value <- obj(raw, path)
@@ -34,8 +34,8 @@ private[projection] object CampaignResultProjectionCodec {
     sacrificed <- int(value, "sacrificed", path)
     defenseDice <- strings(value, "defenseDice", path)
     defenseScore <- int(value, "defenseScore", path)
-    victorious <- bool(value, "victorious", path)
+    attackerWins <- bool(value, "attackerWins", path)
   } yield CampaignResultProjection(attacker, kind, defender, sites, raid, force,
     attackDice, attackScore, skulls, sacrificed, defenseDice, defenseScore,
-    victorious)
+    attackerWins)
 }

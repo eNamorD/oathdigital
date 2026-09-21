@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{CoreOperation, DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, CampaignPlanOffer, CoreOperation, DecisionOptionRef, OathViolation, OfferedPlan, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -24,7 +24,13 @@ final case class PowerCtx(
       * modifier is being selected for. `None` for the command that starts a
       * procedure, which has not recorded one yet.
       */
-    procedure: Option[ProcedureRef] = None
+    procedure: Option[ProcedureRef] = None,
+    /** The decisions answered so far in the running action, oldest first. A
+      * contribution that must know what the player chose earlier (which battle
+      * plans were used) reads them here. Empty when the window is gathered
+      * outside a walk.
+      */
+    answered: Vector[Answered] = Vector.empty
 )
 
 /** The three ways a power may speak at a hooked node (spec decision 9). A
@@ -65,6 +71,42 @@ final case class Restriction(
 final case class OptionRestriction(
     fn: (PowerCtx, DecisionOptionRef) => Option[OathViolation]
 ) extends Contribution
+
+/** Offers one option to the node its window hooks, when that node is an
+  * [[OfferHost]] (a Campaign's battle-plan window). `plan` says whether the
+  * offer stands now and what it is; it reads the context like any contribution
+  * and is asked again at every fold, so it must be a pure function of state.
+  * Whether the user can pay is not its business: the host dry-runs the plan.
+  */
+final case class Offer(
+    plan: PowerCtx => Option[CampaignPlanOffer]
+) extends Contribution
+
+/** A windowed node that turns what the powers offer into the children it walks.
+  * The walker gathers the window's [[Offer]]s, asks each for its plan, and hands
+  * the plans to `expand` in the deterministic power order.
+  *
+  * `expand` runs at every fold of the node, so it must be a pure function of its
+  * arguments. A walk that resumes inside the node (`Pass.resuming`) is handed
+  * the same offers again against a later state, and must give the node the same
+  * shape as when it parked, even if nothing is left to offer.
+  */
+trait OfferHost extends Operation {
+  def expand(offers: Vector[OfferedPlan], pass: OfferHost.Pass): Vector[Operation]
+}
+
+object OfferHost {
+  /** What the walker tells a host about this fold.
+    *
+    * `applies` dry-runs an operation through the same windows the walk uses.
+    * It reports the operations the walk would record, or why it could not run.
+    * An operation that parks on a decision is accepted when everything before
+    * the decision ran, and reports what ran.
+    */
+  final case class Pass(state: ReadyGame, answered: Vector[Answered],
+      resuming: Boolean,
+      applies: Operation => Either[OathViolation, Vector[CoreOperation]])
+}
 
 /** One object per power (spec decision 8). No engine code lives in a power --
   * only the windows it hooks and the contributions it offers there.

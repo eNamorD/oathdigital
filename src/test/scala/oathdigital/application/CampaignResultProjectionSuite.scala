@@ -40,7 +40,7 @@ class CampaignResultProjectionSuite extends munit.FunSuite {
       Vector(b.origin.value), Vector.empty, force = 4,
       attackDice = Vector.fill(4)("one-sword"), attackScore = 4, skullLosses = 0,
       sacrificed = 1, defenseDice = Vector.fill(printed(b))("blank"),
-      defenseScore = 2, victorious = true)
+      defenseScore = 2, attackerWins = true)
     Vector(b.actor, b.other).foreach(viewer =>
       assertEquals(view(state, viewer).lastCampaign, Some(expected), viewer.value))
     assertEquals(projector.projectPublic("campaign", LoadedGame(state, 40))
