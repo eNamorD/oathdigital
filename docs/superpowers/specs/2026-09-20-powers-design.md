@@ -1,6 +1,6 @@
 # Powers Batch 1: Engine Changes and Slicing
 
-> Status: design approved 2026-09-20. Slice 0 (E1 to E5) and slice 1a are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md) and the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
+> Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a and slice 1b are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md) and the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
 ## Goal and scope
 
@@ -102,21 +102,22 @@ Approach: foundations first, then vertical slices by mechanism. Alternatives rej
 | --- | --- | --- |
 | 0. Foundations | verify Dazzle, Catacombs, League Treaty | E1 to E5 |
 | 1a. When Played and simple actions | A Small Favor, Faithful Friend, Garrison, Family Heirloom; Wayside Inn, Elders, Magic Waterskin; Marble Fountains | none beyond slice 0 |
-| 1b. Dice and relic draws | Gambling Hall, Bone Dice, Murky Fountain, Dowsing Sticks, Fae Merchant | none expected |
+| 1b. Dice and relic draws (implemented) | Gambling Hall, Bone Dice, Murky Fountain, Dowsing Sticks, Fae Merchant | none |
 | 1c. Targets and information | Alchemist, Wolves, Sleight of Hand, Crystal Vial, Ivory Eye; Horned Mask | none expected |
 | 1d. Movement | Whistle, Brass Horse, Magic Carpet | none expected |
 | 2. Modifiers, restrictions, triggers | Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant; Toll Roads, Grasping Vines, Circlet, Oaken and Rotting Fortress; Wild Cry, Welcoming Party, Gossip | E6 (`CardPlayed` split), E7, E9 |
 | 3. Battle plans | Mercenaries, Wrestlers, Warning Signals, Towering and Cracked Rampart, Fearsome Shield, Battle Honors, Sticky Fire; Gleaming Armor | E8 |
 | 4. Banner faces | Wandering Flame (move, place a secret), Mob | E3's banner source, E6's `PlacementRules` |
 
-Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). The order above is the recommended one.
+Slices 2, 3 and 4 are independent once slice 0 lands. Slices 1a to 1d need only slice 0. They are planned one at a time, so each plan can use what the previous one learned. Slice 1a is planned: see its [plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md). Slice 1b is planned: see its [plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md). The order above is the recommended one.
 
 ## Walker shapes for powers
 
-The walker re-derives the operation tree on every command. A `Branch.select` and a `Transform` run again on resume against the state stored at the park, without the new answer. Two shapes are safe for a conditional decision, and slice 1a uses both:
+The walker re-derives the operation tree on every command. A `Branch.select` and a `Transform` run again on resume against the state stored at the park, without the new answer. Three shapes are safe for a conditional decision. Slice 1a uses the first two and slice 1b the third, which is the first shape after a roll:
 
 - **Live decision.** A `Branch` whose `select` returns only a `Decide`, placed after the sibling that changed the state it reads. Nothing runs between the park and the answer, so `select` returns the same decision on resume. Garrison uses it.
 - **Once guard.** `Repeat(guard, body)` where the guard is "no answer with this decision id yet, and the precondition holds". The guard runs only at pass boundaries, never on a resume inside the body, so a body that changes its own precondition is safe. The body must contain the `Decide` with that id, or the loop never ends. Family Heirloom uses it.
+- **Roll, then a live decision.** `ModifyDicePool`, an `Automatic` `Roll`, then a `Branch` that returns only a `Decide` and reads `rollOutcomes`. Recover's continue-or-stop decision uses it, and so do Gambling Hall's bank and Fae Merchant's relic (the latter after a draw instead of a roll). A phase power must use an `Automatic` roll, because a `UsePower` entry declares no roll decision id and a parked `Roll` would have no continuation.
 
 A `Branch` whose selection is changed by an operation inside its own selected vector is not safe, because the resume selects again against the changed state.
 
@@ -140,4 +141,4 @@ These are unverified assumptions. Each plan checks its own:
 - Where Muster and Trade enforce the empty-denizen rule today.
 - Whether `Discard.Relic`'s `SetAsideRelics` is the discarded relic pile the rules mean, and how `ensureEmptyTokens` treats a relic still holding secrets.
 - The format of `PowerCtx.nodePath` (E9).
-- Fae Merchant's taken relic is assumed facedown, in line with Dowsing Sticks and Family Heirloom. This was not stated explicitly.
+- Fae Merchant's taken relic is facedown, in line with Dowsing Sticks and Family Heirloom. The product owner confirmed this for slice 1b.

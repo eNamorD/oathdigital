@@ -48,13 +48,13 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 | 26 Elders | Cost 2 favor placed. Gain 1 secret from the shared bank. Implemented (slice 1a). |
 | 9 Alchemist | Cost 1 secret placed and 1 secret burnt. Gain 4 favor from any bank or banks: a `Distribute` with a total of exactly min(4, favor available across all banks). No decision is asked when one bank holds all the available favor, or when 4 or fewer are available (you take everything). The favor goes to your board. |
 | 39 Wolves | Cost 1 secret placed. Choose one player board, yours included, and kill one warband there. If it has none, nothing happens. Only player boards count. |
-| 180 Fae Merchant | Cost 1 secret placed. Draw a relic and take it (assumed facedown). Then put exactly one relic you hold, except the Grand Scepter, on the bottom of the relic deck. The just-taken relic is eligible. A decision is asked only when there is more than one candidate. |
+| 180 Fae Merchant | Cost 1 secret placed. Draw a relic and take it (assumed facedown). Then put exactly one relic you hold, except the Grand Scepter, on the bottom of the relic deck. The just-taken relic is eligible. A decision is asked only when there is more than one candidate. Implemented (slice 1b). |
 | 17 Sleight of Hand | Cost 1 favor placed. Targets are other players whose pawn is at your site and who have 2 or more secrets on their board (faceup and facedown together). Take one secret, faceup first, otherwise facedown. It arrives with the same orientation. With no legal target the cost is paid and nothing else happens. The take is a `Take`, so other powers may restrict it. |
-| 93 Gambling Hall | Cost 2 favor placed. Roll 4 defense dice. When the total X is above zero, choose any favor bank, even an empty one, and take min(X, its stock). |
-| R09 Dowsing Sticks | Cost 1 secret placed and 2 secrets burnt. Draw a relic from the relic deck and take it facedown. An empty deck does nothing. |
+| 93 Gambling Hall | Cost 2 favor placed. Roll 4 defense dice. When the total X is above zero, choose any favor bank, even an empty one, and take min(X, its stock). Implemented (slice 1b). |
+| R09 Dowsing Sticks | Cost 1 secret placed and 2 secrets burnt. Draw a relic from the relic deck and take it facedown. An empty deck does nothing. Implemented (slice 1b). |
 | R21 Crystal Vial | Cost 1 secret placed and 1 secret burnt. Choose an adviser you hold (denizen or Vision, either orientation) or a card in the site's card list at your pawn's site (denizens and the edifice, intact or ruined). Bury it with the standard returns. The choice is required when a candidate exists. |
-| R24 Bone Dice | Cost 1 secret placed. Roll 2 attack dice. Gain Supply equal to the sword score. If any skull face rolled, bury this relic afterwards with the standard returns, so the secret you just placed returns to you facedown. |
-| E15 Murky Fountain (ruined) | Cost 1 secret placed on the edifice card. If your pawn is at this site: roll 2 defense dice and gain Supply equal to the total. A total of zero also ends your Act phase with `EnterPhase(Rest)`, without the Begin Rest validation gate. If your pawn is elsewhere, the cost is paid and nothing else happens. |
+| R24 Bone Dice | Cost 1 secret placed. Roll 2 attack dice. Gain Supply equal to the sword score. If any skull face rolled, bury this relic afterwards with the standard returns, so the secret you just placed returns to you facedown. Implemented (slice 1b). |
+| E15 Murky Fountain (ruined) | Cost 1 secret placed on the edifice card. If your pawn is at this site: roll 2 defense dice and gain Supply equal to the total. A total of zero also ends your Act phase with `EnterPhase(Rest)`, without the Begin Rest validation gate. If your pawn is elsewhere, the cost is paid and nothing else happens. Implemented (slice 1b). |
 | R08 Whistle | Cost 1 secret placed on the Whistle. Choose another player whose pawn is at a different site. Move their pawn to your site, then move the secret from the Whistle to their board. With no eligible player the cost is paid, nothing else happens and the secret stays. |
 | R03 Brass Horse | Cost 1 secret placed. "Your region" is the region of your pawn's site. Reveal the top card of that region's discard pile, then turn it facedown again. Place your pawn at a different site holding a card of the same suit (denizen or edifice). No decision is asked when exactly one site matches. If the pile is empty, the top is a Vision, or no site matches, place it at any other site. |
 | R16 Ivory Eye | Cost 1 secret placed. Choose any facedown adviser of any player, yours included, and `Peek` at it. The peek is private. Other players see only a log line saying who peeked at whose adviser. |
@@ -76,6 +76,15 @@ Locked and adviser-only are card restrictions in the data, not part of the power
 - **Test staging:** the first game deals only some denizens. Cards 7, 26, 28 and 47 are not in its world deck, so the test fixture adds them where a test needs them.
 - **Marble Fountains:** E15 was in the edifice deck of the first game, so the fixture places it from there.
 - **Magic Waterskin:** a secret on the relic returns to its holder facedown before the relic goes to the bottom of the relic deck.
+
+### Slice 1b implementation notes
+
+- **Shape:** each power is a `PaidAction` in `gameplay/powers/action`, registered through `DiceAndRelicDrawPowers`. Rolls are automatic, one pool key per power. Gambling Hall's bank choice is a live `Branch` after the roll.
+- **Bone Dice:** reads the relic's tokens after the engine pays the cost, so the placed secret returns facedown on the bury.
+- **Murky Fountain:** a zero total emits `EnterPhase(Rest)` and leaves the player awaiting a Rest action. It does not auto-finish Rest when no REST power is usable, as Begin Rest does (product decision).
+- **Fae Merchant:** the put-back is independent of the draw, so with an empty relic deck a held relic still goes to the bottom (product decision). Eligibility is read after the draw and a decision is asked only for more than one candidate. The Grand Scepter is read from the catalog's relic role. The taken relic is facedown (confirmed).
+- **Dowsing Sticks:** needs three faceup secrets, one placed and two burnt.
+- **Test staging:** card 93 is not dealt in the first game and the fixture adds it, card 180 is in the world deck and is removed, E15 is placed from the edifice deck, and R09 and R24 are taken from the relic deck.
 
 ## Slice 2: modifiers
 
