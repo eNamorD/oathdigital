@@ -59,7 +59,8 @@ case object ConspiracyWhenPlayed extends ContributingPower {
     val options = legalTargets(ready, actor).flatMap(DecisionOption.forRef)
     if (options.isEmpty) Vector.empty
     else Vector(Decide(decisionId, actor, DecisionQuery.ChooseOne(options,
-      heading = Some("Conspiracy: choose an enemy asset to take"))))
+      heading = Some("Conspiracy: choose an enemy asset to take")),
+      window = Some(PowerWindow.ConspiracyTargetSelection)))
   }
 
   private def effects(ready: ReadyGame, actor: PlayerId, pending: PendingTree)
@@ -72,9 +73,10 @@ case object ConspiracyWhenPlayed extends ContributingPower {
       case Some(ref) if legal.contains(ref) => Right(take(ready, actor, ref))
       case Some(_) => Left(OathViolation.ConspiracyUnavailable(
         "the chosen target is no longer legal"))
-      case None if legal.isEmpty => Right(Vector.empty)
-      case None => Left(OathViolation.ConspiracyUnavailable(
-        "a legal target must be chosen"))
+      // No decision was asked: no target was legal, or a power at the
+      // target window removed every one. The walker never skips a decision
+      // that is asked, so nothing is taken.
+      case None => Right(Vector.empty)
     }
     taken.map(_ :+ removal(ready, actor))
   }

@@ -148,6 +148,12 @@ object PowerWindow {
   case object ChallengePlacement extends ChallengeWindow {
     val key = "challenge.placement"
   }
+  /** The target decision of a played Conspiracy: a power may remove targets
+    * from it, and a decision left with none is not asked.
+    */
+  case object ConspiracyTargetSelection extends OtherWindow {
+    val key = "conspiracy.target-selection"
+  }
   case object PlaceBannerResourceEligibility extends OtherWindow {
     val key = "place-banner-resource.eligibility"
   }
