@@ -1,33 +1,23 @@
 package oathdigital.gameplay.powers
 
 import oathdigital.catalog.ExecutableCatalog
+import oathdigital.gameplay.actions.PlacementRules
 import oathdigital.gameplay.powers.rest.SilverTongue
 import oathdigital.model._
 
 /** How many advisers a player may hold, for a power that adds an adviser
   * outside card play (Horned Mask).
   *
-  * Card play gets its limit from `PlacementTree` and Silver Tongue's
-  * `SearchPlayAdviser` transform, which is the only source of a limit other
-  * than the default. This repeats the same rule as a read of state, so a power
-  * outside card play can ask it: 3, or 2 for the player who holds a faceup
-  * Silver Tongue. Card play itself does not read this, and slice 2's
-  * `PlacementRules` may fold the two together.
+  * Card play gets its limit from [[PlacementRules]], which Silver Tongue's
+  * `SearchPlayAdviser` transform narrows. This reads the same two facts as a
+  * read of state, so the limit is defined once: the default is
+  * `PlacementRules.DefaultAdviserLimit` and the only power that lowers it is
+  * Silver Tongue, through `SilverTongue.limitFor`.
   */
 object AdviserLimit {
-  val Default: Int = 3
-  /** The limit Silver Tongue sets on its holder, in both orientations. */
-  val SilverTongueHolder: Int = 2
+  val Default: Int = PlacementRules.DefaultAdviserLimit
 
   def of(catalog: ExecutableCatalog, ready: ReadyGame, player: PlayerId): Int =
-    if (holdsSilverTongue(catalog, ready, player)) SilverTongueHolder
-    else Default
-
-  private def holdsSilverTongue(catalog: ExecutableCatalog, ready: ReadyGame,
-      player: PlayerId): Boolean = SilverTongue.forCatalog(catalog).exists(
-    tongue => ready.game.current.players.find(_.player == player).exists(
-      _.advisers.exists {
-        case DenizenState(card, Orientation.FaceUp, _) => card == tongue.cardId
-        case _ => false
-      }))
+    SilverTongue.forCatalog(catalog).flatMap(_.limitFor(ready, player))
+      .getOrElse(Default)
 }

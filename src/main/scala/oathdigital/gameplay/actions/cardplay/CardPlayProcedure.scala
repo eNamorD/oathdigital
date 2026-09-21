@@ -2,7 +2,7 @@ package oathdigital.gameplay.actions.cardplay
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.OathLifecycle
-import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.actions.{CardPlay, PlacementRules}
 import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
@@ -49,19 +49,38 @@ object CardPlayProcedure {
       "facedown-adviser play requires exactly one held card"))
   }
 
-  /** Generic limit-aware placement seam. A power can replace children using
-    * a different limit without placing its identity in the card-play rules.
+  /** The placement subtree planned under one set of [[PlacementRules]]. */
+  final class PlacementBody private[cardplay](val rules: PlacementRules,
+      childrenAt: PlacementRules => Vector[Operation]) extends Operation {
+    override val children: Vector[Operation] = childrenAt(rules)
+    private[cardplay] def adjust(change: PlacementRules => PlacementRules)
+        : PlacementBody = new PlacementBody(change(rules), childrenAt)
+  }
+
+  /** Generic rules-aware placement seam. A power changes the rules its play is
+    * planned under without placing its identity in the card-play code.
+    *
+    * `children` is the play under the default rules. A `Transform` at
+    * `SearchPlayAdviser` calls [[adjust]] with the children it was handed and
+    * the change it wants. Every contributor's change is applied to the same
+    * rules, so contributors compose in any order, and the result is the play
+    * planned under all of them.
     */
   final class PlacementTree private[cardplay](val card: WorldCardId,
-      childrenAt: (Int, Int) => Vector[Operation])
+      childrenAt: PlacementRules => Vector[Operation])
       extends Operation {
     override val window: Option[PowerWindow] =
       Some(PowerWindow.SearchPlayAdviser)
-    override val children: Vector[Operation] = childrenAt(3, 3)
-    def withAdviserLimit(limit: Int): Vector[Operation] =
-      childrenAt(limit, limit)
-    def withFaceupAdviserLimit(limit: Int): Vector[Operation] =
-      childrenAt(limit, 3)
+    override val children: Vector[Operation] =
+      childrenAt(PlacementRules.default)
+
+    def adjust(current: Vector[Operation])(
+        change: PlacementRules => PlacementRules): Vector[Operation] =
+      current match {
+        case Vector(body: PlacementBody) => Vector(body.adjust(change))
+        case _ => Vector(new PlacementBody(change(PlacementRules.default),
+          childrenAt))
+      }
   }
 
   def build(catalog: ExecutableCatalog, ready: ReadyGame, actor: PlayerId,
@@ -78,20 +97,20 @@ object CardPlayProcedure {
     }
     if (!present) Left(OathViolation.InvalidSearchPlacement(
       "card is not held at the selected origin"))
-    else Right(new PlacementTree(card, (faceup, facedown) =>
-      childrenFor(catalog, ready, actor, card, origin, faceup, facedown)))
+    else Right(new PlacementTree(card, rules =>
+      childrenFor(catalog, ready, actor, card, origin, rules)))
   }
 
   private def childrenFor(catalog: ExecutableCatalog, ready: ReadyGame,
-      actor: PlayerId, card: WorldCardId, origin: Origin, faceupLimit: Int,
-      facedownLimit: Int)
+      actor: PlayerId, card: WorldCardId, origin: Origin,
+      rules: PlacementRules)
       : Vector[Operation] = {
       val legacyOrigin = origin match {
         case Origin.TemporaryHand => CardPlay.Origin.TemporaryHand
         case Origin.FacedownAdviser => CardPlay.Origin.FacedownAdviser
       }
       val candidates = CardPlay.legalChoices(catalog, ready, actor, card,
-        legacyOrigin, faceupLimit, facedownLimit).map { choice =>
+        legacyOrigin, rules).map { choice =>
         val ref = choice.placement match {
           case SearchPlacement.Discard => discard
           case _: SearchPlacement.Site => site
@@ -114,10 +133,6 @@ object CardPlayProcedure {
         }
         candidates.find(pair => ref.contains(pair._1)).toVector.flatMap {
           case (_, placement, replacements) =>
-            val adviserLimit = placement match {
-              case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
-              case _ => facedownLimit
-            }
             val replacementId = s"cardplay.replace.${card.kind}.${card.value}"
             val choice = if (replacements.isEmpty) Vector.empty else Vector(
               Decide(replacementId, actor, DecisionQuery.ChooseOne(
@@ -137,7 +152,7 @@ object CardPlayProcedure {
                     case SearchPlacement.Discard => SearchPlacement.Discard
                   }}
               chosen.flatMap(CardPlay.plannedOperations(catalog, state, actor,
-                card, _, legacyOrigin, adviserLimit))
+                card, _, legacyOrigin, rules))
             }, restrictions = (_, _) => Vector(
               new DiscardRestrictions(catalog, actor)))
             val hook: Vector[Operation] = placement match {

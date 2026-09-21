@@ -22,7 +22,7 @@ object CardPlay {
 
   def legalChoices(catalog: ExecutableCatalog, ready: ReadyGame,
       actor: PlayerId, card: WorldCardId, origin: Origin,
-      faceupLimit: Int, facedownLimit: Int): Vector[Choice] = {
+      rules: PlacementRules = PlacementRules.default): Vector[Choice] = {
     val player = ready.game.current.players.find(_.player == actor)
     val restriction = new DiscardRestrictions(catalog, actor)
     // A placement whose plan discards a card the actor may not discard (a
@@ -34,12 +34,8 @@ object CardPlay {
       SearchPlacement.Adviser(Orientation.FaceUp, None),
       SearchPlacement.Adviser(Orientation.FaceDown, None))
     placements.flatMap { placement =>
-      val limit = placement match {
-        case SearchPlacement.Adviser(Orientation.FaceUp, _) => faceupLimit
-        case _ => facedownLimit
-      }
       val direct = plannedOperations(catalog, ready, actor, card,
-        placement, origin, limit).exists(permitted)
+        placement, origin, rules).exists(permitted)
       val candidateIds: Vector[CardId] = placement match {
         case _: SearchPlacement.Site => player.toVector.flatMap(_.pawnSite)
           .flatMap(ready.game.current.map.sites.get)
@@ -59,7 +55,7 @@ object CardPlay {
           case SearchPlacement.Discard => SearchPlacement.Discard
         }
         plannedOperations(catalog, ready, actor, card, selected,
-          origin, limit).exists(permitted)
+          origin, rules).exists(permitted)
       }
       Option.when(direct || replacements.nonEmpty)(Choice(placement, replacements))
     }
@@ -80,12 +76,12 @@ object CardPlay {
   /** Pure semantic operation plan shared with the walker card-play subtree. */
   def plannedOperations(catalog: ExecutableCatalog, ready: ReadyGame,
       playerId: PlayerId, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin, adviserLimit: Int = 3)
+      origin: Origin, rules: PlacementRules = PlacementRules.default)
       : Either[OathViolation, Vector[CoreOperation]] = for {
     player <- ready.game.current.players.find(_.player == playerId)
       .toRight(InvalidSearchPlacement("player is not in the game"))
     _ <- validateOrigin(player, card, origin)
-    plan <- plan(catalog, ready, player, card, placement, origin, adviserLimit)
+    plan <- plan(catalog, ready, player, card, placement, origin, rules)
     operations <- plannedOperations(catalog, ready, player, card, placement,
       origin, plan)
   } yield operations
@@ -121,7 +117,7 @@ object CardPlay {
 
   private def plan(catalog: ExecutableCatalog, ready: ReadyGame,
       player: PlayerState, card: WorldCardId, placement: SearchPlacement,
-      origin: Origin, adviserLimit: Int)
+      origin: Origin, rules: PlacementRules)
       : Either[OathViolation, PlacementPlan] = placement match {
     case SearchPlacement.Discard => Right(PlacementPlan(
       None, Vector.empty, Vector.empty, Vector.empty))
@@ -160,12 +156,12 @@ object CardPlay {
         remaining = if (origin == Origin.FacedownAdviser)
           player.advisers.filter(_.id != card) else player.advisers
         removed <- validateAdviserReplacement(catalog, remaining, replace,
-          adviserLimit)
+          rules.adviserLimit(orientation))
       } yield adviserPlan(origin, player, card, id, orientation, removed)
       case id: VisionId =>
         if (!FirstGameRulesData.visions.contains(id)) Left(UnknownWorldCard(id))
         else planVision(catalog, player, origin, id, orientation, replace,
-          adviserLimit)
+          rules.adviserLimit(orientation))
     }
   }
 
@@ -391,7 +387,10 @@ object CardPlay {
     }
   }
 
-  private def nextRegion(region: Region): Region = region match {
+  /** The region whose discard pile receives a card discarded at a site of
+    * `region`.
+    */
+  def nextRegion(region: Region): Region = region match {
     case Region.Cradle => Region.Provinces
     case Region.Provinces => Region.Hinterland
     case Region.Hinterland => Region.Cradle

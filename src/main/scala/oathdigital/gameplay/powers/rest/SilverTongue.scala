@@ -44,18 +44,25 @@ final case class SilverTongue private (cardId: DenizenId,
     Map(PowerWindow.SearchPlayAdviser -> Vector(Transform((ctx, children) =>
       ctx.operation match {
         case tree: CardPlayProcedure.PlacementTree
-            if holder(ctx.state).exists(_.player == ctx.activePlayer) =>
-          tree.withAdviserLimit(2) :+ limitGuard(ctx.activePlayer)
+            if limitFor(ctx.state, ctx.activePlayer).nonEmpty =>
+          tree.adjust(children)(_.limitAdvisers(HolderLimit)) :+
+            limitGuard(ctx.activePlayer)
         case tree: CardPlayProcedure.PlacementTree if tree.card == cardId =>
-          tree.withFaceupAdviserLimit(2) :+ limitGuard(ctx.activePlayer)
+          tree.adjust(children)(_.limitFaceupAdvisers(HolderLimit)) :+
+            limitGuard(ctx.activePlayer)
         case _ => children
       })))
+
+  /** The adviser limit Silver Tongue sets on `player`: its holder, and only
+    * while it is faceup.
+    */
+  def limitFor(ready: ReadyGame, player: PlayerId): Option[Int] =
+    holder(ready).filter(_.player == player).map(_ => HolderLimit)
 
   private def limitGuard(actor: PlayerId): Operation = BuildOps((state, _) => {
     val count = state.game.current.players.find(
       _.player == actor).fold(0)(_.advisers.size)
-    val holds = holder(state).exists(_.player == actor)
-    if (!holds || count <= 2) Right(Vector.empty)
+    if (limitFor(state, actor).forall(count <= _)) Right(Vector.empty)
     else Left(OathViolation.InvalidEventOrder(
       s"${actor.value} holds Silver Tongue and can have only two advisers"))
   })
@@ -89,6 +96,8 @@ final case class SilverTongue private (cardId: DenizenId,
 
 object SilverTongue {
   val id: PowerId = PowerId("denizen.silver-tongue")
+  /** How many advisers the holder may have, in either orientation. */
+  val HolderLimit: Int = 2
   def forCatalog(catalog: ExecutableCatalog): Option[SilverTongue] =
     catalog.denizens.find(_.powers.exists(_.id == id))
       .map(d => new SilverTongue(DenizenId(d.id.value), catalog))

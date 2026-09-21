@@ -2,6 +2,7 @@ package oathdigital.gameplay.powers.wake
 
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay.PowerAccess
+import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, PlayerFacts, PowerAnswers}
 import oathdigital.model._
@@ -126,7 +127,7 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
       .toRight(OathViolation.InvalidEventOrder(
         s"${answered.wireId} is not an adviser Horned Mask can discard"))
     region <- PowerAccess.pawnSite(ready, actor)
-      .flatMap(ready.game.current.map.regionOf).map(next)
+      .flatMap(ready.game.current.map.regionOf).map(CardPlay.nextRegion)
       .toRight(OathViolation.PawnSiteMissing(actor))
     from = PositionedLocation(Location.PlayArea(actor))
     operation <- chosen match {
@@ -144,14 +145,4 @@ object HornedMask {
   val id: PowerId = PowerId("relic.horned-mask")
   val denizenDecisionId: String = "power.horned-mask.denizen"
   val discardDecisionId: String = "power.horned-mask.discard"
-
-  /** The region whose discard pile receives a discard made at a site of
-    * `region`. It repeats `CardPlay`'s rule, which is private there and is
-    * rewritten by slice 2, so the two may be folded together then.
-    */
-  private def next(region: Region): Region = region match {
-    case Region.Cradle => Region.Provinces
-    case Region.Provinces => Region.Hinterland
-    case Region.Hinterland => Region.Cradle
-  }
 }

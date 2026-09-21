@@ -26,7 +26,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
   test("CardPlay exposes legal placement choices in decision order") {
     val (ready, actor, card) = handState
     val choices = CardPlay.legalChoices(catalog, ready, actor, card,
-      CardPlay.Origin.TemporaryHand, 3, 3)
+      CardPlay.Origin.TemporaryHand)
     val expected = Vector[SearchPlacement](SearchPlacement.Discard,
       SearchPlacement.Site(None),
       SearchPlacement.Adviser(Orientation.FaceUp, None),
@@ -42,7 +42,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(decision.query.asInstanceOf[DecisionQuery.ChooseOne]
       .options.exists(_.ref == DecisionOptionRef.Button("discard")))
     val domain = CardPlay.legalChoices(catalog, ready, actor, card,
-      CardPlay.Origin.TemporaryHand, 3, 3)
+      CardPlay.Origin.TemporaryHand)
     val expected = domain.map(_.placement).map {
       case SearchPlacement.Discard => DecisionOptionRef.Button("discard")
       case _: SearchPlacement.Site => DecisionOptionRef.Button("site")
@@ -90,7 +90,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     val replacement = ProcedureWalker.parkedDecide(full, tree,
       replacementPark, WalkerPowers.empty).get
     val faceup = CardPlay.legalChoices(catalog, full, actor, card,
-      CardPlay.Origin.TemporaryHand, 3, 3).find(_.placement ==
+      CardPlay.Origin.TemporaryHand).find(_.placement ==
       SearchPlacement.Adviser(Orientation.FaceUp, None)).get
     assertEquals(replacement.query.asInstanceOf[DecisionQuery.ChooseOne]
       .options.map(_.ref), faceup.replacements.map {
@@ -160,7 +160,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
     assert(!query.options.exists(_.ref == DecisionOptionRef.Button(
       "adviser-faceup")))
     assert(!CardPlay.legalChoices(catalog, full, actor, card,
-      CardPlay.Origin.TemporaryHand, 3, 3).exists(_.placement ==
+      CardPlay.Origin.TemporaryHand).exists(_.placement ==
       SearchPlacement.Adviser(Orientation.FaceUp, None)))
   }
 
@@ -180,7 +180,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
           Some(VisionState(revealed, Orientation.FaceUp))) else player)))
     val faceup = SearchPlacement.Adviser(Orientation.FaceUp, None)
     val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
-      CardPlay.Origin.TemporaryHand, 3, 3)
+      CardPlay.Origin.TemporaryHand)
     assertEquals(choices.find(_.placement == faceup).map(_.replacements),
       Some(Vector.empty))
     assertEquals(CardPlay.plannedOperations(catalog, ready, actor, vision,
@@ -208,7 +208,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
         else player)))
     held.foreach { vision =>
       val choices = CardPlay.legalChoices(catalog, ready, actor, vision,
-        CardPlay.Origin.FacedownAdviser, 3, 3)
+        CardPlay.Origin.FacedownAdviser)
       assertEquals(choices.map(_.placement), Vector[SearchPlacement](
         SearchPlacement.Discard, SearchPlacement.Adviser(Orientation.FaceUp, None)),
         vision.value)
@@ -275,7 +275,7 @@ class CardPlayProcedureSuite extends munit.FunSuite {
             EdificeState(hall, EdificeSide.Intact, Tokens.empty))))))
     def siteReplacements(ready: ReadyGame): Vector[CardId] =
       CardPlay.legalChoices(catalog, ready, actor, card,
-        CardPlay.Origin.TemporaryHand, 3, 3).collectFirst {
+        CardPlay.Origin.TemporaryHand).collectFirst {
           case choice if choice.placement.isInstanceOf[SearchPlacement.Site] =>
             choice.replacements
         }.getOrElse(Vector.empty)
