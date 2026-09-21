@@ -2,7 +2,7 @@
 
 > Status: design approved 2026-09-20. Slice 0 (E1 to E5), slice 1a, slice 1b, slice 1c, slice 1d and slice 2 (sub-slices 2a to 2f) are implemented; see the [Slice 0 plan](../plans/2026-09-20-powers-slice-0-foundations.md), the [slice 1a plan](../plans/2026-09-20-powers-slice-1a-when-played-and-simple-actions.md), the [slice 1b plan](../plans/2026-09-20-powers-slice-1b-dice-and-relic-draws.md) the [slice 1c plan](../plans/2026-09-20-powers-slice-1c-targets-and-information.md) the [slice 1d plan](../plans/2026-09-20-powers-slice-1d-movement.md) and the [slice 2 plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md) (all six sub-slices). Per-power rules are in [the rulings appendix](2026-09-20-powers-rulings.md). Extends the [procedure walker design](2026-09-05-procedure-walker-design.md) and follows the [Campaign port](2026-09-19-campaign-walker-design.md). Each slice below gets its own implementation plan, and slice 1 is split into four.
 
-> Slice 3 (battle plans) is planned in four sub-slices: see its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md). Implemented so far: 3a and 3b.
+> Slice 3 (battle plans) is planned in four sub-slices: see its [plan](../plans/2026-09-20-powers-slice-3-battle-plans.md). Implemented so far: 3a to 3c.
 
 ## Goal and scope
 
