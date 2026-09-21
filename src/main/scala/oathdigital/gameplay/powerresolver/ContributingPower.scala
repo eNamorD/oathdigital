@@ -1,6 +1,6 @@
 package oathdigital.gameplay.powerresolver
 
-import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
+import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
 
 /** Everything a contribution may read at the node it hooks. Carries no
   * mutable state and no catalog -- a power looks up whatever else it needs
@@ -18,7 +18,13 @@ final case class PowerCtx(
     window: PowerWindow,
     nodePath: Vector[String],
     /** Exact windowed operation a contribution is being collected for. */
-    operation: Operation
+    operation: Operation,
+    /** The procedure the window is walked for, when it is known: the
+      * procedure of the parked position a command resumes, or the one a
+      * modifier is being selected for. `None` for the command that starts a
+      * procedure, which has not recorded one yet.
+      */
+    procedure: Option[ProcedureRef] = None
 )
 
 /** The three ways a power may speak at a hooked node (spec decision 9). A

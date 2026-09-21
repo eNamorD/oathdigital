@@ -127,7 +127,8 @@ object ProcedureWalker {
     // running walk must not carry it inside CurrentGameState, so clear the
     // stored field before executing deltas.
     val base = strip(state)
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice),
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
+      state.game.current.walkerProcedure),
       Vector.empty, cursor, PlainResume, WalkerHooks.none).map(toOutcome)
   }
 
@@ -153,7 +154,8 @@ object ProcedureWalker {
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers, dice),
+      state.game.current.turn.activePlayer, pending.answered, powers, dice,
+      state.game.current.walkerProcedure),
       Vector.empty, Some(pending.at), RollResume(faces), WalkerHooks.none)
       .map(toOutcome)
   }
@@ -178,7 +180,8 @@ object ProcedureWalker {
       : Either[OathViolation, WalkerOutcome] = {
     val base = strip(state)
     walk(action, WalkCtx(base, Vector.empty,
-      state.game.current.turn.activePlayer, pending.answered, powers, dice),
+      state.game.current.turn.activePlayer, pending.answered, powers, dice,
+      state.game.current.walkerProcedure),
       Vector.empty, Some(pending.at), AnswerResume(answer), WalkerHooks.none)
       .map(toOutcome)
   }
@@ -269,7 +272,9 @@ object ProcedureWalker {
       activePlayer: PlayerId,
       answered: Vector[Answered],
       powers: WalkerPowers,
-      dice: WalkerDice
+      dice: WalkerDice,
+      /** The procedure of the parked position being resumed. */
+      procedure: Option[oathdigital.model.ProcedureRef]
   )
 
   private sealed trait Step extends Product with Serializable
@@ -346,7 +351,7 @@ object ProcedureWalker {
       cursor: Option[Vector[String]], resume: Resume,
       hooks: WalkerHooks): Either[OathViolation, Step] = {
     val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.activePlayer, ctx.powers, path, children)
+      ctx.activePlayer, ctx.powers, path, children, ctx.procedure)
     walkChildren(folded, ctx, path, cursor, resume, hooks.withOrder(order))
   }
 

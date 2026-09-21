@@ -28,14 +28,16 @@ private[walker] object WalkerPowerGather {
   def applyWindow(window: Option[PowerWindow], operation: Operation,
       state: ReadyGame,
       activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
-      ops: Vector[Operation]): (Vector[Operation], Vector[PowerId]) =
+      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef])
+      : (Vector[Operation], Vector[PowerId]) =
     window match {
       case None => (ops, Vector.empty)
       case Some(w) =>
         val byId: Map[PowerId, ContributingPower] =
           powers.powers.map(power => power.id -> power).toMap
         def ctxFor(power: ContributingPower): PowerCtx =
-          PowerCtx(state, activePlayer, power.source, w, path, operation)
+          PowerCtx(state, activePlayer, power.source, w, path, operation,
+            procedure)
         val gathered = ContributionCollector.gather(w, powers.powers, ctxFor)
         val folded = gathered.transforms.foldLeft(ops) {
           case (acc, (powerId, transform)) =>
@@ -127,7 +129,8 @@ private[walker] object WalkerPowerGather {
       powers.powers.map(power => power.id -> power).toMap
     def ctxFor(window: PowerWindow, path: Vector[String], operation: Operation)
         : ContributingPower => PowerCtx =
-      power => PowerCtx(state, activePlayer, power.source, window, path, operation)
+      power => PowerCtx(state, activePlayer, power.source, window, path,
+        operation, state.game.current.walkerProcedure)
     def windowsIn(node: Operation, path: Vector[String])
         : Vector[(PowerWindow, Vector[String], Operation)] = {
       val own = node.window.map(w => Vector((w, path, node))).getOrElse(Vector.empty)
@@ -220,19 +223,21 @@ private[walker] object WalkerPowerGather {
       case branch: Branch =>
         val selected = branch.select(state, pending.copy(at = path))
         val (folded, _) = applyWindow(branch.window, branch, state,
-          activePlayer, powers, path, selected)
+          activePlayer, powers, path, selected, state.game.current.walkerProcedure)
         (folded, gathered)
       case leaf: PrimitiveOperation =>
         leaf.window match {
           case Some(w) if !gathered.contains(w) =>
             val (folded, _) = applyWindow(Some(w), leaf, state,
-              activePlayer, powers, path, Vector(leaf))
+              activePlayer, powers, path, Vector(leaf),
+              state.game.current.walkerProcedure)
             (folded, gathered + w)
           case _ => (leaf.children, gathered)
         }
       case composite =>
         val (folded, _) = applyWindow(composite.window, composite, state,
-          activePlayer, powers, path, composite.children)
+          activePlayer, powers, path, composite.children,
+          state.game.current.walkerProcedure)
         (folded, gathered)
     }
   }

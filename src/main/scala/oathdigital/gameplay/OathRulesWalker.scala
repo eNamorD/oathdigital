@@ -173,7 +173,8 @@ private[gameplay] trait OathRulesWalker {
       case Some(window) => walkerPowerCatalog.powers.filter(power =>
         power.resolution == PowerResolution.PlayerSelected &&
         power.applicable(PowerCtx(ready, actor, power.source, window,
-          Vector.empty, Sequence(Vector.empty, Some(window)))))
+          Vector.empty, Sequence(Vector.empty, Some(window)),
+          Some(procedure))))
     }
 
   /** Rejects an unknown or inapplicable `modifiers` id with
