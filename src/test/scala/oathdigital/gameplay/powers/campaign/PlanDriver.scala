@@ -59,17 +59,24 @@ object PlanDriver {
     def pick(who: PlayerId, id: String, ref: DecisionOptionRef): Run =
       answer(who, id, ChooseOneAnswer(ref))
 
-    /** The options the parked decision offers, as `actor`'s Campaign builds it. */
-    def offered(actor: PlayerId): Vector[DecisionOptionRef] = {
+    /** The parked decision's query, as `actor`'s Campaign builds it. */
+    def query(actor: PlayerId): DecisionQuery = {
       val current = ready(state)
       val tree = CampaignProcedure.rebuild(catalog, current, actor, Vector.empty)
         .toOption.get
       ProcedureWalker.openDecisions(current, tree,
         current.game.current.walkerPending.get,
-        WalkerPowerCatalog.default(catalog)).headOption.map(_.query).collect {
-        case DecisionQuery.ChooseOne(options, _) => options.map(_.ref)
-      }.getOrElse(Vector.empty)
+        WalkerPowerCatalog.default(catalog)).head.query
     }
+
+    /** The options the parked choice offers. */
+    def options(actor: PlayerId): Vector[DecisionOption] = query(actor) match {
+      case DecisionQuery.ChooseOne(options, _) => options
+      case _ => Vector.empty
+    }
+
+    def offered(actor: PlayerId): Vector[DecisionOptionRef] =
+      options(actor).map(_.ref)
 
     def refused(who: PlayerId, id: String, answer: DecisionAnswer)
         : Option[OathViolation] =
