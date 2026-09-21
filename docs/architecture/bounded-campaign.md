@@ -59,18 +59,25 @@ Sequence(
   committed force. The defense pool holds the targets' printed defense: for a
   Raid, two for the pawn, each targeted relic's printed defense and three per
   banner. A pool of zero dice is not created and is never rolled.
-- **Battle plans.** Each window is a `Repeat` of a choice and its application, so
-  each plan is paid and applied the moment it is chosen and the next options see
-  the result. Options are the unused plan sources plus an explicit Finish. A
-  source may be chosen once. The window finishes by itself when no plan is left.
-  A player defender owns the defender window. A bandit defender applies its
-  cost-free, choice-free plans automatically. Plan handlers stay in a registry
-  (`CampaignPlans`): Outriders (ignore all skulls), Brass Army (secret for four
-  attack dice), the title (one defense die for an Oathkeeper, two for a Usurper)
-  and Watchdog (one defense die at a Cradle target).
+- **Battle plans.** Each side's window is a `Repeat` of `CampaignPlanChoice` passes. The node is an
+  `OfferHost`: its window gathers the `Offer` contributions of the powers in play, and each pass asks
+  the user to choose one plan they can pay for, or Finish, and applies it as a
+  `CampaignPlanApplication` (window `CampaignPlanApplication`). Each plan is therefore paid and
+  applied the moment it is chosen, and the next options see the result. A plan is usable only by the
+  ruler of its source: the holder of an adviser or of a faceup relic, or the ruler of the site a card
+  or edifice stands at. Whether the user can pay is found by dry-running the plan's application
+  through the same windows, so a power that adds to a cost changes what is offered, and each option
+  carries the price the dry run found. A source may be chosen once. A pass with nothing to offer does
+  nothing, and the loop ends. A player defender owns the defender window. A bandit defender applies
+  every cost-free plan of a site Bandits rule that no power makes unpayable, without choosing, and
+  records each in a pool marker so a later window can read it. A facedown adviser is revealed when
+  it is used. The plans are `BattlePlan` powers registered through `BattlePlans`: `TitleDefensePlan`
+  (one defense die for an Oathkeeper, two for a Usurper), `Outriders` (ignore all skulls),
+  `BrassArmy` (a secret for four attack dice) and `Watchdog` (one defense die at a Cradle target).
 - **Attack.** The roll is automatic. A skull removes one force warband and its two
   swords count only when that loss can be paid. Skulls beyond the force add
-  nothing, and Outriders ignores every skull. Hollow swords score one per pair.
+  nothing. Hollow swords score one per pair. Outriders, once chosen, scores the attack
+  again without the cap.
   The capped result is written over the rolled outcome. Brass Army's dice do not
   raise the physical force or any loss, sacrifice or placement limit.
 - **Sacrifice.** `ChooseAmount(0, force - skulls)` warbands for one attack each.
@@ -131,8 +138,9 @@ receives the durable recipient decision before normal Act controls resume.
   answer check and simulation all see the filtered set. An optional decision left
   empty is dropped. A required decision left empty rejects the start with the
   restriction's own violation.
-- Plan handlers (Outriders, Brass Army, the title, Watchdog) are registry handlers,
-  not power contributions. Converting them is deferred.
+- Battle plans are `BattlePlan` powers (see Battle plans above): an `Offer` at a plan window
+  and, for what a used plan does later, a hook at a later window that reads the picks from
+  `PowerCtx.answered`.
 
 ## Unsupported Campaign rules
 
@@ -161,8 +169,9 @@ Each answer is a `WalkerStepRecorded` carrying a `ChoicePayload`. Each automatic
 is a `RollPayload` with `automatic = true`, which replay applies without asking the
 dice source. The recorded result carries the key `attackerWins`, so a journal recorded
 before that name cannot be read. Every other step is a recorded operation batch, including
-`RecordCampaignResult`. The seven legacy Campaign events no longer exist, and
-journals are forward-only.
+`RecordCampaignResult`. A plan's payment is recorded as the requested `PayCost`, and replay
+settles it again when its payer is not the active player. The seven legacy Campaign events
+no longer exist, and journals are forward-only.
 
 ## Rule changes from the legacy Campaign
 
@@ -176,7 +185,6 @@ finishes by itself when no plan is left.
 - All rolls become automatic (Recover still parks on its roll).
 - Real consent for the Pass, and a consent system in general.
 - The first-game rule audit behind the dropped gates.
-- Converting the plan handlers into power contributions.
 - Further optional attacker, defender and deterministic bandit plan families,
   non-deterministic loss choices, and the additional Raid, victory, defeat and
   `At End` handlers. The timing windows exist and no behavior is inferred for them.
