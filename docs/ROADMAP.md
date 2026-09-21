@@ -110,6 +110,25 @@ leaked. Keep the raw loopback development event log separate.
   whether the answer would pass its restrictions, which `PowerCtx` cannot do
   today. It is accepted until then.
 
+- [ ] **Deferred: locked cards as a generic operation restriction.** Locking is
+  enforced today by `DiscardRestrictions` (a faceup locked adviser, an intact
+  edifice, a modifier selected for the running action, and the Hall of
+  Ministers). Each path that discards a card in play attaches it, and a coverage
+  test fails when a new discarding file forgets to. The intended design is a
+  `Locked` `OperationRestriction` that any locked card mixes in. It is
+  registered once with the validator when powers and restrictions are scanned,
+  and it refuses any `Move`, `Flip` or `Swap` of that particular card (a discard
+  is a `Move`), and skips `Bury`, which ignores locked. Restrictions are a
+  per-call argument of `OperationPipeline.run` today, supplied only by a
+  `BuildOps` node. Walker steps all run through `ProcedureWalker.recordBatch`,
+  so registration is a `restrictions` field on `WalkerPowers` merged there and
+  built by `OathRules` from the catalog and the state. `MinorActions` and
+  `StateBasedEvaluation` call the pipeline directly and need it too. It would
+  retire `DiscardRestrictions`' locked rules, `CardPlay`'s locked-adviser check
+  and Horned Mask's filter, and needs an audit of every step that legitimately
+  moves a locked card (negotiation swaps, Chronicle). Roughly one task of 300
+  lines, with regression risk in the Negotiation and Campaign suites.
+
 ### Phase - Empire and campaign continuity
 
 After the all-Exile alpha, implement Chancellor/Citizen roles, Imperial forces,
