@@ -21,6 +21,16 @@ object OperationStateAdapter {
   import AvailableQuantity._
   import OperationError._
 
+  /** A `Reveal` of a card in a regional discard. A discarded card has no
+    * orientation state, because a discard is always facedown, so looking at it
+    * is accepted and changes nothing. A facedown flip of such a card stays
+    * unsupported.
+    */
+  private[operations] def isDiscardLook(at: Location,
+      orientation: Orientation): Boolean =
+    at.isInstanceOf[Location.RegionalDiscard] &&
+      orientation == Orientation.FaceUp
+
   def card(
       ready: ReadyGame,
       id: CardId,

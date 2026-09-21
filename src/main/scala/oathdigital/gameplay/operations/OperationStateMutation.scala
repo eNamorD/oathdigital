@@ -418,6 +418,7 @@ private[operations] object OperationStateMutation {
           case value: RelicState => value.copy(orientation = orientation)
           case value => value
         }
+      case None if isDiscardLook(at, orientation) => Right(ready)
       case _ => Left(UnsupportedOrientation(id, at))
     }
   } yield updated

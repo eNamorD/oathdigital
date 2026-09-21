@@ -640,8 +640,8 @@ object OperationShape {
     val initial = RunningBoards.initial(ready, plannedSecrets)
     val (reasons, _) = leaves.foldLeft[(Vector[OperationError],
       RunningBoards)]((Vector.empty, initial)) {
-      case ((result, state), Flip(id, at, _)) =>
-        (result ++ flipViolation(ready, id, at), state)
+      case ((result, state), Flip(id, at, orientation)) =>
+        (result ++ flipViolation(ready, id, at, orientation), state)
       case ((result, state), FlipSecrets(player, amount, from, to)) =>
         val (violations, updated) =
           flipSecretsViolation(ready, player, amount, from, to, state)
@@ -667,12 +667,17 @@ object OperationShape {
   private def flipViolation(
       ready: ReadyGame,
       id: CardId,
-      at: Location
+      at: Location,
+      orientation: Orientation
   ): Vector[OperationError] = card(ready, id, at) match {
     case Left(error) => Vector(error)
     case Right(located) => located.state match {
       case Some(_: DenizenState) | Some(_: VisionState) |
           Some(_: RelicState) => Vector.empty
+      // Looking at a discarded card: it has no orientation state (a discard is
+      // always facedown), so revealing it changes nothing.
+      case None if OperationStateAdapter.isDiscardLook(at, orientation) =>
+        Vector.empty
       case _ => Vector(UnsupportedOrientation(id, at))
     }
   }
