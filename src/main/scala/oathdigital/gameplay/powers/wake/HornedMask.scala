@@ -3,6 +3,7 @@ package oathdigital.gameplay.powers.wake
 import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
 import oathdigital.gameplay.PowerAccess
 import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.gameplay.powerresolver.PhasePower
 import oathdigital.gameplay.powers.{AdviserLimit, PlayerFacts, PowerAnswers}
 import oathdigital.model._
@@ -35,7 +36,9 @@ final case class HornedMask(catalog: ExecutableCatalog) extends PhasePower {
       : Either[OathViolation, Operation] = Right(Sequence(Vector[Operation](
     Branch((live, _) => askDenizen(live, player)),
     Branch((live, pending) => askDiscard(live, player, pending)),
-    BuildOps((live, pending) => take(live, player, pending)))))
+    BuildOps((live, pending) => take(live, player, pending),
+      restrictions = (_, _) => Vector(
+        new DiscardRestrictions(catalog, player))))))
 
   private def site(ready: ReadyGame, actor: PlayerId)
       : Option[(SiteId, SiteState)] = PowerAccess.pawnSite(ready, actor)

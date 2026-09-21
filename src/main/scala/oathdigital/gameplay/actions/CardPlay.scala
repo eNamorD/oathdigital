@@ -68,6 +68,7 @@ object CardPlay {
       kept: Option[CoreOperation],
       favor: Vector[CoreOperation],
       discardedWorld: Vector[(WorldCardId, PositionedLocation)],
+      // Always empty: a replaced edifice is `tokenEdifice`, a discard.
       discardedEdifices: Vector[(EdificeId, PositionedLocation)],
       tokenDenizen: Option[(DenizenId, Suit, Int, Int)] = None,
       tokenEdifice: Option[(EdificeId, Suit, Int, Int)] = None
@@ -186,15 +187,12 @@ object CardPlay {
       case Some(value: DenizenState) =>
         Right(PlacementPlan(kept, favor,
           Vector((value.id: WorldCardId) -> site), Vector.empty))
-      case Some(value: EdificeState) if !value.tokens.isEmpty =>
+      case Some(value: EdificeState) =>
         suitOf(catalog, value.id).map { replacedSuit =>
           PlacementPlan(kept, favor, Vector.empty, Vector.empty,
             tokenEdifice = Some((value.id, replacedSuit,
               value.tokens.favor, value.tokens.secrets)))
         }
-      case Some(value: EdificeState) =>
-        Right(PlacementPlan(kept, favor, Vector.empty,
-          Vector(value.id -> site)))
       case None =>
         Right(PlacementPlan(kept, favor, Vector.empty, Vector.empty))
     }
@@ -297,9 +295,7 @@ object CardPlay {
         } yield ops :+ discard
       }.map(_ ++ tokenDenizenOps)
     }
-    val edificeOps = plan.discardedEdifices.map { case (id, from) =>
-      Bury(BuryableCard.Edifice(id), from, required = true)
-    } ++ plan.tokenEdifice.toVector.flatMap {
+    val edificeOps = plan.tokenEdifice.toVector.flatMap {
       case (id, replacedSuit, favor, secrets) =>
         player.pawnSite.toVector.map(siteId => Discard.RuinedEdifice(id,
           PositionedLocation(Location.Site(siteId)), replacedSuit, favor,
