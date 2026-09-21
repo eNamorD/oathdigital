@@ -49,7 +49,7 @@ The design names E8. Planning found that the changes below are needed too. None 
 
 - **E8, battle-plan offers (Tasks 2 and 3).** A new contribution kind, `Offer`, offers a plan to a windowed node that implements `OfferHost`. The Campaign's plan window, `CampaignPlanChoice`, is that node: it keeps the shared choose-a-plan-or-finish decision and its `Repeat`, asks the decision with the plans still unchosen that the user can pay for, and applies the pick as a `CampaignPlanApplication`, a windowed operation (window `CampaignPlanApplication`) carrying the side, the user and the source, so a power can match on it as Silver Tongue matches `PlacementTree`. `CampaignPlanCost` gains `FavorBurnt`, `SecretBurnt` and `SacrificeWarband`; `CampaignPlanEffect` gains `RemoveAttackDice` and `Run`. Plans are usable only by the ruler of their source, the origin-site offer to a non-ruler and Brass Army's empty-relic requirement are gone, and a defender's plan may carry a cost.
 - **The option's price (Task 3).** The option carries what choosing it costs as `DecisionOption.Priced(option, OptionPrice)`, and the projector words the price as the option's details. The price is read from the dry run of the plan's application, so a Gleaming Armor surcharge appears in it. The design proposed a "cost preview on the option, shown by the projector"; this is that, built on the option itself because the preview gate a procedure opts into (`requiresPlayableOption`) cannot be used by Campaign, whose first step spends Supply before any decision.
-- **What a used plan does later is a kit hook, not an effect kind (Task 3, and `wrapping` in Task 5).** E8 proposed an "after the outcome" kind of `CampaignPlanEffect`. A plan is offered at its window and is not re-derived at the end of the Campaign, so nothing would hold the effect until then. The `BattlePlan` kit therefore installs `later` (operations appended to a later window, run only when the plan was chosen) and `wrapping` (the same, but able to add before the window's own children too), which read the picks from `PowerCtx.answered` and the outcome from the recorded result. Outriders, Mercenaries, Battle Honors and Warning Signals use `later`, Sticky Fire uses `wrapping`.
+- **What a used plan does later is a kit hook, not an effect kind (Task 3, and `wrapping` in Task 5).** E8 proposed an "after the outcome" kind of `CampaignPlanEffect`. A plan is offered at its window and is not re-derived at the end of the Campaign, so nothing would hold the effect until then. The `BattlePlan` kit therefore installs `later` (operations appended to a later window, run only when the plan was chosen) and `wrapping` (the same, but able to add before the window's own children too), which read the picks from `PowerCtx.answered` and the outcome from the recorded result. Outriders, Mercenaries, Battle Honors and Warning Signals use `later`, Sticky Fire uses `wrapping`. A plan a bandit defender applies is not an answer, so the application records it as a pool marker, which the hooks read as they read a pick.
 - **`PowerCtx.answered` (Task 2).** A contribution can read the decisions answered so far in the running action. Nothing exposed them, and a plan needs to know which plans were chosen.
 - **A `Repeat` pass that records nothing and asks nothing ends the loop (Task 2).** A guard reads only state and answers, so such a pass cannot change what it reads, and the loop would repeat for ever. The plan window relies on it to end when nothing is left to offer.
 - **Replay settles a recorded `PayCost` (Task 2).** E4 specified that off-turn settlement is one function used by validation, execution and replay. The pipeline did it, but the walker's replay applied a recorded `PayCost` with a raw executor, so a defender's payment, settled when it ran, rested on the card in the state the command returned (a live command's state is the replay of its own events). No earlier power paid off turn. Task 2 makes replay use the same settlement.
@@ -71,6 +71,7 @@ These facts are read from the code, or established by compiling and running the 
 10. **The reviewed catalog is untouched.** `CampaignPowers` still lists Outriders, Brass Army, Watchdog and Bag of Siegeworks with handlers at the plan windows. Nothing resolves those windows for a Campaign, so they are inert, and a test pins the Outriders entry.
 11. **Power names in the engine.** The architecture suite scans `gameplay/walker` and `gameplay/operations` for the name of every class that extends `ContributingPower` directly. The kit `BattlePlan` and the plans that extend it are found under `powers`, and the words the engine uses (`OfferHost`, `Offer`) are not their names.
 12. **A Campaign parked at a plan window before this slice cannot resume.** The window's tree has a different shape, so a stored parked position no longer addresses a node. Journals are forward-only, as the design already says.
+13. **A bandit's plan is not an answer.** A player's plan is a recorded answer that a later window reads, but a bandit defender applies its cost-free plans without asking, so nothing durable says it used one. The application records it in `rollPools` under `campaign.plan-applied.<kind>.<id>`. Nothing rolls that pool, the Campaign clears it with the others, the journal records it as a `ModifyDicePool`, and the marker is only written by the application of a plan that passed the dry run, so a plan a power made unpayable leaves no marker.
 
 ## File Structure
 
@@ -1880,11 +1881,11 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 This task moves Campaign's plans onto the seam.
 
-**The plan window.** `CampaignPlanChoice` is the `OfferHost` at `CampaignAttackerBattlePlans` and `CampaignDefenderBattlePlans`. A player's window is `Repeat(!finished, CampaignPlanChoice)`. A pass sorts the offers (title, advisers, relics, cards at sites), drops the sources already chosen, dry-runs the application of each remaining one to learn whether the user can pay and what it costs, and asks the decision with the plans that could be paid for, priced, then Finish. A pass with nothing to offer does nothing, which ends the loop through Task 2's rule. A bandit defender has no decision: the node expands to the application of every cost-free plan it is offered. When the walk is resuming inside a pass, the pass keeps its two slots (the decision, and the application of the last pick) whatever is offered, because the pick it is resuming is no longer listed.
+**The plan window.** `CampaignPlanChoice` is the `OfferHost` at `CampaignAttackerBattlePlans` and `CampaignDefenderBattlePlans`. A player's window is `Repeat(!finished, CampaignPlanChoice)`. A pass sorts the offers (title, advisers, relics, cards at sites), drops the sources already chosen, dry-runs the application of each remaining one to learn whether the user can pay and what it costs, and asks the decision with the plans that could be paid for, priced, then Finish. A pass with nothing to offer does nothing, which ends the loop through Task 2's rule. A bandit defender has no decision: the node expands to the application of every cost-free plan it is offered and can pay for (a power's added cost can make a plan unpayable for bandits, and a dry run says so). When the walk is resuming inside a pass, the pass keeps its two slots (the decision, and the application of the last pick) whatever is offered, because the pick it is resuming is no longer listed.
 
-**The application.** `CampaignPlanApplication` has a fixed set of `Branch` slots: reveal a facedown adviser, pay, sacrifice a warband, then one child per effect. Payment is a batch, `Costs.onCard(...)` with `intoOccupied`, so the pipeline settles it when the payer is not the active player (favor to the card's suit bank, a secret turned facedown). A warband sacrifice asks which force pays when several could, and refuses before any effect when none can. A bandit defender pays nothing.
+**The application.** `CampaignPlanApplication` has a fixed set of `Branch` slots: reveal a facedown adviser, pay, sacrifice a warband, then one child per effect. Payment is a batch, `Costs.onCard(...)` with `intoOccupied`, so the pipeline settles it when the payer is not the active player (favor to the card's suit bank, a secret turned facedown). A warband sacrifice asks which force pays when several could, and refuses before any effect when none can. A bandit defender pays nothing, and records that it applied the plan as a pool marker (`CampaignPlans.appliedMarker`), because a bandit's plan is never an answer and a later window must be able to tell it was used.
 
-**The kit.** `BattlePlan` turns a plan's three statements into contributions: an `Offer` at each side's window, and a `Transform` at a later window for `later`. `PlanContext` answers where a card stands for a ruler (an adviser of the user, a faceup relic of the user, a card at a site the user rules), and `PlanUse` tells a later window which side used the plan and whether its user won. The four plans that were registry handlers become `TitleDefensePlan`, `Outriders`, `BrassArmy` and `Watchdog`, registered through `BattlePlans`. Outriders no longer marks an effect that the engine reads by handler id: it writes the attack's roll outcome again, without the skull cap, in the attack result window, once chosen.
+**The kit.** `BattlePlan` turns a plan's three statements into contributions: an `Offer` at each side's window, and a `Transform` at a later window for `later`. `PlanContext` answers where a card stands for a ruler (an adviser of the user, a faceup relic of the user, a card at a site the user rules), and `PlanUse` tells a later window which side used the plan and whether its user won. A plan was used when a player chose it (an answer) or a bandit defender applied it (the marker). The four plans that were registry handlers become `TitleDefensePlan`, `Outriders`, `BrassArmy` and `Watchdog`, registered through `BattlePlans`. Outriders no longer marks an effect that the engine reads by handler id: it writes the attack's roll outcome again, without the skull cap, in the attack result window, once chosen.
 
 - [ ] **Step 1: Write the tests**
 
@@ -3059,6 +3060,15 @@ object CampaignPlans {
     case CampaignPlanSource.Title(_) => DecisionOptionRef.Button("title")
   }
 
+  /** The pool a bandit defender's application of the plan named by `ref` is
+    * recorded in. A plan a player chooses is an answer, which a later window
+    * reads; a bandit chooses nothing, so its plan is recorded here instead. The
+    * pool is never rolled, and it is cleared with the others when the Campaign
+    * ends.
+    */
+  def appliedMarker(ref: DecisionOptionRef): PoolKey =
+    PoolKey(s"campaign.plan-applied.${ref.kind}.${ref.wireId}")
+
   /** A card is named by the projector; the title has no card, so its button
     * carries the label its offer authored.
     */
@@ -3517,7 +3527,7 @@ import oathdigital.model._
   *  - Costs are paid onto the source card, which may already hold resources. A
   *    plan paid outside its owner's turn settles at once: favor goes to the
   *    card's suit bank and secrets flip facedown (see `PayCost`). A bandit
-  *    defender pays nothing.
+  *    defender pays nothing, and records that it applied the plan.
   *  - A warband sacrifice asks which force pays when several could, then kills
   *    one warband. It comes before every effect, so a plan that cannot pay is
   *    refused before it does anything.
@@ -3535,7 +3545,16 @@ final class CampaignPlanApplication(catalog: ExecutableCatalog,
   override val children: Vector[Operation] = Vector[Operation](
     Branch((ready, _) => reveal(ready)),
     Branch((_, _) => pay),
-    Branch((ready, _) => sacrifice(ready))) ++ offered.offer.effects.map(effect)
+    Branch((ready, _) => sacrifice(ready))) ++ offered.offer.effects.map(effect) :+
+    Branch((_, _) => marker)
+
+  /** A bandit defender chooses nothing, so a later window learns it applied the
+    * plan from this record.
+    */
+  private def marker: Vector[Operation] =
+    if (user.nonEmpty) Vector.empty
+    else Vector(ModifyDicePool(CampaignPlans.appliedMarker(
+      CampaignPlans.refOf(source)), 1))
 
   private def reveal(ready: ReadyGame): Vector[Operation] = source match {
     case CampaignPlanSource.Adviser(player, id) if ready.game.current.players
@@ -3681,8 +3700,8 @@ import oathdigital.model._
   *    Nothing usable means nothing is asked, the pass does nothing, and the
   *    `Repeat` ends.
   *  - The chosen plan is applied as a [[CampaignPlanApplication]].
-  *  - A bandit defender applies every cost-free plan it is offered, without
-  *    asking.
+  *  - A bandit defender applies every cost-free plan it is offered and can
+  *    pay for, without asking.
   *
   * A walk resuming inside a pass keeps the two slots of the pass whatever is
   * offered, because the plan it is paying for has been chosen and is no longer
@@ -3701,7 +3720,7 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
     val pending = PendingTree(Vector.empty, pass.answered)
     CampaignSetup.setup(pass.state, actor, pending).fold(
       Vector.empty[Operation])(setup => CampaignPlans.userOf(setup, side) match {
-      case None => banditPlans(setup, CampaignPlans.sorted(offers))
+      case None => banditPlans(setup, CampaignPlans.sorted(offers), pass)
       case Some(user) => userPass(setup, user, CampaignPlans.sorted(offers),
         pending, pass)
     })
@@ -3711,9 +3730,14 @@ final class CampaignPlanChoice(catalog: ExecutableCatalog, val actor: PlayerId,
       : CampaignPlanApplication =
     new CampaignPlanApplication(catalog, setup, side, offered)
 
-  private def banditPlans(setup: CampaignSetup, offers: Vector[OfferedPlan])
-      : Vector[Operation] = offers.filter(_.offer.costs.isEmpty)
-    .map(applicationOf(setup, _))
+  /** Bandits pay nothing, so a plan that costs is never applied, and neither is
+    * one a power makes unpayable for them (a surcharge in secrets, which bandits
+    * do not hold).
+    */
+  private def banditPlans(setup: CampaignSetup, offers: Vector[OfferedPlan],
+      pass: OfferHost.Pass): Vector[Operation] = offers
+    .filter(_.offer.costs.isEmpty).map(applicationOf(setup, _))
+    .filter(application => pass.applies(application).isRight)
 
   private def userPass(setup: CampaignSetup, user: PlayerId,
       offers: Vector[OfferedPlan], pending: PendingTree, pass: OfferHost.Pass)
@@ -4086,17 +4110,23 @@ final case class PlanUse(side: CampaignPlanSide, actor: PlayerId,
 }
 
 object PlanUse {
-  /** The plan named by `ref`, if it was chosen on one of `sides` in this
-    * Campaign. `afterOutcome` says whether `lastCampaignResult` is this
-    * Campaign's already.
+  /** The plan named by `ref`, if it was used on one of `sides` in this
+    * Campaign: chosen by a player, or applied by a bandit defender, which the
+    * application recorded (`CampaignPlans.appliedMarker`). `afterOutcome` says
+    * whether `lastCampaignResult` is this Campaign's already.
     */
   def chosen(ready: ReadyGame, pending: PendingTree, actor: PlayerId,
       ref: DecisionOptionRef, sides: Set[CampaignPlanSide],
-      afterOutcome: Boolean): Option[PlanUse] =
-    sides.toVector.find(side => CampaignAnswers.picks(pending,
-      CampaignIds.planDecision(side)).contains(ref)).map(side => PlanUse(side,
-      actor, Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
+      afterOutcome: Boolean): Option[PlanUse] = {
+    val picked = sides.toVector.find(side => CampaignAnswers.picks(pending,
+      CampaignIds.planDecision(side)).contains(ref))
+    val banditApplied = Option.when(sides(CampaignPlanSide.Defender) &&
+      ready.game.current.rollPools.contains(CampaignPlans.appliedMarker(ref)))(
+      CampaignPlanSide.Defender)
+    picked.orElse(banditApplied).map(side => PlanUse(side, actor,
+      Option.when(afterOutcome)(ready.game.current.lastCampaignResult)
         .flatten.filter(_.attacker == actor), ready))
+  }
 }
 ```
 
@@ -4240,7 +4270,8 @@ with:
   through the same windows, so a power that adds to a cost changes what is offered, and each option
   carries the price the dry run found. A source may be chosen once. A pass with nothing to offer does
   nothing, and the loop ends. A player defender owns the defender window. A bandit defender applies
-  every cost-free plan of a site Bandits rule, without choosing. A facedown adviser is revealed when
+  every cost-free plan of a site Bandits rule that no power makes unpayable, without choosing, and
+  records each in a pool marker so a later window can read it. A facedown adviser is revealed when
   it is used. The plans are `BattlePlan` powers registered through `BattlePlans`: `TitleDefensePlan`
   (one defense die for an Oathkeeper, two for a Usurper), `Outriders` (ignore all skulls),
   `BrassArmy` (a secret for four attack dice) and `Watchdog` (one defense die at a Cradle target).
@@ -4399,7 +4430,7 @@ with:
 ### Slice 3 implementation notes
 
 - **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
-- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule and pays nothing. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
+- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule that no power makes unpayable, pays nothing, and records what it applied in a pool marker (`campaign.plan-applied.<kind>.<id>`) that a later hook reads, because a bandit's plan is not an answer. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
 
 ## Slice 4: banner faces
 
@@ -4434,14 +4465,14 @@ Each power is a few lines over the kit.
 
 | Card | Sides | Offer | Later |
 | --- | --- | --- | --- |
-| 12 Mercenaries | either | a card of the user's; cost `Favor(1)`; `AddAttackDice(3)` for an attacker, `RemoveAttackDice(3)` for a defender | when its user is defeated, discard the card by the standard denizen discard |
+| 12 Mercenaries | either | a card of the user's; cost `Favor(1)`; `AddAttackDice(3)` for an attacker, `RemoveAttackDice(3)` for a defender | when its user is defeated, discard the card by the standard denizen discard (`PlanDiscard`: the region after the site's region for a card on a site, after the region of the holder's pawn for an adviser) |
 | 1 Wrestlers | defender | a card of the user's; cost `SacrificeWarband`; `AddDefenseDice(1)` | none |
 | R27 Fearsome Shield | defender | a faceup relic of the user's; cost `SecretBurnt(2)`; `AddDefenseDice(2)` | none |
 | E20 Towering Rampart | defender | the intact edifice at a site the user rules, when the user's pawn is there or the site is targeted; `AddDefenseDice(2)` | none |
 | E20 Cracked Rampart | defender | the ruined edifice at a site the user rules, when the site is targeted; `AddDefenseDice(1)` | none |
-| 2 Battle Honors | either | a card of the user's; free; no effect | when its user won, `Gain.Favor(user, Order, 2)` |
+| 2 Battle Honors | either | a card of the user's; free; no effect | when its user won, `Gain.Favor(user, Order, 2)`; for a bandit defender, the same favor moved from the Order bank to the shared bank |
 
-`PlanDiscard` finds the card where it stands (an adviser of the user, or a site) and discards it as a standard denizen discard would: facedown to the pile of the region after the region of the user's pawn, its favor to its suit's bank and its secrets to the user facedown. It attaches `DiscardRestrictions`, as every path that discards a card in play does.
+`PlanDiscard` finds the card where it stands (an adviser of the user, or a site) and discards it as a standard denizen discard would: facedown to the pile of the region after the card's own region (`CardPlay.nextRegion`, the one rule for the region after), its favor to its suit's bank and its secrets to the user facedown. A card at a site is in the site's region. An adviser has no region of its own, so it takes the region of its holder's pawn. It attaches `DiscardRestrictions`, as every path that discards a card in play does.
 
 The suites drive a whole Campaign through the rules with the production powers. `PlanDriver` chooses who wins by the dice it hands the walker (every attack die a sword, or half a sword) and the force the suite commits.
 
@@ -4562,11 +4593,39 @@ class BattleHonorsSuite extends munit.FunSuite {
     assertEquals(orderBank(done.state), 0)
   }
 
-  test("a bandit defender that wins gains nothing, since it has no player") {
+  private def banditHolds: Board = {
     val two = board(extras = 1)
-    val b = withSiteCard(two, two.extras.head, card)
-    val done = commit(rules(losing), b, 2).finish
+    withSiteCard(two, two.extras.head, card)
+  }
+
+  test("a bandit defender that wins gains two favor, settled into the shared bank, without choosing") {
+    val b = banditHolds
+    val bank = orderBank(asState(b))
+    val run = commit(rules(losing), b, 2)
+    // It applied the free plan by itself, so nothing was asked of the attacker.
+    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
+    val done = run.finish
+    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
+      _.attackerWins), Some(false))
+    assertEquals(orderBank(done.state), bank - 2)
     assertEquals(favor(done.state, b.actor), favor(asState(b), b.actor))
+  }
+
+  test("a bandit defender that loses gains nothing") {
+    val b = banditHolds
+    val bank = orderBank(asState(b))
+    val done = commit(rules(winning), b, 4).finish
+    assertEquals(ready(done.state).game.current.lastCampaignResult.map(
+      _.attackerWins), Some(true))
+    assertEquals(orderBank(done.state), bank)
+  }
+
+  test("the gain is best-effort for bandits too") {
+    val b0 = banditHolds
+    val b = b0.copy(ready = b0.ready.copy(banks = b0.ready.banks.copy(
+      favor = b0.ready.banks.favor.updated(Suit.Order, 1))))
+    val done = commit(rules(losing), b, 2).finish
+    assertEquals(orderBank(done.state), 0)
   }
 
   private def asState(b: Board): OathState = OathState.Ready(b.ready)
@@ -4646,6 +4705,7 @@ Create `src/test/scala/oathdigital/gameplay/powers/campaign/MercenariesSuite.sca
 package oathdigital.gameplay.powers.campaign
 
 import oathdigital.gameplay.CampaignFixture._
+import oathdigital.gameplay.actions.CardPlay
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.powers.campaign.PlanDriver._
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
@@ -4708,15 +4768,33 @@ class MercenariesSuite extends munit.FunSuite {
     assertEquals(player(done.state, b.actor).board.favor, 1)
   }
 
-  test("a card at a site the attacker rules is discarded from the site") {
-    val two = board(extras = 1)
-    val ruled = two.extras.head
-    val b = funded(withSiteCard(actorRules(two, ruled), ruled, card), two.actor, 2)
+  private def pile(state: OathState, region: Region): Vector[WorldCardId] =
+    ready(state).game.current.commonCards.regionalDiscards.getOrElse(region,
+      Vector.empty)
+
+  test("an adviser is discarded to the region after the region of its holder's pawn") {
+    val b = attackerBoard
+    val own = b.ready.game.current.map.regionOf(b.origin).get
+    val done = commit(rules(losing), b, 0)
+      .pick(b.actor, CampaignIds.attackerPlan, ref).finish
+    assert(pile(done.state, CardPlay.nextRegion(own)).contains(id))
+  }
+
+  test("a card at a site the attacker rules is discarded from the site, to the region after the site's own") {
+    val base = board()
+    val current = base.ready.game.current
+    val pawnRegion = current.map.regionOf(base.origin).get
+    val ruled = current.map.inPlay.find(site =>
+      current.map.regionOf(site).exists(_ != pawnRegion)).get
+    val siteRegion = current.map.regionOf(ruled).get
+    val b = funded(withSiteCard(actorRules(base, ruled), ruled, card), base.actor, 2)
     val done = commit(rules(losing), b, 0).pick(b.actor, CampaignIds.attackerPlan,
       ref).finish
     assert(discarded(done.state))
     assertEquals(ready(done.state).game.current.map.sites(ruled).denizens,
       Vector.empty)
+    assert(pile(done.state, CardPlay.nextRegion(siteRegion)).contains(id))
+    assert(!pile(done.state, CardPlay.nextRegion(pawnRegion)).contains(id))
   }
 
   test("an attacker with no favor to place is not offered Mercenaries") {
@@ -4991,11 +5069,14 @@ class RampartSuite extends munit.FunSuite {
   test("a bandit ruler applies it without choosing, at a targeted site") {
     val base = board()
     val b = withEdifice(base, base.origin, edifice, EdificeSide.Intact)
+    def defensePoolChanges(run: Run): Int = run.ops.count {
+      case ModifyDicePool(`defensePool`, _, _) => true
+      case _ => false
+    }
     val before = commit(rules(losing), board(), 2)
     val run = commit(rules(losing), b, 2)
     assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
-    assertEquals(run.ops.count(_.isInstanceOf[ModifyDicePool]),
-      before.ops.count(_.isInstanceOf[ModifyDicePool]) + 1)
+    assertEquals(defensePoolChanges(run), defensePoolChanges(before) + 1)
   }
 
   test("the two faces are two powers of one card, registered once each") {
@@ -5164,8 +5245,9 @@ import oathdigital.model._
   * Choosing it costs nothing and changes no dice. Once the Campaign has resolved,
   * its user gains two favor from the Order bank if they won: the attacker when the
   * attacker won, the defender when the defender did. The gain is best-effort, so an
-  * Order bank with less favor gives what it holds. A bandit defender uses no
-  * plan it did not choose and gains nothing.
+  * Order bank with less favor gives what it holds. A bandit defender that wins
+  * gains it too, settled into the shared bank, because bandits hold no board of
+  * their own. It applies the plan by itself, since the plan is free.
   */
 final case class BattleHonors private (cardId: DenizenId) extends BattlePlan {
   def id: PowerId = BattleHonors.id
@@ -5180,7 +5262,13 @@ final case class BattleHonors private (cardId: DenizenId) extends BattlePlan {
   override def later: Map[PowerWindow, PlanUse => Vector[Operation]] = Map(
     PowerWindow.CampaignActionEligibility -> (use =>
       if (!use.won.contains(true)) Vector.empty
-      else use.user.toVector.map(Gain.Favor(_, Suit.Order, BattleHonors.Favor))))
+      else Vector(use.user.fold[Operation](toBandits)(
+        Gain.Favor(_, Suit.Order, BattleHonors.Favor)))))
+
+  /** The favor a bandit defender gains: from the Order bank to the shared bank. */
+  private def toBandits: Operation = Move(Piece.Favor(BattleHonors.Favor),
+    PositionedLocation(Location.FavorBank(Suit.Order)),
+    PositionedLocation(Location.SharedBank))
 }
 
 object BattleHonors {
@@ -5329,12 +5417,13 @@ import oathdigital.gameplay.operations.DiscardRestrictions
 import oathdigital.model._
 
 /** The standard discard of a denizen a battle plan used, once the plan is spent:
-  * the card goes facedown to the discard pile of the region after the region of
-  * its user's pawn, its favor returns to its suit's bank, and its secrets return
-  * to its user facedown. The card is found where it stands now, as an adviser of
-  * the user or at a site, so the discard is right whether the plan was used from
-  * an adviser or from a site the user rules. Nothing happens when the card is no
-  * longer in either place.
+  * the card goes facedown to the discard pile of the region after the card's own
+  * region, its favor returns to its suit's bank, and its secrets return to its
+  * user facedown. The card is found where it stands now. A card at a site is in
+  * the site's region. An adviser has no region of its own, so it takes the
+  * region of its holder's pawn, as a card played from a hand does
+  * (`CardPlay.nextRegion` is the one rule for the region after). Nothing happens
+  * when the card is no longer in either place.
   *
   * Like every discard of a card in play, it attaches `DiscardRestrictions`.
   */
@@ -5348,23 +5437,25 @@ object PlanDiscard {
       : Either[OathViolation, Vector[CoreOperation]] = {
     val current = ready.game.current
     val player = current.players.find(_.player == user)
+    val pawnRegion = player.flatMap(_.pawnSite).flatMap(current.map.regionOf)
     val asAdviser = player.toVector.flatMap(_.advisers.collect {
       case held: DenizenState if held.id == card =>
-        PositionedLocation(Location.PlayArea(user)) -> held.tokens
+        (PositionedLocation(Location.PlayArea(user)), held.tokens, pawnRegion)
     })
     val atSite = current.map.inPlay.flatMap(site => current.map.sites(site)
       .denizens.collect {
         case held: DenizenState if held.id == card =>
-          PositionedLocation(Location.Site(site)) -> held.tokens
+          (PositionedLocation(Location.Site(site)), held.tokens,
+            current.map.regionOf(site))
       })
     (asAdviser ++ atSite).headOption match {
       case None => Right(Vector.empty)
-      case Some((from, tokens)) => for {
-        region <- player.flatMap(_.pawnSite).flatMap(current.map.regionOf)
-          .map(CardPlay.nextRegion).toRight(OathViolation.PawnSiteMissing(user))
+      case Some((from, tokens, region)) => for {
+        own <- region.toRight(OathViolation.PawnSiteMissing(user))
         suit <- catalog.suitOf(card).toRight(OathViolation.UnknownWorldCard(card))
-      } yield Vector[CoreOperation](Discard.Denizen(card, from, region, suit,
-        tokens.favor, tokens.secrets, user, required = true))
+      } yield Vector[CoreOperation](Discard.Denizen(card, from,
+        CardPlay.nextRegion(own), suit, tokens.favor, tokens.secrets, user,
+        required = true))
     }
   }
 }
@@ -5479,7 +5570,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (1451 tests), and `architecture check passed`.
+Expected: PASS (1454 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -5540,13 +5631,13 @@ with:
 
 | Card | Side | Ruling |
 | --- | --- | --- |
-| 12 Mercenaries | either | Cost 1 favor placed. An attacker adds 3 attack dice. A defender removes 3 from the attacker's pool, minimum 0. If its user is defeated (`!attackerWins` for the attacker, `attackerWins` for the defender), it is discarded through the standard denizen discard. Player-chosen sign is deferred. Implemented (slice 3c). |
+| 12 Mercenaries | either | Cost 1 favor placed. An attacker adds 3 attack dice. A defender removes 3 from the attacker's pool, minimum 0. If its user is defeated (`!attackerWins` for the attacker, `attackerWins` for the defender), it is discarded through the standard denizen discard. Player-chosen sign is deferred. The discard follows the card: a card on a site goes to the region after the site's own region, an adviser to the region after the region of its holder's pawn (`CardPlay.nextRegion`). Implemented (slice 3c). |
 | 1 Wrestlers | defender | Cost: sacrifice one warband from the defender's force, which is their board in a Raid or a warband at a target site they rule in a Conquest (chosen if several). It lowers the recorded force by 1. Effect: +1 defense die. Implemented (slice 3c). |
 | R27 Fearsome Shield | defender | Cost 2 secrets burnt. +2 defense dice. Implemented (slice 3c). |
 | E20 Towering Rampart | defender | +2 defense dice if the ruler's pawn is at this site or this site is a Conquest target. Implemented (slice 3c). |
 | E20 Cracked Rampart | defender | +1 defense die if this site is a Conquest target. A Raid never targets a site. Implemented (slice 3c). |
 | 25 Warning Signals | defender | A `Distribute.exactly` over the defender's board and every site they rule, total conserved, each ruled site's minimum 1. It applies when chosen, before the defender's force is recorded. Player defenders only. After the Campaign fully resolves it is discarded, unconditionally. |
-| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. Implemented (slice 3c). |
+| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. A bandit defender that wins gains them too, settled into the shared bank as a move from the Order bank to `Location.SharedBank`, and applies the plan by itself because it is free. Implemented (slice 3c). |
 | R01 Sticky Fire | either | If its user wins, a second prompt at `CampaignLosses`, owned by the winner, asks whether to kill all warbands in the enemy's force. Attacker wins a Conquest: the defender's half-return is cancelled. Attacker wins a Raid: every warband on the defender's board dies, not half. Defender wins: every warband on the attacker's board dies, committed or not. Then the winner gives the loser 1 favor if able, a non-required `Give`. Against bandits it burns the favor, as a `Give` to `Location.SharedBank`. |
 
 Persistent modifier, not a plan:
@@ -5557,7 +5648,7 @@ In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
 ```markdown
 
 - **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
-- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule and pays nothing. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
+- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule that no power makes unpayable, pays nothing, and records what it applied in a pool marker (`campaign.plan-applied.<kind>.<id>`) that a later hook reads, because a bandit's plan is not an answer. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
 
 ## Slice 4: banner faces
 
@@ -5568,8 +5659,8 @@ with:
 ```markdown
 
 - **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
-- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule and pays nothing. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
-- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the region of its user's pawn, its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort, so a bandit defender that wins gains nothing.
+- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule that no power makes unpayable, pays nothing, and records what it applied in a pool marker (`campaign.plan-applied.<kind>.<id>`) that a later hook reads, because a bandit's plan is not an answer. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
+- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the card's own region (the site's region for a card on a site, the region of its holder's pawn for an adviser), its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort. A bandit defender that wins gains it too, into the shared bank, having applied the plan by itself.
 
 ## Slice 4: banner faces
 
@@ -6191,7 +6282,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (1460 tests), and `architecture check passed`.
+Expected: PASS (1463 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6587,7 +6678,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (1470 tests), and `architecture check passed`.
+Expected: PASS (1473 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6609,7 +6700,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 - Consumes: `CampaignPlanApplication` (`side`, `user`, `source`, `setup`), `CampaignPlans.cardOf`, `Costs.onCard`.
 - Produces: `GleamingArmor`.
 
-Gleaming Armor (card 66) is a persistent rule of a faceup adviser: "Your enemy's battle plans have an added cost of [secret]." It is a `Transform` at `CampaignPlanApplication` that matches on the operation, as Silver Tongue matches `PlacementTree`. While its holder is in the Campaign, as the attacker or as a player defender, a plan applied for the opposing side is paid one more secret first: placed onto the plan's source card, like any cost, and for the title's plan (which has no card) one faceup secret turned facedown. The added cost is part of the application, so the dry run sees it: a plan the enemy cannot afford with it is not offered, and the option's price includes it. A bandit defender has no secrets, and its plans are not taxed.
+Gleaming Armor (card 66) is a persistent rule of a faceup adviser: "Your enemy's battle plans have an added cost of [secret]." It is a `Transform` at `CampaignPlanApplication` that matches on the operation, as Silver Tongue matches `PlacementTree`. While its holder is in the Campaign, as the attacker or as a player defender, a plan applied for the opposing side is paid one more secret first: placed onto the plan's source card, like any cost, and for the title's plan (which has no card) one faceup secret turned facedown. The added cost is part of the application, so the dry run sees it: a plan the enemy cannot afford with it is not offered, and the option's price includes it. Bandits are enemies too, so a bandit defender's plans are taxed. Bandits hold no secrets and cannot pay, so its application is refused (the dry run sees it) and a bandit applies no plan while a holder attacks.
 
 - [ ] **Step 1: Write the tests**
 
@@ -6632,6 +6723,7 @@ import oathdigital.model._
 class GleamingArmorSuite extends munit.FunSuite {
   private val armor = cardWith("denizen.gleaming-armor")
   private val watchdog = cardWith("denizen.watchdog")
+  private val honors = cardWith("denizen.battle-honors")
   private val brass = relicWith("relic.brass-army.campaign")
   private val titleRef: DecisionOptionRef = DecisionOptionRef.Button("title")
 
@@ -6707,14 +6799,36 @@ class GleamingArmorSuite extends munit.FunSuite {
       Vector.fill(3)(OptionPrice()))
   }
 
-  test("a bandit defender's plans cost nothing, since bandits hold no secrets") {
+  test("bandits are enemies too: a bandit defender is taxed, cannot pay, and applies no plan") {
     val two = board(extras = 1)
-    val b = withAdviser(withSiteCard(two, two.extras.head, watchdog), armor,
-      Orientation.FaceUp)
-    val run = commit(rules(losing), b, 2)
-    assertEquals(run.continue, awaits(b.actor, CampaignIds.sacrifice))
-    assertEquals(run.ops.count(op => op.isInstanceOf[PayCost] ||
+    val free = withSiteCard(withSiteCard(two, two.origin, watchdog),
+      two.extras.head, honors)
+    val taxed = withAdviser(free, armor, Orientation.FaceUp)
+    // Every pool change but the attacker's: the printed defense, Watchdog's die
+    // and the record of each plan the bandit applied.
+    def defenseChanges(run: Run): Int = run.ops.count {
+      case ModifyDicePool(pool, _, _) => pool != CampaignIds.attackPool
+      case _ => false
+    }
+    def orderBank(state: OathState): Int =
+      ready(state).banks.favor.getOrElse(Suit.Order, 0)
+    // Without the holder the bandit applies both plans by itself: Watchdog's die
+    // and a record of each, on top of the printed defense.
+    val plain = commit(rules(losing), free, 2)
+    val armored = commit(rules(losing), taxed, 2)
+    assertEquals(plain.continue, awaits(free.actor, CampaignIds.sacrifice))
+    assertEquals(armored.continue, awaits(taxed.actor, CampaignIds.sacrifice))
+    assertEquals(defenseChanges(plain) - defenseChanges(armored), 3)
+    // It offers nothing to the attacker either, and nothing is paid or flipped.
+    assertEquals(armored.ops.count(op => op.isInstanceOf[PayCost] ||
       op.isInstanceOf[FlipSecrets]), 0)
+    // Battle Honors would have paid the winning bandit, and now does not.
+    val won = plain.finish
+    val lost = armored.finish
+    assertEquals(ready(won.state).game.current.lastCampaignResult.map(
+      _.attackerWins), Some(false))
+    assertEquals(orderBank(won.state), orderBank(OathState.Ready(free.ready)) - 2)
+    assertEquals(orderBank(lost.state), orderBank(OathState.Ready(free.ready)))
   }
 
   // ---- the defender holds it: the attacker's plans cost more ---------------
@@ -6811,8 +6925,10 @@ import oathdigital.model._
   * plan's source card like any plan's cost. The title has no card, so the added
   * cost of the title's plan is turning one of its user's faceup secrets
   * facedown. The added cost is part of the plan's application, so a plan the user
-  * cannot afford with it is not offered, and the option's price includes it. A
-  * bandit defender has no secrets and pays nothing.
+  * cannot afford with it is not offered, and the option's price includes it.
+  * Bandits are enemies too, and the cost applies to a bandit defender's plans.
+  * Bandits hold no secrets and cannot pay it, so while a holder attacks a bandit
+  * defender applies no plan at all.
   *
   * The rule is automatic, so it needs no selection. A facedown copy is not
   * active, and the card is adviser-only, so the holder is found among the
@@ -6843,25 +6959,31 @@ final case class GleamingArmor private (cardId: DenizenId,
   private def surcharge(ctx: PowerCtx, application: CampaignPlanApplication)
       : Option[Operation] = for {
     holding <- holder(ctx)
-    user <- application.user
-    enemy = application.side match {
-      case CampaignPlanSide.Defender => application.setup.actor == holding
-      case CampaignPlanSide.Attacker =>
-        application.setup.defender == CampaignDefender.Player(holding)
-    }
-    if enemy
-  } yield BuildOps((ready, _) => CampaignPlans.cardOf(application.source) match {
-    case Some(card) => Right(Vector[CoreOperation](Costs.onCard(user, card,
-      Cost(secret = 1), catalog, intoOccupied = true)))
-    case None =>
-      // Turning a secret facedown does nothing without one, so the cost of the
-      // title's plan is checked here rather than left to a best-effort flip.
-      val faceUp = ready.game.current.players.find(_.player == user)
-        .fold(0)(_.board.faceUpSecrets)
-      if (faceUp >= 1) Right(Vector[CoreOperation](FlipSecrets(user, 1,
-        SecretSide.FaceUp, SecretSide.FaceDown)))
-      else Left(OathViolation.InsufficientSecrets(1, faceUp))
-  })
+    if enemy(application, holding)
+  } yield application.user.fold[Operation](unpayable)(user =>
+    BuildOps((ready, _) => CampaignPlans.cardOf(application.source) match {
+      case Some(card) => Right(Vector[CoreOperation](Costs.onCard(user, card,
+        Cost(secret = 1), catalog, intoOccupied = true)))
+      case None =>
+        // Turning a secret facedown does nothing without one, so the cost of the
+        // title's plan is checked here rather than left to a best-effort flip.
+        val faceUp = ready.game.current.players.find(_.player == user)
+          .fold(0)(_.board.faceUpSecrets)
+        if (faceUp >= 1) Right(Vector[CoreOperation](FlipSecrets(user, 1,
+          SecretSide.FaceUp, SecretSide.FaceDown)))
+        else Left(OathViolation.InsufficientSecrets(1, faceUp))
+    }))
+
+  private def enemy(application: CampaignPlanApplication, holding: PlayerId)
+      : Boolean = application.side match {
+    case CampaignPlanSide.Defender => application.setup.actor == holding
+    case CampaignPlanSide.Attacker =>
+      application.setup.defender == CampaignDefender.Player(holding)
+  }
+
+  /** Bandits hold no secrets, so a bandit's plan cannot pay the added cost. */
+  private def unpayable: Operation = BuildOps((_, _) =>
+    Left(OathViolation.InsufficientSecrets(1, 0)))
 }
 
 object GleamingArmor {
@@ -6881,7 +7003,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (1480 tests), and `architecture check passed`.
+Expected: PASS (1483 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6979,7 +7101,7 @@ In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
 | E20 Towering Rampart | defender | +2 defense dice if the ruler's pawn is at this site or this site is a Conquest target. Implemented (slice 3c). |
 | E20 Cracked Rampart | defender | +1 defense die if this site is a Conquest target. A Raid never targets a site. Implemented (slice 3c). |
 | 25 Warning Signals | defender | A `Distribute.exactly` over the defender's board and every site they rule, total conserved, each ruled site's minimum 1. It applies when chosen, before the defender's force is recorded. Player defenders only. After the Campaign fully resolves it is discarded, unconditionally. |
-| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. Implemented (slice 3c). |
+| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. A bandit defender that wins gains them too, settled into the shared bank as a move from the Order bank to `Location.SharedBank`, and applies the plan by itself because it is free. Implemented (slice 3c). |
 | R01 Sticky Fire | either | If its user wins, a second prompt at `CampaignLosses`, owned by the winner, asks whether to kill all warbands in the enemy's force. Attacker wins a Conquest: the defender's half-return is cancelled. Attacker wins a Raid: every warband on the defender's board dies, not half. Defender wins: every warband on the attacker's board dies, committed or not. Then the winner gives the loser 1 favor if able, a non-required `Give`. Against bandits it burns the favor, as a `Give` to `Location.SharedBank`. |
 
 Persistent modifier, not a plan:
@@ -6999,14 +7121,14 @@ with:
 | E20 Towering Rampart | defender | +2 defense dice if the ruler's pawn is at this site or this site is a Conquest target. Implemented (slice 3c). |
 | E20 Cracked Rampart | defender | +1 defense die if this site is a Conquest target. A Raid never targets a site. Implemented (slice 3c). |
 | 25 Warning Signals | defender | A `Distribute.exactly` over the defender's board and every site they rule, total conserved, each ruled site's minimum 1. It applies when chosen, before the defender's force is recorded. Player defenders only. After the Campaign fully resolves it is discarded, unconditionally. Implemented (slice 3d). |
-| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. Implemented (slice 3c). |
+| 2 Battle Honors | either | Chosen at the plan step. After the result, if its user won (the attacker when `attackerWins`, else the defender), gain 2 favor from the Order bank with `Gain.Favor`. A bandit defender that wins gains them too, settled into the shared bank as a move from the Order bank to `Location.SharedBank`, and applies the plan by itself because it is free. Implemented (slice 3c). |
 | R01 Sticky Fire | either | If its user wins, a second prompt at `CampaignLosses`, owned by the winner, asks whether to kill all warbands in the enemy's force. Attacker wins a Conquest: the defender's half-return is cancelled. Attacker wins a Raid: every warband on the defender's board dies, not half. Defender wins: every warband on the attacker's board dies, committed or not. Then the winner gives the loser 1 favor if able, a non-required `Give`. Against bandits it burns the favor, as a `Give` to `Location.SharedBank`. Implemented (slice 3d). |
 
 Persistent modifier, not a plan:
 
 | Card | Ruling |
 | --- | --- |
-| 66 Gleaming Armor | While its holder, faceup as an adviser, is a Campaign participant, every plan chosen by the opposing side costs 1 more secret, placed on the plan's source card. Unaffordable plans are not offered and the preview includes it. The Oathkeeper title plan has no card, so its added cost is flipping a faceup secret facedown. Implemented (slice 3d). |
+| 66 Gleaming Armor | While its holder, faceup as an adviser, is a Campaign participant, every plan chosen by the opposing side costs 1 more secret, placed on the plan's source card. Unaffordable plans are not offered and the preview includes it. The Oathkeeper title plan has no card, so its added cost is flipping a faceup secret facedown. Bandits are enemies too, so the added cost applies to a bandit defender's plans, which bandits cannot pay (they hold no secrets): a bandit applies no plan while a holder is attacking. Implemented (slice 3d). |
 
 Off-turn settlement for a defender's plan payment: favor moves directly to the matching suit bank, and a secret becomes a `FlipSecrets(FaceUp, FaceDown)`. Nothing rests on the card.
 
@@ -7016,8 +7138,8 @@ In `docs/superpowers/specs/2026-09-20-powers-rulings.md`, replace:
 
 ```markdown
 - **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
-- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule and pays nothing. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
-- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the region of its user's pawn, its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort, so a bandit defender that wins gains nothing.
+- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule that no power makes unpayable, pays nothing, and records what it applied in a pool marker (`campaign.plan-applied.<kind>.<id>`) that a later hook reads, because a bandit's plan is not an answer. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
+- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the card's own region (the site's region for a card on a site, the region of its holder's pawn for an adviser), its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort. A bandit defender that wins gains it too, into the shared bank, having applied the plan by itself.
 
 ## Slice 4: banner faces
 
@@ -7027,9 +7149,9 @@ with:
 
 ```markdown
 - **3a:** `CampaignResult.victorious` is now `attackerWins` in the model, the journal codec, the shared DTO and its codec, the result panel and the suites. It is true when the attacker prevailed and false when the defender did. The wire key changes with it, and journals are forward-only, so a game whose journal holds a recorded Campaign result cannot be read after this change.
-- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule and pays nothing. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
-- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the region of its user's pawn, its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort, so a bandit defender that wins gains nothing.
-- **3d:** the three powers are registered through `PlanRules`. A question a plan asks is under the Campaign's decision prefix (`campaign.`), so a parked one is always a Campaign decision. Warning Signals is a defender's plan for a player defender only, from an adviser or a ruled site. Its one distribution covers the defender's board (named by a player option) and every site they rule, targeted or not, keeps the total, and leaves each site one warband at least. It asks nothing when the defender rules no site, and the card is discarded after the Campaign whether or not it was used to any effect. Sticky Fire is a plan for either side. When its user wins, the losses step asks them before anything dies; a yes cancels the warbands a Conquest would return to a player defender, kills what is left on a Raid defender's board, or kills the attacker's whole board when the defender won, and then the winner gives the loser a favor if able (burnt against bandits). Gleaming Armor is an automatic rule of a faceup adviser: while its holder is in a Campaign, each plan the opposing side chooses is applied with one more secret placed onto its card (a secret turned facedown for the title), so the plan is not offered when it cannot be paid and its price includes the secret. A bandit defender pays nothing.
+- **3b:** every plan is a `BattlePlan` power declared as an `Offer` (where its card must stand, what it costs and does) and, when it acts later, a hook at a later window. The user must be the ruler of the source: the origin-site offer to a non-ruler is gone, and Brass Army no longer needs an empty relic. A defender's plan may carry a cost, paid at once. Costs are `Favor` and `Secret` (placed onto the card, which may be occupied), `FavorBurnt`, `SecretBurnt` and `SacrificeWarband` (a defender only: the board in a Raid, or a target site the defender rules in a Conquest, asking which when several). A plan that cannot be paid, with every power's added cost, is not offered, and a window with nothing to offer is skipped. The option states its price. A source is chosen once. A bandit defender applies every cost-free plan at a site Bandits rule that no power makes unpayable, pays nothing, and records what it applied in a pool marker (`campaign.plan-applied.<kind>.<id>`) that a later hook reads, because a bandit's plan is not an answer. A facedown adviser is revealed when it is chosen, and a card at a site is always faceup. Outriders scores the attack again without the skull cap, and Brass Army adds four dice to the pool but not to the force.
+- **3c:** the six plans are `BattlePlan` powers registered through `SimplePlans`. Mercenaries costs a favor placed onto the card, adds three attack dice for an attacker and removes three for a defender (never below an empty pool), and when its user is defeated is discarded by the standard denizen discard once the Campaign has resolved: facedown to the discard pile of the region after the card's own region (the site's region for a card on a site, the region of its holder's pawn for an adviser), its favor returned to the Discord bank. The sign is fixed by the side. Wrestlers is a defender's plan whose cost is the sacrifice, so a defender with no warband in its force is not offered it. Fearsome Shield burns two faceup secrets and places nothing on the relic. The Rampart plans are used by the ruler of the site the edifice stands at, from either face: the intact face needs the ruler's pawn at the site or the site targeted, the ruined face needs the site targeted, and a bandit ruler applies it without choosing. Battle Honors is free, and its user gains the favor after the Campaign has resolved, best-effort. A bandit defender that wins gains it too, into the shared bank, having applied the plan by itself.
+- **3d:** the three powers are registered through `PlanRules`. A question a plan asks is under the Campaign's decision prefix (`campaign.`), so a parked one is always a Campaign decision. Warning Signals is a defender's plan for a player defender only, from an adviser or a ruled site. Its one distribution covers the defender's board (named by a player option) and every site they rule, targeted or not, keeps the total, and leaves each site one warband at least. It asks nothing when the defender rules no site, and the card is discarded after the Campaign whether or not it was used to any effect. Sticky Fire is a plan for either side. When its user wins, the losses step asks them before anything dies; a yes cancels the warbands a Conquest would return to a player defender, kills what is left on a Raid defender's board, or kills the attacker's whole board when the defender won, and then the winner gives the loser a favor if able (burnt against bandits). Gleaming Armor is an automatic rule of a faceup adviser: while its holder is in a Campaign, each plan the opposing side chooses is applied with one more secret placed onto its card (a secret turned facedown for the title), so the plan is not offered when it cannot be paid and its price includes the secret. Bandits are taxed too and cannot pay, so a bandit defender applies no plan while a holder attacks.
 
 ## Slice 4: banner faces
 
@@ -7056,13 +7178,13 @@ Each has a recommended default. The plan builds the default, and each is a small
 2. **Sticky Fire's question is asked even when a yes changes nothing.** Against bandits a yes only burns the winner's favor, and a defender or attacker with an empty enemy force kills nothing. Recommended: always ask. The card says "you may", the player owns the choice, and a rule that skips the question when it looks pointless has to define "pointless". The alternative is to skip it when there is nothing to kill and no favor to give.
 3. **Sticky Fire gives the favor only when its user says yes, and only if able.** The card text is "If you do, you must give them favor if able", so a "no" gives nothing, and a winner with no favor gives nothing. The rulings appendix reads "then the winner gives", which could be read as unconditional. Recommended: the card text, as built.
 4. **Sticky Fire after a Conquest the attacker wins.** The defender's warbands at the targets die as usual, and the half that would return to the defender's board is killed after it returns. Recommended: as built. A bandit defender has no board, so a yes against bandits only burns the favor.
-5. **Where a discarded Mercenaries goes.** It is discarded facedown to the pile of the region after the region of its user's pawn, whether it was an adviser or a card at a site, as `CardPlay` and Horned Mask do. A site card could instead go to the region after the site's own region. Recommended: the pawn's region, for one rule everywhere.
+5. **Answered: where a discarded Mercenaries goes.** The product owner: "Discards are based on the region of the card. If on a site, it goes to the next site over. If it's an adviser, it's based on the pawn." Built as the existing rule, `CardPlay.nextRegion`, applied to the card's own region: a card on a site goes to the pile of the region after the site's region, an adviser to the pile of the region after the region of its holder's pawn. **Flagged:** "the next site over" is read as the next region, which is what `nextRegion` returns and what every other discard does. No existing helper builds a discard for a site card outside the pawn's region (`Dazzle` and site replacement only discard cards in the pawn's region, where the two rules agree), so `PlanDiscard` is the one place that applies the site's region.
 6. **When the after-Campaign effects run.** Mercenaries' discard, Battle Honors' gain and Warning Signals' discard run once the Campaign has fully resolved (after a Conquest's placement, and after a Raid's transfer and the pawn's relocation), not right after the result. The rulings say "after the result" for Battle Honors and "after the Campaign fully resolves" for Warning Signals. Recommended: the end for all three. Example where it matters: an attacker who wins a Raid gains Battle Honors' favor after the Raid has burnt half of the defender's favor, which cannot affect the winner but could affect a defender's Sticky Fire favor.
 7. **Ruler-only removes plans a Raid defender used to have.** A Raid's defender is the enemy pawn at the attacker's site, so a Rampart at that site helps only if the defender rules it, and a site card at an unruled origin helps nobody (it used to help the attacker). Recommended: ruler-only as specced. Example: the defender is Raided at a site a third party rules; the defender can use their own advisers and relics and no site's cards.
 8. **Warning Signals' reach.** The distribution covers the defender's board and every site they rule, targeted or not, and only sites they rule (warbands cannot be moved to a site they do not rule), each keeping at least one. It may move warbands between two sites directly. It asks nothing when the defender rules no site. Recommended: as built. A stricter reading is that only targeted sites matter to the battle, but the card says any site you rule.
 9. **Warning Signals is discarded even when it did nothing,** for example when the defender ruled no site so nothing was asked, or when the plan was chosen and the Campaign then ended in a defender victory. The ruling says "unconditionally". Recommended: as ruled.
-10. **A bandit defender and the plans it applies.** Bandits apply every cost-free plan of a card at a site they rule. That now includes the Ramparts (for a targeted site, since bandits have no pawn), and excludes Mercenaries, Wrestlers and Fearsome Shield (they cost something) and Battle Honors' gain (no player to gain it). Recommended: as built. A rule that bandits also pay from the shared bank is not in the rulings.
-11. **Gleaming Armor never taxes bandits.** A bandit defender has no secrets and chooses nothing, so its cost-free plans stay free even against a holder. Recommended: accept. The alternative is to forbid a bandit defender's plans while a holder attacks, which no ruling supports.
+10. **Answered: a bandit defender and the plans it applies.** Bandits apply every cost-free plan of a card at a site they rule, if no power makes it unpayable. That includes the Ramparts (for a targeted site, since bandits have no pawn) and Battle Honors, which pays a winning bandit: the product owner ruled that the two favor from the Order bank settle into the shared bank. It excludes Mercenaries, Wrestlers and Fearsome Shield, which cost something. Built as ruled, with a pool marker so a later window can tell a bandit applied a plan (planning fact 13).
+11. **Answered: Gleaming Armor taxes bandits too.** The product owner: bandits are enemies. A bandit defender's plans carry the added secret, bandits hold none, so a bandit applies no plan while a holder attacks. Built as ruled, with a test that a bandit offers and applies nothing, and that Battle Honors then pays it nothing.
 12. **Gleaming Armor and the title.** The title's plan has no card, so its added cost is one faceup secret turned facedown, as ruled. A defender who holds the title and has no faceup secret does not get the title's plan against a holder. Recommended: as ruled.
 13. **What the player is shown.** An unaffordable plan is hidden, not shown disabled, and each shown option carries its price as text under the card ("Cost: 1 favor", "Cost: sacrifice 1 warband"). The design says "unaffordable plans are not offered and the preview shows the total cost". Recommended: as built. A disabled option with the reason would need a new option state in the wire vocabulary.
 14. **The sacrificed warband of Wrestlers.** It is killed at once (it goes to the warband bank), so it lowers the force the defense is scored with, and it is not part of what a Conquest returns to the defender's board when the attacker wins. In a Conquest the defender chooses which target site pays when several qualify, and a site ruled but not targeted cannot pay. Recommended: as ruled.
@@ -7079,6 +7201,7 @@ Each has a recommended default. The plan builds the default, and each is a small
 - **A stored Campaign parked at a plan window cannot resume** (planning fact 12). Journals are forward-only, so this needs no migration, but do not run the slice against a live game parked at a plan.
 - **The frontend shows a price through the option's existing details line** (`WalkerPanelSupport`). No frontend code changes in 3b to 3d, and no frontend test covers a priced option; the projector suite does.
 - **File sizes.** `ProcedureWalker.scala` grows by a few lines (still under 700) and `WalkerPowerGather.scala` stays under 300. No production file nears the 800-line bound.
+- **A bandit's plan marker is a dice-pool entry.** It is a `ModifyDicePool` in the journal under `campaign.plan-applied.<kind>.<id>`. A suite that counts a Campaign's `ModifyDicePool` operations sees it (`RampartSuite` and `GleamingArmorSuite` count the defense pool, or every pool but the attacker's, for that reason).
 - **Knights Errant's nested Campaign.** It builds the Campaign tree at walk time, so its plan windows are folded like any other, and the registry now recognises every `campaign.` decision inside a Muster. No suite runs a plan inside a Knights Errant Campaign.
 
 ## Self-review
@@ -7086,4 +7209,4 @@ Each has a recommended default. The plan builds the default, and each is a small
 - **Spec coverage.** Mercenaries, Wrestlers, Fearsome Shield, Towering and Cracked Rampart, Battle Honors (Task 4); Warning Signals (Task 6); Sticky Fire (Task 5); Gleaming Armor (Task 7). E8: the offer contribution (Tasks 2 and 3), `CampaignPlanApplication` window and operation (Task 3), burnt and sacrifice cost variants (Task 3), the after-outcome behaviour (Task 3's `later`, with the deviation explained under "Engine changes"), ruler-only sources and the removal of the non-ruler origin-site offer and Brass Army's empty-card requirement (Task 3), facedown advisers revealed when used (Task 3), a defender's plan with a cost (Task 3), the rename (Task 1). Two questions the design left open are answered: how a plan's cost preview reaches the projector, and whether off-turn settlement reaches a payment made inside a walk ("Engine changes" and planning fact 1).
 - **Placeholders.** None. Every code step is a complete file or an exact replacement, and every one was applied in a throwaway copy of `main` in the order below.
 - **Validation.** Every file and replacement in Tasks 1 to 7 was applied, in this order, to a fresh copy of `main` by a script that reads this document, compiled and run: Task 1's and each task's tests failed to compile before its implementation, each task's files equal the state it was developed to, and the whole suite and the architecture check passed after each task. The results are in the report.
-- **Types.** `CampaignPlanOffer` and `OfferedPlan` (Task 2) are used by `OfferHost` and the kit (Task 3). `CampaignPlanApplication.{side, user, source, setup}` (Task 3) are read by Gleaming Armor (Task 7). `BattlePlan.later` (Task 3) is used by Outriders, Mercenaries, Battle Honors and Warning Signals, and `wrapping` (Task 5) by Sticky Fire. `PlanUse.{user, won, result, ready}` (Task 3) is read by every later hook. `PlanDiscard.denizen` (Task 4) is used by Warning Signals (Task 6). `PlanDriver` (Task 4) is extended by Task 6 (`query`, `options`) and used by Tasks 5 to 7. `CampaignFixture.{withAdviserFor, actorRules, replacePlayer, rulesWith}` (Task 3) and `{withRelicFor, withEdifice}` (Task 4) are used by every Campaign power suite.
+- **Types.** `CampaignPlanOffer` and `OfferedPlan` (Task 2) are used by `OfferHost` and the kit (Task 3). `CampaignPlanApplication.{side, user, source, setup}` (Task 3) are read by Gleaming Armor (Task 7). `BattlePlan.later` (Task 3) is used by Outriders, Mercenaries, Battle Honors and Warning Signals, and `wrapping` (Task 5) by Sticky Fire. `PlanUse.{user, won, result, ready}` (Task 3) is read by every later hook. `PlanDiscard.denizen` (Task 4) is used by Warning Signals (Task 6). `CampaignPlans.appliedMarker` (Task 3) is written by `CampaignPlanApplication` and read by `PlanUse.chosen`. `PlanDriver` (Task 4) is extended by Task 6 (`query`, `options`) and used by Tasks 5 to 7. `CampaignFixture.{withAdviserFor, actorRules, replacePlayer, rulesWith}` (Task 3) and `{withRelicFor, withEdifice}` (Task 4) are used by every Campaign power suite.
