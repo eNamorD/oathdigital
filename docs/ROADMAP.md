@@ -158,12 +158,6 @@ leaked. Keep the raw loopback development event log separate.
   catalog's entries for Outriders, Brass Army and Watchdog are inert since slice
   3b and go with the reviewed catalog.
 
-- [ ] **Deferred: defender-side activation of non-plan modifiers.** A modifier
-  is selected at the start of the player's own major action, so a defender cannot
-  use one during a Campaign. Battle plans cover the card texts in scope (a plan is
-  chosen inside the Campaign), and Battle Honors already works for a defender for
-  that reason.
-
 - [ ] **Deferred: record a bandit's applied battle plan as an event.** A player's
   plan is a recorded answer that later windows read. A bandit defender applies its
   cost-free plans without asking, so `CampaignPlanApplication` records the use as

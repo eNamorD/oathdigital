@@ -6,7 +6,7 @@
 
 - **Access.** You can use cards at your site (the site with your pawn), cards at sites you rule, and everything in your play area: relics, banners, advisers and legacies. A ruler can use a ruled site's card whatever site their pawn is on.
 - **Facedown cards.** Denizens at sites are always faceup. Relics at sites are always facedown, so a site relic never grants access. A relic must be faceup in your play area to be used. Relics taken by a power draw are taken facedown.
-- **Activation.** Modifiers are selected at the start of a major action. Persistent powers are automatic. Battle plans are chosen at the Campaign plan step. When Played powers fire on the play.
+- **Activation.** Modifiers are selected at the start of a major action. Persistent powers are automatic. Battle plans are chosen at the Campaign plan step. When Played powers fire on the play. A defender has no chance to activate a power that is not a battle plan.
 - **Repeat use.** Act-phase powers have no once-each limit. A costed one is limited only because its card holds resources afterwards. Wake and Rest powers are once per turn.
 - **Usability.** The only gate is that the cost is payable. Choosing an empty target, or a bank with no stock, is allowed and does nothing.
 - **Secrets.** The shared bank has unlimited secrets.
@@ -198,5 +198,5 @@ Off-turn settlement for a defender's plan payment: favor moves directly to the m
 
 ## Deferred and parked
 
-- **Deferred**: card-slot redesign of card play; Mercenaries' player-chosen sign; defender-side activation of non-plan modifiers (Battle Honors already works for a defender, since it is a plan); Empire rulers; Peace Envoy and other plan-restricting powers.
+- **Deferred**: card-slot redesign of card play; Mercenaries' player-chosen sign; Empire rulers; Peace Envoy and other plan-restricting powers.
 - **Parked**: Great Market, Bandit Market, Great Forge, Broken Forge, Proving Grounds and Empty Grounds (SETUP / WHEN EXPLORED).
