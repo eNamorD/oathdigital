@@ -735,7 +735,7 @@ with:
 - [ ] **Step 4: Run the whole suites**
 
 Run: `./sbtw test` and `./sbtw frontend/test`
-Expected: PASS (N tests in the backend suite, and the frontend suite).
+Expected: PASS (1383 tests in the backend suite, and the frontend suite).
 
 - [ ] **Step 5: Run the architecture check**
 
@@ -1857,7 +1857,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1395 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -4186,7 +4186,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1418 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -5479,7 +5479,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1451 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6191,7 +6191,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1460 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6587,7 +6587,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1470 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -6881,7 +6881,7 @@ Expected: PASS.
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
 Run: `./sbtw test` and `python3 scripts/check-architecture.py`
-Expected: PASS (N tests), and `architecture check passed`.
+Expected: PASS (1480 tests), and `architecture check passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -7052,12 +7052,38 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 Each has a recommended default. The plan builds the default, and each is a small change if the answer differs.
 
-{{OPEN}}
+1. **Renaming the journal key breaks games that already recorded a Campaign result.** `CampaignResultCodec` writes `victorious` today, and journals are forward-only, so after 3a an event stream holding a recorded result no longer decodes. Example: a trusted-alpha game saved after its first Campaign fails to load. Recommended: accept, as the design's E8 says the wire key changes with the field, and no production games exist. A two-line fallback in the codec (read `victorious` when `attackerWins` is absent) would remove the risk if there are saved games worth keeping.
+2. **Sticky Fire's question is asked even when a yes changes nothing.** Against bandits a yes only burns the winner's favor, and a defender or attacker with an empty enemy force kills nothing. Recommended: always ask. The card says "you may", the player owns the choice, and a rule that skips the question when it looks pointless has to define "pointless". The alternative is to skip it when there is nothing to kill and no favor to give.
+3. **Sticky Fire gives the favor only when its user says yes, and only if able.** The card text is "If you do, you must give them favor if able", so a "no" gives nothing, and a winner with no favor gives nothing. The rulings appendix reads "then the winner gives", which could be read as unconditional. Recommended: the card text, as built.
+4. **Sticky Fire after a Conquest the attacker wins.** The defender's warbands at the targets die as usual, and the half that would return to the defender's board is killed after it returns. Recommended: as built. A bandit defender has no board, so a yes against bandits only burns the favor.
+5. **Where a discarded Mercenaries goes.** It is discarded facedown to the pile of the region after the region of its user's pawn, whether it was an adviser or a card at a site, as `CardPlay` and Horned Mask do. A site card could instead go to the region after the site's own region. Recommended: the pawn's region, for one rule everywhere.
+6. **When the after-Campaign effects run.** Mercenaries' discard, Battle Honors' gain and Warning Signals' discard run once the Campaign has fully resolved (after a Conquest's placement, and after a Raid's transfer and the pawn's relocation), not right after the result. The rulings say "after the result" for Battle Honors and "after the Campaign fully resolves" for Warning Signals. Recommended: the end for all three. Example where it matters: an attacker who wins a Raid gains Battle Honors' favor after the Raid has burnt half of the defender's favor, which cannot affect the winner but could affect a defender's Sticky Fire favor.
+7. **Ruler-only removes plans a Raid defender used to have.** A Raid's defender is the enemy pawn at the attacker's site, so a Rampart at that site helps only if the defender rules it, and a site card at an unruled origin helps nobody (it used to help the attacker). Recommended: ruler-only as specced. Example: the defender is Raided at a site a third party rules; the defender can use their own advisers and relics and no site's cards.
+8. **Warning Signals' reach.** The distribution covers the defender's board and every site they rule, targeted or not, and only sites they rule (warbands cannot be moved to a site they do not rule), each keeping at least one. It may move warbands between two sites directly. It asks nothing when the defender rules no site. Recommended: as built. A stricter reading is that only targeted sites matter to the battle, but the card says any site you rule.
+9. **Warning Signals is discarded even when it did nothing,** for example when the defender ruled no site so nothing was asked, or when the plan was chosen and the Campaign then ended in a defender victory. The ruling says "unconditionally". Recommended: as ruled.
+10. **A bandit defender and the plans it applies.** Bandits apply every cost-free plan of a card at a site they rule. That now includes the Ramparts (for a targeted site, since bandits have no pawn), and excludes Mercenaries, Wrestlers and Fearsome Shield (they cost something) and Battle Honors' gain (no player to gain it). Recommended: as built. A rule that bandits also pay from the shared bank is not in the rulings.
+11. **Gleaming Armor never taxes bandits.** A bandit defender has no secrets and chooses nothing, so its cost-free plans stay free even against a holder. Recommended: accept. The alternative is to forbid a bandit defender's plans while a holder attacks, which no ruling supports.
+12. **Gleaming Armor and the title.** The title's plan has no card, so its added cost is one faceup secret turned facedown, as ruled. A defender who holds the title and has no faceup secret does not get the title's plan against a holder. Recommended: as ruled.
+13. **What the player is shown.** An unaffordable plan is hidden, not shown disabled, and each shown option carries its price as text under the card ("Cost: 1 favor", "Cost: sacrifice 1 warband"). The design says "unaffordable plans are not offered and the preview shows the total cost". Recommended: as built. A disabled option with the reason would need a new option state in the wire vocabulary.
+14. **The sacrificed warband of Wrestlers.** It is killed at once (it goes to the warband bank), so it lowers the force the defense is scored with, and it is not part of what a Conquest returns to the defender's board when the attacker wins. In a Conquest the defender chooses which target site pays when several qualify, and a site ruled but not targeted cannot pay. Recommended: as ruled.
+15. **Facedown advisers are revealed when a plan is chosen, and stay faceup.** This includes advisers whose plan changes nothing visible (Outriders, Battle Honors), as the design says (NF p. 13). Recommended: as built.
+16. **Deferred, unchanged:** Mercenaries' player-chosen sign; Peace Envoy and other powers that restrict plans; Bag of Siegeworks; Empire defenders. The reviewed catalog's entries for the four ported plans stay in `CampaignPowers` (inert, because nothing resolves a Campaign's plan windows through them). Recommended: leave them, and remove them in the slice that retires the reviewed catalog.
 
 ## Risks to check while executing
 
-{{RISKS}}
+- **The `Repeat` rule reaches every `Repeat`.** A pass that records nothing and asks nothing now ends the loop. Every existing `Repeat` records or parks in each pass, so nothing changes, and `RepeatPassSuite` pins the rule. If a suite that used to hang now finishes early, look for a guard that depends on something the pass never changes.
+- **`CampaignFixture.rules` now defaults to the production powers.** Other suites use it (`TargetingFixture`, `KnightsErrantSuite`, the Fortress and Circlet suites). None fails today, because a plan is offered only where a card is held. A suite that stages a Campaign for a defender who holds a title gets the title's plan, as it did before the change.
+- **The resume shape of a plan.** A walk that parks inside a plan (a sacrifice, Warning Signals) resumes against changed state. If a new plan asks a question in its application, keep the offer independent of what the plan spends or moves (planning fact 2), and add a suite that answers the question, as `CampaignPlanWindowSuite` and `WarningSignalsSuite` do.
+- **The dry run accepts a park.** A plan whose application parks on a decision is accepted if everything before the decision ran, so a failure in an effect after the decision is found only when the player answers. Today only Warning Signals has one, and its effect cannot fail.
+- **Root hooks run in power order.** `later` at `CampaignActionEligibility` appends to the Campaign's root, so several used plans append in the deterministic power order (priority, source key, id). Nothing depends on the order today (a discard, a gain, a discard).
+- **A stored Campaign parked at a plan window cannot resume** (planning fact 12). Journals are forward-only, so this needs no migration, but do not run the slice against a live game parked at a plan.
+- **The frontend shows a price through the option's existing details line** (`WalkerPanelSupport`). No frontend code changes in 3b to 3d, and no frontend test covers a priced option; the projector suite does.
+- **File sizes.** `ProcedureWalker.scala` grows by a few lines (still under 700) and `WalkerPowerGather.scala` stays under 300. No production file nears the 800-line bound.
+- **Knights Errant's nested Campaign.** It builds the Campaign tree at walk time, so its plan windows are folded like any other, and the registry now recognises every `campaign.` decision inside a Muster. No suite runs a plan inside a Knights Errant Campaign.
 
 ## Self-review
 
-{{REVIEW}}
+- **Spec coverage.** Mercenaries, Wrestlers, Fearsome Shield, Towering and Cracked Rampart, Battle Honors (Task 4); Warning Signals (Task 6); Sticky Fire (Task 5); Gleaming Armor (Task 7). E8: the offer contribution (Tasks 2 and 3), `CampaignPlanApplication` window and operation (Task 3), burnt and sacrifice cost variants (Task 3), the after-outcome behaviour (Task 3's `later`, with the deviation explained under "Engine changes"), ruler-only sources and the removal of the non-ruler origin-site offer and Brass Army's empty-card requirement (Task 3), facedown advisers revealed when used (Task 3), a defender's plan with a cost (Task 3), the rename (Task 1). Two questions the design left open are answered: how a plan's cost preview reaches the projector, and whether off-turn settlement reaches a payment made inside a walk ("Engine changes" and planning fact 1).
+- **Placeholders.** None. Every code step is a complete file or an exact replacement, and every one was applied in a throwaway copy of `main` in the order below.
+- **Validation.** Every file and replacement in Tasks 1 to 7 was applied, in this order, to a fresh copy of `main` by a script that reads this document, compiled and run: Task 1's and each task's tests failed to compile before its implementation, each task's files equal the state it was developed to, and the whole suite and the architecture check passed after each task. The results are in the report.
+- **Types.** `CampaignPlanOffer` and `OfferedPlan` (Task 2) are used by `OfferHost` and the kit (Task 3). `CampaignPlanApplication.{side, user, source, setup}` (Task 3) are read by Gleaming Armor (Task 7). `BattlePlan.later` (Task 3) is used by Outriders, Mercenaries, Battle Honors and Warning Signals, and `wrapping` (Task 5) by Sticky Fire. `PlanUse.{user, won, result, ready}` (Task 3) is read by every later hook. `PlanDiscard.denizen` (Task 4) is used by Warning Signals (Task 6). `PlanDriver` (Task 4) is extended by Task 6 (`query`, `options`) and used by Tasks 5 to 7. `CampaignFixture.{withAdviserFor, actorRules, replacePlayer, rulesWith}` (Task 3) and `{withRelicFor, withEdifice}` (Task 4) are used by every Campaign power suite.
