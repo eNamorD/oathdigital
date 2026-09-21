@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement sixteen cards (seventeen powers, because the Fortress has two faces): the modifiers Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant, Wild Cry and Welcoming Party, and the persistent rules Toll Roads, Grasping Vines, Circlet of Command, the Oaken and Rotting Fortress faces and Gossip. Land the engine changes E6 (the card-play split and `PlacementRules`), E7 (a window on Conspiracy's target decision) and E9 (the enclosing procedure on `PowerCtx`) that they and slice 4 need.
+**Goal:** Implement sixteen cards (seventeen powers, because the Fortress has two faces): the modifiers Augury, Truthful Harp, Tents, Forest Paths, Cup of Plenty, Rowdy Pub, Dragonskin Drum, Relic Worship, Knights Errant, Wild Cry and Welcoming Party, and the persistent rules Toll Roads, Grasping Vines, Circlet of Command, the Oaken and Rotting Fortress faces and Gossip. Land the engine changes E6 (the card-play split and `PlacementRules`), E7 (a window on Conspiracy's target decision) and E9 (the procedure on `PowerCtx`) that they and slice 4 need, and the generic discard rules the product owner asked for.
 
-**Architecture:** Every power is declared solely as a `ContributingPower` over existing operations. Selected modifiers share one small base, `SelectedModifier`, which decides when a modifier may be selected (its action, access to its card, a payable cost) and lets each power state only what it does inside the walk. Persistent rules are plain `ContributingPower`s that read state. Three engine changes are the ones the design names, and three more small ones were found necessary at plan time; each is listed with its justification below and in the report.
+**Architecture:** Every power is declared solely as a `ContributingPower` over existing operations. Selected modifiers share one small base, `SelectedModifier`, which decides when a modifier may be selected (its action, access to its card, a payable cost) and lets each power state only what it does inside the walk. Persistent rules are plain `ContributingPower`s that read state. The engine changes are the ones the design names, plus the small ones found necessary at plan time; each is listed with its justification below and in the report.
 
 **Tech Stack:** Scala 2.13, sbt via `./sbtw`, munit.
 
@@ -14,39 +14,44 @@
 
 - `BackendArchitectureSuite` and `scripts/check-architecture.py` apply: production files stay at or under 800 lines; no power name appears in `gameplay/walker` or `gameplay/operations` sources; a power imports nothing from `oathdigital.gameplay.walker`; no direct state write (`copy(advisers =`, `temporaryHands.updated(` and similar) under `gameplay/powers`.
 - A power is declared solely by a `ContributingPower` (all sixteen here; none is a `PhasePower`). Engine changes are only those named in "Engine changes" below.
-- A decision id is unique per power and lives under a prefix the registry already maps to a continuation, or under the prefix Task 10 adds for a Muster.
+- A decision id is unique per power and lives under a prefix the registry already maps to a continuation, or under the prefix Task 12 adds for a Muster.
+- A selected modifier that has a cost places it whenever the player selects the modifier, whether or not the modifier then has an effect: the player owns that choice (product decision).
+- A card that cannot be discarded (locked, an intact edifice, an active modifier, protected by the Hall of Ministers) is refused by `DiscardRestrictions`, and every path that discards a card in play attaches it (Task 3).
 - Commit messages end with `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`. Code, comments, commits and docs are normal prose.
 - Run the whole suite with `./sbtw test`, and one suite with `./sbtw "testOnly <fully.qualified.Suite>"`.
-- Test fixtures keep the card inventory whole. The first game deals cards to sites, regional discards, advisers and the decks, so a fixture that places a card takes it out of wherever it was (`CardStaging.without`, Task 4). `PowerFixture.atHome` and `asAdviser` remove a card from the world deck only.
+- Test fixtures keep the card inventory whole. The first game deals cards to sites, regional discards, advisers and the decks, so a fixture that places a card takes it out of wherever it was (`CardStaging.without`, Task 3). `PowerFixture.atHome` and `asAdviser` remove a card from the world deck only.
 - Recorded operations must survive the journal wire and replay. Each power's suite asserts `PaidActionHarness.replayed(...)` equals the state the command reached, and `PaidActionHarness.wireRoundTrips(...)` for a recorded batch that carries a new operation shape.
 - Other slices (3 and 4) are planned in parallel. Shared files (`WalkerPowerCatalog.scala`, the design "Slicing" row, the rulings rows) are edited minimally, each addition on its own line, to ease merging.
 
 ## How this slice is split
 
-The slice is large. It should be **executed, reviewed and merged as six sub-slices**, one at a time, in this order. Each sub-slice ends green (`./sbtw test` and the architecture check) and is independent of the ones after it.
+The slice is large. It should be **executed, reviewed and merged as six sub-slices**, one at a time, in this order. Each sub-slice ends green (`./sbtw test` and the architecture check).
 
 | Sub-slice | Tasks | Contents | Engine changes | Needs |
 | --- | --- | --- | --- | --- |
-| 2a. Card play | 1 to 3 | the played-card hook split, `PlacementRules`, `siteDiscardFirst`; folds `AdviserLimit` and Horned Mask's discard destination into them | E6 | nothing |
-| 2b. Modifier kit and card-play triggers | 4 | `SelectedModifier`, `CatalogCards`, `CardStaging`, `SearchFixture`; Wild Cry, Welcoming Party, Gossip | none | 2a (the faceup and facedown hooks) |
-| 2c. Travel | 5 | Tents, Forest Paths, Dragonskin Drum, Toll Roads, Grasping Vines | a free Travel is still a candidate | 2b |
-| 2d. Search, Trade, Muster and Recover | 6 | Augury, Truthful Harp, Cup of Plenty, Rowdy Pub, Relic Worship | `SearchRules.draw` takes extra cards | 2b |
-| 2e. Target protection | 7 and 8 | a window on Conspiracy's target decision; Circlet of Command, Oaken and Rotting Fortress | E7 | 2b (for `CardStaging`) |
-| 2f. Knights Errant | 9 and 10 | the enclosing procedure on `PowerCtx`; Knights Errant | E9, and the Muster continuation | 2b |
+| 2a. Card play and discards | 1 to 4 | the played-card hook split, `PlacementRules`, the generic discard rules, `siteDiscardFirst`; folds `AdviserLimit` and Horned Mask's discard destination into them | E6, the generic discard rules | nothing |
+| 2b. Modifier kit and card-play triggers | 5 and 6 | `PowerCtx.procedure`; `SelectedModifier`, `CatalogCards`, `SearchFixture`; Wild Cry, Welcoming Party, Gossip | E9 | 2a |
+| 2c. Travel | 7 | Tents, Forest Paths, Dragonskin Drum, Toll Roads, Grasping Vines | a free Travel is still a candidate; `ContributingPower.ignores` | 2b |
+| 2d. Search, Trade, Muster and Recover | 8 | Augury, Truthful Harp, Cup of Plenty, Rowdy Pub, Relic Worship | `SearchRules.draw` takes extra cards | 2b |
+| 2e. Target protection | 9 and 10 | a window on Conspiracy's target decision; Circlet of Command, Oaken and Rotting Fortress | E7 | 2b |
+| 2f. Knights Errant | 11 and 12 | restrictions see what a Transform inserts and the answers of the command; Knights Errant | restriction traversal, Muster continuation | 2b, 2e |
 
-**Slice 4 (banner faces) depends on 2a only.** Task 3 ends with `PlacementRules.siteDiscardFirst` working end to end, tested with a test-only power, so Mob is later a one-line contribution. Sub-slices 2c to 2f depend on each other not at all, so they can merge in any order after 2b. The order above is the recommended one: it lands the smallest and most widely used pieces first.
+**Slice 4 (banner faces) depends on 2a only.** Task 4 ends with `PlacementRules.siteDiscardFirst` working end to end, tested with a test-only power, so Mob is later a one-line contribution, and the generic discard rules of Task 3 are what make "an intact edifice is refused as locked" true for it. Sub-slices 2c, 2d and 2e depend on each other not at all, so they can merge in any order after 2b. 2f needs 2e because its tests use the Fortress.
 
 ## Engine changes
 
-The design names E6, E7 and E9. Planning found that E9 is needed (it was conditional) and that three more small changes are needed. None is silent: each is in a task of its own or in the task that needs it, and each is in the report.
+The design names E6, E7 and E9. Planning found that E9 is needed (it was conditional), and that the changes below are needed too. None is silent: each is in the task that needs it, and each is in the report.
 
-- **E6, the card-play split (Tasks 1 to 3).** `CardPlayed` becomes `CardPlayedFaceup(card, resultingSource)` and a new `CardPlayedFacedown(card, player)`, in the windows `ActionCardPlayedFaceup` (key `action.card-played`, unchanged) and `ActionCardPlayedFacedown` (key `action.card-played-facedown`). `PlacementRules(faceupAdviserLimit, facedownAdviserLimit, siteDiscardFirst)` replaces `PlacementTree.withAdviserLimit` and `withFaceupAdviserLimit`; contributors change it with `PlacementTree.adjust` and compose in any order. `siteDiscardFirst` lets a play to a site first discard one card of the site's list, optionally when there is room and necessarily when full, lifting the "full non-matching site" rejection.
-- **E7 (Task 7).** `PowerWindow.ConspiracyTargetSelection` on Conspiracy's target `Decide`. A decision left with no option by a power is dropped, and Conspiracy then plays and takes nothing.
-- **E9 (Task 9).** `PowerCtx` gains `procedure: Option[ProcedureRef]`. It is needed: a walk runs on a state with the pending position and the procedure stripped, and `nodePath` is only child indices, so Knights Errant's hook on `CampaignCost` could not tell a Campaign nested in a Muster from another.
+- **E6, the card-play split (Tasks 1, 2 and 4).** `CardPlayed` becomes `CardPlayedFaceup(card, resultingSource)` and a new `CardPlayedFacedown(card, player)`, in the windows `ActionCardPlayedFaceup` (key `action.card-played`, unchanged) and `ActionCardPlayedFacedown` (key `action.card-played-facedown`). `PlacementRules(faceupAdviserLimit, facedownAdviserLimit, siteDiscardFirst)` replaces `PlacementTree.withAdviserLimit` and `withFaceupAdviserLimit`; contributors change it with `PlacementTree.adjust` and compose in any order. `siteDiscardFirst` lets a play to a site first discard one card of the site's list, optionally when there is room and necessarily when full, lifting the "full non-matching site" rejection.
+- **Generic discard rules (Task 3, requested by the product owner).** `DiscardRestrictions` refuses every discard of a faceup locked adviser, of an intact edifice and of a card that prints a power selected for the running action, beside the Hall of Ministers rule it already had. A replaced edifice at a Homeland is now discarded (`Discard.RuinedEdifice`), not buried. Horned Mask attaches the restrictions. A coverage suite fails when a new production file builds a discard without attaching them.
+- **E9 (Task 5).** `PowerCtx` gains `procedure: Option[ProcedureRef]`. It is needed twice: Welcoming Party reads a card's origin from it (a card that was a facedown adviser is played by the `PlayFacedownAdviser` procedure), and Knights Errant's hook on `CampaignCost` uses it to know it is walked for a Muster. A walk runs on a state with the pending position and the procedure stripped, and `nodePath` is only child indices, so neither could read it otherwise.
+- **E7 (Task 9).** `PowerWindow.ConspiracyTargetSelection` on Conspiracy's target `Decide`. A decision left with no option by a power is dropped, and Conspiracy then plays and takes nothing.
 - **Beyond E6, E7 and E9, found at plan time:**
-  1. **Free Travel is still a candidate** (Task 5). `TravelProcedure.candidates` read a destination's cost off the last `SpendSupply` and dropped the destination when there was none. Tents and Forest Paths remove the payment, so a free Travel vanished from the destination list. The fix reads a missing payment as 0. Two lines.
-  2. **A longer Search draw** (Task 6). `SearchRules.draw` gains `extra: Int = 0` and a `DrawSize = 3` constant, so Augury and the Truthful Harp draw more cards under the rule's own limits (stop after a Vision, a short pile) instead of repeating it.
-  3. **A Muster can hold a Campaign** (Task 10). `WalkerProcedureRegistry`'s Muster entry knew only the decision id `muster.source`. It now maps a Campaign's decision ids to `AwaitingCampaignDecision` and any id under a new `MusterProcedure.decisionPrefix` (`muster.`) to `AwaitingEconomyDecision`.
+  1. **Free Travel is still a candidate** (Task 7). `TravelProcedure.candidates` read a destination's cost off the last `SpendSupply` and dropped the destination when there was none. Tents and Forest Paths remove the payment, so a free Travel vanished from the destination list. The fix reads a missing payment as 0.
+  2. **`ContributingPower.ignores(ctx, other)`** (Task 7). `shouldIgnore` has no context, so a power could ignore another only for every node it is gathered at. Forest Paths ignores site powers only when the destination holds a beast card, and must be selectable (and pay) whatever the route. `ignores` defaults to `shouldIgnore` and the collector calls it, so no existing power changes.
+  3. **A longer Search draw** (Task 8). `SearchRules.draw` gains `extra: Int = 0` and a `DrawSize = 3` constant, so Augury and the Truthful Harp draw more cards under the rule's own limits (stop after a Vision, a short pile) instead of repeating it.
+  4. **Restrictions see the whole tree** (Task 11). `restrictionViolations` now folds each windowed composite through the powers as the walk does, and selects each `Branch` with the answers the command carries. Without both, a Restriction hooked inside a subtree a power adds (Knights Errant's nested Campaign) is never checked.
+  5. **A Muster can hold a Campaign** (Task 12). `WalkerProcedureRegistry`'s Muster entry knew only the decision id `muster.source`. It now maps a Campaign's decision ids to `AwaitingCampaignDecision` and any id under a new `MusterProcedure.decisionPrefix` (`muster.`) to `AwaitingEconomyDecision`.
 
 ## What planning found
 
@@ -54,40 +59,44 @@ These facts are read from the code (or established by compiling and running the 
 
 1. **The window key is not fingerprinted.** `CatalogHandlerInventory.fingerprint` covers catalog handler ids and `structuralFingerprint` covers catalog structure. No window key is in either, and `action.card-played` appears in no reviewed data. The faceup window keeps its key anyway. This answers the design's "Whether any structural fingerprint covers window keys (E6)".
 2. **`PlacementTree`'s children are flat, and composing two contributors needed a value.** Silver Tongue used `withAdviserLimit(2)`, which rebuilds the whole child vector, so a second contributor (Mob) would have replaced the first. `PlacementTree.adjust(children)(change)` returns one `PlacementBody` carrying the rules, so the second contributor changes the same rules. The tree without a contributor is unchanged (`children.head` is still the placement `Decide`). With a contributor the parked path of the placement gains one level.
-3. **`DiscardRestrictions` implements only the Hall of Ministers.** The rulings say Mob's discard refuses "an intact edifice as locked" through `DiscardRestrictions`. That class does not know locked edifices: a card play may bury an intact edifice as a Homeland replacement today. Task 3 refuses an intact edifice inside the `siteDiscardFirst` path only, and leaves the Homeland replacement alone (open question 6).
-4. **Two duplicated placement rules existed.** `AdviserLimit.of` repeated Silver Tongue's holder rule and its limit of 2, and Horned Mask repeated `CardPlay`'s three-case discard destination. Task 2 makes `SilverTongue.limitFor` the one definition of the limit, `PlacementRules.DefaultAdviserLimit` the one default, and `CardPlay.nextRegion` public for Horned Mask.
-5. **A walk runs on a stripped state.** `ProcedureWalker` clears `walkerPending` and `walkerProcedure` from the state its windows read. Restrictions are checked against the unstripped state (`OathRulesWalker.checkRestrictions`), where `walkerProcedure` is empty exactly at a start. Task 8's Fortress start guard relies on that; Task 9 exists because a window fold cannot read the procedure from the state.
-6. **Campaign asks neither its kind nor its defender when there is one choice.** `kindStep` and `defenderStep` are omitted with fewer than two options, so an `OptionRestriction` on their windows cannot stop a Raid on the only enemy pawn at the site. The Fortress therefore also adds a `Restriction` at `CampaignActionEligibility`, gated to a start, that refuses a Campaign whose only legal kind is a Raid on protected players.
-7. **A required decision left with no option is malformed.** `DecisionQueries.wellFormed` rejects an empty `ChooseOne`. A `Transform` at the Conspiracy window that drops the decision is therefore the shape, and Conspiracy's effects must accept "no decision was asked" (Task 7). `ChooseMany` with `min = 0` is dropped by the walker itself (a Raid's optional targets).
-8. **`offerableWalkerPowers` never checks which windows a power hooks.** It asks `applicable` at the action's modifier-selection window. A modifier that answered "yes" for any window would be selectable for every action. `SelectedModifier` therefore checks the action itself.
-9. **A selected modifier's cost is paid only when the modifier applies.** `applicable` at a walk window (Travel cost) returns false for a route that does not qualify, so nothing is paid there. Forest Paths has no choice: `shouldIgnore` has no context, so the power must be applicable only when its condition holds. Tents does the same for consistency (open question 2).
-10. **A Search's draw is one windowed `BuildOps`.** A `Transform` at `SearchBeforeDraw` receives `Vector(thatBuildOps)`, so a power wraps its `build` and adjusts the `Draw` it returns. Two wrappers add to what the wrapped node drew, so Augury and the Truthful Harp stack in either order.
-11. **A card in a temporary hand cannot be revealed.** `Reveal` (a faceup `Flip`) needs a card state and a hand card has none, and the hand is projected to its owner only. The Truthful Harp records `Peek(viewer, card, Hand(actor))` for every other player and card, which the state and the replay both accept and which shows in `knowledge.advisers` (open question 3).
-12. **`MusterSource.resolve` requires a token-free card.** The Cup of Plenty's node runs after the Trade's payment has placed a secret on the card, so it reads the suit off the answered card instead.
-13. **`GainSupply` at a full track records nothing.** A test that expects a Supply gain starts the actor below 7.
-14. **A Recover journal does not round-trip the whole wire.** Its first step records `ModifyDicePool` with a window the codec does not keep. This is not caused by a power. The Relic Worship suite round-trips every step after the first.
-15. **A selected modifier pays with `Costs.onCard`.** Tents, Forest Paths and Relic Worship place their cost with the same `PayCost` a phase power uses, so an occupied card or an empty purse makes the power unselectable (`Costs.affordable`) and a payment that later fails a required operation rejects the command.
-16. **`TravelProcedureSuite` handed the walker every catalog power.** Its `powers` was `WalkerPowerCatalog.default(catalog)`, selected or not, so a selected modifier that pays a cost applied to every route. A command offers automatic powers plus the ones the player selected; Task 5 makes the suite do the same.
-17. **Every catalog denizen has at least one power, and the first game deals some cards to regional discards.** Fixtures pick "plain" cards (no production walker power of their own) and stage them with `CardStaging.without`.
+3. **Locking was enforced in three unrelated places, and one was wrong.** `DiscardRestrictions` implemented only the Hall of Ministers. `LockedAdviserOnly` was checked by `CardPlay.validateAdviserReplacement` and by Horned Mask's own filter. Intact edifices were not enforced at all: `Discard.RuinedEdifice` says "only a ruined edifice can be discarded" but nothing checked it. A locked card is locked only while faceup (`MinorActionsSuite` pins that a facedown locked adviser can be discarded), and `CardRestrictions.Locked` is never produced for a denizen (the loader yields `LockedAdviserOnly` for `[adviser-only, locked]`).
+4. **The Homeland replacement buried an edifice.** `CardPlay` replaced an edifice with `Bury` when it held no tokens (and `Discard.RuinedEdifice` when it did). `Bury` ignores locked by rule, so a locked (intact) edifice could be removed. The product owner's reading is that a Homeland discards. Task 3 makes both cases a `Discard.RuinedEdifice`, which the restriction refuses for an intact edifice.
+5. **Which paths discard a card in play.** `CardPlay` (attached by `CardPlayProcedure` and `legalChoices`), Dazzle (attached), Horned Mask (not attached; Task 3 attaches it), Magic Carpet (its own relic, never locked), and `Bury.standard` users (Crystal Vial, Magic Waterskin, Bone Dice, Fae Merchant, Family Heirloom: a bury, which ignores locked). The Search's discard of a drawn card is from the hand, where nothing is locked.
+6. **"Active modifiers cannot be discarded" is written nowhere.** It is not in the rules documents, the rulings appendix or the code (a replacement candidate list never excluded a selected modifier). Task 3 enforces it in `DiscardRestrictions`, reading the selected powers from `walkerModifiers`, and the rulings appendix records it (Task 4's docs step). The first walk of an action, before its first park, does not have `walkerModifiers` yet, so a placement offered at that park may include a card the next command refuses; the refusal itself is exact.
+7. **A walk runs on a stripped state.** `ProcedureWalker` clears `walkerPending` and `walkerProcedure` from the state its windows read. Restrictions are checked against the unstripped state (`OathRulesWalker.checkRestrictions`), which still holds the pending position and its answers. Task 12's Fortress guard reads them there; Task 5 exists because a window fold cannot read the procedure from the state.
+8. **Why Vow of Peace and the Fortress never reached Knights Errant's Campaign.** `WalkerPowerGather.restrictionViolations` walks the declared tree (`node.children`) without the Transforms the walk applies, so a node a Transform inserts is never visited (Knights Errant appends its nested Campaign to the Muster's root that way). It also resolved every `Branch` with an empty `PendingTree`, so a Branch that yields its children only once a decision is answered showed nothing. Task 11 fixes both, and the command that answers a decision checks the tree the answer opens (after the walker accepts the answer, because an invalid answer can build a node that cannot exist).
+9. **Campaign asks neither its kind nor its defender when there is one choice.** `kindStep` and `defenderStep` are omitted with fewer than two options, so an `OptionRestriction` on their windows cannot stop a Raid on the only enemy pawn at the site. The Fortress therefore also adds a `Restriction` at `CampaignActionEligibility` that refuses a Campaign whose only legal kind is a Raid on protected players, until the Campaign has answered one of its own decisions (a Conquest that takes the site would otherwise leave the Raid as the only kind mid-Campaign).
+10. **A required decision left with no option is malformed.** `DecisionQueries.wellFormed` rejects an empty `ChooseOne`. A `Transform` at the Conspiracy window that drops the decision is therefore the shape, and Conspiracy's effects must accept "no decision was asked" (Task 9). `ChooseMany` with `min = 0` is dropped by the walker itself (a Raid's optional targets).
+11. **`offerableWalkerPowers` never checks which windows a power hooks.** It asks `applicable` at the action's modifier-selection window. A modifier that answered "yes" for any window would be selectable for every action. `SelectedModifier` therefore checks the action itself.
+12. **A Search's draw is one windowed `BuildOps`.** A `Transform` at `SearchBeforeDraw` receives `Vector(thatBuildOps)`, so a power wraps its `build` and adjusts the `Draw` it returns. Two wrappers add to what the wrapped node drew, so Augury and the Truthful Harp stack in either order.
+13. **A card in a temporary hand cannot be revealed.** `Reveal` (a faceup `Flip`) needs a card state and a hand card has none, and the hand is projected to its owner only. The Truthful Harp records `Peek(viewer, card, Hand(actor))` for every other player and card (confirmed by the product owner). It restricts nothing: the kept card is played as usual, including facedown.
+14. **`MusterSource.resolve` requires a token-free card.** The Cup of Plenty's node runs after the Trade's payment has placed a secret on the card, so it reads the suit off the answered card instead.
+15. **`GainSupply` at a full track records nothing.** A test that expects a Supply gain starts the actor below 7.
+16. **A Recover journal does not round-trip the whole wire.** Its first step records `ModifyDicePool` with a window the codec does not keep. This is not caused by a power. The Relic Worship suite round-trips every step after the first.
+17. **`TravelProcedureSuite` handed the walker every catalog power.** Its `powers` was `WalkerPowerCatalog.default(catalog)`, selected or not, so a selected modifier that pays a cost applied to every route. A command offers automatic powers plus the ones the player selected; Task 7 makes the suite do the same.
+18. **Every catalog denizen has at least one power, and the first game deals some cards to regional discards.** Fixtures pick "plain" cards (no production walker power of their own) and stage them with `CardStaging.without`.
+19. **Relic Worship and Catacombs can strand a Recover.** Each is selectable on its own with one faceup secret, so both are offered together. Catacombs pays the secret at the start, and Relic Worship's required payment then fails when the relic is taken, and the relic decision cannot be answered. Established by running it; the ruling accepts the limitation and the plan leaves it (open item 3).
 
 ## File Structure
 
 - Task 1: modify `PowerWindow.scala`, `CoreOperations.scala`, `WalkerOperationCodec.scala`, `PowerRuntime.scala`, `PowerSupport.scala`, `ActionPowers.scala`, `WalkerPowerCatalog.scala` (comment), `CardPlayProcedure.scala`, `WhenPlayedPower.scala`, `Dazzle.scala`, `ConspiracyWhenPlayed.scala`. Test: `CardPlayHooksSuite`.
 - Task 2: create `gameplay/actions/PlacementRules.scala`; rewrite `powers/AdviserLimit.scala`; modify `CardPlay.scala`, `CardPlayProcedure.scala`, `SilverTongue.scala`, `HornedMask.scala`. Test: `PlacementFixture`, `PlacementRulesSuite`.
-- Task 3: modify `CardPlay.scala`, `CardPlayProcedure.scala`. Test: `SiteDiscardFirstSuite`.
-- Task 4: create `powers/SelectedModifier.scala`, `powers/CatalogCards.scala`, `powers/cardplay/{WildCry,WelcomingParty,Gossip,CardPlayTriggers}.scala`; modify `WalkerPowerCatalog.scala`. Test: `CardStaging`, `SearchFixture`, `SelectedModifierSuite`, `WildCrySuite`, `WelcomingPartySuite`, `GossipSuite`.
-- Task 5: create `powers/travel/{TravelPayments,Tents,ForestPaths,DragonskinDrum,TollRoads,GraspingVines,TravelModifiers}.scala`; modify `TravelProcedure.scala`, `WalkerPowerCatalog.scala`. Test: `TravelFixture`, five suites, one edit to `TravelProcedureSuite`.
-- Task 6: create `powers/search/{DrawExtension,Augury,TruthfulHarp}.scala`, `powers/economy/{CupOfPlenty,RowdyPub}.scala`, `powers/recover/RelicWorship.scala`, `powers/ActionModifiers.scala`; modify `Search.scala`, `RecoverPowers.scala`, `WalkerPowerCatalog.scala`. Test: five suites.
-- Task 7: modify `PowerWindow.scala`, `ConspiracyWhenPlayed.scala`. Test: `ConspiracyTargetWindowSuite`.
-- Task 8: create `powers/targeting/{CircletOfCommand,FortressRules,TargetProtections}.scala`; modify `WalkerPowerCatalog.scala`. Test: `TargetingFixture`, `CircletOfCommandSuite`, `FortressRulesSuite`.
-- Task 9: modify `ContributingPower.scala`, `ProcedureWalker.scala`, `WalkerPowerGather.scala`, `OathRulesWalker.scala`. Test: `EnclosingProcedureSuite`.
-- Task 10: create `powers/economy/KnightsErrant.scala`; modify `WalkerPowerCatalog.scala`, `MusterProcedure.scala`, `WalkerProcedureRegistry.scala`. Test: `KnightsErrantSuite`.
+- Task 3: rewrite `operations/DiscardRestrictions.scala`; modify `CardPlay.scala`, `HornedMask.scala`. Test: `CardStaging`, `DiscardRestrictionsSuite`, `DiscardRestrictionsCoverageSuite`.
+- Task 4: modify `CardPlay.scala`, `CardPlayProcedure.scala`. Test: `SiteDiscardFirstSuite`.
+- Task 5: modify `ContributingPower.scala`, `ProcedureWalker.scala`, `WalkerPowerGather.scala`, `OathRulesWalker.scala`. Test: `EnclosingProcedureSuite`.
+- Task 6: create `powers/SelectedModifier.scala`, `powers/CatalogCards.scala`, `powers/cardplay/{WildCry,WelcomingParty,Gossip,CardPlayTriggers}.scala`; modify `WalkerPowerCatalog.scala`. Test: `SearchFixture`, `SelectedModifierSuite`, `WildCrySuite`, `WelcomingPartySuite`, `GossipSuite`.
+- Task 7: create `powers/travel/{TravelPayments,Tents,ForestPaths,DragonskinDrum,TollRoads,GraspingVines,TravelModifiers}.scala`; modify `ContributingPower.scala`, `ContributionCollector.scala`, `TravelProcedure.scala`, `WalkerPowerCatalog.scala`. Test: `TravelFixture`, `ContributionIgnoresSuite`, five suites, one edit to `TravelProcedureSuite`.
+- Task 8: create `powers/search/{DrawExtension,Augury,TruthfulHarp}.scala`, `powers/economy/{CupOfPlenty,RowdyPub}.scala`, `powers/recover/RelicWorship.scala`, `powers/ActionModifiers.scala`; modify `Search.scala`, `RecoverPowers.scala`, `WalkerPowerCatalog.scala`. Test: five suites.
+- Task 9: modify `PowerWindow.scala`, `ConspiracyWhenPlayed.scala`. Test: `ConspiracyTargetWindowSuite`.
+- Task 10: create `powers/targeting/{CircletOfCommand,FortressRules,TargetProtections}.scala`; modify `WalkerPowerCatalog.scala`. Test: `TargetingFixture`, `CircletOfCommandSuite`, `FortressRulesSuite`.
+- Task 11: modify `WalkerPowerGather.scala`, `ProcedureWalker.scala`, `OathRulesWalker.scala`. Test: `RestrictionAnswersSuite`.
+- Task 12: create `powers/economy/KnightsErrant.scala`; modify `WalkerPowerCatalog.scala`, `MusterProcedure.scala`, `WalkerProcedureRegistry.scala`. Test: `KnightsErrantSuite`.
 
 All paths are under `src/main/scala/oathdigital/gameplay/` (production) or `src/test/scala/oathdigital/gameplay/` (tests) except `PowerWindow.scala` and `CoreOperations.scala` (`.../model/`) and `WalkerOperationCodec.scala` (`.../serialization/`). The step blocks below give full paths.
 
 ---
 
-## Sub-slice 2a: Card play (E6)
+## Sub-slice 2a: Card play and discards (E6)
 
 ### Task 1: Split the played-card hook
 
@@ -571,15 +580,15 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 **Files:**
 - Create: `src/main/scala/oathdigital/gameplay/actions/PlacementRules.scala`
 - Modify: `AdviserLimit.scala` (rewritten), `CardPlay.scala`, `CardPlayProcedure.scala`, `SilverTongue.scala`, `HornedMask.scala`
-- Test: `PlacementFixture.scala` (shared by Tasks 2 and 3), `PlacementRulesSuite.scala`, an edit to `CardPlayProcedureSuite.scala`
+- Test: `PlacementFixture.scala` (shared by Tasks 2 to 4), `PlacementRulesSuite.scala`, an edit to `CardPlayProcedureSuite.scala`
 
 **Interfaces:**
 - Produces: `PlacementRules(faceupAdviserLimit: Int = 3, facedownAdviserLimit: Int = 3, siteDiscardFirst: Boolean = false)` with `adviserLimit(orientation)`, `limitAdvisers(limit)`, `limitFaceupAdvisers(limit)`, `withSiteDiscardFirst`, `PlacementRules.default` and `PlacementRules.DefaultAdviserLimit`. `CardPlay.legalChoices(catalog, ready, actor, card, origin, rules = PlacementRules.default)` and `CardPlay.plannedOperations(..., origin, rules = PlacementRules.default)`. `CardPlayProcedure.PlacementTree.adjust(current: Vector[Operation])(change: PlacementRules => PlacementRules): Vector[Operation]` and `CardPlayProcedure.PlacementBody` (with `rules`). `CardPlay.nextRegion(region)` (now public). `SilverTongue.HolderLimit` (2) and `SilverTongue.limitFor(ready, player): Option[Int]`.
 - Consumes: Task 1 (none of its names; the two tasks touch `CardPlayProcedure.scala` in different places).
 
-This is a refactor. Nothing new is possible yet: `siteDiscardFirst` exists on the value and is read in Task 3. The point is one definition of each placement rule, and a value two powers can change without replacing each other. Slice 1c left two notes that this folds together. `AdviserLimit.of` repeated Silver Tongue's holder rule and its limit; it now asks `SilverTongue.limitFor` and `PlacementRules.DefaultAdviserLimit`. Horned Mask repeated the three-case region rule of `CardPlay`; it calls `CardPlay.nextRegion`.
+This is a refactor. Nothing new is possible yet: `siteDiscardFirst` exists on the value and is read in Task 4. The point is one definition of each placement rule, and a value two powers can change without replacing each other. Slice 1c left two notes that this folds together. `AdviserLimit.of` repeated Silver Tongue's holder rule and its limit; it now asks `SilverTongue.limitFor` and `PlacementRules.DefaultAdviserLimit`. Horned Mask repeated the three-case region rule of `CardPlay`; it calls `CardPlay.nextRegion`.
 
-The new test file `PlacementFixture` is used again in Task 3. It builds a hand, a pawn site holding chosen cards, and drives a `CardPlayProcedure` tree with `ProcedureWalker`, the way `CardPlayProcedureSuite` does.
+The new test file `PlacementFixture` is used again in Tasks 3 and 4. It builds a hand, a pawn site holding chosen cards, and drives a `CardPlayProcedure` tree with `ProcedureWalker`, the way `CardPlayProcedureSuite` does.
 
 - [ ] **Step 1: Write the tests**
 
@@ -1299,7 +1308,537 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 
 
-### Task 3: A play to a site may discard first
+### Task 3: One rule for which cards can be discarded
+
+**Files:**
+- Rewrite: `src/main/scala/oathdigital/gameplay/operations/DiscardRestrictions.scala`
+- Modify: `CardPlay.scala`, `powers/wake/HornedMask.scala`
+- Test: `powers/CardStaging.scala` (shared by later tasks), `DiscardRestrictionsSuite.scala`, `DiscardRestrictionsCoverageSuite.scala`
+
+**Interfaces:**
+- Produces: `DiscardRestrictions(catalog, actor)` (same constructor) refuses, as `OperationReasonKind.Impossible` reasons with codes `locked`, `active-modifier` and `discard-immune` (the Hall of Ministers, unchanged): a `Discard.Denizen` of a faceup `LockedAdviserOnly` card from a site or a play area, a `Discard.RuinedEdifice` of an intact edifice, and a `Discard.Denizen` or `Discard.Relic` of a card that prints a power in `walkerModifiers`. Test support `CardStaging.without(ready, id)`.
+- Consumes: Task 2's `PlacementFixture`.
+
+The product owner asked for locked cards to be handled generically. Where locking is enforced today, and what this task decides, is in "What planning found" 3 to 6. The layer is `DiscardRestrictions`, not `OperationValidator`: the validator has no catalog, and a card's locked restriction is a catalog fact. `DiscardRestrictions` is also the object `CardPlay.legalChoices` uses to decide what to offer, so a card that cannot be discarded is never offered. The intact-edifice rule needs only state, but sits here beside the others so one class answers "may this be discarded?".
+
+- **`Bury` is not a discard.** It ignores locked by rule and never reaches this class (Crystal Vial buries an intact edifice on purpose).
+- **Only a card in play is locked.** A locked card drawn by a Search and discarded from the temporary hand is not, and a facedown locked adviser can be discarded (existing rule).
+- **An edifice is discarded, never buried, when a play replaces it.** The `CardPlay` edit.
+- **Active modifiers.** A card that prints a power selected for the running action cannot be discarded (product owner; not in the docs, so the rulings record it in the docs step). It is read from `walkerModifiers`, which the walker records at the action's first park.
+- **Coverage.** `DiscardRestrictionsCoverageSuite` reads the production sources and fails when a file builds `Discard.Denizen`, `Discard.Vision` or `Discard.RuinedEdifice` without attaching `DiscardRestrictions`. Horned Mask was the one path that did not; it does now. A new discarding power fails the suite until it attaches them.
+
+- [ ] **Step 1: Write the tests**
+
+Create `src/test/scala/oathdigital/gameplay/DiscardRestrictionsCoverageSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import java.nio.file.{Files, Paths}
+
+import scala.jdk.CollectionConverters._
+
+/** Every production file that builds a discard of a card in play attaches
+  * `DiscardRestrictions` to it, so a rule about which cards can be discarded
+  * (locked, active modifier, Hall of Ministers) cannot be bypassed by a new
+  * power that forgets it.
+  *
+  * A file that builds one of these operations must be listed here with the
+  * file that attaches the restrictions, or carry the restrictions itself. A new
+  * discarding file fails this suite until it is added on purpose.
+  */
+class DiscardRestrictionsCoverageSuite extends munit.FunSuite {
+  private val root = Paths.get("src/main/scala/oathdigital")
+  private val discards =
+    """Discard\.(Denizen|Vision|RuinedEdifice)\(""".r
+
+  /** file suffix -> the file that attaches the restrictions to its operations. */
+  private val delegated = Map(
+    "gameplay/actions/CardPlay.scala" ->
+      "gameplay/actions/cardplay/CardPlayProcedure.scala")
+
+  private def read(relative: String): String =
+    Files.readString(root.resolve(relative))
+
+  private def sources: Vector[String] = Files.walk(root).iterator.asScala
+    .filter(_.toString.endsWith(".scala")).map(p => root.relativize(p).toString)
+    .toVector
+
+  test("every file that discards a card in play attaches DiscardRestrictions") {
+    val building = sources.filter(path => !path.startsWith("model/") &&
+      !path.startsWith("serialization/") && discards.findFirstIn(read(path)).nonEmpty)
+    assert(building.nonEmpty)
+    val unguarded = building.filter { path =>
+      val attached = delegated.getOrElse(path, path)
+      !read(attached).contains("DiscardRestrictions")
+    }
+    assertEquals(unguarded, Vector.empty[String])
+  }
+
+  test("CardPlay's callers that build a play attach them") {
+    assert(read("gameplay/actions/CardPlay.scala")
+      .contains("new DiscardRestrictions"))
+    assert(read("gameplay/actions/cardplay/CardPlayProcedure.scala")
+      .contains("new DiscardRestrictions"))
+  }
+}
+```
+
+Create `src/test/scala/oathdigital/gameplay/DiscardRestrictionsSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import oathdigital.catalog.CardRestrictions
+import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.operations.DiscardRestrictions
+import oathdigital.gameplay.powers.CardStaging
+import oathdigital.gameplay.setup.FirstGameSetupFixture._
+import oathdigital.model._
+
+/** The discard restrictions: a locked denizen, an intact edifice and a
+  * modifier selected for the running action cannot be discarded, whichever
+  * path discards them, and a card that can be discarded is unaffected.
+  */
+class DiscardRestrictionsSuite extends munit.FunSuite {
+  import PlacementFixture._
+
+  private val restrictions = new DiscardRestrictions(catalog,
+    actorOf(initialReady).player)
+  private val lockedCard = DenizenId(catalog.denizens.find(
+    _.restrictions == CardRestrictions.LockedAdviserOnly).get.id.value)
+  private val hall = EdificeId("E16")
+  private val wildCry = DenizenId("189")
+  private val actor = actorOf(initialReady).player
+
+  private def discard(card: DenizenId, from: Location): Discard.Denizen =
+    Discard.Denizen(card, PositionedLocation(from), Region.Provinces,
+      catalog.suitOf(card).get, 0, 0, actor)
+
+  private def refused(ready: ReadyGame, operation: CoreOperation): Boolean =
+    restrictions.reason(ready, operation).nonEmpty
+
+  private def holding(ready: ReadyGame, card: DenizenId,
+      orientation: Orientation = Orientation.FaceUp): ReadyGame =
+    CardStaging.without(ready, card).updateCurrent(c => c.copy(players =
+      c.players.map(p => if (p.player == actor) p.copy(advisers = p.advisers :+
+        DenizenState(card, orientation, Tokens.empty)) else p)))
+
+  private def selecting(ready: ReadyGame, powers: PowerId*): ReadyGame =
+    ready.updateCurrent(_.copy(walkerModifiers = powers.toVector))
+
+  test("a locked adviser cannot be discarded from play, and reports why") {
+    val ready = holding(initialReady, lockedCard)
+    val reason = restrictions.reason(ready,
+      discard(lockedCard, Location.PlayArea(actor))).get
+    assertEquals(reason.code, "locked")
+    assertEquals(reason.kind, OperationReasonKind.Impossible)
+  }
+
+  test("a locked adviser is locked only while it is faceup") {
+    val facedown = holding(initialReady, lockedCard, Orientation.FaceDown)
+    assert(!refused(facedown, discard(lockedCard, Location.PlayArea(actor))))
+  }
+
+  test("a locked card drawn by a Search can still be discarded from the hand") {
+    assert(!refused(initialReady, discard(lockedCard, Location.Hand(actor))))
+  }
+
+  test("an ordinary adviser can be discarded") {
+    val card = plain(initialReady).head
+    assert(!refused(holding(initialReady, card),
+      discard(card, Location.PlayArea(actor))))
+  }
+
+  private def edificeAt(side: EdificeSide): (ReadyGame, SiteId) = {
+    val card = plain(initialReady).head
+    val (ready, _, site) = staged(card,
+      Vector(EdificeState(hall, side, Tokens.empty)))
+    (ruledByActor(ready, site), site)
+  }
+
+  private def edificeDiscard(site: SiteId) = Discard.RuinedEdifice(hall,
+    PositionedLocation(Location.Site(site)), catalog.suitOf(hall).get, 0, 0,
+    actor)
+
+  test("an intact edifice is locked, and a ruined one is not") {
+    val (intact, site) = edificeAt(EdificeSide.Intact)
+    assertEquals(restrictions.reason(intact, edificeDiscard(site)).map(_.code),
+      Some("locked"))
+    val (ruined, ruinedSite) = edificeAt(EdificeSide.Ruined)
+    assert(!refused(ruined, edificeDiscard(ruinedSite)))
+  }
+
+  test("a modifier selected for the running action cannot be discarded") {
+    val ready = holding(initialReady, wildCry)
+    val operation = discard(wildCry, Location.PlayArea(actor))
+    assert(!refused(ready, operation))
+    val active = selecting(ready, PowerId("denizen.wild-cry"))
+    assertEquals(restrictions.reason(active, operation).map(_.code),
+      Some("active-modifier"))
+    // A different modifier selected leaves the card free.
+    assert(!refused(selecting(ready, PowerId("denizen.tents")), operation))
+  }
+
+  test("a relic modifier selected for the running action cannot be discarded") {
+    val relic = Discard.Relic(RelicId("R20"),
+      PositionedLocation(Location.PlayArea(actor)), 0, actor)
+    assert(!refused(initialReady, relic))
+    assert(refused(selecting(initialReady,
+      PowerId("relic.dragonskin-drum")), relic))
+  }
+
+  // ---- The card-play path ----
+
+  private def siteChoice(ready: ReadyGame, card: DenizenId): CardPlay.Choice =
+    CardPlay.legalChoices(catalog, ready, actor, card,
+      CardPlay.Origin.TemporaryHand)
+      .find(_.placement.isInstanceOf[SearchPlacement.Site]).get
+
+  /** A full site whose Homeland is the Hall, so the played card may replace one
+    * of its cards, and the actor rules it.
+    */
+  private def fullHomeland(side: EdificeSide)
+      : (ReadyGame, DenizenId, Vector[DenizenId]) = {
+    val hallSuit = catalog.suitOf(hall).get
+    val cards = plain(initialReady)
+    val card = cards.find(catalog.suitOf(_).contains(hallSuit)).get
+    val (probe, _, site) = staged(card, Vector.empty)
+    val capacity = catalog.sites.find(_.id == site).get.capacity
+    val fillers = cards.filter(_ != card).take(capacity - 1)
+    val (ready, _, _) = staged(card, fillers.map(denizen(_)) :+
+      EdificeState(hall, side, Tokens.empty))
+    (ruledByActor(ready, site), card, fillers)
+  }
+
+  test("a replacement can never be an intact edifice") {
+    val (ready, card, fillers) = fullHomeland(EdificeSide.Intact)
+    assertEquals(siteChoice(ready, card).replacements.toSet,
+      fillers.toSet[CardId])
+  }
+
+  test("a ruined edifice can be the replacement, and is discarded, not buried") {
+    val (ready, card, fillers) = fullHomeland(EdificeSide.Ruined)
+    val choice = siteChoice(ready, card)
+    assertEquals(choice.replacements.toSet, fillers.toSet[CardId] + hall)
+    val planned = CardPlay.plannedOperations(catalog, ready, actor, card,
+      SearchPlacement.Site(Some(hall)), CardPlay.Origin.TemporaryHand)
+      .toOption.get
+    assert(planned.exists(_.isInstanceOf[Discard.RuinedEdifice]))
+    assert(!planned.exists(_.isInstanceOf[Bury]))
+  }
+
+  test("a locked adviser is not offered as the replacement of a faceup adviser") {
+    val card = plain(initialReady).head
+    val extras = plain(initialReady).filter(_ != card).take(2)
+    val (staged1, _, _) = staged(card, Vector.empty)
+    val current = staged1.game.current
+    val full = staged1.updateCurrent(_.copy(
+      commonCards = current.commonCards.copy(worldDeck =
+        current.commonCards.worldDeck.filterNot(id =>
+          extras.contains(id) || id == lockedCard)),
+      players = current.players.map(p => if (p.player == actor)
+        p.copy(advisers = (extras :+ lockedCard).map(id => DenizenState(id,
+          Orientation.FaceDown, Tokens.empty))) else p)))
+    val faceup = CardPlay.legalChoices(catalog, full, actor, card,
+      CardPlay.Origin.TemporaryHand).find(_.placement ==
+      SearchPlacement.Adviser(Orientation.FaceUp, None)).get
+    assertEquals(faceup.replacements.toSet, extras.toSet[CardId])
+  }
+}
+```
+
+Create `src/test/scala/oathdigital/gameplay/powers/CardStaging.scala`:
+
+```scala
+package oathdigital.gameplay.powers
+
+import oathdigital.model._
+
+/** Takes a card out of wherever the first game put it, so a fixture can place
+  * it somewhere else without leaving a duplicate. `PowerFixture` removes a card
+  * from the world deck or the relic deck only, but the first game also deals
+  * cards to sites, regional discards and advisers.
+  */
+object CardStaging {
+  def without(ready: ReadyGame, id: CardId): ReadyGame = ready.updateCurrent {
+    current =>
+      val cards = current.commonCards
+      current.copy(
+        commonCards = cards.copy(
+          worldDeck = cards.worldDeck.filterNot(_ == id),
+          relicDeck = cards.relicDeck.filterNot(_ == id),
+          edificeDeck = cards.edificeDeck.filterNot(_ == id),
+          regionalDiscards = cards.regionalDiscards.view
+            .mapValues(_.filterNot(_ == id)).toMap),
+        setAsideRelics = current.setAsideRelics.filterNot(_ == id),
+        temporaryHands = current.temporaryHands.view
+          .mapValues(_.filterNot(_ == id)).toMap,
+        players = current.players.map(player => player.copy(
+          advisers = player.advisers.filterNot(_.id == id),
+          relics = player.relics.filterNot(_.id == id))),
+        map = current.map.copy(sites = current.map.sites.view.mapValues(site =>
+          site.copy(denizens = site.denizens.filterNot(_.id == id),
+            relics = site.relics.filterNot(_.id == id))).toMap))
+  }
+}
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `./sbtw "Test/compile"`
+Expected: the new tests FAIL.
+
+- [ ] **Step 3: Implement**
+
+Create `src/main/scala/oathdigital/gameplay/operations/DiscardRestrictions.scala`:
+
+```scala
+package oathdigital.gameplay.operations
+
+import oathdigital.catalog.{CardRestrictions, ExecutableCatalog}
+import oathdigital.model._
+
+/** Catalog-backed restrictions on discarding a card, for the acting player.
+  * Every path that discards a card in play attaches one (see
+  * `DiscardRestrictionsCoverageSuite`), so a card that cannot be discarded is
+  * never offered as a choice and is refused if it is named anyway.
+  *
+  * A card cannot be discarded when:
+  *
+  *  - it is a locked denizen (`LockedAdviserOnly`) that is faceup: a locked
+  *    card is locked only while it is faceup, and a facedown adviser can be
+  *    discarded;
+  *  - it is an intact edifice, which is locked (`Discard.RuinedEdifice` is the
+  *    discard of an edifice, and only a ruined one can be discarded);
+  *  - it prints a power that is selected for the action being run. A modifier
+  *    a player selected at the start of an action stays in play until the
+  *    action ends;
+  *  - it is protected by the Hall of Ministers: an enemy of the ruler acts as if
+  *    the denizens and relics at the ruler's sites were locked.
+  *
+  * `Bury` is not a discard and ignores locked, so it never reaches this class.
+  * The selected modifiers are read from `walkerModifiers`, which the walker
+  * records when an action first parks. An action's first walk, before its first
+  * park, does not see them, so a choice offered at that first park may include
+  * a card the next command refuses (a placement whose only replacement is an
+  * active modifier); the refusal itself is exact.
+  */
+final class DiscardRestrictions(catalog: ExecutableCatalog,
+    actor: PlayerId) extends OperationRestriction {
+  private val hallPower = PowerId("edifice.e16.intact")
+
+  override def reason(ready: ReadyGame,
+      operation: CoreOperation): Option[OperationReason] =
+    lockedReason(ready, operation).orElse(hallReason(ready, operation))
+
+  private def refuse(code: String, detail: String): Option[OperationReason] =
+    Some(OperationReason(code, detail, OperationReasonKind.Impossible))
+
+  private def lockedReason(ready: ReadyGame, operation: CoreOperation)
+      : Option[OperationReason] = operation match {
+    case value: Discard.Denizen if inPlay(value.from.location) =>
+      if (faceup(ready, value.card, value.from.location) &&
+          catalog.denizens.find(_.id.value == value.card.value)
+          .exists(d => d.restrictions == CardRestrictions.LockedAdviserOnly ||
+            d.restrictions == CardRestrictions.Locked))
+        refuse("locked", s"${value.card.value} is locked and cannot be discarded")
+      else active(ready, value.card)
+    case value: Discard.RuinedEdifice =>
+      if (intact(ready, value.card, value.from.location))
+        refuse("locked",
+          s"${value.card.value} is an intact edifice and cannot be discarded")
+      else None
+    case value: Discard.Relic if inPlay(value.from.location) =>
+      active(ready, value.card)
+    case _ => None
+  }
+
+  /** Only a card in play is locked. A card drawn by a Search and discarded from
+    * the temporary hand is not.
+    */
+  private def inPlay(from: Location): Boolean = from match {
+    case _: Location.Site | _: Location.PlayArea => true
+    case _ => false
+  }
+
+  /** A denizen at a site is always faceup. An adviser is as it is held. */
+  private def faceup(ready: ReadyGame, card: DenizenId, from: Location)
+      : Boolean = from match {
+    case Location.PlayArea(owner) => ready.game.current.players
+      .find(_.player == owner).exists(_.advisers.exists {
+        case held: DenizenState =>
+          held.id == card && held.orientation == Orientation.FaceUp
+        case _ => false
+      })
+    case _ => true
+  }
+
+  /** `card` prints a power selected for the running action. */
+  private def active(ready: ReadyGame, card: CardId): Option[OperationReason] =
+    if (ready.game.current.walkerModifiers.exists(power =>
+        printedBy(power).contains(card)))
+      refuse("active-modifier", s"${card.value} is a modifier selected for " +
+        "this action and cannot be discarded")
+    else None
+
+  private def printedBy(power: PowerId): Option[CardId] =
+    catalog.denizens.find(_.powers.exists(_.id == power))
+      .map(card => DenizenId(card.id.value): CardId)
+      .orElse(catalog.relics.find(_.powers.exists(_.id == power))
+        .map(card => RelicId(card.id.value): CardId))
+
+  private def intact(ready: ReadyGame, card: EdificeId,
+      from: Location): Boolean = from match {
+    case Location.Site(site) => ready.game.current.map.sites.get(site)
+      .exists(_.denizens.exists {
+        case edifice: EdificeState =>
+          edifice.id == card && edifice.side == EdificeSide.Intact
+        case _ => false
+      })
+    case _ => false
+  }
+
+  private def hallReason(ready: ReadyGame, operation: CoreOperation)
+      : Option[OperationReason] = {
+    val source = operation match {
+      case value: Discard.Denizen => Some(value.from.location)
+      case value: Discard.Vision => Some(value.from.location)
+      case value: Discard.RuinedEdifice => Some(value.from.location)
+      case value: Discard.Relic => Some(value.from.location)
+      case _ => None
+    }
+    source.collect { case Location.Site(site) => site }.flatMap { site =>
+      val current = ready.game.current
+      val actorSide = current.players.find(_.player == actor).flatMap { player =>
+        ready.game.campaign.lineages.get(player.lineage).map { lineage =>
+          if (lineage.role.isImperial) SiteRuler.Empire
+          else SiteRuler.Player(actor)
+        }
+      }
+      val targetRuler = current.map.sites.get(site).flatMap(state =>
+        SiteRule.ruler(state.forces, current.players).toOption)
+      for {
+        sourceSide <- actorSide
+        ruler <- targetRuler
+        if SiteRule.enemies(sourceSide, ruler)
+        if current.map.sites.exists { case (_, state) =>
+          SiteRule.ruler(state.forces, current.players).toOption.contains(ruler) &&
+            state.denizens.exists {
+              case edifice: EdificeState if edifice.side == EdificeSide.Intact =>
+                catalog.edifices.find(_.id.value == edifice.id.value)
+                  .exists(_.intact.powers.exists(_.id == hallPower))
+              case _ => false
+            }
+        }
+      } yield OperationReason("discard-immune",
+        s"cards at site ${site.value} cannot be discarded by ${actor.value}",
+        OperationReasonKind.Impossible)
+    }
+  }
+}
+```
+
+In `src/main/scala/oathdigital/gameplay/actions/CardPlay.scala`, replace:
+
+```scala
+      case Some(value: EdificeState) if !value.tokens.isEmpty =>
+        suitOf(catalog, value.id).map { replacedSuit =>
+          PlacementPlan(kept, favor, Vector.empty, Vector.empty,
+            tokenEdifice = Some((value.id, replacedSuit,
+              value.tokens.favor, value.tokens.secrets)))
+        }
+      case Some(value: EdificeState) =>
+        Right(PlacementPlan(kept, favor, Vector.empty,
+          Vector(value.id -> site)))
+```
+
+with:
+
+```scala
+      case Some(value: EdificeState) =>
+        suitOf(catalog, value.id).map { replacedSuit =>
+          PlacementPlan(kept, favor, Vector.empty, Vector.empty,
+            tokenEdifice = Some((value.id, replacedSuit,
+              value.tokens.favor, value.tokens.secrets)))
+        }
+```
+
+In `src/main/scala/oathdigital/gameplay/actions/CardPlay.scala`, replace:
+
+```scala
+    val edificeOps = plan.discardedEdifices.map { case (id, from) =>
+      Bury(BuryableCard.Edifice(id), from, required = true)
+    } ++ plan.tokenEdifice.toVector.flatMap {
+```
+
+with:
+
+```scala
+    val edificeOps = plan.tokenEdifice.toVector.flatMap {
+```
+
+In `src/main/scala/oathdigital/gameplay/actions/CardPlay.scala`, replace:
+
+```scala
+      discardedEdifices: Vector[(EdificeId, PositionedLocation)],
+```
+
+with:
+
+```scala
+      // Always empty: a replaced edifice is `tokenEdifice`, a discard.
+      discardedEdifices: Vector[(EdificeId, PositionedLocation)],
+```
+
+In `src/main/scala/oathdigital/gameplay/powers/wake/HornedMask.scala`, replace:
+
+```scala
+    BuildOps((live, pending) => take(live, player, pending)))))
+```
+
+with:
+
+```scala
+    BuildOps((live, pending) => take(live, player, pending),
+      restrictions = (_, _) => Vector(
+        new DiscardRestrictions(catalog, player))))))
+```
+
+In `src/main/scala/oathdigital/gameplay/powers/wake/HornedMask.scala`, replace:
+
+```scala
+import oathdigital.gameplay.actions.CardPlay
+```
+
+with:
+
+```scala
+import oathdigital.gameplay.actions.CardPlay
+import oathdigital.gameplay.operations.DiscardRestrictions
+```
+
+- [ ] **Step 4: Run the task's suites**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.DiscardRestrictionsSuite oathdigital.gameplay.DiscardRestrictionsCoverageSuite oathdigital.gameplay.CardPlayProcedureSuite oathdigital.gameplay.PlacementRulesSuite oathdigital.gameplay.powers.wake.HornedMaskSuite oathdigital.gameplay.powers.whenplayed.DazzleSuite oathdigital.gameplay.SearchProcedureSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS (86 tests in these suites and the ones they touch).
+
+- [ ] **Step 5: Run the whole suite and the architecture check**
+
+Run: `./sbtw test` and `python3 scripts/check-architecture.py`
+Expected: PASS, and `architecture check passed`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src
+git commit -m "feat: refuse every discard of a locked card or an active modifier
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+
+### Task 4: A play to a site may discard first
 
 **Files:**
 - Modify: `CardPlay.scala`, `CardPlayProcedure.scala`
@@ -1307,9 +1846,9 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Produces: `CardPlay.Choice(placement, replacements, replacementOptional: Boolean = false)`; `CardPlayProcedure.noReplacement: DecisionOption` (`Button("replace:none")`, label "Discard nothing"), offered first in the replacement decision when the discard is optional.
-- Consumes: Task 2's `PlacementRules.siteDiscardFirst`, `PlacementTree.adjust`, and `PlacementFixture`.
+- Consumes: Task 2's `PlacementRules.siteDiscardFirst`, `PlacementTree.adjust`, and `PlacementFixture`; Task 3's `DiscardRestrictions`.
 
-Ruling for the (slice 4) Mob power: a play to a site may first discard one card of the site's card list, at any capacity. With room the discard is optional, so the replacement decision gains a "discard nothing" option. Without room it is required, and the rule that a full site accepts only a card matching its homeland edifice no longer applies. The discard is the standard one: the card goes facedown to the next region's discard, favor returns to its suit bank and secrets return to the player facedown. An intact edifice is locked and is refused (fact 3); a ruined edifice is buried. No real power sets `siteDiscardFirst` in this slice, so the suite uses a test power.
+Ruling for the (slice 4) Mob power: a play to a site may first discard one card of the site's card list, at any capacity. With room the discard is optional, so the replacement decision gains a "discard nothing" option. Without room it is required, and the rule that a full site accepts only a card matching its homeland edifice no longer applies. The discard is the standard one: the card goes facedown to the next region's discard, favor returns to its suit bank and secrets return to the player facedown. What may be discarded is decided by Task 3: a locked card, an intact edifice and an active modifier are not offered; a ruined edifice is. No real power sets `siteDiscardFirst` in this slice, so the suite uses a test power.
 
 - [ ] **Step 1: Write the tests**
 
@@ -1569,19 +2108,15 @@ with:
     val full = site.denizens.size >= capacity
     if (rules.siteDiscardFirst) replace match {
       // Any site, at any capacity: the discard is optional with room and
-      // required without, and it may name any card of the site's card list
-      // except an intact edifice, which is locked.
+      // required without, and it may name any card of the site's card list.
+      // `DiscardRestrictions` decide what may actually be discarded: a locked
+      // card, an intact edifice and an active modifier may not.
       case None if full => Left(InvalidSearchPlacement(
         "a full site requires a site-card discard"))
       case None => Right(None)
-      case Some(id) => site.denizens.find(_.id == id) match {
-        case Some(edifice: EdificeState) if edifice.side == EdificeSide.Intact =>
-          Left(InvalidSearchPlacement(
-            "an intact edifice is locked and cannot be discarded"))
-        case Some(card) => Right(Some(card))
-        case None => Left(InvalidSearchPlacement(
-          "replacement card is not at the site"))
-      }
+      case Some(id) => site.denizens.find(_.id == id).toRight(
+        InvalidSearchPlacement("replacement card is not at the site"))
+        .map(Some(_))
     }
     else if (!full && replace.isEmpty) Right(None)
 ```
@@ -1726,58 +2261,322 @@ Follow "Recording a sub-slice" below for 2a, then run `./sbtw test`, `python3 sc
 
 ## Sub-slice 2b: Modifier kit and card-play triggers
 
-### Task 4: `SelectedModifier`, `CatalogCards` and the card-play triggers
+### Task 5: The procedure on `PowerCtx` (E9)
+
+**Files:**
+- Modify: `powerresolver/ContributingPower.scala`, `walker/ProcedureWalker.scala`, `walker/WalkerPowerGather.scala`, `OathRulesWalker.scala`
+- Test: `EnclosingProcedureSuite.scala`
+
+**Interfaces:**
+- Produces: `PowerCtx.procedure: Option[ProcedureRef] = None` (a trailing parameter, so no existing construction changes). It is the procedure of the parked position a command resumes, the procedure a modifier is offered for at selection, and `None` for the command that starts a procedure (which has not recorded one yet).
+- Consumes: nothing new.
+
+`WalkCtx` captures the procedure from the state before the walker strips it, and `WalkerPowerGather.applyWindow` passes it to the `PowerCtx` it builds. The places that re-fold a window to resolve a parked path read it from the (unstripped) state they are given. A window that is folded in the first command of a procedure sees `None`; Welcoming Party and Knights Errant hook windows that only a resumed command walks (a card is placed after a decision, a Campaign is chosen by an answer).
+
+- [ ] **Step 1: Write the tests**
+
+Create `src/test/scala/oathdigital/gameplay/EnclosingProcedureSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import scala.collection.mutable.ArrayBuffer
+
+import oathdigital.gameplay.actions.economy.MusterProcedure
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
+import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.model._
+import oathdigital.model.OathState.Ready
+
+/** `PowerCtx.procedure`: the procedure a window is walked for. */
+class EnclosingProcedureSuite extends munit.FunSuite {
+  private val seen = ArrayBuffer.empty[(PowerWindow, Option[ProcedureRef])]
+
+  /** A power that records what it is asked at three Muster windows. */
+  private val probe: ContributingPower = new ContributingPower {
+    def id: PowerId = PowerId("test.enclosing-procedure")
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+    override def resolution: PowerResolution = PowerResolution.PlayerSelected
+    def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
+      PowerWindow.MusterSourceSelection -> Vector.empty,
+      PowerWindow.MusterCost -> Vector.empty)
+    override def applicable(ctx: PowerCtx): Boolean = {
+      seen += ctx.window -> ctx.procedure
+      true
+    }
+  }
+
+  private val rules = new OathRules(catalog,
+    walkerPowerCatalog = WalkerPowers(Vector(probe)))
+
+  private def staged: ReadyGame = EconomyFixture.act()
+  private def actor: PlayerId = staged.game.current.turn.activePlayer
+
+  test("a modifier is selected for the procedure that will run it") {
+    seen.clear()
+    rules.offerableWalkerPowers(staged, actor, ActionRef.Muster)
+    assertEquals(seen.toVector, Vector[(PowerWindow, Option[ProcedureRef])](
+      PowerWindow.MusterModifierSelection -> Some(ActionRef.Muster)))
+  }
+
+  test("the command that starts a procedure has not recorded it yet, and a " +
+      "resume walks its windows for it") {
+    seen.clear()
+    val started = rules.startWalker(Ready(staged), ActionRef.Muster, actor,
+      Vector(probe.id)).toOption.get
+    assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
+    seen.clear()
+    rules.resolveWalker(started.state, actor, MusterProcedure.decisionId,
+      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
+        EconomyFixture.plainId))).toOption.get
+    assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
+      seen.toString)
+  }
+
+  test("a context built without one names none") {
+    val ctx = PowerCtx(staged, actor, probe.source, PowerWindow.MusterCost,
+      Vector.empty, Sequence(Vector.empty))
+    assertEquals(ctx.procedure, None)
+  }
+}
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `./sbtw "Test/compile"`
+Expected: FAIL to compile, for example `value procedure is not a member of oathdigital.gameplay.powerresolver.PowerCtx`.
+
+- [ ] **Step 3: Implement**
+
+In `src/main/scala/oathdigital/gameplay/powerresolver/ContributingPower.scala`, replace:
+
+```scala
+import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
+```
+
+with:
+
+```scala
+import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+```
+
+In `src/main/scala/oathdigital/gameplay/powerresolver/ContributingPower.scala`, replace:
+
+```scala
+    /** Exact windowed operation a contribution is being collected for. */
+    operation: Operation
+)
+```
+
+with:
+
+```scala
+    /** Exact windowed operation a contribution is being collected for. */
+    operation: Operation,
+    /** The procedure the window is walked for, when it is known: the
+      * procedure of the parked position a command resumes, or the one a
+      * modifier is being selected for. `None` for the command that starts a
+      * procedure, which has not recorded one yet.
+      */
+    procedure: Option[ProcedureRef] = None
+)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
+
+```scala
+      dice: WalkerDice
+  )
+```
+
+with:
+
+```scala
+      dice: WalkerDice,
+      /** The procedure of the parked position being resumed. */
+      procedure: Option[oathdigital.model.ProcedureRef]
+  )
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
+
+```scala
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice),
+```
+
+with:
+
+```scala
+    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
+      state.game.current.walkerProcedure),
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace (every occurrence, 2 in all):
+
+```scala
+      state.game.current.turn.activePlayer, pending.answered, powers, dice),
+```
+
+with:
+
+```scala
+      state.game.current.turn.activePlayer, pending.answered, powers, dice,
+      state.game.current.walkerProcedure),
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
+
+```scala
+    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
+      ctx.activePlayer, ctx.powers, path, children)
+```
+
+with:
+
+```scala
+    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
+      ctx.activePlayer, ctx.powers, path, children, ctx.procedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
+      ops: Vector[Operation]): (Vector[Operation], Vector[PowerId]) =
+```
+
+with:
+
+```scala
+      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
+      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef])
+      : (Vector[Operation], Vector[PowerId]) =
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+          PowerCtx(state, activePlayer, power.source, w, path, operation)
+```
+
+with:
+
+```scala
+          PowerCtx(state, activePlayer, power.source, w, path, operation,
+            procedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+      power => PowerCtx(state, activePlayer, power.source, window, path, operation)
+```
+
+with:
+
+```scala
+      power => PowerCtx(state, activePlayer, power.source, window, path,
+        operation, state.game.current.walkerProcedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+        val (folded, _) = applyWindow(branch.window, branch, state,
+          activePlayer, powers, path, selected)
+```
+
+with:
+
+```scala
+        val (folded, _) = applyWindow(branch.window, branch, state,
+          activePlayer, powers, path, selected, state.game.current.walkerProcedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+            val (folded, _) = applyWindow(Some(w), leaf, state,
+              activePlayer, powers, path, Vector(leaf))
+```
+
+with:
+
+```scala
+            val (folded, _) = applyWindow(Some(w), leaf, state,
+              activePlayer, powers, path, Vector(leaf),
+              state.game.current.walkerProcedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+        val (folded, _) = applyWindow(composite.window, composite, state,
+          activePlayer, powers, path, composite.children)
+```
+
+with:
+
+```scala
+        val (folded, _) = applyWindow(composite.window, composite, state,
+          activePlayer, powers, path, composite.children,
+          state.game.current.walkerProcedure)
+```
+
+In `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`, replace:
+
+```scala
+        power.applicable(PowerCtx(ready, actor, power.source, window,
+          Vector.empty, Sequence(Vector.empty, Some(window)))))
+```
+
+with:
+
+```scala
+        power.applicable(PowerCtx(ready, actor, power.source, window,
+          Vector.empty, Sequence(Vector.empty, Some(window)),
+          Some(procedure))))
+```
+
+- [ ] **Step 4: Run the task's suites**
+
+Run: `./sbtw "testOnly oathdigital.gameplay.EnclosingProcedureSuite oathdigital.gameplay.ProcedureWalkerSuite oathdigital.gameplay.ContributingPowerSuite oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.OathRulesWalkerPowerSuite oathdigital.gameplay.OptionRestrictionSuite oathdigital.gameplay.CatacombsContributionSuite oathdigital.gameplay.TravelSitePowersSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS (121 tests in these suites and the ones they touch).
+
+- [ ] **Step 5: Run the whole suite and the architecture check**
+
+Run: `./sbtw test` and `python3 scripts/check-architecture.py`
+Expected: PASS, and `architecture check passed`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src
+git commit -m "feat: name the enclosing procedure on PowerCtx
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
+```
+
+
+### Task 6: `SelectedModifier`, `CatalogCards` and the card-play triggers
 
 **Files:**
 - Create: `powers/SelectedModifier.scala`, `powers/CatalogCards.scala`, `powers/cardplay/{WildCry,WelcomingParty,Gossip,CardPlayTriggers}.scala`
 - Modify: `powers/WalkerPowerCatalog.scala`
-- Test: `powers/CardStaging.scala`, `powers/SearchFixture.scala`, `powers/SelectedModifierSuite.scala`, `powers/cardplay/{WildCry,WelcomingParty,Gossip}Suite.scala`
+- Test: `powers/SearchFixture.scala`, `powers/SelectedModifierSuite.scala`, `powers/cardplay/{WildCry,WelcomingParty,Gossip}Suite.scala`
 
 **Interfaces:**
-- Produces: `trait SelectedModifier extends ContributingPower` with `catalog`, `cardId: CardId`, `actions: Set[MajorActionType]`, `cost: Cost = Cost.free`, `appliesAt(ctx): Boolean = true`, `selectable(ready, actor): Boolean` and a protected `payment(actor): CoreOperation`; `SelectedModifier.selectionAction(window): Option[MajorActionType]`. `CatalogCards.denizen/relic/edifice(catalog, power): Option[...]`. `WildCry`, `WelcomingParty`, `Gossip` (each with `id`, `forCatalog(catalog)`), `CardPlayTriggers.forCatalog(catalog)`. Test support `CardStaging.without(ready, id)`, `SearchFixture` (`rules`, `staged(top, supply)`, `denizensOf(suit)`, `start`, `keep`, `place`, `play`, `after`).
-- Consumes: Task 1's `CardPlayedFaceup`/`CardPlayedFacedown` and windows; `PowerAccess.locate`, `Costs.affordable`, `Costs.onCard`, `CatalogResolution.of`, `PlayerFacts.forceKind`.
+- Produces: `trait SelectedModifier extends ContributingPower` with `catalog`, `cardId: CardId`, `actions: Set[MajorActionType]`, `cost: Cost = Cost.free`, `appliesAt(ctx): Boolean = true`, `selectable(ready, actor): Boolean` and a protected `payment(actor): CoreOperation`; `SelectedModifier.selectionAction(window): Option[MajorActionType]`. `CatalogCards.denizen/relic/edifice(catalog, power): Option[...]`. `WildCry`, `WelcomingParty`, `Gossip` (each with `id`, `forCatalog(catalog)`), `CardPlayTriggers.forCatalog(catalog)`. Test support `SearchFixture` (`rules`, `staged(top, supply)`, `denizensOf(suit)`, `start`, `keep`, `place`, `replace`, `play`, `playFacedown`, `after`).
+- Consumes: Task 1's `CardPlayedFaceup`/`CardPlayedFacedown` and windows; Task 3's `CardStaging` and active-modifier rule; Task 5's `PowerCtx.procedure`; `PowerAccess.locate`, `Costs.affordable`, `Costs.onCard`, `CatalogResolution.of`, `PlayerFacts.forceKind`.
 
-`SelectedModifier` is the kit the other selected modifiers of this slice stand on (see fact 8). Its `applicable` answers two questions by window: at a `*ModifierSelection` window "may the player select this now?" (its action, `PowerAccess.locate`, `Costs.affordable`), and elsewhere `appliesAt`, which must read only the node the power is hooked on, because the walker folds every window again on each resume.
+`SelectedModifier` is the kit the other selected modifiers of this slice stand on (see fact 11). Its `applicable` answers two questions by window: at a `*ModifierSelection` window "may the player select this now?" (its action, `PowerAccess.locate`, `Costs.affordable`), and elsewhere `appliesAt`, which must read only the node the power is hooked on, because the walker folds every window again on each resume.
 
-Wild Cry gains 1 Supply and 2 warbands when a beast denizen is played faceup. Welcoming Party gains 1 favor from the Hearth bank when a denizen is played faceup. Both are read off `CardPlayedFaceup`, exclude their own card, and are silent on a facedown play, a discard, and (Welcoming Party) a Vision. Gossip gives its holder 1 favor from the Discord bank when another player places an adviser facedown, and reads `CardPlayedFacedown`. "Not a facedown adviser" for Welcoming Party is taken as the placement (open question 1).
+- **Wild Cry** gains 1 Supply and 2 warbands when a beast denizen is played faceup. It excludes its own card, and is silent on a facedown play and a discard. It cannot be discarded while selected (Task 3), which its suite shows through a full adviser area.
+- **Welcoming Party** gains 1 favor from the Hearth bank when a denizen is played whose origin was not a facedown adviser. The origin is where the card comes from, not where it goes (product decision): a card drawn by a Search and then played to a site, as a faceup adviser or as a facedown adviser triggers it, and a card that was a facedown adviser and is played faceup by the Play-Facedown-Adviser action does not. The hook does not carry the origin, so the power reads `ctx.procedure` (Task 5). A Vision is not a denizen and a card does not trigger on its own play.
+- **Gossip** gives its holder 1 favor from the Discord bank when another player places an adviser facedown, and reads `CardPlayedFacedown`.
 
 - [ ] **Step 1: Write the tests**
-
-Create `src/test/scala/oathdigital/gameplay/powers/CardStaging.scala`:
-
-```scala
-package oathdigital.gameplay.powers
-
-import oathdigital.model._
-
-/** Takes a card out of wherever the first game put it, so a fixture can place
-  * it somewhere else without leaving a duplicate. `PowerFixture` removes a card
-  * from the world deck or the relic deck only, but the first game also deals
-  * cards to sites, regional discards and advisers.
-  */
-object CardStaging {
-  def without(ready: ReadyGame, id: CardId): ReadyGame = ready.updateCurrent {
-    current =>
-      val cards = current.commonCards
-      current.copy(
-        commonCards = cards.copy(
-          worldDeck = cards.worldDeck.filterNot(_ == id),
-          relicDeck = cards.relicDeck.filterNot(_ == id),
-          edificeDeck = cards.edificeDeck.filterNot(_ == id),
-          regionalDiscards = cards.regionalDiscards.view
-            .mapValues(_.filterNot(_ == id)).toMap),
-        setAsideRelics = current.setAsideRelics.filterNot(_ == id),
-        temporaryHands = current.temporaryHands.view
-          .mapValues(_.filterNot(_ == id)).toMap,
-        players = current.players.map(player => player.copy(
-          advisers = player.advisers.filterNot(_.id == id),
-          relics = player.relics.filterNot(_.id == id))),
-        map = current.map.copy(sites = current.map.sites.view.mapValues(site =>
-          site.copy(denizens = site.denizens.filterNot(_.id == id),
-            relics = site.relics.filterNot(_.id == id))).toMap))
-  }
-}
-```
 
 Create `src/test/scala/oathdigital/gameplay/powers/SearchFixture.scala`:
 
@@ -1880,6 +2679,30 @@ object SearchFixture {
   } yield placed.copy(events = started.events ++ chosen.events ++
     placed.events)).fold(error => throw new AssertionError(error.toString),
     identity)
+
+  /** The Play-Facedown-Adviser action: the actor plays `card`, which they hold
+    * as a facedown adviser, with `button`. The events are those of the whole
+    * action.
+    */
+  def playFacedown(ready: ReadyGame, modifiers: Vector[PowerId],
+      card: DenizenId, button: String): OathTransition = (for {
+    started <- rules.startWalker(Ready(ready), ActionRef.PlayFacedownAdviser,
+      actor, modifiers, Vector(DecisionOptionRef.Denizen(card)))
+    placed <- place(started, card, button)
+  } yield placed.copy(events = started.events ++ placed.events)).fold(
+    error => throw new AssertionError(error.toString), identity)
+
+  /** Answers the replacement decision of a play with `chosen`. */
+  def replace(from: OathTransition, card: WorldCardId, chosen: CardId)
+      : Either[OathViolation, OathTransition] =
+    rules.resolveWalker(from.state, actor,
+      s"cardplay.replace.${card.kind}.${card.value}",
+      DecisionAnswer.ChooseOneAnswer(chosen match {
+        case id: DenizenId => DecisionOptionRef.Denizen(id)
+        case id: VisionId => DecisionOptionRef.Vision(id)
+        case other => DecisionOptionRef.Button(
+          s"replace:${other.kind}:${other.value}")
+      }))
 }
 ```
 
@@ -2104,7 +2927,8 @@ class WelcomingPartySuite extends munit.FunSuite {
       .toOption.get.map(_.id).contains(WelcomingParty.id))
   }
 
-  test("a denizen played to a site gains 1 favor from the Hearth bank") {
+  test("a card drawn by a Search and played to a site gains 1 favor from the " +
+      "Hearth bank") {
     val ready = withParty(plain)
     val done = play(ready, modifiers, plain.head, "site")
     val after = SearchFixture.after(done)
@@ -2115,7 +2939,7 @@ class WelcomingPartySuite extends munit.FunSuite {
     assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
   }
 
-  test("a denizen played as a faceup adviser gains it too, of any suit") {
+  test("a card played as a faceup adviser gains it too, of any suit") {
     val ready = withParty(plain)
     val after = SearchFixture.after(play(ready, modifiers, plain.head,
       "adviser-faceup"))
@@ -2123,13 +2947,30 @@ class WelcomingPartySuite extends munit.FunSuite {
     assertEquals(favor(after), favor(ready) + 1)
   }
 
-  test("a facedown play, a discard and an unselected power gain nothing") {
+  test("a card drawn by a Search and placed facedown was not a facedown " +
+      "adviser, so it gains it too") {
     val ready = withParty(plain)
-    Vector("adviser-facedown", "discard").foreach { button =>
-      val after = SearchFixture.after(play(ready, modifiers, plain.head, button))
+    val done = play(ready, modifiers, plain.head, "adviser-facedown")
+    val after = SearchFixture.after(done)
+    assertEquals(hearthBank(after), hearthBank(ready) - 1)
+    assertEquals(favor(after), favor(ready) + 1)
+    assertEquals(PaidActionHarness.replayed(rules, ready, done.events), after)
+  }
+
+  test("a card that was a facedown adviser does not, played faceup or to a site") {
+    val card = plain.head
+    val ready = asAdviser(withParty(plain.drop(1)), card, Orientation.FaceDown)
+    Vector("adviser-faceup", "site").foreach { button =>
+      val after = SearchFixture.after(playFacedown(ready, modifiers, card, button))
       assertEquals(hearthBank(after), hearthBank(ready), button)
-      assertEquals(favor(after), favor(ready), button)
     }
+  }
+
+  test("a discard and an unselected power gain nothing") {
+    val ready = withParty(plain)
+    val discarded = SearchFixture.after(play(ready, modifiers, plain.head,
+      "discard"))
+    assertEquals(hearthBank(discarded), hearthBank(ready))
     val unselected = SearchFixture.after(play(ready, Vector.empty, plain.head,
       "adviser-faceup"))
     assertEquals(hearthBank(unselected), hearthBank(ready))
@@ -2140,12 +2981,19 @@ class WelcomingPartySuite extends munit.FunSuite {
     val vision = CardPlayedFaceup(VisionRules.Faith,
       RuleSourceRef.Adviser(actor, VisionRules.Faith))
     val ctx = PowerCtx(atHome(base, party), actor, power.source,
-      PowerWindow.ActionCardPlayedFaceup, Vector.empty, vision)
+      PowerWindow.ActionCardPlayedFaceup, Vector.empty, vision,
+      Some(ActionRef.Search))
     assert(!power.applicable(ctx))
     assert(!power.applicable(ctx.copy(operation = CardPlayedFaceup(party,
       RuleSourceRef.SiteCard(home(base), party)))))
-    assert(power.applicable(ctx.copy(operation = CardPlayedFaceup(plain.head,
-      RuleSourceRef.SiteCard(home(base), plain.head)))))
+    val played = CardPlayedFaceup(plain.head,
+      RuleSourceRef.SiteCard(home(base), plain.head))
+    assert(power.applicable(ctx.copy(operation = played)))
+    assert(!power.applicable(ctx.copy(operation = played,
+      procedure = Some(ActionRef.PlayFacedownAdviser))))
+    assert(!power.applicable(ctx.copy(operation =
+      CardPlayedFacedown(VisionRules.Faith, actor),
+      window = PowerWindow.ActionCardPlayedFacedown)))
   }
 
   test("an empty Hearth bank gives nothing") {
@@ -2164,7 +3012,7 @@ Create `src/test/scala/oathdigital/gameplay/powers/cardplay/WildCrySuite.scala`:
 package oathdigital.gameplay.powers.cardplay
 
 import oathdigital.gameplay.powerresolver.PowerCtx
-import oathdigital.gameplay.powers.{PlayerFacts, PowerFixture, SearchFixture}
+import oathdigital.gameplay.powers.{CardStaging, PlayerFacts, PowerFixture, SearchFixture}
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerOutcome, WalkerPowers, WalkerStepRecorded}
@@ -2280,6 +3128,26 @@ class WildCrySuite extends munit.FunSuite {
     val steps = outcome.asInstanceOf[WalkerOutcome.Finished].events
       .collect { case step: WalkerStepRecorded => step.ops }.flatten
     assertEquals(steps.count(_.isInstanceOf[GainSupply]), 1)
+  }
+
+  test("Wild Cry cannot be discarded while it is selected: it is not offered " +
+      "as the replacement of a faceup adviser") {
+    val extra = denizensOf(Suit.Arcane).head
+    val kept = beast.head
+    // The actor starts with one facedown adviser. With one more and Wild Cry,
+    // the area of three is full and a faceup play asks for a replacement.
+    val holding = asAdviser(CardStaging.without(asAdviser(withCry(kept), extra,
+      Orientation.FaceDown), wildCry), wildCry)
+    val before = player(holding).advisers.map(_.id).toSet
+    assertEquals(before.size, 3)
+    val started = start(holding, modifiers).toOption.get
+    val chosen = keep(started, kept).toOption.get
+    val asked = place(chosen, kept, "adviser-faceup").toOption.get
+    assert(replace(asked, kept, wildCry).isLeft, "Wild Cry was discardable")
+    val done = replace(asked, kept, extra).toOption.get
+    val after = player(SearchFixture.after(done)).advisers.map(_.id).toSet
+    assert(after.contains(wildCry) && after.contains(kept))
+    assert(!after.contains(extra))
   }
 }
 ```
@@ -2484,26 +3352,35 @@ import oathdigital.gameplay.powers.{CatalogCards, SelectedModifier}
 import oathdigital.model._
 
 /** Welcoming Party (card 50), a selected Search modifier: when you play a
-  * denizen that is not placed as a facedown adviser, gain 1 favor from the
-  * Hearth bank. A Vision is not a denizen, and a card does not trigger on its
-  * own play.
+  * denizen that was not a facedown adviser, gain 1 favor from the Hearth bank.
+  * A Vision is not a denizen, and a card does not trigger on its own play.
   *
-  * "Not a facedown adviser" is the placement: a card played to a site or as a
-  * faceup adviser triggers it, whatever it was played from. The favor is
-  * best-effort, so an empty Hearth bank gives nothing.
+  * "Not a facedown adviser" is about where the card comes from, not where it
+  * goes. A card drawn by a Search and played (to a site, as a faceup adviser or
+  * as a facedown adviser) was not a facedown adviser, so it triggers the power.
+  * A card that was a facedown adviser and is played faceup by the
+  * Play-Facedown-Adviser action does not. The played-card hook does not carry
+  * the origin, so the power reads it from the procedure the window is walked
+  * for (`PowerCtx.procedure`). The favor is best-effort, so an empty Hearth bank
+  * gives nothing.
   */
 final case class WelcomingParty private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier {
   def id: PowerId = WelcomingParty.id
   def actions: Set[MajorActionType] = Set(MajorActionType.Search)
 
+  private val gain = Transform((ctx: PowerCtx, children: Vector[Operation]) =>
+    children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth, WelcomingParty.Favor))
+
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-    PowerWindow.ActionCardPlayedFaceup -> Vector(Transform((ctx, children) =>
-      children :+ Gain.Favor(ctx.activePlayer, Suit.Hearth,
-        WelcomingParty.Favor))))
+    PowerWindow.ActionCardPlayedFaceup -> Vector(gain),
+    PowerWindow.ActionCardPlayedFacedown -> Vector(gain))
 
   override def appliesAt(ctx: PowerCtx): Boolean = ctx.operation match {
-    case CardPlayedFaceup(card: DenizenId, _) => card != cardId
+    case CardPlayedFaceup(card: DenizenId, _) => card != cardId &&
+      !ctx.procedure.contains(ActionRef.PlayFacedownAdviser)
+    // A card is placed facedown only from a hand.
+    case CardPlayedFacedown(card: DenizenId, _) => card != cardId
     case _ => false
   }
 }
@@ -2596,7 +3473,7 @@ with:
 - [ ] **Step 4: Run the task's suites**
 
 Run: `./sbtw "testOnly oathdigital.gameplay.powers.SelectedModifierSuite oathdigital.gameplay.powers.cardplay.WildCrySuite oathdigital.gameplay.powers.cardplay.WelcomingPartySuite oathdigital.gameplay.powers.cardplay.GossipSuite oathdigital.gameplay.PowerKindsCatalogSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS (60 tests in these suites and the ones they touch).
+Expected: PASS (63 tests in these suites and the ones they touch).
 
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
@@ -2621,28 +3498,100 @@ Follow "Recording a sub-slice" below for 2b and commit with `docs: record slice 
 
 ## Sub-slice 2c: Travel
 
-### Task 5: Tents, Forest Paths, Dragonskin Drum, Toll Roads and Grasping Vines
+### Task 7: Tents, Forest Paths, Dragonskin Drum, Toll Roads and Grasping Vines
 
 **Files:**
 - Create: `powers/travel/{TravelPayments,Tents,ForestPaths,DragonskinDrum,TollRoads,GraspingVines,TravelModifiers}.scala`
-- Modify: `actions/travel/TravelProcedure.scala`, `powers/WalkerPowerCatalog.scala`
-- Test: `powers/travel/{TravelFixture,TentsSuite,ForestPathsSuite,DragonskinDrumSuite,TollRoadsSuite,GraspingVinesSuite}.scala`, an edit to `TravelProcedureSuite.scala`
+- Modify: `powerresolver/ContributingPower.scala`, `powerresolver/ContributionCollector.scala`, `actions/travel/TravelProcedure.scala`, `powers/WalkerPowerCatalog.scala`
+- Test: `powers/travel/{TravelFixture,TentsSuite,ForestPathsSuite,DragonskinDrumSuite,TollRoadsSuite,GraspingVinesSuite}.scala`, `ContributionIgnoresSuite.scala`, an edit to `TravelProcedureSuite.scala`
 
 **Interfaces:**
-- Produces: `Tents`, `ForestPaths`, `DragonskinDrum` (selected Travel modifiers), `TollRoads`, `GraspingVines` (persistent rules), `TravelModifiers.forCatalog(catalog)`. Test support `TravelFixture` (`board`, `passRuled`, `ruledBy`, `denizenAt`, `adviser`, `edificeAt`, `candidates`, `travel`, `after`, `supplyOf`, `adviserTokens`, and named sites).
-- Consumes: Task 4's `SelectedModifier`, `CatalogCards`, `CardStaging`; `TravelRoute.pawnMove` (private to the `travel` package, so the new powers live there).
+- Produces: `Tents`, `ForestPaths`, `DragonskinDrum` (selected Travel modifiers), `TollRoads`, `GraspingVines` (persistent rules), `TravelModifiers.forCatalog(catalog)`, `ContributingPower.ignores(ctx: PowerCtx, other: ContributingPower): Boolean` (defaults to `shouldIgnore(other)`). Test support `TravelFixture` (`board`, `passRuled`, `ruledBy`, `denizenAt`, `adviser`, `edificeAt`, `candidates`, `travel`, `after`, `supplyOf`, `adviserTokens`, and named sites).
+- Consumes: Task 6's `SelectedModifier`, `CatalogCards`; Task 3's `CardStaging`; `TravelRoute.pawnMove` (private to the `travel` package, so the new powers live there).
 
 All five hook `PowerWindow.TravelCost`, the `Sequence(SpendSupply, Move)` cost node the terrain powers already shape.
 
-- **Tents** (cost 1 favor placed): applies when the destination is in the region of the pawn's site. It places the favor and removes the Supply payment.
-- **Forest Paths** (cost 1 favor placed): applies when the destination holds a beast denizen or edifice, intact or ruined. It places the favor, removes the payment and, through `shouldIgnore`, drops every site-sourced power from the fold. It hooks `TravelActionEligibility` with a transform that changes nothing, because the collector lets a power ignore only what is gathered beside it there, and Narrow Pass hooks that window.
+- **Tents** (cost 1 favor placed): the favor is placed on every Travel it is selected for. When the destination is in the region of the pawn's site it also removes the Supply payment.
+- **Forest Paths** (cost 1 favor placed): the favor is placed on every Travel it is selected for. When the destination holds a beast denizen or edifice, intact or ruined, it also removes the payment and ignores every site-sourced power (through `ignores`, decided per route). It hooks `TravelActionEligibility` with a transform that changes nothing, because the collector lets a power ignore only what is gathered beside it there, and Narrow Pass hooks that window.
 - **Dragonskin Drum** (free): appends a `Gain.Warbands` after the pawn's move, so a rejected Travel gains nothing.
 - **Toll Roads** (persistent): an enemy of the ruler of the Toll Roads site who travels to a site that ruler rules gives 1 favor to the ruler (a required `Give`) or burns it when bandits rule (a required `PayCost` with a burnt favor). It is placed before the move, so a traveller who cannot pay is rejected and the destination is not offered. Empire is not supported.
 - **Grasping Vines** (persistent): an enemy leaving a site ruled by the Vines' ruler kills one warband of their own, a plain non-required `Kill` before the move.
 
-The engine edit is the fix from "Beyond E6, E7 and E9" item 1. `TravelProcedureSuite` gets one test edit (fact 16).
+The two engine edits are `ignores` and the fix from "Beyond E6, E7 and E9" item 1. `TravelProcedureSuite` gets one test edit (fact 17). Every cost-on-selection modifier here follows the permissive rule of the Global Constraints, so no card in this slice departs from it.
 
 - [ ] **Step 1: Write the tests**
+
+Create `src/test/scala/oathdigital/gameplay/ContributionIgnoresSuite.scala`:
+
+```scala
+package oathdigital.gameplay
+
+import oathdigital.gameplay.powerresolver.{Contribution, ContributionCollector, ContributingPower, PowerCtx, Transform}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
+import oathdigital.model._
+
+/** The named ignore is decided with the context the powers are gathered in, so
+  * a power can ignore another only for the node at hand. `shouldIgnore` (with no
+  * context) still works: `ignores` defaults to it.
+  */
+class ContributionIgnoresSuite extends munit.FunSuite {
+  private val window = PowerWindow.TravelCost
+  private val actor = initialReady.game.current.turn.activePlayer
+
+  private def power(name: String,
+      ignoring: (PowerCtx, ContributingPower) => Boolean = (_, _) => false)
+      : ContributingPower = new ContributingPower {
+    def id: PowerId = PowerId(name)
+    def source: RuleSourceRef = RuleSourceRef.GameRule(name)
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(window -> Vector(Transform((_, ops) => ops)))
+    override def ignores(ctx: PowerCtx, candidate: ContributingPower): Boolean =
+      ignoring(ctx, candidate)
+  }
+
+  private def ctxAt(operation: Operation)(candidate: ContributingPower)
+      : PowerCtx = PowerCtx(initialReady, actor, candidate.source, window,
+    Vector.empty, operation)
+
+  private def survivors(powers: Vector[ContributingPower], operation: Operation)
+      : Vector[PowerId] = ContributionCollector.gather(window, powers,
+    ctxAt(operation)).order
+
+  private val plain = power("test.plain")
+  private val marker = SpendSupply(actor, 1)
+  private val other = SpendSupply(actor, 2)
+
+  test("a context-free shouldIgnore still ignores, through the default") {
+    val quiet = new ContributingPower {
+      def id: PowerId = PowerId("test.quiet")
+      def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
+      def contributions: Map[PowerWindow, Vector[Contribution]] =
+        Map(window -> Vector.empty)
+      override def shouldIgnore(candidate: ContributingPower): Boolean =
+        candidate.id == plain.id
+    }
+    assertEquals(survivors(Vector(plain, quiet), marker), Vector(quiet.id))
+  }
+
+  test("a power can ignore another for one node and not for another") {
+    val picky = power("test.picky", ignoring = (ctx, candidate) =>
+      candidate.id == plain.id && ctx.operation == marker)
+    assertEquals(survivors(Vector(plain, picky), marker), Vector(picky.id))
+    assertEquals(survivors(Vector(plain, picky), other).toSet,
+      Set(plain.id, picky.id))
+  }
+
+  test("one pass: a power that is itself ignored still has its ignore counted") {
+    val first = power("test.first", ignoring = (_, candidate) =>
+      candidate.id.value == "test.second")
+    val second = power("test.second", ignoring = (_, candidate) =>
+      candidate.id.value == "test.third")
+    val third = power("test.third")
+    assertEquals(survivors(Vector(first, second, third), marker),
+      Vector(first.id))
+  }
+}
+```
 
 Create `src/test/scala/oathdigital/gameplay/powers/travel/DragonskinDrumSuite.scala`:
 
@@ -2765,13 +3714,21 @@ class ForestPathsSuite extends munit.FunSuite {
     assertEquals(candidates(ready, modifiers).get(mountain), Some(0))
   }
 
-  test("without a beast card at the destination nothing is paid or ignored") {
+  test("without a beast card at the destination the favor is still paid, but " +
+      "no Supply is saved and no site power is ignored") {
     val ready = passRuled(held)
     assertEquals(candidates(ready, modifiers), candidates(ready))
     val result = after(travel(ready, mountain, modifiers).toOption.get)
+    // The printed 2 and the Mountain's 1, both still charged.
     assertEquals(supplyOf(result), 7 - 3)
-    assertEquals(player(result).board.favor, 1)
-    assertEquals(adviserTokens(result, paths), Tokens.empty)
+    assertEquals(player(result).board.favor, 0)
+    assertEquals(adviserTokens(result, paths), Tokens(1, 0))
+  }
+
+  test("Narrow Pass still blocks a route with no beast card at the destination") {
+    val ready = held
+    assertEquals(travel(ready, plains(1), modifiers).left.toOption.get,
+      TravelPassBlocked(pass, plains(1)))
   }
 
   test("it cannot be selected without a favor to place") {
@@ -2914,15 +3871,16 @@ class TentsSuite extends munit.FunSuite {
     assertEquals(PaidActionHarness.tokensOn(result, tents), Tokens(1, 0))
   }
 
-  test("a route into another region is not changed, and nothing is paid") {
+  test("a route into another region is not changed, but the favor is still " +
+      "paid: the player owns the choice to select it") {
     val ready = passRuled(held)
     val province = plains(1)
     assertEquals(candidates(ready, modifiers).get(province),
       candidates(ready).get(province))
     val result = after(travel(ready, province, modifiers).toOption.get)
     assertEquals(supplyOf(result), 7 - 2)
-    assertEquals(player(result).board.favor, 1)
-    assertEquals(adviserTokens(result, tents), Tokens.empty)
+    assertEquals(player(result).board.favor, 0)
+    assertEquals(adviserTokens(result, tents), Tokens(1, 0))
   }
 
   test("it cannot be selected without a favor to place, or onto an occupied card") {
@@ -3233,14 +4191,16 @@ import oathdigital.model._
   * the card. If the destination holds a beast denizen or edifice, Travel costs
   * no Supply and the powers of sites are ignored for that Travel.
   *
-  * Ignoring a power is a named ignore: while Forest Paths applies, every
-  * power whose source is a site is dropped from the fold. The terrain adds and
-  * the Narrow Pass restriction both hook a Travel window, so Forest Paths hooks
-  * both windows too (the second with a transform that changes nothing), because
-  * the collector only lets a power ignore what it is gathered beside.
+  * The player owns the choice to select it. Selecting Forest Paths places the
+  * favor on every Travel. Only when the destination holds a beast card does it
+  * remove the Supply payment and ignore the site powers.
   *
-  * On a destination without a beast card the power is not applicable, so
-  * nothing is paid and no site power is ignored.
+  * Ignoring a power is a named ignore, decided per Travel (`ignores` reads the
+  * route from the context): while the destination qualifies, every power whose
+  * source is a site is dropped from the fold. The terrain adds and the Narrow
+  * Pass restriction both hook a Travel window, so Forest Paths hooks both
+  * windows too (the second with a transform that changes nothing), because the
+  * collector only lets a power ignore what is gathered beside it.
   */
 final case class ForestPaths private (cardId: DenizenId,
     catalog: ExecutableCatalog) extends SelectedModifier {
@@ -3250,21 +4210,26 @@ final case class ForestPaths private (cardId: DenizenId,
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      payment(ctx.activePlayer) +:
-        TravelPayments.withoutSupply(operations, ctx.activePlayer))),
+      payment(ctx.activePlayer) +: (
+        if (beastAtDestination(ctx))
+          TravelPayments.withoutSupply(operations, ctx.activePlayer)
+        else operations))),
     PowerWindow.TravelActionEligibility ->
       Vector(Transform((_, operations) => operations)))
 
   override def appliesAt(ctx: PowerCtx): Boolean =
+    TravelRoute.pawnMove(ctx.operation).nonEmpty
+
+  private def beastAtDestination(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists(route =>
       TravelPayments.holdsSuit(ctx.state, route.destination, Suit.Beast,
         catalog.suitOf(_)))
 
-  override def shouldIgnore(other: ContributingPower): Boolean =
-    other.source match {
+  override def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
+    beastAtDestination(ctx) && (other.source match {
       case _: RuleSourceRef.Site => true
       case _ => false
-    }
+    })
 }
 
 object ForestPaths {
@@ -3341,10 +4306,9 @@ import oathdigital.model._
   * card. If the destination is in the region of the pawn's current site, Travel
   * costs no Supply.
   *
-  * The power applies only to a route that qualifies. On any other route it is
-  * not applicable, so nothing is paid and the cost is the printed one. When it
-  * applies it places the favor and removes the Supply payment, so terrain adds
-  * on the same route are gone with it.
+  * The player owns the choice to select it. Selecting Tents places the favor on
+  * every Travel, whether or not the destination is in the pawn's region, and
+  * the Supply payment (terrain adds included) is removed only when it is.
   */
 final case class Tents private (cardId: DenizenId, catalog: ExecutableCatalog)
     extends SelectedModifier {
@@ -3354,10 +4318,15 @@ final case class Tents private (cardId: DenizenId, catalog: ExecutableCatalog)
 
   def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
     PowerWindow.TravelCost -> Vector(Transform((ctx, operations) =>
-      payment(ctx.activePlayer) +:
-        TravelPayments.withoutSupply(operations, ctx.activePlayer))))
+      payment(ctx.activePlayer) +: (
+        if (sameRegion(ctx))
+          TravelPayments.withoutSupply(operations, ctx.activePlayer)
+        else operations))))
 
   override def appliesAt(ctx: PowerCtx): Boolean =
+    TravelRoute.pawnMove(ctx.operation).nonEmpty
+
+  private def sameRegion(ctx: PowerCtx): Boolean =
     TravelRoute.pawnMove(ctx.operation).exists { route =>
       val source = TravelPayments.region(ctx.state, route.source)
       source.nonEmpty &&
@@ -3528,6 +4497,37 @@ private[travel] object TravelRulers {
 }
 ```
 
+In `src/main/scala/oathdigital/gameplay/powerresolver/ContributingPower.scala`, replace:
+
+```scala
+  def shouldIgnore(other: ContributingPower): Boolean = false
+```
+
+with:
+
+```scala
+  def shouldIgnore(other: ContributingPower): Boolean = false
+  /** As `shouldIgnore`, decided with the context this power is gathered in,
+    * so it can ignore `other` for the node at hand and not for another.
+    * The collector calls this one.
+    */
+  def ignores(ctx: PowerCtx, other: ContributingPower): Boolean =
+    shouldIgnore(other)
+```
+
+In `src/main/scala/oathdigital/gameplay/powerresolver/ContributionCollector.scala`, replace:
+
+```scala
+      applicable.filter(power.shouldIgnore).map(_.id)
+```
+
+with:
+
+```scala
+      applicable.filter(other => power.ignores(ctxFor(power), other))
+        .map(_.id)
+```
+
 In `src/main/scala/oathdigital/gameplay/powers/WalkerPowerCatalog.scala`, replace:
 
 ```scala
@@ -3597,8 +4597,8 @@ with:
 
 - [ ] **Step 4: Run the task's suites**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.powers.travel.TentsSuite oathdigital.gameplay.powers.travel.ForestPathsSuite oathdigital.gameplay.powers.travel.DragonskinDrumSuite oathdigital.gameplay.powers.travel.TollRoadsSuite oathdigital.gameplay.powers.travel.GraspingVinesSuite oathdigital.gameplay.TravelProcedureSuite oathdigital.gameplay.TravelSitePowersSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS (84 tests in these suites and the ones they touch).
+Run: `./sbtw "testOnly oathdigital.gameplay.ContributionIgnoresSuite oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.powers.travel.TentsSuite oathdigital.gameplay.powers.travel.ForestPathsSuite oathdigital.gameplay.powers.travel.DragonskinDrumSuite oathdigital.gameplay.powers.travel.TollRoadsSuite oathdigital.gameplay.powers.travel.GraspingVinesSuite oathdigital.gameplay.TravelProcedureSuite oathdigital.gameplay.TravelSitePowersSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS (95 tests in these suites and the ones they touch).
 
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
@@ -3623,7 +4623,7 @@ Follow "Recording a sub-slice" below for 2c and commit with `docs: record slice 
 
 ## Sub-slice 2d: Search, Trade, Muster and Recover
 
-### Task 6: Augury, Truthful Harp, Cup of Plenty, Rowdy Pub and Relic Worship
+### Task 8: Augury, Truthful Harp, Cup of Plenty, Rowdy Pub and Relic Worship
 
 **Files:**
 - Create: `powers/search/{DrawExtension,Augury,TruthfulHarp}.scala`, `powers/economy/{CupOfPlenty,RowdyPub}.scala`, `powers/recover/RelicWorship.scala`, `powers/ActionModifiers.scala`
@@ -3632,12 +4632,12 @@ Follow "Recording a sub-slice" below for 2c and commit with `docs: record slice 
 
 **Interfaces:**
 - Produces: `Augury`, `TruthfulHarp`, `CupOfPlenty`, `RowdyPub`, `RelicWorship` (each with `id` and `forCatalog(catalog)`), `ActionModifiers.forCatalog(catalog)`, `SearchRules.DrawSize` and `SearchRules.draw(ready, source, origin, extra = 0)`.
-- Consumes: Task 4's `SelectedModifier`, `CatalogCards`, `SearchFixture`, `CardStaging`; `EconomyFixture`, `CatacombsContributionSuite.relicSite` (existing).
+- Consumes: Task 6's `SelectedModifier`, `CatalogCards`, `SearchFixture`; Task 3's `CardStaging`; `EconomyFixture`, `CatacombsContributionSuite.relicSite` (existing).
 
-- **Augury** and the **Truthful Harp** wrap the Search draw at `SearchBeforeDraw`. `DrawExtension.extend(operations, more)` wraps the draw `BuildOps` and asks `SearchRules.draw` for the whole longer draw, so a Vision still stops it and a regional pile is drawn from its top. Two wrappers add up, so Augury and the Harp stack. The Harp appends one more node after the draw that records a `Peek` of every card in the hand for every other player (fact 11).
-- **Cup of Plenty** replaces the Trade's `SpendSupply` with a node that reads the answered source card and pays unless its suit matches a faceup adviser (fact 12).
+- **Augury** and the **Truthful Harp** wrap the Search draw at `SearchBeforeDraw`. `DrawExtension.extend(operations, more)` wraps the draw `BuildOps` and asks `SearchRules.draw` for the whole longer draw, so a Vision still stops it and a regional pile is drawn from its top. Two wrappers add up, so Augury and the Harp stack. The Harp appends one more node after the draw that records a `Peek` of every card in the hand for every other player (fact 13). The reveal changes nothing about the play: the kept card can still be played faceup, to a site or facedown as an adviser, and the suite plays it facedown.
+- **Cup of Plenty** replaces the Trade's `SpendSupply` with a node that reads the answered source card and pays unless its suit matches a faceup adviser (fact 14). With no faceup adviser the trade is free (confirmed).
 - **Rowdy Pub** appends a node to the Muster's gain that adds one warband when the answered source is Rowdy Pub.
-- **Relic Worship** appends, at `RecoverAfterRelic`, a required secret payment placed on the card and 2 Supply. The reviewed classification `RecoverPowers.RelicWorship` (an automatic, unimplemented Recover rule) recorded an ignored-rule diagnostic on every Recover with the card in reach, so it becomes a selected, implemented handler.
+- **Relic Worship** appends, at `RecoverAfterRelic`, a required secret payment placed on the card and 2 Supply. The reviewed classification `RecoverPowers.RelicWorship` (an automatic, unimplemented Recover rule) recorded an ignored-rule diagnostic on every Recover with the card in reach, so it becomes a selected, implemented handler. Its cost is placed when the relic is taken, as the ruling says, not at selection.
 
 - [ ] **Step 1: Write the tests**
 
@@ -4092,10 +5092,20 @@ class TruthfulHarpSuite extends munit.FunSuite {
     assert(PaidActionHarness.wireRoundTrips(started.events))
   }
 
-  test("a card the Harp revealed stays known once it is played facedown") {
+  test("the reveal does not change the play: the kept card can still be played " +
+      "facedown as an adviser, as usual") {
     val top = plain.take(7)
-    val done = play(withHarp(top), onlyHarp, top(4), "adviser-facedown")
-    val other = TargetsFixture.others(withHarp(top)).head
+    val ready = withHarp(top)
+    val done = play(ready, onlyHarp, top(4), "adviser-facedown")
+    val advisers = player(SearchFixture.after(done)).advisers
+    assert(advisers.exists {
+      case card: DenizenState => card.id == top(4) &&
+        card.orientation == Orientation.FaceDown
+      case _ => false
+    })
+    // The other players saw the card while it was revealed, and remember it.
+    // That is what a reveal at a table leaves behind, and it needs no rule.
+    val other = TargetsFixture.others(ready).head
     assert(known(done, other).contains(top(4)))
   }
 
@@ -4537,7 +5547,7 @@ Follow "Recording a sub-slice" below for 2d and commit with `docs: record slice 
 
 ## Sub-slice 2e: Target protection
 
-### Task 7: A window on Conspiracy's target decision (E7)
+### Task 9: A window on Conspiracy's target decision (E7)
 
 **Files:**
 - Modify: `model/PowerWindow.scala`, `powers/whenplayed/ConspiracyWhenPlayed.scala`
@@ -4547,7 +5557,7 @@ Follow "Recording a sub-slice" below for 2d and commit with `docs: record slice 
 - Produces: `PowerWindow.ConspiracyTargetSelection` (key `"conspiracy.target-selection"`), on the `Decide` with id `ConspiracyWhenPlayed.decisionId`.
 - Consumes: nothing new.
 
-Conspiracy's effects insisted on an answer whenever a legal target existed. A power at the new window may now remove every target, and the decision is then not asked (fact 7), so the effects treat "no decision was asked" as "take nothing". The card still plays and leaves the game.
+Conspiracy's effects insisted on an answer whenever a legal target existed. A power at the new window may now remove every target, and the decision is then not asked (fact 10), so the effects treat "no decision was asked" as "take nothing". The card still plays and leaves the game.
 
 - [ ] **Step 1: Write the tests**
 
@@ -4734,7 +5744,7 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 
 
-### Task 8: Circlet of Command, the Oaken Fortress and the Rotting Fortress
+### Task 10: Circlet of Command, the Oaken Fortress and the Rotting Fortress
 
 **Files:**
 - Create: `powers/targeting/{CircletOfCommand,FortressRules,TargetProtections}.scala`
@@ -4743,12 +5753,12 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Produces: `CircletOfCommand`, `OakenFortress`, `RottingFortress` (each with `id` and `forCatalog(catalog)`), `TargetProtections.forCatalog(catalog)`. Test support `TargetingFixture` (`rules`, `fortressAt`, `ruledBy`, `unruled`, `pawnAt`, `holds`, `adviserOf`, `optionsAt`, `start`, `ready`, `playerOf`).
-- Consumes: Task 7's `ConspiracyTargetSelection`; Task 4's `CardStaging` and `CatalogCards`; `CampaignSetup.raidDefenders`/`legalKinds`, `BannerRules.holder`, `OptionRestriction`, `Restriction`.
+- Consumes: Task 9's `ConspiracyTargetSelection`; Task 3's `CardStaging`; Task 6's `CatalogCards`; `CampaignSetup.raidDefenders`/`legalKinds`, `CampaignIds`, `BannerRules.holder`, `OptionRestriction`, `Restriction`.
 
 All three are persistent rules.
 
 - **Circlet of Command** (faceup): players other than the holder cannot target the holder's banners or the holder's relics other than the Circlet. It restricts a Raid's optional targets (`CampaignTargetSelection`, an `OptionRestriction`), a Challenge's banner choice (`ChallengeBannerSelection`, an `OptionRestriction`) and Conspiracy's target (a `Transform` at `ConspiracyTargetSelection` that drops the decision when empty). The Circlet itself and the Raid's pawn target stay targetable.
-- **Oaken Fortress** (intact E28): its ruler, while at the fortress site, cannot be targeted by a Challenge or a Raid. **Rotting Fortress** (ruined E28): players at the site cannot be targeted unless the targeting player holds a faceup beast adviser. A Conquest is unaffected. Both take the protected player out of a Raid's defender decision and a Challenge's banner choice, remove Raid from the kind decision when every co-located enemy is protected, and refuse at a start a Campaign whose only legal kind is such a Raid (fact 6). The start refusal is gated on `walkerProcedure.isEmpty` (fact 5) so a Campaign under way is never refused by a board it changed itself.
+- **Oaken Fortress** (intact E28): its ruler, while at the fortress site and ruling it, cannot be targeted by a Challenge or a Raid. **Rotting Fortress** (ruined E28): players at the site, the ruler included, cannot be targeted unless the targeting player holds a faceup beast adviser. Empire is ignored. A Conquest is unaffected. Both take the protected player out of a Raid's defender decision and a Challenge's banner choice, remove Raid from the kind decision when every co-located enemy is protected, and refuse a Campaign whose only legal kind is such a Raid (fact 9). The refusal applies until the Campaign has answered one of its own decisions, read from the pending position (fact 7), so it holds for a Campaign a power runs inside another action too (Task 12).
 
 - [ ] **Step 1: Write the tests**
 
@@ -5037,8 +6047,10 @@ class FortressRulesSuite extends munit.FunSuite {
       PowerWindow.CampaignActionEligibility, Vector.empty,
       Sequence(Vector.empty))
     assert(restriction.fn(ctx(b.ready), Sequence(Vector.empty)).nonEmpty)
-    val underway = b.ready.updateCurrent(_.copy(walkerProcedure =
-      Some(ActionRef.Campaign)))
+    // The Campaign has answered its force decision: it is under way.
+    val underway = b.ready.updateCurrent(_.copy(walkerPending =
+      Some(PendingTree(Vector("2"), Vector(Answered(CampaignIds.force,
+        DecisionAnswer.ChooseAmountAnswer(0), b.actor))))))
     assertEquals(restriction.fn(ctx(underway), Sequence(Vector.empty)), None)
   }
 
@@ -5272,7 +6284,7 @@ package oathdigital.gameplay.powers.targeting
 
 import oathdigital.catalog.ExecutableCatalog
 import oathdigital.gameplay.actions.BannerRules
-import oathdigital.gameplay.actions.campaign.CampaignSetup
+import oathdigital.gameplay.actions.campaign.{CampaignIds, CampaignSetup}
 import oathdigital.gameplay.powerresolver.{ContributingPower, Contribution, OptionRestriction, PowerCtx, Restriction}
 import oathdigital.gameplay.powers.{CatalogCards, CatalogResolution}
 import oathdigital.model._
@@ -5292,9 +6304,12 @@ import oathdigital.model._
   * Campaign asks neither of those when it needs no choice, so two more hooks
   * cover a single defender. The kind decision loses its Raid when every enemy
   * pawn at the site is protected, and a Campaign whose only legal kind is such a
-  * Raid is refused when it starts. That refusal is checked only at the start:
-  * once a Campaign is under way it must be able to finish, whatever the board
-  * has since become.
+  * Raid is refused when it starts. That refusal applies only until the Campaign
+  * has answered one of its own decisions: once a Campaign is under way it must
+  * be able to finish, whatever the board has since become. (A Conquest that
+  * takes the site leaves the Raid as the only legal kind, for one.) The answers
+  * are read from the pending position the restriction is checked against, so it
+  * holds for a Campaign that a power runs inside another action as well.
   */
 sealed abstract class FortressRule extends ContributingPower {
   def catalog: ExecutableCatalog
@@ -5356,10 +6371,15 @@ sealed abstract class FortressRule extends ContributingPower {
   }
 
   private def startGuard(ctx: PowerCtx): Option[OathViolation] =
-    Option.when(ctx.state.game.current.walkerProcedure.isEmpty &&
+    Option.when(!underway(ctx.state) &&
       CampaignSetup.legalKinds(ctx.state, ctx.activePlayer) ==
         Vector(CampaignKind.Raid) && raidBlocked(ctx.state, ctx.activePlayer))(
       blocked("a Fortress protects every player a Raid could target"))
+
+  /** The Campaign has answered one of its own decisions. */
+  private def underway(ready: ReadyGame): Boolean =
+    ready.game.current.walkerPending.exists(_.answered.exists(answered =>
+      CampaignIds.all.contains(answered.decisionId)))
 
   private def bannerGuard(ctx: PowerCtx, ref: DecisionOptionRef)
       : Option[OathViolation] = ref match {
@@ -5500,83 +6520,99 @@ Follow "Recording a sub-slice" below for 2e and commit with `docs: record slice 
 
 ## Sub-slice 2f: Knights Errant
 
-### Task 9: The enclosing procedure on `PowerCtx` (E9)
+### Task 11: Restrictions see what a Transform inserts and the answers of the command
 
 **Files:**
-- Modify: `powerresolver/ContributingPower.scala`, `walker/ProcedureWalker.scala`, `walker/WalkerPowerGather.scala`, `OathRulesWalker.scala`
-- Test: `EnclosingProcedureSuite.scala`
+- Modify: `walker/WalkerPowerGather.scala`, `walker/ProcedureWalker.scala`, `OathRulesWalker.scala`
+- Test: `RestrictionAnswersSuite.scala`
 
 **Interfaces:**
-- Produces: `PowerCtx.procedure: Option[ProcedureRef] = None` (a trailing parameter, so no existing construction changes). It is the procedure of the parked position a command resumes, the procedure a modifier is offered for at selection, and `None` for the command that starts a procedure (which has not recorded one yet).
+- Produces: `ProcedureWalker.restrictionViolations(tree, powers, state, activePlayer, answered: Vector[Answered] = Vector.empty)`. The traversal folds each windowed composite and `Branch` through the powers as the walk does, and selects each `Branch` with `answered`. `OathRulesWalker` passes the pending position's answers on a resumed command, and the command that answers a decision also checks against the answers plus the one it records, after the walker has accepted it.
 - Consumes: nothing new.
 
-`WalkCtx` captures the procedure from the state before the walker strips it, and `WalkerPowerGather.applyWindow` passes it to the `PowerCtx` it builds. The three places that re-fold a window to resolve a parked path read it from the (unstripped) state they are given.
+This answers the product owner's question, "does the Restriction not catch the Campaign procedure?". It does not, for two reasons that are in `WalkerPowerGather.restrictionViolations` (fact 8): it walks the declared tree, and Knights Errant's nested Campaign is inserted by a `Transform`, so it is never visited; and every `Branch` was resolved with an empty `PendingTree`, so a Branch that yields its children only once a decision is answered showed nothing. Whole-tree restrictions (Vow of Peace) and the Fortress refusal therefore now apply to any subtree a power adds, and Task 12 relies on it. The suite pins both blind spots with test powers; `KnightsErrantSuite` shows Vow of Peace and the Fortress refusing the nested Campaign.
 
 - [ ] **Step 1: Write the tests**
 
-Create `src/test/scala/oathdigital/gameplay/EnclosingProcedureSuite.scala`:
+Create `src/test/scala/oathdigital/gameplay/RestrictionAnswersSuite.scala`:
 
 ```scala
 package oathdigital.gameplay
 
-import scala.collection.mutable.ArrayBuffer
-
-import oathdigital.gameplay.actions.economy.MusterProcedure
-import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx}
-import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
-import oathdigital.gameplay.walker.WalkerPowers
+import oathdigital.gameplay.powerresolver.{Contribution, ContributingPower, PowerCtx, Restriction, Transform}
+import oathdigital.gameplay.setup.FirstGameSetupFixture.initialReady
+import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers}
 import oathdigital.model._
-import oathdigital.model.OathState.Ready
 
-/** `PowerCtx.procedure`: the procedure a window is walked for. */
-class EnclosingProcedureSuite extends munit.FunSuite {
-  private val seen = ArrayBuffer.empty[(PowerWindow, Option[ProcedureRef])]
+/** The restriction traversal selects a `Branch` with the answers recorded so
+  * far, so a Restriction hooked inside a subtree that only exists once a
+  * decision is answered is checked once it does.
+  */
+class RestrictionAnswersSuite extends munit.FunSuite {
+  private val actor = initialReady.game.current.turn.activePlayer
+  private val nested = PowerWindow.CampaignActionEligibility
+  private val ask = "test.ask"
+  private val yes = DecisionOptionRef.Button("yes")
+  private val no = DecisionOptionRef.Button("no")
+  private val violation = OathViolation.CampaignUnavailable("the test forbids it")
 
-  /** A power that records what it is asked at three Muster windows. */
-  private val probe: ContributingPower = new ContributingPower {
-    def id: PowerId = PowerId("test.enclosing-procedure")
+  private val forbidding: ContributingPower = new ContributingPower {
+    def id: PowerId = PowerId("test.forbidding")
     def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
-    override def resolution: PowerResolution = PowerResolution.PlayerSelected
+    def contributions: Map[PowerWindow, Vector[Contribution]] =
+      Map(nested -> Vector(Restriction((_: PowerCtx, _) => Some(violation))))
+  }
+  private val powers = WalkerPowers(Vector(forbidding))
+
+  /** A decision, then a subtree that exists only when it was answered "yes". */
+  private val tree: Operation = Sequence(Vector[Operation](
+    Decide(ask, actor, DecisionQuery.ChooseOne(Vector(
+      DecisionOption.Button(yes, "Yes"), DecisionOption.Button(no, "No")))),
+    Branch((_, pending) => if (pending.answered.exists {
+      case Answered(`ask`, DecisionAnswer.ChooseOneAnswer(`yes`), _) => true
+      case _ => false
+    }) Vector(Sequence(Vector.empty, Some(nested))) else Vector.empty)))
+
+  private def answered(ref: DecisionOptionRef): Vector[Answered] =
+    Vector(Answered(ask, DecisionAnswer.ChooseOneAnswer(ref), actor))
+
+  private def violations(answers: Vector[Answered]): Vector[OathViolation] =
+    ProcedureWalker.restrictionViolations(tree, powers, initialReady, actor,
+      answers)
+
+  test("a Restriction inside a subtree the answers have not opened is not checked") {
+    assertEquals(violations(Vector.empty), Vector.empty[OathViolation])
+    assertEquals(violations(answered(no)), Vector.empty[OathViolation])
+  }
+
+  test("once the answer opens the subtree its Restriction is checked") {
+    assertEquals(violations(answered(yes)), Vector[OathViolation](violation))
+  }
+
+  test("the answers default to none, so every existing caller is unchanged") {
+    assertEquals(ProcedureWalker.restrictionViolations(tree, powers,
+      initialReady, actor), Vector.empty[OathViolation])
+  }
+
+  // ---- What a Transform inserts ----
+
+  private val inserting: ContributingPower = new ContributingPower {
+    def id: PowerId = PowerId("test.inserting")
+    def source: RuleSourceRef = RuleSourceRef.GameRule(id.value)
     def contributions: Map[PowerWindow, Vector[Contribution]] = Map(
-      PowerWindow.MusterSourceSelection -> Vector.empty,
-      PowerWindow.MusterCost -> Vector.empty)
-    override def applicable(ctx: PowerCtx): Boolean = {
-      seen += ctx.window -> ctx.procedure
-      true
-    }
+      PowerWindow.MusterActionEligibility -> Vector(Transform((_, children) =>
+        children :+ Sequence(Vector.empty, Some(nested)))))
   }
+  private val root: Operation =
+    Sequence(Vector.empty, Some(PowerWindow.MusterActionEligibility))
 
-  private val rules = new OathRules(catalog,
-    walkerPowerCatalog = WalkerPowers(Vector(probe)))
-
-  private def staged: ReadyGame = EconomyFixture.act()
-  private def actor: PlayerId = staged.game.current.turn.activePlayer
-
-  test("a modifier is selected for the procedure that will run it") {
-    seen.clear()
-    rules.offerableWalkerPowers(staged, actor, ActionRef.Muster)
-    assertEquals(seen.toVector, Vector[(PowerWindow, Option[ProcedureRef])](
-      PowerWindow.MusterModifierSelection -> Some(ActionRef.Muster)))
-  }
-
-  test("the command that starts a procedure has not recorded it yet, and a " +
-      "resume walks its windows for it") {
-    seen.clear()
-    val started = rules.startWalker(Ready(staged), ActionRef.Muster, actor,
-      Vector(probe.id)).toOption.get
-    assert(seen.contains(PowerWindow.MusterSourceSelection -> None), seen.toString)
-    seen.clear()
-    rules.resolveWalker(started.state, actor, MusterProcedure.decisionId,
-      DecisionAnswer.ChooseOneAnswer(DecisionOptionRef.Denizen(
-        EconomyFixture.plainId))).toOption.get
-    assert(seen.contains(PowerWindow.MusterCost -> Some(ActionRef.Muster)),
-      seen.toString)
-  }
-
-  test("a context built without one names none") {
-    val ctx = PowerCtx(staged, actor, probe.source, PowerWindow.MusterCost,
-      Vector.empty, Sequence(Vector.empty))
-    assertEquals(ctx.procedure, None)
+  test("a subtree a Transform inserts is checked too, not only the declared tree") {
+    val without = WalkerPowers(Vector(forbidding))
+    assertEquals(ProcedureWalker.restrictionViolations(root, without,
+      initialReady, actor), Vector.empty[OathViolation])
+    val both = WalkerPowers(Vector(forbidding, inserting))
+    assertEquals(ProcedureWalker.restrictionViolations(root, both,
+      initialReady, actor), Vector[OathViolation](violation))
   }
 }
 ```
@@ -5584,204 +6620,152 @@ class EnclosingProcedureSuite extends munit.FunSuite {
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `./sbtw "Test/compile"`
-Expected: FAIL to compile, for example `value procedure is not a member of oathdigital.gameplay.powerresolver.PowerCtx`.
+Expected: FAIL to compile, for example `too many arguments (found 5, expected 4) for method restrictionViolations: (tree: oathdigital.model.Operation, powers: oathdigital.gameplay.walker.WalkerPowers, state: oathdigital.model.ReadyGame, activePlayer: oathdigital.model.PlayerId): Vector[oathdigital.model.OathViolation]`.
 
 - [ ] **Step 3: Implement**
 
-In `src/main/scala/oathdigital/gameplay/powerresolver/ContributingPower.scala`, replace:
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
 
 ```scala
-import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Branch, Decide,
 ```
 
 with:
 
 ```scala
-import oathdigital.model.{DecisionOptionRef, OathViolation, Operation, PlayerId, PowerId, PowerResolution, PowerWindow, ProcedureRef, ReadyGame, RuleSourceRef}
+import oathdigital.model.{Answered, Branch, Decide,
 ```
 
-In `src/main/scala/oathdigital/gameplay/powerresolver/ContributingPower.scala`, replace:
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
 
 ```scala
-    /** Exact windowed operation a contribution is being collected for. */
-    operation: Operation
-)
+  def restrictionViolations(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] = {
 ```
 
 with:
 
 ```scala
-    /** Exact windowed operation a contribution is being collected for. */
-    operation: Operation,
-    /** The procedure the window is walked for, when it is known: the
-      * procedure of the parked position a command resumes, or the one a
-      * modifier is being selected for. `None` for the command that starts a
-      * procedure, which has not recorded one yet.
-      */
-    procedure: Option[ProcedureRef] = None
-)
+  def restrictionViolations(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, activePlayer: PlayerId,
+      answered: Vector[Answered] = Vector.empty): Vector[OathViolation] = {
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+        case branch: Branch => descend(branch.select(state,
+          PendingTree(at = path, answered = Vector.empty)))
+```
+
+with:
+
+```scala
+        case branch: Branch => descend(branch.select(state,
+          PendingTree(at = path, answered = answered)))
+```
+
+In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
+
+```scala
+        case branch: Branch => descend(branch.select(state,
+          PendingTree(at = path, answered = answered)))
+        case _ => descend(node.children)
+```
+
+with:
+
+```scala
+        case branch: Branch => descend(applyWindow(branch.window, branch,
+          state, activePlayer, powers, path, branch.select(state,
+            PendingTree(at = path, answered = answered)),
+          state.game.current.walkerProcedure)._1)
+        case _ => descend(applyWindow(node.window, node, state,
+          activePlayer, powers, path, node.children,
+          state.game.current.walkerProcedure)._1)
 ```
 
 In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
 
 ```scala
-      dice: WalkerDice
-  )
+  def restrictionViolations(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, activePlayer: PlayerId): Vector[OathViolation] =
+    WalkerPowerGather.restrictionViolations(tree, powers, state, activePlayer)
 ```
 
 with:
 
 ```scala
-      dice: WalkerDice,
-      /** The procedure of the parked position being resumed. */
-      procedure: Option[oathdigital.model.ProcedureRef]
-  )
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
-
-```scala
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice),
-```
-
-with:
-
-```scala
-    walk(action, WalkCtx(base, Vector.empty, activePlayer, answered, powers, dice,
-      state.game.current.walkerProcedure),
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace (every occurrence, 2 in all):
-
-```scala
-      state.game.current.turn.activePlayer, pending.answered, powers, dice),
-```
-
-with:
-
-```scala
-      state.game.current.turn.activePlayer, pending.answered, powers, dice,
-      state.game.current.walkerProcedure),
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/ProcedureWalker.scala`, replace:
-
-```scala
-    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.activePlayer, ctx.powers, path, children)
-```
-
-with:
-
-```scala
-    val (folded, order) = WalkerPowerGather.applyWindow(window, operation, ctx.state,
-      ctx.activePlayer, ctx.powers, path, children, ctx.procedure)
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
-      ops: Vector[Operation]): (Vector[Operation], Vector[PowerId]) =
-```
-
-with:
-
-```scala
-      activePlayer: PlayerId, powers: WalkerPowers, path: Vector[String],
-      ops: Vector[Operation], procedure: Option[oathdigital.model.ProcedureRef])
-      : (Vector[Operation], Vector[PowerId]) =
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-          PowerCtx(state, activePlayer, power.source, w, path, operation)
-```
-
-with:
-
-```scala
-          PowerCtx(state, activePlayer, power.source, w, path, operation,
-            procedure)
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-      power => PowerCtx(state, activePlayer, power.source, window, path, operation)
-```
-
-with:
-
-```scala
-      power => PowerCtx(state, activePlayer, power.source, window, path,
-        operation, state.game.current.walkerProcedure)
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-        val (folded, _) = applyWindow(branch.window, branch, state,
-          activePlayer, powers, path, selected)
-```
-
-with:
-
-```scala
-        val (folded, _) = applyWindow(branch.window, branch, state,
-          activePlayer, powers, path, selected, state.game.current.walkerProcedure)
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-            val (folded, _) = applyWindow(Some(w), leaf, state,
-              activePlayer, powers, path, Vector(leaf))
-```
-
-with:
-
-```scala
-            val (folded, _) = applyWindow(Some(w), leaf, state,
-              activePlayer, powers, path, Vector(leaf),
-              state.game.current.walkerProcedure)
-```
-
-In `src/main/scala/oathdigital/gameplay/walker/WalkerPowerGather.scala`, replace:
-
-```scala
-        val (folded, _) = applyWindow(composite.window, composite, state,
-          activePlayer, powers, path, composite.children)
-```
-
-with:
-
-```scala
-        val (folded, _) = applyWindow(composite.window, composite, state,
-          activePlayer, powers, path, composite.children,
-          state.game.current.walkerProcedure)
+  def restrictionViolations(tree: Operation, powers: WalkerPowers,
+      state: ReadyGame, activePlayer: PlayerId,
+      answered: Vector[oathdigital.model.Answered] = Vector.empty)
+      : Vector[OathViolation] = WalkerPowerGather.restrictionViolations(tree,
+    powers, state, activePlayer, answered)
 ```
 
 In `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`, replace:
 
 ```scala
-        power.applicable(PowerCtx(ready, actor, power.source, window,
-          Vector.empty, Sequence(Vector.empty, Some(window)))))
+  private def checkRestrictions(tree: Operation, powers: WalkerPowers,
+      ready: ReadyGame, actor: PlayerId): Either[OathViolation, Unit] =
+    ProcedureWalker.restrictionViolations(tree, powers, ready, actor)
+      .headOption.toLeft(())
 ```
 
 with:
 
 ```scala
-        power.applicable(PowerCtx(ready, actor, power.source, window,
-          Vector.empty, Sequence(Vector.empty, Some(window)),
-          Some(procedure))))
+  private def checkRestrictions(tree: Operation, powers: WalkerPowers,
+      ready: ReadyGame, actor: PlayerId,
+      answered: Vector[Answered] = Vector.empty): Either[OathViolation, Unit] =
+    ProcedureWalker.restrictionViolations(tree, powers, ready, actor, answered)
+      .headOption.toLeft(())
+```
+
+In `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`, replace:
+
+```scala
+      powers = walkerPowers(ready, activePlayer, modifiers)
+      _ <- checkRestrictions(tree, powers, ready, activePlayer)
+    } yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
+```
+
+with:
+
+```scala
+      powers = walkerPowers(ready, activePlayer, modifiers)
+      _ <- checkRestrictions(tree, powers, ready, activePlayer,
+        pending.answered)
+    } yield (ready, procedure, tree, pending, powers, modifiers, startArgs)
+```
+
+In `src/main/scala/oathdigital/gameplay/OathRulesWalker.scala`, replace:
+
+```scala
+      case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
+        walkerCall(ProcedureWalker.resolve(ready, tree, pending,
+          Answered(decisionId, answer, by = requester),
+          powers, walkerDice)).flatMap(walkerTransition(state, procedure, tree, _,
+            powers, modifiers, startArgs))
+```
+
+with:
+
+```scala
+      case (ready, procedure, tree, pending, powers, modifiers, startArgs) =>
+        val recorded = Answered(decisionId, answer, by = requester)
+        walkerCall(ProcedureWalker.resolve(ready, tree, pending, recorded,
+          powers, walkerDice)).flatMap(outcome => checkRestrictions(tree,
+          powers, ready, ready.game.current.turn.activePlayer,
+          pending.answered :+ recorded).map(_ => outcome))
+          .flatMap(walkerTransition(state, procedure, tree, _, powers,
+            modifiers, startArgs))
 ```
 
 - [ ] **Step 4: Run the task's suites**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.EnclosingProcedureSuite oathdigital.gameplay.ProcedureWalkerSuite oathdigital.gameplay.ContributingPowerSuite oathdigital.gameplay.ContributionCollectorSuite oathdigital.gameplay.OathRulesWalkerPowerSuite oathdigital.gameplay.OptionRestrictionSuite oathdigital.gameplay.CatacombsContributionSuite oathdigital.gameplay.TravelSitePowersSuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS (121 tests in these suites and the ones they touch).
+Run: `./sbtw "testOnly oathdigital.gameplay.RestrictionAnswersSuite oathdigital.gameplay.OathRulesWalkerPowerSuite oathdigital.gameplay.ProcedureWalkerSuite oathdigital.gameplay.OptionRestrictionSuite oathdigital.gameplay.CampaignProcedureSuite oathdigital.gameplay.ChallengeProcedureSuite oathdigital.gameplay.SearchProcedureSuite oathdigital.gameplay.MusterProcedureSuite oathdigital.gameplay.PendingWalkerRulesSuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS (161 tests in these suites and the ones they touch).
 
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
@@ -5792,13 +6776,13 @@ Expected: PASS, and `architecture check passed`.
 
 ```bash
 git add src
-git commit -m "feat: name the enclosing procedure on PowerCtx
+git commit -m "feat: check restrictions against the answers a command carries
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 ```
 
 
-### Task 10: Knights Errant
+### Task 12: Knights Errant
 
 **Files:**
 - Create: `powers/economy/KnightsErrant.scala`
@@ -5807,11 +6791,11 @@ Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Produces: `KnightsErrant` (`id`, `forCatalog`, `decisionId = "muster.knights-errant.campaign"`, `campaignOption`, `declineOption`), `MusterProcedure.decisionPrefix = "muster."`.
-- Consumes: Task 9's `PowerCtx.procedure`; Task 4's `SelectedModifier`; `CampaignProcedure.rebuild`, `CampaignSetup.legalKinds`, `PowerAnswers.one`.
+- Consumes: Task 5's `PowerCtx.procedure`; Task 6's `SelectedModifier`; Task 10's `TargetingFixture` and Fortress; Task 11's restriction traversal; `CampaignProcedure.rebuild`, `CampaignSetup.legalKinds`, `PowerAnswers.one`.
 
 After mustering the player may campaign, spending no Supply. Two nodes are appended to the Muster's tree at `MusterActionEligibility`: a live decision, asked only when a Campaign is legal, and a node that once the answer is "campaign" builds `CampaignProcedure.rebuild(...)` from live state when it is walked, so the Campaign sees the warbands the Muster gained and is rebuilt on every resume as a Campaign is. A transform at `CampaignCost` removes the Supply payment when `ctx.procedure` is Muster. The Muster registry entry now recognises the Campaign's decision ids and the `muster.` prefix, so the client is told the right continuation. The suite runs a whole nested Campaign to its end and replays its journal.
 
-Known limitation (open question 4): whole-tree `Restriction`s (Vow of Peace, the Fortress start guard) are checked once at the start of a command against the tree that exists then, and the nested Campaign is behind a `Branch` that selects nothing until the offer is answered. The nested Campaign's decisions are restricted as usual.
+With Task 11, a restriction on the whole Campaign applies to the nested one: answering "campaign" is rejected with `CampaignUnavailable` when Vow of Peace forbids it, or when a Fortress protects every player a Raid could target, and declining is still allowed. The offer is still made (the power cannot ask the walker whether the answer would be accepted), and the rejection happens on the answer (open item 4).
 
 - [ ] **Step 1: Write the tests**
 
@@ -5824,6 +6808,7 @@ import oathdigital.gameplay.{CampaignFixture, EconomyFixture, OathRules}
 import oathdigital.gameplay.actions.campaign.CampaignIds
 import oathdigital.gameplay.actions.economy.MusterProcedure
 import oathdigital.gameplay.powers.{CardStaging, PowerFixture, WalkerPowerCatalog}
+import oathdigital.gameplay.powers.targeting.TargetingFixture
 import oathdigital.gameplay.powers.action.PaidActionHarness
 import oathdigital.gameplay.setup.FirstGameSetupFixture.catalog
 import oathdigital.gameplay.walker.{ProcedureWalker, WalkerPowers, WalkerProcedureRegistry}
@@ -5992,6 +6977,52 @@ class KnightsErrantSuite extends munit.FunSuite {
     assert(rules.startWalker(Ready(state), ActionRef.Campaign, actor,
       modifiers).isLeft)
   }
+
+  // ---- Restrictions on the whole Campaign apply to the nested one ----
+
+  private def campaigning(from: OathTransition)
+      : Either[OathViolation, OathTransition] =
+    rules.resolveWalker(from.state, actor, KnightsErrant.decisionId, campaign)
+
+  test("Vow of Peace forbids the nested Campaign, and declining is still allowed") {
+    val vow = DenizenId(catalog.denizens.find(_.powers.exists(
+      _.id.value == "denizen.vow-of-peace")).get.id.value)
+    val ready = PowerFixture.asAdviser(CardStaging.without(staged(), vow), vow)
+    val asked = musterFrom(ready, modifiers)
+    assertEquals(parkedOn(asked), KnightsErrant.decisionId)
+    assert(campaigning(asked).left.toOption.exists(
+      _.isInstanceOf[OathViolation.CampaignUnavailable]))
+    assert(rules.resolveWalker(asked.state, actor, KnightsErrant.decisionId,
+      decline).isRight)
+  }
+
+  test("a Fortress that protects every player a Raid could target forbids the " +
+      "nested Campaign") {
+    // Nobody rules the site, so a Conquest is not legal. An enemy pawn stands
+    // there, so a Raid is, and the Rotting Fortress protects that enemy.
+    val base = staged(campaignLegal = false)
+    val other = base.game.current.players.map(_.player).find(_ != actor).get
+    val site = PowerFixture.home(base)
+    val fortified = TargetingFixture.fortressAt(
+      TargetingFixture.pawnAt(base, other, site), EdificeSide.Ruined, site)
+    val asked = musterFrom(fortified, modifiers)
+    assertEquals(parkedOn(asked), KnightsErrant.decisionId)
+    assert(campaigning(asked).left.toOption.exists(
+      _.isInstanceOf[OathViolation.CampaignUnavailable]))
+    // The same board without the Fortress lets the Raid start.
+    val open = musterFrom(TargetingFixture.pawnAt(base, other, site), modifiers)
+    assert(campaigning(open).isRight)
+  }
+
+  test("a nested Campaign that is allowed is not stopped by a restriction " +
+      "once it is under way") {
+    val forced = toForce(answer(musterFrom(staged(), modifiers),
+      KnightsErrant.decisionId, campaign))
+    // Every later command of the Campaign is checked against its answers too,
+    // and none of them is refused.
+    val done = answer(forced, CampaignIds.force, ChooseAmountAnswer(0))
+    assertEquals(ready(done).game.current.walkerProcedure, None)
+  }
 }
 ```
 
@@ -6147,8 +7178,8 @@ with:
 
 - [ ] **Step 4: Run the task's suites**
 
-Run: `./sbtw "testOnly oathdigital.gameplay.powers.economy.KnightsErrantSuite oathdigital.gameplay.MusterProcedureSuite oathdigital.gameplay.EconomyWalkerSuite oathdigital.gameplay.CampaignProcedureSuite oathdigital.gameplay.CampaignPowersSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.gameplay.BackendArchitectureSuite"`
-Expected: PASS (105 tests in these suites and the ones they touch).
+Run: `./sbtw "testOnly oathdigital.gameplay.powers.economy.KnightsErrantSuite oathdigital.gameplay.powers.targeting.FortressRulesSuite oathdigital.gameplay.MusterProcedureSuite oathdigital.gameplay.EconomyWalkerSuite oathdigital.gameplay.CampaignProcedureSuite oathdigital.gameplay.CampaignPowersSuite oathdigital.gameplay.walker.WalkerProcedureRegistrySuite oathdigital.gameplay.BackendArchitectureSuite"`
+Expected: PASS (120 tests in these suites and the ones they touch).
 
 - [ ] **Step 5: Run the whole suite and the architecture check**
 
@@ -6175,47 +7206,45 @@ Follow "Recording a sub-slice" below for 2f and commit with `docs: record slice 
 
 Each sub-slice ends with a docs commit, so a merged sub-slice leaves the design and rulings true. Edit the files named below, each addition on its own line, to ease merging with slices 3 and 4.
 
-- `docs/superpowers/specs/2026-09-20-powers-design.md`: in the status line add the sub-slice ("slice 2a" and so on) to the implemented list with a link to this plan. In the "Slicing" section add "Slice 2 is planned in six sub-slices: see its [plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md)." once, in 2a. In "Verify at plan time" replace: the window-key fingerprint item (2a) with "No: fingerprints cover catalog handler ids and structure only"; the `PowerCtx.nodePath` item (2f) with "`nodePath` is a vector of child indices and names no action, and a walk's state has no procedure; `PowerCtx.procedure` names it (E9)".
+- `docs/superpowers/specs/2026-09-20-powers-design.md`: in the status line add the sub-slice ("slice 2a" and so on) to the implemented list with a link to this plan. In the "Slicing" section add "Slice 2 is planned in six sub-slices: see its [plan](../plans/2026-09-20-powers-slice-2-modifiers-restrictions-triggers.md)." once, in 2a. In "Verify at plan time" replace: the window-key fingerprint item (2a) with "No: fingerprints cover catalog handler ids and structure only"; the `PowerCtx.nodePath` item (2b) with "`nodePath` is a vector of child indices and names no action, and a walk's state has no procedure; `PowerCtx.procedure` names it (E9)". In the E9 paragraph (2b) replace "If `nodePath` does not identify..." with the outcome: needed, for Welcoming Party's origin and Knights Errant.
 - `docs/superpowers/specs/2026-09-20-powers-rulings.md`: add `Implemented (slice 2x)` beside each card's row in "Slice 2: modifiers", "Slice 2: persistent rules" and "Slice 2: card-play triggers", and add a "Slice 2 implementation notes" list with these entries for the sub-slice:
-  - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. Mob's row: an intact edifice is refused inside the `siteDiscardFirst` path by `validateSiteReplacement`, not by `DiscardRestrictions`, which only implements the Hall of Ministers; the Homeland replacement still allows it. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
-  - **2b:** `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party's "not a facedown adviser" is the placement (a faceup play, wherever the card came from). A card that a play replaces still triggers Wild Cry, because the hook does not read live access.
-  - **2c:** a modifier's cost is paid only when its condition holds (Tents: destination in the region; Forest Paths: a beast card at the destination). A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
-  - **2d:** the Truthful Harp reveals by recording a `Peek` for every other player; the hand itself stays private in projections. Augury and the Harp stack. Relic Worship's payment is required and fails late if another selected modifier spent the only secret. The Cup of Plenty is free for a player with no faceup adviser. The reviewed entry for Relic Worship is now a selected, implemented handler.
-  - **2e:** Conspiracy's target decision has a window and is dropped when a power removes every option. The Fortress start refusal is checked only at a start. Circlet's protection covers Raid targets, Challenge banners and Conspiracy targets and never the Circlet itself.
-  - **2f:** `PowerCtx.procedure` exists. Knights Errant runs its Campaign inside the Muster; the Muster registry entry recognises the Campaign's decision ids and the `muster.` prefix. A whole-tree restriction is not applied to the nested Campaign.
-- `docs/ROADMAP.md` (2d and 2f only): add one line each, beside the card-slots item: "A public view of a revealed temporary hand (Truthful Harp reveals by `Peek` today)" and "Restriction checks for a procedure nested in another (Knights Errant's Campaign)".
+  - **2a:** `PlacementRules` replaces the adviser limits and composes; the tree with no contributor is unchanged, and with one the placement path gains a level. **Generic discard rules (product decisions):** a faceup locked adviser, an intact edifice and a card that prints a power selected for the running action cannot be discarded, by any path, and `DiscardRestrictions` is where that is enforced. A Homeland replacement discards an edifice and no longer buries it. Add to "Rules that apply to every power": "**Active modifiers.** A card that prints a power selected for the running action cannot be discarded." Mob's row: an intact edifice is refused by the generic rule. `AdviserLimit.of` and Horned Mask no longer repeat Silver Tongue's or card play's rules.
+  - **2b:** `SelectedModifier` checks a modifier's action, access and cost at selection. Welcoming Party's "not a facedown adviser" is the card's origin: a card that was a facedown adviser played faceup does not trigger it; a card drawn by a Search does, wherever it is placed. Wild Cry cannot be discarded while selected. `PowerCtx.procedure` exists (E9).
+  - **2c:** a selected modifier places its cost on every Travel, whatever the route (permissive, product decision); the Supply saving and Forest Paths' ignore apply only when the condition holds. A free Travel is still a destination candidate, with cost 0. Toll Roads and Grasping Vines find their ruler as the ruler of the site the card stands at and ignore a facedown copy.
+  - **2d:** the Truthful Harp reveals by recording a `Peek` for every other player and restricts nothing; the hand itself stays private in projections, and the other players remember a revealed card played facedown. Augury and the Harp stack. Relic Worship's payment is required and fails late if another selected modifier spent the only secret (Catacombs), which strands the Recover. The Cup of Plenty is free for a player with no faceup adviser. The reviewed entry for Relic Worship is now a selected, implemented handler.
+  - **2e:** Conspiracy's target decision has a window and is dropped when a power removes every option. The Fortress start refusal applies until the Campaign has answered one of its decisions. Circlet's protection covers Raid targets, Challenge banners and Conspiracy targets and never the Circlet itself.
+  - **2f:** restrictions are checked against the tree a power adds and the answers a command carries, so Vow of Peace and the Fortress apply to Knights Errant's nested Campaign, which is refused when the player answers "campaign". The Muster registry entry recognises the Campaign's decision ids and the `muster.` prefix.
+- `docs/ROADMAP.md` (2d and 2f only): add one line each, beside the card-slots item: "A public view of a revealed temporary hand (Truthful Harp reveals by `Peek` today)" and "Offer a nested Campaign only when it would be accepted (Knights Errant asks, then refuses on the answer)".
 
-## Open questions
+## Open items
 
-These are decisions the plan makes by default. Each needs a product answer only if the default is wrong.
+Everything else the product owner answered is built into the tasks. What remains:
 
-1. **Welcoming Party: placement or origin.** The rulings say "a denizen that is not a facedown adviser". The printed text ("a denizen card that was not a facedown adviser") can also mean a card that was not a facedown adviser before it was played, which would exclude playing a facedown adviser faceup. The plan takes the placement (a `CardPlayedFaceup`), the reading the E6 split serves. The alternative needs no engine change: `ctx.procedure` (Task 9) is `PlayFacedownAdviser` for that play, so `appliesAt` gains one condition.
-2. **Tents and Forest Paths pay only when they apply.** The rulings say "Cost 1 favor placed. If ... Travel costs no Supply." The plan pays the favor only when the destination qualifies. Forest Paths cannot do otherwise (`shouldIgnore` has no context, so the power must be applicable only when its condition holds), and Tents follows for consistency. The alternative for Tents is to pay whenever selected.
-3. **The Truthful Harp's public reveal.** A temporary hand has no orientation and is projected to its owner alone, so no operation turns a hand card faceup. The plan records a `Peek` for every other player and card, which is durable and replays, but no view shows the hand to the others. Confirm, or ask for a public projection of a revealed hand (a projection change, on the ROADMAP).
-4. **Restrictions on Knights Errant's Campaign.** Vow of Peace and the Fortress start refusal are whole-tree restrictions and are not applied to the Campaign nested in a Muster (Knights Errant would let a Vow of Peace holder campaign, and would let a Raid start on a single protected player). Options: accept, or give `Branch`-hosted procedures a restriction pass (an engine change), or have the offer ask the walker whether the Campaign would start (which needs `PowerCtx` to carry the powers). The plan accepts and lists it.
-5. **Relic Worship can strand a Recover.** If Catacombs (also a placed secret) is selected with only one faceup secret, Relic Worship's required payment fails when the relic is taken, and the parked relic decision can then never be answered. The ruling accepts the limitation. Confirm that a stranded Recover is acceptable, or make the payment best-effort.
-6. **A locked edifice and the Homeland replacement.** The rulings say `DiscardRestrictions` refuse an intact edifice as locked for Mob. The code refuses only the Hall of Ministers, and the existing Homeland replacement (full matching site) may bury an intact edifice. The plan refuses an intact edifice in the `siteDiscardFirst` path only. Confirm, and say whether the Homeland replacement should refuse it too (a separate change).
-7. **Fortress details.** Oaken protects only its ruler, who must rule the site and stand at it. Rotting protects every player at the site, including the ruler. Both ignore Empire. A ruler who is the attacker is never protected from themselves.
-8. **Wild Cry when the play replaces it.** A card whose play discards Wild Cry as a replacement still triggers it, because the hook reads only the played card so that the fold is stable. Confirm.
-9. **Cup of Plenty with no faceup adviser.** "Differs from every faceup adviser" is vacuously true, so the trade is free. Confirm.
-10. **Modifiers on a facedown adviser play.** Wild Cry and Welcoming Party, and also Augury and the Harp, can be selected for `PlayFacedownAdviser` because it shares Search's selection window. Augury and the Harp then do nothing. Harmless; say if the offer should be narrowed.
+1. **Welcoming Party and a facedown placement from the hand.** The plan follows the origin reading: a card drawn by a Search and placed facedown as an adviser was not a facedown adviser, so it triggers Welcoming Party. Example: the player selects Welcoming Party, Searches, keeps a Fox and plays it facedown: they gain 1 favor. If a facedown placement should not count (as it does not for Wild Cry, whose ruling says so), `CardPlayedFacedown` is dropped from Welcoming Party's contributions, one line. Recommended default: trigger.
+2. **The Truthful Harp and memory.** The Harp records what the other players saw (`Peek`). If the kept card is then played facedown, the others remember which card it is, so the facedown adviser is shown to them as known. That is what a reveal at a table leaves behind, and nothing restricts the play. If the card should be hidden again once played facedown, an engine change is needed (forgetting a `Peek` when a card moves facedown). Recommended default: keep it, no change.
+3. **Relic Worship with Catacombs and one faceup secret.** Established by running it (fact 19): both are offered together, Catacombs pays the secret at the start, and answering the relic decision is then rejected (`player play area contains 0 of requested secrets`), with no other option, so the Recover cannot continue. The plan leaves it, as the ruling accepts it. Recommended fix, if wanted: check at selection that the combined placed costs of the selected modifiers are payable (an engine change to the selection check), so the pair is refused at the start.
+4. **Knights Errant offers a Campaign it will refuse.** With Vow of Peace or a Fortress, "campaign" is offered and rejected on the answer, and "do not campaign" works. Example: a Vow of Peace holder selects Knights Errant, musters, is asked, answers "campaign" and is told `CampaignUnavailable`. Recommended default: accept (the offer would need to ask the walker whether the answer would be accepted, which `PowerCtx` cannot do). The roadmap line records it.
+5. **The active-modifier rule is the product owner's, not the documents'.** It is enforced for every selected modifier of every action, not only Search modifiers, and recorded in the rulings appendix (Task 4's docs step). Example: Tents selected for a Travel cannot be discarded by a Dazzle played during it (there is none in a Travel, so it is moot today). Recommended default: every action.
 
 ## Risks to check while executing
 
 - **`PlacementBody` changes the parked path.** With a contributor to the placement rules, the placement `Branch` is one level deeper. Nothing asserts the old path, but a suite that does (a Silver Tongue projection or pending-walker test) will show it. Compare before relaxing anything.
 - **Test fixtures and the card inventory.** A `CardIndex` duplicate (`invalid-card-index ... failed 1 structural checks`) means a fixture placed a card that was still in a regional discard, a site or an adviser area. Stage it with `CardStaging.without`.
-- **A selected modifier changes an existing suite that hands the walker every catalog power.** `TravelProcedureSuite` did (Task 5). If another suite fails with a modifier's payment, do the same: `WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)`.
-- **The Fortress start guard reads the unstripped state.** It is correct because `checkRestrictions` runs before the walker strips the state. Task 8 tests it with a hand-built `PowerCtx`; if a later change moves the check inside the walk, the guard would never refuse. Task 9's `PowerCtx.procedure` is the right thing to read then.
+- **A selected modifier changes an existing suite that hands the walker every catalog power.** `TravelProcedureSuite` did (Task 7). If another suite fails with a modifier's payment, do the same: `WalkerPowers.selected(WalkerPowerCatalog.default(catalog), Vector.empty)`.
+- **Task 11 changes what every command checks.** The traversal now folds windows and selects Branches with answers, so a Branch whose `select` throws on an unvalidated answer breaks it (`PlaceBannerResource` did: an amount of 0 builds a `FlipSecrets` of 0). The answering command therefore checks after the walker accepted the answer. If another suite fails with an `IllegalArgumentException` from a Branch, keep that order.
+- **Discard rules and the first walk.** `walkerModifiers` is recorded at an action's first park, so the placement options offered at that park do not exclude an active modifier while the next command's replacement list does (fact 6). A test that asserts the options of the first park will not see the rule.
+- **Locked is faceup only.** `MinorActionsSuite` pins that a facedown locked adviser can be discarded. Do not widen the rule.
+- **Fortress start guard reads the pending position.** It is unit-tested with a hand-built `PowerCtx` and end to end through Knights Errant. If a later change moves the restriction check inside the walk, the guard would stop firing.
+- **Recover journal and the wire codec.** Its first step does not round-trip (fact 16). Do not "fix" the Relic Worship suite by asserting the whole journal.
 - **`Peek` on a temporary hand records knowledge for good.** It is correct for a revealed card. A test that compares full `ReadyGame` values before and after a Harp Search sees `knowledge.advisers` change.
-- **A Recover journal and the wire.** Its first step does not round-trip (fact 14). Do not "fix" the Relic Worship suite by asserting the whole journal.
 - **`GainSupply` at a full track records no operation.** A suite that expects a Supply step starts the actor below 7.
-- **Shared registration vectors.** `WalkerPowerCatalog.default` gains one line per sub-slice (`CardPlayTriggers`, `TravelModifiers`, `ActionModifiers`, `TargetProtections`, `KnightsErrant`). The lines are inserted before the `CardPlayTriggers` line, so the sub-slices apply in any order. Resolve a merge by keeping every line.
+- **Shared registration vectors.** `WalkerPowerCatalog.default` gains one line per sub-slice (`CardPlayTriggers`, `TravelModifiers`, `ActionModifiers`, `TargetProtections`, `KnightsErrant`). The lines are inserted before the `CardPlayTriggers` line, so the sub-slices apply in any order (Task 12 needs Task 10's fixture, so 2f follows 2e).
 - **Reviewed entries.** Only Relic Worship's reviewed classification changes. Rowdy Pub, Knights Errant and Cup of Plenty stay listed as unimplemented selected handlers, which records nothing. If `RuleResolutionSuite` is extended to demand `implemented = true` for a walker power, flip them.
 - **Two windows on one power.** Forest Paths hooks `TravelActionEligibility` only so that its ignore reaches Narrow Pass. If a future power hooks a Travel window that Forest Paths does not, it will not be ignored: add the window with the same no-op transform.
 
 ## Self-review
 
-- **Spec coverage.** Augury, Truthful Harp, Cup of Plenty, Rowdy Pub, Relic Worship (Task 6); Tents, Forest Paths, Dragonskin Drum (Task 5); Knights Errant (Task 10); Wild Cry, Welcoming Party (Task 4); Toll Roads, Grasping Vines (Task 5); Circlet, Oaken and Rotting Fortress (Task 8); Gossip (Task 4); E6 (Tasks 1 to 3), E7 (Task 7), E9 (Task 9). The design's verify-at-plan-time items for E6 (fingerprint) and E9 (`nodePath`) are answered in fact 1 and in Task 9.
+- **Spec coverage.** Augury, Truthful Harp, Cup of Plenty, Rowdy Pub, Relic Worship (Task 8); Tents, Forest Paths, Dragonskin Drum (Task 7); Knights Errant (Task 12); Wild Cry, Welcoming Party (Task 6); Toll Roads, Grasping Vines (Task 7); Circlet, Oaken and Rotting Fortress (Task 10); Gossip (Task 6); E6 (Tasks 1, 2 and 4), E7 (Task 9), E9 (Task 5). The design's verify-at-plan-time items for E6 (fingerprint) and E9 (`nodePath`) are answered in fact 1 and in Task 5. The product owner's answers: 1 in Task 6, 2 in the Global Constraints and Task 7, 3 in Task 8, 4 in Task 11, 5 in open item 3, 6 in Task 3, 7 in Task 10, 8 in Tasks 3 and 6, 9 in Task 8, 10 in Task 8 and open item 2.
 - **Placeholders.** None: every code step is a complete file or an exact replacement, compiled and run in a throwaway copy before it was written here.
-- **Validation.** Every file and replacement in Tasks 1 to 10 was applied, in this order, to a fresh copy of `main`, compiled and run: each task's tests failed to compile before its implementation and passed after it, and the whole suite and the architecture check passed at the end (1345 tests, against 1195 on `main`). The same tasks were also applied in a second order (2a, 2b, 2f, 2e, 2d, 2c) with the same result, so the sub-slices after 2b are independent.
-- **Types.** `PlacementRules`, `PlacementTree.adjust`, `PlacementBody`, `CardPlay.Choice.replacementOptional` and `CardPlayProcedure.noReplacement` (Tasks 2 and 3) are used unchanged by `PlacementFixture`, `SiteDiscardFirstSuite` and `SilverTongue`. `SelectedModifier` and `CatalogCards` (Task 4) are the base of Tasks 5, 6 and 10. `CardStaging` (Task 4) is used by Tasks 5, 6, 8 and 10. `SearchFixture` (Task 4) is used by Task 6. `PowerCtx.procedure` (Task 9) is used by Task 10.
+- **Validation.** Every file and replacement in Tasks 1 to 12 was applied, in this order, to a fresh copy of `main`, compiled and run: each task's tests failed to compile (or failed) before its implementation and passed after it, and the whole suite and the architecture check passed at the end (1371 tests, against 1195 on `main`). The same tasks were also applied in a second order (2a, 2b, 2e, 2f, 2d, 2c) with the same result, so the sub-slices are independent as the split table says.
+- **Types.** `PlacementRules`, `PlacementTree.adjust`, `PlacementBody`, `CardPlay.Choice.replacementOptional` and `CardPlayProcedure.noReplacement` (Tasks 2 and 4) are used unchanged by `PlacementFixture`, `SiteDiscardFirstSuite` and `SilverTongue`. `DiscardRestrictions` and `CardStaging` (Task 3) are used by Tasks 4, 6, 7, 8, 10 and 12. `PowerCtx.procedure` (Task 5) is used by Tasks 6 and 12. `SelectedModifier` and `CatalogCards` (Task 6) are the base of Tasks 7, 8 and 12. `SearchFixture` (Task 6) is used by Task 8. `ContributingPower.ignores` (Task 7) is used by Forest Paths. The restriction traversal (Task 11) is what Task 12's suite relies on.
